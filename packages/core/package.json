@@ -1,0 +1,31 @@
+{
+	"name": "@fnb/core",
+	"version": "0.1.0",
+	"description": "Canonical POS-agnostic model and shared business rules (business date, sizes, payment kinds, money)",
+	"license": "MIT",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"import": "./src/index.ts"
+		}
+	},
+	"files": [
+		"src"
+	],
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"zod": "^4.6.7"
+	},
+	"devDependencies": {
+		"@types/node": "^25.0.0",
+		"vitest": "^5.1.0"
+	}
+}

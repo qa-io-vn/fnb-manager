@@ -1,0 +1,59 @@
+name: Backup database
+
+on:
+  schedule:
+    - cron: "23 19 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    name: Encrypted weekly dump to private object storage
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+      - run: pnpm exec supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_ID }}" --yes
+      - name: Dump and encrypt
+        id: dump
+        env:
+          BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+        run: |
+          stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          mkdir -p dump
+          pnpm exec supabase db dump --remote --password "$SUPABASE_DB_PASSWORD" -f dump/schema.sql
+          pnpm exec supabase db dump --remote --password "$SUPABASE_DB_PASSWORD" --data-only --use-copy -f dump/data.sql
+          pnpm exec supabase db dump --remote --password "$SUPABASE_DB_PASSWORD" --role-only -f dump/roles.sql
+          pnpm exec supabase db dump --remote --password "$SUPABASE_DB_PASSWORD" -s auth --data-only --use-copy -f dump/auth-data.sql
+          tar -czf "backup-${stamp}.tar.gz" -C dump .
+          printf '%s\n' "$BACKUP_AGE_RECIPIENT" > recipient.txt
+          age -R recipient.txt -o "backup-${stamp}.tar.gz.age" "backup-${stamp}.tar.gz"
+          rm -rf dump "backup-${stamp}.tar.gz" recipient.txt
+          size_bytes="$(stat -c %s "backup-${stamp}.tar.gz.age")"
+          echo "file=backup-${stamp}.tar.gz.age" >> "$GITHUB_OUTPUT"
+          echo "Backup ${stamp}: ${size_bytes} bytes encrypted" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+          BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+        run: |
+          aws s3 cp "${{ steps.dump.outputs.file }}" "s3://${BACKUP_S3_BUCKET}/database/${{ steps.dump.outputs.file }}" --endpoint-url "$BACKUP_S3_ENDPOINT"
+          rm -f "${{ steps.dump.outputs.file }}"

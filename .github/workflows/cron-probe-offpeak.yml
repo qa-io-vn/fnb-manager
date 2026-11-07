@@ -1,0 +1,21 @@
+name: Cron probe (off-peak minutes)
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Record when the :07 and :37 schedules actually started
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          {
+            echo "| fired at (UTC) | minute |"
+            echo "|---|---|"
+            echo "| $(date -u +%Y-%m-%dT%H:%M:%SZ) | $(date -u +%M) |"
+          } >> "$GITHUB_STEP_SUMMARY"

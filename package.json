@@ -1,0 +1,30 @@
+{
+	"name": "fnb-manager",
+	"private": true,
+	"version": "0.1.0",
+	"description": "Manager analytics for F&B shops: POS data sync, reports, AI data packs",
+	"license": "MIT",
+	"engines": {
+		"node": ">=22",
+		"pnpm": ">=9"
+	},
+	"packageManager": "pnpm@9.15.3",
+	"scripts": {
+		"lint": "biome check .",
+		"format": "biome format --write .",
+		"test": "pnpm -r --if-present test",
+		"typecheck": "pnpm -r --if-present typecheck",
+		"build": "pnpm -r --if-present build",
+		"db:start": "supabase start",
+		"db:stop": "supabase stop",
+		"db:reset": "supabase db reset",
+		"db:status": "supabase status"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.6.6",
+		"supabase": "^3.0.0",
+		"tsx": "^4.23.15",
+		"typescript": "^7.0.2",
+		"vitest": "^5.1.0"
+	}
+}

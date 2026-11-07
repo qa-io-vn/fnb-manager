@@ -1,0 +1,29 @@
+name: Scheduled workflows active
+
+on:
+  schedule:
+    - cron: "17 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  check:
+    name: Re-enable scheduled workflows disabled by inactivity
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - run: |
+          disabled="$(gh workflow list --all --json name,state,id --jq '.[] | select(.state == "disabled_inactivity") | "\(.id) \(.name)"')"
+          if [ -z "$disabled" ]; then
+            echo "All workflows active" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "$disabled" | while read -r id name; do
+            gh workflow enable "$id"
+            echo "Re-enabled: ${name}" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "::warning::Scheduled workflows had been disabled by inactivity and were re-enabled"

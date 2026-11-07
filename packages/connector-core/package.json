@@ -1,0 +1,44 @@
+{
+	"name": "@fnb/connector-core",
+	"version": "0.1.0",
+	"description": "Vendor-neutral PosConnector contract, registry, errors and conformance suite",
+	"license": "MIT",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"import": "./src/index.ts"
+		},
+		"./conformance": {
+			"types": "./src/conformance/index.ts",
+			"import": "./src/conformance/index.ts"
+		}
+	},
+	"files": [
+		"src"
+	],
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@fnb/core": "workspace:*",
+		"zod": "^4.6.7"
+	},
+	"peerDependencies": {
+		"vitest": "^5.1.0"
+	},
+	"peerDependenciesMeta": {
+		"vitest": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@types/node": "^25.0.0",
+		"vitest": "^5.1.0"
+	}
+}
