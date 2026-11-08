@@ -1,0 +1,27 @@
+{
+	"name": "@fnb/jobs",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"bin": {
+		"fnb": "./bin/fnb.mjs"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"test": "vitest run --passWithNoTests",
+		"fnb": "node ./bin/fnb.mjs"
+	},
+	"dependencies": {
+		"@fnb/connector-core": "workspace:^",
+		"@fnb/connector-ipos": "workspace:^",
+		"@fnb/core": "workspace:^",
+		"@fnb/sync": "workspace:^",
+		"@supabase/supabase-js": "^2.119.0",
+		"postgres": "^4.1.0",
+		"zod": "^4.6.7"
+	},
+	"devDependencies": {
+		"@fnb/connector-mock": "workspace:^",
+		"@types/node": "^25.0.0"
+	}
+}

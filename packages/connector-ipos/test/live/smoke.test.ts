@@ -1,7 +1,4 @@
-import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
 import {
 	createIposClient,
 	type IposClient,
@@ -9,53 +6,25 @@ import {
 	vietnamDaysAgo,
 	vietnamRange,
 } from "../../src/index.js";
+import {
+	hasAppAccessToken,
+	IPOS_CONNECTOR_KEY,
+	type LiveAccount,
+	liveEnabled,
+	loadLiveAccounts,
+	resolveAppAccessToken,
+	timed,
+} from "./accounts.js";
 
-const envFile = fileURLToPath(new URL("../../../../.env", import.meta.url));
-if (process.env.LIVE === "1" && existsSync(envFile)) {
-	process.loadEnvFile(envFile);
-}
-
-const accountsSchema = z.array(
-	z.object({
-		key: z.string(),
-		connector: z.string(),
-		email: z.string(),
-		password: z.string(),
-		appAccessToken: z.string().optional(),
-	}),
-);
-
-const liveEnabled =
-	process.env.LIVE === "1" && typeof process.env.POS_ACCOUNTS_JSON === "string";
-
-function resolveAppAccessToken(account: {
-	key: string;
-	appAccessToken?: string | undefined;
-}): string {
-	const token = account.appAccessToken ?? process.env.IPOS_APP_KEY;
-	if (!token) {
-		throw new Error(
-			`live test skipped: set IPOS_APP_KEY in .env or add appAccessToken to the POS_ACCOUNTS_JSON entry "${account.key}"`,
-		);
-	}
-	return token;
-}
-
-function hasAppAccessToken(account: { appAccessToken?: string | undefined }) {
-	return Boolean(account.appAccessToken ?? process.env.IPOS_APP_KEY);
-}
-
-function findFirstAccount() {
-	const accounts = accountsSchema.parse(
-		JSON.parse(process.env.POS_ACCOUNTS_JSON ?? "[]"),
-	);
+function findFirstAccount(): LiveAccount | undefined {
+	const accounts = loadLiveAccounts();
 	return (
-		accounts.find((candidate) => candidate.connector === "ipos-fabi") ??
+		accounts.find((candidate) => candidate.connector === IPOS_CONNECTOR_KEY) ??
 		accounts[0]
 	);
 }
 
-function firstAccount() {
+function firstAccount(): LiveAccount {
 	const account = findFirstAccount();
 	if (!account) {
 		throw new Error("POS_ACCOUNTS_JSON holds no account");
@@ -63,19 +32,12 @@ function firstAccount() {
 	return account;
 }
 
-async function timed<T>(label: string, work: () => Promise<T>): Promise<T> {
-	const startedAt = Date.now();
-	const result = await work();
-	console.log(`[live] ${label}: ${Date.now() - startedAt} ms`);
-	return result;
-}
-
 function expectNonNegativeCount(value: unknown): void {
 	expect(typeof value).toBe("number");
 	expect(value as number).toBeGreaterThanOrEqual(0);
 }
 
-const smokeEnabled = liveEnabled && hasAppAccessToken(findFirstAccount() ?? {});
+const smokeEnabled = liveEnabled && hasAppAccessToken(findFirstAccount());
 if (liveEnabled && !smokeEnabled) {
 	console.log(
 		"[live] iPOS live smoke skipped: set IPOS_APP_KEY in .env or add appAccessToken to the POS_ACCOUNTS_JSON entry",

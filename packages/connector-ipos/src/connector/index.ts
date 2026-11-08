@@ -21,6 +21,11 @@ import type {
 } from "@fnb/core";
 import { createIposClient, type IposClient } from "../client.js";
 import type { LoginPayload } from "../schemas/login.js";
+import {
+	adjustmentQueryRange,
+	adjustmentQueryRanges,
+	buildAdjustments,
+} from "./adjustments.js";
 import { toCanonicalCatalog } from "./catalog.js";
 import { daysViewRange, mapDayRow } from "./control-totals.js";
 import { iposCredentialsSchema } from "./credentials.js";
@@ -222,9 +227,47 @@ export function createIposConnector(
 				.map(mapShift);
 		},
 
-		async fetchAdjustments(): Promise<CanonicalAdjustment[]> {
+		async fetchAdjustments(
+			store,
+			window,
+			context,
+		): Promise<CanonicalAdjustment[]> {
 			assertCapability(iposDescriptor, "adjustments");
-			return [];
+			assertWindow(window);
+			const scope = await scopeFor(store);
+			const { client } = requireSession();
+			const storeScope = {
+				companyUid: scope.companyUid,
+				brandUid: scope.brandUid,
+				storeUid: scope.storeUid,
+			};
+			const [editedOrDeleted, removedItemEvents] = await translateErrors(() =>
+				Promise.all([
+					Promise.all(
+						adjustmentQueryRanges(window, store).map((range) =>
+							client.posCms.listEditedOrDeletedSales({
+								...storeScope,
+								...range,
+							}),
+						),
+					),
+					client.posCms.listRemovedItemEvents({
+						...storeScope,
+						...adjustmentQueryRange(window, store),
+						timezone: store.timezone,
+					}),
+				]),
+			);
+			const built = buildAdjustments(
+				{
+					editedOrDeleted: editedOrDeleted.flatMap((report) => report.rows),
+					removedItemEvents: removedItemEvents.rows,
+				},
+				store,
+				window,
+			);
+			emitFlags(built.flags, context);
+			return built.adjustments;
 		},
 
 		async fetchControlTotals(store, window): Promise<CanonicalDailyTotal[]> {

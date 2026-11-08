@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
 	MILLISECONDS_PER_DAY,
+	sameCalendarMonth,
+	splitRangeByCalendarMonth,
 	VIETNAM_UTC_OFFSET_MS,
 	vietnamDateISO,
 	vietnamDayRange,
 	vietnamDaysAgo,
+	vietnamMidnight,
 	vietnamRange,
 } from "../../src/index.js";
 
@@ -87,5 +90,58 @@ describe("vietnamDateISO", () => {
 
 		expect(vietnamDaysAgo(0, now)).toBe("2026-03-01");
 		expect(vietnamDaysAgo(1, now)).toBe("2026-02-28");
+	});
+});
+
+describe("splitRangeByCalendarMonth", () => {
+	it("keeps a range inside one month as a single sub-range", () => {
+		const range = vietnamRange("2026-10-08", "2026-10-31");
+		expect(splitRangeByCalendarMonth(range)).toEqual([range]);
+		expect(sameCalendarMonth(range)).toBe(true);
+	});
+
+	it("cuts a range spanning two months at local midnight on the first of the month", () => {
+		const range = vietnamRange("2026-10-08", "2026-11-07");
+		const novemberStart = vietnamMidnight("2026-11-01");
+		expect(splitRangeByCalendarMonth(range)).toEqual([
+			{ startDate: range.startDate, endDate: novemberStart - 1 },
+			{ startDate: novemberStart, endDate: range.endDate },
+		]);
+		expect(sameCalendarMonth(range)).toBe(false);
+	});
+
+	it("crosses a year boundary and yields one sub-range per month touched", () => {
+		const range = vietnamRange("2025-11-20", "2026-02-03");
+		const parts = splitRangeByCalendarMonth(range);
+		expect(parts).toHaveLength(4);
+		expect(parts[0]?.startDate).toBe(range.startDate);
+		expect(parts[1]?.startDate).toBe(vietnamMidnight("2025-12-01"));
+		expect(parts[2]?.startDate).toBe(vietnamMidnight("2026-01-01"));
+		expect(parts[3]).toEqual({
+			startDate: vietnamMidnight("2026-02-01"),
+			endDate: range.endDate,
+		});
+		for (let index = 1; index < parts.length; index += 1) {
+			expect(parts[index]?.startDate).toBe(
+				(parts[index - 1]?.endDate ?? 0) + 1,
+			);
+		}
+	});
+
+	it("splits by the calendar month of the given timezone", () => {
+		const range = {
+			startDate: Date.UTC(2026, 9, 31, 15),
+			endDate: Date.UTC(2026, 9, 31, 20),
+		};
+		expect(splitRangeByCalendarMonth(range, "UTC")).toHaveLength(1);
+		expect(splitRangeByCalendarMonth(range, "Asia/Ho_Chi_Minh")).toHaveLength(
+			2,
+		);
+	});
+
+	it("rejects an inverted range", () => {
+		expect(() =>
+			splitRangeByCalendarMonth({ startDate: 10, endDate: 5 }),
+		).toThrow(RangeError);
 	});
 });

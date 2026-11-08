@@ -265,3 +265,95 @@ export function errorEnvelope(
 ) {
 	return { error: { code, message }, track_id: trackId };
 }
+
+export function makeEditDeleteRow(
+	sequence: number,
+	tranDate: number,
+	overrides: Record<string, unknown> = {},
+) {
+	const tranId = fakeUuid(600 + sequence);
+	return {
+		tran_id: tranId,
+		origin_tran_id: "",
+		first_origin_tran_id: tranId,
+		tran_no: `TN${String(sequence).padStart(5, "0")}`,
+		shift_id: "SH001",
+		store_uid: STORE_UID,
+		store_name: "Store A",
+		table_name: "CARD 1",
+		employee_uid: USER_UID,
+		employee_name: "Cashier",
+		sale_note: "Phục vụ nhầm",
+		status: "DELETE",
+		total_amount_origin: 60_000,
+		total_amount: 0,
+		tran_date: tranDate,
+		updated_at: tranDate + 5 * 60_000,
+		payment_method_id: "PM01",
+		payment_method_name: "Cash",
+		tran_id_of_partner: null,
+		trace_no: null,
+		source_voucher: null,
+		source_deli: null,
+		extra_data: {},
+		...overrides,
+	};
+}
+
+export function makeChangeLogLine(
+	lineId: string,
+	overrides: Record<string, unknown> = {},
+) {
+	const removed =
+		typeof overrides.quantity === "number" && overrides.quantity < 0;
+	return {
+		id: fakeUuid(7100),
+		id_sale_detail: lineId,
+		item_id: "I001",
+		item_name: "Item 1 (M)",
+		item_type_id: "T01",
+		item_type_name: "Type 1",
+		item_class_id: null,
+		item_class_name: null,
+		quantity: 1,
+		price: 50_000,
+		price_org: 50_000,
+		amount: 50_000,
+		sort_index: removed ? -1 : 1,
+		unit_id: "LY",
+		note: "",
+		hour: 9,
+		minute: 5,
+		is_printed: removed ? 1 : 0,
+		quantity_print_temp: 0,
+		order_no: 1,
+		device_code: "POS-1",
+		employee_id: "E01",
+		employee_name: "Cashier",
+		status: "COOKING",
+		toppings: [],
+		...overrides,
+	};
+}
+
+export function makeRemovedItemEvent(
+	sequence: number,
+	logDate: number,
+	saleDetail: Record<string, unknown>[],
+	overrides: Record<string, unknown> = {},
+) {
+	return {
+		tran_id: fakeUuid(650 + sequence),
+		tran_no: "",
+		store_uid: STORE_UID,
+		log_type: "SALE_CHANGE",
+		log_date: logDate,
+		updated_at: Math.floor(logDate / 1000) + 25_200,
+		state_action: 1,
+		table_name: "CARD 2",
+		employee_name: "Cashier",
+		total_tran_id: saleDetail.length,
+		sale_detail: saleDetail,
+		...overrides,
+	};
+}

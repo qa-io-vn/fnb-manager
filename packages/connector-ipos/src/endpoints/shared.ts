@@ -32,6 +32,49 @@ export interface PagedRows<T> {
 	pages: number;
 }
 
+export interface PageEnvelopeLike<T> {
+	data: T[];
+	page: number;
+	total_pages: number;
+}
+
+export async function collectUntilShortPage<T>(
+	pageSize: number,
+	fetchPage: (page: number) => Promise<T[]>,
+): Promise<PagedRows<T>> {
+	const rows: T[] = [];
+	let pages = 0;
+	for (let page = 1; ; page += 1) {
+		const batch = await fetchPage(page);
+		pages += 1;
+		rows.push(...batch);
+		if (batch.length < pageSize) {
+			break;
+		}
+	}
+	return { rows, pages };
+}
+
+export async function collectPagedEnvelope<T>(
+	fetchPage: (page: number) => Promise<PageEnvelopeLike<T>>,
+): Promise<PagedRows<T>> {
+	const rows: T[] = [];
+	let pages = 0;
+	let page = 1;
+	while (true) {
+		const envelope = await fetchPage(page);
+		pages += 1;
+		rows.push(...envelope.data);
+		const isLastPage =
+			envelope.page >= envelope.total_pages || envelope.data.length === 0;
+		if (isLastPage) {
+			break;
+		}
+		page = envelope.page + 1;
+	}
+	return { rows, pages };
+}
+
 export function requireUid(value: string, parameterName: string): string {
 	if (value.trim() === "") {
 		throw new IposError(`${parameterName} must be a non-empty uid`);

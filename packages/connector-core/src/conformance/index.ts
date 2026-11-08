@@ -1,6 +1,8 @@
+export { adjustmentKey } from "@fnb/core";
 export {
 	aggregateByBusinessDate,
 	type CheckContext,
+	checkAdjustments,
 	checkBoundarySales,
 	checkBusinessDates,
 	checkControlTotals,

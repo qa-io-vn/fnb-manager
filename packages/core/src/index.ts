@@ -1,4 +1,8 @@
 export {
+	type AdjustmentIdentity,
+	adjustmentKey,
+} from "./rules/adjustment.js";
+export {
 	assertTimezone,
 	businessDate,
 	businessDayEnd,
@@ -76,6 +80,7 @@ export {
 	dataQualityFlagSchema,
 } from "./schemas/data-quality.js";
 export {
+	ADJUSTMENT_KINDS,
 	type AdjustmentKind,
 	adjustmentKindSchema,
 	CHANNELS,

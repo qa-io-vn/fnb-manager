@@ -9,6 +9,7 @@ import {
 import {
 	businessDate,
 	businessDayStart,
+	type CanonicalAdjustment,
 	type CanonicalDailyTotal,
 	type CanonicalSale,
 	type CanonicalShift,
@@ -18,7 +19,15 @@ import {
 	sumMoney,
 	wallClockIn,
 } from "@fnb/core";
-import { LOGIN_PATH } from "../../src/index.js";
+import {
+	LOGIN_PATH,
+	REMOVED_ITEMS_PAGE_SIZE,
+	REMOVED_ITEMS_PATH,
+	REMOVED_LINE_SUFFIX,
+	SALE_EDIT_DELETE_PATH,
+	sameCalendarMonth,
+	VIETNAM_UTC_OFFSET_MS,
+} from "../../src/index.js";
 import {
 	BRAND_UID,
 	CITY_UID,
@@ -47,7 +56,9 @@ export interface FixtureShop {
 	storeUid: string;
 	menu: Menu;
 	sales: CanonicalSale[];
+	saleById: ReadonlyMap<string, CanonicalSale>;
 	shifts: CanonicalShift[];
+	adjustments: CanonicalAdjustment[];
 	dailyTotals: CanonicalDailyTotal[];
 	uuidOnlyTypeItemIds: ReadonlySet<string>;
 }
@@ -87,7 +98,9 @@ export function renderFixtureShop(options: FixtureShopOptions): FixtureShop {
 		storeUid: STORE_UID,
 		menu,
 		sales: generated.sales.filter((sale) => sale.status !== "voided"),
+		saleById: new Map(generated.sales.map((sale) => [sale.externalId, sale])),
 		shifts: generated.shifts,
+		adjustments: generated.adjustments,
 		dailyTotals: generated.dailyTotals,
 		uuidOnlyTypeItemIds: uuidOnlyTypeItemIds(menu),
 	};
@@ -372,6 +385,214 @@ function shiftRows(shop: FixtureShop): Row[] {
 	}));
 }
 
+function sourceSale(
+	shop: FixtureShop,
+	adjustment: CanonicalAdjustment,
+): CanonicalSale {
+	const sale = shop.saleById.get(adjustment.saleExternalId);
+	if (!sale) {
+		throw new Error(
+			`fixture adjustment references unknown sale ${adjustment.saleExternalId}`,
+		);
+	}
+	return sale;
+}
+
+function editDeleteRow(
+	shop: FixtureShop,
+	adjustment: CanonicalAdjustment,
+	sale: CanonicalSale,
+	increased: boolean,
+): Row {
+	const voided = adjustment.kind === "voided";
+	const amount = adjustment.amount ?? 0;
+	const amountBefore = increased ? sale.netAmount : sale.netAmount + amount;
+	const amountAfter = increased ? sale.netAmount + amount : sale.netAmount;
+	return {
+		tran_id: sale.externalId,
+		origin_tran_id: voided ? "" : (adjustment.relatedSaleExternalId ?? ""),
+		first_origin_tran_id: voided
+			? sale.externalId
+			: (adjustment.relatedSaleExternalId ?? ""),
+		tran_no: sale.receiptNo ?? null,
+		shift_id: sale.shiftExternalId ?? null,
+		store_uid: shop.storeUid,
+		store_name: shop.store.name,
+		table_name: sale.tableName ?? null,
+		employee_uid: USER_UID,
+		employee_name: sale.employeeName ?? null,
+		sale_note: adjustment.reason ?? "",
+		status: voided ? "DELETE" : "EDIT",
+		total_amount_origin: voided ? amount : amountBefore,
+		total_amount: voided ? 0 : amountAfter,
+		tran_date: sale.soldAt.getTime(),
+		updated_at: adjustment.occurredAt.getTime(),
+		payment_method_id: sale.payments[0]?.methodExternalId ?? null,
+		payment_method_name: sale.payments[0]?.methodName ?? null,
+		tran_id_of_partner: null,
+		trace_no: null,
+		source_voucher: null,
+		source_deli: null,
+		extra_data: {},
+	};
+}
+
+function editDeleteRows(shop: FixtureShop): Row[] {
+	return shop.adjustments
+		.filter(
+			(adjustment) =>
+				adjustment.kind === "voided" || adjustment.kind === "edited",
+		)
+		.map((adjustment, position) =>
+			editDeleteRow(
+				shop,
+				adjustment,
+				sourceSale(shop, adjustment),
+				adjustment.kind === "edited" && position % 2 === 1,
+			),
+		);
+}
+
+function changeLogLine(
+	line: CanonicalSale["lines"][number],
+	sale: CanonicalSale,
+	timezone: string,
+	removed: boolean,
+	position: number,
+): Row {
+	const quantity = removed ? -Math.abs(line.quantity) : line.quantity;
+	const ordered = clock(sale.openedAt ?? sale.soldAt, timezone);
+	return {
+		id: fakeUuid(7000 + position),
+		id_sale_detail: removed
+			? `${line.externalId}${REMOVED_LINE_SUFFIX}`
+			: line.externalId,
+		item_id: line.itemExternalId ?? line.externalId,
+		item_name: line.itemName,
+		item_type_id: line.itemTypeExternalId ?? null,
+		item_type_name: line.itemTypeName ?? null,
+		item_class_id: null,
+		item_class_name: line.itemClassName ?? null,
+		quantity,
+		price: line.unitPrice,
+		price_org: line.unitPrice,
+		amount: line.unitPrice * Math.abs(line.quantity),
+		sort_index: removed ? -1 : position + 1,
+		unit_id: line.unitName ?? null,
+		note: line.note ?? "",
+		hour: ordered.hour,
+		minute: ordered.minute,
+		is_printed: removed ? 1 : 0,
+		quantity_print_temp: 0,
+		order_no: 1,
+		device_code: "POS-01",
+		employee_id: sale.employeeExternalId ?? null,
+		employee_name: sale.employeeName ?? null,
+		status: "COOKING",
+		toppings: [],
+		discount_amount: 0,
+		vat_amount: 0,
+	};
+}
+
+function removedItemEvent(
+	shop: FixtureShop,
+	adjustment: CanonicalAdjustment,
+	sale: CanonicalSale,
+): Row {
+	const timezone = shop.store.timezone;
+	const saleDetail = sale.lines
+		.filter((line) => line.lineKind !== "modifier")
+		.map((line, position) =>
+			changeLogLine(
+				line,
+				sale,
+				timezone,
+				line.externalId === adjustment.lineExternalId,
+				position,
+			),
+		);
+	const occurredAt = adjustment.occurredAt.getTime();
+	return {
+		tran_id: sale.externalId,
+		tran_no: sale.receiptNo ?? "",
+		store_uid: shop.storeUid,
+		log_type: "SALE_CHANGE",
+		log_date: occurredAt,
+		updated_at: Math.floor((occurredAt + VIETNAM_UTC_OFFSET_MS) / 1000),
+		state_action: 1,
+		table_name: sale.tableName ?? null,
+		employee_name: sale.employeeName ?? null,
+		total_tran_id: saleDetail.length,
+		sale_detail: saleDetail,
+	};
+}
+
+function removedItemEvents(shop: FixtureShop): Row[] {
+	return shop.adjustments
+		.filter((adjustment) => adjustment.kind === "line_removed")
+		.map((adjustment) =>
+			removedItemEvent(shop, adjustment, sourceSale(shop, adjustment)),
+		);
+}
+
+const CROSS_MONTH_MESSAGE =
+	"Truyền thiếu dữ liệu: chọn ngày bắt đầu và ngày kết thúc trong cùng 1 tháng";
+
+function editDeleteReport(
+	rows: Row[],
+	request: RecordedRequest,
+	shop: FixtureShop,
+): FakeResponse {
+	const mismatch = storeMismatch(request, shop, "store_uid");
+	if (mismatch) {
+		return mismatch;
+	}
+	return {
+		status: 200,
+		json: {
+			data: rows.filter((row) => inRange(row, request, "updated_at")),
+			data_shift: [],
+			track_id: "track-0005",
+		},
+	};
+}
+
+function removedItemsPage(
+	rows: Row[],
+	request: RecordedRequest,
+	shop: FixtureShop,
+): FakeResponse {
+	const mismatch = storeMismatch(request, shop, "list_store_uid");
+	if (mismatch) {
+		return mismatch;
+	}
+	const start = number(request, "start_date");
+	const end = number(request, "end_date");
+	if (start === null || end === null) {
+		return { status: 400, json: errorEnvelope(0, "Truyền thiếu dữ liệu") };
+	}
+	if (
+		!sameCalendarMonth({ startDate: start, endDate: end }, shop.store.timezone)
+	) {
+		return { status: 400, json: errorEnvelope(0, CROSS_MONTH_MESSAGE) };
+	}
+	const page = number(request, "page") ?? 1;
+	const matching = rows
+		.filter((row) => inRange(row, request, "log_date"))
+		.sort((left, right) => Number(right.log_date) - Number(left.log_date));
+	return {
+		status: 200,
+		json: {
+			data: matching.slice(
+				(page - 1) * REMOVED_ITEMS_PAGE_SIZE,
+				page * REMOVED_ITEMS_PAGE_SIZE,
+			),
+			track_id: "track-0008",
+		},
+	};
+}
+
 function dayRow(shop: FixtureShop, date: string, openAtHours: number): Row {
 	const timezone = shop.store.timezone;
 	const inDay = shop.sales.filter(
@@ -539,6 +760,8 @@ export function fixtureResponder(shop: FixtureShop): Responder {
 	const lines = lineRows(shop);
 	const payments = paymentRows(shop);
 	const shifts = shiftRows(shop);
+	const editedOrDeleted = editDeleteRows(shop);
+	const removedEvents = removedItemEvents(shop);
 
 	return (request) => {
 		const path = request.url.pathname;
@@ -581,6 +804,10 @@ export function fixtureResponder(shop: FixtureShop): Responder {
 				return shiftsPage(shifts, request);
 			case "/api/v3/reports/sale-summary/days":
 				return daysPayload(shop, request);
+			case SALE_EDIT_DELETE_PATH:
+				return editDeleteReport(editedOrDeleted, request, shop);
+			case REMOVED_ITEMS_PATH:
+				return removedItemsPage(removedEvents, request, shop);
 			default:
 				return {
 					status: 404,

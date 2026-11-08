@@ -1,4 +1,5 @@
 import type {
+	CanonicalAdjustment,
 	CanonicalCatalog,
 	CanonicalLine,
 	CanonicalPayment,
@@ -7,6 +8,8 @@ import type {
 } from "@fnb/core";
 import { describe, expect, it } from "vitest";
 import {
+	adjustmentKey,
+	checkAdjustments,
 	checkBoundarySales,
 	checkBusinessDates,
 	checkControlTotals,
@@ -342,5 +345,107 @@ describe("conformance checks", () => {
 				(entry) => entry.rule,
 			),
 		).toEqual(["window-edges", "window-edges"]);
+	});
+});
+
+function adjustment(
+	overrides: Partial<CanonicalAdjustment> = {},
+): CanonicalAdjustment {
+	return {
+		kind: "voided",
+		saleExternalId: "T1",
+		occurredAt: new Date("2026-11-07T10:00:00.000Z"),
+		amount: 45_000,
+		reason: "Khách huỷ đơn",
+		raw: null,
+		...overrides,
+	};
+}
+
+describe("adjustment checks", () => {
+	it("accepts a void, an edit with its origin and a removed line", () => {
+		const adjustments = [
+			adjustment(),
+			adjustment({
+				kind: "edited",
+				saleExternalId: "T2",
+				relatedSaleExternalId: "T2-ORIGIN",
+				amount: 10_000,
+			}),
+			adjustment({
+				kind: "line_removed",
+				saleExternalId: "T3",
+				lineExternalId: "L1_REMOVE",
+				itemExternalId: "DR-1",
+				itemName: "Trà sữa (M)",
+				quantity: 1,
+			}),
+		];
+		expect(checkAdjustments(adjustments, context)).toEqual([]);
+	});
+
+	it("places occurredAt on the business date in the store timezone", () => {
+		const lateEvening = adjustment({
+			occurredAt: new Date("2026-11-07T16:30:00.000Z"),
+		});
+		expect(checkAdjustments([lateEvening], context)).toEqual([]);
+		const nextLocalDay = adjustment({
+			occurredAt: new Date("2026-11-07T17:30:00.000Z"),
+		});
+		expect(
+			checkAdjustments([nextLocalDay], context).map((entry) => entry.rule),
+		).toEqual(["adjustment-window"]);
+	});
+
+	it("rejects negative amounts, removed lines without a line or quantity, and unknown kinds", () => {
+		expect(
+			checkAdjustments([adjustment({ amount: -1 })], context).map(
+				(entry) => entry.rule,
+			),
+		).toEqual(["adjustment-amount"]);
+		expect(
+			checkAdjustments([adjustment({ kind: "line_removed" })], context).map(
+				(entry) => entry.rule,
+			),
+		).toEqual(["adjustment-line", "adjustment-line"]);
+		expect(
+			checkAdjustments(
+				[
+					adjustment({
+						kind: "line_removed",
+						lineExternalId: "L1_REMOVE",
+						quantity: 0,
+					}),
+				],
+				context,
+			).map((entry) => entry.rule),
+		).toEqual(["adjustment-schema", "adjustment-line"]);
+		expect(
+			checkAdjustments(
+				[adjustment({ kind: "refunded" as CanonicalAdjustment["kind"] })],
+				context,
+			).map((entry) => entry.rule),
+		).toEqual(["adjustment-schema", "adjustment-kind"]);
+		expect(
+			checkAdjustments([adjustment({ saleExternalId: "" })], context).map(
+				(entry) => entry.rule,
+			),
+		).toEqual(["adjustment-schema", "adjustment-sale"]);
+	});
+
+	it("flags duplicates by kind, sale, line and time", () => {
+		const first = adjustment({
+			kind: "line_removed",
+			lineExternalId: "L1_REMOVE",
+			quantity: 1,
+		});
+		const otherLine = { ...first, lineExternalId: "L2_REMOVE" };
+		expect(checkAdjustments([first, otherLine], context)).toEqual([]);
+		expect(adjustmentKey(first)).not.toBe(adjustmentKey(otherLine));
+		expect(
+			checkAdjustments([first, { ...first }], context).map(
+				(entry) => entry.rule,
+			),
+		).toEqual(["adjustment-duplicates"]);
 	});
 });

@@ -26,6 +26,7 @@ export const adjustmentKindSchema = z.enum([
 	"voided",
 	"edited",
 	"line_removed",
+	"reissued",
 ]);
 export const flagSeveritySchema = z.enum(["info", "warn"]);
 
@@ -39,3 +40,4 @@ export type FlagSeverity = z.infer<typeof flagSeveritySchema>;
 export const CHANNELS = channelSchema.options;
 export const LINE_KINDS = lineKindSchema.options;
 export const PAYMENT_KINDS = paymentKindSchema.options;
+export const ADJUSTMENT_KINDS = adjustmentKindSchema.options;

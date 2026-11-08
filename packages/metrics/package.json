@@ -1,0 +1,28 @@
+{
+	"name": "@fnb/metrics",
+	"version": "0.1.0",
+	"description": "Typed metric registry mirrored from docs/metrics.md: ids, Vietnamese and English labels, units, formulas, grains, directions, sources, report mapping, status and benchmark context",
+	"license": "MIT",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"import": "./src/index.ts"
+		}
+	},
+	"files": [
+		"src"
+	],
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+		"test": "vitest run"
+	},
+	"devDependencies": {
+		"@types/node": "^25.0.0",
+		"vitest": "^5.1.0"
+	}
+}

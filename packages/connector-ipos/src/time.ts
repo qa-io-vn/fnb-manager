@@ -1,9 +1,50 @@
+import { formatIsoDate, wallClockIn, zonedInstant } from "@fnb/core";
+
 export const VIETNAM_UTC_OFFSET_MS = 7 * 60 * 60 * 1000;
 export const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+export const VIETNAM_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 export interface EpochMsRange {
 	startDate: number;
 	endDate: number;
+}
+
+function nextCalendarMonthStart(epochMs: number, timezone: string): number {
+	const clock = wallClockIn(new Date(epochMs), timezone);
+	const year = clock.month === 12 ? clock.year + 1 : clock.year;
+	const month = clock.month === 12 ? 1 : clock.month + 1;
+	return zonedInstant(formatIsoDate(year, month, 1), 0, timezone).getTime();
+}
+
+export function splitRangeByCalendarMonth(
+	range: EpochMsRange,
+	timezone: string = VIETNAM_TIMEZONE,
+): EpochMsRange[] {
+	if (range.endDate < range.startDate) {
+		throw new RangeError(
+			`Range end ${range.endDate} is before range start ${range.startDate}`,
+		);
+	}
+	const ranges: EpochMsRange[] = [];
+	let cursor = range.startDate;
+	while (cursor <= range.endDate) {
+		const nextMonth = nextCalendarMonthStart(cursor, timezone);
+		ranges.push({
+			startDate: cursor,
+			endDate: Math.min(range.endDate, nextMonth - 1),
+		});
+		cursor = nextMonth;
+	}
+	return ranges;
+}
+
+export function sameCalendarMonth(
+	range: EpochMsRange,
+	timezone: string = VIETNAM_TIMEZONE,
+): boolean {
+	const start = wallClockIn(new Date(range.startDate), timezone);
+	const end = wallClockIn(new Date(range.endDate), timezone);
+	return start.year === end.year && start.month === end.month;
 }
 
 const isoCalendarDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/;

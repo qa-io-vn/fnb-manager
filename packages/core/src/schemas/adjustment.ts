@@ -10,6 +10,11 @@ import { adjustmentKindSchema } from "./enums.js";
 export const canonicalAdjustmentSchema = z.object({
 	kind: adjustmentKindSchema,
 	saleExternalId: externalId,
+	relatedSaleExternalId: externalId.optional(),
+	lineExternalId: externalId.optional(),
+	itemExternalId: externalId.optional(),
+	itemName: optionalText,
+	quantity: z.number().finite().positive().optional(),
 	occurredAt: z.date(),
 	amount: optionalMoney,
 	reason: optionalText,

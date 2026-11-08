@@ -16,8 +16,8 @@ select is(
 
 select is(
   (select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r', 'p')),
-  33,
-  'public holds the 33 expected tables'
+  46,
+  'public holds the 46 expected tables'
 );
 
 select is(

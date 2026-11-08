@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { collectSales, type PosConnector } from "@fnb/connector-core";
 import {
 	checkBusinessDates,
@@ -18,49 +16,17 @@ import {
 	shiftIsoDate,
 } from "@fnb/core";
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
 import { createIposConnector, vietnamDaysAgo } from "../../src/index.js";
+import {
+	hasAppAccessToken,
+	type LiveAccount,
+	liveEnabled,
+	loadIposAccounts,
+	resolveAppAccessToken,
+	timed,
+} from "./accounts.js";
 
-const envFile = fileURLToPath(new URL("../../../../.env", import.meta.url));
-if (process.env.LIVE === "1" && existsSync(envFile)) {
-	process.loadEnvFile(envFile);
-}
-
-const accountsSchema = z.array(
-	z.object({
-		key: z.string(),
-		connector: z.string(),
-		email: z.string(),
-		password: z.string(),
-		appAccessToken: z.string().optional(),
-	}),
-);
-
-const liveEnabled =
-	process.env.LIVE === "1" && typeof process.env.POS_ACCOUNTS_JSON === "string";
-
-function resolveAppAccessToken(account: {
-	key: string;
-	appAccessToken?: string | undefined;
-}): string {
-	const token = account.appAccessToken ?? process.env.IPOS_APP_KEY;
-	if (!token) {
-		throw new Error(
-			`live test skipped: set IPOS_APP_KEY in .env or add appAccessToken to the POS_ACCOUNTS_JSON entry "${account.key}"`,
-		);
-	}
-	return token;
-}
-
-function hasAppAccessToken(account: { appAccessToken?: string | undefined }) {
-	return Boolean(account.appAccessToken ?? process.env.IPOS_APP_KEY);
-}
-
-const accounts = liveEnabled
-	? accountsSchema
-			.parse(JSON.parse(process.env.POS_ACCOUNTS_JSON ?? "[]"))
-			.filter((account) => account.connector === "ipos-fabi")
-	: [];
+const accounts = loadIposAccounts();
 
 for (const account of accounts.filter((entry) => !hasAppAccessToken(entry))) {
 	console.log(
@@ -72,13 +38,6 @@ const MONEY_TOLERANCE = 1_000;
 const RECENT_DAY = vietnamDaysAgo(1);
 const VOUCHER_LOOKBACK_DAYS = 35;
 const MIN_VOUCHER_INVOICES = 5;
-
-async function timed<T>(label: string, work: () => Promise<T>): Promise<T> {
-	const startedAt = Date.now();
-	const result = await work();
-	console.log(`[live] ${label}: ${Date.now() - startedAt} ms`);
-	return result;
-}
 
 function summariseFlags(flags: readonly DataQualityFlag[]): string {
 	const counts = new Map<string, number>();
@@ -105,12 +64,7 @@ interface LiveSession {
 	flags: DataQualityFlag[];
 }
 
-async function connect(account: {
-	key: string;
-	email: string;
-	password: string;
-	appAccessToken?: string | undefined;
-}): Promise<LiveSession> {
+async function connect(account: LiveAccount): Promise<LiveSession> {
 	const flags: DataQualityFlag[] = [];
 	const connector = createIposConnector({ onFlag: (flag) => flags.push(flag) });
 	await timed("authenticate", () =>

@@ -1,0 +1,15 @@
+const view = (
+	<Card
+		label="Doanh thu"
+		caption={`Tổng ${total}`}
+		title={open ? "Đóng" : t("app.retry")}
+		kind="money"
+		className="text-sm font-semibold"
+		data-testid="card today"
+	>
+		{"Tất cả"}
+		{`${count} stores`}
+		{" · "}
+		{ready && "Ready"}
+	</Card>
+);

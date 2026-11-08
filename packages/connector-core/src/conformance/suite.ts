@@ -22,6 +22,7 @@ import { ConnectorCapabilityError } from "../errors.js";
 import { singleDayWindow, windowDates } from "../window.js";
 import {
 	type CheckContext,
+	checkAdjustments,
 	checkBoundarySales,
 	checkBusinessDates,
 	checkControlTotals,
@@ -51,6 +52,7 @@ export interface ConformanceOptions {
 	expectBoundarySales?: boolean;
 	boundaryMarginMinutes?: number;
 	expectFullyPaid?: boolean;
+	expectAdjustments?: boolean;
 	timeoutMs?: number;
 }
 
@@ -111,6 +113,7 @@ export function runConnectorConformanceSuite(
 	const boundaryMarginMinutes =
 		options.boundaryMarginMinutes ?? DEFAULT_BOUNDARY_MARGIN_MINUTES;
 	const expectFullyPaid = options.expectFullyPaid ?? false;
+	const expectAdjustments = options.expectAdjustments ?? true;
 
 	describe(`${name} conformance`, () => {
 		const connector = factory();
@@ -311,17 +314,24 @@ export function runConnectorConformanceSuite(
 		}
 
 		if (capabilities.adjustments) {
-			it("returns adjustments that match CanonicalAdjustment", {
+			it("returns adjustments that match CanonicalAdjustment and the adjustment rules", {
 				timeout,
 			}, async () => {
+				const flags: DataQualityFlag[] = [];
 				const adjustments = await connector.fetchAdjustments(
 					state().store,
 					options.window,
+					{ onFlag: (flag) => flags.push(flag) },
 				);
+				if (expectAdjustments) {
+					expect(adjustments.length).toBeGreaterThan(0);
+				}
 				for (const adjustment of adjustments) {
 					const result = canonicalAdjustmentSchema.safeParse(adjustment);
 					expect(result.success, result.error?.message).toBe(true);
 				}
+				expectClean(checkAdjustments(adjustments, state().context));
+				expectClean(checkFlags(flags));
 			});
 		} else {
 			it("rejects fetchAdjustments with ConnectorCapabilityError", async () => {

@@ -378,16 +378,43 @@ function buildSale(
 				raw: null,
 			}
 		: edited
-			? {
-					kind: rng.chance(0.5) ? "edited" : "line_removed",
-					saleExternalId: saleId,
-					occurredAt: new Date(soldAt.getTime() + 10 * MINUTE_MS),
-					amount: netAmount,
-					reason: "Sửa hoá đơn sau khi in tạm tính",
-					raw: null,
-				}
+			? buildEditAdjustment(rng, sale)
 			: null;
 	return { sale, minutesOfDay, adjustment };
+}
+
+const EDIT_REASON = "Sửa hoá đơn sau khi in tạm tính";
+
+function buildEditAdjustment(
+	rng: Rng,
+	sale: CanonicalSale,
+): CanonicalAdjustment {
+	const occurredAt = new Date(sale.soldAt.getTime() + 10 * MINUTE_MS);
+	const removedLine =
+		sale.lines.find((line) => line.lineKind === "item") ?? sale.lines[0];
+	if (rng.chance(0.5) || !removedLine) {
+		return {
+			kind: "edited",
+			saleExternalId: sale.externalId,
+			relatedSaleExternalId: `${sale.externalId}-ORIGIN`,
+			occurredAt,
+			amount: removedLine?.netAmount ?? sale.netAmount,
+			reason: EDIT_REASON,
+			raw: null,
+		};
+	}
+	return {
+		kind: "line_removed",
+		saleExternalId: sale.externalId,
+		lineExternalId: removedLine.externalId,
+		itemExternalId: removedLine.itemExternalId,
+		itemName: removedLine.itemName,
+		quantity: removedLine.quantity,
+		occurredAt,
+		amount: removedLine.grossAmount,
+		reason: EDIT_REASON,
+		raw: null,
+	};
 }
 
 function buildShifts(

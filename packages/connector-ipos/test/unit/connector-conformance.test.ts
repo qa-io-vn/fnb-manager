@@ -1,8 +1,23 @@
 import { collectSales } from "@fnb/connector-core";
-import { runConnectorConformanceSuite } from "@fnb/connector-core/conformance";
-import type { DataQualityFlag } from "@fnb/core";
+import {
+	checkAdjustments,
+	describeViolations,
+	runConnectorConformanceSuite,
+	type Violation,
+} from "@fnb/connector-core/conformance";
+import {
+	businessDate,
+	type CanonicalAdjustment,
+	type DataQualityFlag,
+} from "@fnb/core";
 import { describe, expect, it } from "vitest";
-import { createIposConnector } from "../../src/index.js";
+import {
+	createIposConnector,
+	REMOVED_ITEMS_PAGE_SIZE,
+	REMOVED_ITEMS_PATH,
+	SALE_EDIT_DELETE_PATH,
+	sameCalendarMonth,
+} from "../../src/index.js";
 import { TEST_CREDENTIALS } from "../fixtures/factories.js";
 import { createFakeFetch } from "../fixtures/fake-fetch.js";
 import {
@@ -13,6 +28,10 @@ import {
 
 const credentials = TEST_CREDENTIALS;
 const WINDOW = { fromDate: "2026-10-26", toDate: "2026-11-01" };
+
+function expectClean(violations: Violation[]): void {
+	expect(violations, describeViolations(violations)).toEqual([]);
+}
 
 const shop = renderFixtureShop({ seed: 11, ...WINDOW });
 
@@ -101,5 +120,109 @@ describe("iPOS adapter data-quality flags on clean fixtures", () => {
 			"/api/v1/accounting/report/sale-detail",
 		);
 		expect(detailCalls.length).toBeGreaterThan(0);
+	});
+});
+
+const REMOVAL_HEAVY_WINDOW = { fromDate: "2026-10-26", toDate: "2026-11-01" };
+const removalHeavyShop = renderFixtureShop({
+	seed: 13,
+	...REMOVAL_HEAVY_WINDOW,
+	profile: { editRate: 0.3, voidRate: 0.05 },
+});
+
+describe("iPOS adapter adjustments over synthetic C05 and C08 fixtures", () => {
+	it("reproduces the generated voids, edits and removed lines through month-bounded 20-row pages", async () => {
+		const flags: DataQualityFlag[] = [];
+		const fake = createFakeFetch(fixtureResponder(removalHeavyShop));
+		const connector = createIposConnector({
+			fetch: fake.fetch,
+			deliverySources: FIXTURE_DELIVERY_SOURCES,
+			onFlag: (flag) => flags.push(flag),
+		});
+		await connector.authenticate(credentials);
+		const [store] = await connector.discoverStores();
+		if (!store) {
+			throw new Error("fixture login returned no store");
+		}
+		const adjustments = await connector.fetchAdjustments(
+			store,
+			REMOVAL_HEAVY_WINDOW,
+		);
+		const expected = removalHeavyShop.adjustments.filter((adjustment) => {
+			const date = businessDate(
+				adjustment.occurredAt,
+				store.timezone,
+				store.dayStartMinutes,
+			);
+			return (
+				date >= REMOVAL_HEAVY_WINDOW.fromDate &&
+				date <= REMOVAL_HEAVY_WINDOW.toDate
+			);
+		});
+		const signature = (adjustment: CanonicalAdjustment) =>
+			[
+				adjustment.kind,
+				adjustment.saleExternalId,
+				adjustment.lineExternalId?.replace(/_REMOVE$/, "") ?? "",
+				adjustment.occurredAt.getTime(),
+				adjustment.amount,
+				adjustment.quantity ?? "",
+				adjustment.relatedSaleExternalId ?? "",
+			].join("|");
+
+		expect(flags).toEqual([]);
+		expect(adjustments.map(signature).sort()).toEqual(
+			expected.map(signature).sort(),
+		);
+		expect(expected.filter((a) => a.kind === "voided").length).toBeGreaterThan(
+			0,
+		);
+		expect(expected.filter((a) => a.kind === "edited").length).toBeGreaterThan(
+			0,
+		);
+		expect(
+			expected.filter((a) => a.kind === "line_removed").length,
+		).toBeGreaterThan(REMOVED_ITEMS_PAGE_SIZE);
+		expectClean(
+			checkAdjustments(adjustments, {
+				store,
+				window: REMOVAL_HEAVY_WINDOW,
+				moneyTolerance: 1,
+			}),
+		);
+
+		const removalRequests = fake.requestsTo(REMOVED_ITEMS_PATH);
+		const ranges = new Set(
+			removalRequests.map(
+				(request) =>
+					`${request.url.searchParams.get("start_date")}..${request.url.searchParams.get("end_date")}`,
+			),
+		);
+		expect(ranges.size).toBe(2);
+		expect(removalRequests.length).toBeGreaterThan(2);
+		for (const request of removalRequests) {
+			expect(
+				sameCalendarMonth(
+					{
+						startDate: Number(request.url.searchParams.get("start_date")),
+						endDate: Number(request.url.searchParams.get("end_date")),
+					},
+					store.timezone,
+				),
+			).toBe(true);
+		}
+		const editDeleteRequests = fake.requestsTo(SALE_EDIT_DELETE_PATH);
+		expect(editDeleteRequests).toHaveLength(2);
+		for (const request of editDeleteRequests) {
+			expect(
+				sameCalendarMonth(
+					{
+						startDate: Number(request.url.searchParams.get("start_date")),
+						endDate: Number(request.url.searchParams.get("end_date")),
+					},
+					store.timezone,
+				),
+			).toBe(true);
+		}
 	});
 });

@@ -14,11 +14,11 @@ jobs:
     name: Secret and identifier scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest git /repo --redact --exit-code 1
-      - uses: actions/setup-node@v4
+      - run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact --exit-code 1
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
       - run: node scripts/check-public-safe.mjs
@@ -27,9 +27,9 @@ jobs:
     name: Lint, typecheck, unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -42,9 +42,9 @@ jobs:
     name: Migrations and pgTAP tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -52,5 +52,29 @@ jobs:
       - run: pnpm exec supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,supavisor,postgres-meta
       - run: pnpm exec supabase db reset
       - run: pnpm exec supabase test db
+      - if: always()
+        run: pnpm exec supabase stop --no-backup
+
+  e2e:
+    name: Web end-to-end tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @fnb/web exec playwright install --with-deps chromium
+      - run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,supavisor,postgres-meta
+      - run: pnpm exec supabase db reset
+      - name: Point the web app at the local stack
+        run: |
+          eval "$(pnpm exec supabase status -o env)"
+          test -n "$API_URL" && test -n "$PUBLISHABLE_KEY"
+          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > apps/web/.env.local
+      - run: pnpm --filter @fnb/web test:e2e
       - if: always()
         run: pnpm exec supabase stop --no-backup

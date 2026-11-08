@@ -16,11 +16,11 @@ Date 2026-11-07 · Status accepted
 
 Frontend, sync jobs and tooling share one language and one toolchain (pnpm workspaces, Biome, Vitest). Database logic is SQL in Supabase migrations with pgTAP tests.
 
-## ADR-003 — No paid AI API; Claude runs under the owner's Max subscription
+## ADR-003 — No paid AI API; the strategy runs under the owner's own assistant subscription
 
 Date 2026-11-07 · Status accepted
 
-A Claude Pro/Max subscription cannot be used by a server. The platform therefore prepares an AI data pack (aggregates only) and stores the resulting plans; Claude does the reasoning in Claude Code (a `/strategy` skill run locally or as a scheduled cloud routine) or in Claude.ai from an exported data pack. If an API key is ever added, the data pack and prompt stay the same.
+A personal assistant subscription cannot be used by a server. The platform therefore prepares an AI data pack (aggregates only) and stores the resulting plans; the reasoning happens in the owner's own assistant, either through a `/strategy` command run locally or on a schedule, or by pasting an exported data pack into a chat. The strategy prompt ships inside the data pack, and any assistant-specific wrapper lives in the owner's personal configuration, outside this repository. If an API key is ever added, the data pack and prompt stay the same.
 
 ## ADR-004 — Canonical POS-agnostic schema behind a connector interface
 
@@ -159,3 +159,9 @@ During the read-only CMS review, some CMS forwarding endpoints returned credenti
 Date 2026-11-07 · Status accepted
 
 Reports, the data pack, digests and KPI follow-up share one registry of about forty metrics with id, bilingual label, unit, formula, grain, direction, source and report mapping. Methods adopted: Kasavana–Smith menu engineering per item-type role and store over a rolling 28-day window with configurable thresholds and a "provisional — no cost" state until item costs exist; average ticket decomposed into items per ticket × average item price; same-weekday 8-week median baselines excluding holidays and Tết; seasonal-naïve and weekday-profile benchmark forecasts with tracked error; promotion lift as difference-in-differences against a chosen comparator, always net of discount cost; cash variance with absolute, relative and z-score thresholds; void, edit and removed-line rates ranked by z-score within a store; RevPASH and sales per opening hour where seats are known; loyalty economics with points valued at issue, liability net of expected breakage (20 % default until six months of expiry data) and deferred revenue released with redemptions; customer metrics (repeat rate, visit frequency, cohort retention, RFM, lifetime value) computed on identified customers with the capture rate reported alongside. Vietnam benchmarks are stored as dated "context" entries separate from tenant metrics.
+
+## ADR-027 — Sale payloads live in one compressed document per store-day
+
+Date 2026-11-08 · Status accepted
+
+The full backfill of both shops put the database at about 850 MB against the 300 MB ceiling of phase 7, two thirds of it `raw jsonb` on invoices, lines and tenders: a line payload is about 3 kB and a row under 2 kB is never compressed, so the storage rule for lines would have saved little. Dropping payloads would break ADR-004 ("nothing is lost"). Instead the sync writes null to those three `raw` columns and keeps every sale's payloads in `sale_payloads`, one lz4-compressed JSON-lines document per store and business date, with line and tender payloads stripped of the fields equal to their invoice's. Within a day the field names and many values repeat, so the documents compress about ten times and the same history fits under the ceiling. A future column is back-filled by reading the document of the sale's store-day.

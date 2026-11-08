@@ -611,3 +611,6 @@ from public.consent_records cr
 join public.customers cu on cu.id = cr.subject_id
 join seed_customers sc on sc.tenant_id = cu.tenant_id and sc.phone = cu.phone
 where cr.purpose = 'loyalty' and cr.revoked_at is null and sc.customer_no = 2;
+
+select app.refresh_analytics(c.tenant_id, current_date - 7, current_date)
+from seed_constants c;

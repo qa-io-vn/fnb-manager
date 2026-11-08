@@ -1,17 +1,17 @@
 {
 	"name": "@fnb/connector-ipos",
 	"version": "0.1.0",
-	"description": "Typed client and PosConnector adapter for the iPOS Fabi CMS REST API (login, master data, sales reports, invoices, shifts)",
+	"description": "Typed client and PosConnector adapter for the iPOS Fabi CMS REST API (login, master data, sales reports, invoices, shifts, adjustments)",
 	"license": "MIT",
 	"type": "module",
 	"exports": {
 		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
+			"types": "./src/index.ts",
+			"import": "./src/index.ts"
 		}
 	},
 	"files": [
-		"dist"
+		"src"
 	],
 	"engines": {
 		"node": ">=22"

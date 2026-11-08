@@ -60,6 +60,23 @@ For each sale:
 
 Control totals (`CanonicalDailyTotal`) count and sum the sales the connector emits for that business date, excluding sales with `status: "voided"`.
 
+### Adjustments
+
+`fetchAdjustments(store, window, context?)` returns the changes the POS recorded after the fact as `CanonicalAdjustment` records:
+
+| Field | Meaning |
+|---|---|
+| `kind` | `voided` (the whole bill was cancelled), `edited` (the bill was changed after payment or provisional print), `line_removed` (one line was taken off an order), `reissued` (a bill was printed again) |
+| `saleExternalId` | the vendor's transaction id the change applies to; required even when the sale never reached the sales report (an order cancelled before payment). On iPOS a `voided` adjustment always references a bill that is absent from the sale report, an `edited` one references the post-edit invoice that the sale report lists, and a `line_removed` one references an order the sale report lists only if it was later paid |
+| `relatedSaleExternalId` | for `edited`, the pre-edit invoice when the POS keeps both versions; it may name an invoice the sale report no longer lists (iPOS drops the pre-edit invoice from the report) |
+| `lineExternalId`, `itemExternalId`, `itemName`, `quantity` | for `line_removed`, the removed line, its item and the positive number of units removed |
+| `occurredAt` | when the void, edit or removal happened (not when the bill was opened) |
+| `amount` | money involved, never negative: the voided bill's net, the edit's absolute difference \|before − after\| (an edit can increase the bill; the direction stays in `raw`), the removed line's `price × quantity` without modifiers |
+| `reason` | the reason text the cashier picked, when the POS records one |
+| `raw` | the vendor record, reduced to the one line for a `line_removed` |
+
+An adjustment belongs to the window by the business date of `occurredAt` in the store's timezone and day start. Connectors de-duplicate by (`kind`, `saleExternalId`, `lineExternalId`, `occurredAt`), the tuple that `adjustmentKey` in `@fnb/core` computes and the conformance rule `adjustment-duplicates` checks, and report inconsistencies (an edit without an origin reference, an unknown status, a removal the vendor did not mark the usual way) as data-quality flags rather than dropping silently or guessing.
+
 ## Capability matrix
 
 | Capability | Meaning | mock | iPOS Fabi |
@@ -68,7 +85,7 @@ Control totals (`CanonicalDailyTotal`) count and sum the sales the connector emi
 | `modifiers` | zero-amount customisation lines (sugar, ice) are emitted as `lineKind: "modifier"` | yes | yes |
 | `payments` | one payment record per tender, split bills kept | yes | yes |
 | `shifts` | cashier shifts with sales, orders, drawer and opening float | yes | yes |
-| `adjustments` | voids, edits and removed lines after the fact | yes | no (not captured yet) |
+| `adjustments` | voids, edits and removed lines after the fact | yes | yes (CMS reports C05 and C08; `reissued` is not produced) |
 | `controlTotals` | the vendor's own per-day count and net, for reconciliation | yes | yes |
 | `customers` | customer name or phone when the cashier captured one | yes | yes |
 | `guestCount` | guests per sale | yes | yes |
@@ -82,6 +99,17 @@ Reports hide the sections a connector cannot feed instead of failing.
 - `parseSizeSuffix(name, sizeLabels?)` splits a trailing `(M)`, `( M )`, `(l)`, `(XL)` into `baseName` and `sizeLabel`; names without a recognised suffix are returned unchanged with `sizeLabel: undefined`. The vocabulary defaults to S, M, L, XL, XXL.
 - `classifyPaymentKind(name, { overrides?, rules? })` maps tender names to `cash | ewallet | bank_transfer | card | voucher | other` with Vietnamese defaults (tiền mặt, COD, cash; MoMo, ZaloPay, VNPay, ShopeePay; transfer, chuyển khoản, bank; card, thẻ, Visa, Master, ATM; voucher) and exact-name per-tenant overrides that win first.
 - `roundMoney`, `sumMoney`, `moneyEquals`, `itemQuantity`, `expectedNetFromLines`, `expectedNetFromComponents`, `paymentTotal`.
+
+## Running connectors through the CLI
+
+The sync engine (`@fnb/sync`) and the `fnb` CLI (`apps/jobs`) build connectors from `POS_ACCOUNTS_JSON` through a `ConnectorRegistry` holding `ipos-fabi` and `mock`; adding a connector to the registry in `apps/jobs/src/services.ts` and a schema for its entry in `apps/jobs/src/config/accounts.ts` is all a new POS needs on the runner side. The engine only calls the `PosConnector` methods, skips the ones whose capability is false, and wires `context.onFlag` into the run summary. Commands (full reference in `docs/sync.md`):
+
+| Command | What it does with the connector |
+|---|---|
+| `fnb onboard --tenant <slug> --account <key>` | authenticates, `discoverStores`, `fetchCatalog` per store |
+| `fnb sync master --account <key>` | `discoverStores` and `fetchCatalog` again |
+| `fnb sync window (--account <key> \| --account-number <n> \| --all-accounts) --from YYYY-MM-DD --to YYYY-MM-DD [--dry-run]` | `fetchSales`, `fetchAdjustments`, `fetchControlTotals`, `fetchShifts` per store; one more `fetchControlTotals` per earlier date that an adjustment in the window changed |
+| `fnb doctor` | authenticates every configured account once |
 
 ## Writing a connector
 
@@ -111,7 +139,7 @@ runConnectorConformanceSuite("my connector", () => createMyConnector(options), {
 });
 ```
 
-Options: `storeExternalId` picks a store other than the first one discovered; `moneyTolerance` (default 1, in the store's currency unit) is applied per sale and, for the window-level paid-versus-net rule, multiplied by the number of sales; `expectSalesOnEdges` (default true) requires at least one sale on each edge date; `expectBoundarySales` (default true) requires a sale within `boundaryMarginMinutes` (default 60) of the start and of the end of each edge business day, which is what exposes a connector that drops the first or last hour or derives dates in the wrong timezone, so fixtures should place sales there (the mock does); `expectFullyPaid` (default false) adds the window-level rule that the paid total equals the net total, which is false for vendors with debt or partial payments and therefore opt-in; `timeoutMs` bounds the loading step.
+Options: `storeExternalId` picks a store other than the first one discovered; `moneyTolerance` (default 1, in the store's currency unit) is applied per sale and, for the window-level paid-versus-net rule, multiplied by the number of sales; `expectSalesOnEdges` (default true) requires at least one sale on each edge date; `expectBoundarySales` (default true) requires a sale within `boundaryMarginMinutes` (default 60) of the start and of the end of each edge business day, which is what exposes a connector that drops the first or last hour or derives dates in the wrong timezone, so fixtures should place sales there (the mock does); `expectFullyPaid` (default false) adds the window-level rule that the paid total equals the net total, which is false for vendors with debt or partial payments and therefore opt-in; `expectAdjustments` (default true) requires a connector that declares `adjustments` to return at least one adjustment for the window, so a regression that silently drops every vendor row cannot pass (set it to false only for a live store that genuinely had none); `timeoutMs` bounds the loading step.
 
 It authenticates, discovers a store, fetches the catalog, fetches the window twice and once per day, collects every flag through `context.onFlag`, then asserts (rule names in parentheses):
 
@@ -137,8 +165,9 @@ It authenticates, discovers a store, fetches the catalog, fetches the window twi
 | each edge date has a sale within the margin of the business-day start and end | `boundary-sales` | `expectBoundarySales` |
 | every collected flag matches `DataQualityFlag` | `flags` | always |
 | control totals equal the emitted non-voided sales per business date (count and net) | `control-totals` | `controlTotals` |
+| at least one adjustment is returned for the window (unless `expectAdjustments` is false); every adjustment references a sale external id, has a kind from the enum, falls on a business date inside the window by `occurredAt` in the store's timezone, carries a non-negative amount, names a line and a positive quantity when it is a `line_removed`, and no (kind, sale, line, time) repeats; the flags it raised are well formed | `adjustment-schema`, `adjustment-sale`, `adjustment-kind`, `adjustment-window`, `adjustment-amount`, `adjustment-line`, `adjustment-duplicates` | `adjustments` |
 | `fetchControlTotals`, `fetchShifts`, `fetchAdjustments` throw `ConnectorCapabilityError` | – | the capability declared false |
 
-Failures name the rule and the first offending sale ids. The individual checks (`checkBusinessDates`, `checkLineSums`, `checkNetComponents`, `checkModifiers(sales, catalog)`, `checkPayments`, `checkControlTotals`, `checkBoundarySales`, …) are exported as pure functions for live verification scripts.
+Failures name the rule and the first offending sale ids. The individual checks (`checkBusinessDates`, `checkLineSums`, `checkNetComponents`, `checkModifiers(sales, catalog)`, `checkPayments`, `checkControlTotals`, `checkBoundarySales`, `checkAdjustments(adjustments, context)`, …) are exported as pure functions for live verification scripts.
 
 Run everything from the repository root with `pnpm test`; the live verification of a real connector is opt-in (`LIVE=1 pnpm --filter @fnb/connector-ipos test:live`) and prints counts, timings and flag counts only.

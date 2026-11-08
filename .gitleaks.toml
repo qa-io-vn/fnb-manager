@@ -1,0 +1,17 @@
+title = "FNB Manager gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic fixtures used by unit tests"
+paths = [
+	'''packages/[^/]+/test/fixtures/.*''',
+]
+
+[[allowlists]]
+description = "Obviously synthetic hex tokens"
+regexes = [
+	'''0123456789abcdef0123456789abcdef''',
+	'''f{32}''',
+]

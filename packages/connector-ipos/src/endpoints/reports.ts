@@ -9,6 +9,7 @@ import {
 } from "../schemas/reports.js";
 import {
 	type ApiCall,
+	collectPagedEnvelope,
 	type DateRangeParams,
 	type PagedRows,
 	reportRangeQuery,
@@ -34,12 +35,8 @@ export function createReportEndpoints(call: ApiCall, logger: IposLogger) {
 	): Promise<PagedRows<Shift>> {
 		const schema = pageEnvelope(z.array(shiftSchema));
 		const resultsPerPage = params.resultsPerPage ?? DEFAULT_SHIFTS_PER_PAGE;
-		const rows: Shift[] = [];
-		let page = 1;
-		let pages = 0;
-
-		while (true) {
-			const envelope = await call({
+		const collected = await collectPagedEnvelope((page) =>
+			call({
 				path: SHIFTS_PATH,
 				query: {
 					...reportRangeQuery(params),
@@ -48,23 +45,14 @@ export function createReportEndpoints(call: ApiCall, logger: IposLogger) {
 				},
 				schema,
 				signal: params.signal,
-			});
-			pages += 1;
-			rows.push(...envelope.data);
-			const isLastPage =
-				envelope.page >= envelope.total_pages || envelope.data.length === 0;
-			if (isLastPage) {
-				break;
-			}
-			page = envelope.page + 1;
-		}
-
+			}),
+		);
 		logger.debug("ipos shifts collected", {
 			endpoint: SHIFTS_PATH,
-			pages,
-			rows: rows.length,
+			pages: collected.pages,
+			rows: collected.rows.length,
 		});
-		return { rows, pages };
+		return collected;
 	}
 
 	async function cashInOut(params: StoreRangeParams) {

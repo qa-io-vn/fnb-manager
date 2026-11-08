@@ -1,10 +1,6 @@
 import type { CanonicalShift } from "@fnb/core";
 import type { Shift } from "../schemas/reports.js";
-
-function text(value: string | null | undefined): string | undefined {
-	const trimmed = value?.trim();
-	return trimmed ? trimmed : undefined;
-}
+import { text } from "./text.js";
 
 export function hasNoStore(row: Shift): boolean {
 	return text(row.store_uid) === undefined;

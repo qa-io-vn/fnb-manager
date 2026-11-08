@@ -17,6 +17,9 @@ export const FLAG_CODES = {
 	unknownItem: "unknown_item",
 	unknownItemType: "unknown_item_type",
 	shiftWithoutStore: "shift_without_store",
+	editWithoutOrigin: "edit_without_origin",
+	unknownAdjustmentStatus: "unknown_adjustment_status",
+	removedLineWithoutSuffix: "removed_line_without_suffix",
 } as const;
 
 export function flag(

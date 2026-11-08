@@ -1,12 +1,16 @@
 import {
+	ADJUSTMENT_KINDS,
+	adjustmentKey,
 	businessDate,
 	businessDayEnd,
 	businessDayStart,
+	type CanonicalAdjustment,
 	type CanonicalCatalog,
 	type CanonicalDailyTotal,
 	type CanonicalLine,
 	type CanonicalSale,
 	type CanonicalStore,
+	canonicalAdjustmentSchema,
 	canonicalSaleSchema,
 	type DataQualityFlag,
 	dataQualityFlagSchema,
@@ -611,6 +615,123 @@ export function checkNetTotals(
 					`window paid total ${paid} differs from net total ${net}`,
 				),
 			];
+}
+
+function describeAdjustment(adjustment: CanonicalAdjustment): string {
+	const line = adjustment.lineExternalId
+		? ` line ${adjustment.lineExternalId}`
+		: "";
+	return `${adjustment.kind}${line} at ${adjustment.occurredAt.toISOString()}`;
+}
+
+function checkAdjustmentShape(
+	adjustment: CanonicalAdjustment,
+	position: number,
+): Violation[] {
+	const result = canonicalAdjustmentSchema.safeParse(adjustment);
+	if (result.success) {
+		return [];
+	}
+	const first = result.error.issues[0];
+	return [
+		violation(
+			"adjustment-schema",
+			`adjustment #${position} does not match CanonicalAdjustment (${first?.path.join(".") ?? "<root>"}: ${first?.message ?? "invalid"})`,
+		),
+	];
+}
+
+function checkAdjustmentFields(
+	adjustment: CanonicalAdjustment,
+	context: CheckContext,
+): Violation[] {
+	const violations: Violation[] = [];
+	const saleExternalId = adjustment.saleExternalId;
+	if (typeof saleExternalId !== "string" || saleExternalId.trim() === "") {
+		violations.push(
+			violation(
+				"adjustment-sale",
+				`${describeAdjustment(adjustment)} references no sale external id`,
+			),
+		);
+	}
+	if (!ADJUSTMENT_KINDS.includes(adjustment.kind)) {
+		violations.push(
+			violation(
+				"adjustment-kind",
+				`kind "${String(adjustment.kind)}" is not one of ${ADJUSTMENT_KINDS.join(", ")}`,
+				saleExternalId,
+			),
+		);
+	}
+	const date = businessDate(
+		adjustment.occurredAt,
+		context.store.timezone,
+		context.store.dayStartMinutes,
+	);
+	if (!isWithinWindow(date, context.window)) {
+		violations.push(
+			violation(
+				"adjustment-window",
+				`${describeAdjustment(adjustment)} falls on ${date}, outside ${context.window.fromDate}..${context.window.toDate}`,
+				saleExternalId,
+			),
+		);
+	}
+	if (adjustment.amount !== undefined && adjustment.amount < 0) {
+		violations.push(
+			violation(
+				"adjustment-amount",
+				`${describeAdjustment(adjustment)} carries a negative amount ${adjustment.amount}`,
+				saleExternalId,
+			),
+		);
+	}
+	if (adjustment.kind === "line_removed") {
+		if (!adjustment.lineExternalId) {
+			violations.push(
+				violation(
+					"adjustment-line",
+					`${describeAdjustment(adjustment)} names no removed line`,
+					saleExternalId,
+				),
+			);
+		}
+		if (adjustment.quantity === undefined || adjustment.quantity <= 0) {
+			violations.push(
+				violation(
+					"adjustment-line",
+					`${describeAdjustment(adjustment)} has no positive removed quantity`,
+					saleExternalId,
+				),
+			);
+		}
+	}
+	return violations;
+}
+
+export function checkAdjustments(
+	adjustments: readonly CanonicalAdjustment[],
+	context: CheckContext,
+): Violation[] {
+	const violations: Violation[] = [];
+	const seen = new Set<string>();
+	adjustments.forEach((adjustment, position) => {
+		violations.push(...checkAdjustmentShape(adjustment, position));
+		violations.push(...checkAdjustmentFields(adjustment, context));
+		const key = adjustmentKey(adjustment);
+		if (seen.has(key)) {
+			violations.push(
+				violation(
+					"adjustment-duplicates",
+					`${describeAdjustment(adjustment)} repeats`,
+					adjustment.saleExternalId,
+				),
+			);
+		}
+		seen.add(key);
+	});
+	return violations;
 }
 
 export function checkFlags(flags: readonly DataQualityFlag[]): Violation[] {

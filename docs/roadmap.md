@@ -2,7 +2,7 @@
 
 Version 1.1 · 2026-11-07 · For approval
 
-This is the master plan for everything requested: the analytics web app with Claude-written strategy plans (Track A), a Zalo app for the manager and staff (Track B), Zalo customer loyalty integrated with iPOS (Track C), and the portability that lets the platform be applied to another shop, owner or POS by configuration (Track D). It has 20 phases; phases larger than three days are split into sub-steps (a/b) so that every build step stays small and verifiable.
+This is the master plan for everything requested: the analytics web app with assistant-written strategy plans (Track A), a Zalo app for the manager and staff (Track B), Zalo customer loyalty integrated with iPOS (Track C), and the portability that lets the platform be applied to another shop, owner or POS by configuration (Track D). It has 20 phases; phases larger than three days are split into sub-steps (a/b) so that every build step stays small and verifiable.
 
 How it was produced: the architecture plan; three independently proposed roadmaps judged by two reviewers (value-first ordering won, platform and risk ideas grafted in); a critique of the first draft; a fact-checked research panel on Zalo Mini Apps, Zalo Official Accounts and messaging, the iPOS ecosystem, loyalty patterns, staff tooling and the integration architecture; a second panel on platform limits (GitHub Pages and Actions, Supabase), Zalo design and review standards, Vietnamese legal requirements, standard F&B KPIs and a hands-on read-only review of the Fabi CMS; and a completeness critic comparing v1.0 with all of it. Every claim below that came from research is written up with sources in `docs/deep-dives/`.
 
@@ -15,7 +15,7 @@ Companion documents: `docs/private/plan-original.md` (the original architecture 
                          │ A  Web app on GitHub Pages — reports, exports, AI data    │
                          │    pack, saved plans, admin (loyalty rules, roster, alerts,│
                          │    consent and data-subject requests)                     │
-                         │ A  Claude Code /strategy under the owner's Max plan       │
+                         │ A  /strategy in the owner's own assistant, no API key     │
                          │ B  Zalo Mini App "<Brand> Nhân viên" (internal) — staff   │
                          │ C  Zalo Mini App "<Brand> Thành viên" (public) — customers│
                          │ B·C Zalo OA messages · Zalo Bot alerts · Telegram/email   │
@@ -53,7 +53,7 @@ Companion documents: `docs/private/plan-original.md` (the original architecture 
 7. **Lawful by design.** Per-purpose consent with evidence, a working opt-out, data-subject-request deadlines, breach runbook, promotion rules (50 % cap, 120 discount-days, programme notification check) and e-invoice display of redemptions are built into the schema, the apps and the campaign engine, not added later (ADR-021).
 8. **Zalo policy as acceptance criteria.** No outbound links, in-app Terms and Privacy, no prices without Checkout SDK, policy-compliant names and logos, performance gates, permission requests at the first review, messaging windows and caps (ADR-022).
 9. **Messaging economics.** In-app first; free consultation messages inside the window second; paid template messages only for issued vouchers and reminders within consent and caps; staff alerts through the free Zalo Bot (ADR-018).
-10. **No server-side AI.** The app prepares a versioned, aggregate-only data pack and stores plans; Claude works under the owner's Max plan (ADR-003).
+10. **No server-side AI.** The app prepares a versioned, aggregate-only data pack and stores plans; the reasoning runs in the owner's own assistant subscription (ADR-003).
 11. **Testable without the cloud.** Local Supabase in Docker, pgTAP, synthetic fixtures and a mock connector shaped like the real data; live calls opt-in with local credentials.
 12. **Public-repo hygiene.** Secret and identifier scanning in CI, masked credentials in job logs, synthetic fixtures only, identifiers and revenue figures only in the database, secrets or `docs/private/`. The owner reviews and commits every phase.
 13. **Small verifiable steps.** No build step exceeds about three days; each ends with something the owner can open or run and acceptance checked by a command or a test.
@@ -62,17 +62,17 @@ Companion documents: `docs/private/plan-original.md` (the original architecture 
 
 | # | Track | Phase | Size | Depends on | Owner must | Status |
 |---|---|---|---|---|---|---|
-| 1 | A | Foundations and public-repo hygiene | 1.5 d | — | create repo, enable Pages | ◐ scaffold done |
-| 2 | A | Canonical schema, tenancy, RLS, consent and legal tables | 3 d | 1 | — | ◐ v1 verified, v2 in progress |
-| 3 | A | iPOS connector and API contract spike | 2.5 d | 1 | change the tea shop's POS password; capture session | ● client verified; C05/C08 + open items pending |
-| 4 | A | Connector contract, mock connector, normaliser | 2.5 d | 2, 3 | — | ◐ in build |
-| 5 | A | Cloud project live, onboarding v1, backups, first month of real data | 2.5 d | 4 | Supabase project, SMTP, secrets, backup destination | ○ |
-| 6 | A | Web app foundation and "Hôm nay" on real data | 3 d | 5 | Pages variables, auth URL, routing choice | ○ |
-| 7 | A | Sync engine: incremental on Supabase, nightly and backfill on Actions, reconciliation, voids | 3.5 d | 5 | start phone capture; C05/C08 capture | ○ |
-| 8 | A | Analytics aggregates and metric registry (≈ 40 metrics) | 3 d | 7 | — | ○ |
+| 1 | A | Foundations and public-repo hygiene | 1.5 d | — | create repo, enable Pages | ● complete: public repository, CI, Pages live with a placeholder; cron-probe week still collecting |
+| 2 | A | Canonical schema, tenancy, RLS, consent and legal tables | 3 d | 1 | — | ● complete at v3.1 (357 pgTAP tests) |
+| 3 | A | iPOS connector and API contract spike | 2.5 d | 1 | change the tea shop's POS password; capture session | ● complete: client, C05/C08 adjustments, open items answered |
+| 4 | A | Connector contract, mock connector, normaliser | 2.5 d | 2, 3 | — | ● complete: `adjustments` capability on |
+| 5 | A | Cloud project live, onboarding v1, backups, first month of real data | 2.5 d | 4 | Supabase project, SMTP, secrets, backup destination | ◐ local part done: `fnb` CLI and sync engine verified on nine weeks of both accounts, every store-day reconciled; cloud project, secrets, SMTP and backups wait for the owner (`docs/go-live.md`) |
+| 6 | A | Web app foundation and "Hôm nay" on real data | 3 d | 5 | Pages variables, auth URL, routing choice | ◐ built and verified locally: login, store picker, "Hôm nay" equal to the POS daily totals for both stores, demo build for Pages, install manifest, print layout, Lighthouse on the demo 93 performance and 100 accessibility; phone login, deployed password reset and Lighthouse on the live app wait for the cloud project |
+| 7 | A | Sync engine: incremental on Supabase, nightly and backfill on Actions, reconciliation, voids | 3.5 d | 5 | start phone capture; C05/C08 capture | ◐ Node runner done and the full history loaded locally with every store-day reconciled, database under 300 MB (ADR-027); Edge Function runner in build |
+| 8 | A | Analytics aggregates and metric registry (≈ 40 metrics) | 3 d | 7 | — | ● complete locally: SQL layer, `packages/metrics` registry with its consistency lint, `metric_value`; refresh timing on production waits for the cloud project |
 | 9 | A | Periodic reports: Ngày, Tuần, Tháng, Năm | 3 d | 6, 8 | review wording | ○ |
 | 10 | A | Thematic reports (a) · thematic II, settings, manual data, compliance checks (b) | 3 + 3 d | 9 | costs, targets, seat counts | ○ |
-| 11 | A | Exports and AI data pack (a) · Strategy under Max, Kế hoạch, KPI follow-up (b) | 2.5 + 2.5 d | 10 | run /strategy | ○ |
+| 11 | A | Exports and AI data pack (a) · Strategy plans, Kế hoạch, KPI follow-up (b) | 2.5 + 2.5 d | 10 | run /strategy | ○ |
 | 12 | A | Alerts, digests and channel policies | 2.5 d | 8 | Zalo Bot, email provider | ○ |
 | 13 | B | Zalo and platform foundation | 3 d | 5, 6 + Track Z | Zalo accounts, OA verified + package, Mini Apps, names and logos | ○ |
 | 14 | B | Staff Mini App core (a: sign-in, roles, home · b: checklists, cash count, handover, incidents) | 2.5 + 3 d | 13 | staff list, checklist items, cashier logins, staff notice | ○ |
@@ -96,6 +96,8 @@ Deliverables: pnpm workspace on Node 22, TypeScript strict, Biome, Vitest, Supab
 Acceptance: `pnpm lint`, `pnpm typecheck`, `pnpm test` green locally and in CI · a test commit with a fake UUID under `apps/` fails CI · `git ls-files` shows nothing under `docs/private/` and no `.env` · the probe reports a week of per-slot delays before phase 7.
 
 Owner: create the public GitHub repository, enable Actions and Pages (source: GitHub Actions), make the first commit.
+
+Status: complete — public repository with Actions and Pages enabled, first commit published, placeholder page served; CI runs lint, typecheck, unit tests, migrations plus pgTAP on a Supabase stack, the gitleaks scan (docker image with the repository configuration, because the GitHub action needs a licence for organisations) and the public-safety scan; `migrate.yml` and `backup.yml` skip cleanly until the cloud secrets exist; the cron probes and the weekly workflows-active check are scheduled. Still collecting: the first week of cron-delay data (`scripts/cron-delay-report.mjs`).
 
 Portability: the repository is the artifact another owner forks; it contains code, placeholders and generic docs only.
 
@@ -121,7 +123,7 @@ Deliverables: `packages/connector-ipos` (login with 7-day token cache and re-log
 
 Acceptance: unit tests for login and refresh, headers, both pagination styles, retry and non-retry, 401 path, schema errors, the empty-store guard and day-range boundaries · every zod schema parses captured real responses (private run) and synthetic fixtures (CI) · each open item has a written answer with query and counts · live smoke passes for both accounts · no real identifier under `packages/`.
 
-Status: client verified (58 unit tests, live smoke, leak scan clean); live probing corrected the pagination and several endpoint details. C05 (cancelled/edited invoices), the per-invoice snapshot, C08 (removed items, one change event per order, same-calendar-month ranges only), C04 (order log) and C09 (out-of-stock, unused) are captured and documented in the private notes and in `docs/connectors/ipos-fabi.md`; the EDIT variant of C05 was not observed in 30 days of data, so its linkage fields are inferred. Remaining: adjustment clients in the connector (after phase 4 lands) and the written answers to the open items.
+Status: client verified (58 unit tests, live smoke, leak scan clean); live probing corrected the pagination and several endpoint details. C05 (cancelled/edited invoices), the per-invoice snapshot, C08 (removed items, one change event per order, same-calendar-month ranges only), C04 (order log) and C09 (out-of-stock, unused) are captured and documented in the private notes and in `docs/connectors/ipos-fabi.md`; the adjustment clients are implemented and the connector's `adjustments` capability is on: C05 rows become `voided` or `edited` (edits carry the absolute difference; two edits observed live), C08 removed lines become `line_removed` (detected by negative quantity, not only the `_REMOVE` suffix — some removals carry none), C05 ranges are split per calendar month because the server caps them at three months, and C04 is month-bounded like C08. Live over 30 days: 39 and 40 adjustments on the two accounts with zero schema errors. Open items answered by live probing: one sale-report row and one payment row per invoice (no split bills in 6,437 sales), the "voucher" promotions are line-level price reductions with `voucher_amount_paid` always 0, voided invoices are absent from the sale report while edited ones appear with the post-edit amount.
 
 Owner: change the tea shop's six-digit POS password, keep both logins in the local `.env`, allow a browser capture session for C05 and C08.
 
@@ -135,7 +137,7 @@ Deliverables: `packages/core` (canonical zod model and rules: `businessDate` wit
 
 Acceptance: mock connector and iPOS adapter pass the conformance suite; a deliberately wrong-timezone mock fails with the rule named · golden cases (50 % Đá → modifier; free topping → item; "(L)" → size L; plain name → no size; "( M )" with spaces → size M; 23:30 local keeps its date; 00:30 with 05:00 day start → previous date; split bill → one sale, two payments; UUID-only type resolved) · live: control totals equal emitted sales per day within 1,000 ₫; the discount identity holds on voucher invoices · no iPOS field name outside `raw` (lint).
 
-Status: complete — four packages, 249 unit tests, conformance suites for the mock connector and the iPOS adapter (midnight and 05:00 day starts), live verification on both accounts (control totals equal emitted sales on every probed store-day; discount identity holds on all 376 discounted invoices; `store_open_at` confirmed to be in hours; per-store day start taken from the login payload). The adapter's `adjustments` capability is still false until the C05/C08 clients are added.
+Status: complete — four packages, 249 unit tests, conformance suites for the mock connector and the iPOS adapter (midnight and 05:00 day starts), live verification on both accounts (control totals equal emitted sales on every probed store-day; discount identity holds on all 376 discounted invoices; `store_open_at` confirmed to be in hours; per-store day start taken from the login payload). The adapter's `adjustments` capability is on since the C05/C08 clients landed (phase 3 status); the conformance suite checks adjustment shapes and keys for every connector that declares the capability.
 
 Portability: another POS is one more package passing the same suite; the CSV connector (phase 20a) is the second real implementation.
 
@@ -151,6 +153,8 @@ Owner: create the Supabase project (Singapore), disable sign-ups, configure cust
 
 Portability: the first tenant enters through the same command a stranger's shop will use; nothing about the shops exists in the repository.
 
+Status: everything that needs no cloud project is done and verified on the local stack. `fnb tenant create`, `tenant add-member`, `onboard`, `sync window`, `sync master`, `status` and `doctor` work, and `docs/go-live.md` matches their real flags. Onboarding discovers both stores with their timezone and day start through the connector. Nine weeks of both accounts are loaded, and every store-day's invoice count and net total equal the POS control totals. `sync.yml` and `backup.yml` skip with a note until their secrets exist. Waiting for the owner: the Supabase project, SMTP, the secrets and variables, the backup destination and the live RLS run.
+
 ### Phase 6 — Web app foundation and "Hôm nay" on real data (A)
 
 Goal: the authenticated, bilingual, mobile-first web app on GitHub Pages with the report-card pattern and a first live screen — the early-value pivot (ADR-011). Deep dive: `github-pages-and-actions.md`.
@@ -162,6 +166,8 @@ Acceptance: the Pages URL loads and login works on a phone; without a session ev
 Owner: set the repository variables; add the exact Pages URL and a localhost pattern to the Supabase Auth redirect list; log in on your phone.
 
 Portability: tenants, stores, currency and strings come from data; a fork on another domain changes one base-path variable.
+
+Status: built and verified on the local stack. The app has hash routing with the PKCE flow, login and the password-reset request (the e-mail reaches the local mail catcher), the store selector with "Tất cả", vi and en with a key-parity test, the report card, the freshness and verified badges, the version check and `deploy-web.yml`. "Hôm nay" equals the POS daily totals for each store and for both together, read through RLS as the owner; without a session every table returns zero rows. The install manifest and icons, the print stylesheet and tables that scroll inside their card at 360 px are in. Unit tests, 20 Playwright specs and axe at 360 and 1280 px pass, and the initial bundle is about 215 kB gzipped. Lighthouse mobile on the demo build scores 93 for performance and 100 for accessibility and best practices; SEO is 60 only because the app sends `noindex` on purpose. A build without the Supabase variables is a demo with generated numbers and no network calls; Pages serves it until the cloud project exists. Waiting for the cloud project: login on a phone, the password reset on the deployed site and Lighthouse on the live app.
 
 ### Phase 7 — Sync engine: incremental on Supabase, nightly and backfill on Actions, reconciliation, voids (A)
 
@@ -175,6 +181,8 @@ Owner: start the phone-capture habit at the till (ask every customer for a phone
 
 Portability: the engine speaks only `PosConnector`; reconciliation uses each connector's control totals; the scheduler is a per-deployment choice (Supabase, Actions or a small server) without touching the engine.
 
+Status: the Node runner is done and verified locally. `packages/sync` replaces each store-day atomically, records voids, edits and removed lines in `invoice_events`, writes one `sync_checks` row per store-day, takes a per-store advisory lock and logs `sync_runs` with timings and the call budget. `sync.yml` runs nightly and on dispatch, with identifiers masked in its output. A month backfills in under a minute with four connector calls per account, and a second run over the same window changes nothing. The full history of both stores is loaded locally: every store-day from each store's first sales day matches the POS control totals, and the database stays under the 300 MB acceptance because sale payloads are stored as one compressed document per store-day (ADR-027). In build: the Edge Function incremental runner with its schedule and the dead-man's switch. Waiting for the cloud project: the freshness criterion over three days; the monthly check against Fabi A01 stays an owner check.
+
 ### Phase 8 — Analytics aggregates and metric registry (A)
 
 Goal: tenant-scoped aggregate tables and one typed registry of about forty metrics that reports, exports, the data pack, digests, loyalty KPIs and KPI follow-up all read from (ADR-010, ADR-026). Deep dive: `fnb-kpi-standards.md`; definitions in `docs/metrics.md`.
@@ -184,6 +192,8 @@ Deliverables: calendar dimension (ISO weeks, holidays, Tết); job-refreshed agg
 Acceptance: tests green; refresh under 2 minutes on production; report-sized queries under 1.5 seconds · aggregates reproduce the reference-window figures in the private sheet · every metric has vi and en labels, unit, formula, grain and report mapping (lint) · the two-tenant RLS matrix passes on aggregate tables · forecast error is tracked for both benchmark forecasts.
 
 Portability: every metric defined once and keyed by tenant and store; locale-specific pieces are rows and registry entries.
+
+Status: the SQL layer is complete and verified. It has the calendar, ten aggregate tables with RLS, a refresh serialised per tenant, the live path for yesterday and today, and the query functions: baseline, period summary and comparison, both benchmark forecasts with tracked error, month pace, heatmap, item velocity, menu matrix and cash variance. 603 pgTAP tests pass, and report-sized queries take well under a second on a synthetic tenant of 54,000 invoices. Every definition is in `docs/metrics.md`. `packages/metrics` holds the typed registry, a test keeps it equal to `docs/metrics.md`, and the web labels follow it. `metric_value(store_ids, metric_id, from_date, to_date)` returns any available metric for any period; on the real data its revenue and invoice counts equal the POS control totals. Customer metrics wait for Track C, and refresh timing on production waits for the cloud project.
 
 ### Phase 9 — Periodic reports: Ngày, Tuần, Tháng, Năm (A)
 
@@ -209,17 +219,17 @@ Owner: enter costs for the top items of one store, one monthly target, seat coun
 
 Portability: charts bind to canonical kinds and tenant role mappings; all shop-specific business knowledge is data edited in the app.
 
-### Phase 11 — Exports, AI data pack and strategy under Max (A)
+### Phase 11 — Exports, AI data pack and strategy plans (A)
 
 11a (2.5 d) Exports and data pack: browser export of invoices, lines, payments, shifts and daily summary for any store and range as CSV (UTF-8 BOM) or JSON, read through stable-ordered pagination under the 1,000-row API default, split by month, with export egress reported; `packages/datapack` `buildDataPack({stores, horizon, focus, language})` over the metric registry (store profile, weekly and monthly totals, heatmap, items with trends, category and size mix, attach rates, basket pairs, modifier preferences, payment and discount mix, shift statistics, cross-store comparison, data gaps, manual costs and targets, registry ids and formulas, benchmark context entries kept separate, focus), JSON schema and token estimate (15–30k), prompt templates with fixed sections, the cite-a-number rule and KPI front matter keyed by metric ids; buttons "Tải gói dữ liệu cho AI" and "Sao chép gói + prompt"; `fnb datapack` CLI; "Dán kế hoạch" paste box.
 
-11b (2.5 d) Strategy: `.claude/skills/strategy/SKILL.md`; `fnb publish-plan` validating sections and KPI ids and signing in as the `publisher` member (ADR-013); Kế hoạch tab (list, markdown detail, KPI table with baseline, target, current value and status, comparison of two plans); routine guide for a monthly cloud routine; prompt-tuning log from three runs on real data.
+11b (2.5 d) Strategy: a versioned strategy prompt shipped inside the data pack, run by a `/strategy` command in the owner's own assistant (any assistant-specific wrapper lives in the owner's personal configuration, outside this repository); `fnb publish-plan` validating sections and KPI ids and signing in as the `publisher` member (ADR-013); Kế hoạch tab (list, markdown detail, KPI table with baseline, target, current value and status, comparison of two plans); guide for a monthly scheduled run; prompt-tuning log from three runs on real data.
 
 Acceptance: a month's export equals the invoices table and opens in Excel with correct diacritics · browser and CLI packs are byte-identical apart from the timestamp; the pack validates, stays within budget and contains aggregates only · `/strategy` runs end to end; every initiative cites a number present in the pack (lint); the plan appears in Kế hoạch; KPI follow-up shows live values · a plan missing a section or using an unknown KPI id is rejected.
 
 Owner: create the local `.env` for the publisher login; run `/strategy` twice; decide on the monthly routine.
 
-Portability: the pack schema is versioned and POS-agnostic; the skill reads everything from the database.
+Portability: the pack schema is versioned and POS-agnostic; the strategy command reads everything from the database.
 
 ### Phase 12 — Alerts, digests and channel policies (A)
 
@@ -377,7 +387,7 @@ Owner: deploy-your-own dry run; attend the walkthrough; tag v1.0.0.
 | G2 | end of phase 16a | Are the tea brand's CRM tiers shared with other franchisees, are the rates acceptable, and does posapi expose the phone once a member is attached? | yes → CRM rail; no → fallback rail; ledger and apps unchanged |
 | G3 | before phase 19b | Cross-border transfer: file the dossier with the Ministry of Public Security, or record the household/micro-enterprise exemption? | decided by the legal form confirmed in week 1; keep Zalo-derived data minimal either way |
 | G4 | before phase 19b | Supabase Pro before public traffic, or earlier if the database passes ~400 MB, a second owner joins or daily backups become mandatory? | yes |
-| G5 | phase 11b | Monthly Claude Code cloud routine for plans? | start by hand; add once the prompt is tuned |
+| G5 | phase 11b | Monthly scheduled assistant run for plans? | start by hand; add once the prompt is tuned |
 | G6 | phase 7 | Scheduler for incremental sync: Supabase pg_cron + Edge Function (default) or GitHub Actions? | Supabase; Actions keeps nightly, backfill, backups and deploys (ADR-020) |
 
 ## 7. Sequence and parallelism
@@ -412,7 +422,7 @@ Phases 1–8 are sequential. From week 5 two streams run side by side: the repor
 |---|---|
 | Supabase | Free during build and pilot (500 MB database, 5 GB egress, 500,000 function invocations, no backups, pause after ~7 idle days); Pro ≈ US$25 ≈ 650,000 ₫/month before public launch (daily backups, no pause, higher limits) |
 | GitHub (public repo, Actions, Pages) | 0 ₫ |
-| Claude | covered by the owner's Max subscription |
+| AI assistant | covered by the owner's existing subscription |
 | Telegram bot / email provider free tier | 0 ₫ |
 | Zalo OA Tăng trưởng package | 2,500,000 ₫/year incl. VAT per OA ≈ 208,000 ₫/month per brand (Open API, one staff group, 500 out-of-window consultation messages per month, 4 free broadcasts per follower per month) |
 | OA consultation messages | free within 48 hours of interaction; 55 ₫ each beyond the allowance |

@@ -1,0 +1,213 @@
+import type { MetricDefinition } from "../vocabulary.js";
+
+export const salesMetrics = [
+	{
+		id: "net_revenue",
+		group: "sales",
+		label: {
+			vi: "Doanh thu thuần",
+			en: "Net revenue",
+		},
+		unit: "VND",
+		formula: "Σ `net_amount` of non-voided invoices",
+		grains: ["store-day"],
+		direction: "higher",
+		source:
+			"`agg_daily_sales.net_amount`, `v_recent_daily_sales`, `period_summary().net_amount`",
+		reports: ["today", "day", "week", "month", "year", "revenue", "data_pack"],
+		status: "available now",
+	},
+	{
+		id: "gross_revenue",
+		group: "sales",
+		label: {
+			vi: "Doanh thu gộp",
+			en: "Gross revenue",
+		},
+		unit: "VND",
+		formula: "Σ `gross_amount` of non-voided invoices, before every discount",
+		grains: ["store-day"],
+		direction: "neutral",
+		source: "`agg_daily_sales.gross_amount`, `period_summary().gross_amount`",
+		reports: ["promotions", "month"],
+		status: "available now",
+	},
+	{
+		id: "invoices",
+		group: "sales",
+		label: {
+			vi: "Số hóa đơn",
+			en: "Invoices",
+		},
+		unit: "count",
+		formula: "count of non-voided invoices",
+		grains: ["store-day"],
+		direction: "higher",
+		source: "`agg_daily_sales.invoices`, `period_summary().invoices`",
+		reports: ["day", "week", "month", "year", "today"],
+		status: "available now",
+	},
+	{
+		id: "avg_ticket",
+		group: "sales",
+		label: {
+			vi: "Giá trị trung bình mỗi hóa đơn",
+			en: "Average ticket",
+		},
+		unit: "VND",
+		formula: "`net_revenue` ÷ `invoices`",
+		grains: ["store-period"],
+		direction: "higher",
+		source: "`period_summary().avg_ticket`",
+		reports: ["today", "day", "month", "year"],
+		status: "available now",
+	},
+	{
+		id: "items_per_ticket",
+		group: "sales",
+		label: {
+			vi: "Số món mỗi hóa đơn",
+			en: "Items per ticket",
+		},
+		unit: "items",
+		formula: "Σ item-line quantity ÷ `invoices`",
+		grains: ["store-period"],
+		direction: "higher",
+		source: "`period_summary().items_per_ticket`",
+		reports: ["day", "menu"],
+		status: "available now",
+	},
+	{
+		id: "avg_item_price",
+		group: "sales",
+		label: {
+			vi: "Giá trung bình mỗi món",
+			en: "Average item price",
+		},
+		unit: "VND",
+		formula:
+			"`net_revenue` ÷ Σ item-line quantity, so that `avg_ticket` = `items_per_ticket` × `avg_item_price` exactly",
+		grains: ["store-period"],
+		direction: "neutral",
+		source: "`period_summary().avg_item_price`",
+		reports: ["menu", "day"],
+		status: "available now",
+	},
+	{
+		id: "cash_share",
+		group: "sales",
+		label: {
+			vi: "Tỷ trọng tiền mặt",
+			en: "Cash share",
+		},
+		unit: "fraction",
+		formula: "Σ tenders whose payment method kind is `cash` ÷ Σ `paid_amount`",
+		grains: ["store-period"],
+		direction: "neutral",
+		source: "`period_summary().cash_share`, `agg_payment_daily`",
+		reports: ["payments", "day"],
+		status: "available now",
+	},
+	{
+		id: "voucher_invoice_share",
+		group: "sales",
+		label: {
+			vi: "Tỷ lệ hóa đơn dùng voucher",
+			en: "Voucher invoice share",
+		},
+		unit: "fraction",
+		formula:
+			"invoices with `voucher_amount` > 0 or a `voucher_code` ÷ `invoices`",
+		grains: ["store-period"],
+		direction: "neutral",
+		source:
+			"`period_summary().voucher_share`, `agg_daily_sales.voucher_invoices`",
+		reports: ["promotions"],
+		status: "available now",
+	},
+	{
+		id: "member_invoice_share",
+		group: "sales",
+		label: {
+			vi: "Tỷ lệ hóa đơn có thành viên",
+			en: "Member invoice share",
+		},
+		unit: "fraction",
+		formula:
+			"invoices with a `customer_phone` ÷ `invoices`; phone only, the POS member rail (compare `customer_capture_rate`, which also counts invoices identified by `customer_id` alone)",
+		grains: ["store-period"],
+		direction: "higher",
+		source:
+			"`period_summary().member_share`, `agg_daily_sales.member_invoices`",
+		reports: ["day", "customers", "month"],
+		status: "available now",
+	},
+	{
+		id: "discount_rate",
+		group: "sales",
+		label: {
+			vi: "Tỷ lệ giảm giá",
+			en: "Discount rate",
+		},
+		unit: "fraction",
+		formula:
+			"(item + bill + extra + voucher discounts) ÷ `gross_revenue`. **Convention: the denominator is gross**, never net, so a 10 % promotion reads as 0.10",
+		grains: ["store-period"],
+		direction: "lower",
+		source: "`period_summary().discount_amount` ÷ `gross_amount`",
+		reports: ["promotions", "month"],
+		status: "available now",
+	},
+	{
+		id: "attach_rate_topping",
+		group: "sales",
+		label: {
+			vi: "Tỷ lệ kèm topping",
+			en: "Topping attach rate",
+		},
+		unit: "fraction",
+		formula:
+			"invoices containing a drink and a topping ÷ invoices containing a drink; roles from `item_type_roles`; over a period Σ `topping_invoices` ÷ Σ `drink_invoices` of the measured days",
+		grains: ["store-day"],
+		direction: "higher",
+		source:
+			"`agg_attach_daily.attach_rate_topping` (`topping_invoices` ÷ `drink_invoices`)",
+		reports: ["menu", "month"],
+		status: "available now",
+		statusNote:
+			"null until an item type of the store's POS account carries the `topping` role, and on days without a drink invoice",
+	},
+	{
+		id: "attach_rate_snack",
+		group: "sales",
+		label: {
+			vi: "Tỷ lệ kèm đồ ăn nhẹ",
+			en: "Snack attach rate",
+		},
+		unit: "fraction",
+		formula:
+			"invoices containing a drink and a snack ÷ invoices containing a drink; over a period Σ `snack_invoices` ÷ Σ `drink_invoices` of the measured days",
+		grains: ["store-day"],
+		direction: "higher",
+		source: "`agg_attach_daily.attach_rate_snack`",
+		reports: ["menu", "month"],
+		status: "available now",
+		statusNote:
+			"null until an item type of the store's POS account carries the `snack` role, and on days without a drink invoice",
+	},
+	{
+		id: "size_l_share",
+		group: "sales",
+		label: {
+			vi: "Tỷ trọng size L",
+			en: "Size L share",
+		},
+		unit: "fraction",
+		formula: "quantity with `size_label` = L ÷ quantity of all sized items",
+		grains: ["store-period"],
+		direction: "higher",
+		source: "`agg_size_mix_daily`",
+		reports: ["month", "menu"],
+		status: "available now",
+	},
+] as const satisfies readonly MetricDefinition[];

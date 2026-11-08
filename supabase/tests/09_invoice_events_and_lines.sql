@@ -10,8 +10,8 @@ values ('99999999-9999-4999-8999-999999999999', 'other-tenant', 'Other Tenant');
 insert into public.tenant_members (tenant_id, user_id, role)
 values ('99999999-9999-4999-8999-999999999999', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'owner');
 
-select is((select count(*) from public.invoice_events), 3::bigint, 'seed holds three invoice events');
-select is((select count(distinct kind) from public.invoice_events), 3::bigint, 'seed events cover three kinds');
+select is((select count(*) from public.invoice_events where tenant_id = '11111111-1111-4111-8111-111111111111'), 3::bigint, 'seed holds three invoice events');
+select is((select count(distinct kind) from public.invoice_events where tenant_id = '11111111-1111-4111-8111-111111111111'), 3::bigint, 'seed events cover three kinds');
 
 select is(
   (select count(*) from public.invoice_events ev join public.invoices inv on inv.id = ev.invoice_id where ev.kind = 'voided' and inv.status <> 'voided'),
@@ -20,7 +20,7 @@ select is(
 );
 
 select is(
-  (select count(*) from public.invoices where status = 'voided'),
+  (select count(*) from public.invoices where status = 'voided' and tenant_id = '11111111-1111-4111-8111-111111111111'),
   1::bigint,
   'exactly one seeded invoice is voided'
 );

@@ -1,6 +1,6 @@
 # FNB Manager
 
-Manager platform for food & beverage shops. It syncs sales data from the shop's POS into a Postgres database, turns it into easy-to-understand periodic and thematic reports, packages the numbers into an AI data pack that Claude turns into a store plan, and extends into a Zalo app for staff and a Zalo loyalty programme for customers. Built to be reused: adding a shop, a store, another owner or another POS system is configuration, not code.
+Manager platform for food & beverage shops. It syncs sales data from the shop's POS into a Postgres database, turns it into easy-to-understand periodic and thematic reports, packages the numbers into an AI data pack that the owner's own assistant turns into a store plan, and extends into a Zalo app for staff and a Zalo loyalty programme for customers. Built to be reused: adding a shop, a store, another owner or another POS system is configuration, not code.
 
 The first connector is iPOS Fabi (Vietnam). The first users are two single-store brands in the same neighbourhood.
 
@@ -8,19 +8,20 @@ The first connector is iPOS Fabi (Vietnam). The first users are two single-store
 
 | Path | Purpose |
 |---|---|
-| `apps/web/` | Static web app (Vite + React + TypeScript), deployed to GitHub Pages |
-| `apps/jobs/` | Node CLI (`fnb`): onboarding, POS sync, backfill, reconciliation, AI data pack, publish-plan, digests, doctor |
+| `apps/web/` | Static web app (Vite + React + TypeScript), deployed to GitHub Pages; a build without Supabase variables is a demo with sample numbers and no login |
+| `apps/jobs/` | Node CLI (`fnb`): `tenant create`, `tenant add-member`, `onboard`, `sync window` (nightly, backfill, dry run), `sync master`, `status`, `doctor`; the AI data pack, `publish-plan` and digests follow in later phases |
 | `packages/core/` | Canonical POS-agnostic data model, normalisation rules (business day, sizes, payment kinds), shared utilities |
 | `packages/connector-core/` | `PosConnector` interface with capabilities, registry and the conformance test suite every connector must pass |
 | `packages/connector-mock/` | Seeded synthetic connector shaped like real café data, used by tests, the demo tenant and end-to-end runs |
 | `packages/connector-ipos/` | iPOS Fabi connector: typed API client and the normaliser to the canonical model |
+| `packages/sync/` | POS-agnostic sync engine: canonical sales into the database with void and edit detection, adjustments and reconciliation checks; Postgres and in-memory repositories |
+| `packages/metrics/` | Typed metric registry mirrored from `docs/metrics.md` (ids, Vietnamese and English labels, units, formulas, grains, directions, sources, report mapping, status, benchmark context) with lookups; its tests fail when the registry, the document and `metric_value()` disagree |
 | `supabase/` | Database migrations, row-level security, seed, pgTAP tests, local Supabase configuration |
 | `scripts/` | Repository checks (`check-public-safe.mjs`) and operations helpers (`cron-delay-report.mjs`) |
-| `.github/workflows/` | CI (lint, typecheck, tests, migrations, secret and identifier scan), migrations, backups, cron probes, deployments |
-| `.claude/skills/strategy/` | Claude Code skill that writes a store plan from the data pack |
+| `.github/workflows/` | CI (lint, typecheck, unit tests, migrations and pgTAP, web end-to-end, secret and identifier scan), migrations, nightly sync, backups, cron probes, Pages deployment |
 | `docs/` | Roadmap, decisions, schema, secrets contract, connector docs, deep dives (`docs/private/` is gitignored and holds anything shop-specific) |
 
-Start with `docs/roadmap.md`, then `docs/decisions.md` and `docs/schema.md`.
+`docs/status.md` says what is built, what comes next and how to continue on another machine. Start with `docs/roadmap.md`, then `docs/decisions.md` and `docs/schema.md`. `docs/sync.md` covers the sync engine and the `fnb` CLI, `docs/web-app.md` the web app and its demo mode, `docs/metrics.md` the metric definitions, and `docs/go-live.md` the first cloud deployment step by step.
 
 ## Local development
 
@@ -36,7 +37,38 @@ pnpm exec supabase test db
 node scripts/check-public-safe.mjs
 ```
 
-`pnpm db:start` prints the local API URL and keys to put into `.env`; `pnpm db:reset` reapplies every migration and the synthetic seed, which also creates a development login for the web app.
+`pnpm db:start` prints the local API URL and keys to put into `.env`; `pnpm db:reset` reapplies every migration and the synthetic seed, which also creates a development login for the web app. A reset wipes everything else in the local database, including tenants you loaded with `fnb`.
+
+With `DATABASE_URL` in `.env` pointing at the local stack, the `fnb` commands below run against it (`pnpm --filter @fnb/jobs fnb -- status`). Integration tests in `packages/sync` and `apps/jobs` run only when `DATABASE_URL` is set; without it they are skipped.
+
+Web app:
+
+```sh
+cp apps/web/.env.example apps/web/.env.local
+pnpm --filter @fnb/web dev
+pnpm --filter @fnb/web e2e:install
+pnpm --filter @fnb/web test:e2e
+```
+
+Fill `apps/web/.env.local` with the API URL and publishable key from `pnpm db:status`, then sign in with the seeded development login. With the two values empty the dev server runs the demo instead. `test:e2e` starts its own servers: the live project needs the local stack, the seed and its mail catcher (it is skipped when `apps/web/.env.local` is not filled), the demo project needs nothing. CI runs the same suite against a freshly reset stack. `VITE_BASE_PATH=/<repository>/ VITE_SUPABASE_URL= VITE_SUPABASE_PUBLISHABLE_KEY= pnpm --filter @fnb/web build` reproduces the Pages demo build (empty variables in the environment win over `apps/web/.env.local`). `apps/web/README.md` lists the build checks.
+
+## The `fnb` CLI
+
+Onboarding, sync and health checks run through one CLI (`apps/jobs`), locally and in `.github/workflows/sync.yml`:
+
+```sh
+pnpm --filter @fnb/jobs fnb -- --help
+pnpm --filter @fnb/jobs fnb -- tenant create --name "<company>" --slug <tenant-slug>
+pnpm --filter @fnb/jobs fnb -- tenant add-member --tenant <tenant-slug> --email <you@example.com> --role owner --invite
+pnpm --filter @fnb/jobs fnb -- onboard --tenant <tenant-slug> --account <account-key>
+pnpm --filter @fnb/jobs fnb -- sync window --account <account-key> --from <YYYY-MM-DD> --to <YYYY-MM-DD> [--kind backfill] [--dry-run]
+pnpm --filter @fnb/jobs fnb -- sync window --account-number <n> --from <YYYY-MM-DD> --to <YYYY-MM-DD>
+pnpm --filter @fnb/jobs fnb -- sync master --account <account-key>
+pnpm --filter @fnb/jobs fnb -- status
+pnpm --filter @fnb/jobs fnb -- doctor
+```
+
+`docs/sync.md` describes the engine, every option and the runbook; `docs/secrets.md` lists what each command needs.
 
 ## Secrets and public-repository rules
 

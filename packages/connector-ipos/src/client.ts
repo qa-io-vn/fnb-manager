@@ -6,6 +6,7 @@ import {
 } from "./auth.js";
 import { createAccountingEndpoints } from "./endpoints/accounting.js";
 import { createMasterDataEndpoints } from "./endpoints/master-data.js";
+import { createPosCmsEndpoints } from "./endpoints/pos-cms.js";
 import { createReportEndpoints } from "./endpoints/reports.js";
 import {
 	createSaleSummaryEndpoints,
@@ -117,6 +118,7 @@ export function createIposClient(options: IposClientOptions) {
 		saleTrend: createSaleTrendEndpoints(call),
 		accounting: createAccountingEndpoints(call, logger),
 		reports: createReportEndpoints(call, logger),
+		posCms: createPosCmsEndpoints(call, logger),
 	};
 }
 

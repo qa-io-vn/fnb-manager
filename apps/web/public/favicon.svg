@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+	<title>FNB Manager</title>
+	<rect id="background" width="512" height="512" rx="112" fill="#0a6b56"/>
+	<g fill="#ffffff">
+		<rect x="128" y="288" width="64" height="96" rx="16"/>
+		<rect x="224" y="224" width="64" height="160" rx="16"/>
+		<rect x="320" y="128" width="64" height="256" rx="16"/>
+	</g>
+</svg>

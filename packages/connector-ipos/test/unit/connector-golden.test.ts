@@ -1,4 +1,4 @@
-import { ConnectorCapabilityError, collectSales } from "@fnb/connector-core";
+import { collectSales } from "@fnb/connector-core";
 import {
 	businessDate,
 	type CanonicalSale,
@@ -862,14 +862,12 @@ describe("iPOS adapter golden cases", () => {
 		expect(flags.map((flag) => flag.code)).toContain(FLAG_CODES.duplicateSale);
 	});
 
-	it("declares adjustments as unavailable and rejects fetchAdjustments", async () => {
-		const { connector, store } = await connect(0);
-		expect(connector.describe().capabilities.adjustments).toBe(false);
+	it("declares adjustments as available and rejects an empty credentials object", async () => {
+		const { connector } = await connect(0);
+		expect(connector.describe().capabilities.adjustments).toBe(true);
+		expect(connector.describe().capabilities.costs).toBe(false);
 		expect(connector.describe().credentialsSchema.safeParse({}).success).toBe(
 			false,
-		);
-		await expect(connector.fetchAdjustments(store, DAY)).rejects.toBeInstanceOf(
-			ConnectorCapabilityError,
 		);
 	});
 
