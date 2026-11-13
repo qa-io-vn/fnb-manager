@@ -15,7 +15,7 @@ export const baselineMetrics = [
 		direction: "neutral",
 		source:
 			"`same_weekday_baseline()`, row `baseline` of `period_compare(…, 'day', …)`",
-		reports: ["today", "day", "alerts", "promotions"],
+		reports: ["today", "day", "week", "month", "alerts", "promotions"],
 		reportNotes: {
 			promotions: "lift",
 		},

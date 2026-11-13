@@ -31,7 +31,7 @@ import type { StoreWindowSummary } from "./types.js";
 
 export type { StoreWindowContext } from "./store-window-context.js";
 
-function emptySummary(store: StoreRecord): StoreWindowSummary {
+export function emptySummary(store: StoreRecord): StoreWindowSummary {
 	return {
 		storeId: store.id,
 		externalId: store.external_id,
@@ -107,7 +107,7 @@ function adjustedDates(
 		.filter((date) => !inWindow.has(date));
 }
 
-async function syncLockedStoreWindow(
+export async function syncLockedStoreWindow(
 	context: StoreWindowContext,
 	store: StoreRecord,
 ): Promise<StoreWindowSummary> {
@@ -263,8 +263,11 @@ async function syncLockedStoreWindow(
 export function syncStoreWindow(
 	context: StoreWindowContext,
 	store: StoreRecord,
+	lockWaitMs?: number,
 ): Promise<StoreWindowSummary> {
-	return context.repository.withStoreLock(store.id, () =>
-		syncLockedStoreWindow(context, store),
+	return context.repository.withStoreLock(
+		store.id,
+		() => syncLockedStoreWindow(context, store),
+		lockWaitMs === undefined ? {} : { waitMs: lockWaitMs },
 	);
 }

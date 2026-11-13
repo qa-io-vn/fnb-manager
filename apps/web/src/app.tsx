@@ -4,6 +4,7 @@ import {
 	createHashRouter,
 	Navigate,
 	Outlet,
+	type RouteObject,
 	RouterProvider,
 	useNavigate,
 } from "react-router-dom";
@@ -16,11 +17,13 @@ import {
 	ResetRequestPage,
 } from "./auth/reset-request-page";
 import { SessionProvider, useSession } from "./auth/session";
+import { AnalyticsSourceProvider } from "./data/analytics-source-context";
 import { RowSourceProvider } from "./data/row-source-context";
 import { I18nProvider, type Language } from "./i18n";
 import { configuredClientLoader } from "./lib/supabase";
 import { PlaceholderPage } from "./pages/placeholder-page";
 import { TodayPage } from "./pages/today/today-page";
+import { ReportRouteLoading } from "./reports/route-loading";
 import { NewVersionPrompt } from "./shell/new-version-prompt";
 import { PreferencesProvider, usePreferences } from "./state/preferences";
 
@@ -33,7 +36,7 @@ function RecoveryRedirect() {
 	return <Outlet />;
 }
 
-export const routes = [
+export const routes: RouteObject[] = [
 	{
 		element: <RecoveryRedirect />,
 		children: [
@@ -44,7 +47,42 @@ export const routes = [
 				element: <ProtectedShell />,
 				children: [
 					{ index: true, element: <TodayPage /> },
-					{ path: "bao-cao/*", element: <PlaceholderPage section="reports" /> },
+					{
+						path: "bao-cao",
+						hydrateFallbackElement: <ReportRouteLoading />,
+						children: [
+							{ index: true, element: <Navigate to="ngay" replace /> },
+							{
+								path: "ngay",
+								lazy: () =>
+									import("./pages/reports/day/day-page").then((module) => ({
+										Component: module.DayReportPage,
+									})),
+							},
+							{
+								path: "tuan",
+								lazy: () =>
+									import("./pages/reports/week/week-page").then((module) => ({
+										Component: module.WeekReportPage,
+									})),
+							},
+							{
+								path: "thang",
+								lazy: () =>
+									import("./pages/reports/month/month-page").then((module) => ({
+										Component: module.MonthReportPage,
+									})),
+							},
+							{
+								path: "nam",
+								lazy: () =>
+									import("./pages/reports/year/year-page").then((module) => ({
+										Component: module.YearReportPage,
+									})),
+							},
+							{ path: "*", element: <Navigate to="ngay" replace /> },
+						],
+					},
 					{ path: "chu-de/*", element: <PlaceholderPage section="topics" /> },
 					{ path: "ke-hoach/*", element: <PlaceholderPage section="plans" /> },
 					{
@@ -82,7 +120,9 @@ function LocalisedApp() {
 				<AppModeProvider>
 					<SessionProvider loadClient={loadClient}>
 						<RowSourceProvider>
-							<RouterProvider router={router} />
+							<AnalyticsSourceProvider>
+								<RouterProvider router={router} />
+							</AnalyticsSourceProvider>
 						</RowSourceProvider>
 					</SessionProvider>
 					<NewVersionPrompt />

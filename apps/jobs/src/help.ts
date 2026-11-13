@@ -6,7 +6,7 @@ export function generalHelp(): string {
 		...COMMANDS.map((command) => command.path.join(" ").length),
 	);
 	return [
-		"fnb — onboarding, POS sync and health checks for FNB Manager",
+		"fnb — onboarding, POS sync, health checks, daily digests and alerts for FNB Manager",
 		"",
 		"Usage: fnb <command> [options]",
 		"",

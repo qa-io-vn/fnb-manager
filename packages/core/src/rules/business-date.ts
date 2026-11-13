@@ -38,7 +38,61 @@ export function assertTimezone(timezone: string): void {
 	formatterFor(timezone);
 }
 
+const MILLISECONDS_PER_HOUR = 60 * MILLISECONDS_PER_MINUTE;
+const LAST_SECOND_OF_HOUR = MILLISECONDS_PER_HOUR - 1000;
+const MAX_CACHED_HOURS = 100_000;
+const hourOffsets = new Map<string, number | null>();
+
+function formattedOffset(time: number, timezone: string): number {
+	const clock = formattedWallClock(new Date(time), timezone);
+	return (
+		Date.UTC(
+			clock.year,
+			clock.month - 1,
+			clock.day,
+			clock.hour,
+			clock.minute,
+			clock.second,
+		) - time
+	);
+}
+
+function steadyHourOffset(hour: number, timezone: string): number | null {
+	const key = `${timezone}|${hour}`;
+	const cached = hourOffsets.get(key);
+	if (cached !== undefined) return cached;
+	const start = hour * MILLISECONDS_PER_HOUR;
+	const atStart = formattedOffset(start, timezone);
+	const atEnd = formattedOffset(start + LAST_SECOND_OF_HOUR, timezone);
+	const offset =
+		atStart === atEnd && Math.abs(atStart) < MILLISECONDS_PER_DAY
+			? atStart
+			: null;
+	if (hourOffsets.size >= MAX_CACHED_HOURS) hourOffsets.clear();
+	hourOffsets.set(key, offset);
+	return offset;
+}
+
 export function wallClockIn(instant: Date, timezone: string): WallClock {
+	const time = instant.getTime();
+	if (!Number.isFinite(time)) return formattedWallClock(instant, timezone);
+	const offset = steadyHourOffset(
+		Math.floor(time / MILLISECONDS_PER_HOUR),
+		timezone,
+	);
+	if (offset === null) return formattedWallClock(instant, timezone);
+	const wall = new Date(time + offset);
+	return {
+		year: wall.getUTCFullYear(),
+		month: wall.getUTCMonth() + 1,
+		day: wall.getUTCDate(),
+		hour: wall.getUTCHours(),
+		minute: wall.getUTCMinutes(),
+		second: wall.getUTCSeconds(),
+	};
+}
+
+export function formattedWallClock(instant: Date, timezone: string): WallClock {
 	const parts = formatterFor(timezone).formatToParts(instant);
 	const read = (type: Intl.DateTimeFormatPartTypes): number => {
 		const part = parts.find((candidate) => candidate.type === type);

@@ -29,6 +29,7 @@ export interface IposConnectorOptions {
 	logger?: IposLogger;
 	tokenStore?: TokenStore;
 	retry?: RetryOptions;
+	requestTimeoutMs?: number;
 }
 
 export interface ResolvedIposOptions {

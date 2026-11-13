@@ -18,7 +18,8 @@
 		"db:start": "supabase start",
 		"db:stop": "supabase stop",
 		"db:reset": "supabase db reset",
-		"db:status": "supabase status"
+		"db:status": "supabase status",
+		"docs:check-api": "node scripts/check-api-docs.mjs"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.6.6",

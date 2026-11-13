@@ -14,7 +14,8 @@ select
   '99999999-9999-4999-8999-999999999999'::uuid as other_tenant_id,
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc'::uuid as other_owner_id,
   '88888888-8888-4888-8888-888888888888'::uuid as other_store_id,
-  '77777777-7777-4777-8777-777777777777'::uuid as other_pos_account_id;
+  '77777777-7777-4777-8777-777777777777'::uuid as other_pos_account_id,
+  (select max(i.business_date) + 1 from public.invoices i where i.tenant_id = '11111111-1111-4111-8111-111111111111') as seed_anchor;
 
 insert into auth.users (id, instance_id, aud, role, email)
 select tea_staff_id, '00000000-0000-0000-0000-000000000000'::uuid, 'authenticated'::varchar, 'authenticated'::varchar, 'staff@example.com'::varchar from fixture
@@ -60,7 +61,7 @@ select
   (select count(*) from app.daily_sales_facts(f.demo_tenant_id, current_date - 45, current_date + 1)) as demo_live_rows,
   (select max(refreshed_at) from public.agg_daily_sales where tenant_id = f.demo_tenant_id) as demo_refreshed_at,
   (select count(*) from public.analytics_refreshes where tenant_id = f.demo_tenant_id) as demo_refresh_rows,
-  (select count(*) from public.analytics_refreshes where tenant_id = f.demo_tenant_id and from_date = current_date - 1 and to_date = current_date and finished_at is not null and rows > 0) as demo_short_refresh_rows,
+  (select count(*) from public.analytics_refreshes where tenant_id = f.demo_tenant_id and from_date = f.seed_anchor - 1 and to_date = f.seed_anchor and finished_at is not null and rows > 0) as demo_short_refresh_rows,
   (select count(*) from public.analytics_refreshes where tenant_id = f.other_tenant_id) as other_refresh_rows
 from fixture f;
 
@@ -75,7 +76,7 @@ select is((select count(*) from public.v_recent_daily_sales where tenant_id = (s
 select is((select count(*) from public.v_recent_daily_sales where tenant_id = (select other_tenant_id from fixture)), 0::bigint, 'demo owner reads no live row of the other tenant');
 select is((select count(*) from public.analytics_refreshes where tenant_id = (select other_tenant_id from fixture)), 0::bigint, 'demo owner reads no refresh log of the other tenant');
 select is((select count(*) from public.dim_calendar), 2922::bigint, 'authenticated members read the calendar');
-select cmp_ok((select invoices from public.period_summary((select both_stores from fixture), current_date - 7, current_date - 1)), '>', 0::bigint, 'demo owner summarises the demo stores');
+select cmp_ok((select invoices from public.period_summary((select both_stores from fixture), (select seed_anchor from fixture) - 7, (select seed_anchor from fixture) - 1)), '>', 0::bigint, 'demo owner summarises the demo stores');
 
 select throws_ok(
   $$ insert into public.agg_daily_sales (tenant_id, store_id, business_date) values ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-000000000001', current_date + 30) $$,
@@ -90,17 +91,17 @@ select throws_ok(
   'owner cannot call app.refresh_analytics directly'
 );
 select lives_ok(
-  $$ select public.refresh_my_analytics(current_date - 7, current_date) $$,
+  $$ select public.refresh_my_analytics(seed_anchor - 7, seed_anchor) from fixture $$,
   'owner refreshes the own tenant through the wrapper'
 );
 select cmp_ok(
-  (select public.refresh_my_analytics(current_date - 1, current_date, '11111111-1111-4111-8111-111111111111')),
+  (select public.refresh_my_analytics(seed_anchor - 1, seed_anchor, '11111111-1111-4111-8111-111111111111') from fixture),
   '>',
   0::bigint,
   'the wrapper accepts the own tenant explicitly and returns the rows written'
 );
 select is(
-  (select count(*) from public.analytics_refreshes where tenant_id = (select demo_tenant_id from fixture) and from_date = current_date - 1 and to_date = current_date and finished_at is not null and rows > 0),
+  (select count(*) from public.analytics_refreshes where tenant_id = (select demo_tenant_id from fixture) and from_date = (select seed_anchor from fixture) - 1 and to_date = (select seed_anchor from fixture) and finished_at is not null and rows > 0),
   (select demo_short_refresh_rows + 1 from expected),
   'the wrapper logs the refresh'
 );
@@ -127,7 +128,7 @@ select is((select count(*) from public.agg_daily_sales), (select tea_daily_rows 
 select is((select count(distinct store_id) from public.agg_hourly_sales), 1::bigint, 'tea staff reads hourly rows of a single store');
 select is((select count(*) from public.agg_shift_cash), (select tea_shift_rows from expected), 'tea staff reads the tea store shifts only');
 select is((select count(*) from public.agg_item_daily where store_id = (select coffee_store_id from fixture)), 0::bigint, 'tea staff reads no coffee bar item row');
-select is((select invoices from public.period_summary((select both_stores from fixture), current_date - 7, current_date - 1)), (select tea_invoices from expected), 'period_summary over both stores returns only the tea store for tea staff');
+select is((select invoices from public.period_summary((select both_stores from fixture), (select seed_anchor from fixture) - 7, (select seed_anchor from fixture) - 1)), (select tea_invoices from expected), 'period_summary over both stores returns only the tea store for tea staff');
 select is((select count(distinct store_id) from public.v_recent_daily_sales), 1::bigint, 'the live view shows tea staff a single store');
 select throws_ok(
   $$ select public.refresh_my_analytics(current_date - 1, current_date) $$,
@@ -160,13 +161,13 @@ select is(
 );
 select is((select count(*) from public.analytics_refreshes), 0::bigint, 'publisher reads no refresh log');
 select is((select count(*) from public.v_recent_daily_sales), 0::bigint, 'publisher reads nothing from the live view');
-select is((select invoices from public.period_summary((select both_stores from fixture), current_date - 7, current_date - 1)), 0::bigint, 'period_summary returns zero invoices to the publisher');
+select is((select invoices from public.period_summary((select both_stores from fixture), (select seed_anchor from fixture) - 7, (select seed_anchor from fixture) - 1)), 0::bigint, 'period_summary returns zero invoices to the publisher');
 
 set local request.jwt.claims to '{"sub": "cccccccc-cccc-4ccc-8ccc-cccccccccccc", "role": "authenticated"}';
 
 select is((select count(*) from public.agg_daily_sales), (select other_daily_rows from expected), 'other owner reads only the other tenant daily rows');
 select is((select count(*) from public.agg_daily_sales where tenant_id = (select demo_tenant_id from fixture)), 0::bigint, 'other owner reads zero demo aggregate rows');
-select is((select invoices from public.period_summary((select both_stores from fixture), current_date - 7, current_date - 1)), 0::bigint, 'other owner summarises the demo stores to zero');
+select is((select invoices from public.period_summary((select both_stores from fixture), (select seed_anchor from fixture) - 7, (select seed_anchor from fixture) - 1)), 0::bigint, 'other owner summarises the demo stores to zero');
 select is((select public.refresh_my_analytics(current_date - 7, current_date)), 2::bigint, 'other owner refreshes the own tenant: one daily and one hourly row');
 
 reset role;

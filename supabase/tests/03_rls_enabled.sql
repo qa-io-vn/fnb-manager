@@ -16,8 +16,8 @@ select is(
 
 select is(
   (select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r', 'p')),
-  46,
-  'public holds the 46 expected tables'
+  52,
+  'public holds the 52 expected tables'
 );
 
 select is(
@@ -32,10 +32,10 @@ select is(
     from pg_policies
     where schemaname = 'public'
       and cmd in ('INSERT', 'UPDATE', 'DELETE')
-      and tablename not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests')
+      and tablename not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies')
   ),
   0,
-  'write policies exist only on the manual-input tables, strategy_reports and the legal ledgers'
+  'write policies exist only on the manual-input tables, strategy_reports, the legal ledgers, alert_rules and channel_policies'
 );
 
 select is(
@@ -45,10 +45,10 @@ select is(
     where grantee = 'authenticated'
       and table_schema = 'public'
       and privilege_type <> 'SELECT'
-      and table_name not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests')
+      and table_name not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies')
   ),
   0,
-  'authenticated holds write privileges only on the manual-input tables, strategy_reports and the legal ledgers'
+  'authenticated holds write privileges only on the manual-input tables, strategy_reports, the legal ledgers, alert_rules and channel_policies'
 );
 
 select is(

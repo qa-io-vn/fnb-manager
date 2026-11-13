@@ -1,7 +1,9 @@
 import type { StoreUpsertResult } from "../repository.js";
 import type {
 	AccountRecord,
+	AccountStatus,
 	AccountUpsert,
+	StoreContext,
 	StoreRecord,
 	StoreUpsert,
 } from "../rows.js";
@@ -115,6 +117,37 @@ export function markAccountSynced(
 	if (account) {
 		account.last_synced_at = finishedAt;
 	}
+}
+
+export function updateAccountStatus(
+	state: MemoryState,
+	accountId: string,
+	status: AccountStatus,
+	from: readonly AccountStatus[],
+): boolean {
+	const account = state.tables.accounts.find(
+		(candidate) => candidate.id === accountId,
+	);
+	if (!account || !from.includes(account.status)) {
+		return false;
+	}
+	account.status = status;
+	return true;
+}
+
+export function findStore(
+	state: MemoryState,
+	storeId: string,
+): StoreContext | null {
+	const store = state.tables.stores.find(
+		(candidate) => candidate.id === storeId,
+	);
+	const account = state.tables.accounts.find(
+		(candidate) => candidate.id === store?.pos_account_id,
+	);
+	return store && account
+		? { account: accountRecord(state, account), store: storeRecord(store) }
+		: null;
 }
 
 export function addStore(

@@ -14,10 +14,14 @@ export interface FormatterOptions {
 
 export interface Formatters {
 	locale: string;
+	moneyFractionDigits: number;
 	moneyCompact: (value: number) => string;
 	moneyExact: (value: number) => string;
 	count: (value: number) => string;
 	decimal: (value: number) => string;
+	ratio: (value: number) => string;
+	points: (fraction: number) => string;
+	pointMagnitude: (points: number) => string;
 	percent: (fraction: number) => string;
 	signedPercent: (fraction: number) => string;
 	date: (isoDate: IsoDate) => string;
@@ -49,6 +53,7 @@ export function localeForCurrency(
 
 const MILLION = 1_000_000;
 const BILLION = 1_000_000_000;
+const POINTS_PER_FRACTION = 100;
 
 function currencySymbol(locale: string, currencyCode: string): string {
 	const parts = new Intl.NumberFormat(locale, {
@@ -88,6 +93,15 @@ export function createFormatters(options: FormatterOptions): Formatters {
 	const headlineDecimal = new Intl.NumberFormat(locale, {
 		minimumFractionDigits: 1,
 		maximumFractionDigits: 1,
+	});
+	const twoDecimals = new Intl.NumberFormat(locale, {
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
+	});
+	const signedPoints = new Intl.NumberFormat(locale, {
+		minimumFractionDigits: 1,
+		maximumFractionDigits: 1,
+		signDisplay: "exceptZero",
 	});
 	const percentFormat = new Intl.NumberFormat(locale, {
 		style: "percent",
@@ -130,10 +144,15 @@ export function createFormatters(options: FormatterOptions): Formatters {
 
 	return {
 		locale,
+		moneyFractionDigits:
+			exactMoney.resolvedOptions().maximumFractionDigits ?? 0,
 		moneyCompact,
 		moneyExact: (value) => exactMoney.format(value),
 		count: (value) => integer.format(value),
 		decimal: (value) => oneDecimal.format(value),
+		ratio: (value) => twoDecimals.format(value),
+		points: (fraction) => signedPoints.format(fraction * POINTS_PER_FRACTION),
+		pointMagnitude: (points) => headlineDecimal.format(Math.abs(points)),
 		percent: (fraction) => percentFormat.format(fraction),
 		signedPercent: (fraction) => signedPercentFormat.format(fraction),
 		date: datePartsFormatter(locale),

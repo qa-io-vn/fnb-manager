@@ -1,5 +1,5 @@
 begin;
-select plan(146);
+select plan(152);
 
 select has_schema('app', 'app schema exists');
 select has_function('app', 'current_user_tenant_ids', 'app.current_user_tenant_ids exists');
@@ -22,7 +22,7 @@ select has_function('app', 'fill_dsr_deadlines', 'app.fill_dsr_deadlines exists'
 select has_enum('public', 'tenant_role', 'tenant_role enum exists');
 select enum_has_labels('public', 'tenant_role', array['owner', 'manager', 'staff', 'viewer', 'publisher'], 'tenant_role labels');
 select has_enum('public', 'pos_account_status', 'pos_account_status enum exists');
-select enum_has_labels('public', 'pos_account_status', array['active', 'paused', 'error'], 'pos_account_status labels');
+select enum_has_labels('public', 'pos_account_status', array['active', 'paused', 'error', 'auth_failed'], 'pos_account_status labels');
 select has_enum('public', 'payment_kind', 'payment_kind enum exists');
 select enum_has_labels('public', 'payment_kind', array['cash', 'card', 'bank_transfer', 'ewallet', 'voucher', 'other'], 'payment_kind labels');
 select has_enum('public', 'line_kind', 'line_kind enum exists');
@@ -30,7 +30,7 @@ select enum_has_labels('public', 'line_kind', array['item', 'modifier', 'service
 select has_enum('public', 'sync_kind', 'sync_kind enum exists');
 select enum_has_labels('public', 'sync_kind', array['incremental', 'nightly', 'backfill', 'master_data', 'reconciliation'], 'sync_kind labels');
 select has_enum('public', 'sync_status', 'sync_status enum exists');
-select enum_has_labels('public', 'sync_status', array['running', 'succeeded', 'failed'], 'sync_status labels');
+select enum_has_labels('public', 'sync_status', array['running', 'succeeded', 'failed', 'partial'], 'sync_status labels');
 select has_enum('public', 'period_kind', 'period_kind enum exists');
 select enum_has_labels('public', 'period_kind', array['month', 'week'], 'period_kind labels');
 select has_enum('public', 'strategy_source', 'strategy_source enum exists');
@@ -52,7 +52,13 @@ select enum_has_labels('public', 'tran_no_reset_period', array['daily', 'yearly'
 select has_enum('public', 'consent_subject', 'consent_subject enum exists');
 select enum_has_labels('public', 'consent_subject', array['customer', 'staff'], 'consent_subject labels');
 select has_enum('public', 'consent_purpose', 'consent_purpose enum exists');
-select enum_has_labels('public', 'consent_purpose', array['loyalty', 'marketing', 'staff_ops'], 'consent_purpose labels');
+select enum_has_labels('public', 'consent_purpose', array['loyalty', 'marketing', 'staff_ops', 'notifications'], 'consent_purpose labels');
+select has_enum('public', 'channel_kind', 'channel_kind enum exists');
+select enum_has_labels('public', 'channel_kind', array['zalo_bot', 'email', 'telegram', 'webhook', 'zalo_oa', 'zalo_gmf', 'zalo_zbs', 'mini_app', 'sms'], 'channel_kind labels');
+select has_enum('public', 'message_class', 'message_class enum exists');
+select enum_has_labels('public', 'message_class', array['operational', 'transactional', 'advertising'], 'message_class labels');
+select has_enum('public', 'alert_severity', 'alert_severity enum exists');
+select enum_has_labels('public', 'alert_severity', array['info', 'warning', 'critical'], 'alert_severity labels');
 select has_enum('public', 'dsr_type', 'dsr_type enum exists');
 select enum_has_labels('public', 'dsr_type', array['access', 'correction', 'deletion', 'export', 'objection', 'withdraw_consent'], 'dsr_type labels');
 select has_enum('public', 'dsr_status', 'dsr_status enum exists');

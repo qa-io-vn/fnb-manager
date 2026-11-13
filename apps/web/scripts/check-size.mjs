@@ -2,15 +2,15 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
+import {
+	isEagerSource,
+	isLazySource,
+	unmatchedLazySources,
+} from "./lazy-chunks.mjs";
 
 const appRoot = fileURLToPath(new URL("..", import.meta.url));
 const distRoot = join(appRoot, "dist");
 const budgetBytes = 400 * 1000;
-const lazySources = [
-	/src\/components\/report-card\/echarts-view\.tsx$/,
-	/src\/demo\/demo-row-source\.ts$/,
-];
-
 const manifest = JSON.parse(
 	readFileSync(join(distRoot, ".vite", "manifest.json"), "utf8"),
 );
@@ -27,21 +27,21 @@ function staticClosure(keys) {
 }
 
 const entryKeys = Object.keys(manifest).filter((key) => manifest[key].isEntry);
-const lazyKeys = Object.keys(manifest).filter((key) =>
-	lazySources.some((pattern) => pattern.test(key)),
-);
+const lazyKeys = Object.keys(manifest).filter((key) => isLazySource(key));
 if (entryKeys.length === 0) {
 	console.error("size check: no entry chunk in the manifest");
 	process.exit(1);
 }
-if (lazyKeys.length !== lazySources.length) {
+const missingPatterns = unmatchedLazySources(Object.keys(manifest));
+if (missingPatterns.length > 0) {
 	console.error(
-		"size check: the ECharts or demo chunk is missing; it may have been bundled into the initial JS",
+		`size check: no lazy chunk for ${missingPatterns.map(String).join(", ")}; it may have been bundled into the initial JS`,
 	);
 	process.exit(1);
 }
 
-const initialKeys = staticClosure(entryKeys);
+const eagerKeys = Object.keys(manifest).filter((key) => isEagerSource(key));
+const initialKeys = staticClosure([...entryKeys, ...eagerKeys]);
 const lazyOnlyFiles = new Set(
 	[...staticClosure(lazyKeys)]
 		.filter((key) => !initialKeys.has(key))
@@ -65,7 +65,7 @@ const lazyBytes = [...lazyOnlyFiles].reduce(
 const kilobytes = (bytes) => `${(bytes / 1000).toFixed(1)} kB`;
 
 console.log(
-	`size check: initial JS ${kilobytes(initialBytes)} gzipped in ${initialFiles.length} file(s), budget ${kilobytes(budgetBytes)}; lazily loaded ECharts and demo ${kilobytes(lazyBytes)} in ${lazyOnlyFiles.size} file(s)`,
+	`size check: initial JS ${kilobytes(initialBytes)} gzipped in ${initialFiles.length} file(s), budget ${kilobytes(budgetBytes)}; lazily loaded ECharts, demo and report pages ${kilobytes(lazyBytes)} in ${lazyOnlyFiles.size} file(s)`,
 );
 if (initialBytes > budgetBytes) {
 	console.error("size check failed: the initial JS exceeds the budget");

@@ -9,6 +9,7 @@ export interface RunRecordSummary {
 	checks?: { available: boolean; unmatched: number };
 	refreshMs?: number | null;
 	refreshStatus?: string;
+	extra?: JsonObject;
 }
 
 export function runRows(
@@ -29,5 +30,8 @@ export function runRows(
 		details.refresh = summary.refreshStatus;
 		details.refresh_ms = summary.refreshMs ?? null;
 	}
-	return { ...sortedCounts(tables), summary: details };
+	return {
+		...sortedCounts(tables),
+		summary: { ...details, ...(summary.extra ?? {}) },
+	};
 }

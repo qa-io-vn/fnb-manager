@@ -2,10 +2,12 @@ import type { BusinessDateWindow, PosConnector } from "@fnb/connector-core";
 import type { PaymentKindOptions } from "@fnb/core";
 import type { SyncRepository } from "../repository.js";
 import type { DbSyncKind, SyncCheckRow, TableCounts } from "../rows.js";
+import type { DayReason } from "./change-detection.js";
 import type { CheckTolerance } from "./checks.js";
 import type { ConnectorCallerOptions } from "./connector-calls.js";
 import type { FlagCount } from "./flags.js";
 import type { Redactor } from "./redact.js";
+import type { GuardStop, RunBudget, WorkCostModel } from "./run-guard.js";
 
 export const SYNC_WINDOW_KINDS = [
 	"backfill",
@@ -45,6 +47,7 @@ export interface SyncEngineOptions {
 export interface WindowOptions {
 	dryRun?: boolean;
 	refreshAnalytics?: boolean;
+	lockWaitMs?: number;
 }
 
 export type RefreshSummary =
@@ -119,6 +122,51 @@ export interface MasterDataSummary {
 	flags: FlagCount[];
 }
 
+export interface IncrementalOptions {
+	days?: number;
+	budget?: RunBudget;
+	costModel?: WorkCostModel;
+	clock?: () => number;
+	startedAt?: number;
+	lockWaitMs?: number;
+	refreshAnalytics?: boolean;
+}
+
+export type IncrementalStop = GuardStop | "store_busy";
+
+export type IncrementalDayOutcome =
+	| "synced"
+	| "unchanged"
+	| "handed_off"
+	| "pending";
+
+export interface IncrementalDay {
+	date: string;
+	reason: DayReason | null;
+	outcome: IncrementalDayOutcome;
+}
+
+export interface IncrementalSummary {
+	runId: string;
+	status: "succeeded" | "partial" | "failed";
+	stopped: IncrementalStop | null;
+	error: string | null;
+	window: BusinessDateWindow;
+	days: IncrementalDay[];
+	startedAt: string;
+	finishedAt: string;
+	durationMs: number;
+	connectorCalls: number;
+	retries: number;
+	tables: TableCounts;
+	store: StoreWindowSummary;
+	checks: ChecksSummary;
+	flags: FlagCount[];
+	refresh: RefreshSummary;
+	refreshRetried: string[];
+	estimatedCpuMs: number;
+}
+
 export class SyncRunError<TSummary> extends Error {
 	readonly summary: TSummary;
 
@@ -144,5 +192,16 @@ export class MasterDataRunError extends SyncRunError<MasterDataSummary> {
 	) {
 		super(message, summary, options);
 		this.name = "MasterDataRunError";
+	}
+}
+
+export class IncrementalRunError extends SyncRunError<IncrementalSummary> {
+	constructor(
+		message: string,
+		summary: IncrementalSummary,
+		options?: ErrorOptions,
+	) {
+		super(message, summary, options);
+		this.name = "IncrementalRunError";
 	}
 }

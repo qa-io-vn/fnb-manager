@@ -8,8 +8,10 @@ select
   '22222222-2222-4222-8222-000000000001'::uuid as tea_store_id,
   '22222222-2222-4222-8222-000000000002'::uuid as coffee_store_id,
   array['22222222-2222-4222-8222-000000000001', '22222222-2222-4222-8222-000000000002']::uuid[] as both_stores,
-  (current_date - 7)::date as seed_from,
-  (current_date - 1)::date as seed_to;
+  a.seed_anchor,
+  (a.seed_anchor - 7)::date as seed_from,
+  (a.seed_anchor - 1)::date as seed_to
+from (select max(i.business_date) + 1 as seed_anchor from public.invoices i where i.tenant_id = '11111111-1111-4111-8111-111111111111') as a;
 
 select app.refresh_analytics(f.demo_tenant_id, f.seed_from, f.seed_to) from fixture f;
 
@@ -64,7 +66,7 @@ select is(
 );
 
 insert into public.item_costs (tenant_id, store_id, item_external_id, cost_amount, effective_from, created_by)
-select f.demo_tenant_id, f.tea_store_id, 'item-01', 99, current_date - 10, f.demo_owner_id from fixture f;
+select f.demo_tenant_id, f.tea_store_id, 'item-01', 99, f.seed_anchor - 10, f.demo_owner_id from fixture f;
 
 select is((select unit_cost from fixture f cross join lateral public.menu_matrix(array[f.tea_store_id], f.seed_to) m where m.item_external_id = 'item-01'), 99.00::numeric, 'a store-specific cost wins over the tenant-wide cost');
 select is(
@@ -106,12 +108,12 @@ update public.shifts s
 set cash_drawer_amount = s.expected_cash_amount + 60000
 from fixture f
 where s.store_id = f.tea_store_id
-  and s.external_id = 'shift-TEA-' || to_char(current_date - 2, 'YYYYMMDD') || '-2';
+  and s.external_id = 'shift-TEA-' || to_char(f.seed_anchor - 2, 'YYYYMMDD') || '-2';
 
 select app.refresh_analytics(f.demo_tenant_id, f.seed_from, f.seed_to) from fixture f;
 
 select is(
-  (select (variance_amount, over_abs_threshold, 'absolute' = any (reasons)) from fixture f cross join lateral public.cash_variance_flags(f.both_stores, f.seed_from, f.seed_to) c where c.shift_external_id = 'shift-TEA-' || to_char(current_date - 2, 'YYYYMMDD') || '-2'),
+  (select (variance_amount, over_abs_threshold, 'absolute' = any (reasons)) from fixture f cross join lateral public.cash_variance_flags(f.both_stores, f.seed_from, f.seed_to) c where c.shift_external_id = 'shift-TEA-' || to_char(f.seed_anchor - 2, 'YYYYMMDD') || '-2'),
   (60000.00::numeric, true, true),
   'cash_variance_flags flags a 60,000 variance over the absolute threshold'
 );

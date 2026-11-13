@@ -1,0 +1,65 @@
+name: Deploy Edge Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+      - "packages/core/src/**"
+      - "packages/connector-core/src/**"
+      - "packages/connector-ipos/src/**"
+      - "packages/connector-mock/src/**"
+      - "packages/sync/src/**"
+      - "packages/runner/src/**"
+      - "scripts/function-imports.mjs"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-functions
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy sync-incremental to the Supabase project
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check cloud configuration
+        id: config
+        env:
+          PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$PROJECT_ID" ] || [ -z "$ACCESS_TOKEN" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Cloud project not configured yet (SUPABASE_PROJECT_ID or SUPABASE_ACCESS_TOKEN secret missing); nothing to deploy." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.config.outputs.configured == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.config.outputs.configured == 'true'
+      - uses: actions/setup-node@v5
+        if: steps.config.outputs.configured == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - if: steps.config.outputs.configured == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Check the import map is current
+        if: steps.config.outputs.configured == 'true'
+        run: node scripts/function-imports.mjs --check
+      - name: Deploy
+        if: steps.config.outputs.configured == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: pnpm exec supabase functions deploy sync-incremental --remote="$PROJECT_ID" --yes
+      - name: Note the deployment in the summary
+        if: steps.config.outputs.configured == 'true'
+        run: echo "Deployed sync-incremental. Its POS secrets and the schedule are owner steps in docs/go-live.md." >> "$GITHUB_STEP_SUMMARY"

@@ -1,15 +1,16 @@
+import { MENU } from "@fnb/connector-mock";
+import { type CanonicalSale, isExcludedDay, VIETNAM_HOLIDAYS } from "@fnb/core";
 import {
-	generateDay,
-	MENU,
-	type MockProfile,
-	mockStore,
-	resolveProfile,
-} from "@fnb/connector-mock";
-import type { CanonicalLine, CanonicalSale, CanonicalStore } from "@fnb/core";
+	DEMO_POS_ACCOUNT_ID,
+	DEMO_TENANT_ID,
+	DEMO_TIME_ZONE,
+	type DemoDayCache,
+	sharedDemoDays,
+	toDbLineKind,
+} from "@fnb/demo-analytics";
 import type {
 	InvoiceLineRow,
 	InvoiceRow,
-	LineKind,
 	PaymentMethodRow,
 	PaymentRow,
 	RowSource,
@@ -23,54 +24,17 @@ import {
 	type IsoDate,
 } from "../lib/business-dates";
 
-export const DEMO_SEED = 20_261_108;
-export const DEMO_TENANT_ID = "demo-tenant";
-const DEMO_ACCOUNT_ID = "demo-account";
+export { DEMO_TENANT_ID };
 
-const baseProfile = resolveProfile();
-
-const demoStoreProfiles: readonly Partial<MockProfile>[] = [
-	{},
-	{ averageSalesPerDay: 72, largeSizeShare: 0.3 },
-];
+const DEMO_CURRENCY = "VND";
 
 export const demoTenant: TenantRow = {
 	id: DEMO_TENANT_ID,
 	name: "Demo",
-	currencyCode: baseProfile.currency,
-	timeZone: baseProfile.timezone,
+	currencyCode: DEMO_CURRENCY,
+	timeZone: DEMO_TIME_ZONE,
 	countryCode: "VN",
 };
-
-interface DemoStore {
-	row: StoreRow;
-	canonical: CanonicalStore;
-	profile: MockProfile;
-}
-
-const demoStores: readonly DemoStore[] = demoStoreProfiles.map(
-	(overrides, index) => {
-		const profile = resolveProfile(overrides);
-		const canonical = mockStore(index + 1, profile);
-		return {
-			profile,
-			canonical,
-			row: {
-				id: canonical.externalId,
-				tenantId: DEMO_TENANT_ID,
-				name: canonical.name,
-				code: canonical.externalId,
-				timeZone: canonical.timezone,
-				businessDayStartMinutes: canonical.dayStartMinutes,
-				posAccountId: DEMO_ACCOUNT_ID,
-			},
-		};
-	},
-);
-
-function storedLineKind(kind: CanonicalLine["lineKind"]): LineKind {
-	return kind === "package_component" ? "package" : kind;
-}
 
 interface DemoDayRows {
 	invoices: InvoiceRow[];
@@ -95,7 +59,7 @@ function rowsOfSales(
 			sale.lines.map((line) => ({
 				invoiceId: sale.externalId,
 				storeId,
-				lineKind: storedLineKind(line.lineKind),
+				lineKind: toDbLineKind(line.lineKind),
 				itemExternalId: line.itemExternalId ?? null,
 				itemName: line.itemName,
 				quantity: line.quantity,
@@ -131,45 +95,43 @@ function soldBy(rows: DemoDayRows, instant: Date): DemoDayRows {
 	};
 }
 
-interface YieldingScheduler {
-	yield?: () => Promise<void>;
-}
-
-function nextTask(): Promise<void> {
-	const scheduler = (globalThis as { scheduler?: YieldingScheduler }).scheduler;
-	if (typeof scheduler?.yield === "function") return scheduler.yield();
-	return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
 export function createDemoRowSource(
 	now: () => Date = () => new Date(),
+	days: DemoDayCache = sharedDemoDays(),
 ): RowSource {
-	const generatedDays = new Map<string, Promise<DemoDayRows>>();
+	const wholeDays = new Map<string, Promise<DemoDayRows>>();
 
-	const wholeDay = (store: DemoStore, date: IsoDate): Promise<DemoDayRows> => {
-		const key = `${store.row.id}|${date}`;
-		const known = generatedDays.get(key);
+	const storeRows = (): StoreRow[] =>
+		days.stores().map((store) => ({
+			id: store.id,
+			tenantId: DEMO_TENANT_ID,
+			name: store.name,
+			code: store.id,
+			timeZone: store.timeZone,
+			businessDayStartMinutes: store.businessDayStartMinutes,
+			posAccountId: store.posAccountId,
+		}));
+
+	const wholeDay = (storeId: string, date: IsoDate): Promise<DemoDayRows> => {
+		const key = `${days.asOf()}|${storeId}|${date}`;
+		const known = wholeDays.get(key);
 		if (known) return known;
-		const pending = nextTask().then(() =>
-			rowsOfSales(
-				store.row.id,
-				generateDay(DEMO_SEED, store.profile, store.canonical, date, MENU)
-					.sales,
-			),
-		);
-		generatedDays.set(key, pending);
-		pending.catch(() => generatedDays.delete(key));
+		const pending = days
+			.generated(storeId, date)
+			.then((day) => (day === null ? noRows : rowsOfSales(storeId, day.sales)));
+		wholeDays.set(key, pending);
+		pending.catch(() => wholeDays.delete(key));
 		return pending;
 	};
 
 	const dayRows = async (
-		store: DemoStore,
+		store: StoreRow,
 		date: IsoDate,
 	): Promise<DemoDayRows> => {
 		const instant = now();
-		const order = compareIsoDates(date, businessDateOf(instant, store.row));
+		const order = compareIsoDates(date, businessDateOf(instant, store));
 		if (order > 0) return noRows;
-		const rows = await wholeDay(store, date);
+		const rows = await wholeDay(store.id, date);
 		return order === 0 ? soldBy(rows, instant) : rows;
 	};
 
@@ -179,8 +141,8 @@ export function createDemoRowSource(
 	): Promise<T[]> => {
 		const storeIds = new Set(scope.storeIds);
 		const collected: T[] = [];
-		for (const store of demoStores) {
-			if (!storeIds.has(store.row.id)) continue;
+		for (const store of storeRows()) {
+			if (!storeIds.has(store.id)) continue;
 			for (const date of scope.dates) {
 				for (const row of pick(await dayRows(store, date))) {
 					collected.push(row);
@@ -192,7 +154,7 @@ export function createDemoRowSource(
 
 	const paymentMethods: PaymentMethodRow[] = MENU.catalog.paymentMethods.map(
 		(method) => ({
-			posAccountId: DEMO_ACCOUNT_ID,
+			posAccountId: DEMO_POS_ACCOUNT_ID,
 			externalId: method.externalId,
 			name: method.name,
 			kind: method.kind,
@@ -203,9 +165,10 @@ export function createDemoRowSource(
 		kind: "demo",
 		tenants: async () => [demoTenant],
 		stores: async (tenantId) =>
-			tenantId === DEMO_TENANT_ID ? demoStores.map((store) => store.row) : [],
+			tenantId === DEMO_TENANT_ID ? storeRows() : [],
 		paymentMethods: async () => paymentMethods,
-		excludedDates: async () => [],
+		excludedDates: async (_tenant, dates) =>
+			dates.filter((date) => isExcludedDay(VIETNAM_HOLIDAYS, date)),
 		invoices: (scope) => collect(scope, (rows) => rows.invoices),
 		invoiceLines: (scope) => collect(scope, (rows) => rows.lines),
 		payments: (scope) => collect(scope, (rows) => rows.payments),

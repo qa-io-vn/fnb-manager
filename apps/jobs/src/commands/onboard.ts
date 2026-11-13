@@ -1,3 +1,4 @@
+import { connectAccount } from "@fnb/runner";
 import { MasterDataRunError, SyncEngine } from "@fnb/sync";
 import { requireTenant } from "../admin/tenants.js";
 import { accountEntry, isCi } from "../config/config.js";
@@ -10,7 +11,6 @@ import {
 	triggeredBy,
 	UsageError,
 } from "../context.js";
-import { connectAccount } from "../services.js";
 import { countsText } from "./formatting.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
 import { printFlags } from "./sync-report.js";

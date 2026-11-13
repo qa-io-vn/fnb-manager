@@ -2,8 +2,7 @@ import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useT } from "../i18n";
 
-const INITIAL_LOCATION_KEY = "default";
-let lastFocusedLocationKey = INITIAL_LOCATION_KEY;
+let lastFocusedPathname: string | null = null;
 
 export function PageHeading({
 	title,
@@ -13,7 +12,7 @@ export function PageHeading({
 	className: string;
 }) {
 	const t = useT();
-	const { key } = useLocation();
+	const { pathname } = useLocation();
 	const heading = useRef<HTMLHeadingElement>(null);
 
 	useEffect(() => {
@@ -21,10 +20,14 @@ export function PageHeading({
 	}, [t, title]);
 
 	useEffect(() => {
-		if (key === lastFocusedLocationKey) return;
-		lastFocusedLocationKey = key;
+		if (lastFocusedPathname === null) {
+			lastFocusedPathname = pathname;
+			return;
+		}
+		if (pathname === lastFocusedPathname) return;
+		lastFocusedPathname = pathname;
 		heading.current?.focus();
-	}, [key]);
+	}, [pathname]);
 
 	return (
 		<h1 ref={heading} tabIndex={-1} className={`${className} outline-none`}>

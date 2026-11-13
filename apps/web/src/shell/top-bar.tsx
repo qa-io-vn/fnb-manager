@@ -14,7 +14,7 @@ import { SignOutButton } from "./sign-out-button";
 import { StoreSelect, storeSelectionLabel } from "./store-select";
 import { TenantSelect } from "./tenant-select";
 
-const sectionsWithFixedPeriod = new Set([""]);
+const sectionsWithFixedPeriod = new Set(["", "bao-cao"]);
 
 function ScopeControls() {
 	const scope = useTenantScope();

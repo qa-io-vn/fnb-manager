@@ -24,6 +24,12 @@
 	--chart-3: #4c5fa3;
 	--chart-4: #9c4f7a;
 	--chart-5: #5f8a2c;
+	--chart-muted: #8a857c;
+	--heat-0: #f4f9f7;
+	--heat-1: #dcefe8;
+	--heat-2: #bfe2d5;
+	--heat-3: #9dd2bf;
+	--heat-4: #7cc2a9;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -50,6 +56,12 @@
 		--chart-3: #8da0e6;
 		--chart-4: #d98ab8;
 		--chart-5: #a3cf6b;
+		--chart-muted: #8f897f;
+		--heat-0: #1f2624;
+		--heat-1: #1f3430;
+		--heat-2: #22433b;
+		--heat-3: #275447;
+		--heat-4: #2c6553;
 	}
 }
 
@@ -101,6 +113,26 @@ button {
 	font: inherit;
 }
 
+.heat-cell[data-heat="0"] {
+	background: var(--heat-0);
+}
+
+.heat-cell[data-heat="1"] {
+	background: var(--heat-1);
+}
+
+.heat-cell[data-heat="2"] {
+	background: var(--heat-2);
+}
+
+.heat-cell[data-heat="3"] {
+	background: var(--heat-3);
+}
+
+.heat-cell[data-heat="4"] {
+	background: var(--heat-4);
+}
+
 @media print {
 	@page {
 		size: A4;
@@ -131,6 +163,12 @@ button {
 		--chart-3: #4c5fa3;
 		--chart-4: #9c4f7a;
 		--chart-5: #5f8a2c;
+		--chart-muted: #8c8c8c;
+		--heat-0: #ffffff;
+		--heat-1: #ededed;
+		--heat-2: #dbdbdb;
+		--heat-3: #c8c8c8;
+		--heat-4: #b5b5b5;
 	}
 
 	html,

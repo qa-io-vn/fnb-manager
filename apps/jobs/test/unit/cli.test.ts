@@ -39,6 +39,29 @@ describe("fnb", () => {
 		expect((await run(["sync"])).code).toBe(2);
 	});
 
+	it("documents the incremental command and validates it before touching the database", async () => {
+		const help = await run(["sync", "incremental", "--help"]);
+		expect(help.code).toBe(0);
+		expect(help.stdout).toContain("--retry-auth-failed");
+		expect(help.stdout).toContain("last three business days");
+		const both = await run(
+			["sync", "incremental", "--all-accounts", "--store", "S1"],
+			{
+				POS_ACCOUNTS_JSON: JSON.stringify([
+					{ key: "demo", connector: "mock" },
+					{ key: "demo-2", connector: "mock" },
+				]),
+			},
+		);
+		expect(both.code).toBe(2);
+		expect(both.stderr).toContain("--store applies to one account");
+		const none = await run(["sync", "incremental"], {
+			POS_ACCOUNTS_JSON: MOCK_ACCOUNTS,
+		});
+		expect(none.code).toBe(2);
+		expect(none.stderr).toContain("--account is required");
+	});
+
 	it("validates the window before touching the database", async () => {
 		const result = await run(
 			[

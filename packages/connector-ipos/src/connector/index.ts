@@ -66,6 +66,12 @@ function epochRange(window: BusinessDateWindow, store: CanonicalStore) {
 	return { startDate: range.from.getTime(), endDate: range.to.getTime() };
 }
 
+function abortable(context: FetchContext | undefined): {
+	signal?: AbortSignal;
+} {
+	return context?.signal ? { signal: context.signal } : {};
+}
+
 export function createIposConnector(
 	options: IposConnectorOptions = {},
 ): PosConnector {
@@ -147,6 +153,9 @@ export function createIposConnector(
 				...(options.logger ? { logger: options.logger } : {}),
 				...(options.tokenStore ? { tokenStore: options.tokenStore } : {}),
 				...(options.retry ? { retry: options.retry } : {}),
+				...(options.requestTimeoutMs === undefined
+					? {}
+					: { requestTimeoutMs: options.requestTimeoutMs }),
 			});
 			const login = await translateErrors(() => client.login());
 			session = { client, login };
@@ -166,6 +175,7 @@ export function createIposConnector(
 			const { index } = await masterFor(store);
 			const { client } = requireSession();
 			for (const chunk of splitWindow(window, resolved.batchDays)) {
+				context?.signal?.throwIfAborted();
 				const params = {
 					companyUid: scope.companyUid,
 					brandUid: scope.brandUid,
@@ -174,6 +184,7 @@ export function createIposConnector(
 					...(resolved.resultsPerPage === undefined
 						? {}
 						: { resultsPerPage: resolved.resultsPerPage }),
+					...abortable(context),
 				};
 				const [invoices, lines, payments] = await translateErrors(() =>
 					Promise.all([
@@ -208,6 +219,7 @@ export function createIposConnector(
 					brandUid: scope.brandUid,
 					storeUid: scope.storeUid,
 					...epochRange(window, store),
+					...abortable(context),
 				}),
 			);
 			emitFlags(
@@ -240,6 +252,7 @@ export function createIposConnector(
 				companyUid: scope.companyUid,
 				brandUid: scope.brandUid,
 				storeUid: scope.storeUid,
+				...abortable(context),
 			};
 			const [editedOrDeleted, removedItemEvents] = await translateErrors(() =>
 				Promise.all([
@@ -270,7 +283,11 @@ export function createIposConnector(
 			return built.adjustments;
 		},
 
-		async fetchControlTotals(store, window): Promise<CanonicalDailyTotal[]> {
+		async fetchControlTotals(
+			store,
+			window,
+			context,
+		): Promise<CanonicalDailyTotal[]> {
 			assertCapability(iposDescriptor, "controlTotals");
 			assertWindow(window);
 			const scope = await scopeFor(store);
@@ -281,6 +298,7 @@ export function createIposConnector(
 					brandUid: scope.brandUid,
 					storeUid: scope.storeUid,
 					...daysViewRange(window, store),
+					...abortable(context),
 				}),
 			);
 			return days.list_data

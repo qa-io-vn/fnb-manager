@@ -9,9 +9,12 @@ export function refreshRanges(
 	window: BusinessDateWindow,
 	extraDates: readonly string[],
 ): DateRange[] {
-	const dates = [...new Set([...windowDates(window), ...extraDates])].sort();
+	return contiguousRanges([...windowDates(window), ...extraDates]);
+}
+
+export function contiguousRanges(dates: readonly string[]): DateRange[] {
 	const ranges: DateRange[] = [];
-	for (const date of dates) {
+	for (const date of [...new Set(dates)].sort()) {
 		const last = ranges.at(-1);
 		if (last && shiftIsoDate(last.to, 1) === date) {
 			last.to = date;

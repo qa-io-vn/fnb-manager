@@ -1,7 +1,10 @@
 import type { BusinessDateWindow } from "@fnb/connector-core";
 import type { AccountRecord, StoreRecord } from "../rows.js";
+import { runSyncIncremental } from "./incremental.js";
 import { runSyncMasterData } from "./master-data.js";
 import type {
+	IncrementalOptions,
+	IncrementalSummary,
 	MasterDataSummary,
 	SyncEngineOptions,
 	SyncWindowKind,
@@ -29,5 +32,13 @@ export class SyncEngine {
 		options: WindowOptions = {},
 	): Promise<WindowSummary> {
 		return runSyncWindow(this.options, account, stores, window, kind, options);
+	}
+
+	syncIncremental(
+		account: AccountRecord,
+		store: StoreRecord,
+		options: IncrementalOptions = {},
+	): Promise<IncrementalSummary> {
+		return runSyncIncremental(this.options, account, store, options);
 	}
 }

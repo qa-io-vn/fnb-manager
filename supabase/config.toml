@@ -390,6 +390,12 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+[functions.sync-incremental]
+enabled = true
+verify_jwt = false
+import_map = "./functions/sync-incremental/deno.json"
+entrypoint = "./functions/sync-incremental/index.ts"
+
 [analytics]
 enabled = true
 port = 54327

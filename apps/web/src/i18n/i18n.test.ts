@@ -2,9 +2,8 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { parseSync } from "vite";
 import { describe, expect, it } from "vitest";
-import en from "./en.json";
-import { interpolate, translate } from "./index";
-import vi from "./vi.json";
+import { messageFiles } from "./catalog";
+import { interpolate, isMessageKey, messages, translate } from "./index";
 
 const sourceRoot = join(import.meta.dirname, "..");
 
@@ -152,30 +151,72 @@ function literalsBypassingTranslation(
 }
 
 describe("translations", () => {
-	it("has the same keys in Vietnamese and English", () => {
-		expect(Object.keys(en).sort()).toEqual(Object.keys(vi).sort());
-	});
+	const placeholders = (message: string) =>
+		[...message.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
 
-	it("has no empty message", () => {
-		for (const messages of [vi, en]) {
-			for (const [key, message] of Object.entries(messages)) {
+	it.each(messageFiles.map((file) => [file.name, file] as const))(
+		"keeps %s in step between Vietnamese and English",
+		(_name, file) => {
+			expect(Object.keys(file.en).sort()).toEqual(Object.keys(file.vi).sort());
+			for (const [key, message] of Object.entries(file.vi)) {
 				expect(message.trim(), key).not.toBe("");
+				expect(file.en[key]?.trim(), key).not.toBe("");
+				expect(placeholders(file.en[key] ?? ""), key).toEqual(
+					placeholders(message),
+				);
+			}
+		},
+	);
+
+	it.each(messageFiles.map((file) => [file.name, file] as const))(
+		"keeps every key of %s under the file's own prefix",
+		(_name, file) => {
+			for (const key of Object.keys(file.vi)) {
+				if (file.prefix !== null)
+					expect(key.startsWith(file.prefix), key).toBe(true);
+				for (const excluded of file.excludedPrefixes) {
+					expect(key.startsWith(excluded), key).toBe(false);
+				}
+			}
+		},
+	);
+
+	it("never repeats a key in two files", () => {
+		const owners = new Map<string, string[]>();
+		for (const file of messageFiles) {
+			for (const key of Object.keys(file.vi)) {
+				owners.set(key, [...(owners.get(key) ?? []), file.name]);
 			}
 		}
+		expect(
+			[...owners.entries()].filter(([, files]) => files.length > 1),
+		).toEqual([]);
 	});
 
-	it("uses the same placeholders in both languages", () => {
-		const placeholders = (message: string) =>
-			[...message.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
-		for (const key of Object.keys(vi) as (keyof typeof vi)[]) {
-			expect(placeholders(en[key]), key).toEqual(placeholders(vi[key]));
+	it("merges every file into one dictionary per language", () => {
+		const total = messageFiles.reduce(
+			(count, file) => count + Object.keys(file.vi).length,
+			0,
+		);
+		expect(Object.keys(messages.vi)).toHaveLength(total);
+		expect(Object.keys(messages.en)).toHaveLength(total);
+		expect(isMessageKey("report.day.title")).toBe(true);
+		expect(isMessageKey("report.day.missing")).toBe(false);
+	});
+
+	it("spells invoices and cancellations the registry's way", () => {
+		const oldSpellings = /(?<!\p{L})(hoá|Hoá|huỷ|Huỷ|tuỳ|Tuỳ)(?!\p{L})/u;
+		expect(oldSpellings.test("Số hoá đơn")).toBe(true);
+		expect(oldSpellings.test("Thoát bản demo")).toBe(false);
+		for (const [key, message] of Object.entries(messages.vi)) {
+			expect(oldSpellings.test(message), key).toBe(false);
 		}
 	});
 
 	it("writes Vietnamese with diacritics", () => {
-		expect(vi["nav.today"]).toBe("Hôm nay");
-		expect(vi["badge.unverified"]).toBe("chưa đối soát");
-		expect(vi["shell.newVersion"]).toBe("Có phiên bản mới — tải lại");
+		expect(messages.vi["nav.today"]).toBe("Hôm nay");
+		expect(messages.vi["badge.unverified"]).toBe("chưa đối soát");
+		expect(messages.vi["shell.newVersion"]).toBe("Có phiên bản mới — tải lại");
 	});
 
 	it("interpolates named parameters", () => {

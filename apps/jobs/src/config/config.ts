@@ -1,7 +1,12 @@
+import {
+	AccountConfigError,
+	type AccountEntry,
+	IPOS_APP_KEY_VARIABLE,
+	parseAccountEntries,
+} from "@fnb/runner";
 import { z } from "zod";
-import { type AccountEntry, accountEntriesSchema } from "./accounts.js";
 import type { Environment } from "./env-file.js";
-import { ConfigError, describeIssues } from "./errors.js";
+import { ConfigError } from "./errors.js";
 
 export interface DatabaseSetting {
 	url: string;
@@ -60,21 +65,14 @@ export function supabaseApiSetting(
 }
 
 export function accountEntries(environment: Environment): AccountEntry[] {
-	const raw = environment.POS_ACCOUNTS_JSON;
-	if (!raw) {
-		return [];
-	}
-	let parsed: unknown;
 	try {
-		parsed = JSON.parse(raw);
-	} catch {
-		throw new ConfigError("POS_ACCOUNTS_JSON is not valid JSON");
+		return parseAccountEntries(environment.POS_ACCOUNTS_JSON);
+	} catch (error) {
+		if (error instanceof AccountConfigError) {
+			throw new ConfigError(error.message);
+		}
+		throw error;
 	}
-	const result = accountEntriesSchema.safeParse(parsed);
-	if (!result.success) {
-		throw new ConfigError(describeIssues("POS_ACCOUNTS_JSON", result.error));
-	}
-	return result.data;
 }
 
 export function accountEntry(
@@ -95,5 +93,5 @@ export function accountEntry(
 }
 
 export function iposAppKey(environment: Environment): string | undefined {
-	return environment.IPOS_APP_KEY || undefined;
+	return environment[IPOS_APP_KEY_VARIABLE] || undefined;
 }

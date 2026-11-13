@@ -1,7 +1,9 @@
 import type { ISql } from "postgres";
 import type {
 	AccountRecord,
+	AccountStatus,
 	AccountUpsert,
+	StoreContext,
 	StoreRecord,
 	StoreUpsert,
 	TableCounts,
@@ -163,4 +165,49 @@ export async function markAccountSynced(
 	await sql`
 		update public.pos_accounts set last_synced_at = ${finishedAt} where id = ${accountId}
 	`;
+}
+
+export async function updateAccountStatus(
+	sql: ISql,
+	accountId: string,
+	status: AccountStatus,
+	from: readonly AccountStatus[],
+): Promise<boolean> {
+	const result = await sql`
+		update public.pos_accounts
+		set status = ${status}::public.pos_account_status
+		where id = ${accountId}
+			and status::text = any(${[...from]}::text[])
+	`;
+	return result.count > 0;
+}
+
+interface StoreContextQueryRow extends AccountQueryRow {
+	store: StoreRecord;
+}
+
+export async function findStore(
+	sql: ISql,
+	storeId: string,
+): Promise<StoreContext | null> {
+	const rows = await sql<StoreContextQueryRow[]>`
+		select a.id, a.tenant_id, t.slug as tenant_slug, t.currency_code as tenant_currency,
+			a.connector, a.account_key, a.display_name, a.status::text as status, a.last_synced_at,
+			json_build_object(
+				'id', s.id, 'tenant_id', s.tenant_id, 'pos_account_id', s.pos_account_id,
+				'external_id', s.external_id, 'code', s.code, 'name', s.name, 'address', s.address,
+				'timezone', s.timezone, 'business_day_start_minutes', s.business_day_start_minutes,
+				'opened_on', s.opened_on::text, 'active', s.active
+			) as store
+		from public.stores s
+		join public.pos_accounts a on a.id = s.pos_account_id
+		join public.tenants t on t.id = a.tenant_id
+		where s.id = ${storeId}
+	`;
+	const [row] = rows;
+	if (!row) {
+		return null;
+	}
+	const { store, ...account } = row;
+	return { account: toAccount(account), store };
 }

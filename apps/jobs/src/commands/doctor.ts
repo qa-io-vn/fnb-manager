@@ -1,23 +1,29 @@
-import { accountStatuses } from "../admin/status-queries.js";
+import { connectAccount } from "@fnb/runner";
+import {
+	accountStatuses,
+	openingHoursCoverage,
+	openSyncAlerts,
+} from "../admin/status-queries.js";
 import { statusWindow } from "../admin/status-window.js";
 import { accountEntries } from "../config/config.js";
 import type { CommandContext } from "../context.js";
-import { connectAccount } from "../services.js";
 import { accountLabel, numberAccounts } from "./account-numbers.js";
 import {
+	alertCounts,
+	alertsCheck,
 	appliedMigrations,
 	type DoctorCheck,
+	databaseSizeDetail,
 	databaseSizeHealth,
 	isLocalDatabase,
 	migrationDrift,
 	migrationFiles,
+	openingHoursCheck,
 	pauseRiskHealth,
 	syncAgeHealth,
 } from "./doctor-checks.js";
 import { ageText, hoursSince } from "./formatting.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
-
-const MEGABYTE = 1024 * 1024;
 
 async function databaseChecks(context: CommandContext): Promise<DoctorCheck[]> {
 	const { sql, setting } = context.services.db();
@@ -34,7 +40,7 @@ async function databaseChecks(context: CommandContext): Promise<DoctorCheck[]> {
 	checks.push({
 		name: "database size",
 		health: databaseSizeHealth(bytes),
-		detail: `${(bytes / MEGABYTE).toFixed(1)} MB of the 500 MB free-plan limit (upgrade trigger about 400 MB)`,
+		detail: databaseSizeDetail(bytes),
 	});
 	const applied = await appliedMigrations(sql);
 	const files = migrationFiles(context.rootDir);
@@ -145,6 +151,65 @@ async function syncChecks(
 	return checks;
 }
 
+async function scheduleCheck(context: CommandContext): Promise<DoctorCheck> {
+	const name = "incremental schedule";
+	try {
+		const enabled = await context.services
+			.db()
+			.runner.incrementalScheduleEnabled();
+		return enabled
+			? {
+					name,
+					health: "green",
+					detail:
+						"enabled: pg_cron calls sync-incremental every 30 minutes for each store that is open",
+				}
+			: {
+					name,
+					health: "yellow",
+					detail:
+						"disabled: only the nightly run refreshes the data; docs/go-live.md shows how to enable it",
+				};
+	} catch {
+		return {
+			name,
+			health: "unavailable",
+			detail: "app.incremental_sync_settings is missing; apply the migrations",
+		};
+	}
+}
+
+async function incrementalChecks(
+	context: CommandContext,
+): Promise<DoctorCheck[]> {
+	const { sql } = context.services.db();
+	const checks: DoctorCheck[] = [];
+	const alerts = await openSyncAlerts(sql);
+	checks.push(
+		alerts === null
+			? {
+					name: "sync alerts",
+					health: "unavailable",
+					detail: "app.sync_alerts is missing; apply the migrations",
+				}
+			: alertsCheck(
+					alertCounts(alerts),
+					await context.services.db().runner.incrementalScheduleEnabled(),
+				),
+	);
+	const coverage = await openingHoursCoverage(sql);
+	checks.push(
+		coverage === null
+			? {
+					name: "opening hours",
+					health: "unavailable",
+					detail: "app.opening_hours_known is missing; apply the migrations",
+				}
+			: openingHoursCheck(coverage),
+	);
+	return checks;
+}
+
 const UNMEASURED: DoctorCheck[] = [
 	{
 		name: "disk",
@@ -179,6 +244,8 @@ async function doctor(context: CommandContext): Promise<number> {
 	if (databaseReachable) {
 		const local = isLocalDatabase(context.services.db().setting.url);
 		checks.push(...(await syncChecks(context, local)));
+		checks.push(await scheduleCheck(context));
+		checks.push(...(await incrementalChecks(context)));
 	}
 	checks.push(...UNMEASURED);
 	context.output.table(
@@ -203,7 +270,8 @@ export const doctorCommand: CommandSpec = {
 		"Needs DATABASE_URL (or SUPABASE_DB_URL) and POS_ACCOUNTS_JSON; every configured account logs in once.",
 		"In CI a login and the last sync of an account listed in POS_ACCOUNTS_JSON are labelled by its position there (account 1 is the first entry); the last sync of an onboarded account missing from it is labelled other 1, other 2, … in tenant and key order, as in fnb status.",
 		"Exits 1 when any check is red. Disk and egress are reported as unavailable: only the Supabase dashboard measures them.",
-		"Sync age: green within 26 h, yellow within 72 h, red beyond. Database size: yellow from 400 MB, red from 475 MB of the 500 MB free plan.",
+		"Sync age: green within 26 h, yellow within 72 h, red beyond. Database size is in MiB (1 MiB = 1,048,576 bytes), the unit of pg_size_pretty with which Supabase measures its 500 MB free-plan quota: yellow from 400 MiB, red from 475 MiB.",
+		"Sync alerts: red while app.sync_alerts holds an open alert, raised by the scheduler itself at every tick: a watched store over the 90-minute dead-man threshold, or a scheduled call that expired unclaimed. Opening hours: yellow when an active store's hours were entered without a usable span (it is then synced at every tick).",
 	],
 	run: doctor,
 };

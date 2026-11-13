@@ -1,5 +1,5 @@
 begin;
-select plan(53);
+select plan(57);
 
 create temp table fixture as
 select
@@ -12,6 +12,7 @@ select
   'ffffffff-ffff-4fff-8fff-ffffffffffff'::uuid as publisher_id,
   '99999999-9999-4999-8999-999999999999'::uuid as other_tenant_id,
   'cccccccc-cccc-4ccc-8ccc-cccccccccccc'::uuid as other_owner_id,
+  '88888888-8888-4888-8888-888888888888'::uuid as unlimited_manager_id,
   (select id from public.customers where phone = '0900000001') as customer_1_id,
   (select id from public.customers where phone = '0900000002') as customer_2_id,
   (select id from public.customers where phone = '0900000003') as customer_3_id,
@@ -27,7 +28,9 @@ select viewer_id, '00000000-0000-0000-0000-000000000000'::uuid, 'authenticated':
 union all
 select publisher_id, '00000000-0000-0000-0000-000000000000'::uuid, 'authenticated'::varchar, 'authenticated'::varchar, 'publisher@example.com'::varchar from fixture
 union all
-select other_owner_id, '00000000-0000-0000-0000-000000000000'::uuid, 'authenticated'::varchar, 'authenticated'::varchar, 'other-owner@example.com'::varchar from fixture;
+select other_owner_id, '00000000-0000-0000-0000-000000000000'::uuid, 'authenticated'::varchar, 'authenticated'::varchar, 'other-owner@example.com'::varchar from fixture
+union all
+select unlimited_manager_id, '00000000-0000-0000-0000-000000000000'::uuid, 'authenticated'::varchar, 'authenticated'::varchar, 'unlimited-manager@example.com'::varchar from fixture;
 
 insert into public.tenant_members (tenant_id, user_id, role, store_ids)
 select demo_tenant_id, tea_manager_id, 'manager'::public.tenant_role, array[tea_store_id] from fixture
@@ -36,7 +39,9 @@ select demo_tenant_id, staff_id, 'staff'::public.tenant_role, null::uuid[] from 
 union all
 select demo_tenant_id, viewer_id, 'viewer'::public.tenant_role, null::uuid[] from fixture
 union all
-select demo_tenant_id, publisher_id, 'publisher'::public.tenant_role, null::uuid[] from fixture;
+select demo_tenant_id, publisher_id, 'publisher'::public.tenant_role, null::uuid[] from fixture
+union all
+select demo_tenant_id, unlimited_manager_id, 'manager'::public.tenant_role, null::uuid[] from fixture;
 
 insert into public.tenants (id, slug, name)
 select other_tenant_id, 'other-tenant', 'Other Tenant' from fixture;
@@ -46,10 +51,10 @@ select other_tenant_id, other_owner_id, 'owner' from fixture;
 
 grant select on fixture to authenticated, service_role;
 
-select is((select count(*) from public.consent_records), 9::bigint, 'seed holds nine consent records');
-select is((select count(*) from public.consent_records where revoked_at is null), 8::bigint, 'seed holds eight active consent records');
+select is((select count(*) from public.consent_records where tenant_id = (select demo_tenant_id from fixture)), 9::bigint, 'seed holds nine consent records');
+select is((select count(*) from public.consent_records where tenant_id = (select demo_tenant_id from fixture) and revoked_at is null), 8::bigint, 'seed holds eight active consent records');
 select is((select count(*) from public.data_subject_requests), 1::bigint, 'seed holds one data subject request');
-select is((select count(*) from public.outbound_messages), 2::bigint, 'seed holds two outbound messages');
+select is((select count(*) from public.outbound_messages where tenant_id = (select demo_tenant_id from fixture)), 2::bigint, 'seed holds two outbound messages');
 
 select ok(app.has_active_consent((select demo_tenant_id from fixture), 'customer', (select customer_1_id from fixture), 'loyalty'), 'loyalty consent of a seeded customer is active');
 select ok(not app.has_active_consent((select demo_tenant_id from fixture), 'customer', (select customer_3_id from fixture), 'marketing'), 'a revoked marketing consent is not active');
@@ -139,6 +144,9 @@ select throws_ok(
   null,
   'the deadline rule raises instead of returning null when no second working day exists within the scan window'
 );
+
+insert into public.consent_records (tenant_id, subject_type, subject_id, purpose, policy_version, channel, granted_at, evidence)
+select demo_tenant_id, 'staff', demo_owner_id, 'notifications', 'ops-notifications-v1', 'web', now() - interval '1 day', '{"method": "web_session", "notice_channel": "web", "synthetic": true}'::jsonb from fixture;
 
 set local role service_role;
 
@@ -278,6 +286,34 @@ select throws_ok(
 );
 
 select is((select count(*) from public.data_subject_requests), 0::bigint, 'store-limited manager reads no data subject request');
+
+select throws_ok(
+  $$ insert into public.consent_records (tenant_id, subject_type, subject_id, purpose, policy_version, channel, granted_at)
+     select demo_tenant_id, 'staff', tea_manager_id, 'notifications', 'ops-notifications-v1', 'web', now() from fixture $$,
+  '42501',
+  null,
+  'store-limited manager cannot insert a notifications consent'
+);
+
+update public.consent_records set revoked_at = now()
+where subject_id = (select demo_owner_id from fixture) and purpose = 'notifications' and revoked_at is null;
+
+select ok(app.has_active_consent((select demo_tenant_id from fixture), 'staff', (select demo_owner_id from fixture), 'notifications'), 'store-limited manager cannot revoke the owner''s notifications consent');
+
+set local request.jwt.claims to '{"sub": "88888888-8888-4888-8888-888888888888", "role": "authenticated"}';
+
+select throws_ok(
+  $$ insert into public.consent_records (tenant_id, subject_type, subject_id, purpose, policy_version, channel, granted_at)
+     select demo_tenant_id, 'staff', unlimited_manager_id, 'notifications', 'ops-notifications-v1', 'web', now() from fixture $$,
+  '42501',
+  null,
+  'unlimited manager cannot insert a notifications consent'
+);
+
+update public.consent_records set revoked_at = now()
+where subject_id = (select demo_owner_id from fixture) and purpose = 'notifications' and revoked_at is null;
+
+select ok(app.has_active_consent((select demo_tenant_id from fixture), 'staff', (select demo_owner_id from fixture), 'notifications'), 'unlimited manager cannot revoke the owner''s notifications consent');
 
 set local request.jwt.claims to '{"sub": "dddddddd-dddd-4ddd-8ddd-dddddddddddd", "role": "authenticated"}';
 

@@ -2,11 +2,13 @@ import type { PaymentKind } from "@fnb/core";
 import type { Sql } from "postgres";
 import type {
 	DateRange,
+	StoreLockOptions,
 	StoreUpsertResult,
 	SyncRepository,
 } from "../repository.js";
 import type {
 	AccountRecord,
+	AccountStatus,
 	AccountUpsert,
 	AdjustmentWrite,
 	CatalogWrite,
@@ -16,6 +18,7 @@ import type {
 	RunStart,
 	ShiftPaymentTotal,
 	ShiftRow,
+	StoreContext,
 	StoreDayWrite,
 	StoreRecord,
 	StoreUpsert,
@@ -48,6 +51,18 @@ export class PostgresSyncRepository implements SyncRepository {
 		return accounts.upsertAccount(this.sql, account);
 	}
 
+	updateAccountStatus(
+		accountId: string,
+		status: AccountStatus,
+		from: readonly AccountStatus[],
+	): Promise<boolean> {
+		return accounts.updateAccountStatus(this.sql, accountId, status, from);
+	}
+
+	findStore(storeId: string): Promise<StoreContext | null> {
+		return accounts.findStore(this.sql, storeId);
+	}
+
 	readToken(accountId: string): Promise<TokenRecord | null> {
 		return accounts.readToken(this.sql, accountId);
 	}
@@ -78,8 +93,12 @@ export class PostgresSyncRepository implements SyncRepository {
 		return catalog.paymentMethodKinds(this.sql, accountId);
 	}
 
-	withStoreLock<T>(storeId: string, work: () => Promise<T>): Promise<T> {
-		return withStoreWindowLock(this.sql, storeId, work);
+	withStoreLock<T>(
+		storeId: string,
+		work: () => Promise<T>,
+		options?: StoreLockOptions,
+	): Promise<T> {
+		return withStoreWindowLock(this.sql, storeId, work, options);
 	}
 
 	loadStoreWindow(
@@ -121,8 +140,16 @@ export class PostgresSyncRepository implements SyncRepository {
 		return sales.localDayTotals(this.sql, storeId, range);
 	}
 
+	loadChecks(storeId: string, range: DateRange): Promise<SyncCheckRow[]> {
+		return bookkeeping.loadChecks(this.sql, storeId, range);
+	}
+
 	upsertChecks(checks: SyncCheckRow[]): Promise<TableCounts> {
 		return this.sql.begin((tx) => bookkeeping.upsertChecks(tx, checks));
+	}
+
+	staleAnalyticsDates(storeId: string, range: DateRange): Promise<string[]> {
+		return bookkeeping.staleAnalyticsDates(this.sql, storeId, range);
 	}
 
 	openRun(run: RunStart): Promise<string> {
@@ -131,6 +158,19 @@ export class PostgresSyncRepository implements SyncRepository {
 
 	closeRun(runId: string, finish: RunFinish): Promise<void> {
 		return bookkeeping.closeRun(this.sql, runId, finish);
+	}
+
+	closeAbandonedRuns(
+		storeId: string,
+		startedBefore: string,
+		message: string,
+	): Promise<number> {
+		return bookkeeping.closeAbandonedRuns(
+			this.sql,
+			storeId,
+			startedBefore,
+			message,
+		);
 	}
 
 	markAccountSynced(accountId: string, finishedAt: string): Promise<void> {

@@ -63,7 +63,7 @@ describe("PeriodPicker", () => {
 		const options = screen
 			.getAllByRole("option")
 			.map((option) => option.textContent);
-		expect(options).toEqual(["Ngày", "Tuần", "Tháng", "Năm", "Tuỳ chọn"]);
+		expect(options).toEqual(["Ngày", "Tuần", "Tháng", "Năm", "Tùy chọn"]);
 	});
 
 	it("shows the range of the chosen period as dd/MM/yyyy", () => {

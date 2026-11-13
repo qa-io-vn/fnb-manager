@@ -1,3 +1,8 @@
+import {
+	createDemoAnalyticsSource,
+	DemoDayCache,
+	toDbLineKind,
+} from "@fnb/demo-analytics";
 import { describe, expect, it } from "vitest";
 import { addDays } from "../lib/business-dates";
 import { computeToday, planToday } from "../metrics/today";
@@ -9,8 +14,13 @@ import {
 
 const now = new Date("2026-11-08T05:30:00.000Z");
 
+function demoAt(at: Date) {
+	const days = new DemoDayCache({ now: () => at });
+	return { days, source: createDemoRowSource(() => at, days) };
+}
+
 async function loadDemo(at: Date) {
-	const source = createDemoRowSource(() => at);
+	const { source, days } = demoAt(at);
 	const stores = await source.stores(DEMO_TENANT_ID);
 	const plan = planToday(stores, at);
 	const storeIds = stores.map((store) => store.id);
@@ -20,12 +30,21 @@ async function loadDemo(at: Date) {
 		source.payments({ storeIds, dates: plan.todayDates }),
 		source.paymentMethods(DEMO_TENANT_ID),
 	]);
-	return { source, stores, plan, invoices, lines, payments, paymentMethods };
+	return {
+		source,
+		days,
+		stores,
+		plan,
+		invoices,
+		lines,
+		payments,
+		paymentMethods,
+	};
 }
 
 describe("demo row source", () => {
-	it("serves one VND tenant with the stores of the mock connector", async () => {
-		const source = createDemoRowSource(() => now);
+	it("serves one VND tenant with the two demo stores", async () => {
+		const { source } = demoAt(now);
 		expect(await source.tenants()).toEqual([demoTenant]);
 		expect(demoTenant.currencyCode).toBe("VND");
 		const stores = await source.stores(DEMO_TENANT_ID);
@@ -59,7 +78,7 @@ describe("demo row source", () => {
 		expect(second.invoices).toEqual(first.invoices);
 	});
 
-	it("generates only the requested dates and links lines and payments to invoices", async () => {
+	it("generates only the requested dates and maps line kinds as the sync stores them", async () => {
 		const { invoices, lines, payments, plan } = await loadDemo(now);
 		expect(new Set(invoices.map((invoice) => invoice.businessDate))).toEqual(
 			new Set(plan.requiredDates),
@@ -68,6 +87,14 @@ describe("demo row source", () => {
 		expect(lines.every((line) => ids.has(line.invoiceId))).toBe(true);
 		expect(payments.every((payment) => ids.has(payment.invoiceId))).toBe(true);
 		expect(lines.some((line) => line.lineKind === "modifier")).toBe(true);
+		expect(toDbLineKind("package_component")).toBe("item");
+		expect(
+			lines.every((line) =>
+				["item", "modifier", "service", "package", "other"].includes(
+					line.lineKind,
+				),
+			),
+		).toBe(true);
 	});
 
 	it("produces non-zero Hôm nay numbers with a baseline", async () => {
@@ -85,8 +112,45 @@ describe("demo row source", () => {
 		expect(report.payments.cashToCount).toBeGreaterThan(0);
 	});
 
+	it("gives Hôm nay's yesterday the same totals as the analytics engine's day", async () => {
+		const { days, stores, invoices } = await loadDemo(now);
+		const yesterday = "2026-11-07";
+		const counted = invoices.filter(
+			(invoice) =>
+				invoice.businessDate === yesterday && invoice.status !== "voided",
+		);
+		const analytics = createDemoAnalyticsSource({
+			now: () => now,
+			days,
+			validateRows: true,
+		});
+		const rows = await analytics.call("period_compare_by_store", {
+			store_ids: stores.map((store) => store.id),
+			grain: "day",
+			anchor: yesterday,
+		});
+		const all = rows.find(
+			(row) => row.store_id === null && row.period === "current",
+		);
+		expect(all?.invoices).toBe(counted.length);
+		expect(all?.net_amount).toBe(
+			counted.reduce((total, invoice) => total + invoice.netAmount, 0),
+		);
+	});
+
+	it("excludes holidays and Tết days from the baseline dates", async () => {
+		const { source } = demoAt(now);
+		expect(
+			await source.excludedDates(demoTenant, [
+				"2026-02-17",
+				"2026-09-02",
+				"2026-11-03",
+			]),
+		).toEqual(["2026-02-17", "2026-09-02"]);
+	});
+
 	it("reports sample freshness and verification without any network call", async () => {
-		const source = createDemoRowSource(() => now);
+		const { source } = demoAt(now);
 		expect(await source.freshness(DEMO_TENANT_ID)).toEqual({ kind: "sample" });
 		expect(
 			await source.verification({

@@ -37,6 +37,7 @@ export interface IposClientOptions {
 	tokenStore?: TokenStore;
 	logger?: IposLogger;
 	retry?: RetryOptions;
+	requestTimeoutMs?: number;
 }
 
 export function assertAppAccessToken(value: unknown): string {
@@ -101,6 +102,9 @@ export function createIposClient(options: IposClientOptions) {
 		),
 		retry: { ...DEFAULT_RETRY_POLICY, ...options.retry },
 		logger,
+		...(options.requestTimeoutMs === undefined
+			? {}
+			: { requestTimeoutMs: options.requestTimeoutMs }),
 	});
 	const session = createAuthSession({
 		email: options.email,

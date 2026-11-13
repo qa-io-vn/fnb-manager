@@ -8,6 +8,13 @@ import {
 	parseExactMoney,
 	waitForCharts,
 } from "../support/checks";
+import {
+	expectNoConsoleErrors,
+	type ReportKind,
+	reportUrl,
+	waitForSettledCards,
+	watchConsoleErrors,
+} from "../support/reports";
 
 const middayInHoChiMinhCity = new Date("2026-11-04T05:30:00.000Z");
 
@@ -20,6 +27,7 @@ test("the demo opens without login and says it shows sample numbers", async ({
 }) => {
 	const requests: string[] = [];
 	page.on("request", (request) => requests.push(request.url()));
+	watchConsoleErrors(page);
 	await page.goto("/");
 	const banner = page.getByTestId("demo-banner");
 	await expect(banner).toContainText(
@@ -36,6 +44,10 @@ test("the demo opens without login and says it shows sample numbers", async ({
 		page.getByRole("button", { name: "Thoát bản demo" }),
 	).toHaveCount(0);
 	await waitForCharts(page);
+	await expect(
+		page.getByTestId("echarts").locator("svg").first(),
+	).toBeVisible();
+	expectNoConsoleErrors(page);
 	const origin = new URL(page.url()).origin;
 	expect(
 		requests.filter(
@@ -98,8 +110,17 @@ test("every demo page passes axe and fits a 360 px phone", async ({ page }) => {
 	await expect(page.getByTestId("card-yesterday-net_revenue")).toBeVisible();
 	await waitForCharts(page);
 	await checkPage(page);
+	for (const kind of [
+		"day",
+		"week",
+		"month",
+		"year",
+	] as const satisfies readonly ReportKind[]) {
+		await page.goto(reportUrl(kind));
+		await waitForSettledCards(page);
+		await checkPage(page);
+	}
 	for (const hash of [
-		"#/bao-cao/ngay",
 		"#/chu-de/doanh-thu",
 		"#/ke-hoach",
 		"#/cai-dat/cua-hang",

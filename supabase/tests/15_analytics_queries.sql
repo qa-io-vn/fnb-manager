@@ -8,9 +8,11 @@ select
   '22222222-2222-4222-8222-000000000001'::uuid as tea_store_id,
   '22222222-2222-4222-8222-000000000002'::uuid as coffee_store_id,
   array['22222222-2222-4222-8222-000000000001', '22222222-2222-4222-8222-000000000002']::uuid[] as both_stores,
-  (current_date - 7)::date as seed_from,
-  (current_date - 1)::date as seed_to,
-  '2025-06-30'::date as baseline_target;
+  a.seed_anchor,
+  (a.seed_anchor - 7)::date as seed_from,
+  (a.seed_anchor - 1)::date as seed_to,
+  '2025-06-30'::date as baseline_target
+from (select max(i.business_date) + 1 as seed_anchor from public.invoices i where i.tenant_id = '11111111-1111-4111-8111-111111111111') as a;
 
 select app.refresh_analytics(f.demo_tenant_id, f.seed_from - 1, f.seed_to + 1) from fixture f;
 
@@ -249,19 +251,19 @@ select is(
 update public.stores s set business_day_start_minutes = 0 from fixture f where s.id = f.tea_store_id;
 
 create temp table pace as
-select p.* from fixture f cross join lateral public.month_pace(f.both_stores, current_date) p;
+select p.* from fixture f cross join lateral public.month_pace(f.both_stores, f.seed_anchor) p;
 
-select is((select period_start from pace), date_trunc('month', current_date)::date, 'month_pace reports the month start');
+select is((select period_start from pace), (select date_trunc('month', seed_anchor)::date from fixture), 'month_pace reports the month start');
 select is(
   (select month_to_date_net_amount from pace),
   (select coalesce(sum(i.net_amount), 0) from demo_sales i, pace p where i.business_date between p.period_start and p.as_of_date),
   'month_pace month-to-date net equals the facts through the as-of date'
 );
-select is((select as_of_date from pace), (select least(app.analytics_as_of(f.both_stores), (date_trunc('month', current_date) + interval '1 month' - interval '1 day')::date) from fixture f), 'month_pace counts month to date through the last complete local business day');
+select is((select as_of_date from pace), (select least(app.analytics_as_of(f.both_stores), (date_trunc('month', f.seed_anchor) + interval '1 month' - interval '1 day')::date) from fixture f), 'month_pace counts month to date through the last complete local business day');
 select is((select remaining_days from pace), (select ((period_start + interval '1 month' - interval '1 day')::date - as_of_date) from pace), 'month_pace counts the remaining days of the month');
 select is(
   (select target_net_amount from pace),
-  (select sum(t.net_target_amount) from public.targets t, fixture f where t.store_id = any (f.both_stores) and t.period_kind = 'month' and t.period_start = date_trunc('month', current_date)::date),
+  (select sum(t.net_target_amount) from public.targets t, fixture f where t.store_id = any (f.both_stores) and t.period_kind = 'month' and t.period_start = date_trunc('month', f.seed_anchor)::date),
   'month_pace sums the store targets of the month'
 );
 select is(

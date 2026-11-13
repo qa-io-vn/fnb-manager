@@ -1,3 +1,4 @@
+import type { DateRange } from "../repository.js";
 import type {
 	RunFinish,
 	RunStart,
@@ -5,7 +6,7 @@ import type {
 	SyncCheckRow,
 	TableCounts,
 } from "../rows.js";
-import type { MemoryState } from "./tables.js";
+import { byText, inRange, type MemoryState } from "./tables.js";
 
 function sameContent(left: object, right: object, ignored: string[]): boolean {
 	const strip = (row: object) =>
@@ -67,6 +68,48 @@ export function upsertChecks(
 	return { sync_checks: changed };
 }
 
+export function loadChecks(
+	state: MemoryState,
+	storeId: string,
+	range: DateRange,
+): SyncCheckRow[] {
+	return state.tables.checks
+		.filter(
+			(check) =>
+				check.store_id === storeId && inRange(check.business_date, range),
+		)
+		.sort((left, right) => byText(left.business_date, right.business_date))
+		.map(({ id: _id, checked_at: _checkedAt, ...check }) => ({ ...check }));
+}
+
+export interface MemoryRefresh {
+	tenantId: string;
+	range: DateRange;
+	startedAt: string;
+}
+
+export function staleAnalyticsDates(
+	state: MemoryState,
+	refreshes: readonly MemoryRefresh[],
+	storeId: string,
+	range: DateRange,
+): string[] {
+	return state.tables.checks
+		.filter(
+			(check) =>
+				check.store_id === storeId &&
+				inRange(check.business_date, range) &&
+				!refreshes.some(
+					(refresh) =>
+						refresh.tenantId === check.tenant_id &&
+						inRange(check.business_date, refresh.range) &&
+						Date.parse(refresh.startedAt) >= Date.parse(check.checked_at),
+				),
+		)
+		.map((check) => check.business_date)
+		.sort(byText);
+}
+
 export function openRun(state: MemoryState, run: RunStart): string {
 	const id = state.nextId("run");
 	state.tables.runs.push({
@@ -78,6 +121,29 @@ export function openRun(state: MemoryState, run: RunStart): string {
 		error_message: null,
 	});
 	return id;
+}
+
+export function closeAbandonedRuns(
+	state: MemoryState,
+	storeId: string,
+	startedBefore: string,
+	message: string,
+): number {
+	const abandoned = state.tables.runs.filter(
+		(run) =>
+			run.store_id === storeId &&
+			run.kind === "incremental" &&
+			run.status === "running" &&
+			Date.parse(run.started_at) < Date.parse(startedBefore),
+	);
+	for (const run of abandoned) {
+		Object.assign(run, {
+			status: "failed",
+			finished_at: state.timestamp(),
+			error_message: message,
+		});
+	}
+	return abandoned.length;
 }
 
 export function closeRun(

@@ -212,10 +212,29 @@ async function scenario(): Promise<void> {
 		expect(Object.values(fourth.tables).every((count) => count === 0)).toBe(
 			true,
 		);
-		const runs = await sql<{ status: string }[]>`
-			select status::text as status from public.sync_runs where tenant_id = ${tenant.id}
+		const runs = await sql<{ status: string; store_ids: string[] | null }[]>`
+			select status::text as status, store_ids::text[] as store_ids from public.sync_runs
+			where tenant_id = ${tenant.id} and kind <> 'master_data'
 		`;
 		expect(runs.every((run) => run.status === "succeeded")).toBe(true);
+		expect(
+			runs.every(
+				(run) =>
+					JSON.stringify(run.store_ids) ===
+					JSON.stringify(stores.map((store) => store.id)),
+			),
+		).toBe(true);
+		const range = { from: WINDOW.fromDate, to: WINDOW.toDate };
+		expect(
+			await repository.staleAnalyticsDates(stores[0]?.id ?? "", range),
+		).toEqual([]);
+		await sql`
+			update public.sync_checks set checked_at = now() + interval '1 minute'
+			where tenant_id = ${tenant.id} and business_date = ${WINDOW.toDate}::date
+		`;
+		expect(
+			await repository.staleAnalyticsDates(stores[0]?.id ?? "", range),
+		).toEqual([WINDOW.toDate]);
 		const [token] = await sql<{ count: number }[]>`
 			select count(*)::int as count from public.pos_account_tokens where pos_account_id = ${account.id}
 		`;

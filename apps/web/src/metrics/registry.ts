@@ -1,28 +1,73 @@
-import type {
-	MetricDirection,
-	MetricId as RegistryMetricId,
+import {
+	type MetricDirection,
+	metricById,
+	type MetricId as RegistryMetricId,
+	type MetricUnit as RegistryMetricUnit,
 } from "@fnb/metrics";
 import type { MessageKey } from "../i18n";
 
 export type { MetricDirection };
-export type MetricUnit = "money" | "count" | "fraction";
+export type MetricUnit =
+	| "money"
+	| "count"
+	| "decimal"
+	| "fraction"
+	| "percentChange";
 
 export const registryMetricIds = [
 	"net_revenue",
 	"invoices",
 	"avg_ticket",
+	"items_per_ticket",
+	"avg_item_price",
+	"gross_revenue",
+	"cash_share",
+	"voucher_invoice_share",
+	"member_invoice_share",
+	"customer_capture_rate",
+	"discount_rate",
+	"peak_share_20_21",
+	"weekday_share",
 	"same_weekday_baseline",
+	"forecast_weekday_profile",
+	"forecast_seasonal_naive",
+	"forecast_mae",
+	"item_velocity",
+	"size_l_share",
+	"attach_rate_topping",
+	"attach_rate_snack",
+	"cash_variance",
+	"cash_variance_zscore",
 ] as const satisfies readonly RegistryMetricId[];
 
-export const displaySeriesIds = [
-	"hourly_net",
-	"item_net",
-	"cash_to_count",
-] as const;
+export const displaySeries = {
+	hourly_net: { unit: "money", direction: "neutral" },
+	item_net: { unit: "money", direction: "neutral" },
+	cash_to_count: { unit: "money", direction: "neutral" },
+	discount_cost: { unit: "money", direction: "neutral" },
+	flagged_shifts: { unit: "count", direction: "lower" },
+	weekday_net: { unit: "money", direction: "neutral" },
+	category_net_share: { unit: "fraction", direction: "neutral" },
+	daily_net: { unit: "money", direction: "neutral" },
+	item_pareto_count: { unit: "count", direction: "neutral" },
+	new_item_count: { unit: "count", direction: "neutral" },
+	target_progress: { unit: "fraction", direction: "higher" },
+	month_year_net: { unit: "money", direction: "neutral" },
+	seasonality_index: { unit: "decimal", direction: "neutral" },
+	item_lifecycle_count: { unit: "count", direction: "neutral" },
+	since_opening_net: { unit: "money", direction: "higher" },
+} as const satisfies Record<
+	string,
+	{ unit: MetricUnit; direction: MetricDirection }
+>;
 
-export type MetricId =
-	| (typeof registryMetricIds)[number]
-	| (typeof displaySeriesIds)[number];
+export type DisplaySeriesId = keyof typeof displaySeries;
+
+export const displaySeriesIds = Object.keys(
+	displaySeries,
+) as readonly DisplaySeriesId[];
+
+export type MetricId = (typeof registryMetricIds)[number] | DisplaySeriesId;
 
 export interface MetricDefinition {
 	id: MetricId;
@@ -33,6 +78,24 @@ export interface MetricDefinition {
 	grainKey: MessageKey;
 	conventionKey: MessageKey;
 	missingKey?: MessageKey;
+}
+
+const unitOfRegistryUnit: Partial<Record<RegistryMetricUnit, MetricUnit>> = {
+	VND: "money",
+	count: "count",
+	items: "decimal",
+	z: "decimal",
+	fraction: "fraction",
+	"% change": "percentChange",
+	"VND and count": "money",
+};
+
+export function webUnitOf(unit: RegistryMetricUnit): MetricUnit {
+	const mapped = unitOfRegistryUnit[unit];
+	if (mapped === undefined) {
+		throw new Error(`the web has no display unit for registry unit ${unit}`);
+	}
+	return mapped;
 }
 
 function define(
@@ -51,15 +114,27 @@ function define(
 	};
 }
 
-export const metricRegistry: Record<MetricId, MetricDefinition> = {
-	net_revenue: define("net_revenue", "higher", "money"),
-	invoices: define("invoices", "higher", "count"),
-	avg_ticket: define("avg_ticket", "higher", "money"),
-	same_weekday_baseline: define("same_weekday_baseline", "neutral", "money"),
-	hourly_net: define("hourly_net", "neutral", "money"),
-	item_net: define("item_net", "neutral", "money"),
-	cash_to_count: define("cash_to_count", "neutral", "money"),
-};
+function fromRegistry(
+	id: (typeof registryMetricIds)[number],
+): MetricDefinition {
+	const metric = metricById(id);
+	return define(id, metric.direction, webUnitOf(metric.unit));
+}
+
+export const metricRegistry = Object.fromEntries([
+	...registryMetricIds.map((id) => [id, fromRegistry(id)] as const),
+	...displaySeriesIds.map(
+		(id) =>
+			[
+				id,
+				define(id, displaySeries[id].direction, displaySeries[id].unit),
+			] as const,
+	),
+]) as Record<MetricId, MetricDefinition>;
+
+export function isWebMetricId(id: string): id is MetricId {
+	return Object.hasOwn(metricRegistry, id);
+}
 
 export type ChipTone = "positive" | "negative" | "neutral";
 

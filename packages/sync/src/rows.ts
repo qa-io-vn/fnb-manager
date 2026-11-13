@@ -19,8 +19,8 @@ export type DbSyncKind =
 	| "backfill"
 	| "master_data"
 	| "reconciliation";
-export type RunStatus = "running" | "succeeded" | "failed";
-export type AccountStatus = "active" | "paused" | "error";
+export type RunStatus = "running" | "succeeded" | "partial" | "failed";
+export type AccountStatus = "active" | "paused" | "error" | "auth_failed";
 
 export type TableCounts = Record<string, number>;
 
@@ -410,6 +410,8 @@ export interface TokenRecord {
 export interface RunStart {
 	tenant_id: string;
 	pos_account_id: string;
+	store_id?: string | null;
+	store_ids?: string[] | null;
 	kind: DbSyncKind;
 	range_start: string | null;
 	range_end: string | null;
@@ -422,6 +424,11 @@ export interface RunFinish {
 	finished_at: string;
 	rows_upserted: JsonObject;
 	error_message: string | null;
+}
+
+export interface StoreContext {
+	account: AccountRecord;
+	store: StoreRecord;
 }
 
 export type RefreshResult =

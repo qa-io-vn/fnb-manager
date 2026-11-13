@@ -15,7 +15,7 @@ export const customerMetrics = [
 		direction: "higher",
 		source:
 			"`agg_daily_sales.identified_invoices` ÷ `invoices`, `period_summary().identified_share`",
-		reports: ["data_quality", "customers"],
+		reports: ["data_quality", "customers", "day"],
 		status: "available now",
 	},
 	{

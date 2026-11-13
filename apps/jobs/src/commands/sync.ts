@@ -1,14 +1,20 @@
 import {
+	type AccountEntry,
+	type ConnectorSession,
+	clearAuthFailure,
+	connectAccount,
+	readOnlyTokenStore,
+	repositoryTokenStore,
+} from "@fnb/runner";
+import {
 	isSyncWindowKind,
 	MasterDataRunError,
-	type StoreRecord,
 	SYNC_WINDOW_KINDS,
 	SyncEngine,
 	type SyncWindowKind,
 	WindowRunError,
 	type WindowSummary,
 } from "@fnb/sync";
-import type { AccountEntry } from "../config/accounts.js";
 import { accountEntries, accountEntry } from "../config/config.js";
 import {
 	type CommandContext,
@@ -20,99 +26,22 @@ import {
 	triggeredBy,
 	UsageError,
 } from "../context.js";
-import {
-	connectAccount,
-	readOnlyTokenStore,
-	repositoryTokenStore,
-} from "../services.js";
 import { resolveAccount } from "./accounts.js";
 import { windowOption } from "./dates.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
+import {
+	checkYesterdayFreshness,
+	reportAuthFailure,
+	reportRunFailure,
+} from "./sync-alerts.js";
+import { syncIncrementalCommand } from "./sync-incremental.js";
 import {
 	masterSummaryText,
 	printFlags,
 	printWindowSummary,
 	windowSummaryMarkdown,
 } from "./sync-report.js";
-
-function selectStores(
-	stores: readonly StoreRecord[],
-	wanted: readonly string[],
-): StoreRecord[] {
-	if (wanted.length === 0) {
-		return stores.filter((store) => store.active);
-	}
-	const known = new Set(stores.map((store) => store.external_id));
-	const unknown = wanted.filter((externalId) => !known.has(externalId));
-	if (unknown.length > 0) {
-		throw new UsageError(
-			`${unknown.length} --store value(s) do not belong to this account`,
-		);
-	}
-	return stores.filter((store) => wanted.includes(store.external_id));
-}
-
-interface SelectedEntry {
-	entry: AccountEntry;
-	index: number;
-}
-
-function accountNumberOption(values: OptionValues): number | undefined {
-	const raw = stringOption(values, "account-number");
-	if (raw === undefined) {
-		return undefined;
-	}
-	const number = Number(raw);
-	if (!/^[1-9][0-9]*$/.test(raw) || !Number.isSafeInteger(number)) {
-		throw new UsageError("--account-number must be a whole number from 1");
-	}
-	return number;
-}
-
-function selectedEntries(
-	context: CommandContext,
-	values: OptionValues,
-): SelectedEntry[] {
-	const key = stringOption(values, "account");
-	const number = accountNumberOption(values);
-	const all = flag(values, "all-accounts");
-	const chosen = [key !== undefined, number !== undefined, all].filter(
-		Boolean,
-	).length;
-	if (chosen > 1) {
-		throw new UsageError(
-			"pass only one of --account, --account-number and --all-accounts",
-		);
-	}
-	if (chosen === 0) {
-		throw new UsageError(
-			"--account is required (or --account-number or --all-accounts)",
-		);
-	}
-	const entries = accountEntries(context.env);
-	if (all) {
-		if (entries.length === 0) {
-			throw new UsageError("POS_ACCOUNTS_JSON lists no accounts");
-		}
-		return entries.map((entry, index) => ({ entry, index }));
-	}
-	if (number !== undefined) {
-		const entry = entries[number - 1];
-		if (!entry) {
-			throw new UsageError(
-				`--account-number ${number} is beyond the ${entries.length} POS_ACCOUNTS_JSON entries`,
-			);
-		}
-		return [{ entry, index: number - 1 }];
-	}
-	const entry = accountEntry(context.env, key ?? "");
-	return [
-		{
-			entry,
-			index: entries.findIndex((candidate) => candidate.key === entry.key),
-		},
-	];
-}
+import { selectedEntries, selectStores } from "./sync-selection.js";
 
 interface WindowRequest {
 	window: { fromDate: string; toDate: string };
@@ -164,11 +93,23 @@ async function syncOneAccount(
 		output.line(`${label}: no active stores, nothing to sync`);
 		return true;
 	}
-	const session = await connectAccount(entry, context.env, {
-		tokenStore: request.dryRun
-			? readOnlyTokenStore(repository, account.id)
-			: repositoryTokenStore(repository, account.id),
-	});
+	const configured = accountEntries(context.env);
+	let session: ConnectorSession;
+	try {
+		session = await connectAccount(entry, context.env, {
+			tokenStore: request.dryRun
+				? readOnlyTokenStore(repository, account.id)
+				: repositoryTokenStore(repository, account.id),
+		});
+	} catch (error) {
+		if (!request.dryRun) {
+			await reportAuthFailure(context, configured, account, error);
+		}
+		throw error;
+	}
+	if (!request.dryRun) {
+		await clearAuthFailure(repository, account);
+	}
 	const engine = new SyncEngine({
 		repository,
 		connector: session.connector,
@@ -194,6 +135,10 @@ async function syncOneAccount(
 	}
 	printWindowSummary(context, label, summary, session.httpRequests());
 	output.summary(windowSummaryMarkdown(index, summary));
+	await reportRunFailure(context, configured, account, summary);
+	if (request.kind === "nightly" && !request.dryRun) {
+		await checkYesterdayFreshness(context, configured, account, stores);
+	}
 	return summary.status === "succeeded";
 }
 
@@ -239,9 +184,21 @@ async function syncMaster(
 		entry.key,
 		stringOption(values, "tenant"),
 	);
-	const session = await connectAccount(entry, context.env, {
-		tokenStore: repositoryTokenStore(repository, account.id),
-	});
+	let session: ConnectorSession;
+	try {
+		session = await connectAccount(entry, context.env, {
+			tokenStore: repositoryTokenStore(repository, account.id),
+		});
+	} catch (error) {
+		await reportAuthFailure(
+			context,
+			accountEntries(context.env),
+			account,
+			error,
+		);
+		throw error;
+	}
+	await clearAuthFailure(repository, account);
 	const engine = new SyncEngine({
 		repository,
 		connector: session.connector,
@@ -263,6 +220,7 @@ async function syncMaster(
 }
 
 export const syncCommands: CommandSpec[] = [
+	syncIncrementalCommand,
 	{
 		path: ["sync", "window"],
 		summary: "Pull a business-date window of sales into the database",

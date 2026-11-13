@@ -6,15 +6,11 @@ import {
 	useEffect,
 	useMemo,
 } from "react";
-import enMessages from "./en.json";
-import viMessages from "./vi.json";
+import { en, type MessageKey, vi } from "./catalog";
 
+export type { MessageKey };
 export type Language = "vi" | "en";
-export type MessageKey = keyof typeof viMessages;
 export type MessageParams = Record<string, string | number>;
-
-const en: Record<MessageKey, string> = enMessages;
-const vi: Record<MessageKey, string> = viMessages;
 
 export const messages: Record<Language, Record<MessageKey, string>> = {
 	vi,
@@ -42,6 +38,10 @@ export function translate(
 	params?: MessageParams,
 ): string {
 	return interpolate(messages[language][key], params);
+}
+
+export function isMessageKey(key: string): key is MessageKey {
+	return Object.hasOwn(messages.vi, key);
 }
 
 export type Translate = (key: MessageKey, params?: MessageParams) => string;

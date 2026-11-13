@@ -79,6 +79,11 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           POS_ACCOUNTS_JSON: ${{ secrets.POS_ACCOUNTS_JSON }}
           IPOS_APP_KEY: ${{ secrets.IPOS_APP_KEY }}
+          NOTIFY_ZALO_BOT_TOKEN: ${{ secrets.NOTIFY_ZALO_BOT_TOKEN }}
+          NOTIFY_EMAIL_API_KEY: ${{ secrets.NOTIFY_EMAIL_API_KEY }}
+          NOTIFY_EMAIL_FROM: ${{ secrets.NOTIFY_EMAIL_FROM }}
+          NOTIFY_TELEGRAM_BOT_TOKEN: ${{ secrets.NOTIFY_TELEGRAM_BOT_TOKEN }}
+          NOTIFY_WEBHOOK_SECRET: ${{ secrets.NOTIFY_WEBHOOK_SECRET }}
         run: node apps/jobs/bin/fnb.mjs mask-credentials
       - name: Choose the window
         id: window
@@ -137,6 +142,22 @@ jobs:
             args+=(--dry-run)
           fi
           node apps/jobs/bin/fnb.mjs "${args[@]}"
+      - name: Build due digests
+        if: always() && steps.config.outputs.configured == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node apps/jobs/bin/fnb.mjs digest --due
+      - name: Send due messages
+        if: always() && steps.config.outputs.configured == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          NOTIFY_ZALO_BOT_TOKEN: ${{ secrets.NOTIFY_ZALO_BOT_TOKEN }}
+          NOTIFY_EMAIL_API_KEY: ${{ secrets.NOTIFY_EMAIL_API_KEY }}
+          NOTIFY_EMAIL_FROM: ${{ secrets.NOTIFY_EMAIL_FROM }}
+          NOTIFY_EMAIL_FROM_NAME: ${{ secrets.NOTIFY_EMAIL_FROM_NAME }}
+          NOTIFY_TELEGRAM_BOT_TOKEN: ${{ secrets.NOTIFY_TELEGRAM_BOT_TOKEN }}
+          NOTIFY_WEBHOOK_SECRET: ${{ secrets.NOTIFY_WEBHOOK_SECRET }}
+        run: node apps/jobs/bin/fnb.mjs notify tick
       - name: Status
         if: always() && steps.config.outputs.configured == 'true'
         env:

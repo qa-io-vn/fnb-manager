@@ -143,3 +143,56 @@ export async function storeStatuses(
 		checked_days: counts.get(store.store_id)?.checked_days ?? 0,
 	}));
 }
+
+export interface OpenSyncAlert {
+	store_id: string;
+	kind: "sync_stale" | "dispatch_failed";
+	minutes: number | null;
+	occurrences: number;
+	http_status: number | null;
+	opened_at: Date;
+}
+
+export async function openSyncAlerts(
+	sql: Sql,
+	storeIds?: readonly string[],
+): Promise<OpenSyncAlert[] | null> {
+	const [probe] = await sql<{ present: boolean }[]>`
+		select to_regclass('app.sync_alerts') is not null as present
+	`;
+	if (!probe?.present) {
+		return null;
+	}
+	return sql<OpenSyncAlert[]>`
+		select a.store_id::text as store_id, a.kind, a.minutes, a.occurrences, a.http_status, a.opened_at
+		from app.sync_alerts a
+		where a.resolved_at is null
+			and (${storeIds === undefined}::boolean or a.store_id = any(${[...(storeIds ?? [])]}::uuid[]))
+		order by a.store_id, a.kind
+	`;
+}
+
+export interface OpeningHoursCoverage {
+	active: number;
+	never_entered: number;
+	without_span: number;
+}
+
+export async function openingHoursCoverage(
+	sql: Sql,
+): Promise<OpeningHoursCoverage | null> {
+	const [probe] = await sql<{ present: boolean }[]>`
+		select to_regprocedure('app.opening_hours_known(jsonb)') is not null as present
+	`;
+	if (!probe?.present) {
+		return null;
+	}
+	const [row] = await sql<OpeningHoursCoverage[]>`
+		select count(*)::int as active,
+			(count(*) filter (where s.opening_hours is null))::int as never_entered,
+			(count(*) filter (where s.opening_hours is not null and not app.opening_hours_known(s.opening_hours)))::int as without_span
+		from public.stores s
+		where s.active
+	`;
+	return row ?? { active: 0, never_entered: 0, without_span: 0 };
+}

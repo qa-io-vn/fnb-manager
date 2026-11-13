@@ -1,4 +1,6 @@
 import { parseArgs } from "node:util";
+import { CompositeNotifier, OutboxNotifier } from "@fnb/notify/outbox";
+import { AccountConfigError, ConsoleNotifier } from "@fnb/runner";
 import { createRedactor } from "@fnb/sync";
 import { commandsUnder, findCommand } from "./commands/index.js";
 import { isCi } from "./config/config.js";
@@ -84,6 +86,10 @@ export async function runCli(
 		output,
 		services,
 		redact,
+		notifier: new CompositeNotifier([
+			new ConsoleNotifier((line) => output.error(line), redact),
+			new OutboxNotifier(() => services.db().sql, "cli"),
+		]),
 		now: options.now ?? (() => new Date()),
 	};
 	try {
@@ -111,7 +117,7 @@ export async function runCli(
 			output.error(`${error.message}\n\n${commandHelp(command)}`);
 			return EXIT_USAGE;
 		}
-		if (error instanceof ConfigError) {
+		if (error instanceof ConfigError || error instanceof AccountConfigError) {
 			output.error(`configuration: ${error.message}`);
 			return 1;
 		}

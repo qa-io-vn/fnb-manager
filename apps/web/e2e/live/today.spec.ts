@@ -144,7 +144,6 @@ test("placeholder pages say what is coming and in which phase", async ({
 }) => {
 	await signIn(page);
 	const pages = [
-		{ hash: "#/bao-cao/ngay", title: "Báo cáo theo kỳ", phase: "9" },
 		{ hash: "#/chu-de/doanh-thu", title: "Báo cáo chủ đề", phase: "10a, 10b" },
 		{ hash: "#/ke-hoach", title: "Kế hoạch", phase: "11b" },
 		{ hash: "#/cai-dat/cua-hang", title: "Cài đặt", phase: "10b, 12" },

@@ -1,4 +1,9 @@
-import { accountStatuses, storeStatuses } from "../admin/status-queries.js";
+import {
+	accountStatuses,
+	type OpenSyncAlert,
+	openSyncAlerts,
+	storeStatuses,
+} from "../admin/status-queries.js";
 import { STATUS_WINDOW_DAYS, statusWindow } from "../admin/status-window.js";
 import { accountEntries } from "../config/config.js";
 import {
@@ -29,6 +34,19 @@ function storesInAccountOrder<T extends { pos_account_id: string }>(
 	);
 }
 
+export function alertText(alerts: readonly OpenSyncAlert[]): string {
+	if (alerts.length === 0) {
+		return "–";
+	}
+	return alerts
+		.map((alert) =>
+			alert.kind === "sync_stale"
+				? `stale ${alert.minutes ?? "?"} min`
+				: `dispatch failed x${alert.occurrences}${alert.http_status === null ? "" : ` (HTTP ${alert.http_status})`}`,
+		)
+		.join(", ");
+}
+
 async function status(
 	context: CommandContext,
 	values: OptionValues,
@@ -56,6 +74,12 @@ async function status(
 		accounts.map(({ account }) => account.id),
 		window,
 	);
+	const alerts = await openSyncAlerts(
+		sql,
+		stores.map((store) => store.store_id),
+	);
+	const alertsOf = (storeId: string) =>
+		(alerts ?? []).filter((alert) => alert.store_id === storeId);
 	output.table(
 		[
 			"account",
@@ -88,6 +112,7 @@ async function status(
 			"latest sales day",
 			`unmatched ${window.days}d`,
 			`checked ${window.days}d`,
+			"open alert",
 		],
 		storesInAccountOrder(stores, accounts).map((store, index) => [
 			labels.get(store.pos_account_id) ?? "?",
@@ -97,6 +122,7 @@ async function status(
 			store.latest_invoice_day,
 			store.unmatched_days,
 			store.checked_days,
+			alerts === null ? "n/a" : alertText(alertsOf(store.store_id)),
 		]),
 	);
 	return 0;
@@ -111,6 +137,7 @@ export const statusCommand: CommandSpec = {
 	details: [
 		"Needs DATABASE_URL (or SUPABASE_DB_URL).",
 		"A run is flagged when it raised warning-level data-quality flags or left a store-day unmatched.",
+		"The open alert column lists what the incremental scheduler raised for the store and has not cleared: stale <n> min while the store is over the 90-minute dead-man threshold, dispatch failed x<n> while its scheduled calls expire unclaimed (with the last HTTP answer when there was one).",
 		`Every ${STATUS_WINDOW_DAYS}d column covers the same window, the ${STATUS_WINDOW_DAYS} days ending now: flagged and failed count the runs started in it; unmatched and checked count the sync_checks rows of the store-days that closed in it, the ${STATUS_WINDOW_DAYS} business dates ending yesterday in each store's timezone and day start (the dates the nightly run covers). Today is still open and never counted, so a store whose every day was reconciled shows ${STATUS_WINDOW_DAYS}; a day without a row was never reconciled (the connector had no control totals or the day was not synced).`,
 		"In CI an account listed in POS_ACCOUNTS_JSON is called by its position there (account 1 is the first entry); an onboarded account missing from it is called other 1, other 2, … in tenant and key order, and its stores carry that label.",
 	],

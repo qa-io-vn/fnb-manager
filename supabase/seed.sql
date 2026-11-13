@@ -145,7 +145,7 @@ select
   current_date - 400,
   s.e_invoice_status,
   s.tran_no_reset_period,
-  '{}'::jsonb,
+  '{"incremental_sync": false}'::jsonb,
   jsonb_build_object('store_uid', s.store_external_id, 'store_name', s.name)
 from seed_stores s
 cross join seed_constants c;
@@ -381,6 +381,51 @@ select
 from public.invoices inv
 join seed_constants c on c.tenant_id = inv.tenant_id;
 
+insert into public.sale_payloads (tenant_id, store_id, business_date, payload)
+select
+  inv.tenant_id, inv.store_id, inv.business_date,
+  string_agg(
+    jsonb_build_object(
+      'external_id', inv.external_id,
+      'invoice', inv.raw,
+      'lines', coalesce((
+        select jsonb_object_agg(
+          l.external_id,
+          l.raw - coalesce((select array_agg(e.key) from jsonb_each(l.raw) as e where inv.raw -> e.key = e.value), '{}'::text[])
+        )
+        from public.invoice_lines l
+        where l.invoice_id = inv.id
+      ), '{}'::jsonb),
+      'payments', coalesce((
+        select jsonb_object_agg(
+          pay.sequence_no::text,
+          pay.raw - coalesce((select array_agg(e.key) from jsonb_each(pay.raw) as e where inv.raw -> e.key = e.value), '{}'::text[])
+        )
+        from public.invoice_payments pay
+        where pay.invoice_id = inv.id
+      ), '{}'::jsonb)
+    )::text,
+    E'\n' order by inv.external_id
+  )
+from public.invoices inv
+join seed_constants c on c.tenant_id = inv.tenant_id
+group by inv.tenant_id, inv.store_id, inv.business_date;
+
+update public.invoice_lines l
+set raw = null
+from seed_constants c
+where l.tenant_id = c.tenant_id;
+
+update public.invoice_payments pay
+set raw = null
+from seed_constants c
+where pay.tenant_id = c.tenant_id;
+
+update public.invoices inv
+set raw = null
+from seed_constants c
+where inv.tenant_id = c.tenant_id;
+
 create temp table seed_invoice_event_plan as
 select *
 from (
@@ -523,41 +568,6 @@ select
 from seed_stores s
 cross join seed_constants c
 cross join seed_item_types it;
-
-create temp table seed_lunar_new_years as
-select *
-from (
-  values
-    (2024, '2024-02-10'::date, '2024-04-18'::date, '2024-09-03'::date, true),
-    (2025, '2025-01-29'::date, '2025-04-07'::date, '2025-09-01'::date, false),
-    (2026, '2026-02-17'::date, '2026-04-26'::date, '2026-09-01'::date, false),
-    (2027, '2027-02-06'::date, '2027-04-16'::date, '2027-09-03'::date, false),
-    (2028, '2028-01-26'::date, '2028-04-04'::date, '2028-09-01'::date, false)
-) as y (year_no, lunar_new_year_date, hung_kings_date, national_day_adjacent_date, last_lunar_month_has_thirty_days);
-
-insert into public.holidays (tenant_id, country_code, holiday_date, name, kind)
-select null::uuid, 'VN', make_date(y.year_no, 1, 1), 'New Year''s Day', 'public'::public.holiday_kind from seed_lunar_new_years y
-union all
-select null::uuid, 'VN', make_date(y.year_no, 4, 30), 'Reunification Day', 'public'::public.holiday_kind from seed_lunar_new_years y
-union all
-select null::uuid, 'VN', make_date(y.year_no, 5, 1), 'International Labour Day', 'public'::public.holiday_kind from seed_lunar_new_years y
-union all
-select null::uuid, 'VN', make_date(y.year_no, 9, 2), 'National Day', 'public'::public.holiday_kind from seed_lunar_new_years y
-union all
-select null::uuid, 'VN', y.national_day_adjacent_date, 'National Day adjacent holiday', 'public'::public.holiday_kind from seed_lunar_new_years y
-union all
-select null::uuid, 'VN', y.hung_kings_date, 'Hung Kings Commemoration Day', 'public'::public.holiday_kind from seed_lunar_new_years y
-union all
-select
-  null::uuid, 'VN', y.lunar_new_year_date + offset_days,
-  case offset_days
-    when -2 then 'Tet, 29th of the last lunar month'
-    when -1 then 'Tet, last day of the lunar year'
-    else 'Tet, day ' || (offset_days + 1)
-  end,
-  'tet'::public.holiday_kind
-from seed_lunar_new_years y
-cross join lateral generate_series(case when y.last_lunar_month_has_thirty_days then -2 else -1 end, 4) as offset_days;
 
 create temp table seed_consent_plan as
 select *

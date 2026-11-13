@@ -85,6 +85,7 @@ function StoreOption({
 				checked={checked}
 				onChange={onToggle}
 				className="size-4 accent-accent"
+				data-store-id={store.id}
 			/>
 			<span className="truncate">{store.name}</span>
 		</label>
@@ -138,6 +139,7 @@ export function StoreSelect({ stores, selected, onChange }: StoreSelectProps) {
 							checked={allSelected}
 							onChange={() => onChange(null)}
 							className="size-4 accent-accent"
+							data-store-id="all"
 						/>
 						<span className="font-semibold">{t("shell.stores.all")}</span>
 					</label>

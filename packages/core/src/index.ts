@@ -1,4 +1,13 @@
 export {
+	type HolidayEntry,
+	type HolidayKind,
+	isExcludedDay,
+	isHolidayDate,
+	isTetWindowDate,
+	TET_WINDOW_MAX_SPAN_DAYS,
+	VIETNAM_HOLIDAYS,
+} from "./calendar/vietnam-holidays.js";
+export {
 	type AdjustmentIdentity,
 	adjustmentKey,
 } from "./rules/adjustment.js";
@@ -9,6 +18,7 @@ export {
 	businessDayStart,
 	compareIsoDates,
 	formatIsoDate,
+	formattedWallClock,
 	instantOnBusinessDate,
 	isoDatesBetween,
 	MILLISECONDS_PER_DAY,

@@ -1,4 +1,6 @@
 import { storeLockKey, storeWindowLockKey } from "../lock-key.js";
+import type { StoreLockOptions } from "../repository.js";
+import { lockDeadline, StoreLockBusyError } from "../store-lock.js";
 import type { MemoryState } from "./tables.js";
 
 export class MemoryLocks {
@@ -29,7 +31,11 @@ export class MemoryLocks {
 		}
 	}
 
-	async withWindowLock<T>(storeId: string, work: () => Promise<T>): Promise<T> {
+	async withWindowLock<T>(
+		storeId: string,
+		work: () => Promise<T>,
+		options: StoreLockOptions = {},
+	): Promise<T> {
 		const key = storeWindowLockKey(storeId);
 		const previous = this.windowQueues.get(key) ?? Promise.resolve();
 		let release = (): void => undefined;
@@ -38,7 +44,15 @@ export class MemoryLocks {
 		});
 		const tail = previous.then(() => held);
 		this.windowQueues.set(key, tail);
-		await previous;
+		if (options.waitMs === undefined) {
+			await previous;
+		} else if (!(await acquiredWithin(previous, options.waitMs))) {
+			release();
+			if (this.windowQueues.get(key) === tail) {
+				this.windowQueues.delete(key);
+			}
+			throw new StoreLockBusyError(options.waitMs);
+		}
 		this.windowLockLog.push(key);
 		try {
 			return await work();
@@ -53,4 +67,18 @@ export class MemoryLocks {
 	get windowLocksHeld(): number {
 		return this.windowQueues.size;
 	}
+}
+
+function acquiredWithin(
+	previous: Promise<void>,
+	waitMs: number,
+): Promise<boolean> {
+	lockDeadline(waitMs, 0);
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timeout = new Promise<boolean>((resolve) => {
+		timer = setTimeout(() => resolve(false), waitMs);
+	});
+	return Promise.race([previous.then(() => true), timeout]).finally(() =>
+		clearTimeout(timer),
+	);
 }

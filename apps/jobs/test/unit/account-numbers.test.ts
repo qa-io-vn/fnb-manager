@@ -1,9 +1,9 @@
+import type { AccountEntry } from "@fnb/runner";
 import { describe, expect, it } from "vitest";
 import {
 	accountLabel,
 	numberAccounts,
 } from "../../src/commands/account-numbers.js";
-import type { AccountEntry } from "../../src/config/accounts.js";
 import { Output } from "../../src/output.js";
 import { capture } from "../support/capture.js";
 

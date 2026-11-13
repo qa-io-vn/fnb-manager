@@ -52,6 +52,14 @@ function malformedToken(reason: string): IposAuthError {
 	});
 }
 
+export function decodeBase64Url(segment: string): string {
+	const base64 = segment.replaceAll("-", "+").replaceAll("_", "/");
+	const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+	const binary = atob(`${base64}${padding}`);
+	const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+	return new TextDecoder("utf-8").decode(bytes);
+}
+
 export function decodeJwtPayload(token: string): JwtClaims {
 	const segments = token.split(".");
 	const payloadSegment = segments[1];
@@ -60,9 +68,7 @@ export function decodeJwtPayload(token: string): JwtClaims {
 	}
 	let payload: unknown;
 	try {
-		payload = JSON.parse(
-			Buffer.from(payloadSegment, "base64url").toString("utf8"),
-		);
+		payload = JSON.parse(decodeBase64Url(payloadSegment));
 	} catch {
 		throw malformedToken("login returned a JWT whose payload is not JSON");
 	}

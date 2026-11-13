@@ -42,6 +42,7 @@ export type FlagSink = (flag: DataQualityFlag) => void;
 
 export interface FetchContext {
 	onFlag?: FlagSink;
+	signal?: AbortSignal;
 }
 
 export interface PosConnector {

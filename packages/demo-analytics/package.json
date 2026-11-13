@@ -1,0 +1,39 @@
+{
+	"name": "@fnb/demo-analytics",
+	"version": "0.1.0",
+	"description": "In-browser port of the report SQL functions over generated demo days, held to the SQL by a parity suite",
+	"license": "MIT",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"import": "./src/index.ts"
+		}
+	},
+	"files": [
+		"src"
+	],
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+		"test": "vitest run",
+		"test:parity:postgres": "PARITY_DATABASE=postgres vitest run test/parity"
+	},
+	"dependencies": {
+		"@fnb/connector-mock": "workspace:^",
+		"@fnb/core": "workspace:^",
+		"@fnb/reports": "workspace:^",
+		"@fnb/sync": "workspace:^",
+		"zod": "^4.6.7"
+	},
+	"devDependencies": {
+		"@electric-sql/pglite": "0.3.16",
+		"@fnb/metrics": "workspace:^",
+		"@types/node": "^25.0.0",
+		"postgres": "^4.1.0",
+		"vitest": "^5.1.0"
+	}
+}

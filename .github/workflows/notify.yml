@@ -1,0 +1,64 @@
+name: Notify
+
+on:
+  schedule:
+    - cron: "7 6,7,8 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
+  workflow_dispatch:
+
+concurrency:
+  group: notify
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  tick:
+    name: Build due digests and send due messages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check configuration
+        id: config
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Notifications not configured yet (SUPABASE_DB_URL missing); nothing to send." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.config.outputs.configured == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.config.outputs.configured == 'true'
+      - uses: actions/setup-node@v5
+        if: steps.config.outputs.configured == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - if: steps.config.outputs.configured == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Mask credential fields
+        if: steps.config.outputs.configured == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          NOTIFY_ZALO_BOT_TOKEN: ${{ secrets.NOTIFY_ZALO_BOT_TOKEN }}
+          NOTIFY_EMAIL_API_KEY: ${{ secrets.NOTIFY_EMAIL_API_KEY }}
+          NOTIFY_EMAIL_FROM: ${{ secrets.NOTIFY_EMAIL_FROM }}
+          NOTIFY_TELEGRAM_BOT_TOKEN: ${{ secrets.NOTIFY_TELEGRAM_BOT_TOKEN }}
+          NOTIFY_WEBHOOK_SECRET: ${{ secrets.NOTIFY_WEBHOOK_SECRET }}
+        run: node apps/jobs/bin/fnb.mjs mask-credentials
+      - name: Send what is due
+        if: steps.config.outputs.configured == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          NOTIFY_ZALO_BOT_TOKEN: ${{ secrets.NOTIFY_ZALO_BOT_TOKEN }}
+          NOTIFY_EMAIL_API_KEY: ${{ secrets.NOTIFY_EMAIL_API_KEY }}
+          NOTIFY_EMAIL_FROM: ${{ secrets.NOTIFY_EMAIL_FROM }}
+          NOTIFY_EMAIL_FROM_NAME: ${{ secrets.NOTIFY_EMAIL_FROM_NAME }}
+          NOTIFY_TELEGRAM_BOT_TOKEN: ${{ secrets.NOTIFY_TELEGRAM_BOT_TOKEN }}
+          NOTIFY_WEBHOOK_SECRET: ${{ secrets.NOTIFY_WEBHOOK_SECRET }}
+        run: node apps/jobs/bin/fnb.mjs notify tick --skip-if-scheduler-healthy --budget-seconds 300

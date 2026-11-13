@@ -1,3 +1,4 @@
+import type { Notifier } from "@fnb/runner";
 import type { Redactor } from "@fnb/sync";
 import type { Environment } from "./config/env-file.js";
 import type { Output } from "./output.js";
@@ -9,6 +10,7 @@ export interface CommandContext {
 	output: Output;
 	services: Services;
 	redact: Redactor;
+	notifier: Notifier;
 	now: () => Date;
 }
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	createIposClient,
 	createMemoryTokenStore,
+	decodeBase64Url,
 	decodeJwtPayload,
 	IposAuthError,
 	IposError,
@@ -67,6 +68,34 @@ describe("JWT handling", () => {
 
 	it("rejects a token that is not a JWT", () => {
 		expect(() => decodeJwtPayload("not-a-jwt")).toThrow(IposAuthError);
+	});
+
+	it("decodes unpadded base64url segments with multi-byte characters as the Node encoder writes them", () => {
+		const samples = [
+			"",
+			"a",
+			"ab",
+			"abc",
+			'{"name":"Cửa hàng thử ☕"}',
+			"ÿþ?>~",
+		];
+		for (const sample of samples) {
+			const segment = Buffer.from(sample, "utf8").toString("base64url");
+			expect(segment).not.toContain("=");
+			expect(decodeBase64Url(segment)).toBe(sample);
+		}
+		const claims = decodeJwtPayload(makeJwt({ email: "quản-lý@example.com" }));
+		expect(claims.email).toBe("quản-lý@example.com");
+	});
+
+	it("rejects a JWT whose payload segment is not base64url JSON", () => {
+		expect(() => decodeJwtPayload("header.%%%.signature")).toThrow(
+			IposAuthError,
+		);
+		const notJson = Buffer.from("not json", "utf8").toString("base64url");
+		expect(() => decodeJwtPayload(`header.${notJson}.signature`)).toThrow(
+			IposAuthError,
+		);
 	});
 
 	it("treats tokens within 12 hours of expiry as stale", () => {

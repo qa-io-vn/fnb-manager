@@ -300,3 +300,114 @@ describe("abort signals", () => {
 		expect(fake.requestsTo(STORES_PATH)).toHaveLength(1);
 	});
 });
+
+describe("request timeout", () => {
+	function hangingStores(answerAfterMs: number | null) {
+		let storeRequests = 0;
+		const answer = jsonResponse(envelope([makeStore(1)]));
+		const fetch = async (
+			input: string | URL | Request,
+			init?: RequestInit,
+		): Promise<Response> => {
+			const url = new URL(
+				typeof input === "string"
+					? input
+					: input instanceof URL
+						? input.href
+						: input.url,
+			);
+			if (url.pathname === LOGIN_PATH) {
+				return new Response(
+					JSON.stringify(envelope(makeLoginPayload(makeJwt()))),
+					{ status: 200 },
+				);
+			}
+			storeRequests += 1;
+			const signal = init?.signal;
+			return new Promise<Response>((resolve, reject) => {
+				signal?.addEventListener("abort", () => reject(signal.reason), {
+					once: true,
+				});
+				if (answerAfterMs !== null && storeRequests > 1) {
+					setTimeout(
+						() => resolve(new Response(JSON.stringify(answer.json))),
+						answerAfterMs,
+					);
+				}
+			});
+		};
+		return { fetch, storeRequests: () => storeRequests };
+	}
+
+	it("gives up an attempt that gets no answer within the timeout and retries it", async () => {
+		const fake = hangingStores(1);
+		const client = createIposClient({
+			email: TEST_EMAIL,
+			password: TEST_PASSWORD,
+			appAccessToken: TEST_APP_ACCESS_TOKEN,
+			fetch: fake.fetch,
+			retry: { attempts: 3, baseDelayMs: 0 },
+			requestTimeoutMs: 20,
+		});
+
+		const stores = await client.listStores(scope);
+
+		expect(stores).toHaveLength(1);
+		expect(fake.storeRequests()).toBe(2);
+	});
+
+	it("fails as unreachable when every attempt times out", async () => {
+		const fake = hangingStores(null);
+		const client = createIposClient({
+			email: TEST_EMAIL,
+			password: TEST_PASSWORD,
+			appAccessToken: TEST_APP_ACCESS_TOKEN,
+			fetch: fake.fetch,
+			retry: { attempts: 2, baseDelayMs: 0 },
+			requestTimeoutMs: 20,
+		});
+
+		const failure = await client
+			.listStores(scope)
+			.catch((error: unknown) => error);
+
+		expect(failure).toBeInstanceOf(IposNetworkError);
+		expect((failure as IposNetworkError).message).toContain(
+			"no answer within 20 ms",
+		);
+		expect(fake.storeRequests()).toBe(2);
+	});
+
+	it("stops at once when the caller's own deadline aborts the attempt", async () => {
+		const fake = hangingStores(null);
+		const client = createIposClient({
+			email: TEST_EMAIL,
+			password: TEST_PASSWORD,
+			appAccessToken: TEST_APP_ACCESS_TOKEN,
+			fetch: fake.fetch,
+			retry: { attempts: 3, baseDelayMs: 0 },
+			requestTimeoutMs: 60_000,
+		});
+		const deadline = new AbortController();
+		const reason = new Error("the run reached its budget");
+		setTimeout(() => deadline.abort(reason), 10);
+
+		const failure = await client
+			.listStores({ ...scope, signal: deadline.signal })
+			.catch((error: unknown) => error);
+
+		expect(failure).toBe(reason);
+		expect(fake.storeRequests()).toBe(1);
+	});
+
+	it("refuses a timeout that is not a positive number", () => {
+		expect(() =>
+			createIposClient({
+				email: TEST_EMAIL,
+				password: TEST_PASSWORD,
+				appAccessToken: TEST_APP_ACCESS_TOKEN,
+				requestTimeoutMs: 0,
+			}),
+		).toThrow(RangeError);
+	});
+});

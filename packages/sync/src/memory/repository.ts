@@ -1,11 +1,13 @@
 import type { PaymentKind } from "@fnb/core";
 import type {
 	DateRange,
+	StoreLockOptions,
 	StoreUpsertResult,
 	SyncRepository,
 } from "../repository.js";
 import type {
 	AccountRecord,
+	AccountStatus,
 	AccountUpsert,
 	AdjustmentWrite,
 	CatalogWrite,
@@ -15,6 +17,7 @@ import type {
 	RunStart,
 	ShiftPaymentTotal,
 	ShiftRow,
+	StoreContext,
 	StoreDayWrite,
 	StoreRecord,
 	StoreUpsert,
@@ -46,6 +49,7 @@ export interface InMemoryRepositoryOptions {
 
 export class InMemorySyncRepository implements SyncRepository {
 	readonly refreshCalls: { tenantId: string; range: DateRange }[] = [];
+	private readonly refreshes: bookkeeping.MemoryRefresh[] = [];
 	private readonly state: MemoryState;
 	private readonly locks = new MemoryLocks();
 	private readonly analyticsAvailable: boolean;
@@ -119,6 +123,20 @@ export class InMemorySyncRepository implements SyncRepository {
 		return accounts.upsertAccount(this.state, account);
 	}
 
+	async updateAccountStatus(
+		accountId: string,
+		status: AccountStatus,
+		from: readonly AccountStatus[],
+	): Promise<boolean> {
+		this.guard("updateAccountStatus");
+		return accounts.updateAccountStatus(this.state, accountId, status, from);
+	}
+
+	async findStore(storeId: string): Promise<StoreContext | null> {
+		this.guard("findStore");
+		return accounts.findStore(this.state, storeId);
+	}
+
 	async readToken(accountId: string): Promise<TokenRecord | null> {
 		this.guard("readToken");
 		return this.state.tables.tokens.get(accountId) ?? null;
@@ -154,9 +172,13 @@ export class InMemorySyncRepository implements SyncRepository {
 		return catalog.paymentMethodKinds(this.state, accountId);
 	}
 
-	async withStoreLock<T>(storeId: string, work: () => Promise<T>): Promise<T> {
+	async withStoreLock<T>(
+		storeId: string,
+		work: () => Promise<T>,
+		options?: StoreLockOptions,
+	): Promise<T> {
 		this.guard("withStoreLock");
-		return this.locks.withWindowLock(storeId, work);
+		return this.locks.withWindowLock(storeId, work, options);
 	}
 
 	async loadStoreWindow(
@@ -213,9 +235,27 @@ export class InMemorySyncRepository implements SyncRepository {
 		return sales.localDayTotals(this.state, storeId, range);
 	}
 
+	async loadChecks(storeId: string, range: DateRange): Promise<SyncCheckRow[]> {
+		this.guard("loadChecks");
+		return bookkeeping.loadChecks(this.state, storeId, range);
+	}
+
 	async upsertChecks(checks: SyncCheckRow[]): Promise<TableCounts> {
 		this.guard("upsertChecks");
 		return bookkeeping.upsertChecks(this.state, checks);
+	}
+
+	async staleAnalyticsDates(
+		storeId: string,
+		range: DateRange,
+	): Promise<string[]> {
+		this.guard("staleAnalyticsDates");
+		return bookkeeping.staleAnalyticsDates(
+			this.state,
+			this.refreshes,
+			storeId,
+			range,
+		);
 	}
 
 	async openRun(run: RunStart): Promise<string> {
@@ -226,6 +266,20 @@ export class InMemorySyncRepository implements SyncRepository {
 	async closeRun(runId: string, finish: RunFinish): Promise<void> {
 		this.guard("closeRun");
 		bookkeeping.closeRun(this.state, runId, finish);
+	}
+
+	async closeAbandonedRuns(
+		storeId: string,
+		startedBefore: string,
+		message: string,
+	): Promise<number> {
+		this.guard("closeAbandonedRuns");
+		return bookkeeping.closeAbandonedRuns(
+			this.state,
+			storeId,
+			startedBefore,
+			message,
+		);
 	}
 
 	async markAccountSynced(
@@ -245,6 +299,11 @@ export class InMemorySyncRepository implements SyncRepository {
 			return { available: false };
 		}
 		this.refreshCalls.push({ tenantId, range });
+		this.refreshes.push({
+			tenantId,
+			range: { ...range },
+			startedAt: this.state.timestamp(),
+		});
 		return { available: true, rows: 0 };
 	}
 

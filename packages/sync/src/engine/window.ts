@@ -38,6 +38,8 @@ function summariseChecks(stores: readonly StoreWindowSummary[]): ChecksSummary {
 	};
 }
 
+export const DEFAULT_WINDOW_LOCK_WAIT_MS = 10 * 60_000;
+
 export async function runSyncWindow(
 	options: SyncEngineOptions,
 	account: AccountRecord,
@@ -67,6 +69,8 @@ export async function runSyncWindow(
 		: await options.repository.openRun({
 				tenant_id: account.tenant_id,
 				pos_account_id: account.id,
+				store_id: stores.length === 1 ? (stores[0]?.id ?? null) : null,
+				store_ids: stores.map((store) => store.id).sort(),
 				kind: toDbSyncKind(kind),
 				range_start: window.fromDate,
 				range_end: window.toDate,
@@ -139,7 +143,13 @@ export async function runSyncWindow(
 		};
 		const ordered = [...stores].sort(byExternalId);
 		for (const store of ordered) {
-			storeSummaries.push(await syncStoreWindow(context, store));
+			storeSummaries.push(
+				await syncStoreWindow(
+					context,
+					store,
+					windowOptions.lockWaitMs ?? DEFAULT_WINDOW_LOCK_WAIT_MS,
+				),
+			);
 		}
 		if (!dryRun && (windowOptions.refreshAnalytics ?? true)) {
 			const touched = storeSummaries.flatMap((store) => store.touchedDates);

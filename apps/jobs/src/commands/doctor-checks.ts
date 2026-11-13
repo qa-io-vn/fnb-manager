@@ -10,15 +10,26 @@ export interface DoctorCheck {
 	detail: string;
 }
 
-export const FREE_PLAN_DATABASE_BYTES = 500 * 1024 * 1024;
-export const UPGRADE_TRIGGER_BYTES = 400 * 1024 * 1024;
+export const BYTES_PER_MIB = 1024 * 1024;
+export const FREE_PLAN_DATABASE_MIB = 500;
+export const UPGRADE_TRIGGER_MIB = 400;
+export const DATABASE_RED_MIB = FREE_PLAN_DATABASE_MIB * 0.95;
 export const PAUSE_AFTER_DAYS = 7;
 
+export function toMebibytes(bytes: number): number {
+	return bytes / BYTES_PER_MIB;
+}
+
 export function databaseSizeHealth(bytes: number): Health {
-	if (bytes >= FREE_PLAN_DATABASE_BYTES * 0.95) {
+	const mebibytes = toMebibytes(bytes);
+	if (mebibytes >= DATABASE_RED_MIB) {
 		return "red";
 	}
-	return bytes >= UPGRADE_TRIGGER_BYTES ? "yellow" : "green";
+	return mebibytes >= UPGRADE_TRIGGER_MIB ? "yellow" : "green";
+}
+
+export function databaseSizeDetail(bytes: number): string {
+	return `${toMebibytes(bytes).toFixed(1)} MiB of the ${FREE_PLAN_DATABASE_MIB} MiB free-plan quota (upgrade trigger ${UPGRADE_TRIGGER_MIB} MiB, red from ${DATABASE_RED_MIB} MiB)`;
 }
 
 export function syncAgeHealth(hours: number | null): Health {
@@ -73,6 +84,93 @@ export async function appliedMigrations(sql: Sql): Promise<string[] | null> {
 		select version from supabase_migrations.schema_migrations order by version
 	`;
 	return rows.map((row) => row.version);
+}
+
+export interface AlertCounts {
+	staleStores: number;
+	longestStaleMinutes: number | null;
+	failedDispatchStores: number;
+	failedDispatches: number;
+	lastHttpStatuses: number[];
+}
+
+export function alertCounts(
+	alerts: readonly {
+		kind: string;
+		minutes: number | null;
+		occurrences: number;
+		http_status: number | null;
+	}[],
+): AlertCounts {
+	const stale = alerts.filter((alert) => alert.kind === "sync_stale");
+	const failed = alerts.filter((alert) => alert.kind === "dispatch_failed");
+	const minutes = stale
+		.map((alert) => alert.minutes)
+		.filter((value): value is number => value !== null);
+	return {
+		staleStores: stale.length,
+		longestStaleMinutes: minutes.length > 0 ? Math.max(...minutes) : null,
+		failedDispatchStores: failed.length,
+		failedDispatches: failed.reduce((sum, alert) => sum + alert.occurrences, 0),
+		lastHttpStatuses: [
+			...new Set(
+				failed
+					.map((alert) => alert.http_status)
+					.filter((value): value is number => value !== null),
+			),
+		].sort((left, right) => left - right),
+	};
+}
+
+export function alertsCheck(
+	counts: AlertCounts,
+	scheduleEnabled: boolean,
+): DoctorCheck {
+	const name = "sync alerts";
+	if (counts.staleStores === 0 && counts.failedDispatchStores === 0) {
+		return {
+			name,
+			health: "green",
+			detail: scheduleEnabled
+				? "no open alert: at the last tick every watched store had synced within 90 minutes of opening time, and every scheduled call was claimed"
+				: "no open alert; the schedule is disabled, so no tick evaluates the stores",
+		};
+	}
+	const parts: string[] = [];
+	if (counts.staleStores > 0) {
+		parts.push(
+			`${counts.staleStores} store(s) over the 90-minute dead-man threshold (longest ${counts.longestStaleMinutes ?? "?"} min of opening time)`,
+		);
+	}
+	if (counts.failedDispatchStores > 0) {
+		const statuses =
+			counts.lastHttpStatuses.length > 0
+				? `, last answers HTTP ${counts.lastHttpStatuses.join(", ")}`
+				: ", no HTTP answer recorded";
+		parts.push(
+			`${counts.failedDispatches} scheduled call(s) to ${counts.failedDispatchStores} store(s) expired unclaimed${statuses}`,
+		);
+	}
+	return {
+		name,
+		health: "red",
+		detail: `${parts.join("; ")}; see app.sync_alerts and docs/sync.md "Read the incremental runs"`,
+	};
+}
+
+export function openingHoursCheck(coverage: {
+	active: number;
+	never_entered: number;
+	without_span: number;
+}): DoctorCheck {
+	const name = "opening hours";
+	const unknown = coverage.never_entered + coverage.without_span;
+	const detail = `${coverage.active - unknown} of ${coverage.active} active store(s) have opening hours; ${coverage.never_entered} never entered, ${coverage.without_span} entered without a usable span; a store without them is synced at every tick and every minute counts for the dead-man's switch`;
+	return {
+		name,
+		health: coverage.without_span > 0 ? "yellow" : "green",
+		detail,
+	};
 }
 
 export function isLocalDatabase(url: string): boolean {

@@ -25,6 +25,8 @@ export const DEFAULT_RETRY_POLICY: RetryPolicy = {
 	baseDelayMs: 500,
 };
 
+export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+
 export interface RequestSpec<T> {
 	method?: "GET" | "POST";
 	path: string;
@@ -45,6 +47,7 @@ export interface TransportOptions {
 	defaultHeaders: HeaderMap;
 	retry: RetryPolicy;
 	logger: IposLogger;
+	requestTimeoutMs?: number;
 	sleep?: (ms: number, signal: AbortSignal | undefined) => Promise<void>;
 }
 
@@ -93,6 +96,22 @@ export function sleepUnlessAborted(
 
 function isAbortError(error: unknown): boolean {
 	return error instanceof Error && error.name === "AbortError";
+}
+
+function assertRequestTimeout(timeoutMs: number): number {
+	if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+		throw new RangeError(
+			`the iPOS request timeout must be a positive number of milliseconds, got ${timeoutMs}`,
+		);
+	}
+	return timeoutMs;
+}
+
+function attemptSignal(
+	caller: AbortSignal | undefined,
+	timeout: AbortSignal,
+): AbortSignal {
+	return caller ? AbortSignal.any([caller, timeout]) : timeout;
 }
 
 function parseJsonBody(
@@ -156,6 +175,9 @@ export function createTransport(options: TransportOptions): Transport {
 	const { baseUrl, fetchImpl, defaultHeaders, retry, logger } = options;
 	const sleep = options.sleep ?? sleepUnlessAborted;
 	const maxAttempts = Math.max(1, retry.attempts);
+	const timeoutMs = assertRequestTimeout(
+		options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS,
+	);
 
 	async function request<T>(spec: RequestSpec<T>): Promise<T> {
 		const method = spec.method ?? "GET";
@@ -167,36 +189,44 @@ export function createTransport(options: TransportOptions): Transport {
 		if (spec.body !== undefined) {
 			init.body = JSON.stringify(spec.body);
 		}
-		if (spec.signal) {
-			init.signal = spec.signal;
-		}
 
 		for (let attempt = 1; ; attempt += 1) {
 			spec.signal?.throwIfAborted();
 			const startedAt = Date.now();
+			const timeout = AbortSignal.timeout(timeoutMs);
 			let response: Response;
+			let bodyText: string;
 			try {
-				response = await fetchImpl(url.toString(), init);
+				response = await fetchImpl(url.toString(), {
+					...init,
+					signal: attemptSignal(spec.signal, timeout),
+				});
+				bodyText = await response.text();
 			} catch (error) {
-				if (
-					isAbortError(error) ||
-					spec.signal?.aborted ||
-					attempt >= maxAttempts
-				) {
-					throw isAbortError(error)
-						? error
-						: new IposNetworkError(spec.path, error);
+				if (spec.signal?.aborted) {
+					throw isAbortError(error) ? error : (spec.signal.reason ?? error);
+				}
+				const timedOut = timeout.aborted;
+				if (isAbortError(error) && !timedOut) {
+					throw error;
+				}
+				if (attempt >= maxAttempts) {
+					throw new IposNetworkError(
+						spec.path,
+						error,
+						timedOut ? `no answer within ${timeoutMs} ms` : undefined,
+					);
 				}
 				logger.warn("ipos request failed before a response arrived, retrying", {
 					method,
 					endpoint: spec.path,
 					attempt,
+					timedOut,
 				});
 				await sleep(backoffDelayMs(retry.baseDelayMs, attempt), spec.signal);
 				continue;
 			}
 
-			const bodyText = await response.text();
 			logger.debug("ipos response", {
 				method,
 				endpoint: spec.path,

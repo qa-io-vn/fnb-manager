@@ -15,7 +15,7 @@ export const cashMetrics = [
 		direction: "lower",
 		directionOnAbsoluteValue: true,
 		source: "`agg_shift_cash.variance_amount`",
-		reports: ["shifts", "day", "payments"],
+		reports: ["shifts", "day", "month", "payments"],
 		status: "available now",
 	},
 	{
@@ -32,7 +32,7 @@ export const cashMetrics = [
 		direction: "lower",
 		directionOnAbsoluteValue: true,
 		source: "`cash_variance_flags()`",
-		reports: ["shifts", "alerts"],
+		reports: ["shifts", "day", "month", "alerts"],
 		status: "available now",
 	},
 	{

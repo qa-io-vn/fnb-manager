@@ -1,5 +1,6 @@
 export {
 	createMemoryTokenStore,
+	decodeBase64Url,
 	decodeJwtPayload,
 	isTokenFresh,
 	type JwtClaims,

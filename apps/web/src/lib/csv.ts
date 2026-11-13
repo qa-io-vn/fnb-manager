@@ -7,9 +7,15 @@ export interface CsvColumn {
 
 export const UTF8_BOM = "﻿";
 
+const FORMULA_START = /^[=+\-@\t\r]/;
+
+export function neutralisedText(text: string): string {
+	return FORMULA_START.test(text) ? `'${text}` : text;
+}
+
 function escapeCell(cell: CsvCell): string {
 	if (cell === null) return "";
-	const text = typeof cell === "number" ? String(cell) : cell;
+	const text = typeof cell === "number" ? String(cell) : neutralisedText(cell);
 	if (/[",;\r\n]/.test(text)) {
 		return `"${text.replace(/"/g, '""')}"`;
 	}

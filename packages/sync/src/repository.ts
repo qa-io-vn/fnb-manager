@@ -1,6 +1,7 @@
 import type { PaymentKind } from "@fnb/core";
 import type {
 	AccountRecord,
+	AccountStatus,
 	AccountUpsert,
 	AdjustmentWrite,
 	CatalogWrite,
@@ -10,6 +11,7 @@ import type {
 	RunStart,
 	ShiftPaymentTotal,
 	ShiftRow,
+	StoreContext,
 	StoreDayWrite,
 	StoreRecord,
 	StoreUpsert,
@@ -29,12 +31,22 @@ export interface StoreUpsertResult {
 	counts: TableCounts;
 }
 
+export interface StoreLockOptions {
+	waitMs?: number;
+}
+
 export interface SyncRepository {
 	findAccounts(
 		accountKey: string,
 		tenantSlug?: string,
 	): Promise<AccountRecord[]>;
 	upsertAccount(account: AccountUpsert): Promise<AccountRecord>;
+	updateAccountStatus(
+		accountId: string,
+		status: AccountStatus,
+		from: readonly AccountStatus[],
+	): Promise<boolean>;
+	findStore(storeId: string): Promise<StoreContext | null>;
 	readToken(accountId: string): Promise<TokenRecord | null>;
 	writeToken(accountId: string, token: TokenRecord): Promise<void>;
 	listStores(accountId: string): Promise<StoreRecord[]>;
@@ -44,7 +56,11 @@ export interface SyncRepository {
 	): Promise<StoreUpsertResult>;
 	replaceCatalog(catalog: CatalogWrite): Promise<TableCounts>;
 	paymentMethodKinds(accountId: string): Promise<Record<string, PaymentKind>>;
-	withStoreLock<T>(storeId: string, work: () => Promise<T>): Promise<T>;
+	withStoreLock<T>(
+		storeId: string,
+		work: () => Promise<T>,
+		options?: StoreLockOptions,
+	): Promise<T>;
 	loadStoreWindow(
 		storeId: string,
 		range: DateRange,
@@ -59,8 +75,15 @@ export interface SyncRepository {
 	): Promise<ShiftPaymentTotal[]>;
 	upsertShifts(storeId: string, shifts: ShiftRow[]): Promise<TableCounts>;
 	localDayTotals(storeId: string, range: DateRange): Promise<LocalDayTotal[]>;
+	loadChecks(storeId: string, range: DateRange): Promise<SyncCheckRow[]>;
+	staleAnalyticsDates(storeId: string, range: DateRange): Promise<string[]>;
 	upsertChecks(checks: SyncCheckRow[]): Promise<TableCounts>;
 	openRun(run: RunStart): Promise<string>;
+	closeAbandonedRuns(
+		storeId: string,
+		startedBefore: string,
+		message: string,
+	): Promise<number>;
 	closeRun(runId: string, finish: RunFinish): Promise<void>;
 	markAccountSynced(accountId: string, finishedAt: string): Promise<void>;
 	refreshAnalytics(tenantId: string, range: DateRange): Promise<RefreshResult>;

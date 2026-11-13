@@ -58,14 +58,14 @@ describe("sentence generator", () => {
 		const report = computeToday([storeA], rowsOf({ invoices }), now);
 		expect(
 			render(daySentence("invoices", report.yesterday, "Hôm qua", formatters)),
-		).toBe("Hôm qua có 2 hoá đơn; chưa đủ dữ liệu 8 tuần trước để so sánh.");
+		).toBe("Hôm qua có 2 hóa đơn; chưa đủ dữ liệu 8 tuần trước để so sánh.");
 	});
 
 	it("says a day without invoices plainly", () => {
 		const report = computeToday([storeA], rowsOf({}), now);
 		expect(
 			render(daySentence("avg_ticket", report.today, "Hôm nay", formatters)),
-		).toBe("Hôm nay chưa có hoá đơn nào.");
+		).toBe("Hôm nay chưa có hóa đơn nào.");
 	});
 
 	it("names the leading payment kind and the cash to count", () => {

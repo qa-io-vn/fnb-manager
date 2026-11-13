@@ -9,6 +9,25 @@ const toneClasses: Record<ChipTone, string> = {
 	neutral: "bg-neutral-soft text-ink-muted",
 };
 
+const SHOWN_FRACTION_STEPS = 1000;
+
+export function shownChange(change: number | null): number | null {
+	if (change === null) return null;
+	const steps = Math.round(Math.abs(change) * SHOWN_FRACTION_STEPS);
+	return steps === 0 ? 0 : (Math.sign(change) * steps) / SHOWN_FRACTION_STEPS;
+}
+
+export function chipValue(
+	chip: ChipSpec,
+	formatters: Formatters,
+	points: (value: string) => string,
+): string {
+	const change = shownChange(chip.change);
+	if (change === null) return "";
+	if (chip.unit === "points") return points(formatters.points(change));
+	return formatters.signedPercent(change);
+}
+
 function arrowFor(change: number | null): string {
 	if (change === null || change === 0) return "";
 	return change > 0 ? "▲" : "▼";
@@ -29,7 +48,8 @@ export function ComparisonChips({
 			aria-label={t("reportCard.comparisons")}
 		>
 			{chips.map((chip) => {
-				const tone = toneForChange(chip.direction, chip.change);
+				const change = shownChange(chip.change);
+				const tone = toneForChange(chip.direction, change);
 				return (
 					<li
 						key={chip.id}
@@ -37,13 +57,15 @@ export function ComparisonChips({
 						data-tone={tone}
 						data-testid="comparison-chip"
 					>
-						{chip.change === null ? (
+						{change === null ? (
 							<span>{chip.label}</span>
 						) : (
 							<>
-								<span aria-hidden="true">{arrowFor(chip.change)}</span>
+								<span aria-hidden="true">{arrowFor(change)}</span>
 								<span className="tabular-nums">
-									{formatters.signedPercent(chip.change)}
+									{chipValue(chip, formatters, (value) =>
+										t("report.value.points", { value }),
+									)}
 								</span>
 								<span className="font-normal">{chip.label}</span>
 							</>

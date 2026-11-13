@@ -1,11 +1,13 @@
 import { isMetricId, metricById } from "@fnb/metrics";
 import { describe, expect, it } from "vitest";
-import { translate } from "../i18n";
+import { isMessageKey, translate } from "../i18n";
 import {
+	displaySeries,
 	displaySeriesIds,
 	metricRegistry,
 	registryMetricIds,
 	toneForChange,
+	webUnitOf,
 } from "./registry";
 
 describe("web metrics and packages/metrics", () => {
@@ -24,6 +26,42 @@ describe("web metrics and packages/metrics", () => {
 			expect(metricRegistry[id].direction).toBe(metricById(id).direction);
 		},
 	);
+
+	it.each(registryMetricIds)(
+		"shows %s in the unit the registry declares",
+		(id) => {
+			expect(metricRegistry[id].unit).toBe(webUnitOf(metricById(id).unit));
+		},
+	);
+
+	it("maps every registry unit the reports use to a display unit", () => {
+		expect(webUnitOf("VND")).toBe("money");
+		expect(webUnitOf("count")).toBe("count");
+		expect(webUnitOf("items")).toBe("decimal");
+		expect(webUnitOf("z")).toBe("decimal");
+		expect(webUnitOf("fraction")).toBe("fraction");
+		expect(webUnitOf("% change")).toBe("percentChange");
+		expect(webUnitOf("VND and count")).toBe("money");
+		expect(() => webUnitOf("class")).toThrow();
+	});
+
+	it("explains every metric and display series in both languages", () => {
+		for (const definition of Object.values(metricRegistry)) {
+			for (const key of [
+				definition.labelKey,
+				definition.formulaKey,
+				definition.grainKey,
+				definition.conventionKey,
+			]) {
+				expect(isMessageKey(key), key).toBe(true);
+				expect(translate("vi", key).trim(), key).not.toBe("");
+				expect(translate("en", key).trim(), key).not.toBe("");
+			}
+		}
+		expect(Object.keys(displaySeries).sort()).toEqual(
+			[...displaySeriesIds].sort(),
+		);
+	});
 
 	it("keeps the display series, which have no registry entry, out of the registry ids", () => {
 		expect(displaySeriesIds.filter((id) => isMetricId(id))).toEqual([]);

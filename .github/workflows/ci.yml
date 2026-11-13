@@ -21,6 +21,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - run: node scripts/check-public-safe.mjs
 
   code:
@@ -37,6 +38,14 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - name: Check the Edge Function import map is current
+        run: node scripts/function-imports.mjs --check
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.7.3
+      - name: Type-check the sync-incremental Edge Function with Deno
+        working-directory: supabase/functions/sync-incremental
+        run: deno check index.ts
 
   database:
     name: Migrations and pgTAP tests
@@ -52,6 +61,9 @@ jobs:
       - run: pnpm exec supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,supavisor,postgres-meta
       - run: pnpm exec supabase db reset
       - run: pnpm exec supabase test db
+      - run: pnpm --filter @fnb/demo-analytics test:parity:postgres
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
       - if: always()
         run: pnpm exec supabase stop --no-backup
 

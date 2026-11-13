@@ -22,6 +22,7 @@ export interface StoreWindowContext {
 	tolerance: CheckTolerance;
 	paymentKinds: Readonly<Record<string, PaymentKind>>;
 	tables: TableCounts;
+	signal?: AbortSignal;
 }
 
 export interface StoreScope {

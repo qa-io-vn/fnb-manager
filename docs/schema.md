@@ -5,7 +5,7 @@ Field dictionary for the canonical, POS-agnostic schema in `supabase/migrations/
 Two schemas exist:
 
 - `public` holds every table, enum, view and query function and is exposed through the Data API to the `authenticated` and `service_role` roles. `anon` holds no privilege on it.
-- `app` holds helper functions used by row-level-security policies and triggers, the fact-reading functions behind the analytics views, and the analytics refresh. It is not exposed through the API; `authenticated` may execute the helpers it needs, `service_role` alone may run the refresh.
+- `app` holds helper functions used by row-level-security policies and triggers, the fact-reading functions behind the analytics views, the analytics refresh, and the incremental sync schedule (its settings row, its dispatch tickets and their functions). It is not exposed through the API; `authenticated` may execute the helpers it needs, `service_role` alone may run the refresh, and only `postgres` (the role of the jobs, the Edge Function and `pg_cron`) reaches the schedule. The notification dispatcher's tables (link codes, bot polling state, its settings row and its tickets) and its functions live there too, reachable by `postgres` only (see "Notifications and alerts (phase 12)").
 
 ## Conventions
 
@@ -15,20 +15,20 @@ Two schemas exist:
 - Timestamps are `timestamptz`. Calendar days are `date`. Money is `numeric(14,2)` in the tenant's currency. Quantities are `numeric(12,3)`. Percentages (`_pct` columns) are `numeric(6,3)` where `1.100` means 1.1 %. Rates and shares in the aggregate tables and query functions are fractions where `0.250` means 25 %.
 - Master-data tables carry `active`, `first_seen_at` and `last_seen_at`, maintained by the sync: a row disappearing from the POS catalogue is marked inactive, never deleted.
 - Manual-input tables carry `created_by` (defaults to `auth.uid()`, frozen by a trigger on update), `created_at` and `updated_at` (set by a trigger).
-- No table is ever written by the browser except the manual-input tables, `strategy_reports` and the two legal ledgers `consent_records` and `data_subject_requests`; every other write comes from the sync jobs and the messaging jobs running as `service_role`. The aggregate tables (`agg_*`) are written only by `app.refresh_analytics()`, which the sync jobs call and which an owner or manager may trigger through `refresh_my_analytics()`.
+- No table is ever written by the browser except the manual-input tables, `strategy_reports`, the two legal ledgers `consent_records` and `data_subject_requests` (a `notifications` consent excepted), and the notification settings `alert_rules` and `channel_policies` (owners with an unlimited scope only); every other write comes from the sync jobs and the messaging jobs running as `service_role`. The aggregate tables (`agg_*`) are written only by `app.refresh_analytics()`, which the sync jobs call and which an owner or manager may trigger through `refresh_my_analytics()`.
 
 ## Enums
 
 | Enum | Labels | Used by |
 | --- | --- | --- |
 | `tenant_role` | `owner`, `manager`, `staff`, `viewer`, `publisher` | `tenant_members.role` |
-| `pos_account_status` | `active`, `paused`, `error` | `pos_accounts.status` |
+| `pos_account_status` | `active`, `paused`, `error`, `auth_failed` | `pos_accounts.status` |
 | `payment_kind` | `cash`, `card`, `bank_transfer`, `ewallet`, `voucher`, `other` | `payment_methods.kind` |
 | `line_kind` | `item`, `modifier`, `service`, `package`, `other` | `invoice_lines.line_kind` |
 | `invoice_status` | `completed`, `edited`, `voided` | `invoices.status` |
 | `invoice_event_kind` | `voided`, `edited`, `line_removed`, `reissued` | `invoice_events.kind` |
 | `sync_kind` | `incremental`, `nightly`, `backfill`, `master_data`, `reconciliation` | `sync_runs.kind` |
-| `sync_status` | `running`, `succeeded`, `failed` | `sync_runs.status` |
+| `sync_status` | `running`, `succeeded`, `failed`, `partial` | `sync_runs.status` |
 | `period_kind` | `month`, `week` | `targets.period_kind` |
 | `strategy_source` | `skill`, `routine`, `pasted` | `strategy_reports.generated_via` |
 | `item_type_role` | `drink`, `topping`, `food`, `snack`, `other` | `item_type_roles.role` |
@@ -37,11 +37,16 @@ Two schemas exist:
 | `e_invoice_status` | `unknown`, `not_configured`, `configured`, `disabled` | `stores.e_invoice_status` |
 | `tran_no_reset_period` | `daily`, `yearly`, `never`, `unknown` | `stores.tran_no_reset_period` |
 | `consent_subject` | `customer`, `staff` | `consent_records.subject_type`, `data_subject_requests.subject_type`, `outbound_messages.subject_type` |
-| `consent_purpose` | `loyalty`, `marketing`, `staff_ops` | `consent_records.purpose`, `outbound_messages.purpose` |
+| `consent_purpose` | `loyalty`, `marketing`, `staff_ops`, `notifications` | `consent_records.purpose`, `outbound_messages.purpose`, `channel_policies.consent_purpose` |
+| `channel_kind` | `zalo_bot`, `email`, `telegram`, `webhook`, `zalo_oa`, `zalo_gmf`, `zalo_zbs`, `mini_app`, `sms` | `notification_channels.kind`, `channel_policies.channel_kind`, `app.bot_poll_state.kind` |
+| `message_class` | `operational`, `transactional`, `advertising` | `channel_policies.message_class`, `outbound_messages.message_class` |
+| `alert_severity` | `info`, `warning`, `critical` | `alert_rule_catalog.default_severity`, `alert_rules.severity`, `alert_events.severity`, `outbound_messages.severity` |
 | `dsr_type` | `access`, `correction`, `deletion`, `export`, `objection`, `withdraw_consent` | `data_subject_requests.request_type` |
 | `dsr_status` | `received`, `in_progress`, `completed`, `rejected` | `data_subject_requests.status` |
 
 `strategy_source` says how a plan reached the database: `skill` when the local strategy skill published it, `routine` when a scheduled cloud routine did, `pasted` when a person pasted it in the web app.
+
+`consent_purpose` `notifications` (added by its own migration, `notify_consent_purpose`, so the label commits before any row uses it) covers the daily digests and operational alerts a member receives; it is separate from `staff_ops`, so withdrawing one never stops the other. `channel_kind` lists every place a message can go; only `zalo_bot`, `email`, `telegram` and `webhook` have an adapter in phase 12 (`app.channel_kind_available`), the other kinds exist so their policies are data. `message_class` separates internal operational messages, which are not advertising (Decree 91/2020 Art. 3(1)), from the customer classes of phases 17 to 19.
 
 `legal_form` records the owner's entity type under the personal-data law: a household business or micro-enterprise is exempt from the cross-border transfer dossier, a small enterprise may defer it, an enterprise must file it. `unknown` is the default until the owner confirms. `e_invoice_status` says whether the store's POS issues cash-register e-invoices. `tran_no_reset_period` says how often the POS restarts its receipt numbering, which is why receipt claims are keyed on store, business date and receipt number together.
 
@@ -89,7 +94,7 @@ One row per login to a POS vendor. Holds metadata and external ids only; credent
 | `display_name` | text | no | Label shown in the app |
 | `external_company_id` | text | yes | Company id on the POS side |
 | `external_brand_id` | text | yes | Brand id on the POS side |
-| `status` | pos_account_status | no | Default `active`; `paused` skips the sync, `error` marks a failing account |
+| `status` | pos_account_status | no | Default `active`; `paused` skips the sync, `error` marks a failing account, `auth_failed` is set by a runner when the POS rejects the login and cleared by the next login that succeeds; the incremental schedule skips `paused` and `auth_failed` accounts |
 | `last_synced_at` | timestamptz | yes | End of the last successful run |
 | `created_at` | timestamptz | no | Row creation |
 | `updated_at` | timestamptz | no | Set by trigger |
@@ -120,13 +125,14 @@ Short-lived session token cache. Service role only: no policy, no grant to `auth
 | `address` | text | yes | Street address |
 | `timezone` | text | no | IANA zone of the store, default `Asia/Ho_Chi_Minh` |
 | `business_day_start_minutes` | integer | no | Minutes after local midnight at which the business day starts, default 0, range 0–1439 |
-| `opening_hours` | jsonb | yes | Weekly opening hours, see below |
+| `opening_hours` | jsonb | yes | Weekly opening hours, see below; checked by `stores_opening_hours_valid` |
 | `seat_count` | integer | yes | Seats available, zero or more; null when unknown |
 | `opened_on` | date | yes | First trading day; aligns since-opening comparisons |
 | `e_invoice_status` | e_invoice_status | no | Whether the POS issues cash-register e-invoices, default `unknown` |
 | `tran_no_reset_period` | tran_no_reset_period | no | How often the POS restarts receipt numbering, default `unknown` |
-| `settings` | jsonb | no | Free-form store settings, default `{}` |
+| `settings` | jsonb | no | Free-form store settings, default `{}`; `{"incremental_sync": false}` keeps the store out of the incremental schedule (the seeded demo stores carry it, their accounts have no credentials) |
 | `active` | boolean | no | False once the POS no longer lists the store |
+| `sync_resumed_at` | timestamptz | yes | When the incremental sync last started watching the store again: set by trigger when an update makes it active and opted in again, or when its account leaves `paused`; the dead-man's switch counts no opening time before it |
 | `raw` | jsonb | yes | Original POS payload |
 | `first_seen_at` | timestamptz | no | First sync that saw the store |
 | `last_seen_at` | timestamptz | no | Last sync that saw the store |
@@ -136,6 +142,8 @@ Short-lived session token cache. Service role only: no policy, no grant to `auth
 ```json
 {"mon": [["07:00", "22:30"]], "sat": [["07:00", "12:00"], ["16:00", "23:00"]]}
 ```
+
+The check constraint `stores_opening_hours_valid` (`app.opening_hours_valid`) refuses any other shape: the value is null or such an object, its keys are those seven weekdays, each value is a list, and each pair holds two times `H:MM` or `HH:MM` from `0:00` to `23:59`, or `24:00`. An object without a single pair (`{}`, empty lists) is allowed and counts as unknown hours for the schedule. `authenticated` and `service_role` may execute the two validators, so a future writer of stores passes the constraint; the trigger functions that set `sync_resumed_at` (`app.mark_store_sync_resumed`, `app.mark_account_sync_resumed`) are `security definer`.
 
 ### Catalogue tables synced per POS account
 
@@ -378,14 +386,18 @@ One row per cash-register shift. Unique on (`store_id`, `external_id`).
 | `id` | uuid | no | Primary key |
 | `tenant_id` | uuid | no | Tenant |
 | `pos_account_id` | uuid | no | Account synced |
+| `store_id` | uuid | yes | The one store the run covered: every incremental run, and a window run given a single store; null when the run covered every store it was given. References `stores` with the tenant (cascade delete) |
+| `store_ids` | uuid[] | yes | Every store the run covered: the incremental run's store, the stores given to a window run; null on master-data runs and on rows written before migration `20261108104800`, which count as covering every store of their account |
 | `kind` | sync_kind | no | Mode of the run |
 | `range_start`, `range_end` | date | yes | Business-date window covered |
 | `started_at` | timestamptz | no | Start |
 | `finished_at` | timestamptz | yes | End; null while running |
-| `status` | sync_status | no | `running`, `succeeded`, `failed` |
+| `status` | sync_status | no | `running`; `succeeded`; `partial` when an incremental run stopped cleanly before syncing every changed day (its CPU or wall-time guard, or a store held by another run) and left the rest to the nightly job; `failed` |
 | `rows_upserted` | jsonb | no | Counts per table, for example `{"invoices": 120}` |
 | `error_message` | text | yes | Failure text |
 | `triggered_by` | text | yes | `schedule`, `manual`, `seed`, … |
+
+An index on (`store_id`, `started_at desc`) where `store_id` is not null serves the per-store freshness reads. Data members read the runs of their tenant that touch their store scope: a run whose `store_ids` overlaps it, a single-store row of an older run for a store in it, and runs without either (master data, older account-wide runs); a manager of one store does not see another store's incremental runs.
 
 ### `sync_checks`
 
@@ -403,6 +415,77 @@ Per store-day reconciliation of our totals against the POS totals. Unique on (`s
 | `local_net_amount` | numeric(14,2) | no | Net sales stored here |
 | `is_matched` | boolean | no | True when both pairs agree within tolerance |
 | `checked_at` | timestamptz | no | Time of the check |
+
+### Incremental schedule
+
+Migration `20261108084100_incremental_sync_schedule.sql` installs `pg_cron` (in `pg_catalog`) and `pg_net` (in `extensions`) and keeps the schedule of the `sync-incremental` Edge Function in `app`. `anon`, `authenticated` and `service_role` hold no privilege on these tables and may execute none of these functions; `postgres` owns them, and the `pg_cron` job runs as `postgres`. `docs/sync.md` ("Incremental runner") describes how they work together.
+
+`app.incremental_sync_settings` has exactly one row:
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `singleton` | boolean | no | Primary key, always true |
+| `enabled` | boolean | no | Default false: the schedule is inert until the owner enables it |
+| `function_url` | text | yes | `http(s)` URL of the function, set when enabling |
+| `request_timeout_ms` | integer | no | `pg_net` timeout of each call, default 30000, between 1000 and 150000 |
+| `ticket_lifetime` | interval | no | How long a ticket can be claimed, default 10 minutes, between 1 minute and 1 hour |
+| `stale_after_minutes` | integer | no | Opening minutes without a successful sync after which a tick opens a `sync_stale` alert, default 90 like the runners, between 30 and 1440 |
+| `updated_at` | timestamptz | no | Last change |
+
+`app.incremental_sync_tickets` holds the single-use dispatch tickets:
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `ticket` | uuid | no | Primary key, random; the only thing the call to the function carries |
+| `tenant_id`, `store_id` | uuid | no | The store to sync; references `stores` with the tenant (cascade delete) |
+| `due_at` | timestamptz | no | The tick the store was selected for |
+| `issued_at`, `expires_at` | timestamptz | no | Issue time and the end of the ticket's lifetime |
+| `request_id` | bigint | yes | The `pg_net` request that carried it |
+| `source` | text | no | `schedule` (default) or `manual`; becomes `sync_runs.triggered_by` |
+
+Indexes: `expires_at` and `store_id`.
+
+`app.sync_alerts` holds what the scheduler raises at every tick without the Edge Function (migration `20261108104800_incremental_sync_hardening.sql`):
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | bigint | no | Primary key, identity |
+| `tenant_id`, `store_id` | uuid | no | The store; references `stores` with the tenant (cascade delete) |
+| `kind` | text | no | `sync_stale` (a watched store over the threshold) or `dispatch_failed` (a scheduled ticket expired unclaimed) |
+| `opened_at`, `last_seen_at` | timestamptz | no | When the condition was first and last found |
+| `resolved_at` | timestamptz | yes | When it cleared: a fresh tick for `sync_stale`, a claimed ticket for `dispatch_failed`, or disabling the schedule; null while open |
+| `occurrences` | integer | no | Ticks (or expired tickets) that found it, at least 1 |
+| `minutes` | integer | yes | `sync_stale`: the latest opening minutes without a successful sync |
+| `http_status`, `error` | integer, text | yes | `dispatch_failed`: the HTTP status `pg_net` kept for the last call, or `no answer recorded`, `timed out`, `pg_net`'s error (200 characters at most) or `answered without claiming the ticket` |
+| `notified_at` | timestamptz | yes | For the phase 12 channels |
+
+A unique index on (`store_id`, `kind`) where `resolved_at` is null keeps one open row per store and kind; another on `resolved_at` serves the retention.
+
+| Function | Returns | Purpose |
+| --- | --- | --- |
+| `enable_incremental_sync(p_function_url, p_schedule default '*/30 * * * *')` | bigint | Stores the URL, enables the row and schedules the `pg_cron` job `sync-incremental`; refuses a URL that is not `http(s)` (22023) |
+| `disable_incremental_sync()` | void | Disables the row, resolves every open alert and unschedules the job |
+| `dispatch_incremental_sync(p_at default now())` | integer | The job body: `record_unclaimed_incremental_sync_tickets()`, `prune_incremental_sync_history()`, returns 0 while disabled, otherwise `evaluate_incremental_sync_alerts(p_at)` and one ticket per store of `incremental_sync_targets(p_at)` posted as `{"ticket": …}` to the function with `net.http_post`; `p_at` simulates the tick for tests |
+| `record_unclaimed_incremental_sync_tickets()` | integer | Deletes the expired tickets and records each scheduled one as a `dispatch_failed` alert of its store, with the status or error of its `net._http_response` row |
+| `evaluate_incremental_sync_alerts(p_at default now())` | integer | Opens or refreshes a `sync_stale` alert for every watched store whose `sync_gap_minutes` is over `stale_after_minutes`, resolves the open ones that are not; returns the stores found stale |
+| `prune_incremental_sync_history()` | void | Retention: incremental `sync_runs` older than 35 days (90 when not succeeded), `cron.job_run_details` older than 7 days, resolved alerts older than 90 days, `analytics_refreshes` older than 35 days except each tenant's newest |
+| `issue_incremental_sync_ticket(p_store_id)` | uuid | One manual ticket for a store, whether or not the schedule is enabled; 22023 for an unknown store |
+| `claim_incremental_sync_ticket(p_ticket)` | table (`tenant_id`, `store_id`, `due_at`, `source`) | Deletes and returns an unexpired ticket and resolves the store's open `dispatch_failed` alert, or returns nothing; the function calls it before anything else |
+| `store_watched_for_sync(p_active, p_settings, p_account_status)` | boolean | `immutable`; the one rule for which stores the incremental sync watches: active, account not `paused`, not opted out in `settings` |
+| `incremental_sync_watched(p_store_id)` | boolean | The rule above for one store by id; false for an unknown store |
+| `incremental_sync_targets(p_at default now())` | table (`tenant_id`, `store_id`, `hours_known`, `open_now`) | Watched stores, except those of `auth_failed` accounts, due by `store_due_for_incremental` |
+| `store_due_for_incremental(p_opening_hours, p_timezone, p_day_start_minutes, p_at, p_interval default '30 minutes')` | boolean | Open at `p_at`, open at any moment of the interval before it (the closing run, however soon after a tick the store closed), or opening hours unknown |
+| `opening_hours_valid(p_opening_hours)`, `opening_time_valid(p_value)` | boolean | `immutable`; the shape the check constraint on `stores.opening_hours` requires |
+| `opening_hours_known(p_opening_hours)` | boolean | `immutable`; whether the hours hold at least one span `opening_spans` lays out; null, `{}` and empty lists are unknown hours |
+| `opening_spans(p_opening_hours, p_timezone, p_day_start_minutes, p_from, p_to)` | table (`opens_at`, `closes_at`) | The opening spans overlapping a range as instants: a weekday key holds the spans of the business dates of that weekday, a time before the business-day start is on the next calendar day, a close at or before the open runs past midnight; malformed spans are ignored |
+| `store_open_at(p_opening_hours, p_timezone, p_day_start_minutes, p_at)` | boolean | Open at the instant; null when the opening hours are unknown (never entered or without a usable span) |
+| `opening_minutes_between(p_opening_hours, p_timezone, p_day_start_minutes, p_from, p_to)` | integer | Whole opening minutes between two instants, overlapping spans counted once; every minute when the hours are unknown |
+| `sync_run_covers_store(p_run_store_id, p_run_store_ids, p_store_id)` | boolean | `immutable`; the store is in `store_ids`, else it is `store_id`, else (older rows without either) the run covered the whole account |
+| `sync_run_reached_business_date(p_range_end, p_finished_at, p_timezone, p_day_start_minutes)` | boolean | `immutable`; the run's range ended no earlier than the day before the store's business date at the run's end |
+| `last_successful_sync(p_store_id, p_at default now())` | timestamptz | End of the last `succeeded` run before `p_at` (not `master_data`) that covered the store and reached its current days by the two rules above; a backfill of an older month or a window run of other stores does not count |
+| `sync_gap_minutes(p_store_id, p_at default now())` | integer | Opening minutes since that run or, when later, since `stores.sync_resumed_at`, looking back at most 7 days; null for a store that is not watched or was never synced. The dead-man's switch fires above 90 |
+| `longest_sync_gap_minutes(p_store_id, p_from, p_to)` | integer | The longest stretch of opening time from `p_from` (or `sync_resumed_at`, when later) to `p_to` without a successful sync; null for a store that is not watched or was never synced by `p_to`. The nightly run checks the last business day with it |
+| `stale_analytics_dates(p_store_id, p_from, p_to)` | table (`business_date`) | The store's dates in the range whose `sync_checks` row was written after the start of every finished `analytics_refreshes` row covering them; the incremental run refreshes them again |
 
 ## Manual inputs
 
@@ -465,7 +548,7 @@ Calendar of non-trading-pattern days. Global rows (`tenant_id` null) are maintai
 | `kind` | holiday_kind | no | `public` for statutory holidays, `tet` for every day of the Lunar New Year window, `custom` for tenant rows |
 | `created_at` | timestamptz | no | Row creation |
 
-The seed ships the Vietnamese statutory calendar for 2024–2028 as global rows: 1 January, 30 April, 1 May, 2 September with the adjacent day granted by law, the Hùng Kings' Commemoration (10th day of the 3rd lunar month) and the Tết window from the last day of the old lunar year (both the 29th and 30th when the month has 30 days) through the 5th day of the new year.
+Migration `vn_public_holidays` ships the Vietnamese statutory calendar for 2024–2028 as 61 global rows: 1 January, 30 April, 1 May, 2 September with the adjacent day granted by law, the Hùng Kings' Commemoration (10th day of the 3rd lunar month) and the Tết window from the last day of the old lunar year (both the 29th and 30th when the month has 30 days) through the 5th day of the new year. It inserts a row only when no global row with the same country, date and name exists, so a database that already holds the calendar is unchanged; the seed no longer inserts holidays. `VIETNAM_HOLIDAYS` in `packages/core` holds the same rows for the demo, and its unit test parses the migration to keep the two equal. Lunar dates from 2029 on are not shipped yet.
 
 ### `targets`
 
@@ -519,7 +602,7 @@ The trigger `consent_records_keep_grant` (`app.keep_consent_grant()`, before upd
 | `tenant_id` | uuid | no | Tenant |
 | `subject_type` | consent_subject | no | `customer` or `staff` |
 | `subject_id` | uuid | no | `customers.id` for a customer, `tenant_members.user_id` for staff; no foreign key, so the record outlives the subject row and the two subject kinds share one column |
-| `purpose` | consent_purpose | no | `loyalty`, `marketing` or `staff_ops` |
+| `purpose` | consent_purpose | no | `loyalty`, `marketing`, `staff_ops` or `notifications` |
 | `policy_version` | text | no | Version label of the privacy notice the subject agreed to |
 | `channel` | text | no | Where the consent was captured: `mini_app`, `oa_form`, `till`, `web`, … |
 | `granted_at` | timestamptz | no | Moment of consent |
@@ -528,6 +611,8 @@ The trigger `consent_records_keep_grant` (`app.keep_consent_grant()`, before upd
 | `created_at` | timestamptz | no | Row creation |
 
 Indexes: (`tenant_id`, `subject_type`, `subject_id`, `purpose`) and the partial unique index above.
+
+A `notifications` row is written only by the `security definer` functions that run at the member's own acceptance (`app.ensure_notifications_consent`, called by `app.accept_channel_link` and `app.confirm_email_link`) and revoked only by `app.withdraw_notifications` and the CLI: the restrictive policies `consent_records_notifications_not_inserted_from_browser` and `consent_records_notifications_not_updated_from_browser` keep every browser role, owners included, from inserting such a row or touching its `revoked_at`, so no manager can forge a member's consent or silence the owner's digests. Other purposes keep the rule of "Who can write what".
 
 `app.has_active_consent(tenant, subject_type, subject, purpose)` returns true when an active row exists. It runs with the caller's privileges, so under RLS a member sees only the consent of their own tenant; the messaging jobs call it as `service_role` before every send.
 
@@ -566,7 +651,7 @@ The trigger `data_subject_requests_fill_deadlines` runs before insert, reads the
 
 ### `outbound_messages`
 
-Log of every message sent to a customer or staff member on any channel, written only by the messaging jobs. Kept at least one year.
+Log of every message sent to a customer or staff member on any channel, written only by the messaging jobs. Kept at least one year. Since phase 12 it is also the notification outbox: rows with a `kind` are queue rows with the extra columns, state machine and read policy described in "Notifications and alerts (phase 12)"; rows without a `kind`, such as the two seed rows, are plain log rows the queue never touches.
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
@@ -579,13 +664,13 @@ Log of every message sent to a customer or staff member on any channel, written 
 | `purpose` | consent_purpose | yes | Purpose the send relied on |
 | `template_ref` | text | yes | Template identifier on the channel |
 | `consent_record_id` | uuid | yes | The consent row that authorised the send (set null on delete) |
-| `sent_at` | timestamptz | no | Send time, default now |
-| `status` | text | no | Provider status such as `queued`, `sent`, `delivered`, `failed` |
+| `sent_at` | timestamptz | yes | When the provider accepted the message; no default, null while a queue row waits or when it was never sent |
+| `status` | text | no | One of `queued`, `held`, `sending`, `sent`, `delivered`, `failed`, `cancelled`, `uncertain` (CHECK `outbound_messages_status_check`) |
 | `provider_message_id` | text | yes | Id on the provider's side |
 | `cost_amount` | numeric(14,2) | yes | Cost of the message in the tenant's currency |
 | `raw` | jsonb | yes | Provider response |
 
-Indexes: (`tenant_id`, `sent_at`) and (`tenant_id`, `subject_type`, `subject_id`).
+Indexes: (`tenant_id`, `sent_at`) and (`tenant_id`, `subject_type`, `subject_id`), plus the queue indexes of phase 12.
 
 ## Analytics
 
@@ -593,7 +678,7 @@ Roadmap phase 8 (ADR-010, ADR-026). Aggregates are ordinary tables refreshed by 
 
 ### Hot and cold rule
 
-Every store-day with `business_date` **before yesterday** is read from the aggregate tables; **yesterday and later** are computed live from the fact tables. `app.analytics_live_from()` returns the cut-over date (`current_date - 1`, evaluated in the database's UTC clock, which always covers the local "yesterday" of a UTC+7 store). The query functions apply the rule through `app.daily_sales()` and `app.hourly_sales()`, so today is correct after every incremental sync without a refresh, and yesterday is correct even before the nightly refresh has run. The live half passes the requested `store_ids` down to `app.sales_invoices()`, which reads `invoices` through the `(store_id, business_date)` index, so a call costs the requested stores' invoices of the live days and never a scan over other tenants. Item, category, payment, shift, size, modifier, attach and basket aggregates have no live counterpart: they appear for a day once that day has been refreshed (the incremental sync refreshes the days it touched; the nightly job refreshes the trailing window).
+Every store-day with `business_date` **before yesterday** is read from the aggregate tables; **yesterday and later** are computed live from the fact tables. `app.analytics_live_from()` returns the cut-over date (`current_date - 1`, evaluated in the database's UTC clock, which always covers the local "yesterday" of a UTC+7 store). The query functions apply the rule through `app.daily_sales()` and `app.hourly_sales()`, so today is correct after every incremental sync without a refresh, and yesterday is correct even before the nightly refresh has run. The live half passes the requested `store_ids` down to `app.sales_invoices()`, which reads `invoices` through the `(store_id, business_date)` index, so a call costs the requested stores' invoices of the live days and never a scan over other tenants. Since migration `live_half_lateral`, `app.daily_sales_facts()` reaches each invoice's lines and cash tenders with lateral lookups on `invoice_lines (invoice_id)` and `invoice_payments (invoice_id)` instead of hash joins over both tables; the signature, the columns and their expressions are unchanged. On a local two-store tenant with two years of history, two live days of both stores take about 2.5 ms instead of 49 ms, a 93-day refresh-sized read about 68 ms instead of 86 ms, and a full-history `app.daily_sales()` about 3 ms instead of 50 ms; `app.hourly_sales_facts()` keeps its joins (about 1.5 ms). Item, category, payment, shift, size, modifier, attach and basket aggregates have no live counterpart: they appear for a day once that day has been refreshed (the incremental sync refreshes the days it touched; the nightly job refreshes the trailing window).
 
 The cut-over date is a freshness rule; the **as-of day** of month-to-date figures and forecasts is a separate, store-local rule. `app.analytics_as_of(store_ids, p_at default now())` is the earliest, over the given stores, of the store-local business date at `p_at` (store timezone and `business_day_start_minutes`) minus one day: the last complete business day. Between 00:00 and 07:00 in Vietnam the UTC date still names the local previous day, so a UTC rule would drop the completed local yesterday from month to date; the store-local rule does not, and that day is served live because it is never before the cut-over date of a UTC+7 store. With no visible store it falls back to the UTC date of `p_at` minus one.
 
@@ -709,15 +794,276 @@ All `security invoker`, `stable`, with an empty `search_path`, executable by `au
 | `cash_variance_flags(store_ids, from_date, to_date, abs_threshold default 50000, rel_threshold default 0.005)` | flagged shifts with `variance_amount`, `z_score`, the three flags and `reasons` | A shift is returned when its absolute variance exceeds the absolute threshold, exceeds `rel_threshold` × its cash sales, or lies more than 2 sample standard deviations from the mean of the store's shifts in the trailing 56 days (needing at least 3 such shifts) |
 | `metric_value(store_ids, metric_id, from_date, to_date)` | numeric | One value of a `docs/metrics.md` metric over the stores and business dates, for exactly the metrics that are available now and have one value per store and period (`metricValueIds()` in `packages/metrics`; a test keeps the two lists equal). Sums over stores and days come before every ratio. It reads `period_summary` for the sales, ticket, share and capture metrics, `app.daily_sales` for the void and edit rates and the per-opening-hour metrics, `app.hourly_sales` for the peak and dead-hour shares, `agg_attach_daily` (measured days only) and `agg_size_mix_daily` for the attach rates and the size L share, and `invoice_events` with the item lines of the sales for the removed-line rate (a removal is dated by the business date of `occurred_at`). Null when the range has no sales, when a ratio has no denominator, when no item type carries the attach role, and for the per-opening-hour metrics when a store with sales in the range has no `opening_hours`. An id it does not compute, or a range that starts after it ends, raises `22023` |
 
-Internal helpers in `app`: `opening_minutes(p_opening_hours, p_date)` (`immutable`; the opening minutes of one weekday from `stores.opening_hours`, null when the hours were never entered, 0 for a weekday without spans, and a span whose close is not after its open runs past midnight), `sales_invoices(p_tenant, p_from, p_to, p_store_ids default null)` (the invoice rows with discount columns folded; three mutually exclusive branches so that a store list, a tenant, or neither each reach their own index), `daily_sales_facts(p_tenant, p_from, p_to, p_store_ids default null)` and `hourly_sales_facts(…)` (the live computations shared by the refresh and the views), `daily_sales(store_ids, from, to)` and `hourly_sales()` (the hot and cold union), `summarize_daily()` (one summary row with nulls when empty), `daily_net_series(store_ids, from, to)` (net per date over the stores with the excluded-day flag, the single series every forecast derives from), `weekday_profile(store_ids, origin)` (the level and the seven weekday indices at an origin), `seasonal_naive_series(store_ids, origin, from, to)`, `analytics_live_from()` and `analytics_as_of(store_ids, p_at default now())`. The set-returning helpers declare `rows 10000` so that joins on them are planned for realistic sizes.
+Internal helpers in `app`: `opening_minutes(p_opening_hours, p_date)` (`immutable`; the opening minutes of one weekday from `stores.opening_hours`, null when the hours were never entered, 0 for a weekday without spans, and a span whose close is not after its open runs past midnight), `sales_invoices(p_tenant, p_from, p_to, p_store_ids default null)` (the invoice rows with discount columns folded; three mutually exclusive branches so that a store list, a tenant, or neither each reach their own index), `daily_sales_facts(p_tenant, p_from, p_to, p_store_ids default null)` and `hourly_sales_facts(…)` (the live computations shared by the refresh and the views), `daily_sales(store_ids, from, to)` and `hourly_sales()` (the hot and cold union), `summarize_daily()` (one summary row with nulls when empty), `daily_net_series(store_ids, from, to)` (net per date over the stores with the excluded-day flag, the single series every forecast derives from), `weekday_profile(store_ids, origin)` (the level and the seven weekday indices at an origin), `seasonal_naive_series(store_ids, origin, from, to)`, `analytics_live_from()` and `analytics_as_of(store_ids, p_at default now())`. `sales_invoices()`, `daily_sales_facts()`, `hourly_sales_facts()`, `daily_sales()` and `hourly_sales()` declare `rows 10000` so that joins on them are planned for realistic sizes; `daily_net_series()` declares `rows 100`, about one row per day of a report range; `summarize_daily()`, `weekday_profile()`, `seasonal_naive_series()` and `dsr_deadlines()` keep the default estimate of 1000 rows, as do the set-returning query functions in `public`.
+
+### Report functions (phase 9)
+
+Migration `report_functions` adds the functions that the periodic reports Ngày, Tuần, Tháng and Năm call through `supabase.rpc()`; the rules of their cards are in `docs/metrics.md`, section Report conventions. They follow the conventions of the query functions above (`security invoker`, `stable`, empty `search_path`, one signature per name, executable by `authenticated` and `service_role` and not by `anon`), and also these:
+
+- `store_ids` holds 0 to 50 ids, and an empty array returns no rows. A store the caller cannot read contributes nothing. Per-store rows appear only for stores the caller sees in `stores`, once each, in the order of their first position in `store_ids`, so the publisher gets store rows with null totals and no item, payment, promotion or shift row.
+- Argument errors raise `22023` with a message naming the limit: a missing date, a range whose start is after its end, a range longer than the function's limit, an unknown grain, a compare range with one bound only. A call that would return more than 900 rows raises `22023` with a hint, so PostgREST's `max_rows = 1000` can never cut a result silently.
+- Sums and ratios use the expressions of `app.summarize_daily()`: `avg_ticket` and `avg_item_price` to 2 digits, `items_per_ticket` to 4, shares to 6, and `discount_rate` = (item + bill + voucher discount) ÷ gross to 6. A total is null, not zero, when its range has no data (`days_with_data` = 0).
+- Ties on text sort with `collate "C"`, so PostgreSQL and the PGlite parity suite return rows in the same order.
+
+| Function | Returns | Rule |
+| --- | --- | --- |
+| `period_compare_by_store(store_ids, grain, anchor)` | `store_id`, `period`, `from_date`, `to_date` and the 25 columns of `app.period_totals()` | One block for all stores (`store_id` null), then one per visible store, each holding the rows of `app.period_bounds(grain, anchor)`: current, previous, last_year and, for `day`, baseline. Non-baseline rows are `app.period_totals()` of the block over the row's range; the baseline row is `same_weekday_baseline(block, anchor, 8)` as in `period_compare` (sample days, rounded median invoices, median net, median ticket, every other column null). The all-stores block equals `period_compare` on every shared column |
+| `period_series(store_ids, grain, from_date, to_date, include_stores default true)` | per bucket and block: `store_id`, `bucket_start`, `bucket_end`, `iso_year`, `iso_week`, `weekday`, `calendar_days`, `excluded_days`, `tet_days`, `holiday_kind`, `checked_days`, `matched_days` and the totals | Grain `day`, `week` (ISO weeks, `iso_year` and `iso_week` of the Monday), `month` or `year`, each bucket clipped to the range, or `weekday` (the seven ISO weekdays, each over the whole range). Every bucket appears for all stores and, unless `include_stores` is false, for each visible store, with the totals of `app.period_totals()` over the bucket. `excluded_days` and `tet_days` count the dates that `app.is_excluded_day()` excludes and that lie in a Tết window of the stores' tenants; `holiday_kind` (day grain only) is `tet` in a Tết window, else the kind of a holiday row of the date, `public` before `custom`; `checked_days` and `matched_days` count store-days with a `sync_checks` row and with `is_matched`. At most 1,100 days and buckets × (visible stores + 1) ≤ 900, or buckets ≤ 900 without the store rows; migration `period_series_store_rows` added `include_stores` |
+| `daily_baselines(store_ids, from_date, to_date, weeks default 8)` | per date: `business_date`, `weekday`, `sample_days`, `baseline_net_amount`, `baseline_invoices`, `baseline_avg_ticket` | `same_weekday_baseline()` of each date, computed from one `app.daily_sales()` read and one excluded-day check per candidate date. At most 62 dates; `weeks` from 1 to 26 |
+| `hourly_profile(store_ids, target_date, weeks default 8)` | 24 rows: `hour_local`, `current_invoices`, `current_net_amount`, `current_items_sold`, `sample_days`, `baseline_invoices`, `baseline_net_amount` | Current values from `app.hourly_sales()` summed over the stores: null on every hour when no store has a daily row on the date, 0 for an hour without sales. The baseline of an hour is the median, to 2 digits, of that hour's net and invoices over the eligible same-weekday days (not excluded, with a daily row), an hour without sales counting 0; `sample_days` is the number of eligible days. `weeks` from 1 to 26 |
+| `metric_compare(store_ids, metric_ids, grain, anchor)` | `metric_id`, `period`, `from_date`, `to_date`, `value` | `metric_value()` of each of 1 to 25 ids over current, previous and last year of `app.period_bounds()`, ordered by the position of the id; an unknown id raises `22023` |
+| `item_summary(store_ids, from_date, to_date, compare_from default null, compare_to default null)` | per item: `item_external_id`, `item_name`, `base_name`, `size_label`, `item_type_external_id`, `item_type_name`, `role`, `quantity`, `net_amount`, `invoices`, `days_sold`, `net_share`, `compare_quantity`, `compare_net_amount`, `compare_net_share`, `first_sold_on`, `last_sold_on` | From `agg_item_daily`, so never a modifier; one row per item sold in either range. Shares are of the range's item net, to 6 digits. Compare columns are null without a compare range and 0 for an item not sold in it. First and last sold are all-time over the stores. `role` is read from `item_type_roles` at query time. At most 400 days per range; ordered by net, then quantity |
+| `payment_summary(store_ids, from_date, to_date, compare_from default null, compare_to default null)` | per method: `method_key`, `kind`, `payment_method_name`, `invoices`, `amount`, `share`, `fee_amount`, `fee_estimate_amount`, `compare_amount`, `compare_share` | From `agg_payment_daily`, grouped by kind and name (the name, else the method id), so methods of two POS accounts with the same kind and name merge, as on Hôm nay; `method_key` joins the kind and the name with a vertical bar. Compare rules and limits as `item_summary` |
+| `promotion_summary(store_ids, from_date, to_date)` | per promotion: `promotion_kind`, `promotion_key`, `promotion_name`, `invoices`, `lines`, `discount_amount`, `first_used_on`, `last_used_on`, `days_used` | The non-voided invoices of the stores, read through the `(store_id, business_date)` index, with their item lines reached per invoice. `item`: item lines with a discount, keyed by promotion id, else name; `bill`: bill plus extra discount, keyed by `bill_discount_name`; `voucher`: a voucher amount or code, keyed by voucher name, else code; `unnamed` without a key. `lines` is null for bills and vouchers. At most 92 days |
+| `shift_review(store_ids, from_date, to_date, abs_threshold default 50000, rel_threshold default 0.005)` | every shift of `agg_shift_cash` in the range: `shift_name` from `shifts`, the cash columns, `trailing_shifts`, `z_score`, the three flags, `flagged`, `reasons` | Scores from `app.shift_variance_scores()`; a shift without a variance has null scores, false flags and no reason. The flagged rows equal `cash_variance_flags()`. At most 92 days |
+| `item_lifecycle(store_ids, as_of_date)` | per item sold up to `as_of_date`: names, type, `role`, `first_sold_on`, `last_sold_on`, `months_sold`, `quantity_28d`, `quantity_prior_28d`, `quantity_ytd`, `quantity_last_ytd`, `net_ytd`, `net_last_ytd`, `quantity_lifetime`, `net_lifetime` | From `agg_item_daily`: the 28 days ending `as_of_date` and the 28 before (as `item_velocity`), year to date and last year to date (the year rule of `period_compare`), and lifetime; a window without sales is null |
+| `store_coverage(store_ids, from_date, to_date)` | per visible store: `opened_on`, `first_sales_on`, `last_sales_on`, `history_start`, `store_as_of_date`, `sales_days`, `checked_days`, `matched_days`, `unmatched_days`, `unchecked_sales_days`, `stale_days`, `last_refreshed_at` | First and last days with sales from `agg_daily_sales`, from the live days when the store has no aggregate yet; `history_start` = `greatest(opened_on, first_sales_on)`; check counts from `sync_checks`; `stale_days` counts the days from `analytics_live_from()` on whose item or payment aggregates disagree with the live items sold or paid amount, or are missing on a day with sales; `last_refreshed_at` is the tenant's last finished refresh. At most 400 days |
+| `store_targets(store_ids, period_kind, period_start)` | `store_id`, `net_target_amount` | The `targets` rows of the visible stores for that period |
+
+Helpers in `app`: `period_bounds(grain, anchor)` (`immutable`; the boundaries of `period_compare` by date arithmetic, plus the 8-week baseline range for `day`; another grain raises `22023`), `period_totals(store_ids, from_date, to_date)` (one row of sums and ratios over `app.daily_sales()`), `shift_variance_scores(store_ids, from_date, to_date, abs_threshold, rel_threshold)` (the trailing 56-day scores and flags of every shift with a variance; `cash_variance_flags()` is rebuilt on it with the same signature, columns, filter and order), `visible_stores(store_ids)`, and the argument checks `require_store_ids()`, `require_date_range()`, `require_compare_range()` and `require_report_rows()`. On a local two-store tenant with two years of history, the slowest call of each report takes under 50 ms.
 
 ### Publisher and aggregates
 
 The `publisher` role reads zero rows of every aggregate table, the refresh log and the live views, exactly as it reads zero rows of the fact tables: aggregates reveal revenue, and ADR-013 wants a leaked publisher credential to read no sale. The AI data pack of phase 11 is therefore produced by an owner or manager session (or by the `fnb` CLI with the service role), and the publisher only writes the resulting plan into `strategy_reports`.
 
+## Notifications and alerts (phase 12)
+
+Roadmap phase 12. Digests and alerts reach the owner and managers through one Postgres outbox: `outbound_messages` is the queue and the one-year log, every send decision is taken in SQL when a dispatcher claims a message, and the channel credentials stay outside the database (rows name an environment variable, never its value). Migrations `notify_consent_purpose` (the consent label), `notifications` (schema, RLS, grants, seeds), `notification_outbox` (the functions), `notification_claim_passes_and_consent_floor` (the claim's further batches and the member consent floor), `notification_alerts_and_digests` (episodes, the runner and job mappings, the `sync_alerts` import, channel health, the digest functions and the second form of the tick's rules hook) and `notification_alert_resolution_rules` (the cool-down after a recovery notice, the previous-day cover by a credential outage, resolutions without a notice when a condition stops being watched) build what follows; the schedule functions and the browser RPCs arrive in the last step of the phase and extend the tick through `app.notify_tick_rules`.
+
+### `alert_rule_catalog`
+
+Global, read-only list of the 15 rules with their defaults; a tenant works with no override at all. Every authenticated role reads it.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `rule_key` | text | no | Primary key, `^[a-z][a-z0-9_]{2,40}$` |
+| `category` | text | no | `digest`, `business`, `data_quality`, `sync`, `operations` or `channel` |
+| `delivery` | text | no | `digest` (a line of the daily digest) or `immediate` (an alert episode) |
+| `default_enabled` | boolean | no | Whether the rule is on without an override |
+| `default_severity` | alert_severity | no | Severity of its messages |
+| `default_roles` | tenant_role[] | no | Roles that receive it, 1 to 4, never `publisher` |
+| `default_params` | jsonb | no | Thresholds and switches, an object |
+| `params_schema` | jsonb | no | Per parameter `{"type": "number" \| "integer" \| "boolean" \| "time" \| "enum", "min", "max", "values"}` |
+| `default_cooldown` | interval | no | 0 to 7 days between notices of one dedupe key |
+| `remind_every` | interval | yes | Reminder cadence of an open episode, at least an hour |
+| `notify_on_resolve` | boolean | no | Whether a resolution sends a notice |
+| `store_scoped` | boolean | no | Whether a store override is accepted |
+| `sort_order` | integer | no | Unique display order |
+
+Seeded rules, in order: `daily_digest`, `revenue_below_baseline`, `ticket_drop`, `drawer_variance`, `unverified_day`, `zero_sales_day` (digest lines; `daily_digest` holds `deadline_local` 06:30, `settle_grace_minutes` 30, `skip_closed_days` and `corrections`), then the immediate rules `zero_sales_open` (24 h cool-down), `sync_failed` (6 h), `auth_failed` (critical, 1 h, resolution notice), `sync_stale` (critical, threshold 90 minutes, 2 h cool-down, reminder every 24 h, resolution notice), `sync_dispatch_failed` (6 h), `nightly_missing` (30 hours, 24 h, resolution notice), `job_failed` (12 h), `channel_failed` (24 h) and `digest_failed` (24 h). Digest rules go to owners and managers, the sync and operations rules to owners. Every default passes its own schema.
+
+`app.alert_rule_params_valid(p_rule_key, p_params)` (stable, executable by `authenticated` and `service_role`) checks that every key of `p_params` is a parameter of the rule's schema and that its value has the type and range; a `time` is `HH:MM`.
+
+### `alert_rules`
+
+Overrides of the catalogue per tenant (`store_id` null) or per store; one row per (`tenant_id`, `store_id`, `rule_key`) with nulls not distinct. A null column inherits; `params` merge key by key over the catalogue defaults, and a store row overrides the tenant row for that store. Columns: `id`, `tenant_id`, `store_id`, `rule_key` (references the catalogue), `enabled`, `severity`, `roles` (1 to 4, never `publisher`), `params` (object, default `{}`), `cooldown` (0 to 7 days), `created_by` (default `auth.uid()`, frozen by trigger), `created_at`, `updated_at`. Composite foreign key (`tenant_id`, `store_id`) to `stores`.
+
+The trigger `alert_rules_validate` (`app.validate_alert_rule()`, before insert or update, run as the writer) raises `22023` when the parameters fail the schema, naming the refused keys, or when a store row names a rule that is not `store_scoped`. Writes from the browser are limited to owners with an unlimited scope (see "Who can write what"): the rules include the signals that watch the managers themselves, so a manager reads them and mutes rules only on their own destinations.
+
+`app.effective_alert_rule(p_tenant_id, p_store_id, p_rule_key)` returns `(rule_key, delivery, enabled, severity, roles, params, cooldown, remind_every, notify_on_resolve, source)`: each column from the store row over the tenant row over the catalogue, and `source` the most specific row that exists (`default`, `tenant` or `store`); no row for an unknown key.
+
+### `channel_policies`
+
+Send rules per (`channel_kind`, `message_class`): 27 global rows (`tenant_id` null) and tenant overrides, one row per (`tenant_id`, `channel_kind`, `message_class`) with nulls not distinct.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id`, `tenant_id` | uuid | no, yes | Key; null tenant for a global row |
+| `channel_kind`, `message_class` | enums | no | The pair the row governs |
+| `allowed` | boolean | no | False refuses the pair |
+| `window_start`, `window_end` | time | yes | Allowed hours in the reader's zone, both or neither; `24:00` ends the day; an end at or before the start crosses midnight |
+| `max_per_day` | smallint | yes | Cap per destination, 1 to 1,000 |
+| `cap_window` | text | no | `local_day` (default) or `rolling_24h` |
+| `max_per_month` | smallint | yes | Cap per destination per local month |
+| `critical_bypass` | boolean | no | A critical operational alert ignores the window and the daily cap |
+| `label`, `label_position` | text | yes | `[QC]` or `[AD]`; `subject`, `text` or `template` |
+| `opt_out_text` | text | yes | Refusal text, 10 to 300 characters |
+| `sender_info_required` | boolean | no | Sender block before the refusal (advertising e-mail) |
+| `consent_purpose`, `requires_consent` | consent_purpose, boolean | yes, no | Purpose checked for member and customer destinations |
+| `interaction_window` | interval | yes | Zalo OA consultation window |
+| `api_send_allowed` | boolean | no | False for broadcasts sent from the OA manager only |
+| `source_note` | text | no | The rule's basis, shown beside the default |
+| `created_by`, `created_at`, `updated_at` | | | Attribution, as on the manual-input tables |
+
+CHECK constraints bind every writer, the service role included, so a tenant can tighten a policy and never store one below the floor: operational rows use no purpose or `notifications`, transactional rows `loyalty`, advertising rows `marketing`; `channel_policies_member_consent` requires for an allowed operational row of every kind whose destination belongs to a member (all but `webhook` and `zalo_gmf`) `requires_consent` and the purpose `notifications`, so no override can switch off the consent check of the send decision; `channel_policies_advertising_floor` requires for an allowed advertising row the consent, 1 to 3 messages in a rolling 24 hours, a window inside 07:00–22:00, no critical bypass, an opt-out text and a label or an approved template (Decree 91/2020 Art. 11, 13, 15, 16, 18, 20); `channel_policies_advertising_email` adds the `[QC]` label in the subject, the sender information and a `{hotline}` refusal for e-mail; `channel_policies_internal_kinds` refuses customer classes on `zalo_bot`, `telegram`, `webhook` and `zalo_gmf`. Both floor constraints treat a missing value as a violation. The seeded operational defaults are 06:00–24:00 and 20 a local day per destination under `notifications` for the Zalo Bot, Telegram and e-mail, no window and 200 a day without consent for a webhook; the customer classes are seeded and floor-checked now and refused by the send decision until phases 17 to 19.
+
+`app.effective_channel_policy(p_tenant_id, p_kind, p_class)` returns the tenant row when it exists, else the global row, else null (the decision then cancels as `no_policy`).
+
+### `notification_channels`
+
+Destinations: one row per place a message can go.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id`, `tenant_id` | uuid | no | Key; `unique (tenant_id, id)` |
+| `kind` | channel_kind | no | Where it goes |
+| `provider` | text | no | `zalo_bot`, `telegram`, `brevo`, `resend`, `hmac_webhook`, or the unbuilt kinds; tied to `kind` by CHECKs |
+| `label` | text | no | 1 to 60 characters |
+| `user_id` | uuid | yes | The member it belongs to; required except for `webhook` and `zalo_gmf`; composite foreign key (`tenant_id`, `user_id`) to `tenant_members` with cascade, so removing a member removes their destinations |
+| `address` | text | yes | Bot chat id learnt from the member's own message; null for e-mail (sent to the login address) and webhooks; required for an active or failing bot destination |
+| `address_hint` | text | yes | What screens show, at most 40 characters |
+| `secret_name` | text | no | Environment variable of the credential; `app.notify_secret_name_valid(kind, secret_name)` requires `NOTIFY_` and the kind's prefix |
+| `config` | jsonb | no | Non-secret settings (`from_email`, `from_name`, a webhook's `url`), under 4 kB; a webhook URL must be `https://` without user information, query or fragment |
+| `timezone` | text | yes | Reader's zone; null means the tenant's |
+| `status` | text | no | `pending`, `active` (needs `linked_at`), `failing` or `disabled` (needs `disabled_reason`) |
+| `enabled` | boolean | no | Default true |
+| `store_ids` | uuid[] | yes | Narrowing of the member's scope, 1 to 50 stores of the tenant |
+| `muted_rules` | text[] | no | Catalogue keys this destination does not want |
+| `consent_record_id` | uuid | yes | The member's `notifications` consent (set null on delete) |
+| `linked_at`, `last_ok_at`, `last_error_at` | timestamptz | yes | Link and health |
+| `last_error_code` | text | yes | Short code `^[a-z0-9_]{1,40}$` |
+| `consecutive_failures` | integer | no | Default 0 |
+| `disabled_reason` | text | yes | `blocked_by_user`, `member_request`, `owner_request` or `consent_withdrawn` |
+| `created_by`, `created_at`, `updated_at` | | | Attribution |
+
+Unique indexes: one destination per (`tenant_id`, `user_id`, `kind`, `secret_name`) and per (`tenant_id`, `kind`, `secret_name`, `address`). Triggers: `notification_channels_validate` (`22023` for an unknown IANA zone, a store outside the tenant or a muted key outside the catalogue), `notification_channels_cancel_open_messages` (before delete: its `queued` and `held` messages become `cancelled` with `decision = 'destination_removed'`; a message in `sending` keeps sending without a destination), `set_updated_at` and `keep_created_by`. `authenticated` holds column-level `SELECT` without `address`, `secret_name` and `config`, so a browser query must name its columns (`select *` fails with `42501`); only service-side code and `security definer` functions write the table.
+
+### `alert_events`
+
+Alert episodes: one open row per (`tenant_id`, `dedupe_key`) (partial unique index `alert_events_one_open_key`), with `rule_key`, the subject (`store_id`, `pos_account_id`, `channel_id`, each a composite foreign key to its tenant's row with cascade), `business_date`, `severity`, `state` (`open` or `resolved`, with `resolved_at` and `resolution` set together), `opened_at`, `last_seen_at`, `occurrences`, `folded_occurrences`, `last_notified_at` (the stored cool-down), `notifications`, `suppressed_reason` (`cool_down`, `no_destination`, `root_cause_open`), `source` and count-only `facts` (`app.facts_are_count_only`). Episodes are opened by `app.raise_alert` and resolved by `app.reconcile_alerts` (see "Episodes and alerts" below).
+
+### `digests`
+
+One daily digest per (`tenant_id`, `business_date`, `scope_key`), where `scope_key` is the md5 of the scope's sorted store ids: `store_ids`, `all_stores`, `state` (`built` with its model, version, fingerprint, trigger, data state and `built_at`, or `failed` with `attempts` and `next_attempt_at`), `revision` (0, or 1 after one correction), `built_as`, `revised_at`, `last_error_code`, `created_at`, `updated_at`. The model holds aggregates and store, item and shift names only. Digests are found due by `app.due_digests` and stored by `app.complete_digest` and `app.fail_digest` (see "Digest functions" below).
+
+### `outbound_messages` as the outbox
+
+Phase 12 made `sent_at` nullable without a default and added `created_at`, `kind` (`digest`, `digest_correction`, `alert`, `alert_reminder`, `alert_resolved`, `test`, `link_code`, `link_notice`, `link_confirmation`, or null for log rows), `message_class`, `channel_id`, `store_id`, `digest_id` (composite foreign keys with `on delete set null` of the column), `alert_event_id` and `resend_of` (`on delete set null`), `business_date`, `severity`, `dedupe_key` (unique per tenant), `params` (count-only), `title` (at most 200) and `body` (at most 8,000), `body_sha256`, `decision`, `hold_reason`, `not_before`, `expires_at`, `attempts` (0 to 10), `claimed_at`, `lease_until`, `send_started_at`, `last_error_code`. A queue row needs a class and a dedupe key, and a destination while it waits; a `sending` row needs its claim and lease, a `sent` or `delivered` row its `sent_at`. For a queue row `channel` is the destination's kind, `recipient_ref` is `channel:<id>` (never an address), the subject is the member, `purpose` the policy's, and `template_ref` names the template (`alert.<rule>.v1`, `test.v1`, `link_notice.v1`, …).
+
+The trigger `outbound_messages_guard` (`app.guard_outbound_message()`, before update) enforces the state machine on rows with a kind and raises `55000` on anything else:
+
+```
+queued  -> held | sending | cancelled
+held    -> queued | sending | cancelled
+sending -> sent | queued | failed | uncertain | cancelled (only once the destination vanished)
+sent    -> delivered | failed
+uncertain -> sent | failed
+```
+
+`id`, `tenant_id`, `kind` and `created_at` never change. A row in `sent`, `delivered`, `failed`, `cancelled` or `uncertain` is frozen except: `title`, `body`, `params`, `dedupe_key` and `subject_id` may become null (body purge, redaction), `recipient_ref` may become `redacted`, the foreign keys (`channel_id`, `store_id`, `digest_id`, `alert_event_id`, `consent_record_id`, `resend_of`) may become null when their row is deleted, and `status`, `sent_at`, `provider_message_id` and `last_error_code` change only with an allowed transition.
+
+Indexes: the partial unique dedupe key, due messages by `coalesce(not_before, created_at)` while `queued` or `held`, leases while `sending`, per-destination activity by `coalesce(sent_at, claimed_at)` for the caps, (`tenant_id`, `created_at desc`), and the digest, episode and resend references.
+
+The read policy `outbound_messages_select_for_managers_or_recipient` replaced the phase 2 one: owners and managers with an unlimited scope read every row of the tenant, a store-limited owner or manager reads the rows of their stores, and every member reads the messages to their own destinations (`app.current_user_channel_ids()`).
+
+### Tables in `app`
+
+| Table | Holds |
+| --- | --- |
+| `app.notification_link_codes` | One pending code or acceptance per destination, stored only as a hash: `sha256(secret_name:CODE)` for a bot code (`bot_link`, 15 minutes), `sha256(channel_id:code)` for an e-mail code (`email_confirm`, 15 minutes, at most 5 attempts), `sha256(secret_name:chat id)` for an acceptance waiting 24 hours (`bot_consent`, keeping the code's issue time); `notice_sent_at` records when the notice reached the member |
+| `app.bot_poll_state` | Per bot secret name: the Telegram offset, the bot's display name, and the polling lease (`poller`, `poll_lease_until`); no update content |
+| `app.notify_settings` | Single row: the schedule (`enabled` false until enabled, `function_url`, `request_timeout_ms`, `ticket_lifetime`), `app_base_url`, `retention_days` (default 400, 366 to 1,100), `body_retention_days` (default 90, 31 to 400), the last tick and its count-only summary, the last dispatch and the `NOTIFY_` names (never values) each runtime reported, unclaimed-ticket counters, `last_housekeeping_at` |
+| `app.notify_tickets` | ADR-028 single-use tickets for the `notify` Edge Function (`schedule`, `kick`, `continue`, `manual`), with the `pg_net` request id once posted |
+
+All four are revoked from `public`, `anon`, `authenticated` and `service_role`.
+
+### Functions in `app`
+
+Every function sets an empty `search_path`, is revoked from `public` and executable by `postgres` only, except the check helpers `channel_kind_available`, `notify_secret_name_valid`, `facts_are_count_only`, the parameter check `alert_rule_params_valid` and `current_user_channel_ids`, which `authenticated` and `service_role` execute because constraints, the invoker trigger and a policy call them. Every function that scans all tenants takes `p_tenant_id uuid default null` last, so a test never touches another tenant.
+
+| Function | Behaviour |
+| --- | --- |
+| `channel_kind_available(kind)` | True for `zalo_bot`, `email`, `telegram`, `webhook` |
+| `notify_secret_name_valid(kind, name)` | `NOTIFY_` plus the kind's prefix: `NOTIFY_ZALO_BOT_TOKEN`, `NOTIFY_TELEGRAM_BOT_TOKEN`, `NOTIFY_EMAIL_API_KEY`, `NOTIFY_WEBHOOK_SECRET`, each with an optional `_SUFFIX` |
+| `facts_are_count_only(jsonb)` | At most 24 snake_case keys holding numbers, booleans, nulls or short lower-case tokens, so no error text, name, address or URL reaches an episode or message parameters |
+| `current_user_channel_ids()` | The caller's own destinations; `security definer` |
+| `tenant_has_destinations(tenant)` | An active or failing, enabled destination exists |
+| `enqueue_message(tenant, channel, kind, template_ref, dedupe_key, params, title, body, severity, store, business_date, digest, alert_event, expires_at, at) returns uuid` | The one insert path: a queued operational message created at `at`, its subject, purpose and consent from the destination and policy, expiring after its kind's default (alerts 24 h, digests 36 h, tests, notices and confirmations 1 h, link codes 15 minutes) when `expires_at` is null; a repeated dedupe key returns the first id |
+| `next_window_start(start, end, zone, at) returns timestamptz` | `at` inside the window, else the next opening in the zone |
+| `message_decision(message, at) returns table (decision, release_at, reason)` | First match: cancel `expired`; cancel `resolved_before_send` (an alert of a resolved, not instant, episode); cancel `destination_inactive` (missing, disabled, switched off, or pending for anything but `link_code` and `link_notice`); cancel `unavailable`; cancel `class_not_enabled`; cancel `no_policy`; cancel `not_allowed` or `manual_only`; cancel `no_consent` (member destinations, link code and notice excepted); cancel `unsubscribed` (muted, or the rule no longer enabled for the tenant or store); send test and link messages; hold `outside_hours` until the next opening in the reader's zone; hold `daily_cap` (messages `sending`, `sent`, `delivered` or `uncertain` since local midnight, or in the last 24 hours) until the window opening after the next period or after the oldest counted message turns 24 hours; hold `monthly_cap`; else send. `critical_bypass` lets a critical alert past the window and the daily cap |
+| `claim_next_message(worker, secret_names, lease default 2 minutes, at default now(), tenant)` | Locks due rows with `skip locked` in batches of 20, re-takes the decision under a per-destination advisory lock, holds or cancels on the way, and returns at most one message as `sending` with what the adapter needs (address or the member's login e-mail, config, names, zone, rule); a batch that only held rows until later or cancelled them is followed by the next, at most 10 batches a call, so a due message behind 20 held or cancelled ones is claimed in the same call |
+| `begin_send(message, claimed_at, title, body, body_sha256, at) returns table (ok, title, body)` | Stores the render on the first attempt only and returns the stored text; marks `send_started_at`; `ok` false for a lost claim |
+| `finish_send(message, claimed_at, outcome, scope, code, provider_message_id, retry_after_seconds, idempotent, at) returns text` | `sent`; `retry` to `queued` after the back-off, `failed` after five attempts; `failed`; `uncertain`, or `queued` again on an idempotent provider; a late `sent` turns `uncertain` into `sent`; a vanished destination turns a retry into `cancelled`; updates the destination's health, and a destination or channel failure marks an active destination `failing` (`disabled` with `blocked_by_user`) |
+| `notify_backoff(attempt, retry_after_seconds, seed) returns interval` | 1, 5, 30, 120, 360 minutes plus 0–20 % jitter from the message id, never under retry-after |
+| `recover_message_leases(at, tenant) returns integer` | Expired leases: never started to `queued`; started on `resend` or `hmac_webhook` to `queued`; started elsewhere to `uncertain`; `cancelled` when the destination vanished and no duplicate can arise |
+| `expire_messages(at, tenant) returns integer` | Cancels waiting rows past `expires_at` as `expired`, or `no_dispatcher_secret` when no runtime reported the destination's secret name in 48 hours; clears the text of expired link codes |
+| `record_dispatch(at, runtime, secret_names, counts)` | Stores the dispatch time, the `NOTIFY_` names per runtime and count-only counts |
+| `issue_link_code(channel, purpose, at) returns text` | `FNB-` plus 8 characters (bot) or 6 digits (e-mail), returned once, stored as a hash |
+| `complete_channel_link(kind, secret_name, code, address, hint, at) returns uuid` | A matching code stores the chat id on the pending destination, replaces the code by a 24-hour acceptance and enqueues one `link_notice` |
+| `accept_channel_link(kind, secret_name, address, at) returns uuid` | After the notice was sent, the member's reply activates the destination, records the consent (`method = 'bot_reply'`, `notice_channel = 'bot_chat'`) and enqueues one `link_confirmation` |
+| `confirm_email_link(channel, code, at) returns boolean` | The handed-back code activates the destination with `method = 'email_code'`; the fifth wrong code deletes it; the code leaves the log |
+| `ensure_notifications_consent(tenant, user, channel, evidence, at) returns uuid` | The active row or a new one (`policy_version = 'ops-notifications-v1'`), keeping only the evidence keys `method`, `notice_version`, `notice_channel`, `channel_id`, `code_issued_at`, `notice_sent_at`, `accepted_at`; `security definer` |
+| `withdraw_notifications(tenant, user, at) returns integer` | Revokes the consent, cancels the member's open messages, deletes destinations still pending a link and disables the others as `consent_withdrawn` |
+| `take_poll_lease(secret_name, kind, worker, lease, at)`, `release_poll_lease(secret_name, worker)` | One `getUpdates` consumer per bot token |
+| `redact_outbound_for_subject(tenant, subject_type, subject) returns integer` | Clears title, body, params and subject, sets `recipient_ref = 'redacted'`, cancels waiting rows; skips rows being sent |
+| `notify_housekeeping(at, tenant) returns jsonb` | See retention below |
+| `issue_notify_ticket(reason default 'manual')`, `post_notify_ticket(reason)`, `claim_notify_ticket(ticket)`, `kick_notify(reason default 'kick') returns boolean` | Tickets; a kick posts only when the schedule is enabled and no ticket was issued in the last 30 seconds, and returns false otherwise |
+| `notify_tick(at default now(), post default true, tenant) returns jsonb` | Drops expired tickets (counting posted ones as unclaimed), recovers leases, expires messages, returns early when posting while disabled, runs `notify_tick_rules`, housekeeping every 20 hours, counts due messages and pending bot links, posts a `schedule` ticket when work is due and none was issued in 4 minutes, and records a count-only summary; a tenant filter leaves the shared state alone |
+| `notify_tick_rules(at, tenant) returns jsonb` | The hook later steps redefine with `create or replace`; its first form returned `{}`, its second form (migration `notification_alerts_and_digests`) runs `reconcile_alerts`, `import_sync_alerts` and `evaluate_channel_health` in that order and counts `due_digests`, returning `{reconciled, imported, channel_failed, due_digests}`; the tick posts a ticket when `due_digests` is above 0 |
+
+The trigger `tenant_members_redact_notifications` (`app.redact_member_notifications()`, after delete, `security definer`) redacts a removed member's rows at once (PDPL Art. 25(2)(c)); their destinations go with the composite foreign key, the consent ledger stays.
+
+### Episodes and alerts
+
+Migrations `notification_alerts_and_digests` and `notification_alert_resolution_rules` (which replaces `raise_alert`, `record_runner_notification` and `reconcile_alerts` with `create or replace`, same signatures). Immediate rules become episodes in `alert_events` under the dedupe key `<rule>:<subject>`; digest rules never do (they are lines of the digest). Every function below is executable by `postgres` only and takes a tenant filter where it scans.
+
+| Function | Behaviour |
+| --- | --- |
+| `raise_alert(tenant, rule_key, subject_key, source, occurred_at, store, account, channel, business_date, facts, severity, instant) returns table (event_id, outcome, messages)` | One reading of an immediate rule, serialised by an advisory lock on the key: `ignored_disabled` when the effective rule is off; `folded` into the account's `auth_failed` episode when `root_cause_event` finds one; `repeated` on the open episode (occurrences, last seen, merged facts), or `reminded` once `remind_every` has passed since the last notice; otherwise `opened`: silent inside the cool-down of the key's last notice (`suppressed_reason = 'cool_down'`, keeping that notice time) unless an `alert_resolved` message of the key was queued, held, sending, sent, delivered or uncertain after that notice (the owner was or will be told it recovered, so its return is announced), else fanned out (`no_destination` when nothing receives it); `instant` resolves it at once (`resolution = 'instant'`). `22023` for an unknown or digest rule, a subject that is not lower-case tokens, or facts that are not count-only |
+| `root_cause_event(tenant, rule_key, store, account, at) returns uuid` | For `sync_stale`, `sync_failed`, `sync_dispatch_failed` and `zero_sales_open`: the account's (or the store's account's) `auth_failed` episode that is open or resolved less than 30 minutes before `at` |
+| `alert_destinations(tenant, store, account, rule_key, exclude_channel) returns table (channel_id)` | Active or failing, enabled destinations not muting the rule: a member's when their role is in the effective rule's roles and both the member's and the destination's store scope cover the episode (the store; one active store of the account; an unlimited member for a tenant episode), a webhook when its `store_ids` cover it; `exclude_channel` leaves out a failing destination and adds its member's other destinations (`channel_failed`) |
+| `enqueue_alert_messages(event, kind, at) returns integer` | One `alert`, `alert_reminder` or `alert_resolved` message per destination: dedupe key `alert:<event>:<channel>:open`, `:remind:<n>` or `:resolved`, template `alert.<rule>.v1`, `alert.<rule>.reminder.v1` or `alert.<rule>.resolved.v1`, expiring after 24 hours; a resolution only where the opening message was `sent` or `delivered`; calls `kick_notify('kick')` when it queued anything |
+| `record_runner_notification(kind, severity, tenant, account, store, run, facts, occurred_at, source) returns table (event_id, outcome, messages)` | The phase 7 Notifier mapping (`OutboxNotifier`), see below; `22023` for a store or account outside the tenant, a store of another account, a run of another tenant, an unknown kind or a malformed previous-day date; the runner's label, message and severity are not stored |
+| `reconcile_alerts(at, tenant) returns integer` | Resolves open episodes whose condition cleared or is no longer watched (`superseded`, never with a notice), sends the resolution notice of `auth_failed`, `sync_stale` and `nightly_missing` (rules with `notify_on_resolve`) for `recovered` and `cleared` resolutions, and sends the reminder of an episode still open once `remind_every` passed, unless a root cause is open; returns the episodes resolved or reminded |
+| `import_sync_alerts(at, tenant) returns integer` | Phase 7's open `app.sync_alerts` rows of tenants with destinations: `sync_stale` over the tenant's `threshold_minutes` becomes a reading of `sync_stale:store:<id>` (the runners' key) unless a successful sync ended after the row's reading or the gap at `at` is within the threshold; `dispatch_failed` with at least `min_occurrences` becomes `sync_dispatch_failed:store:<id>`; a reading the open episode already saw is skipped; sets `notified_at` (first notice kept) on imported rows; never reads `error` |
+| `evaluate_channel_health(at, tenant) returns integer` | `channel_failed:channel:<id>` once per failure: for a `failing` destination, or one `disabled` as `blocked_by_user`, without an open episode and without one opened since its `last_error_at` |
+| `record_job_event(workflow_key, conclusion, run_id, run_attempt, started_at, at, tenant) returns table (tenant_id, outcome, messages)` | For each tenant (or the one given) with a destination receiving `job_failed`: for `sync`, while an `auth_failed` episode is open or a `sync_failed` or `sync_stale` episode was opened or seen since `started_at`, an instant episode with `suppressed_reason = 'root_cause_open'` and no message (outcome `root_cause_open`); otherwise an instant `job_failed:workflow:<key>` episode (critical for `migrate`) under the 12-hour cool-down. Workflow keys `sync`, `backup`, `migrate`, `deploy_web`, `deploy_functions`, `notify`, `workflows_active`, `other`; conclusions `failure`, `timed_out`, `startup_failure`; the run id is not stored |
+
+Runner notifications map as follows:
+
+| Notification | Episode |
+| --- | --- |
+| `auth_failed` | `auth_failed:account:<account>`, no store |
+| `run_failed` of an incremental run (kind from `sync_runs` by the run id, else `facts.kind`, else a store with `facts.stage`) | `sync_failed:store:<store>` once the store's latest `min_consecutive_incremental` concluded incremental runs all failed; outcome `below_threshold` before |
+| `run_failed` of a window run | `sync_failed:account:<account>:<kind>` |
+| `sync_stale`, scope `now` | `sync_stale:store:<store>` when `minutes_without_sync` is over the tenant's `threshold_minutes`, else `below_threshold` |
+| `sync_stale`, scope `previous_day` | instant `sync_stale:store_day:<store>:<date>`, or `covered` when a `sync_stale:store:<store>` episode, or an `auth_failed` episode of the store's POS account, overlapped that business day |
+
+Resolutions applied by `reconcile_alerts`:
+
+| Rule | Resolved when | Resolution |
+| --- | --- | --- |
+| `auth_failed` | the account is `active` or `error` again; the account was `paused` instead (`superseded`, no notice) | `recovered`, notice |
+| `sync_failed` | a succeeded sales run of the store (store key), or of the account and kind (account key), started after the opening | `recovered` |
+| `sync_stale` | no open `sync_alerts` row newer than the store's last successful sync remains, `sync_gap_minutes` is null or within the threshold and a successful sync ended after the opening; `superseded` (no notice) while `incremental_sync_watched` is false (store inactive or opted out, account paused) or when the gap is back within the threshold without such a sync (the watch restarted); `schedule_disabled` (no notice) when the incremental schedule was switched off after the opening | `recovered`, notice |
+| `sync_dispatch_failed` | its `sync_alerts` row resolved | `cleared` |
+| `zero_sales_open` | a non-voided invoice of the business date, or the end of that business day | `cleared`, `day_ended` |
+| `nightly_missing` | a succeeded nightly run finished after the opening | `recovered`, notice |
+| `digest_failed` | the digest is built | `cleared` |
+| `channel_failed` | a later `sent` or `delivered` message on the destination | `recovered` |
+
+Message parameters (`outbound_messages.params`, count-only) hold the episode's facts plus `rule_key`, `severity`, `store_id`, `account_id`, `business_date`, `occurrences` (the episode's readings) and `opened_at` as Unix seconds, and `resolved_at` on a resolution. Facts by rule: `auth_failed` `store_count`; `sync_failed` `kind`, `stage`, `connector_calls` and, for a store, `consecutive_failures`; `sync_stale` `minutes_without_sync`, `threshold_minutes`, `scope` and, for the previous day, `business_date`; `sync_dispatch_failed` `sync_alert_occurrences` (unclaimed tickets) and `http_status`; `job_failed` `workflow`, `conclusion`, `run_attempt`; `channel_failed` `channel_kind` and `error_code`; `digest_failed` `attempts`, `scope_key`, `store_count`.
+
+### Digest functions
+
+| Function | Behaviour |
+| --- | --- |
+| `store_day_close_at(store, date) returns timestamptz` | The end of the last opening span opening within the business day; the end of the business day for unknown hours; its start on a scheduled closed day |
+| `store_day_shift_state(store, date) returns table (open_shifts, last_closed_at)` | The shifts opened within the business day (`shifts_store_opened_at_idx`): how many are open and the last close |
+| `store_day_settled_at(store, date, grace default 30 minutes) returns timestamptz` | The end of the first succeeded sales run (not master data) covering the store and the date that started at least `grace` after the later of the close and the last shift close; null while a shift of the day is open; a scheduled closed day settles at its start |
+| `due_digests(at, tenant) returns table (tenant_id, business_date, scope_key, store_ids, all_stores, trigger, due_at, run_as, channel_ids, store_facts)` | Destinations that receive `daily_digest` (active or failing, enabled, a member whose role the rule names, not muted, never a webhook), grouped by scope (the member's visible active stores narrowed by the destination's `store_ids`, sorted) for today and yesterday of the scope's earliest store, never before the day before the earliest link, without a destination that already has a digest or correction for that date; `settled` when every store settled by `at` (`due_at` the latest settle), `deadline` when every unsettled store passed the later of its business-day end and `deadline_local` (06:30) the next day (`due_at` that deadline); skipped when built, when a failed build waits or failed five times, without `sync_checks` history up to the date, or when every store is scheduled closed and `skip_closed_days`; only the newest due date per scope and never one older than a built or waiting date; `store_facts` lists per store `store_id`, `opening_minutes` (null for unknown hours), `close_at`, `last_shift_closed_at`, `open_shifts`, `settled_at` and `day_ended` |
+| `complete_digest(tenant, business_date, scope_key, store_ids, all_stores, trigger, data_state, model, model_version, fingerprint, built_as, at) returns uuid` | Under the advisory lock `fnb-notify:digest:<tenant>:<scope_key>:<date>`: inserts the built digest or turns a failed row into it and returns its id, or returns null when it was already built |
+| `enqueue_digest_message(digest, channel, revision, kind, title, body, at) returns uuid` | The pre-rendered `digest` (revision 0) or `digest_correction` (revision 1) for one destination of the tenant: dedupe key `digest:<digest>:<channel>:r<revision>`, the store of a one-store scope, expiring after 36 hours (24 for a correction) |
+| `fail_digest(tenant, business_date, scope_key, store_ids, error_code, at) returns uuid` | A failed build: `attempts + 1`, the next attempt after 5, 15, 60 and 120 minutes, `last_error_code` (`build_failed` unless a short token); the fifth failure raises `digest_failed:digest:<scope_key>:<date>` and stops the retries; null once the digest is built |
+| `digest_scope_check(tenant, scope_key, store_ids)` | `22023` unless the stores are 1 to 50 distinct stores of the tenant and the key is the md5 of their sorted ids joined by commas |
+
+The partial index `outbound_messages_channel_digest_date_idx` (`channel_id`, `business_date`) on digest and correction messages serves the per-destination check of `due_digests`.
+
+### Retention
+
+| Data | Kept |
+| --- | --- |
+| Queue rows in `sent`, `delivered`, `failed`, `cancelled` | `retention_days` after `coalesce(sent_at, created_at)`, deleted in batches of 5,000; `queued`, `held`, `sending` and `uncertain` rows and rows without a kind are never purged |
+| `title`, `body` | `body_retention_days`, then null; hash, template and parameters stay |
+| Resolved episodes, digests | `retention_days` after `resolved_at` or `business_date` |
+| Link codes | until a day after expiry |
+| Pending bot destinations with a chat id but no acceptance | deleted, chat id included, once the 24-hour acceptance lapsed |
+| A former member's rows | redacted at removal; housekeeping redacts any row that was being sent at the time |
+| `cron.job_run_details` | 7 days (unscoped runs only) |
+
 ## Row-level security
 
-Every table in `public` has RLS enabled. `anon` holds no privilege on any table. `authenticated` holds `SELECT` on every table except `pos_account_tokens`, `INSERT`, `UPDATE`, `DELETE` only on the manual-input tables (`item_costs`, `payment_fee_rates`, `item_type_roles`, `holidays`, `targets`) and `strategy_reports`, and `INSERT`, `UPDATE` without `DELETE` on the legal ledgers `consent_records` and `data_subject_requests`. Default privileges are set so that a future table created by the migration role starts read-only for `authenticated` and invisible to `anon`. The sync jobs run as `service_role`, which bypasses RLS.
+Every table in `public` has RLS enabled. `anon` holds no privilege on any table. `authenticated` holds `SELECT` on every table except `pos_account_tokens`, `INSERT`, `UPDATE`, `DELETE` only on the manual-input tables (`item_costs`, `payment_fee_rates`, `item_type_roles`, `holidays`, `targets`) and `strategy_reports`, `INSERT`, `UPDATE` without `DELETE` on the legal ledgers `consent_records` and `data_subject_requests`, and `INSERT`, `UPDATE`, `DELETE` on the notification settings `alert_rules` and `channel_policies`. On `notification_channels` it holds column-level `SELECT` only, without `address`, `secret_name` and `config`. Default privileges are set so that a future table created by the migration role starts read-only for `authenticated` and invisible to `anon`. The sync jobs run as `service_role`, which bypasses RLS.
 
 ### Roles
 
@@ -725,15 +1071,17 @@ Every table in `public` has RLS enabled. `anon` holds no privilege on any table.
 | --- | --- | --- | --- |
 | `owner` | Tenant owner | Everything of the tenant within store scope, plus `outbound_messages`; `data_subject_requests` only when the membership is not store-limited, because the policy requires an unlimited store scope, so a store-limited owner reads zero requests | Manual inputs and plans within store scope; consent records (grant, or revoke by setting `revoked_at`); data-subject requests when the membership is not store-limited |
 | `manager` | Store or tenant manager | Same as owner, including the zero-request rule for a store-limited membership | Same as owner |
-| `staff` | Cashier or shift lead | Everything of the tenant within store scope, including `consent_records`; no `data_subject_requests`, no `outbound_messages` | Nothing |
+| `staff` | Cashier or shift lead | Everything of the tenant within store scope, including `consent_records`; no `data_subject_requests`; of `outbound_messages` only the messages to their own destinations (none in phase 12) | Nothing |
 | `viewer` | Read-only stakeholder | Same as staff | Nothing |
 | `publisher` | Service identity used by the plan-publishing skill or routine | `tenants`, `stores`, `strategy_reports`, `holidays`, `dim_calendar` only; no aggregate table, refresh log or live view | Insert into `strategy_reports` |
+
+For the notification tables: every authenticated role reads `alert_rule_catalog` and the global `channel_policies`; owners and managers read `alert_rules` (a store-limited manager the tenant rows and those of their stores), the tenant's policy overrides, every destination of the tenant when their scope is unlimited and otherwise their own, the episodes and messages of their stores, and the digests whose stores are all in their scope; staff, viewers and publishers read nothing else; `anon` reads nothing.
 
 `owner`, `manager`, `staff` and `viewer` are the data roles. `publisher` is deliberately outside them so that a leaked publisher credential cannot read a single sale.
 
 ### Store scope
 
-`tenant_members.store_ids` limits a member to some stores of the tenant. A null scope means every store. Store-scoped fact tables filter on `store_id`; tenant-wide catalogue tables filter on `tenant_id`; tables whose `store_id` may be null (`item_costs`, `payment_fee_rates`, `strategy_reports`) show tenant-wide rows to every member of the tenant and store rows only to members who can see that store.
+`tenant_members.store_ids` limits a member to some stores of the tenant. A null scope means every store. Store-scoped fact tables filter on `store_id`; `sync_runs` filters on the stores a run covered (see its section); tenant-wide catalogue tables filter on `tenant_id`; tables whose `store_id` may be null (`item_costs`, `payment_fee_rates`, `strategy_reports`) show tenant-wide rows to every member of the tenant and store rows only to members who can see that store.
 
 ### Helpers in schema `app`
 
@@ -764,6 +1112,9 @@ Every helper sets an empty `search_path`. The membership helpers (`data_roles()`
 | `weekday_profile(p_store_ids uuid[], p_origin date)` | `table (weekday smallint, level_net_amount numeric, weekday_index numeric)`: seven rows, ISO weekday 1–7; `level_net_amount` is the mean daily net of the clean (not excluded) days among the 28 ending at `p_origin`, `weekday_index` the weekday's mean ÷ the mean of the clean days among the 84 ending at `p_origin`, null when the weekday has no clean day | `weekday_profile_forecast()`, `month_pace()`; `security invoker` |
 | `seasonal_naive_series(p_store_ids uuid[], p_origin date, p_from date, p_to date)` | `table (target_date date, forecast_net_amount numeric)`: one row per date from `p_from` to `p_to`, the net (rounded to 2 decimals) of the most recent day with sales on the target's weekday within the 56 days ending at `least(p_origin, target_date - 1)`, holidays not excluded; null when there is none | `seasonal_naive_forecast()`, `month_pace()`; `security invoker` |
 | `refresh_analytics(p_tenant, p_from, p_to)` | Rows written | Sync jobs and `public.refresh_my_analytics()`; `security definer`, executable by `service_role` only |
+| `channel_kind_available(kind)`, `notify_secret_name_valid(kind, name)`, `facts_are_count_only(jsonb)` | Check helpers of the notification tables | CHECK constraints; executable by `authenticated` and `service_role` |
+| `alert_rule_params_valid(rule_key, params)` | The parameters match the catalogue schema | The invoker trigger on `alert_rules`; executable by `authenticated` and `service_role` |
+| `current_user_channel_ids()` | The caller's own destinations | `outbound_messages` read policy; `security definer` |
 
 Policies call the array-returning helpers as `(select app.helper())` so Postgres evaluates them once per statement, not once per row.
 
@@ -777,7 +1128,11 @@ Policies call the array-returning helpers as `(select app.helper())` so Postgres
 | `strategy_reports` | `can_publish_store_scope(tenant_id, store_id)` and `created_by = auth.uid()` | `can_manage_store_scope(tenant_id, store_id)` |
 | `consent_records` | `has_tenant_role(tenant_id, owner or manager)`: any owner or manager of the tenant, store-limited or not, because consent is captured at the till | Update only, same rule; the `keep_consent_grant` trigger lets the update set `revoked_at` once and nothing else; no delete |
 | `data_subject_requests` | `can_manage_store_scope(tenant_id, null)`: owner or manager with an unlimited store scope | Update only, same rule; no delete |
-| `outbound_messages` | Service role only | Service role only; owners and managers read |
+| `outbound_messages` | Service role only | Service role only; owners and managers read, every member reads the messages to their own destinations |
+| `alert_rules` | `has_store_scope(tenant_id, null, owner)` and `created_by = auth.uid()`: owners with an unlimited scope, tenant and store rows; the validation trigger runs as the writer | Same rule; managers write nothing |
+| `channel_policies` | `tenant_id` not null and `has_store_scope(tenant_id, null, owner)` and `created_by = auth.uid()`; global rows are service-role only; the floor CHECKs bind the browser too | Same rule |
+| `notification_channels` | Through `security definer` functions only | Same |
+| `consent_records` with purpose `notifications` | Never from the browser (restrictive policy) | Never from the browser (restrictive policy) |
 | Every other table | Service role only | Service role only |
 
 Tenant-wide rows (null `store_id`, or tables without one) can be written only by owners and managers whose membership is not limited to some stores. `created_by` must equal the caller on insert and is frozen by trigger afterwards, so attribution cannot be forged.
@@ -802,7 +1157,7 @@ Storage on the free tier is finite, and a payload stored on its own row is expen
 - A line or tender payload leaves out the fields whose value equals the invoice payload's (store, receipt number, timestamps, cashier, customer on iPOS). Read a field missing from it from the invoice payload; every other field is kept as returned.
 - `shifts.raw`, `invoice_events.raw` and master data `raw` keep the payload of that entity as returned, on the row.
 
-With this rule the same history fits under the 300 MB ceiling. This is a sync-side rule: the database accepts any JSON. `mapSale` drops the fields shared with the invoice (`packages/sync/test/unit/payloads.test.ts`), and the Postgres repository writes the records through `app.store_sale_payloads` (`supabase/tests/19_sale_payloads.sql`). The in-memory repository keeps the payloads on its rows. Migration `20261108062820_sale_payloads.sql` moves payloads already on the rows into `sale_payloads`; a database that held sales before it returns the space after `vacuum (full, analyze) public.invoice_lines, public.invoice_payments, public.invoices;`.
+With this rule the same history fits under the 300 MB ceiling. This is a sync-side rule: the database accepts any JSON. `mapSale` drops the fields shared with the invoice (`packages/sync/test/unit/payloads.test.ts`), and the Postgres repository writes the records through `app.store_sale_payloads` (`supabase/tests/19_sale_payloads.sql`). The in-memory repository keeps the payloads on its rows. Migration `20261108062820_sale_payloads.sql` moves payloads already on the rows into `sale_payloads`; a database that held sales before it returns the space after `vacuum (full, analyze) public.invoice_lines, public.invoice_payments, public.invoices;`. The seed writes the demo tenant in the same shape: its invoices, lines and payments have null `raw` and each of its store-days has a document, so a fresh reset in CI matches production.
 
 ## Tenant-consistent composite foreign keys
 
@@ -810,8 +1165,44 @@ A row that carries both `tenant_id` and a reference to a child of the tenant (a 
 
 `stores` and `pos_accounts` declare `unique (tenant_id, id)`; every store-scoped table declares `foreign key (tenant_id, store_id) references stores (tenant_id, id)` and every account-scoped table declares `foreign key (tenant_id, pos_account_id) references pos_accounts (tenant_id, id)`.
 
-The database therefore refuses a row that names tenant A together with a store of tenant B, even when written by the service role or by a bug in a policy. Tables that follow the pattern: `stores`, every catalogue table, `store_items`, `devices`, `invoices`, `invoice_lines`, `invoice_payments`, `invoice_events`, `sale_payloads`, `shifts`, `sync_runs`, `sync_checks`, `item_costs`, `payment_fee_rates`, `item_type_roles`, `targets`, `strategy_reports`, and every `agg_*` aggregate table. `invoice_events.invoice_id` references `invoices.id` alone with `on delete set null`, because the event must outlive the invoice; its `store_id` and `invoice_external_id` keep it attributable. The legal tables carry `tenant_id` and no store; `consent_records.subject_id` and `data_subject_requests.subject_id` deliberately have no foreign key (see the consent model), and `outbound_messages.consent_record_id` references `consent_records.id` alone with `on delete set null`.
+The database therefore refuses a row that names tenant A together with a store of tenant B, even when written by the service role or by a bug in a policy. Tables that follow the pattern: `stores`, every catalogue table, `store_items`, `devices`, `invoices`, `invoice_lines`, `invoice_payments`, `invoice_events`, `sale_payloads`, `shifts`, `sync_runs`, `sync_checks`, `item_costs`, `payment_fee_rates`, `item_type_roles`, `targets`, `strategy_reports`, every `agg_*` aggregate table, `alert_rules`, `alert_events` (store, account and destination), `notification_channels` (its member, as (`tenant_id`, `user_id`) to `tenant_members`) and `outbound_messages` (destination, store and digest, each `on delete set null` of the column only). `invoice_events.invoice_id` references `invoices.id` alone with `on delete set null`, because the event must outlive the invoice; its `store_id` and `invoice_external_id` keep it attributable. The legal tables carry `tenant_id` and no store; `consent_records.subject_id` and `data_subject_requests.subject_id` deliberately have no foreign key (see the consent model), and `outbound_messages.consent_record_id` references `consent_records.id` alone with `on delete set null`.
 
 ## Tests
 
-`supabase/tests/` holds pgTAP suites run by `supabase test db`: schema and enums, unique keys and composite foreign keys, RLS enabled everywhere with grants audited, two-tenant isolation, write policies, anon and token access, store scope and attribution, the publisher role, invoice events and parent lines, sale payload documents (merge, moved sale, empty document, refusals, privileges), payment fee rates, item type roles and holidays, consent and legal records (active-consent helper, one active consent per purpose, append-only trigger for every role including the service role, deadline rule across weekends and public holidays with its exhausted-window exception, deadline trigger, role access), and the analytics layer: aggregate schema and privileges, refresh totals against the fact tables of the demo tenant (daily equals non-voided invoices, voided amount, identified invoices including id-only customers, hours sum to days, modifiers never counted as items, payments reconcile with the paid amount per store-day even when tenders are dated after their invoice, shift variance and a shift whose business date moves, null attach rate until a role is mapped, basket pairs without modifiers, idempotent re-run, timing, and the per-tenant advisory lock), query functions (period summary and comparison against the facts, median baseline and median ticket with holiday and Tết exclusion, forecasts at long horizons and with clamped origins, forecast accuracy, the store-local as-of day around local midnight, month pace for the current and a future month, heatmap, item velocity, menu matrix in costed, provisional and half-costed roles, cash variance flags), and access (two-tenant isolation, store scope, publisher and anon read nothing, wrapper limits measured against the log before the test so earlier refreshes do not matter). The analytics tests scope every count to the demo tenant, so further tenants in the database do not change their outcome. The seed is synthetic and the tests create their own fixture users and tenants inside a rolled-back transaction.
+`supabase/tests/` holds pgTAP suites run by `supabase test db`, one file per area:
+
+| File | Covers |
+| --- | --- |
+| `01_schema.sql` | Schemas, helper functions, enums with their labels (the phase 12 enums and the `notifications` purpose included), tables and key columns |
+| `02_unique_keys.sql` | Unique natural keys and the tenant-consistent composite foreign keys |
+| `03_rls_enabled.sql` | RLS on every table of `public` with the expected table count (52), write policies and grants audited (`alert_rules` and `channel_policies` on the allow-lists), default privileges for future tables, no privilege for `anon` |
+| `04_tenant_isolation.sql` | Two-tenant isolation of reads |
+| `05_write_policies.sql` | Who may write the manual-input tables |
+| `06_anon_and_tokens.sql` | `anon` reads nothing; the token cache is service-role only |
+| `07_write_scope_and_attribution.sql` | Store scope on writes and frozen `created_by` attribution |
+| `08_publisher_role.sql` | The publisher role reads no sale and only inserts plans |
+| `09_invoice_events_and_lines.sql` | Invoice events and parent lines |
+| `10_payment_fee_rates.sql` | Payment fee rates |
+| `11_item_type_roles_and_holidays.sql` | Item type roles and holidays |
+| `12_consent_and_legal.sql` | Consent and legal records: the active-consent helper, one active consent per purpose, the append-only trigger for every role including the service role, the deadline rule across weekends and public holidays with its exhausted-window exception, the deadline trigger, role access, seed counts scoped to the demo tenant, and no `notifications` consent inserted or revoked by a store-limited or an unlimited manager |
+| `13_analytics_schema.sql` | Aggregate tables, their RLS and privileges, the analytics functions |
+| `14_analytics_refresh.sql` | Refresh totals against the fact tables of the demo tenant (daily equals non-voided invoices, voided amount, identified invoices including id-only customers, hours sum to days, modifiers never counted as items, payments reconcile with the paid amount per store-day even when tenders are dated after their invoice, shift variance and a shift whose business date moves, null attach rate until a role is mapped, basket pairs without modifiers), an idempotent re-run, timing and the per-tenant advisory lock |
+| `15_analytics_queries.sql` | Query functions: period summary and comparison against the facts, median baseline and median ticket with holiday and Tết exclusion, forecasts at long horizons and with clamped origins, forecast accuracy, the store-local as-of day around local midnight, month pace for the current and a future month, heatmap |
+| `16_analytics_menu_and_cash.sql` | Item velocity, the menu matrix in costed, provisional and half-costed roles, cash variance flags |
+| `17_analytics_access.sql` | Analytics access: two-tenant isolation, store scope, publisher and `anon` read nothing, wrapper limits measured against the log before the test so earlier refreshes do not matter |
+| `18_metric_value.sql` | `metric_value` against the facts for every available metric, opening minutes of split, overnight, closed and unknown days, null for unmeasured inputs, refusals of unknown or unavailable ids and reversed ranges, privileges, tenant isolation and store scope |
+| `19_sale_payloads.sql` | Sale payload documents: merge, moved sale, empty document, refusals, privileges |
+| `20_incremental_schedule.sql` | The incremental schedule: inert until enabled; store-local opening by timezone, daylight saving, business-day start, overnight, split, closed, malformed and unknown hours; the opening-hours check constraint and its validator, hours without a span counted as unknown; opening minutes with overlaps counted once; store selection at six ticks including the closing run and the paused, `auth_failed`, opted-out and inactive exclusions, ticks a fraction of a second late; dispatch, the request it queues, single-use and expiring tickets, manual tickets, enabling and disabling the `pg_cron` job; the `sync_stale` alert opened, refreshed and resolved by ticks; expired scheduled tickets recorded as `dispatch_failed` with the call's status and resolved by a claim; retention; no privilege for any API role |
+| `21_sync_freshness.sql` | The dead-man's switch: the last successful sync ignores failed, partial and master-data runs and other stores' runs, counts account-wide window runs, ignores a backfill of an older month and a window run of other stores, opening minutes without a sync across closing and opening, the longest gap of a day, never-synced stores; the watch rule for opted-out, inactive and paused stores; `sync_resumed_at` set by the triggers and the gaps measured from it; stale analytics dates; a store-scoped manager's view of `sync_runs` |
+| `22_report_functions.sql` | Report functions on a two-store fixture with 15 months of sales: argument types, `security invoker`, `stable`, empty `search_path` and one signature per name; `period_bounds` against `period_compare` across month ends, leap days and ISO week 53; `period_totals` against `summarize_daily` on cold and live days; the all-stores blocks of `period_compare_by_store` against `period_compare`, per-store sums and per-store baselines; every bucket of `period_series` against `period_totals` for the five grains, day and weekday sums, a gap inside a Tết run, custom holidays, empty buckets, the row cap and the all-stores-only variant; `daily_baselines` against `same_weekday_baseline`; hourly medians with an excluded holiday; `metric_compare` against `metric_value` for the 21 ids; item, payment and promotion summaries against the facts; `shift_review` against `cash_variance_flags`, and the rebuilt `cash_variance_flags` against its previous body; lifecycle windows across leap years; coverage counts, history start, stale live days and the live fallback; targets; the argument limits (51 store ids, a reversed range, a one-sided compare range, 401 and 93 days, a 901-row item result) |
+| `23_report_access.sql` | Report access: two-tenant isolation for each of the 12 functions, store scope, the publisher's null totals and empty rows, a viewer, `anon` refused, grants of the functions and the app helpers |
+| `24_vn_public_holidays.sql` | The calendar of migration `vn_public_holidays`: 61 global rows, 30 public days and 31 Tết days, each year's calendar, the Tết 2026 window, no repeated key, global rows only, exclusion for any Vietnamese tenant |
+| `25_live_half_lateral.sql` | The lateral live half: the store, tenant and unscoped branches of `app.daily_sales_facts` against the previous hash-join body on the demo seed and on a fixture with modifiers, services, voids, multi-tender cash, unknown methods and empty invoices; a refresh re-run leaves `agg_daily_sales` unchanged; the store branch reads lines through `invoice_lines_invoice_id_idx` |
+| `26_notify_schema.sql` | Phase 12 schema: enums, tables, columns, composite keys, the secret-name and count-only helpers, the parameter check, the webhook URL and destination CHECKs, the validation triggers, the 15 catalogue rows and the 27 global policies, every advertising floor violation refused as `postgres` and as `service_role` and a lawful tightening accepted, the member consent floor refused as both and a member channel switched off or a webhook accepted without consent, the outbox state machine (each allowed transition, refused ones, frozen finished rows), the seed rows, deleting a destination with waiting, sending and sent messages, deleting an episode, redacting a sent row |
+| `27_notify_policy.sql` | `next_window_start` in Ho Chi Minh City, Tokyo and Berlin (spring gap, autumn overlap), across midnight, `24:00`, no window; every step of `message_decision`; daily caps per local day and rolling 24 hours with their exact release, the monthly cap, `critical_bypass`; a consent revoked while a message is held; acceptance A4 (held at 00:30 local until exactly 06:00 local) |
+| `28_notify_outbox.sql` | Enqueue idempotency; claims (one row, not yet due, holds and cancels on the way, a due message behind more than 20 held ones, secret list, tenant filter); `begin_send` storing the render once; `finish_send` for every outcome and scope with destination health, a vanished destination, a late success; back-off, jitter and retry-after; exhaustion after five attempts; lease recovery in its four cases; expiry and `no_dispatcher_secret`; `record_dispatch`; redaction and a member's removal; housekeeping (retention minimum, purge, bodies after 90 days, uncertain and waiting rows kept, a resend surviving its purged original, an unaccepted bot destination deleted after 24 hours, a former member's row redacted later); bot linking with code, notice and acceptance, a code without acceptance, an expired code, e-mail codes and five wrong codes; the polling lease; tickets; `kick_notify` while disabled; the tick and its rules hook returning a count-only object |
+| `29_notify_alerts.sql` | Episodes: the M4 functions run as `postgres` only; `alert_destinations` by role, store scope, account scope, tenant scope, muted rules, webhooks with and without `store_ids`, failing destinations and the failing member's other destinations; `raise_alert` opening (key, severity, source, messages, template, dedupe key, expiry, count-only params), repeating, reminding at +24 hours, the cool-down (a silent episode keeping the last notice, and notifying again after it), `no_destination`, a disabled rule, refused input; folding under an open `auth_failed` and one resolved less than 30 minutes earlier; `record_runner_notification` for every kind and scope, the consecutive-incremental threshold and a success restarting it, window runs by facts and by run, the tenant's raised `sync_stale` threshold, covered and uncovered previous-day readings, dropped error text, refused input; `import_sync_alerts` (threshold, `notified_at`, no second raise for one reading, a newer reading, the runner and scheduler sharing one episode, a newer successful sync, a gap back within the threshold, a tenant without destinations, `sync_dispatch_failed`); `reconcile_alerts` for each rule, resolution notices only where the opening message was delivered, a waiting opening cancelled at claim, `schedule_disabled`, reminders and no reminder under an open root cause; `evaluate_channel_health` once per failure, a blocked destination, recovery and the cool-down; `record_job_event` (instant episodes without the run id, the 12-hour cool-down, critical migrations, the tenant filter, `root_cause_open` for an open `auth_failed` and for a sync episode seen since the run started); the rule toggle of acceptance A2 through RLS; the tick reconciling before it imports; the database half of acceptance A3; after a fixed credential failure the previous-day readings of the account's stores are covered (alert and recovery only), a later day is not; a failure inside the cool-down after a delivered or still waiting recovery notice alerts again, one after an undelivered episode stays silent; a paused account, an opted-out store, a paused store account and a restarted watch end their episodes as `superseded` without a recovery notice |
+| `30_notify_digests.sql` | Digests: close times for known, unknown, closed, 05:00-start, past-midnight and Tokyo hours; shift state by business day; the settle rule (a run at the closing instant, 22:00 close with a 22:40 shift close at 23:05 and 23:10, a grace of 0, failed, master-data, other-store and out-of-range runs, the nightly, an open shift, a closed day); `due_digests` (one-store and two-store scopes, keys, members, channels, excluded destinations, store facts, the tick's count, a disabled rule, built digests, the deadline with an open shift, only the newest date, nothing older than a built date, a failed build waiting and retried, a narrowed destination, Tokyo with Ho Chi Minh City, a 01:00 close with a 05:00 day start, closed days with and without `skip_closed_days`, no history, the link guard); `complete_digest` idempotent and refusing bad keys, stores, triggers and fingerprints; `enqueue_digest_message` per destination; `fail_digest` back-off and `digest_failed` at the fifth failure, cleared once built |
+| `31_notify_access.sql` | Notification access for owner, unlimited manager, store-limited manager, staff, viewer, publisher, another tenant's owner and `anon`; hidden destination columns; function privileges of every phase 12 function; the restrictive consent policies and owner-only rule writes; owners writing rules and policies through RLS, the floor and the member consent floor on browser writes, managers refused; no browser write on the other new tables |
+
+The notification tests (26 onwards) build their own fixture tenants (`notify-it-pgtap-…`) and destinations on `_IT` secret names and pass a tenant filter to every scanning function. The analytics tests scope every count to the demo tenant, and the report tests to their own fixture tenants (and the demo tenant where they compare with the seed), so further tenants in the database do not change their outcome. The seed is synthetic and the tests create their own fixture users and tenants inside a rolled-back transaction.

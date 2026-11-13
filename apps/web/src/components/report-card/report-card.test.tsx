@@ -146,7 +146,7 @@ describe("ReportCard", () => {
 			screen.getByRole("button", { name: "Sắp xếp theo Cửa hàng" }),
 		);
 		expect(firstCells()).toEqual(["Quán Một", "Quán, Hai"]);
-		fireEvent.click(screen.getByRole("button", { name: "Tải CSV" }));
+		fireEvent.click(screen.getByRole("button", { name: /^Tải CSV/ }));
 		expect(downloads).toHaveLength(1);
 		expect(downloads[0]?.content).toBe(
 			'﻿Cửa hàng,Doanh thu thuần,Chênh lệch (%)\r\nQuán Một,2500000,25\r\n"Quán, Hai",7400000,-10\r\n',
@@ -201,7 +201,7 @@ describe("ReportCard", () => {
 		renderWithLanguage(<ReportCard {...props()} />, "en");
 		expect(screen.getByText("About these numbers")).toBeInTheDocument();
 		expect(
-			screen.getByRole("button", { name: "Download CSV" }),
+			screen.getByRole("button", { name: /^Download CSV/ }),
 		).toBeInTheDocument();
 	});
 });

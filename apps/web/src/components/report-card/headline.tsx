@@ -9,6 +9,14 @@ interface HeadlineProps {
 	caption?: string;
 }
 
+export function signed(text: string, value: number): string {
+	return value > 0 ? `+${text}` : text;
+}
+
+export function hourText(hour: number): string {
+	return `${String(((Math.trunc(hour) % 24) + 24) % 24).padStart(2, "0")}:00`;
+}
+
 export function formatValue(
 	kind: ValueKind,
 	value: number,
@@ -22,10 +30,23 @@ export function formatValue(
 				: formatters.moneyExact(value);
 		case "count":
 			return formatters.count(value);
+		case "decimal":
+			return formatters.decimal(value);
+		case "ratio":
+			return formatters.ratio(value);
 		case "percent":
 			return formatters.percent(value);
 		case "signedPercent":
 			return formatters.signedPercent(value);
+		case "percentPoints":
+			return formatters.points(value);
+		case "percentChange":
+			return formatters.signedPercent(value / 100);
+		case "hour":
+			return hourText(value);
+		case "date":
+		case "weekday":
+		case "month":
 		case "text":
 			return String(value);
 	}

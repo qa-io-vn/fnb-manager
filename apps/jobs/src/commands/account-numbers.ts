@@ -1,4 +1,4 @@
-import type { AccountEntry } from "../config/accounts.js";
+import type { AccountEntry } from "@fnb/runner";
 import type { Output } from "../output.js";
 
 export type AccountGroup = "account" | "other";

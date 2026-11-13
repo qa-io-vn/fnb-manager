@@ -80,8 +80,13 @@ export class IposSchemaError extends IposError {
 export class IposNetworkError extends IposError {
 	readonly endpoint: string;
 
-	constructor(endpoint: string, cause: unknown) {
-		super(`iPOS ${endpoint} could not be reached`, { cause });
+	constructor(endpoint: string, cause: unknown, detail?: string) {
+		super(
+			`iPOS ${endpoint} could not be reached${detail ? `: ${detail}` : ""}`,
+			{
+				cause,
+			},
+		);
 		this.endpoint = endpoint;
 	}
 }

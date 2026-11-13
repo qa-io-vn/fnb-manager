@@ -1,0 +1,55 @@
+{
+	"name": "@fnb/notify",
+	"version": "0.1.0",
+	"description": "Notifications for FNB Manager: channel adapters, message templates, the Postgres outbox dispatcher and chat linking",
+	"license": "MIT",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"import": "./src/index.ts"
+		},
+		"./outbox": {
+			"types": "./src/outbox/index.ts",
+			"import": "./src/outbox/index.ts"
+		},
+		"./postgres": {
+			"types": "./src/postgres/index.ts",
+			"import": "./src/postgres/index.ts"
+		},
+		"./render": {
+			"types": "./src/render/index.ts",
+			"import": "./src/render/index.ts"
+		},
+		"./testing": {
+			"types": "./src/testing/index.ts",
+			"import": "./src/testing/index.ts"
+		}
+	},
+	"files": [
+		"src"
+	],
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+		"test": "vitest run --passWithNoTests",
+		"test:integration": "vitest run test/integration",
+		"test:live": "LIVE=1 vitest run test/live"
+	},
+	"dependencies": {
+		"@fnb/connector-mock": "workspace:^",
+		"@fnb/core": "workspace:^",
+		"@fnb/reports": "workspace:^",
+		"@fnb/runner": "workspace:^",
+		"@fnb/sync": "workspace:^",
+		"postgres": "^4.1.0",
+		"zod": "^4.6.7"
+	},
+	"devDependencies": {
+		"@types/node": "^25.0.0",
+		"vitest": "^5.1.0"
+	}
+}

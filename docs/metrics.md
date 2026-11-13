@@ -21,15 +21,15 @@ The single list of metrics that reports, exports, the AI data pack, digests and 
 | id | Tiếng Việt | English | Unit | Formula | Grain | Direction | Source | Reports | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `net_revenue` | Doanh thu thuần | Net revenue | VND | Σ `net_amount` of non-voided invoices | store-day | higher | `agg_daily_sales.net_amount`, `v_recent_daily_sales`, `period_summary().net_amount` | Hôm nay, Ngày, Tuần, Tháng, Năm, Doanh thu & xu hướng, data pack | available now |
-| `gross_revenue` | Doanh thu gộp | Gross revenue | VND | Σ `gross_amount` of non-voided invoices, before every discount | store-day | neutral | `agg_daily_sales.gross_amount`, `period_summary().gross_amount` | Khuyến mãi & giảm giá, Tháng | available now |
+| `gross_revenue` | Doanh thu gộp | Gross revenue | VND | Σ `gross_amount` of non-voided invoices, before every discount | store-day | neutral | `agg_daily_sales.gross_amount`, `period_summary().gross_amount` | Khuyến mãi & giảm giá, Ngày, Tháng | available now |
 | `invoices` | Số hóa đơn | Invoices | count | count of non-voided invoices | store-day | higher | `agg_daily_sales.invoices`, `period_summary().invoices` | every periodic report, Hôm nay | available now |
-| `avg_ticket` | Giá trị trung bình mỗi hóa đơn | Average ticket | VND | `net_revenue` ÷ `invoices` | store-period | higher | `period_summary().avg_ticket` | Hôm nay, Ngày, Tháng, Năm | available now |
-| `items_per_ticket` | Số món mỗi hóa đơn | Items per ticket | items | Σ item-line quantity ÷ `invoices` | store-period | higher | `period_summary().items_per_ticket` | Ngày, Thực đơn | available now |
-| `avg_item_price` | Giá trung bình mỗi món | Average item price | VND | `net_revenue` ÷ Σ item-line quantity, so that `avg_ticket` = `items_per_ticket` × `avg_item_price` exactly | store-period | neutral | `period_summary().avg_item_price` | Thực đơn, Ngày | available now |
-| `cash_share` | Tỷ trọng tiền mặt | Cash share | fraction | Σ tenders whose payment method kind is `cash` ÷ Σ `paid_amount` | store-period | neutral | `period_summary().cash_share`, `agg_payment_daily` | Thanh toán & tiền mặt, Ngày | available now |
-| `voucher_invoice_share` | Tỷ lệ hóa đơn dùng voucher | Voucher invoice share | fraction | invoices with `voucher_amount` > 0 or a `voucher_code` ÷ `invoices` | store-period | neutral | `period_summary().voucher_share`, `agg_daily_sales.voucher_invoices` | Khuyến mãi & giảm giá | available now |
+| `avg_ticket` | Giá trị trung bình mỗi hóa đơn | Average ticket | VND | `net_revenue` ÷ `invoices` | store-period | higher | `period_summary().avg_ticket` | Hôm nay, Ngày, Tuần, Tháng, Năm | available now |
+| `items_per_ticket` | Số món mỗi hóa đơn | Items per ticket | items | Σ item-line quantity ÷ `invoices` | store-period | higher | `period_summary().items_per_ticket` | Ngày, Tuần, Tháng, Năm, Thực đơn | available now |
+| `avg_item_price` | Giá trung bình mỗi món | Average item price | VND | `net_revenue` ÷ Σ item-line quantity, so that `avg_ticket` = `items_per_ticket` × `avg_item_price` exactly | store-period | neutral | `period_summary().avg_item_price` | Thực đơn, Ngày, Tuần, Tháng, Năm | available now |
+| `cash_share` | Tỷ trọng tiền mặt | Cash share | fraction | Σ tenders whose payment method kind is `cash` ÷ Σ `paid_amount` | store-period | neutral | `period_summary().cash_share`, `agg_payment_daily` | Thanh toán & tiền mặt, Ngày, Tháng | available now |
+| `voucher_invoice_share` | Tỷ lệ hóa đơn dùng voucher | Voucher invoice share | fraction | invoices with `voucher_amount` > 0 or a `voucher_code` ÷ `invoices` | store-period | neutral | `period_summary().voucher_share`, `agg_daily_sales.voucher_invoices` | Khuyến mãi & giảm giá, Ngày, Tuần, Tháng | available now |
 | `member_invoice_share` | Tỷ lệ hóa đơn có thành viên | Member invoice share | fraction | invoices with a `customer_phone` ÷ `invoices`; phone only, the POS member rail (compare `customer_capture_rate`, which also counts invoices identified by `customer_id` alone) | store-period | higher | `period_summary().member_share`, `agg_daily_sales.member_invoices` | Ngày, Khách hàng, Tháng | available now |
-| `discount_rate` | Tỷ lệ giảm giá | Discount rate | fraction | (item + bill + extra + voucher discounts) ÷ `gross_revenue`. **Convention: the denominator is gross**, never net, so a 10 % promotion reads as 0.10 | store-period | lower | `period_summary().discount_amount` ÷ `gross_amount` | Khuyến mãi & giảm giá, Tháng | available now |
+| `discount_rate` | Tỷ lệ giảm giá | Discount rate | fraction | (item + bill + extra + voucher discounts) ÷ `gross_revenue`. **Convention: the denominator is gross**, never net, so a 10 % promotion reads as 0.10 | store-period | lower | `period_summary().discount_amount` ÷ `gross_amount` | Khuyến mãi & giảm giá, Ngày, Tuần, Tháng | available now |
 | `attach_rate_topping` | Tỷ lệ kèm topping | Topping attach rate | fraction | invoices containing a drink and a topping ÷ invoices containing a drink; roles from `item_type_roles`; over a period Σ `topping_invoices` ÷ Σ `drink_invoices` of the measured days | store-day | higher | `agg_attach_daily.attach_rate_topping` (`topping_invoices` ÷ `drink_invoices`) | Thực đơn, Tháng | available now (null until an item type of the store's POS account carries the `topping` role, and on days without a drink invoice) |
 | `attach_rate_snack` | Tỷ lệ kèm đồ ăn nhẹ | Snack attach rate | fraction | invoices containing a drink and a snack ÷ invoices containing a drink; over a period Σ `snack_invoices` ÷ Σ `drink_invoices` of the measured days | store-day | higher | `agg_attach_daily.attach_rate_snack` | Thực đơn, Tháng | available now (null until an item type of the store's POS account carries the `snack` role, and on days without a drink invoice) |
 | `size_l_share` | Tỷ trọng size L | Size L share | fraction | quantity with `size_label` = L ÷ quantity of all sized items | store-period | higher | `agg_size_mix_daily` | Tháng, Thực đơn | available now |
@@ -49,7 +49,7 @@ The single list of metrics that reports, exports, the AI data pack, digests and 
 
 | id | Tiếng Việt | English | Unit | Formula | Grain | Direction | Source | Reports | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `same_weekday_baseline` | Mức nền cùng ngày trong tuần | Same-weekday baseline | VND and count | medians over the same weekday of the previous 8 weeks, holidays and Tết excluded, days without data skipped: median of `net_revenue`, median of `invoices`, and median of the daily `avg_ticket` (a true median ticket, not the ratio of the two other medians) | store-day | neutral | `same_weekday_baseline()`, row `baseline` of `period_compare(…, 'day', …)` | Hôm nay, Ngày, alerts, Khuyến mãi (lift) | available now |
+| `same_weekday_baseline` | Mức nền cùng ngày trong tuần | Same-weekday baseline | VND and count | medians over the same weekday of the previous 8 weeks, holidays and Tết excluded, days without data skipped: median of `net_revenue`, median of `invoices`, and median of the daily `avg_ticket` (a true median ticket, not the ratio of the two other medians) | store-day | neutral | `same_weekday_baseline()`, row `baseline` of `period_compare(…, 'day', …)` | Hôm nay, Ngày, Tuần, Tháng, alerts, Khuyến mãi (lift) | available now |
 | `forecast_weekday_profile` | Dự báo theo đặc trưng ngày trong tuần | Weekday-profile forecast | VND | level × weekday index, both taken at the origin: the level is the mean daily net of the 28 days ending at the origin, the index the mean net of the target's weekday ÷ the mean daily net over the 84 days ending at the origin; excluded days left out of both; index 1 when the weekday has no clean day in the 84 days; the same value for every horizon from one origin. Default origin: the as-of day, or the day before the target when that is earlier | store-day | neutral | `weekday_profile_forecast()`, `month_pace().forecast_weekday_profile_net_amount` | Tháng (pace), Hôm nay | available now (null when the 28 days hold no clean day; while the window lacks some weekdays, as in a store's first four weeks, the level leans toward the weekdays present) |
 | `forecast_seasonal_naive` | Dự báo mùa vụ đơn giản | Seasonal-naïve forecast | VND | net of the most recent day with sales that falls on the target's weekday, on or before the origin and at most 55 days before it (usually the last such weekday before the origin); holidays not excluded | store-day | neutral | `seasonal_naive_forecast()`, `month_pace().forecast_seasonal_naive_net_amount` | Tháng (pace) | available now (null when that weekday had no sales in the 8 weeks) |
 | `forecast_mae` | Sai số dự báo tuyệt đối trung bình | Forecast mean absolute error | VND | per benchmark forecast: mean of \|actual net − forecast\| over the days of the window, each day forecast one day ahead (origin = the day before); scored only on days with sales that are not excluded and where both forecasts exist, so the two values compare like for like; `mape` beside it is the mean of \|error\| ÷ actual | store-period (trailing 28 days by default) | lower | `forecast_accuracy(store_ids, as_of_date, days)` rows `forecast_weekday_profile` and `forecast_seasonal_naive` (`sample_days`, `mae`, `mape`) | Tháng (the forecast with the lower MAE is shown first) | available now (null until a day has both forecasts, which needs a week of history) |
@@ -65,8 +65,8 @@ The single list of metrics that reports, exports, the AI data pack, digests and 
 
 | id | Tiếng Việt | English | Unit | Formula | Grain | Direction | Source | Reports | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `cash_variance` | Chênh lệch tiền mặt | Cash variance | VND | counted drawer − expected cash (opening float + cash tenders of the shift). Payouts are not synced from the POS, so the standard term − payouts is missing: a shift with a cash payout shows the payout as a shortage until payouts are modelled | shift | lower (absolute value) | `agg_shift_cash.variance_amount` | Ca & két tiền, Ngày, Thanh toán & tiền mặt | available now |
-| `cash_variance_zscore` | Điểm z chênh lệch tiền mặt | Cash variance z-score | z | (variance − mean variance of the store's shifts in the trailing 56 days) ÷ their sample standard deviation; needs 3 shifts and a non-zero spread; flagged over 2, together with the absolute (50,000 VND) and relative (0.5 % of cash sales) thresholds | shift | lower (absolute value) | `cash_variance_flags()` | Ca & két tiền, alerts | available now |
+| `cash_variance` | Chênh lệch tiền mặt | Cash variance | VND | counted drawer − expected cash (opening float + cash tenders of the shift). Payouts are not synced from the POS, so the standard term − payouts is missing: a shift with a cash payout shows the payout as a shortage until payouts are modelled | shift | lower (absolute value) | `agg_shift_cash.variance_amount` | Ca & két tiền, Ngày, Tháng, Thanh toán & tiền mặt | available now |
+| `cash_variance_zscore` | Điểm z chênh lệch tiền mặt | Cash variance z-score | z | (variance − mean variance of the store's shifts in the trailing 56 days) ÷ their sample standard deviation; needs 3 shifts and a non-zero spread; flagged over 2, together with the absolute (50,000 VND) and relative (0.5 % of cash sales) thresholds | shift | lower (absolute value) | `cash_variance_flags()` | Ca & két tiền, Ngày, Tháng, alerts | available now |
 | `void_rate` | Tỷ lệ hủy hóa đơn | Void rate | fraction | voided invoices ÷ (non-voided + voided invoices); the VND figure beside it is Σ `net_amount` of the voided invoices (`voided_amount`) | store-day | lower | `agg_daily_sales.voided_invoices`, `agg_daily_sales.voided_amount` | Ca & két tiền, Chất lượng dữ liệu | available now; the cashier-period variant and the z-score ranking within a store (ADR-026) are computed by the reports layer from `invoices` and `invoice_events`, no aggregate holds a cashier |
 | `edit_rate` | Tỷ lệ sửa hóa đơn | Edit rate | fraction | invoices with status `edited` ÷ non-voided invoices | store-day | lower | `agg_daily_sales.edited_invoices` | Ca & két tiền | available now; cashier-period variant and z-score ranking as for `void_rate` |
 | `removed_line_rate` | Tỷ lệ dòng bị xóa | Removed-line rate | fraction | `invoice_events` of kind `line_removed` ÷ item lines of the period | store-day, cashier-period | lower | `invoice_events` (fact table; no aggregate yet) | Ca & két tiền | available now (populated once the adjustment sync of phase 7 runs; computed by the reports layer) |
@@ -77,7 +77,7 @@ Computed on identified customers only; `customer_capture_rate` is always shown b
 
 | id | Tiếng Việt | English | Unit | Formula | Grain | Direction | Source | Reports | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `customer_capture_rate` | Tỷ lệ hóa đơn định danh khách | Customer capture rate | fraction | non-voided invoices with a `customer_phone` or a `customer_id` ÷ `invoices`; an invoice identified by id alone (Zalo identity, phases 16–19) counts | store-day, store-period | higher | `agg_daily_sales.identified_invoices` ÷ `invoices`, `period_summary().identified_share` | Chất lượng dữ liệu, Khách hàng | available now |
+| `customer_capture_rate` | Tỷ lệ hóa đơn định danh khách | Customer capture rate | fraction | non-voided invoices with a `customer_phone` or a `customer_id` ÷ `invoices`; an invoice identified by id alone (Zalo identity, phases 16–19) counts | store-day, store-period | higher | `agg_daily_sales.identified_invoices` ÷ `invoices`, `period_summary().identified_share` | Chất lượng dữ liệu, Khách hàng, Ngày | available now |
 | `repeat_rate` | Tỷ lệ khách quay lại | Repeat rate | fraction | customers with ≥ 2 visits in the window ÷ customers with ≥ 1 visit | store-period | higher | `invoices.customer_id` (fact table) | Khách hàng | needs customer identity |
 | `visit_frequency_30d` | Tần suất ghé 30 ngày | Visit frequency, 30 days | visits / customer | visits ÷ active customers over the trailing 30 days | store-period | higher | `invoices.customer_id` | Khách hàng | needs customer identity |
 | `visit_frequency_90d` | Tần suất ghé 90 ngày | Visit frequency, 90 days | visits / customer | visits ÷ active customers over the trailing 90 days | store-period | higher | `invoices.customer_id` | Khách hàng | needs customer identity |
@@ -107,6 +107,98 @@ Computed on identified customers only; `customer_capture_rate` is always shown b
 Every value is null when the period has no data (`days_with_data` = 0), so a young store shows "chưa có dữ liệu năm trước" instead of zero.
 
 The `baseline` row is not a period sum. `days_with_data` is the number of eligible same-weekday days, `net_amount` the median net, `invoices` the median invoice count rounded to a whole invoice, and `avg_ticket` the median of the daily average tickets; `gross_amount`, `discount_amount`, `items_per_ticket`, `avg_item_price` and every share are null. `same_weekday_baseline()` returns the unrounded `baseline_invoices`.
+
+## Report conventions
+
+The periodic reports Ngày, Tuần, Tháng and Năm (roadmap phase 9) take every number from the report functions of `docs/schema.md` (section Report functions), or from their parity-tested TypeScript port in demo mode, and build their cards in `@fnb/reports`. These rules hold for every card.
+
+### Period and as-of day
+
+- A report ends at the last complete business day of the selected stores, `app.analytics_as_of(store_ids)` in SQL and `asOfDate()` in TypeScript. Today belongs to Hôm nay; Ngày opens on yesterday.
+- Ngày is one business day; Tuần an ISO week from Monday to Sunday, key `YYYY-Www`; Tháng a calendar month, key `YYYY-MM`; Năm a calendar year, key `YYYY`. A running week, month or year ends at the as-of day, and every comparison of it covers the same elapsed days, with the boundaries of `period_compare` (section Period comparison).
+
+### Coverage and like-for-like
+
+- A store's history starts at `history_start` = the later of `stores.opened_on` and its first day with sales; when only one of them is known, that one.
+- A store is covered for a reference period starting on `from` when its history starts on or before `from`.
+
+| Coverage of the selected stores | The comparison |
+| --- | --- |
+| every store covered | current and reference over all selected stores |
+| some stores covered | current and reference both over the covered stores only, labelled "cùng cửa hàng (k/N)" |
+| no store covered | none: "chưa có dữ liệu năm trước" (or "kỳ trước") when a selected store started after `from`, otherwise no data |
+
+- The median same-weekday baseline is never like-for-like. It needs one eligible day; with fewer than eight the label shows "(k/8 tuần)".
+- A card's figures are verified when every selected store has no unmatched and no unchecked sales day in the report's range (`sync_checks`); otherwise they are marked unverified. Demo figures are marked as sample data.
+- Cards that read item, payment, shift, size or attach aggregates show "đang cập nhật" while a day from yesterday onwards has aggregates that disagree with its live totals (`store_coverage.stale_days`).
+- Several stores are summed before any ratio, and a figure whose input is not configured or not measured is null, never 0.
+
+### Comparisons per report
+
+| Report | Comparisons |
+| --- | --- |
+| Ngày | the previous day; the same weekday 52 weeks earlier (day − 364); the median same-weekday baseline of the previous 8 weeks, holidays and Tết excluded |
+| Tuần | last week over the same elapsed days; the 4-week average; the same week 52 weeks earlier |
+| Tháng | the previous month over the same elapsed days, clipped to its end; the same month a year earlier; the two month forecasts as pace, the one with the lower forecast error first; the monthly target |
+| Năm | last year to date over the same elapsed days; each month against the same month a year earlier over the stores covered then; month on month over complete months; the latest three complete months against the three before |
+
+`change` = (current − reference) ÷ reference, null when either value is null or the reference is 0. A fraction (a share or a rate) is compared as the difference in percentage points.
+
+### Decomposition
+
+Revenue V is invoices N × average ticket T, and T is items per ticket I × average item price P, each taken unrounded from the SQL sums of the same stores and basis as the comparison (T = V ÷ N, I = Q ÷ N, P = V ÷ Q with Q the items sold). Index 0 is the reference, 1 the current period.
+
+| Part | Revenue effect | Ticket effect |
+| --- | --- | --- |
+| invoices | round((N1 − N0) × (T0 + T1) ÷ 2) | — |
+| items per ticket | round((I1 − I0) × (P0 + P1) ÷ 2 × (N0 + N1) ÷ 2) | round2((I1 − I0) × (P0 + P1) ÷ 2) |
+| average item price | the total minus the other parts | the total minus the items part |
+| total | round(V1 − V0) | round2(T1 − T0) |
+
+The parts add up exactly to the total shown: the decomposition line shows every amount in full, and the ticket split is shown at the currency's precision (whole đồng) with the item price part as the remainder of the shown total. A net revenue or average ticket card decomposes against the previous period, and against last year when the previous period is unavailable; Năm always decomposes against last year. Nothing is decomposed against the median baseline, because medians do not multiply. There is no decomposition when an input is null or when invoices or items are 0 on either side.
+
+### Sentences
+
+- A main clause compares the headline with one reference; when that comparison is like-for-like, the next clause gives the covered stores' figures ("Mức so sánh chỉ tính k/N cửa hàng có đủ dữ liệu: … so với …").
+- A driver clause names the candidate with the largest contribution, and says it went against the trend only after a rising or falling main clause; no driver follows a main clause whose reference is missing.
+- A decomposition clause measured against the main clause's reference says "Phần lớn do …" after a rising or falling clause; one measured against another reference (Ngày compares with the baseline but decomposes against the day before) names that reference and the difference ("Chênh lệch … so với hôm trước phần lớn do …").
+
+### 4-week average (Tuần)
+
+- Week k (k = 1 to 4) is the same elapsed days of the week k weeks earlier.
+- The stores are those covered on the Monday four weeks earlier.
+- A week whose compared days hold a Tết day is skipped (`SKIP_TET_WEEKS`). With fewer than two weeks left there is no reference; the label shows how many weeks were used.
+- Net and invoices are the mean, over the weeks left, of the covered stores' sums; a covered store-day without data counts 0. The average ticket is pooled: Σ net ÷ Σ invoices of those weeks.
+
+### Peak month (Năm)
+
+The peak month is the complete month of the year (its last day on or before the as-of day) with the highest net over all selected stores. With no complete month yet, it is the latest month, marked partial (`PEAK_COMPLETE_MONTHS_ONLY`).
+
+### Seasonality index (Năm)
+
+- The window is the 12 complete months ending with the latest complete month on or before the end of the period (`SEASONALITY_MONTHS`), over the stores covered at its first day.
+- The average daily net of month m is the covered stores' net of m ÷ the calendar days of m; its index is that average ÷ the mean of the 12 averages. With fewer than 12 covered months the card says "chưa đủ 12 tháng".
+- The Tết dip of a year is the net per calendar day of its week with the most Tết days ÷ the mean net per calendar day of the four weeks before, minus 1; all five weeks need sales. For whole weeks this equals the week's net ÷ the mean net of the four weeks, minus 1; dividing by calendar days keeps a week clipped by the start of the weekly series (for example the 5-day first bucket of 2025) from pulling the mean down.
+- The seasonality card's peak is the window month with the highest index, over the covered stores. It can differ from the peak month above, which ranks the months of the year by their net over all selected stores.
+
+### Item lifecycle statuses (Năm)
+
+The first status that applies, with `QUIET_DAYS` = 56, `LIFECYCLE_CHANGE` = 0.2 and `MIN_LIFECYCLE_QUANTITY` = 10:
+
+| Status | Rule |
+| --- | --- |
+| new | first sold on or after 1 January of the year |
+| discontinued | last sold more than 55 days before the end of the period, and on or after 1 January of last year |
+| growing | at least 10 units last year to date, and this year to date at least 1.2 times that |
+| declining | at least 10 units last year to date, and this year to date at most 0.8 times that |
+| steady | any other item sold this year |
+
+Items last sold before 1 January of last year are left out. Year to date and last year to date follow the year rule of `period_compare`.
+
+### Since-opening weeks (Năm)
+
+- A store is young for Năm when its history starts later than 364 days before the end of the period; it then has no year-over-year comparison and shows "chưa có dữ liệu năm trước".
+- For a young store, week k since opening covers history start + 7(k − 1) to history start + 7k − 1 and is complete when it ends on or before the end of the period. Its average per day is the week's net ÷ its days with data; growth is the latest complete week against week 1.
 
 ## Benchmark context
 

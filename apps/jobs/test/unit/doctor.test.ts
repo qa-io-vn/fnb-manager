@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	databaseSizeDetail,
 	databaseSizeHealth,
 	isLocalDatabase,
 	migrationDrift,
@@ -8,13 +9,22 @@ import {
 } from "../../src/commands/doctor-checks.js";
 import { ageText } from "../../src/commands/formatting.js";
 
-const MB = 1024 * 1024;
+const MIB = 1024 * 1024;
 
 describe("doctor thresholds", () => {
 	it("grades database size against the free plan", () => {
-		expect(databaseSizeHealth(100 * MB)).toBe("green");
-		expect(databaseSizeHealth(400 * MB)).toBe("yellow");
-		expect(databaseSizeHealth(475 * MB)).toBe("red");
+		expect(databaseSizeHealth(100 * MIB)).toBe("green");
+		expect(databaseSizeHealth(400 * MIB - 1)).toBe("green");
+		expect(databaseSizeHealth(400 * MIB)).toBe("yellow");
+		expect(databaseSizeHealth(475 * MIB - 1)).toBe("yellow");
+		expect(databaseSizeHealth(475 * MIB)).toBe("red");
+	});
+
+	it("labels database sizes in MiB, the unit the limits are kept in", () => {
+		expect(databaseSizeDetail(291.25 * MIB)).toBe(
+			"291.3 MiB of the 500 MiB free-plan quota (upgrade trigger 400 MiB, red from 475 MiB)",
+		);
+		expect(databaseSizeDetail(300_000_000)).toMatch(/^286\.1 MiB /);
 	});
 
 	it("grades sync age and pause risk", () => {

@@ -27,6 +27,7 @@ export const MOCK_CONNECTOR_ID = "mock";
 export const mockCredentialsSchema = z.object({
 	seed: z.number().int().nonnegative(),
 	storeCount: z.number().int().min(1).max(5).optional(),
+	rejectLogin: z.literal(true).optional(),
 });
 
 export type MockCredentials = z.infer<typeof mockCredentialsSchema>;
@@ -93,6 +94,13 @@ export function createMockConnector(
 				throw new ConnectorAuthError(
 					MOCK_CONNECTOR_ID,
 					parsed.error.issues[0]?.message ?? "invalid credentials",
+				);
+			}
+			if (parsed.data.rejectLogin === true) {
+				credentials = null;
+				throw new ConnectorAuthError(
+					MOCK_CONNECTOR_ID,
+					"the account is configured to reject the login",
 				);
 			}
 			credentials = parsed.data;

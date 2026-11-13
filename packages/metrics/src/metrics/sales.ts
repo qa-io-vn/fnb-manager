@@ -29,7 +29,7 @@ export const salesMetrics = [
 		grains: ["store-day"],
 		direction: "neutral",
 		source: "`agg_daily_sales.gross_amount`, `period_summary().gross_amount`",
-		reports: ["promotions", "month"],
+		reports: ["promotions", "day", "month"],
 		status: "available now",
 	},
 	{
@@ -59,7 +59,7 @@ export const salesMetrics = [
 		grains: ["store-period"],
 		direction: "higher",
 		source: "`period_summary().avg_ticket`",
-		reports: ["today", "day", "month", "year"],
+		reports: ["today", "day", "week", "month", "year"],
 		status: "available now",
 	},
 	{
@@ -74,7 +74,7 @@ export const salesMetrics = [
 		grains: ["store-period"],
 		direction: "higher",
 		source: "`period_summary().items_per_ticket`",
-		reports: ["day", "menu"],
+		reports: ["day", "week", "month", "year", "menu"],
 		status: "available now",
 	},
 	{
@@ -90,7 +90,7 @@ export const salesMetrics = [
 		grains: ["store-period"],
 		direction: "neutral",
 		source: "`period_summary().avg_item_price`",
-		reports: ["menu", "day"],
+		reports: ["menu", "day", "week", "month", "year"],
 		status: "available now",
 	},
 	{
@@ -105,7 +105,7 @@ export const salesMetrics = [
 		grains: ["store-period"],
 		direction: "neutral",
 		source: "`period_summary().cash_share`, `agg_payment_daily`",
-		reports: ["payments", "day"],
+		reports: ["payments", "day", "month"],
 		status: "available now",
 	},
 	{
@@ -122,7 +122,7 @@ export const salesMetrics = [
 		direction: "neutral",
 		source:
 			"`period_summary().voucher_share`, `agg_daily_sales.voucher_invoices`",
-		reports: ["promotions"],
+		reports: ["promotions", "day", "week", "month"],
 		status: "available now",
 	},
 	{
@@ -155,7 +155,7 @@ export const salesMetrics = [
 		grains: ["store-period"],
 		direction: "lower",
 		source: "`period_summary().discount_amount` ÷ `gross_amount`",
-		reports: ["promotions", "month"],
+		reports: ["promotions", "day", "week", "month"],
 		status: "available now",
 	},
 	{

@@ -21,7 +21,10 @@ function fetchContextOf(scope: StoreScope) {
 			scope.store,
 			scope.context.account.tenant_currency,
 		),
-		fetchContext: { onFlag: scope.context.flags.sink },
+		fetchContext: {
+			onFlag: scope.context.flags.sink,
+			...(scope.context.signal ? { signal: scope.context.signal } : {}),
+		},
 	};
 }
 

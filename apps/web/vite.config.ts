@@ -46,25 +46,26 @@ function demoRowSourcePreload(): Plugin {
 		},
 		transformIndexHtml: {
 			order: "post",
-			handler(_html, context) {
+			handler(html, context) {
 				if (!enabled || !context.bundle) return;
 				const demoChunk = Object.values(context.bundle).find(
 					(output) =>
 						output.type === "chunk" &&
 						demoRowSourceModule.test(output.facadeModuleId ?? ""),
 				);
-				if (!demoChunk) return;
-				return [
-					{
-						tag: "link",
-						attrs: {
-							rel: "modulepreload",
-							crossorigin: true,
-							href: `${base}${demoChunk.fileName}`,
-						},
-						injectTo: "head",
+				if (demoChunk?.type !== "chunk") return;
+				const files = [demoChunk.fileName, ...demoChunk.imports].filter(
+					(file) => !html.includes(`${base}${file}`),
+				);
+				return files.map((file) => ({
+					tag: "link",
+					attrs: {
+						rel: "modulepreload",
+						crossorigin: true,
+						href: `${base}${file}`,
 					},
-				];
+					injectTo: "head" as const,
+				}));
 			},
 		},
 	};

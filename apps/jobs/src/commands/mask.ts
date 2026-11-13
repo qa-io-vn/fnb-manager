@@ -19,6 +19,7 @@ export const maskCommand: CommandSpec = {
 	options: { ...HELP_OPTION },
 	details: [
 		"Every fnb run on GitHub Actions starts by printing ::add-mask:: for the key, password, appAccessToken and email of each POS_ACCOUNTS_JSON entry, IPOS_APP_KEY, the Supabase secret key and the user and password inside the database URL, encoded the way the runner decodes workflow commands.",
+		"It also masks every NOTIFY_* credential present (bot tokens, the e-mail API key and sender address, the webhook signing secret) and every string field of each NOTIFY_FALLBACK_TARGETS entry (chat ids and addresses).",
 		"This command does only that, so a workflow can mask the fields as its first step.",
 	],
 	run: maskCredentials,
