@@ -55,6 +55,7 @@ step "Edge Function type-check" deno_check_edge_function
 step "API documentation matches the database functions" pnpm docs:check-api
 step "Local stack is running" require_local_stack
 step "pgTAP database tests" pnpm exec supabase test db
+step "OpenAPI description matches the database" pnpm docs:check-openapi
 step "Web build with the bundle and size checks" pnpm --filter @fnb/web build
 step "Web end-to-end tests (live, demo, pages)" pnpm --filter @fnb/web test:e2e
 step "Docker is available for gitleaks" require_command docker

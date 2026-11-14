@@ -20,7 +20,10 @@
 		"db:reset": "supabase db reset",
 		"db:status": "supabase status",
 		"docs:check-api": "node scripts/check-api-docs.mjs",
-		"verify": "bash scripts/verify.sh"
+		"verify": "bash scripts/verify.sh",
+		"docs:openapi": "node scripts/export-openapi.mjs",
+		"docs:check-openapi": "node scripts/export-openapi.mjs --check",
+		"docs:api": "pnpm --filter @fnb/web exec vite ../../docs/api --host 127.0.0.1 --port 5290 --strictPort"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.6.6",

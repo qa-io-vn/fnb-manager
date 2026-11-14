@@ -15,6 +15,7 @@ Last updated 2026-11-12
 5. [Edge Function endpoints](#5-edge-function-endpoints)
 6. [Command line](#6-command-line)
 7. [Keeping this page current](#7-keeping-this-page-current)
+8. [OpenAPI (Swagger) description](#8-openapi-swagger-description)
 
 ## 1. How clients call the database
 
@@ -794,3 +795,15 @@ DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres pnpm docs:c
 - **Other code blocks:** a `sql` block on this page that does not document a signature must not start with `public.`; examples start with `select` or `set`.
 
 CI does not run the check yet.
+
+## 8. OpenAPI (Swagger) description
+
+`docs/api/openapi.json` is PostgREST's own OpenAPI 2.0 (Swagger) description of `/rest/v1` as the role `authenticated` sees it: the functions of section 3 as `/rpc/<name>` and the tables and views of section 4, with their parameters, columns and types (25 functions and 52 tables and views on 2026-11-14). It holds the schema only, never data. It does not describe the Edge Function endpoints (section 5), the auth endpoints (`/auth/v1`) or the row-level security, which this page explains.
+
+| What | Command |
+|---|---|
+| Browse it in Swagger UI | `pnpm docs:api`, then open `http://127.0.0.1:5290`. "Try it out" is switched off, so the page never calls the database |
+| Regenerate it after a migration | `pnpm docs:openapi`, and commit the file in the same change as the migration |
+| Check that it matches the database | `pnpm docs:check-openapi`; `pnpm verify` and CI's `database` job run it |
+
+The export runs only against the local stack. It reads the API address, the publishable key and the local signing secret from `supabase status` and nothing else, refuses an address that is not local, signs a five-minute token that carries only the role `authenticated`, and refuses when the migrations applied to the local database differ from `supabase/migrations`, so the description always matches the repository. Keys are sorted and Biome formats the file, so a diff shows real changes only. Swagger UI is loaded from cdnjs at a pinned version.

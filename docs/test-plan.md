@@ -1327,7 +1327,7 @@ Of the 233 requirements that are verified locally, built, in build or waiting fo
 | NFR-MNT-01 | Typed code | Must | verified locally | CI `code` job | covered |
 | NFR-MNT-02 | Lint and format | Must | verified locally | CI `code` job | covered |
 | NFR-MNT-03 | Tests at every layer | Must | verified locally | `pnpm test`, `pnpm exec supabase test db`, `pnpm --filter @fnb/web test:e2e` | covered |
-| NFR-MNT-04 | Consistency checks | Must | verified locally | `metrics:consistency/document`, `metrics:consistency/metric-value`, `web:i18n/report-keys`, `web:test/lazy-chunks`, `node scripts/function-imports.mjs --check`, `demo-analytics:parity/*`, `design-tokens:generated`, `web:test/no-raw-colours` | covered |
+| NFR-MNT-04 | Consistency checks | Must | verified locally | `metrics:consistency/document`, `metrics:consistency/metric-value`, `web:i18n/report-keys`, `web:test/lazy-chunks`, `node scripts/function-imports.mjs --check`, `demo-analytics:parity/*`, `design-tokens:generated`, `web:test/no-raw-colours`, `pnpm docs:check-openapi` | covered |
 | NFR-MNT-05 | No code comments | Should | built | review | partial |
 | NFR-MNT-06 | Schema drift checks | Should | planned | planned (request R-F03) | planned |
 | NFR-MNT-07 | Canonical column-name lint | Should | planned | planned (request R-F03) | planned |

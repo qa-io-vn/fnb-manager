@@ -61,6 +61,8 @@ jobs:
       - run: pnpm exec supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,supavisor,postgres-meta
       - run: pnpm exec supabase db reset
       - run: pnpm exec supabase test db
+      - name: The OpenAPI description matches the database
+        run: pnpm docs:check-openapi
       - run: pnpm --filter @fnb/demo-analytics test:parity:postgres
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres

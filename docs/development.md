@@ -144,7 +144,7 @@ Run everything from the repository root.
 
 | What | Command | Notes |
 |---|---|---|
-| Every check before a push | `pnpm verify` | `scripts/verify.sh` runs, in order and stopping at the first failure, every check of [plan.md](plan.md) section 2.4 that the build machine allows: lint, typecheck, unit tests, the import map and Deno checks, the API reference, pgTAP, the web build, every end-to-end project, gitleaks and the public-safety scan. It needs the local stack running and never resets it. Set `E2E_PORT_OFFSET` when another run uses the default ports |
+| Every check before a push | `pnpm verify` | `scripts/verify.sh` runs, in order and stopping at the first failure, every check of [plan.md](plan.md) section 2.4 that the build machine allows: lint, typecheck, unit tests, the import map and Deno checks, the API reference, pgTAP, the OpenAPI description, the web build, every end-to-end project, gitleaks and the public-safety scan. It needs the local stack running and never resets it. Set `E2E_PORT_OFFSET` when another run uses the default ports |
 | Install | `pnpm install` | CI uses `pnpm install --frozen-lockfile` |
 | Lint | `pnpm lint` | `biome check .`; Markdown is not linted |
 | Format | `pnpm format` | `biome format --write .`; `pnpm exec biome check --write .` also applies safe lint fixes and sorts imports |
@@ -168,6 +168,8 @@ Run everything from the repository root.
 | Edge Function type-check | `deno check index.ts` in `supabase/functions/sync-incremental` | as CI does |
 | Public-safety scan | `node scripts/check-public-safe.mjs` | prints `public-safe scan: no findings` and exits 0 when clean |
 | API reference check | `DATABASE_URL=<local database URL> pnpm docs:check-api` | compares [api.md](api.md) with the functions in `public` that `authenticated` may execute, in a read-only transaction; without `DATABASE_URL` it reads the local container read-only. Exit 0 in step, 1 out of step, 2 on a usage or connection error |
+| OpenAPI description | `pnpm docs:openapi` | regenerates `docs/api/openapi.json` from the local stack as the role `authenticated`; `pnpm docs:check-openapi` only reports; see [api.md](api.md) section 8 |
+| API in Swagger UI | `pnpm docs:api` | serves `docs/api` at `http://127.0.0.1:5290` |
 | Secret scan, as CI | `docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact --exit-code 1` | |
 | The CLI | `pnpm --filter @fnb/jobs fnb -- --help` | `CI=1 pnpm --filter @fnb/jobs fnb -- status` for shareable output |
 
