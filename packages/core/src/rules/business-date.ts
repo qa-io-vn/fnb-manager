@@ -41,7 +41,19 @@ export function assertTimezone(timezone: string): void {
 const MILLISECONDS_PER_HOUR = 60 * MILLISECONDS_PER_MINUTE;
 const LAST_SECOND_OF_HOUR = MILLISECONDS_PER_HOUR - 1000;
 const MAX_CACHED_HOURS = 100_000;
-const hourOffsets = new Map<string, number | null>();
+const YEAR_100_START_MS = new Date(0).setUTCFullYear(100, 0, 1);
+const LAST_REPRESENTABLE_MS = 8.64e15;
+const hourOffsets = new Map<string, Map<number, number | null>>();
+let cachedHourCount = 0;
+
+function hourOffsetsOf(timezone: string): Map<number, number | null> {
+	let offsets = hourOffsets.get(timezone);
+	if (offsets === undefined) {
+		offsets = new Map();
+		hourOffsets.set(timezone, offsets);
+	}
+	return offsets;
+}
 
 function formattedOffset(time: number, timezone: string): number {
 	const clock = formattedWallClock(new Date(time), timezone);
@@ -58,8 +70,7 @@ function formattedOffset(time: number, timezone: string): number {
 }
 
 function steadyHourOffset(hour: number, timezone: string): number | null {
-	const key = `${timezone}|${hour}`;
-	const cached = hourOffsets.get(key);
+	const cached = hourOffsetsOf(timezone).get(hour);
 	if (cached !== undefined) return cached;
 	const start = hour * MILLISECONDS_PER_HOUR;
 	const atStart = formattedOffset(start, timezone);
@@ -68,8 +79,12 @@ function steadyHourOffset(hour: number, timezone: string): number | null {
 		atStart === atEnd && Math.abs(atStart) < MILLISECONDS_PER_DAY
 			? atStart
 			: null;
-	if (hourOffsets.size >= MAX_CACHED_HOURS) hourOffsets.clear();
-	hourOffsets.set(key, offset);
+	if (cachedHourCount >= MAX_CACHED_HOURS) {
+		hourOffsets.clear();
+		cachedHourCount = 0;
+	}
+	hourOffsetsOf(timezone).set(hour, offset);
+	cachedHourCount += 1;
 	return offset;
 }
 
@@ -111,11 +126,19 @@ export function formattedWallClock(instant: Date, timezone: string): WallClock {
 	};
 }
 
+let lastParsedDate: string | null = null;
+let lastParsedYear = 0;
+let lastParsedMonth = 0;
+let lastParsedDay = 0;
+
 export function parseIsoDate(value: string): {
 	year: number;
 	month: number;
 	day: number;
 } {
+	if (value === lastParsedDate) {
+		return { year: lastParsedYear, month: lastParsedMonth, day: lastParsedDay };
+	}
 	if (!ISO_DATE_PATTERN.test(value)) {
 		throw new RangeError(
 			`Expected an ISO calendar date (YYYY-MM-DD), got "${value}"`,
@@ -134,6 +157,10 @@ export function parseIsoDate(value: string): {
 	if (!isReal) {
 		throw new RangeError(`"${value}" is not a valid calendar date`);
 	}
+	lastParsedDate = value;
+	lastParsedYear = year;
+	lastParsedMonth = month;
+	lastParsedDay = day;
 	return { year, month, day };
 }
 
@@ -202,6 +229,17 @@ export function businessDate(
 }
 
 function wallClockAsUtc(instant: Date, timezone: string): number {
+	const time = instant.getTime();
+	if (Number.isFinite(time)) {
+		const offset = steadyHourOffset(
+			Math.floor(time / MILLISECONDS_PER_HOUR),
+			timezone,
+		);
+		const wallTime = offset === null ? Number.NaN : time + offset;
+		if (wallTime >= YEAR_100_START_MS && wallTime <= LAST_REPRESENTABLE_MS) {
+			return Math.floor(wallTime / 1000) * 1000;
+		}
+	}
 	const clock = wallClockIn(instant, timezone);
 	return Date.UTC(
 		clock.year,

@@ -63,13 +63,24 @@ function weekdayIndex(date: string): number {
 	return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
+const weightedKeysByMix = new WeakMap<
+	object,
+	{ readonly keys: readonly string[]; readonly weights: readonly number[] }
+>();
+
 function weightedKeys<K extends string>(
 	mix: Readonly<Partial<Record<K, number>>>,
-): { keys: K[]; weights: number[] } {
+): { readonly keys: readonly K[]; readonly weights: readonly number[] } {
+	const cached = weightedKeysByMix.get(mix);
+	if (cached !== undefined) {
+		return cached as { keys: readonly K[]; weights: readonly number[] };
+	}
 	const entries = Object.entries(mix) as [K, number | undefined][];
 	const keys = entries.map(([key]) => key);
 	const weights = entries.map(([, weight]) => weight ?? 0);
-	return { keys, weights };
+	const computed = { keys, weights };
+	weightedKeysByMix.set(mix, computed);
+	return computed;
 }
 
 function pickKey<K extends string>(

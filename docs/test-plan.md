@@ -273,8 +273,8 @@ Playwright (`@playwright/test` ^1.65.0 with `@axe-core/playwright`) drives Chrom
 | Project | Server | What it covers | Skips when |
 |---|---|---|---|
 | `live` (port 5191) | Vite against the local stack, from `apps/web/.env.local` | Sign-in and sign-out, password-reset mail in the mail catcher, an expired recovery link, the demo offered from the login page, zero rows for a client without a session, Hôm nay on the seed for all stores and per store with its verification state, the language toggle, placeholder pages, the four reports on the seed, Hôm nay's yesterday equal to Ngày | `VITE_SUPABASE_URL` or `VITE_SUPABASE_PUBLISHABLE_KEY` is empty (normally read from `apps/web/.env.local`) |
-| `demo` (port 5192) | Vite with empty Supabase variables | The demo banner and numbers, every demo page with axe at 360 px, the store table inside its card, print, favicon and manifest, no login route without a backend, the nine, eight, ten and seven cards of the reports, deep links, the as-of rule, the young store's states, CSV with a BOM, no request outside the origin, English, Năm within 8 seconds on a CPU four times slower | never |
-| `pages` (port 5193) | `vite build` under `/fnb-manager/`, then `vite preview` | Icons and manifest under the Pages base path | never |
+| `demo` (port 5192) | Vite with empty Supabase variables | The demo banner and numbers, every demo page with axe at 360 px, the store table inside its card, print, favicon and manifest, no login route without a backend, the nine, eight, ten and seven cards of the reports, deep links, the as-of rule, the young store's states, CSV with a BOM, no request outside the origin, English | never |
+| `pages` (port 5193) | `vite build` under `/fnb-manager/`, then `vite preview` | Icons and manifest under the Pages base path, and Năm within 8 seconds on a CPU four times slower in the production build | never |
 
 Common rules:
 
@@ -302,7 +302,7 @@ Live checks read the real tenant on the build machine. They are opt-in (`LIVE=1`
 |---|---|---|---|
 | Initial JavaScript at or under 400 kB gzipped; ECharts, the demo modules, the four report pages and the live analytics source loaded lazily | `apps/web/scripts/check-size.mjs` after every `vite build`; `web:test/lazy-chunks` | every `pnpm --filter @fnb/web build` and every Pages deploy; not in CI | about 215 kB at phase 6 ([roadmap](roadmap.md), phase 6) |
 | Lighthouse mobile: performance at least 85, accessibility at least 90 | The recipe in [apps/web/README.md](../apps/web/README.md) (Lighthouse 13.5.0 through `pnpm dlx`, Playwright's Chromium) | manual, by the verifier | demo build: 93 performance, 100 accessibility, 100 best practices, 60 SEO because of the deliberate `noindex` |
-| Năm settles within 8 seconds on a CPU four times slower | `e2e:demo/report-year` with Chrome DevTools CPU throttling | every end-to-end run | passing at the phase 9 verification |
+| Năm settles within 8 seconds on a CPU four times slower | `e2e:pages/report-year-performance` on the production build with Chrome DevTools CPU throttling | every end-to-end run | passing at the phase 9 verification |
 | Report-sized SQL calls under 1.5 seconds | `reports:live/live-check` check 6 (slowest call per report on the real tenant) | each verification of report work | passing; phase 8 measured well under a second on a synthetic tenant of 54,000 invoices |
 | Analytics refresh: the demo range under 10 seconds locally; under 2 minutes on production | `pgtap:14_analytics_refresh`; a cloud measurement | every pgTAP run; after go-live | local passing; production waits for the owner |
 | Incremental run within 105 s of wall time (10 s reserve) and 1.2 s of estimated CPU (Free plan: 150 s, 2 s, 256 MB) | `sync:unit/run-guard`, `runner:unit/budget` | every run; the cloud after go-live | passing locally |
@@ -723,15 +723,16 @@ Listed with `playwright test --list` on 2026-11-12: 63 tests in 9 files.
 | `live` | `e2e/live/auth.spec.ts` | 6 |
 | `live` | `e2e/live/reports.spec.ts` | 3 |
 | `live` | `e2e/live/today.spec.ts` | 5 |
-| `demo` | `e2e/demo/demo.spec.ts` | 8 |
+| `demo` | `e2e/demo/demo.spec.ts` | 12 |
 | `demo` | `e2e/demo/report-day.spec.ts` | 11 |
 | `demo` | `e2e/demo/report-week.spec.ts` | 8 |
 | `demo` | `e2e/demo/report-month.spec.ts` | 12 |
-| `demo` | `e2e/demo/report-year.spec.ts` | 9 |
+| `demo` | `e2e/demo/report-year.spec.ts` | 8 |
 | `pages` | `e2e/pages/install.spec.ts` | 1 |
-| | **Total** | **63** (live 14, demo 48, pages 1) |
+| `pages` | `e2e/pages/report-year-performance.spec.ts` | 1 |
+| | **Total** | **67** (live 14, demo 51, pages 2) |
 
-All 63 passed at the phase 9 verification; phase 6 had 20.
+At the phase 9 verification the suite had 63 tests and all passed; phase 6 had 20.
 
 ### 8.4 Parity, smoke, consistency, live and integration suites
 
@@ -1259,7 +1260,7 @@ Of the 233 requirements that are verified locally, built, in build or waiting fo
 | NFR-PERF-03 | Largest contentful paint recorded | Should | built | Lighthouse recipe in `apps/web/README.md` | partial |
 | NFR-PERF-04 | Report query time | Must | verified locally | phase 8 and 9 measurements (`docs/schema.md`) | covered |
 | NFR-PERF-05 | Refresh time on production | Must | waits for owner | `pgtap:14_analytics_refresh` (local timing); cloud measurement | partial |
-| NFR-PERF-06 | Slow phones | Should | verified locally | `e2e:demo/report-year` | covered |
+| NFR-PERF-06 | Slow phones | Should | verified locally | `e2e:pages/report-year-performance` | covered |
 | NFR-PERF-07 | Incremental run within the Free plan | Must | verified locally | `sync:unit/run-guard`, `runner:unit/budget` | partial |
 | NFR-PERF-08 | Notification cycle budgets | Must | verified locally | `notify:unit/dispatch/cycle` | covered |
 | NFR-PERF-09 | Mini App budgets | Must | planned | planned | planned |

@@ -21,7 +21,7 @@ import {
 	demoSyncCheck,
 	demoTargets,
 } from "./calendar.js";
-import { dressDemoDay } from "./dressing.js";
+import { dressFreshDemoDay } from "./dressing.js";
 import { aggregateStoreDay, type StoreDayAggregates } from "./ingest.js";
 
 export const RAW_DAY_RETENTION_DAYS = 70;
@@ -184,7 +184,7 @@ export class DemoDayCache {
 		if (planned === null) return { day: null, aggregates: null };
 		const { store, plan } = planned;
 		this.generationCount += 1;
-		const day = dressDemoDay(
+		const day = dressFreshDemoDay(
 			generateDay(
 				DEMO_SEED,
 				plan.profile,

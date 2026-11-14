@@ -630,7 +630,7 @@ WCAG 2.1 AA contrast is the standard. Every chart has an accessible table; every
 |---|---|---|---|
 | Initial JavaScript | at most 400 kB gzipped, lazy chunks excluded | `apps/web/scripts/check-size.mjs` in every `pnpm --filter @fnb/web build`, so in every Pages deploy (CI's end-to-end job uses plain `vite build`) | about 215 kB at phase 6 |
 | Lighthouse mobile | performance at least 85, accessibility at least 90 | manual recipe in [apps/web/README.md](../apps/web/README.md) | demo build: 93 performance, 100 accessibility, 100 best practices, SEO 60 because of the deliberate `noindex` |
-| Năm report | renders within 8 s on a four-times-slower CPU | Playwright | passing at the phase 9 verification |
+| Năm report | renders within 8 s on a four-times-slower CPU, production build | Playwright | passing at the phase 9 verification |
 | Report-sized queries | under 1.5 s | phase 8 acceptance, measured at verification | well under a second on a synthetic tenant of 54,000 invoices |
 | Analytics refresh | under 2 minutes on production | phase 8 acceptance | about 1.3 s for 92 days of a synthetic two-store tenant; production waits for owner |
 | Incremental run | 105 s wall time and 1.2 s estimated CPU on the Free plan, at most 390 s and 2 s when raised | the run guard in `@fnb/sync` | a run with nothing changed takes about half a second |

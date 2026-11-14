@@ -8,13 +8,7 @@ import {
 	parseExactMoney,
 	waitForCharts,
 } from "../support/checks";
-import {
-	expectNoConsoleErrors,
-	type ReportKind,
-	reportUrl,
-	waitForSettledCards,
-	watchConsoleErrors,
-} from "../support/reports";
+import { expectNoConsoleErrors, watchConsoleErrors } from "../support/reports";
 
 const middayInHoChiMinhCity = new Date("2026-11-04T05:30:00.000Z");
 
@@ -105,32 +99,27 @@ test("the language toggle switches the demo to English and back", async ({
 	).toBeVisible();
 });
 
-test("every demo page passes axe and fits a 360 px phone", async ({ page }) => {
+test("Hôm nay passes axe and fits a 360 px phone", async ({ page }) => {
 	await page.goto("/");
 	await expect(page.getByTestId("card-yesterday-net_revenue")).toBeVisible();
 	await waitForCharts(page);
 	await checkPage(page);
-	for (const kind of [
-		"day",
-		"week",
-		"month",
-		"year",
-	] as const satisfies readonly ReportKind[]) {
-		await page.goto(reportUrl(kind));
-		await waitForSettledCards(page);
-		await checkPage(page);
-	}
-	for (const hash of [
-		"#/chu-de/doanh-thu",
-		"#/ke-hoach",
-		"#/cai-dat/cua-hang",
-		"#/xuat-du-lieu",
-	]) {
+});
+
+for (const hash of [
+	"#/chu-de/doanh-thu",
+	"#/ke-hoach",
+	"#/cai-dat/cua-hang",
+	"#/xuat-du-lieu",
+]) {
+	test(`the placeholder page ${hash} passes axe and fits a 360 px phone`, async ({
+		page,
+	}) => {
 		await page.goto(`/${hash}`);
 		await expect(page.getByTestId("placeholder-phase")).toBeVisible();
 		await checkPage(page);
-	}
-});
+	});
+}
 
 test("at 360 px the store table on Hôm nay scrolls inside its card up to Chênh lệch", async ({
 	page,

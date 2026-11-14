@@ -267,6 +267,7 @@ function elementsOutsideTheirCard(
 			].flatMap((card) => {
 				const edge = card.getBoundingClientRect().right;
 				return [...card.querySelectorAll(inside)]
+					.filter((element) => element.closest(".sr-only") === null)
 					.filter((element) => element.getBoundingClientRect().right > edge)
 					.map(
 						(element) =>

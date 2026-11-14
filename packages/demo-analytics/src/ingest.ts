@@ -130,7 +130,13 @@ export function textOrNull(value: string | null | undefined): string | null {
 	const cleaned = value.includes("\u0000")
 		? value.replaceAll("\u0000", "")
 		: value;
+	if (startsWithVisibleAscii(cleaned)) return cleaned;
 	return cleaned.trim() === "" ? null : cleaned;
+}
+
+function startsWithVisibleAscii(text: string): boolean {
+	const code = text.charCodeAt(0);
+	return code > 32 && code < 127;
 }
 
 function maxText(left: string | null, right: string | null): string | null {
@@ -157,8 +163,17 @@ export function paymentMethodOf(
 	return externalId === null ? undefined : paymentMethods.get(externalId);
 }
 
-const hourOffsets = new Map<string, number>();
+const hourOffsets = new Map<string, Map<number, number>>();
 const hourFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function hourOffsetsIn(timeZone: string): Map<number, number> {
+	let offsets = hourOffsets.get(timeZone);
+	if (offsets === undefined) {
+		offsets = new Map();
+		hourOffsets.set(timeZone, offsets);
+	}
+	return offsets;
+}
 
 function hourFormatter(timeZone: string): Intl.DateTimeFormat {
 	let formatter = hourFormatters.get(timeZone);
@@ -176,8 +191,9 @@ function hourFormatter(timeZone: string): Intl.DateTimeFormat {
 
 export function localHour(instant: Date, timeZone: string): number {
 	const time = instant.getTime();
-	const dayKey = `${timeZone}|${Math.floor(time / 3_600_000)}`;
-	let offset = hourOffsets.get(dayKey);
+	const offsets = hourOffsetsIn(timeZone);
+	const hourKey = Math.floor(time / 3_600_000);
+	let offset = offsets.get(hourKey);
 	if (offset === undefined) {
 		const parts = hourFormatter(timeZone).formatToParts(instant);
 		const hour = Number(parts.find((part) => part.type === "hour")?.value);
@@ -188,7 +204,7 @@ export function localHour(instant: Date, timeZone: string): number {
 				(instant.getUTCHours() * 60 + instant.getUTCMinutes()) +
 				2880) %
 			1440;
-		hourOffsets.set(dayKey, offset);
+		offsets.set(hourKey, offset);
 	}
 	return new Date(time + offset * 60_000).getUTCHours();
 }
@@ -239,6 +255,9 @@ function attachRate(
 
 const mappedRoles = new Set(demoRoles().map((role) => role.role));
 
+type Writable<T> = { -readonly [Key in keyof T]: T[Key] };
+type Accumulating<T> = Writable<T> & { invoiceIds: Set<string> };
+
 export function aggregateStoreDay(
 	store: DemoStoreDefinition,
 	day: GeneratedDay,
@@ -249,16 +268,10 @@ export function aggregateStoreDay(
 		number,
 		{ invoices: number; netMinor: number; itemsMilli: number }
 	>();
-	const items = new Map<string, ItemAggregate & { invoiceIds: Set<string> }>();
-	const payments = new Map<
-		string,
-		PaymentAggregate & { invoiceIds: Set<string> }
-	>();
-	const sizes = new Map<string, SizeAggregate>();
-	const promotions = new Map<
-		string,
-		PromotionUsage & { invoiceIds: Set<string> }
-	>();
+	const items = new Map<string, Accumulating<ItemAggregate>>();
+	const payments = new Map<string, Accumulating<PaymentAggregate>>();
+	const sizes = new Map<string, Writable<SizeAggregate>>();
+	const promotions = new Map<string, Accumulating<PromotionUsage>>();
 	let itemLines = 0;
 	let drinkInvoices = 0;
 	let toppingInvoices = 0;
@@ -289,13 +302,10 @@ export function aggregateStoreDay(
 			});
 			return;
 		}
-		promotions.set(mapKey, {
-			...known,
-			name: maxText(known.name, name),
-			lines: known.lines + lines,
-			discountMinor: known.discountMinor + discountMinor,
-			invoiceIds: known.invoiceIds.add(saleId),
-		});
+		known.name = maxText(known.name, name);
+		known.lines += lines;
+		known.discountMinor += discountMinor;
+		known.invoiceIds.add(saleId);
 	};
 
 	for (const sale of day.sales) {
@@ -304,9 +314,13 @@ export function aggregateStoreDay(
 			daily.voidedMinor += minorUnits(sale.netAmount);
 			continue;
 		}
-		const itemMilli = sale.lines
-			.filter(isItemLine)
-			.reduce((total, line) => total + thousandths(line.quantity), 0);
+		let itemMilli = 0;
+		let modifierLines = 0;
+		for (const line of sale.lines) {
+			const kind = toDbLineKind(line.lineKind);
+			if (kind === "item") itemMilli += thousandths(line.quantity);
+			else if (kind === "modifier") modifierLines += 1;
+		}
 		const cashMinor = sale.payments
 			.filter(
 				(payment) =>
@@ -323,9 +337,7 @@ export function aggregateStoreDay(
 		daily.paidMinor += minorUnits(sale.paidAmount);
 		daily.cashMinor += cashMinor;
 		daily.itemsMilli += itemMilli;
-		daily.modifierLines += sale.lines.filter(
-			(line) => toDbLineKind(line.lineKind) === "modifier",
-		).length;
+		daily.modifierLines += modifierLines;
 		if (hasVoucher(sale)) daily.voucherInvoices += 1;
 		const phone = textOrNull(sale.customerPhone);
 		if (phone !== null) {
@@ -373,35 +385,39 @@ export function aggregateStoreDay(
 					invoiceIds: new Set([sale.externalId]),
 				});
 			} else {
-				items.set(itemId, {
-					...known,
-					itemName: maxText(known.itemName, itemName) ?? itemName,
-					baseName: maxText(known.baseName, textOrNull(line.baseName)),
-					sizeLabel: maxText(known.sizeLabel, textOrNull(line.sizeLabel)),
-					itemTypeExternalId: maxText(
-						known.itemTypeExternalId,
-						textOrNull(line.itemTypeExternalId),
-					),
-					itemTypeName: maxText(
-						known.itemTypeName,
-						textOrNull(line.itemTypeName),
-					),
-					quantityMilli: known.quantityMilli + quantityMilli,
-					netMinor: known.netMinor + netMinor,
-					invoiceIds: known.invoiceIds.add(sale.externalId),
-				});
+				known.itemName = maxText(known.itemName, itemName) ?? itemName;
+				known.baseName = maxText(known.baseName, textOrNull(line.baseName));
+				known.sizeLabel = maxText(known.sizeLabel, textOrNull(line.sizeLabel));
+				known.itemTypeExternalId = maxText(
+					known.itemTypeExternalId,
+					textOrNull(line.itemTypeExternalId),
+				);
+				known.itemTypeName = maxText(
+					known.itemTypeName,
+					textOrNull(line.itemTypeName),
+				);
+				known.quantityMilli += quantityMilli;
+				known.netMinor += netMinor;
+				known.invoiceIds.add(sale.externalId);
 			}
 			const sizeLabel = textOrNull(line.sizeLabel);
 			if (sizeLabel !== null) {
 				const baseName = textOrNull(line.baseName) ?? itemName;
 				const sizeKey = `${baseName}\u0000${sizeLabel}`;
 				const size = sizes.get(sizeKey);
-				sizes.set(sizeKey, {
-					baseName,
-					sizeLabel,
-					quantityMilli: (size?.quantityMilli ?? 0) + quantityMilli,
-					netMinor: (size?.netMinor ?? 0) + netMinor,
-				});
+				if (size === undefined) {
+					sizes.set(sizeKey, {
+						baseName,
+						sizeLabel,
+						quantityMilli,
+						netMinor,
+					});
+				} else {
+					size.baseName = baseName;
+					size.sizeLabel = sizeLabel;
+					size.quantityMilli += quantityMilli;
+					size.netMinor += netMinor;
+				}
 			}
 			const role = demoRoleOf(textOrNull(line.itemTypeExternalId)) ?? "other";
 			if (role === "drink") hasDrink = true;
@@ -481,12 +497,9 @@ export function aggregateStoreDay(
 					invoiceIds: new Set([sale.externalId]),
 				});
 			} else {
-				payments.set(methodId, {
-					...known,
-					amountMinor: known.amountMinor + amountMinor,
-					feeMinor: known.feeMinor + feeMinor,
-					invoiceIds: known.invoiceIds.add(sale.externalId),
-				});
+				known.amountMinor += amountMinor;
+				known.feeMinor += feeMinor;
+				known.invoiceIds.add(sale.externalId);
 			}
 		}
 	}

@@ -28,46 +28,46 @@ export function demoCashierFor(date: IsoDate, shiftIndex: number): DemoCashier {
 }
 
 export function dressDemoDay(day: GeneratedDay): GeneratedDay {
+	return dressFreshDemoDay({
+		...day,
+		shifts: day.shifts.map((shift) => ({ ...shift })),
+		sales: day.sales.map((sale) => ({
+			...sale,
+			lines: sale.lines.map((line) => ({ ...line })),
+		})),
+	});
+}
+
+export function dressFreshDemoDay(day: GeneratedDay): GeneratedDay {
 	const cashierByShift = new Map(
 		day.shifts.map((shift, index) => [
 			shift.externalId,
 			demoCashierFor(day.date, index),
 		]),
 	);
-	return {
-		...day,
-		shifts: day.shifts.map((shift) => {
-			const cashier = cashierByShift.get(shift.externalId);
-			return cashier === undefined
-				? shift
-				: {
-						...shift,
-						cashierExternalId: cashier.externalId,
-						cashierName: cashier.name,
-					};
-		}),
-		sales: day.sales.map((sale) => {
-			const cashier =
-				sale.shiftExternalId === undefined
-					? undefined
-					: cashierByShift.get(sale.shiftExternalId);
-			return {
-				...sale,
-				...(cashier === undefined
-					? {}
-					: {
-							employeeExternalId: cashier.externalId,
-							employeeName: cashier.name,
-						}),
-				...(sale.billDiscountName === undefined
-					? {}
-					: { billDiscountName: DEMO_BILL_DISCOUNT_NAME }),
-				lines: sale.lines.map((line) =>
-					line.promotionName === undefined
-						? line
-						: { ...line, promotionName: DEMO_ITEM_PROMOTION_NAME },
-				),
-			};
-		}),
-	};
+	for (const shift of day.shifts) {
+		const cashier = cashierByShift.get(shift.externalId);
+		if (cashier === undefined) continue;
+		shift.cashierExternalId = cashier.externalId;
+		shift.cashierName = cashier.name;
+	}
+	for (const sale of day.sales) {
+		const cashier =
+			sale.shiftExternalId === undefined
+				? undefined
+				: cashierByShift.get(sale.shiftExternalId);
+		if (cashier !== undefined) {
+			sale.employeeExternalId = cashier.externalId;
+			sale.employeeName = cashier.name;
+		}
+		if (sale.billDiscountName !== undefined) {
+			sale.billDiscountName = DEMO_BILL_DISCOUNT_NAME;
+		}
+		for (const line of sale.lines) {
+			if (line.promotionName !== undefined) {
+				line.promotionName = DEMO_ITEM_PROMOTION_NAME;
+			}
+		}
+	}
+	return day;
 }

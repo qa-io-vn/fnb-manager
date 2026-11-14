@@ -91,7 +91,9 @@ test("the pace chart reaches the forecast lines above the month to date", async 
 }) => {
 	await openReport(page, "month", "month=2026-11&store=MOCK-S1");
 	await waitForCharts(page);
-	const chart = card(page, "month_pace").getByTestId("echarts");
+	const paceCard = card(page, "month_pace");
+	await paceCard.scrollIntoViewIfNeeded();
+	const chart = paceCard.getByTestId("echarts");
 	await expect(chart).toContainText("dự báo theo đặc trưng ngày trong tuần");
 	await expect(chart).toContainText("mục tiêu");
 });
