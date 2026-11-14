@@ -4,6 +4,7 @@
 	"description": "POS-agnostic sync engine: canonical sales into the tenant database with void and edit detection, adjustments and reconciliation checks",
 	"license": "MIT",
 	"type": "module",
+	"sideEffects": false,
 	"exports": {
 		".": {
 			"types": "./src/index.ts",

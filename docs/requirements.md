@@ -660,8 +660,8 @@ Budgets for pages, bundles, queries and runs, sized for phones and for the Free 
 | ID | Requirement | Source | Acceptance criterion | Priority | Status | Verified by |
 |---|---|---|---|---|---|---|
 | NFR-PERF-01 | **Initial bundle.** The web app's initial JavaScript shall stay at or under 400 kB gzipped, with ECharts, the demo modules, the four report pages and the live analytics source loaded lazily. | P6, P9, P20b | `check-size.mjs` passes on every build (about 215 kB measured at phase 6). | Must | verified locally | `apps/web/scripts/check-size.mjs`, `web:test/lazy-chunks` |
-| NFR-PERF-02 | **Lighthouse performance.** The web app shall score at least 85 for performance in Lighthouse mobile. | P6, P20b | 93 on the demo build; the live app is measured after go-live. | Must | verified locally | Lighthouse recipe in `apps/web/README.md` |
-| NFR-PERF-03 | **Largest contentful paint recorded.** Every Lighthouse run of the web app shall record its largest contentful paint, against a target the owner sets (section 9). | P6 | The LCP is reported with each run (about 2.9 s on the demo build, because the demo data is generated before the first card). | Should | built | Lighthouse recipe in `apps/web/README.md` |
+| NFR-PERF-02 | **Lighthouse performance.** The web app shall score at least 85 for performance in Lighthouse mobile. | P6, P20b | 95 on the demo build; the live app is measured after go-live. | Must | verified locally | Lighthouse recipe in `apps/web/README.md` |
+| NFR-PERF-03 | **Largest contentful paint recorded.** Every Lighthouse run of the web app shall record its largest contentful paint, against a target the owner sets (section 9). | P6 | The LCP is reported with each run (2.3 s on the demo build). | Should | built | Lighthouse recipe in `apps/web/README.md` |
 | NFR-PERF-04 | **Report query time.** Report-sized SQL calls shall answer in under 1.5 seconds. | P8 | Measured well under a second on a synthetic tenant of 54,000 invoices; the slowest call of each report under 50 ms on a local two-store tenant with two years of history. | Must | verified locally | phase 8 and 9 measurements (`docs/schema.md`) |
 | NFR-PERF-05 | **Refresh time on production.** An analytics refresh shall finish in under 2 minutes on the cloud project. | P8 | Measured on the cloud project after go-live. | Must | waits for owner | `pgtap:14_analytics_refresh` (local timing); cloud measurement |
 | NFR-PERF-06 | **Slow phones.** The heaviest report page (Năm) shall settle within 8 seconds on a CPU four times slower than the test machine. | P9 | The throttled Playwright check on the production build passes. | Should | verified locally | `e2e:pages/report-year-performance` |
@@ -1125,7 +1125,7 @@ These deliverables are built or designed differently from the roadmap text, or n
 | Do operational alerts to employees rest on consent or on the work agreement, and may redacted log rows be kept after an erasure request or the end of employment? | Consent recorded; a leaving member's rows redacted, not deleted | Legal read (Track Z, week 9) |
 | Monthly scheduled strategy run (gate G5) | Started by hand | FR-STR-09 |
 | Holiday calendar after 2028 | Rows exist for 2024 to 2028 only; without rows for 2029 and later, baselines would include Tết | Holiday migration |
-| A target for the web app's largest contentful paint | None set; about 2.9 s measured on the demo build (the Mini App target is 2.5 s) | NFR-PERF-03 |
+| A target for the web app's largest contentful paint | None set; 2.3 s measured on the demo build (the Mini App target is 2.5 s) | NFR-PERF-03 |
 | Backup retention in the bucket | Not defined | FR-OPS-05 |
 | Build or drop the drift checks, the column-name lint, the preflight lint and the reset guard | Not built; masking covers secrets in logs | NFR-MNT-06, NFR-MNT-07, NFR-HYG-06, FR-OPS-06 |
 | Accept the re-planned effort of phases 9 and 12 in the roadmap | Built as split steps | Roadmap phase table |

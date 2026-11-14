@@ -28,7 +28,7 @@ Checks at the verification before the push of 0f8fa1d:
 | Unit tests across all packages | 599 |
 | pgTAP, 19 files | 675 of 675 |
 | Playwright, live and demo | 20 of 20 |
-| Lighthouse mobile on the demo build | performance 93, accessibility 100, best practices 100, SEO 60 because of the deliberate `noindex` |
+| Lighthouse mobile on the demo build | performance 95, accessibility 100, best practices 100, SEO 60 because of the deliberate `noindex` |
 | Store-days equal to the POS control totals | all of them, for both stores, from each store's first sales day |
 | Database size with the full history | about 291 MB, under the 300 MB acceptance (ADR-027) |
 
@@ -57,8 +57,6 @@ After both streams, one final pass runs everything CI runs, updates the roadmap 
 - Test runs leave dead rows behind: after phase 7's verification the local database reached 338 MiB, and `vacuum (full, analyze)` on the fact tables brought it back to 285 MiB with the full history. Repeat it after heavy local testing before measuring the size.
 - `supabase/tests/17_analytics_access.sql` test 20 fails on a long-lived local stack once the seeded demo rows are more than a week old, because its window follows `current_date`. A freshly reset stack, as in CI, passes.
 - With two stores the database grows by about 18 MiB a month, so the Free plan's 500 MB lasts roughly a year. Two indexes duplicate the leading column of unique indexes and could free about 7 MB.
-- On the demo, the largest contentful paint is about 2.9 s because the demo data is generated before the first card renders. zod loads at start-up through `@fnb/core`.
-- At about 305 px of chart width the store bar chart hides its second label, and printed charts keep their on-screen size.
 - The web end-to-end job in CI runs on GitHub for the first time with this push.
 
 ## Picking the work up on another machine

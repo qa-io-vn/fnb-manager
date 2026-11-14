@@ -4,6 +4,7 @@
 	"description": "Seeded synthetic PosConnector shaped like a real Vietnamese drinks shop, for tests, demos and E2E",
 	"license": "MIT",
 	"type": "module",
+	"sideEffects": false,
 	"exports": {
 		".": {
 			"types": "./src/index.ts",

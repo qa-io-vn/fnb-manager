@@ -302,7 +302,7 @@ Live checks read the real tenant on the build machine. They are opt-in (`LIVE=1`
 | Budget | Check | Where | Latest result |
 |---|---|---|---|
 | Initial JavaScript at or under 400 kB gzipped; ECharts, the demo modules, the four report pages and the live analytics source loaded lazily | `apps/web/scripts/check-size.mjs` after every `vite build`; `web:test/lazy-chunks` | every `pnpm --filter @fnb/web build` and every Pages deploy; not in CI | about 215 kB at phase 6 ([roadmap](roadmap.md), phase 6) |
-| Lighthouse mobile: performance at least 85, accessibility at least 90 | The recipe in [apps/web/README.md](../apps/web/README.md) (Lighthouse 13.5.0 through `pnpm dlx`, Playwright's Chromium) | manual, by the verifier | demo build: 93 performance, 100 accessibility, 100 best practices, 60 SEO because of the deliberate `noindex` |
+| Lighthouse mobile: performance at least 85, accessibility at least 90 | The recipe in [apps/web/README.md](../apps/web/README.md) (Lighthouse 13.5.0 through `pnpm dlx`, Playwright's Chromium) | manual, by the verifier | demo build: 95 performance, 100 accessibility, 100 best practices, 60 SEO because of the deliberate `noindex` |
 | Năm settles within 8 seconds on a CPU four times slower | `e2e:pages/report-year-performance` on the production build with Chrome DevTools CPU throttling | every end-to-end run | passing at the phase 9 verification |
 | Report-sized SQL calls under 1.5 seconds | `reports:live/live-check` check 6 (slowest call per report on the real tenant) | each verification of report work | passing; phase 8 measured well under a second on a synthetic tenant of 54,000 invoices |
 | Analytics refresh: the demo range under 10 seconds locally; under 2 minutes on production | `pgtap:14_analytics_refresh`; a cloud measurement | every pgTAP run; after go-live | local passing; production waits for the owner |
@@ -770,7 +770,7 @@ At the phase 9 verification the suite had 63 tests and all passed; phase 6 had 2
 | Unit tests | 1,415 passed, 32 skipped (gated), 142 files, 12 packages | 2026-11-12, 14:02 run |
 | pgTAP | 31 files, 1,648 planned; on the build machine two date-dependent tests were failing and files 15 to 17 were re-anchored on 2026-11-12; the next full run confirms | file plans at 15:41 |
 | Playwright | 63 tests in 9 files; 63 passing at the phase 9 verification | listing of 2026-11-12; [roadmap](roadmap.md), phase 9 |
-| Lighthouse mobile, demo build | performance 93, accessibility 100, best practices 100, SEO 60 | [status.md](status.md) |
+| Lighthouse mobile, demo build | performance 95, accessibility 100, best practices 100, SEO 60 | [status.md](status.md) |
 | Public-safety scan | no findings | 2026-11-12 |
 | API reference check | 25 functions, 25 documented | 2026-11-12 |
 | Import map | up to date | 2026-11-12 |
@@ -1569,8 +1569,8 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | NFR-SEC-10 | No reliance on HTTP security headers | built | Covered through NFR-SEC-02 and the recorded limitation; a `meta` Content Security Policy is still being evaluated (request R-AS11). | If a `meta` policy is adopted, a Playwright check that the demo and a live build load without policy errors. |
 | NFR-SEC-15 | New key scheme | built | The secrets contract and `apps/jobs/src/config/config.ts` use the new names; no test covers the fallback order. | A `jobs:unit/config` case: the secret key wins, and the legacy key is read only when the secret key is empty. |
 | NFR-PRV-05 | No third-party tracking | verified locally | Requests outside the origin are tested on the demo; the live build and the `noindex` tag have no test. | A live Playwright check that requests go only to the origin and the configured Supabase URL, and a check that `index.html` carries the robots `noindex` tag. |
-| NFR-PERF-02 | Lighthouse performance | verified locally | 93 on the demo build with the recipe of `apps/web/README.md`; the live app is measured after go-live. | The same recipe against the live app after go-live (OC-10). |
-| NFR-PERF-03 | Largest contentful paint recorded | built | The largest contentful paint is reported with each run (about 2.9 s on the demo); no target is set. | The owner sets a target (requirements section 9.3); then the recipe compares each run with it. |
+| NFR-PERF-02 | Lighthouse performance | verified locally | 95 on the demo build with the recipe of `apps/web/README.md`; the live app is measured after go-live. | The same recipe against the live app after go-live (OC-10). |
+| NFR-PERF-03 | Largest contentful paint recorded | built | The largest contentful paint is reported with each run (2.3 s on the demo); no target is set. | The owner sets a target (requirements section 9.3); then the recipe compares each run with it. |
 | NFR-PERF-05 | Refresh time on production | waits for owner | `pgtap:14_analytics_refresh` asserts the demo range refreshes in under ten seconds locally; the production timing waits for the cloud project. | Time a refresh on the cloud project after go-live and record it in `docs/status.md` (OC-10). |
 | NFR-PERF-07 | Incremental run within the Free plan | verified locally | The guard is unit-tested and the runs fit locally; the cloud confirmation waits for go-live. | Read the run timings of the first cloud incremental runs (`sync_runs`) after go-live step 6 (OC-10). |
 | NFR-COST-01 | Free tiers during build and pilot | built | Checked by review of `docs/go-live.md` and `docs/secrets.md`; usage is watched after go-live. | After go-live, the monthly usage review of the operations calendar. |

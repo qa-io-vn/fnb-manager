@@ -4,6 +4,7 @@
 	"description": "Typed metric registry mirrored from docs/metrics.md: ids, Vietnamese and English labels, units, formulas, grains, directions, sources, report mapping, status and benchmark context",
 	"license": "MIT",
 	"type": "module",
+	"sideEffects": false,
 	"exports": {
 		".": {
 			"types": "./src/index.ts",

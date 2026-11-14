@@ -1,4 +1,4 @@
-import { ISO_DATE_PATTERN } from "../schemas/common.js";
+import { ISO_DATE_PATTERN } from "../schemas/iso-date-pattern.js";
 
 export const MINUTES_PER_DAY = 24 * 60;
 export const MILLISECONDS_PER_MINUTE = 60_000;

@@ -9,6 +9,7 @@ import {
 	useState,
 } from "react";
 import { useT } from "../../i18n";
+import { afterPaintWhenIdle } from "../../lib/after-paint";
 import type { Formatters } from "../../lib/format";
 import { usePrinting } from "./chart-theme";
 import type { AxisFormat } from "./echarts-view";
@@ -163,14 +164,20 @@ function useNearViewport(
 		}
 		const element = target.current;
 		if (!element) return;
+		let cancelPending: () => void = () => undefined;
 		const observer = new IntersectionObserver(
 			(entries) => {
-				if (entries.some((entry) => entry.isIntersecting)) setNear(true);
+				if (!entries.some((entry) => entry.isIntersecting)) return;
+				observer.disconnect();
+				cancelPending = afterPaintWhenIdle(() => setNear(true));
 			},
 			{ rootMargin: `${CHART_MOUNT_MARGIN_PX}px` },
 		);
 		observer.observe(element);
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+			cancelPending();
+		};
 	}, [near, immediately, target]);
 	return near;
 }

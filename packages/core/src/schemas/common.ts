@@ -1,6 +1,5 @@
 import { z } from "zod";
-
-export const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+import { ISO_DATE_PATTERN } from "./iso-date-pattern.js";
 
 export const externalId = z.string().min(1);
 export const isoDate = z.string().regex(ISO_DATE_PATTERN);

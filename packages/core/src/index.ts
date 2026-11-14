@@ -80,7 +80,7 @@ export {
 	canonicalPromotionSchema,
 	canonicalSourceSchema,
 } from "./schemas/catalog.js";
-export { ISO_DATE_PATTERN, type IsoDate, isoDate } from "./schemas/common.js";
+export { type IsoDate, isoDate } from "./schemas/common.js";
 export {
 	type CanonicalDailyTotal,
 	canonicalDailyTotalSchema,
@@ -107,6 +107,7 @@ export {
 	type SaleStatus,
 	saleStatusSchema,
 } from "./schemas/enums.js";
+export { ISO_DATE_PATTERN } from "./schemas/iso-date-pattern.js";
 export {
 	type CanonicalLine,
 	type CanonicalPayment,

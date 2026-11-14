@@ -334,7 +334,7 @@ Latest known results:
 | Unit tests | 1,415 passed and 32 skipped (the gated live and integration suites), 142 files, 12 packages | test run of 2026-11-12, 14:00 to 14:02 |
 | pgTAP | 31 files, 1,648 planned tests (file plans read 2026-11-12, 15:41); 2 date-drift failures on the long-lived local stack, being fixed | test files on 2026-11-12 |
 | Playwright | 63 tests in 9 files; all 63 passed at the phase 9 verification | roadmap, phase 9 status |
-| Lighthouse mobile, demo build | performance 93, accessibility 100, best practices 100, SEO 60 because of the deliberate `noindex` | status.md |
+| Lighthouse mobile, demo build | performance 95, accessibility 100, best practices 100, SEO 60 because of the deliberate `noindex` | status.md |
 | Public-safety scan | no findings | 2026-11-12 |
 | CI on GitHub | for `0f8fa1d`: code, database and end-to-end jobs green; the secret-scan job red in its setup step | GitHub Actions, 2026-11-08 |
 

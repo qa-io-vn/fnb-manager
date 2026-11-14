@@ -124,8 +124,27 @@ export async function checkPage(page: Page): Promise<void> {
 	await page.setViewportSize({ width: 1280, height: 800 });
 }
 
+function chartsStillComing(): number {
+	const inViewport = (element: Element) => {
+		const box = element.getBoundingClientRect();
+		return (
+			box.bottom > 0 &&
+			box.top < window.innerHeight &&
+			box.right > 0 &&
+			box.left < window.innerWidth
+		);
+	};
+	const placeholders = [
+		...document.querySelectorAll('[data-testid="chart-placeholder"]'),
+	].filter(inViewport).length;
+	const loading = [...document.querySelectorAll("figure")].filter((figure) =>
+		/Đang tải biểu đồ|Loading chart/.test(figure.textContent ?? ""),
+	).length;
+	return placeholders + loading;
+}
+
 export async function waitForCharts(page: Page): Promise<void> {
-	await expect(page.getByText(/Đang tải biểu đồ|Loading chart/)).toHaveCount(0);
+	await expect.poll(() => page.evaluate(chartsStillComing)).toBe(0);
 }
 
 export function parseExactMoney(text: string | null): number {

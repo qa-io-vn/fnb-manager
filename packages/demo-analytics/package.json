@@ -4,6 +4,7 @@
 	"description": "In-browser port of the report SQL functions over generated demo days, held to the SQL by a parity suite",
 	"license": "MIT",
 	"type": "module",
+	"sideEffects": false,
 	"exports": {
 		".": {
 			"types": "./src/index.ts",

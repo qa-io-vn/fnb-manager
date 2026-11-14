@@ -1,6 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, type Plugin, type Rolldown } from "vite";
 
 const basePath = process.env.VITE_BASE_PATH || "/";
 const buildId = `${new Date().toISOString()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -34,6 +34,22 @@ function isDemoBuild(env: Record<string, string | undefined>): boolean {
 	);
 }
 
+function staticChunkClosure(
+	bundle: Rolldown.OutputBundle,
+	start: Rolldown.OutputChunk,
+): string[] {
+	const seen = new Set<string>();
+	const pending = [start.fileName];
+	while (pending.length > 0) {
+		const fileName = pending.pop() as string;
+		if (seen.has(fileName)) continue;
+		seen.add(fileName);
+		const output = bundle[fileName];
+		if (output?.type === "chunk") pending.push(...output.imports);
+	}
+	return [...seen];
+}
+
 function demoRowSourcePreload(): Plugin {
 	let enabled = false;
 	let base = "/";
@@ -54,7 +70,7 @@ function demoRowSourcePreload(): Plugin {
 						demoRowSourceModule.test(output.facadeModuleId ?? ""),
 				);
 				if (demoChunk?.type !== "chunk") return;
-				const files = [demoChunk.fileName, ...demoChunk.imports].filter(
+				const files = staticChunkClosure(context.bundle, demoChunk).filter(
 					(file) => !html.includes(`${base}${file}`),
 				);
 				return files.map((file) => ({

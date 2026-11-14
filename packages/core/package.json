@@ -4,6 +4,7 @@
 	"description": "Canonical POS-agnostic model and shared business rules (business date, sizes, payment kinds, money)",
 	"license": "MIT",
 	"type": "module",
+	"sideEffects": false,
 	"exports": {
 		".": {
 			"types": "./src/index.ts",
