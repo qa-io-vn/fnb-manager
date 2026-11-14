@@ -41,23 +41,45 @@ describe("the Thực đơn matrix card", () => {
 			menuKeys.matrix.provisionalCell,
 			menuKeys.matrix.provisionalCell,
 		]);
-		const drinkShares = card.tables[1]?.rows
-			.filter((row) => row.id.startsWith("drink|"))
-			.map((row) => [row.id, row.cells.items, row.cells.netShare]);
-		expect(drinkShares).toEqual([
-			["drink|star", 1, 0.8],
-			["drink|plowhorse", 0, 0],
-			["drink|puzzle", 0, 0],
-			["drink|dog", 1, 0.2],
+		expect(card.tables[0]?.rows.map((row) => row.id)).toEqual([
+			`${STORE_A}|drink|D1`,
+			`${STORE_A}|drink|D2`,
+			`${STORE_A}|topping|T1`,
+		]);
+		expect(
+			card.tables[0]?.columns.map((column) => column.key).slice(0, 3),
+		).toEqual(["item", "class", "role"]);
+		expect(card.tables[0]?.previewRows).toBe(20);
+		expect(card.tables[1]?.previewRows).toBeUndefined();
+		expect(card.tables[1]?.rows.map((row) => row.cells)).toEqual([
+			{
+				role: "report.role.drink",
+				threshold: 35,
+				star: 1,
+				plowhorse: 0,
+				puzzle: 0,
+				dog: 1,
+				starShare: 0.8,
+			},
+			{
+				role: "report.role.topping",
+				threshold: 35,
+				star: 0,
+				plowhorse: 1,
+				puzzle: 0,
+				dog: 0,
+				starShare: 0,
+			},
 		]);
 		expect(
 			card.chart?.series.map((series) => [series.stack, series.values]),
 		).toEqual([
-			["classes", [1, 0]],
+			["classes", [0.5, 0]],
 			["classes", [0, 1]],
 			["classes", [0, 0]],
-			["classes", [1, 0]],
+			["classes", [0.5, 0]],
 		]);
+		expect(card.chart?.leftUnit).toBe("fraction");
 		expect(card.subtitle?.key).toBe(menuKeys.matrix.subtitle);
 	});
 
@@ -103,7 +125,9 @@ describe("the Thực đơn matrix card", () => {
 		);
 		expect(card.headline.value).toBe(1);
 		expect(card.narrative[0]?.key).toBe(menuKeys.matrix.starsStores);
-		expect(card.tables[0]?.columns[0]?.key).toBe("store");
+		expect(card.tables[0]?.columns.map((column) => column.key)).toContain(
+			"store",
+		);
 		expect(card.tables[0]?.rows).toHaveLength(2);
 	});
 

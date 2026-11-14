@@ -62,28 +62,6 @@ async function shootElement(locator: Locator, name: string): Promise<void> {
 	await locator.screenshot({ path: file(name), animations: "disabled" });
 }
 
-const CROPPED_HEIGHT = 900;
-
-async function shootTop(locator: Locator, name: string): Promise<void> {
-	const page = locator.page();
-	await waitForCharts(page);
-	const box = await locator.evaluate((element) => {
-		const rect = element.getBoundingClientRect();
-		return {
-			x: rect.left + window.scrollX,
-			y: rect.top + window.scrollY,
-			width: rect.width,
-			height: rect.height,
-		};
-	});
-	await page.screenshot({
-		path: file(name),
-		animations: "disabled",
-		fullPage: true,
-		clip: { ...box, height: Math.min(box.height, CROPPED_HEIGHT) },
-	});
-}
-
 async function shootViewport(page: Page, name: string): Promise<void> {
 	await page.evaluate(() => window.scrollTo(0, 0));
 	await page.screenshot({ path: file(name), animations: "disabled" });
@@ -180,7 +158,7 @@ test("the thematic reports: Doanh thu, the range picker and the Giờ & ngày he
 test("the Thực đơn matrix and its margins card", async ({ page }) => {
 	await page.setViewportSize(TALL_COMPUTER);
 	await openThemePage(page, "menu", "range=28d&store=MOCK-S1");
-	await shootTop(
+	await shootElement(
 		themeCard(page, "menu", "menu_matrix"),
 		"theme-thuc-don-matrix",
 	);

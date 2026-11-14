@@ -58,86 +58,123 @@ function rolesPresent(rows: readonly StoreMenuRow[]): MenuRole[] {
 	);
 }
 
+const CLASS_ORDER: Readonly<Record<string, number>> = {
+	star: 0,
+	plowhorse: 1,
+	puzzle: 2,
+	dog: 3,
+};
+const ROLE_ORDER: Readonly<Record<string, number>> = {
+	drink: 0,
+	topping: 1,
+	food: 2,
+	snack: 3,
+	other: 4,
+};
+
+function sortedForReading(rows: readonly StoreMenuRow[]): StoreMenuRow[] {
+	return [...rows].sort(
+		(left, right) =>
+			(ROLE_ORDER[left.row.role] ?? 9) - (ROLE_ORDER[right.row.role] ?? 9) ||
+			(CLASS_ORDER[left.row.menu_class ?? ""] ?? 9) -
+				(CLASS_ORDER[right.row.menu_class ?? ""] ?? 9) ||
+			right.row.quantity - left.row.quantity,
+	);
+}
+
+const ITEMS_PREVIEW_ROWS = 20;
+
 function itemsTable(
 	input: ThemeCardInput,
 	rows: readonly StoreMenuRow[],
 ): TableModel {
 	const multi = isMultiStore(input.context);
+	const severalRoles = rolesPresent(rows).length > 1;
 	return tableModel({
 		captionKey: menuKeys.matrix.itemsTable,
 		columns: [
-			...(multi ? [column("store", reportKeys.table.store, "text")] : []),
-			column("role", menuKeys.table.role, "message"),
 			column("item", reportKeys.table.item, "text"),
+			column("class", menuKeys.table.class, "message"),
+			...(severalRoles ? [column("role", menuKeys.table.role, "message")] : []),
+			...(multi ? [column("store", reportKeys.table.store, "text")] : []),
 			column("quantity", reportKeys.table.quantity, "decimal"),
 			column("mix", menuKeys.table.mix, "decimal"),
-			column("threshold", menuKeys.table.threshold, "decimal"),
 			column("avgPrice", menuKeys.table.avgPrice, "money"),
 			column("unitCost", menuKeys.table.unitCost, "money"),
 			column("marginAxis", menuKeys.table.marginAxis, "money"),
-			column("class", menuKeys.table.class, "message"),
 			column("state", reportKeys.table.state, "message"),
 		],
-		rows: rows.map(
+		rows: sortedForReading(rows).map(
 			({ storeId, storeName, row }): TableRowModel => ({
 				id: `${storeId}|${row.role}|${row.item_external_id}`,
 				cells: {
-					store: storeName,
-					role: reportKeys.role[row.role],
 					item: row.item_name ?? row.item_external_id,
+					class:
+						row.menu_class === null ? null : menuKeys.class[row.menu_class],
+					role: reportKeys.role[row.role],
+					store: storeName,
 					quantity: row.quantity,
 					mix: row.menu_mix_pct,
-					threshold: row.popularity_threshold_pct,
 					avgPrice: row.avg_unit_price,
 					unitCost: row.unit_cost,
 					marginAxis: row.margin_axis,
-					class:
-						row.menu_class === null ? null : menuKeys.class[row.menu_class],
 					state: row.provisional ? menuKeys.matrix.provisionalCell : null,
 				},
 			}),
 		),
+		previewRows: ITEMS_PREVIEW_ROWS,
 	});
 }
 
 function classTable(rows: readonly StoreMenuRow[]): TableModel {
-	const tableRows: TableRowModel[] = [];
-	for (const role of rolesPresent(rows)) {
-		const inRole = rows.filter((entry) => entry.row.role === role);
-		const roleNet = inRole.reduce(
-			(sum, entry) => sum + entry.row.net_amount,
-			0,
-		);
-		for (const menuClass of MENU_CLASSES) {
-			const inClass = inRole.filter(
-				(entry) => entry.row.menu_class === menuClass,
-			);
-			const classNet = inClass.reduce(
-				(sum, entry) => sum + entry.row.net_amount,
-				0,
-			);
-			tableRows.push({
-				id: `${role}|${menuClass}`,
-				cells: {
-					role: reportKeys.role[role],
-					class: menuKeys.class[menuClass],
-					items: inClass.length,
-					netShare:
-						roleNet === 0 ? null : ratio(classNet, roleNet, SHARE_DIGITS),
-				},
-			});
-		}
-	}
 	return tableModel({
 		captionKey: menuKeys.matrix.classTable,
 		columns: [
 			column("role", menuKeys.table.role, "message"),
-			column("class", menuKeys.table.class, "message"),
-			column("items", menuKeys.table.items, "count"),
-			column("netShare", menuKeys.table.netShare, "percent"),
+			column("threshold", menuKeys.table.threshold, "decimal"),
+			...MENU_CLASSES.map((menuClass) =>
+				column(menuClass, menuKeys.class[menuClass], "count"),
+			),
+			column("starShare", menuKeys.table.starShare, "percent"),
 		],
-		rows: tableRows,
+		rows: rolesPresent(rows).map((role): TableRowModel => {
+			const inRole = rows.filter((entry) => entry.row.role === role);
+			const roleNet = inRole.reduce(
+				(sum, entry) => sum + entry.row.net_amount,
+				0,
+			);
+			const starNet = inRole
+				.filter((entry) => entry.row.menu_class === "star")
+				.reduce((sum, entry) => sum + entry.row.net_amount, 0);
+			const counts = Object.fromEntries(
+				MENU_CLASSES.map((menuClass) => [
+					menuClass,
+					inRole.filter((entry) => entry.row.menu_class === menuClass).length,
+				]),
+			);
+			return {
+				id: role,
+				cells: {
+					role: reportKeys.role[role],
+					threshold: inRole[0]?.row.popularity_threshold_pct ?? null,
+					...counts,
+					starShare:
+						roleNet === 0 ? null : ratio(starNet, roleNet, SHARE_DIGITS),
+				},
+			};
+		}),
 	});
+}
+
+function classShare(
+	rows: readonly StoreMenuRow[],
+	role: MenuRole,
+	menuClass: MenuClass,
+): number | null {
+	const inRole = rows.filter(
+		(entry) => entry.row.role === role && entry.row.menu_class !== null,
+	).length;
+	return inRole === 0 ? null : countClass(rows, role, menuClass) / inRole;
 }
 
 function classChart(rows: readonly StoreMenuRow[]): ChartModel | null {
@@ -152,15 +189,9 @@ function classChart(rows: readonly StoreMenuRow[]): ChartModel | null {
 			tone: CLASS_TONES[menuClass],
 			axis: "left" as const,
 			stack: "classes",
-			values: roles.map(
-				(role) =>
-					rows.filter(
-						(entry) =>
-							entry.row.role === role && entry.row.menu_class === menuClass,
-					).length,
-			),
+			values: roles.map((role) => classShare(rows, role, menuClass)),
 		})),
-		leftUnit: "count",
+		leftUnit: "fraction",
 		rightUnit: null,
 		markLines: [],
 		markAreas: [],
@@ -262,6 +293,7 @@ export function buildMatrixCard(input: ThemeCardInput): CardModel {
 export const menuMatrixCard: ThemeCardDefinition = {
 	id: "menu_matrix",
 	needs: menuNeeds.matrix,
+	wide: true,
 	visible: () => true,
 	build: buildMatrixCard,
 };

@@ -41,6 +41,7 @@ export interface TableSpec {
 	rows: readonly TableRow[];
 	initialSort?: TableSort;
 	heatColumns?: readonly string[];
+	previewRows?: number;
 }
 
 export type SeriesTone =

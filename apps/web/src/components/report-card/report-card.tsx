@@ -55,6 +55,8 @@ export interface ReportCardProps {
 	testId?: string;
 }
 
+export const WIDE_CARD_SPAN = "md:col-span-2 xl:col-span-3 print:col-span-1";
+
 export function isProvisional(metrics: readonly MetricDefinition[]): boolean {
 	return metrics.some((metric) => metric.missingKey !== undefined);
 }
@@ -88,7 +90,7 @@ export function ReportCard(props: ReportCardProps) {
 		<article
 			aria-labelledby={headingId}
 			aria-busy={props.busy ? true : undefined}
-			className={`flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface-raised p-4 shadow-sm transition-opacity aria-busy:opacity-60 print:shadow-none ${props.wide ? "md:col-span-2 xl:col-span-3 print:col-span-1" : ""}`}
+			className={`flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface-raised p-4 shadow-sm transition-opacity aria-busy:opacity-60 print:shadow-none ${props.wide ? WIDE_CARD_SPAN : ""}`}
 			data-testid={props.testId}
 		>
 			<header className="flex flex-wrap items-start justify-between gap-2">
@@ -137,12 +139,14 @@ export function ReportCard(props: ReportCardProps) {
 					table={props.table}
 					formatters={props.formatters}
 					fileName={props.csvFileName}
+					wide={props.wide === true}
 				/>
 			) : null}
 			{props.secondaryTable ? (
 				<DataTable
 					table={props.secondaryTable}
 					formatters={props.formatters}
+					wide={props.wide === true}
 					fileName={
 						props.secondaryCsvFileName ??
 						props.csvFileName.replace(/\.csv$/, "-2.csv")

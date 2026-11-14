@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { uiLocaleOf, useLanguage, useT } from "../../i18n";
 import { addDays } from "../../lib/business-dates";
 import { buildCsv, type CsvCell, downloadTextFile } from "../../lib/csv";
@@ -174,13 +174,19 @@ function isTextual(column: TableColumn): boolean {
 	return column.kind === "text";
 }
 
+function textWrapping(isFirst: boolean, wide: boolean): string {
+	if (!wide) return "";
+	return isFirst ? "md:whitespace-nowrap" : "whitespace-nowrap";
+}
+
 function cellClass(
 	column: TableColumn,
 	isFirst: boolean,
 	compact = false,
+	wide = false,
 ): string {
 	const alignment = isTextual(column)
-		? "text-left"
+		? `text-left ${textWrapping(isFirst, wide)}`
 		: "text-right whitespace-nowrap tabular-nums";
 	const width = isFirst
 		? compact
@@ -241,18 +247,30 @@ function SortableHeader({
 	);
 }
 
+function hiddenInPreview(
+	index: number,
+	previewRows: number | undefined,
+	expanded: boolean,
+): boolean {
+	return !expanded && previewRows !== undefined && index >= previewRows;
+}
+
 export function DataTable({
 	table,
 	formatters,
 	fileName,
+	wide = false,
 }: {
 	table: TableSpec;
 	formatters: Formatters;
 	fileName: string;
+	wide?: boolean;
 }) {
 	const t = useT();
 	const { language } = useLanguage();
+	const bodyId = useId();
 	const [sort, setSort] = useState<TableSort | null>(table.initialSort ?? null);
+	const [expanded, setExpanded] = useState(false);
 	const collator = useMemo(
 		() => new Intl.Collator(uiLocaleOf[language]),
 		[language],
@@ -270,6 +288,10 @@ export function DataTable({
 		[table.heatColumns],
 	);
 	const isHeatTable = heatKeys.size > 0;
+	const previewRows =
+		table.previewRows !== undefined && table.rows.length > table.previewRows
+			? table.previewRows
+			: undefined;
 	const points = (text: string) => t("report.value.points", { value: text });
 	const download = () =>
 		downloadTextFile(
@@ -304,7 +326,7 @@ export function DataTable({
 							))}
 						</tr>
 					</thead>
-					<tbody>
+					<tbody id={bodyId}>
 						{rows.length === 0 ? (
 							<tr>
 								<td
@@ -315,8 +337,11 @@ export function DataTable({
 								</td>
 							</tr>
 						) : (
-							rows.map((row) => (
-								<tr key={row.id} className="[&:last-child>td]:border-b-0">
+							rows.map((row, rowIndex) => (
+								<tr
+									key={row.id}
+									className={`[&:last-child>td]:border-b-0 ${hiddenInPreview(rowIndex, previewRows, expanded) ? "hidden print:table-row" : ""}`}
+								>
 									{table.columns.map((column, index) => {
 										const level = heat.get(`${row.id}|${column.key}`);
 										const value = row.cells[column.key] ?? null;
@@ -325,7 +350,7 @@ export function DataTable({
 										return (
 											<td
 												key={column.key}
-												className={`py-1.5 ${isHeatTable ? "px-1.5 print:px-0.5" : "px-2 print:px-1"} ${cellClass(column, index === 0, isHeatTable)} ${level === undefined ? "" : "heat-cell"}`}
+												className={`py-1.5 ${isHeatTable ? "px-1.5 print:px-0.5" : "px-2 print:px-1"} ${cellClass(column, index === 0, isHeatTable, wide)} ${level === undefined ? "" : "heat-cell"}`}
 												{...(level === undefined
 													? {}
 													: { "data-heat": String(level) })}
@@ -352,17 +377,39 @@ export function DataTable({
 					</tbody>
 				</table>
 			</TableScroller>
-			<Button
-				type="button"
-				onClick={download}
-				disabled={rows.length === 0}
-				aria-label={t("reportCard.downloadCsvOf", { table: table.caption })}
-				tone="secondary"
-				size="compact"
-				className="inline-flex items-center disabled:opacity-60"
-			>
-				{t("reportCard.downloadCsv")}
-			</Button>
+			<div className="flex flex-wrap items-center gap-2">
+				{previewRows === undefined ? null : (
+					<Button
+						type="button"
+						onClick={() => setExpanded((current) => !current)}
+						aria-expanded={expanded}
+						aria-controls={bodyId}
+						tone="secondary"
+						size="compact"
+						className="inline-flex items-center print:hidden"
+						data-testid="table-preview-toggle"
+					>
+						{expanded
+							? t("reportCard.showFirstRows", {
+									count: formatters.count(previewRows),
+								})
+							: t("reportCard.showAllRows", {
+									count: formatters.count(rows.length),
+								})}
+					</Button>
+				)}
+				<Button
+					type="button"
+					onClick={download}
+					disabled={rows.length === 0}
+					aria-label={t("reportCard.downloadCsvOf", { table: table.caption })}
+					tone="secondary"
+					size="compact"
+					className="inline-flex items-center disabled:opacity-60"
+				>
+					{t("reportCard.downloadCsv")}
+				</Button>
+			</div>
 		</div>
 	);
 }

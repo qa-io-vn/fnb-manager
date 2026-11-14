@@ -96,6 +96,7 @@ export interface TableModel {
 	} | null;
 	readonly variant: "standard" | "heat";
 	readonly heatColumns: readonly string[];
+	readonly previewRows?: number;
 }
 
 export type SeriesTone =

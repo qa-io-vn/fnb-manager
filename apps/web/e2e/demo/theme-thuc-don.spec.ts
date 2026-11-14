@@ -42,6 +42,32 @@ test("the matrix classes the drinks provisionally and the margins ask for costs"
 	).toBeVisible();
 });
 
+test("the item table opens on its first 20 rows, shows every row on request and prints them all", async ({
+	page,
+}) => {
+	await openTheme(page, "menu");
+	const matrix = themeCard(page, "menu", "menu_matrix");
+	const items = matrix.getByRole("table", {
+		name: "Xếp loại từng món theo vai trò",
+	});
+	const allRows = items.locator("tbody tr");
+	const shownRows = items.locator("tbody tr:visible");
+	const total = await allRows.count();
+	expect(total).toBeGreaterThan(20);
+	await expect(shownRows).toHaveCount(20);
+	const toggle = matrix.getByTestId("table-preview-toggle");
+	await expect(toggle).toHaveText(`Xem tất cả ${total} dòng`);
+	await toggle.click();
+	await expect(toggle).toHaveAttribute("aria-expanded", "true");
+	await expect(shownRows).toHaveCount(total);
+	await toggle.click();
+	await expect(shownRows).toHaveCount(20);
+	await page.emulateMedia({ media: "print" });
+	await expect(shownRows).toHaveCount(total);
+	await expect(toggle).toBeHidden();
+	await page.emulateMedia({ media: "screen" });
+});
+
 test("every Thực đơn table downloads as UTF-8 CSV with a BOM", async ({
 	page,
 }) => {

@@ -284,6 +284,21 @@ describe("card adapter", () => {
 		expect(english.rows[0]?.cells.shift).toBe("Shift 1");
 	});
 
+	it("carries the preview row count only when the model sets one", () => {
+		const model: TableModel = {
+			captionKey: "report.day.payments.table",
+			columns: [
+				{ key: "amount", labelKey: "report.table.amount", kind: "money" },
+			],
+			rows: [{ id: "a", cells: { amount: 5 } }],
+			initialSort: null,
+			variant: "standard",
+			heatColumns: [],
+		};
+		expect(tableOf(model, t)).not.toHaveProperty("previewRows");
+		expect(tableOf({ ...model, previewRows: 20 }, t).previewRows).toBe(20);
+	});
+
 	it("maps charts with a right axis, stacks, mark lines and areas", () => {
 		const chart: ChartModel = {
 			labelKey: "report.day.hourly.chart",

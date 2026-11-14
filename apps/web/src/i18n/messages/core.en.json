@@ -145,6 +145,8 @@
 	"reportCard.sortBy": "Sort by {column}",
 	"reportCard.exactValue": "Exact value: {value}",
 	"reportCard.noValue": "—",
+	"reportCard.showAllRows": "Show all {count} rows",
+	"reportCard.showFirstRows": "Show the first {count} rows",
 	"reportCard.emptyTable": "No data yet",
 	"table.store": "Store",
 	"table.net": "Net revenue",

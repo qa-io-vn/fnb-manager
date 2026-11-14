@@ -74,6 +74,7 @@ export interface ThemeCardInput {
 export interface ThemeCardDefinition {
 	readonly id: string;
 	readonly needs: readonly string[];
+	readonly wide?: boolean;
 	visible(input: Pick<ThemeCardInput, "context" | "coverage">): boolean;
 	build(input: ThemeCardInput): CardModel;
 }

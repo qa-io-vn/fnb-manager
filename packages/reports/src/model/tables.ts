@@ -27,6 +27,7 @@ export function tableModel(input: {
 	readonly initialSort?: TableSort | null;
 	readonly variant?: TableModel["variant"];
 	readonly heatColumns?: readonly string[];
+	readonly previewRows?: number;
 }): TableModel {
 	return {
 		captionKey: input.captionKey,
@@ -35,6 +36,9 @@ export function tableModel(input: {
 		initialSort: input.initialSort ?? null,
 		variant: input.variant ?? "standard",
 		heatColumns: input.heatColumns ?? [],
+		...(input.previewRows === undefined
+			? {}
+			: { previewRows: input.previewRows }),
 	};
 }
 

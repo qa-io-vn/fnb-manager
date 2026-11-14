@@ -324,6 +324,9 @@ export function tableOf(table: TableModel, t: Translate): TableSpec {
 		})),
 		...(table.initialSort === null ? {} : { initialSort: table.initialSort }),
 		...(table.variant === "heat" ? { heatColumns: table.heatColumns } : {}),
+		...(table.previewRows === undefined
+			? {}
+			: { previewRows: table.previewRows }),
 	};
 }
 

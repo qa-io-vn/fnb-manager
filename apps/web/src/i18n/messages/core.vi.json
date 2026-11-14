@@ -145,6 +145,8 @@
 	"reportCard.sortBy": "Sắp xếp theo {column}",
 	"reportCard.exactValue": "Giá trị chính xác: {value}",
 	"reportCard.noValue": "—",
+	"reportCard.showAllRows": "Xem tất cả {count} dòng",
+	"reportCard.showFirstRows": "Chỉ xem {count} dòng đầu",
 	"reportCard.emptyTable": "Chưa có dữ liệu",
 	"table.store": "Cửa hàng",
 	"table.net": "Doanh thu thuần",

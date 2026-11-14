@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import {
 	ReportCard,
 	type ReportCardProps,
+	WIDE_CARD_SPAN,
 } from "../components/report-card/report-card";
 import { Button } from "../components/ui/button";
 import { useT } from "../i18n";
@@ -10,12 +11,16 @@ import type { Formatters } from "../lib/format";
 import { type CardKind, cardTestId, toReportCardProps } from "./card-adapter";
 import type { CardState } from "./use-report";
 
-function CardSkeleton({ testId }: { testId: string }) {
+function spanOf(wide: boolean): string {
+	return wide ? ` ${WIDE_CARD_SPAN}` : "";
+}
+
+function CardSkeleton({ testId, wide }: { testId: string; wide: boolean }) {
 	const t = useT();
 	return (
 		<article
 			aria-busy="true"
-			className="flex min-h-48 flex-col gap-3 rounded-xl border border-line bg-surface-raised p-4"
+			className={`flex min-h-48 min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface-raised p-4${spanOf(wide)}`}
 			data-testid={testId}
 		>
 			<p role="status" className="text-sm text-ink-muted">
@@ -28,16 +33,18 @@ function CardSkeleton({ testId }: { testId: string }) {
 function CardError({
 	testId,
 	retry,
+	wide,
 	limit = false,
 }: {
 	testId: string;
 	retry: () => void;
+	wide: boolean;
 	limit?: boolean;
 }) {
 	const t = useT();
 	return (
 		<article
-			className="flex flex-col items-start gap-3 rounded-xl border border-warning bg-surface-raised p-4"
+			className={`flex min-w-0 flex-col items-start gap-3 rounded-xl border border-warning bg-surface-raised p-4${spanOf(wide)}`}
 			data-testid={testId}
 			data-state={limit ? "limit" : "error"}
 		>
@@ -75,10 +82,12 @@ export function ReportCardView({
 	kind,
 	state,
 	formatters,
+	wide = false,
 }: {
 	kind: CardKind;
 	state: CardState;
 	formatters: Formatters;
+	wide?: boolean;
 }) {
 	const t = useT();
 	const testId = cardTestId(kind, state.id);
@@ -95,13 +104,26 @@ export function ReportCardView({
 			<CardError
 				testId={testId}
 				retry={state.retry}
+				wide={wide}
 				limit={state.limit === true}
 			/>
 		);
 	}
-	if (adapted === null) return <CardSkeleton testId={testId} />;
+	if (adapted === null) return <CardSkeleton testId={testId} wide={wide} />;
 	if ("failure" in adapted) {
-		return <CardError testId={testId} retry={() => window.location.reload()} />;
+		return (
+			<CardError
+				testId={testId}
+				wide={wide}
+				retry={() => window.location.reload()}
+			/>
+		);
 	}
-	return <ReportCard {...adapted.props} busy={state.status === "loading"} />;
+	return (
+		<ReportCard
+			{...adapted.props}
+			wide={wide || adapted.props.wide === true}
+			busy={state.status === "loading"}
+		/>
+	);
 }

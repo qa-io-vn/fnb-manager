@@ -76,6 +76,10 @@ function ThemeCards({
 						kind={definition.kind}
 						state={state}
 						formatters={formatters}
+						wide={
+							definition.cards.find((card) => card.id === state.id)?.wide ===
+							true
+						}
 					/>
 				))}
 			</div>

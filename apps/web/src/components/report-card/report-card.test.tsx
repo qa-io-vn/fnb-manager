@@ -153,6 +153,73 @@ describe("ReportCard", () => {
 		);
 	});
 
+	it("shows the first rows of a long table and every row on request", () => {
+		const longTable: TableSpec = {
+			...table,
+			rows: [
+				...table.rows,
+				{ id: "c", cells: { store: "Quán Ba", value: 900_000, change: 0 } },
+			],
+			previewRows: 2,
+		};
+		renderWithLanguage(<ReportCard {...props({ table: longTable })} />);
+		const dataTable = screen.getByRole("table", { name: "Doanh thu thuần" });
+		const hiddenStores = () =>
+			within(dataTable)
+				.getAllByRole("row")
+				.slice(1)
+				.filter((row) => row.classList.contains("hidden"))
+				.map((row) => within(row).getAllByRole("cell")[0]?.textContent);
+		const toggle = screen.getByTestId("table-preview-toggle");
+		expect(toggle).toHaveTextContent("Xem tất cả 3 dòng");
+		expect(toggle).toHaveAttribute("aria-expanded", "false");
+		expect(hiddenStores()).toEqual(["Quán Ba"]);
+		expect(
+			within(dataTable).getByText("Quán Ba").closest("tr")?.className,
+		).toContain("print:table-row");
+		fireEvent.click(toggle);
+		expect(toggle).toHaveTextContent("Chỉ xem 2 dòng đầu");
+		expect(toggle).toHaveAttribute("aria-expanded", "true");
+		expect(hiddenStores()).toEqual([]);
+		fireEvent.click(toggle);
+		expect(hiddenStores()).toEqual(["Quán Ba"]);
+		fireEvent.click(screen.getByRole("button", { name: /^Tải CSV/ }));
+		expect(downloads[0]?.content.split("\r\n").filter(Boolean)).toHaveLength(4);
+	});
+
+	it("leaves a table that fits its preview without the toggle", () => {
+		renderWithLanguage(
+			<ReportCard {...props({ table: { ...table, previewRows: 2 } })} />,
+		);
+		expect(screen.queryByTestId("table-preview-toggle")).toBeNull();
+	});
+
+	it("keeps text cells on one line in a wide card", () => {
+		const twoTextColumns: TableSpec = {
+			...table,
+			columns: [{ key: "item", label: "Món", kind: "text" }, ...table.columns],
+			rows: [{ id: "a", cells: { item: "Trà", store: "Quán Một" } }],
+		};
+		const cellsOf = () =>
+			within(screen.getByRole("table", { name: "Doanh thu thuần" }))
+				.getAllByRole("cell")
+				.slice(0, 2);
+		const { unmount } = renderWithLanguage(
+			<ReportCard {...props({ table: twoTextColumns })} />,
+		);
+		expect(
+			cellsOf().map((cell) => cell.className.includes("whitespace-nowrap")),
+		).toEqual([false, false]);
+		unmount();
+		renderWithLanguage(
+			<ReportCard {...props({ table: twoTextColumns, wide: true })} />,
+		);
+		const [first, second] = cellsOf();
+		expect(first?.className).toContain("md:whitespace-nowrap");
+		expect(first?.className.split(" ")).not.toContain("whitespace-nowrap");
+		expect(second?.className.split(" ")).toContain("whitespace-nowrap");
+	});
+
 	it("shows change columns with their sign", () => {
 		renderWithLanguage(<ReportCard {...props()} />);
 		const dataTable = screen.getByRole("table", { name: "Doanh thu thuần" });
