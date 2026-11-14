@@ -1,4 +1,6 @@
 import { useId } from "react";
+import { cn } from "../components/ui/cn";
+import { fieldVariants } from "../components/ui/field";
 import type { TenantRow } from "../data/row-source";
 import { useT } from "../i18n";
 
@@ -23,7 +25,7 @@ export function TenantSelect({
 				id={id}
 				value={tenant.id}
 				onChange={(event) => onChange(event.target.value)}
-				className="min-h-11 max-w-48 rounded-lg border border-line bg-surface-raised px-2 text-sm"
+				className={cn(fieldVariants(), "max-w-48")}
 			>
 				{tenants.map((option) => (
 					<option key={option.id} value={option.id}>

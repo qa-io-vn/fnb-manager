@@ -8,9 +8,15 @@ import {
 	parseExactMoney,
 	waitForCharts,
 } from "../support/checks";
-import { expectNoConsoleErrors, watchConsoleErrors } from "../support/reports";
+import {
+	expectNoConsoleErrors,
+	reportUrl,
+	waitForSettledCards,
+	watchConsoleErrors,
+} from "../support/reports";
 
 const middayInHoChiMinhCity = new Date("2026-11-04T05:30:00.000Z");
+const FOCUS_STEPS = 60;
 
 test.beforeEach(async ({ page }) => {
 	await page.clock.setFixedTime(middayInHoChiMinhCity);
@@ -97,6 +103,47 @@ test("the language toggle switches the demo to English and back", async ({
 	await expect(
 		page.getByRole("heading", { level: 1, name: "Hôm nay" }),
 	).toBeVisible();
+});
+
+test("keyboard focus is never hidden under the sticky top bar on a phone", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: PHONE_WIDTH, height: 700 });
+	await page.goto(reportUrl("day"));
+	await waitForSettledCards(page);
+	const covered: string[] = [];
+	const presses = [
+		...Array<string>(FOCUS_STEPS).fill("Tab"),
+		...Array<string>(FOCUS_STEPS).fill("Shift+Tab"),
+	];
+	for (const key of presses) {
+		await page.keyboard.press(key);
+		const verdict = await page.evaluate(() => {
+			const focused = document.activeElement;
+			const header = document.querySelector("header");
+			if (!(focused instanceof HTMLElement) || header === null) return null;
+			if (header.contains(focused)) return null;
+			const box = focused.getBoundingClientRect();
+			if (box.width === 0 || box.height === 0) return null;
+			const inset = Math.min(2, box.width / 4, box.height / 4);
+			const points = [
+				[box.left + box.width / 2, box.top + box.height / 2],
+				[box.left + inset, box.top + inset],
+				[box.right - inset, box.top + inset],
+				[box.left + inset, box.bottom - inset],
+				[box.right - inset, box.bottom - inset],
+			];
+			const hiddenEverywhere = points.every(([x, y]) => {
+				const topmost = document.elementFromPoint(x ?? 0, y ?? 0);
+				return topmost !== null && header.contains(topmost);
+			});
+			return hiddenEverywhere
+				? `${focused.tagName} ${focused.textContent?.trim().slice(0, 40) ?? ""}`
+				: null;
+		});
+		if (verdict !== null) covered.push(verdict);
+	}
+	expect(covered).toEqual([]);
 });
 
 test("Hôm nay passes axe and fits a 360 px phone", async ({ page }) => {

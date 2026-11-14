@@ -5,6 +5,10 @@
 	color-scheme: light dark;
 }
 
+html {
+	scroll-padding-top: var(--top-bar-height, 0px);
+}
+
 html,
 body {
 	margin: 0;

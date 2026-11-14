@@ -1,13 +1,11 @@
 import { type FormEvent, useId, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAppMode } from "../app-mode/app-mode";
+import { Button } from "../components/ui/button";
+import { TextField } from "../components/ui/field";
+import { TextLink } from "../components/ui/text-link";
 import { useT } from "../i18n";
-import {
-	AuthLayout,
-	primaryButtonClass,
-	TextField,
-	textLinkClass,
-} from "./auth-layout";
+import { AuthLayout } from "./auth-layout";
 import { useSession } from "./session";
 
 export const NEW_PASSWORD_ROUTE = "/mat-khau-moi";
@@ -69,20 +67,18 @@ export function ResetRequestPage() {
 						{t("auth.reset.failed")}
 					</p>
 				) : null}
-				<button
+				<Button
 					type="submit"
 					disabled={state === "sending" || (!client && !clientFailed)}
-					className={primaryButtonClass}
+					className="w-full disabled:opacity-70"
 				>
 					{state === "sending"
 						? t("auth.reset.sending")
 						: t("auth.reset.submit")}
-				</button>
+				</Button>
 			</form>
 			<p className="mt-2 text-sm">
-				<Link to="/dang-nhap" className={textLinkClass}>
-					{t("auth.reset.back")}
-				</Link>
+				<TextLink to="/dang-nhap">{t("auth.reset.back")}</TextLink>
 			</p>
 		</AuthLayout>
 	);

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAppMode } from "../app-mode/app-mode";
+import { Button } from "../components/ui/button";
 import { translate, useT } from "../i18n";
 
 export function DemoBanner() {
@@ -41,12 +42,8 @@ export function DemoExitButton() {
 		navigate("/dang-nhap", { replace: true });
 	};
 	return (
-		<button
-			type="button"
-			onClick={leave}
-			className="min-h-11 rounded-lg border border-warning bg-warning-soft px-3 text-sm font-medium"
-		>
+		<Button type="button" onClick={leave} tone="warning" size="compact">
 			{t("demo.exit")}
-		</button>
+		</Button>
 	);
 }

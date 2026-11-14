@@ -1,4 +1,5 @@
 import {
+	type CSSProperties,
 	type ReactNode,
 	type RefObject,
 	useEffect,
@@ -11,6 +12,7 @@ export interface ScrollEdges {
 	atStart: boolean;
 	atEnd: boolean;
 	stickyInset: number;
+	snapEndPadding: number;
 }
 
 const EDGE_TOLERANCE_PX = 1;
@@ -20,17 +22,33 @@ const unmeasured: ScrollEdges = {
 	atStart: true,
 	atEnd: true,
 	stickyInset: 0,
+	snapEndPadding: 0,
 };
 
 export function measureScrollEdges(element: HTMLElement): ScrollEdges {
-	const hiddenWidth = element.scrollWidth - element.clientWidth;
+	const contentWidth =
+		(element.firstElementChild as HTMLElement | null)?.scrollWidth ??
+		element.scrollWidth;
+	const hiddenWidth = contentWidth - element.clientWidth;
+	const overflowing = hiddenWidth > EDGE_TOLERANCE_PX;
 	const position = Math.abs(element.scrollLeft);
 	const stickyCell = element.querySelector<HTMLElement>("[data-sticky-column]");
+	const stickyInset = stickyCell?.offsetWidth ?? 0;
+	const lastColumn = element.querySelector<HTMLElement>(
+		"thead tr > :last-child",
+	);
+	const snapEndPadding = overflowing
+		? Math.max(
+				0,
+				element.clientWidth - stickyInset - (lastColumn?.offsetWidth ?? 0),
+			)
+		: 0;
 	return {
-		overflowing: hiddenWidth > EDGE_TOLERANCE_PX,
+		overflowing,
 		atStart: position <= EDGE_TOLERANCE_PX,
 		atEnd: position >= hiddenWidth - EDGE_TOLERANCE_PX,
-		stickyInset: stickyCell?.offsetWidth ?? 0,
+		stickyInset,
+		snapEndPadding,
 	};
 }
 
@@ -39,7 +57,8 @@ function sameEdges(left: ScrollEdges, right: ScrollEdges): boolean {
 		left.overflowing === right.overflowing &&
 		left.atStart === right.atStart &&
 		left.atEnd === right.atEnd &&
-		left.stickyInset === right.stickyInset
+		left.stickyInset === right.stickyInset &&
+		left.snapEndPadding === right.snapEndPadding
 	);
 }
 
@@ -103,8 +122,13 @@ export function TableScroller({ children }: { children: ReactNode }) {
 		>
 			<div
 				ref={scroller}
-				className="overflow-x-auto overscroll-x-contain pt-1 print:overflow-visible"
-				style={{ scrollPaddingInlineStart: edges.stickyInset }}
+				className="snap-x snap-mandatory overflow-x-auto overscroll-x-contain pt-1 pe-(--snap-end-padding) print:snap-none print:overflow-visible print:pe-0"
+				style={
+					{
+						scrollPaddingInlineStart: edges.stickyInset,
+						"--snap-end-padding": `${edges.snapEndPadding}px`,
+					} as CSSProperties
+				}
 			>
 				{children}
 			</div>

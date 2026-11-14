@@ -1,12 +1,10 @@
 import { type FormEvent, useId, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { Button } from "../components/ui/button";
+import { TextField } from "../components/ui/field";
+import { TextLink } from "../components/ui/text-link";
 import { useT } from "../i18n";
-import {
-	AuthLayout,
-	primaryButtonClass,
-	TextField,
-	textLinkClass,
-} from "./auth-layout";
+import { AuthLayout } from "./auth-layout";
 import { useSession } from "./session";
 
 const MINIMUM_PASSWORD_LENGTH = 8;
@@ -33,9 +31,7 @@ export function NewPasswordPage() {
 		return (
 			<AuthLayout title={t("auth.newPassword.title")}>
 				<p className="mb-4">{t("auth.newPassword.expired")}</p>
-				<Link to="/quen-mat-khau" className={textLinkClass}>
-					{t("auth.forgot")}
-				</Link>
+				<TextLink to="/quen-mat-khau">{t("auth.forgot")}</TextLink>
 			</AuthLayout>
 		);
 	}
@@ -59,13 +55,13 @@ export function NewPasswordPage() {
 					<p role="status" className="text-positive">
 						{t("auth.newPassword.saved")}
 					</p>
-					<button
+					<Button
 						type="button"
 						onClick={() => navigate("/", { replace: true })}
-						className={primaryButtonClass}
+						className="w-full disabled:opacity-70"
 					>
 						{t("auth.newPassword.continue")}
-					</button>
+					</Button>
 				</div>
 			) : (
 				<form onSubmit={(event) => void submit(event)} className="space-y-4">
@@ -85,15 +81,15 @@ export function NewPasswordPage() {
 							{t("auth.newPassword.failed")}
 						</p>
 					) : null}
-					<button
+					<Button
 						type="submit"
 						disabled={state === "saving"}
-						className={primaryButtonClass}
+						className="w-full disabled:opacity-70"
 					>
 						{state === "saving"
 							? t("auth.newPassword.saving")
 							: t("auth.newPassword.submit")}
-					</button>
+					</Button>
 				</form>
 			)}
 		</AuthLayout>

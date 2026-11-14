@@ -1,14 +1,11 @@
 import { type FormEvent, useId, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAppMode } from "../app-mode/app-mode";
+import { Button } from "../components/ui/button";
+import { TextField } from "../components/ui/field";
+import { TextLink } from "../components/ui/text-link";
 import { useT } from "../i18n";
-import {
-	AuthLayout,
-	primaryButtonClass,
-	secondaryButtonClass,
-	TextField,
-	textLinkClass,
-} from "./auth-layout";
+import { AuthLayout } from "./auth-layout";
 import { useSession } from "./session";
 
 export function LoginPage() {
@@ -81,28 +78,27 @@ export function LoginPage() {
 						{clientFailed ? t("app.error") : t("auth.login.failed")}
 					</p>
 				) : null}
-				<button
+				<Button
 					type="submit"
 					disabled={submitting || (status === "loading" && !clientFailed)}
-					className={primaryButtonClass}
+					className="w-full disabled:opacity-70"
 				>
 					{submitting ? t("auth.login.submitting") : t("auth.login.submit")}
-				</button>
+				</Button>
 			</form>
 			<p className="mt-2 text-sm">
-				<Link to="/quen-mat-khau" className={textLinkClass}>
-					{t("auth.forgot")}
-				</Link>
+				<TextLink to="/quen-mat-khau">{t("auth.forgot")}</TextLink>
 			</p>
 			<div className="mt-6 border-t border-line pt-4">
 				<p className="mb-2 text-sm text-ink-muted">{t("demo.offer")}</p>
-				<button
+				<Button
 					type="button"
 					onClick={openDemo}
-					className={secondaryButtonClass}
+					tone="secondary"
+					className="w-full"
 				>
 					{t("demo.open")}
-				</button>
+				</Button>
 			</div>
 		</AuthLayout>
 	);

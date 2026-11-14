@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "../auth/session";
+import { Button } from "../components/ui/button";
 import { useT } from "../i18n";
 
 export function SignOutButton() {
@@ -15,12 +16,13 @@ export function SignOutButton() {
 		navigate("/dang-nhap", { replace: true });
 	};
 	return (
-		<button
+		<Button
 			type="button"
 			onClick={() => void signOut()}
-			className="min-h-11 rounded-lg border border-line px-3 text-sm font-medium hover:bg-surface-sunken"
+			tone="secondary"
+			size="compact"
 		>
 			{t("auth.signOut")}
-		</button>
+		</Button>
 	);
 }

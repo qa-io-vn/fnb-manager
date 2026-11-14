@@ -1,5 +1,6 @@
 import type { ReportDefinition, ReportPeriod } from "@fnb/reports";
-import { Link } from "react-router-dom";
+import { Button } from "../components/ui/button";
+import { TextLink } from "../components/ui/text-link";
 import { useT } from "../i18n";
 import { PageHeading } from "../shell/page-heading";
 import { StatusMessage } from "../shell/scope-status";
@@ -34,13 +35,9 @@ function ReportCards({
 					<p role="alert" className="mb-3">
 						{t("app.error")}
 					</p>
-					<button
-						type="button"
-						onClick={load.retry}
-						className="min-h-11 rounded-lg bg-accent px-4 font-semibold text-accent-ink"
-					>
+					<Button type="button" onClick={load.retry}>
 						{t("app.retry")}
-					</button>
+					</Button>
 				</StatusMessage>
 			) : null}
 			<p className="hidden text-sm print:block" data-testid="print-summary">
@@ -110,12 +107,9 @@ export function ReportPage({ definition }: { definition: ReportDefinition }) {
 							date: formatters.date(context.period.end),
 						})}
 					</span>
-					<Link
-						to="/"
-						className="inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-2 print:hidden"
-					>
+					<TextLink to="/" className="font-semibold print:hidden">
 						{t("report.action.today")}
-					</Link>
+					</TextLink>
 				</p>
 			) : null}
 			{location.clampReason === "notStarted" ? (

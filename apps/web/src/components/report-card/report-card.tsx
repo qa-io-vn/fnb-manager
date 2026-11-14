@@ -1,7 +1,7 @@
 import { useId } from "react";
-import { Link } from "react-router-dom";
 import type { Formatters } from "../../lib/format";
 import type { MetricDefinition } from "../../metrics/registry";
+import { TextLink } from "../ui/text-link";
 import { CardMarkers } from "./card-markers";
 import { ComparisonChips } from "./comparison-chips";
 import { DataTable } from "./data-table";
@@ -73,12 +73,9 @@ function Notice({ notice }: { notice: CardNotice }) {
 		>
 			<span>{notice.text}</span>
 			{notice.action ? (
-				<Link
-					to={notice.action.to}
-					className="inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-2 print:hidden"
-				>
+				<TextLink to={notice.action.to} className="font-semibold print:hidden">
 					{notice.action.label}
-				</Link>
+				</TextLink>
 			) : null}
 		</p>
 	);

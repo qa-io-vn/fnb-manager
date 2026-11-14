@@ -46,20 +46,18 @@ Tokens are named for their role, never for their colour: `accent`, not `green`. 
 
 ### 3.1 Where they live
 
-`apps/web/src/components/ui/` holds the shared controls; screens compose them and never copy their class strings.
+`apps/web/src/components/ui/` holds the shared controls; screens compose them and never copy their class strings. A unit test (`ui.test.tsx`) pins each variant to the classes the screens used before the design system, so a change to a variant is deliberate.
 
-| Component | Built on | Variants and notes |
+| Export | Built on | Variants and use |
 |---|---|---|
-| `Button` | a `<button>` | `primary`, `secondary`, `ghost`, `link`; sizes `default` (44 px tall) and `compact` for table headers |
-| `TextField` | a labelled `<input>` | the label, the hint and the error are wired with `aria-describedby` |
-| `SelectField` | a native `<select>` | native on purpose: on phones the system picker is the most usable single-choice control |
-| `CheckList` | a group of labelled checkboxes | the store picker's multi-select |
-| `Popover` | Radix Popover | focus moves in and returns, Escape and outside clicks close it; the store picker opens in it |
-| `ToggleGroup` | Radix Toggle Group | single choice with arrow-key navigation; the language toggle |
-| `Collapsible` | Radix Collapsible | the folded store and period controls below 1024 px |
-| `Notice` | a `<p>` or `<div>` with a tone | `info`, `positive`, `warning`, `negative` |
+| `Button`, `buttonVariants` | a `<button>` (type `button` unless a form sets `submit`) | `tone`: `primary`, `secondary`, `warning`; `size`: `regular` (`px-4 font-semibold`) and `compact` (`px-3 text-sm font-medium`); all 44 px tall. Every button of the shell, the auth pages, Hôm nay and the report cards except the table sort headers and the skip link |
+| `fieldVariants` | classes for a native `<input>`, `<select>` or a field-like `<button>` | `kind`: `control` (the period inputs and selects, the tenant select), `trigger` (the store picker and the folded-controls summary), `form` (the sign-in fields) |
+| `TextField` | a labelled `<input>` | label linked by `id`, `required`, and the `autocomplete` value password managers need |
+| `TextLink` | React Router's `Link` | the underlined accent link of the auth pages and the report cards |
+| `Popover`, `PopoverTrigger`, `PopoverContent` | Radix Popover | focus moves into the panel and back to the trigger, Escape and outside clicks close it, the panel stays inside the viewport; the store picker opens in it |
+| `cn` | `clsx` and `tailwind-merge` | joins classes so that a screen's override replaces a variant's class instead of adding a second one |
 
-A new control is added to this table and to the catalogue page (section 5) in the same change.
+Two patterns stay native because they already follow the WAI-ARIA pattern and Radix would add nothing: the language switch is a pair of toggle buttons with `aria-pressed`, and the folded store and period controls are a disclosure button with `aria-expanded` and `aria-controls`. A control moves into `components/ui` as soon as a second screen needs it, together with a line in this table and a case in `ui.test.tsx`.
 
 ### 3.2 Rules
 
@@ -71,15 +69,15 @@ A new control is added to this table and to the catalogue page (section 5) in th
 
 ## 4. Accessibility: WCAG 2.2 AA
 
-Every page meets WCAG 2.2 AA. axe runs with the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa` and `best-practice` tags at 1280 px, at 360 px and in the dark scheme (NFR-A11Y-01). The criteria new in 2.2 that apply to this app, and how each is met:
+Every page meets WCAG 2.2 AA. axe runs with the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22a`, `wcag22aa` and `best-practice` tags at 1280 px, at 360 px (after scrolling every wide table to its end) and in the dark scheme (NFR-A11Y-01). The criteria new in 2.2 that apply to this app, and how each is met:
 
 | Criterion | How it is met | Checked by |
 |---|---|---|
-| 2.4.11 Focus Not Obscured (Minimum) | `scroll-padding-top` equals the sticky top bar's height, so a focused element is never fully covered | end-to-end keyboard check on a report page |
-| 2.5.8 Target Size (Minimum) | 44 px controls (section 3.2) | axe `target-size` rule |
-| 3.3.7 Redundant Entry | the login and reset forms keep what was typed after an error | end-to-end auth checks |
-| 3.3.8 Accessible Authentication (Minimum) | the password field allows paste and carries `autocomplete="current-password"` or `new-password`, so password managers fill it | end-to-end auth checks |
-| 3.2.6 Consistent Help | the help links sit in the same place on every page | review |
+| 2.4.11 Focus Not Obscured (Minimum) | the top bar publishes its height as `--top-bar-height`, and `html` sets `scroll-padding-top` to it, so the browser never scrolls a focused control under the sticky bar. Without it, tabbing back through Ngày left table sort buttons fully hidden | `e2e:demo/demo`: Tab and Shift+Tab through Ngày at 360 px |
+| 2.5.8 Target Size (Minimum) | 44 px controls; wide tables snap so that a whole column rests right after the pinned first column, and pad their end so the last column can rest there too, so no sort button rests half under the pinned column (it left 9.5 px of a button visible before) | axe `target-size` after scrolling every table to its end; `table-scroller.test.tsx` |
+| 3.3.7 Redundant Entry | the sign-in and reset forms keep what was typed after an error | review |
+| 3.3.8 Accessible Authentication (Minimum) | the e-mail and password fields carry `autocomplete` (`username`, `current-password`, `new-password`) and never block pasting, so password managers fill them | `ui.test.tsx`; review |
+| 3.2.6 Consistent Help | the app has no help link yet; when one is added it goes in the same place on every page | review |
 
 ## 5. Catalogue
 
@@ -92,5 +90,5 @@ The design system replaces the hand-written styles in three verified steps. Each
 | Step | Content | Verified by | State |
 |---|---|---|---|
 | DS1 | the token package, generated CSS and chart palette; `styles.css` and the chart theme read them; no visible change | before-and-after full-page screenshots of every demo page in light, dark, dark at 360 px and print equal to the byte; the token tests; the raw-colour check | verified locally on 2026-11-14 |
-| DS2 | the `components/ui` controls of section 3.1; the shell, the auth pages and the report card use them; WCAG 2.2 AA | the end-to-end suite, axe with the `wcag22aa` tag, the new keyboard and auth checks | planned |
+| DS2 | the `components/ui` controls of section 3.1; the shell, the auth pages, Hôm nay and the report cards use them; WCAG 2.2 AA with the focus and target-size fixes of section 4 | the end-to-end suite with the WCAG 2.2 axe tags and the keyboard check, the unit tests of the controls and the table scroller, and the before-and-after screenshots (identical, apart from rounding of at most 1/255 inside the blurred top bar) | verified locally on 2026-11-14 |
 | DS3 | the catalogue page and its checks; this document's tables final | the catalogue's end-to-end check | planned |

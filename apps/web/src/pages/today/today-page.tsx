@@ -1,5 +1,6 @@
 import { type ReactNode, useId } from "react";
 import type { VerificationMarker } from "../../components/report-card/types";
+import { Button } from "../../components/ui/button";
 import { useT } from "../../i18n";
 import type { Formatters } from "../../lib/format";
 import type { DayReport } from "../../metrics/today";
@@ -132,13 +133,9 @@ export function TodayPage() {
 					<p role="alert" className="mb-3">
 						{t("app.error")}
 					</p>
-					<button
-						type="button"
-						onClick={() => void query.refetch()}
-						className="min-h-11 rounded-lg bg-accent px-4 font-semibold text-accent-ink"
-					>
+					<Button type="button" onClick={() => void query.refetch()}>
 						{t("app.retry")}
-					</button>
+					</Button>
 				</StatusMessage>
 			) : query.data ? (
 				<TodayContent data={query.data} formatters={formatters} />

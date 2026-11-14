@@ -4,6 +4,7 @@ import {
 	ReportCard,
 	type ReportCardProps,
 } from "../components/report-card/report-card";
+import { Button } from "../components/ui/button";
 import { useT } from "../i18n";
 import type { Formatters } from "../lib/format";
 import { cardTestId, toReportCardProps } from "./card-adapter";
@@ -44,13 +45,9 @@ function CardError({
 				{t(limit ? "report.card.overLimit" : "report.card.error")}
 			</p>
 			{limit ? null : (
-				<button
-					type="button"
-					onClick={retry}
-					className="min-h-11 rounded-lg bg-accent px-4 font-semibold text-accent-ink"
-				>
+				<Button type="button" onClick={retry}>
 					{t("app.retry")}
-				</button>
+				</Button>
 			)}
 		</article>
 	);

@@ -13,6 +13,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { fieldVariants } from "../components/ui/field";
 import { useT } from "../i18n";
 import { isIsoDate } from "../lib/business-dates";
 import type { Formatters } from "../lib/format";
@@ -125,7 +126,7 @@ function DatePicker({
 				}}
 				onBlur={(event) => commit(event.currentTarget.value)}
 				onKeyDown={onKeyDown}
-				className="min-h-11 rounded-lg border border-line bg-surface-raised px-2 text-sm"
+				className={fieldVariants()}
 				data-testid="period-date"
 			/>
 		</div>

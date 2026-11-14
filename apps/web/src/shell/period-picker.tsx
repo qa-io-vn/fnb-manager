@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { fieldVariants } from "../components/ui/field";
 import type { MessageKey, Translate } from "../i18n";
 import { useT } from "../i18n";
 import { isIsoDate } from "../lib/business-dates";
@@ -46,7 +47,7 @@ function DateField({
 				onChange={(event) => {
 					if (isIsoDate(event.target.value)) onChange(event.target.value);
 				}}
-				className="min-h-11 rounded-lg border border-line bg-surface-raised px-2 text-sm"
+				className={fieldVariants()}
 			/>
 		</div>
 	);
@@ -96,7 +97,7 @@ export function PeriodPicker({
 						if (isPeriodKind(event.target.value))
 							onChange({ ...period, kind: event.target.value });
 					}}
-					className="min-h-11 rounded-lg border border-line bg-surface-raised px-2 text-sm"
+					className={fieldVariants()}
 				>
 					{periodKinds.map((kind) => (
 						<option key={kind} value={kind}>

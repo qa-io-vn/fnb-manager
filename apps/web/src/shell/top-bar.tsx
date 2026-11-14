@@ -1,5 +1,7 @@
-import { useId, useState } from "react";
+import { type RefObject, useEffect, useId, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { cn } from "../components/ui/cn";
+import { fieldVariants } from "../components/ui/field";
 import { useT } from "../i18n";
 import type { Period } from "../lib/period";
 import { useFormatters } from "../state/formatters";
@@ -49,7 +51,10 @@ function ScopeSummaryButton({
 			aria-expanded={open}
 			aria-controls={panelId}
 			onClick={onToggle}
-			className="inline-flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-surface-raised px-3 text-left text-sm lg:hidden"
+			className={cn(
+				fieldVariants({ kind: "trigger" }),
+				"min-w-0 flex-1 text-left lg:hidden",
+			)}
 			data-testid="scope-summary"
 		>
 			<span className="sr-only">{t("shell.scope")}</span>
@@ -118,10 +123,37 @@ function ScopeControlsReady({
 	);
 }
 
+export const TOP_BAR_HEIGHT_PROPERTY = "--top-bar-height";
+
+function usePublishedHeight(
+	element: RefObject<HTMLElement | null>,
+	property: string,
+) {
+	useEffect(() => {
+		const target = element.current;
+		if (target === null || typeof ResizeObserver !== "function") return;
+		const root = document.documentElement;
+		const publish = () =>
+			root.style.setProperty(property, `${target.offsetHeight}px`);
+		publish();
+		const observer = new ResizeObserver(publish);
+		observer.observe(target);
+		return () => {
+			observer.disconnect();
+			root.style.removeProperty(property);
+		};
+	}, [element, property]);
+}
+
 export function TopBar() {
 	const t = useT();
+	const header = useRef<HTMLElement>(null);
+	usePublishedHeight(header, TOP_BAR_HEIGHT_PROPERTY);
 	return (
-		<header className="sticky top-0 z-20 border-b border-line bg-surface/95 backdrop-blur print:static">
+		<header
+			ref={header}
+			className="sticky top-0 z-20 border-b border-line bg-surface/95 backdrop-blur print:static"
+		>
 			<DemoBanner />
 			<div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-2">
 				<div className="flex items-center justify-between gap-2">

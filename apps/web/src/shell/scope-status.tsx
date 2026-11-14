@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Button } from "../components/ui/button";
 import { useT } from "../i18n";
 import { useTenantScope } from "../state/tenant-scope";
 
@@ -26,13 +27,9 @@ export function ScopeGate({ children }: { children: ReactNode }) {
 				<p role="alert" className="mb-3">
 					{t("app.error")}
 				</p>
-				<button
-					type="button"
-					onClick={scope.retry}
-					className="min-h-11 rounded-lg bg-accent px-4 font-semibold text-accent-ink"
-				>
+				<Button type="button" onClick={scope.retry}>
 					{t("app.retry")}
-				</button>
+				</Button>
 			</StatusMessage>
 		);
 	}

@@ -694,15 +694,15 @@ Free tiers during build and pilot (roadmap section 9).
 
 ### 4.6 A11Y — Accessibility
 
-WCAG 2.1 AA is the project standard (phase 6).
+WCAG 2.2 AA is the project standard (ADR-034, from 2026-11-14; WCAG 2.1 AA in phases 6 to 9).
 
 | ID | Requirement | Source | Acceptance criterion | Priority | Status | Verified by |
 |---|---|---|---|---|---|---|
-| NFR-A11Y-01 | **No serious axe violations.** Every page shall have no serious or critical axe violation (WCAG 2.0 and 2.1 A and AA plus best practice) at 1280 px and at 360 px, and in the dark colour scheme at 360 px. | P6, P9, P20b | The Playwright page check passes on every demo page and report. | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day` |
+| NFR-A11Y-01 | **No serious axe violations.** Every page shall have no serious or critical axe violation (WCAG 2.0, 2.1 and 2.2 A and AA plus best practice) at 1280 px and at 360 px, and in the dark colour scheme at 360 px. | P6, P9, P20b · ADR-034 | The Playwright page check passes on every demo page and report. | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day` |
 | NFR-A11Y-02 | **Lighthouse accessibility.** The web app shall score at least 90 for accessibility in Lighthouse mobile. | P6 | 100 on the demo build. | Must | verified locally | Lighthouse recipe in `apps/web/README.md` |
-| NFR-A11Y-03 | **Contrast.** Text and controls shall meet WCAG 2.1 AA contrast in the light and dark colour schemes. | P6 · ADR-034 | The axe contrast rule passes in light at both widths and in dark at 360 px; every text pair of the design tokens reaches 4.5:1 and the focus colour 3:1 in the light, dark and print themes. | Must | verified locally | `apps/web/e2e/support/checks.ts`, `design-tokens:tokens` |
+| NFR-A11Y-03 | **Contrast.** Text and controls shall meet WCAG 2.2 AA contrast in the light and dark colour schemes. | P6 · ADR-034 | The axe contrast rule passes in light at both widths and in dark at 360 px; every text pair of the design tokens reaches 4.5:1 and the focus colour 3:1 in the light, dark and print themes. | Must | verified locally | `apps/web/e2e/support/checks.ts`, `design-tokens:tokens` |
 | NFR-A11Y-04 | **Charts have tables.** Every chart shall have an accessible table of its data. | P6 | The card renders the table with the chart. | Must | verified locally | `web:components/report-card/report-card` |
-| NFR-A11Y-05 | **Keyboard and screen readers.** In-app navigation shall move focus to the page heading and set the page title; period steps shall stay focusable at the ends and announce the new period politely; table sort buttons shall stay reachable by keyboard. | P6, P9 | Focus stays on the step button at the last period. | Should | verified locally | `web:reports/period-navigator` |
+| NFR-A11Y-05 | **Keyboard and screen readers.** In-app navigation shall move focus to the page heading and set the page title; period steps shall stay focusable at the ends and announce the new period politely; table sort buttons shall stay reachable by keyboard; and a focused control shall never be hidden under the sticky top bar (WCAG 2.2, 2.4.11). | P6, P9 · ADR-034 | Focus stays on the step button at the last period; tabbing forward and back through Ngày at 360 px never leaves the focused control fully under the top bar. | Should | verified locally | `web:reports/period-navigator`, `e2e:demo/demo` |
 
 ### 4.7 I18N — Internationalisation
 
@@ -723,7 +723,7 @@ Phone first: 360 px wide phones and 1280 px desktops are the tested sizes.
 
 | ID | Requirement | Source | Acceptance criterion | Priority | Status | Verified by |
 |---|---|---|---|---|---|---|
-| NFR-UX-01 | **Phone first.** Every page shall fit a 360 px wide phone without sideways page scroll; a wide table scrolls inside its card with the first column pinned and the last column reachable. | P6, P9 | The 360 px checks pass on every demo page and report, before and after printing. | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month` |
+| NFR-UX-01 | **Phone first.** Every page shall fit a 360 px wide phone without sideways page scroll; a wide table scrolls inside its card with the first column pinned, comes to rest with a whole column right after the pinned one (so no control rests half under it), and reaches its last column. | P6, P9 · ADR-034 | The 360 px checks pass on every demo page and report, before and after printing. | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month` |
 | NFR-UX-02 | **Layout on phones and desktops.** The web app shall use a bottom navigation on phones and a side rail on wide screens, fold the store and period controls into one summary button below 1024 px, and keep 16 px side gutters. | P6 | Checked at 360 and 1280 px. | Should | built | `e2e:demo/demo` (360 px) |
 | NFR-UX-03 | **Installable.** The web app shall be installable, with a manifest and icons that resolve under any base path and no service worker. | P6 | Favicon, touch icon, manifest and manifest icons resolve at `/` and under `/fnb-manager/`. | Should | verified locally | `e2e:demo/demo`, `e2e:pages/install`, `web:shell/install-assets` |
 | NFR-UX-04 | **New version prompt.** The web app shall compare its build's `version.json` on window focus and offer "Có phiên bản mới — tải lại", because Pages caches `index.html` for ten minutes. | P6 · ADR-023 | A new deploy is offered on the next focus. | Should | built | no automated test |

@@ -6,7 +6,15 @@ const BOX_TOLERANCE_PX = 1;
 
 export async function expectNoSeriousAxeViolations(page: Page): Promise<void> {
 	const results = await new AxeBuilder({ page })
-		.withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"])
+		.withTags([
+			"wcag2a",
+			"wcag2aa",
+			"wcag21a",
+			"wcag21aa",
+			"wcag22a",
+			"wcag22aa",
+			"best-practice",
+		])
 		.analyze();
 	const serious = results.violations
 		.filter(
@@ -74,7 +82,12 @@ export async function expectLastColumnReachable(
 ): Promise<void> {
 	const headers = tableScroll.locator("thead th");
 	const last = headers.last();
-	await last.scrollIntoViewIfNeeded();
+	await tableScroll.evaluate((element) => {
+		const scroller = element.firstElementChild;
+		if (scroller instanceof HTMLElement)
+			scroller.scrollLeft = scroller.scrollWidth;
+	});
+	await expect(tableScroll.getByTestId("table-scroll-hint")).toHaveCount(0);
 	await expectHorizontallyInside(last, tableScroll);
 	if ((await headers.count()) > 1) {
 		const firstBox = await boxOf(headers.first());

@@ -3,6 +3,7 @@ import { uiLocaleOf, useLanguage, useT } from "../../i18n";
 import { addDays } from "../../lib/business-dates";
 import { buildCsv, type CsvCell, downloadTextFile } from "../../lib/csv";
 import type { Formatters } from "../../lib/format";
+import { Button } from "../ui/button";
 import { formatValue, hourText } from "./headline";
 import { TableScroller } from "./table-scroller";
 import { nextSort, sortRows } from "./table-sorting";
@@ -188,7 +189,7 @@ function cellClass(
 		: column.kind === "text"
 			? "min-w-24 print:min-w-0"
 			: "";
-	return `border-b border-line ${alignment} ${width} ${isFirst ? stickyColumnClass : ""}`;
+	return `snap-start border-b border-line ${alignment} ${width} ${isFirst ? stickyColumnClass : ""}`;
 }
 
 function headerClass(
@@ -351,15 +352,17 @@ export function DataTable({
 					</tbody>
 				</table>
 			</TableScroller>
-			<button
+			<Button
 				type="button"
 				onClick={download}
 				disabled={rows.length === 0}
 				aria-label={t("reportCard.downloadCsvOf", { table: table.caption })}
-				className="inline-flex min-h-11 items-center rounded-lg border border-line px-3 text-sm font-medium hover:bg-surface-sunken disabled:opacity-60"
+				tone="secondary"
+				size="compact"
+				className="inline-flex items-center disabled:opacity-60"
 			>
 				{t("reportCard.downloadCsv")}
-			</button>
+			</Button>
 		</div>
 	);
 }

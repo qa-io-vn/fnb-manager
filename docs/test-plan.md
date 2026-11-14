@@ -280,7 +280,7 @@ Playwright (`@playwright/test` ^1.65.0 with `@axe-core/playwright`) drives Chrom
 Common rules:
 
 - One worker, no retries, 60 seconds per test, 15 seconds per expectation, locale `vi-VN`, time zone Asia/Ho_Chi_Minh, a trace kept on failure. `E2E_PORT_OFFSET` moves the three ports and the build and results folders, so specs can run side by side; `--project=<name>` starts only that project's server.
-- `checkPage` (`apps/web/e2e/support/checks.ts`) runs axe with the WCAG 2.0 and 2.1 A and AA tags plus best practice and fails on any serious or critical violation, at 1280 px and at 360 px, and again in the dark colour scheme at 360 px; it fails on sideways page scroll at 360 px and checks that the last column of every wide table is reachable inside its card.
+- `checkPage` (`apps/web/e2e/support/checks.ts`) runs axe with the WCAG 2.0, 2.1 and 2.2 A and AA tags plus best practice and fails on any serious or critical violation, at 1280 px and at 360 px, and again in the dark colour scheme at 360 px; it fails on sideways page scroll at 360 px and checks that the last column of every wide table is reachable inside its card by scrolling it to the end, where column snapping rests it fully in view.
 - `watchConsoleErrors` (`apps/web/e2e/support/reports.ts`) fails a spec on any console error or page error once the cards have settled and after printing.
 - Clocks are fixed: the demo specs set the browser clock (`page.clock.setFixedTime`), and the live specs set it just after the newest seeded date (`clockAfterSeed` in `apps/web/e2e/support/local-stack.ts`), so the results do not move with the calendar.
 - The live specs sign in with the seed's development login, read from `supabase/seed.sql`, and compute their expected numbers from the invoices they can read through RLS.
@@ -682,10 +682,10 @@ From the run of 2026-11-14 at about 10:20, in every package. Skipped files and t
 | `@fnb/sync` | 15 + 1 | 98 | 2 |
 | `@fnb/demo-analytics` | 17 | 109 | 0 |
 | `@fnb/runner` | 5 | 26 | 0 |
-| `@fnb/web` | 21 | 267 | 0 |
+| `@fnb/web` | 23 | 278 | 0 |
 | `@fnb/notify` | 16 + 3 | 163 | 11 |
 | `@fnb/jobs` | 8 + 2 | 62 | 8 |
-| **Total** | **135 + 10 = 145** | **1,436** | **32** |
+| **Total** | **137 + 10 = 147** | **1,447** | **32** |
 
 `packages/runner/test/integration` exists but holds no test.
 
@@ -725,14 +725,14 @@ Listed with `playwright test --list` on 2026-11-12: 63 tests in 9 files.
 | `live` | `e2e/live/auth.spec.ts` | 6 |
 | `live` | `e2e/live/reports.spec.ts` | 3 |
 | `live` | `e2e/live/today.spec.ts` | 5 |
-| `demo` | `e2e/demo/demo.spec.ts` | 12 |
+| `demo` | `e2e/demo/demo.spec.ts` | 13 |
 | `demo` | `e2e/demo/report-day.spec.ts` | 11 |
 | `demo` | `e2e/demo/report-week.spec.ts` | 8 |
 | `demo` | `e2e/demo/report-month.spec.ts` | 12 |
 | `demo` | `e2e/demo/report-year.spec.ts` | 8 |
 | `pages` | `e2e/pages/install.spec.ts` | 1 |
 | `pages` | `e2e/pages/report-year-performance.spec.ts` | 1 |
-| | **Total** | **67** (live 14, demo 51, pages 2) |
+| | **Total** | **68** (live 14, demo 52, pages 2) |
 
 At the phase 9 verification the suite had 63 tests and all passed; phase 6 had 20.
 
@@ -1295,7 +1295,7 @@ Of the 233 requirements that are verified locally, built, in build or waiting fo
 | NFR-A11Y-02 | Lighthouse accessibility | Must | verified locally | Lighthouse recipe in `apps/web/README.md` | covered |
 | NFR-A11Y-03 | Contrast | Must | verified locally | `apps/web/e2e/support/checks.ts`, `design-tokens:tokens` | covered |
 | NFR-A11Y-04 | Charts have tables | Must | verified locally | `web:components/report-card/report-card` | covered |
-| NFR-A11Y-05 | Keyboard and screen readers | Should | verified locally | `web:reports/period-navigator` | covered |
+| NFR-A11Y-05 | Keyboard and screen readers | Should | verified locally | `web:reports/period-navigator`, `e2e:demo/demo` | covered |
 
 #### NFR-I18N — Internationalisation
 
@@ -1312,7 +1312,7 @@ Of the 233 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month` | covered |
+| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller` | covered |
 | NFR-UX-02 | Layout on phones and desktops | Should | built | `e2e:demo/demo` (360 px) | partial |
 | NFR-UX-03 | Installable | Should | verified locally | `e2e:demo/demo`, `e2e:pages/install`, `web:shell/install-assets` | covered |
 | NFR-UX-04 | New version prompt | Should | built | no automated test | partial |
