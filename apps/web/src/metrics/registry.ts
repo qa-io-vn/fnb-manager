@@ -28,6 +28,11 @@ export const registryMetricIds = [
 	"discount_rate",
 	"peak_share_20_21",
 	"weekday_share",
+	"sales_per_opening_hour",
+	"invoices_per_opening_hour",
+	"revpash",
+	"peak_share_top_hours",
+	"dead_hour_share",
 	"same_weekday_baseline",
 	"forecast_weekday_profile",
 	"forecast_seasonal_naive",
@@ -56,6 +61,11 @@ export const displaySeries = {
 	seasonality_index: { unit: "decimal", direction: "neutral" },
 	item_lifecycle_count: { unit: "count", direction: "neutral" },
 	since_opening_net: { unit: "money", direction: "higher" },
+	moving_average_net: { unit: "money", direction: "neutral" },
+	month_net: { unit: "money", direction: "neutral" },
+	store_net_share: { unit: "fraction", direction: "neutral" },
+	hour_heat: { unit: "money", direction: "neutral" },
+	busy_window: { unit: "count", direction: "neutral" },
 } as const satisfies Record<
 	string,
 	{ unit: MetricUnit; direction: MetricDirection }
@@ -88,6 +98,9 @@ const unitOfRegistryUnit: Partial<Record<RegistryMetricUnit, MetricUnit>> = {
 	fraction: "fraction",
 	"% change": "percentChange",
 	"VND and count": "money",
+	"VND / hour": "money",
+	"count / hour": "decimal",
+	"VND / seat-hour": "money",
 };
 
 export function webUnitOf(unit: RegistryMetricUnit): MetricUnit {

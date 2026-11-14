@@ -9,6 +9,7 @@ export const themeKeys = {
 		noStores: "theme.page.noStores",
 	},
 	range: {
+		span: "theme.range.span",
 		label: "theme.range.label",
 		summary: "theme.range.summary",
 		custom: "theme.range.custom",

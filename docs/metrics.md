@@ -43,6 +43,8 @@ The single list of metrics that reports, exports, the AI data pack, digests and 
 | `revpash` | Doanh thu mỗi ghế mỗi giờ | Revenue per available seat hour | VND / seat-hour | `net_revenue` ÷ (`stores.seat_count` × opening hours) | store-period | higher | `agg_daily_sales` + `stores.seat_count` + `stores.opening_hours` | Giờ & ngày trong tuần | needs seats |
 | `peak_share_20_21` | Tỷ trọng giờ cao điểm 20–21h | Peak-hour share (20:00–21:59) | fraction | net in local hours 20 and 21 ÷ daily net | store-day | neutral | `agg_hourly_sales`, `hour_weekday_heatmap()` | Giờ & ngày trong tuần, Ngày | available now |
 | `dead_hour_share_17_18` | Tỷ trọng giờ thấp điểm 17–18h | Dead-hour share (17:00–18:59) | fraction | net in local hours 17 and 18 ÷ daily net | store-day | higher | `agg_hourly_sales`, `hour_weekday_heatmap()` | Giờ & ngày trong tuần | available now |
+| `peak_share_top_hours` | Tỷ trọng giờ cao điểm | Peak-hour share (top hours) | fraction | net of the `peak_hours` hours with the largest net ÷ net of the range | store-period | neutral | `hour_profile()` (`all` summary, `peak_share`) | Giờ & ngày trong tuần | available now |
+| `dead_hour_share` | Tỷ trọng giờ thấp điểm | Quiet-hour share | fraction | net of the hours below `dead_hour_ratio` × the mean hour of the open span ÷ net of the range | store-period | neutral | `hour_profile()` (`all` summary, `dead_share`) | Giờ & ngày trong tuần | available now |
 | `weekday_share` | Tỷ trọng theo ngày trong tuần | Weekday share (one value per ISO weekday 1–7) | fraction | net of the weekday ÷ net of the week | store-week | neutral | `agg_daily_sales` + `dim_calendar.weekday` | Tuần, Năm | available now |
 
 ## Baselines and forecasts
@@ -91,7 +93,7 @@ Computed on identified customers only; `customer_capture_rate` is always shown b
 
 ## Reading a metric
 
-`metric_value(store_ids, metric_id, from_date, to_date)` returns one number for a metric over the given stores and business dates, read as the caller so row-level security applies. It covers every metric above whose status is `available now` and that has one value per store and period: the store-day and store-period metrics outside Baselines and forecasts, listed by `metricValueIds()` in `packages/metrics` (a test keeps that list and the SQL equal). Stores and days are summed before any ratio, so a store-day rate over a range is the ratio of the range totals; the attach rates count the measured days only, and the per-opening-hour metrics divide by the opening hours of the store-days with sales and are null when one of those stores has no opening hours. A range without synced sales returns null, as `period_compare` does. The attach rates and the size L share read aggregates without a live counterpart, so a day counts once it has been refreshed. Any other id raises `22023`: baselines, forecasts and forecast error, the weekday share and the item, shift and customer metrics come from their own functions (`docs/schema.md`).
+`metric_value(store_ids, metric_id, from_date, to_date)` returns one number for a metric over the given stores and business dates, read as the caller so row-level security applies. It covers every metric above whose status is `available now` and that has one value per store and period: the store-day and store-period metrics outside Baselines and forecasts, listed by `metricValueIds()` in `packages/metrics` (a test keeps that list and the SQL equal). Stores and days are summed before any ratio, so a store-day rate over a range is the ratio of the range totals; the attach rates count the measured days only, and the per-opening-hour metrics divide by the opening hours of the store-days with sales and are null when one of those stores has no opening hours. A range without synced sales returns null, as `period_compare` does. The attach rates and the size L share read aggregates without a live counterpart, so a day counts once it has been refreshed. Any other id raises `22023`: baselines, forecasts and forecast error, the weekday share and the item, shift and customer metrics come from their own functions (`docs/schema.md`). `peak_share_top_hours` and `dead_hour_share` also have their own function, `hour_profile` (`ownFunctions` in `packages/metrics`), and are therefore not computed by `metric_value`; for range views they supersede `peak_share_20_21` and `dead_hour_share_17_18`, which keep their definition because Ngày and the digest read them (`supersededBy`).
 
 ## Period comparison
 
@@ -199,6 +201,27 @@ Items last sold before 1 January of last year are left out. Year to date and las
 
 - A store is young for Năm when its history starts later than 364 days before the end of the period; it then has no year-over-year comparison and shows "chưa có dữ liệu năm trước".
 - For a young store, week k since opening covers history start + 7(k − 1) to history start + 7k − 1 and is complete when it ends on or before the end of the period. Its average per day is the week's net ÷ its days with data; growth is the latest complete week against week 1.
+
+## Thematic report conventions
+
+The thematic reports of phase 10 (`#/chu-de/…`, ADR-035) read the same SQL as the periodic reports, over a date range instead of a calendar period.
+
+### Ranges and references
+
+- A range is a preset (7, 28, 91 or 364 days; this month; last month; this year) or two dates, and ends at the as-of day. It covers at most 400 days (the limit of `store_coverage`); a longer request keeps its last 400 days.
+- Rolling presets and custom ranges compare with the range of equal length just before and with the range shifted 364 days (the same weekdays). This month and last month compare month with month as `period_bounds` does; 364 days and this year have one reference only, because the range before is last year.
+- A store counts for a reference when its history starts on or before the reference's first day, as in "Coverage and like-for-like" above; partly covered references compare the covered stores (`range_totals` over those stores).
+
+### Hour profile
+
+- `hour_profile` places each hour after the first selected store's business-day start and fills the open span (the first to the last hour with sales) with zeros where nothing sold, so an empty hour inside the day counts as quiet.
+- Over all days, the `peak_hours` hours with the largest net (3 by default; ties go to the earlier hour) are peak, and an hour whose mean net per day is below `dead_hour_ratio` (0.5) times the span's mean hour is quiet. `peak_share_top_hours` and `dead_hour_share` are their shares of the range's net.
+- Monday to Friday and the weekend are levelled by invoices per day: busy at `busy_hour_ratio` (1.25) times the span's mean hour or more, quiet below `dead_hour_ratio` times it. Consecutive busy hours form the suggested shift windows; staff are not counted.
+- The thresholds are the tenant's report settings (ADR-036); comparisons use unrounded values.
+
+### Opening hours and seats
+
+Per-opening-hour values use the store's opening hours from settings, split and overnight spans included (`app.opening_minutes`), and are null while a store with sales has none. RevPASH divides net revenue by seats × opening hours and is null while a store with sales has no seat count.
 
 ## Benchmark context
 

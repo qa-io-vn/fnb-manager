@@ -1,4 +1,4 @@
-import type { CardModel, ReportKind } from "@fnb/reports";
+import type { CardModel } from "@fnb/reports";
 import { useMemo, useRef } from "react";
 import {
 	ReportCard,
@@ -7,7 +7,7 @@ import {
 import { Button } from "../components/ui/button";
 import { useT } from "../i18n";
 import type { Formatters } from "../lib/format";
-import { cardTestId, toReportCardProps } from "./card-adapter";
+import { type CardKind, cardTestId, toReportCardProps } from "./card-adapter";
 import type { CardState } from "./use-report";
 
 function CardSkeleton({ testId }: { testId: string }) {
@@ -59,7 +59,7 @@ type Adapted =
 
 function adapt(
 	model: CardModel,
-	kind: ReportKind,
+	kind: CardKind,
 	t: ReturnType<typeof useT>,
 	formatters: Formatters,
 ): Adapted {
@@ -76,7 +76,7 @@ export function ReportCardView({
 	state,
 	formatters,
 }: {
-	kind: ReportKind;
+	kind: CardKind;
 	state: CardState;
 	formatters: Formatters;
 }) {

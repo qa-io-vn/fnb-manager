@@ -80,6 +80,38 @@ export const timeMetrics = [
 		status: "available now",
 	},
 	{
+		id: "peak_share_top_hours",
+		group: "time",
+		label: {
+			vi: "Tỷ trọng giờ cao điểm",
+			en: "Peak-hour share (top hours)",
+		},
+		unit: "fraction",
+		formula:
+			"net of the `peak_hours` hours with the largest net ÷ net of the range",
+		grains: ["store-period"],
+		direction: "neutral",
+		source: "`hour_profile()` (`all` summary, `peak_share`)",
+		reports: ["hours"],
+		status: "available now",
+	},
+	{
+		id: "dead_hour_share",
+		group: "time",
+		label: {
+			vi: "Tỷ trọng giờ thấp điểm",
+			en: "Quiet-hour share",
+		},
+		unit: "fraction",
+		formula:
+			"net of the hours below `dead_hour_ratio` × the mean hour of the open span ÷ net of the range",
+		grains: ["store-period"],
+		direction: "neutral",
+		source: "`hour_profile()` (`all` summary, `dead_share`)",
+		reports: ["hours"],
+		status: "available now",
+	},
+	{
 		id: "weekday_share",
 		group: "time",
 		label: {

@@ -7,6 +7,12 @@ import {
 	reportUrl,
 	waitForSettledCards,
 } from "../e2e/support/reports";
+import {
+	type ThemeKind,
+	themeCard,
+	themeUrl,
+	waitForSettledThemeCards,
+} from "../e2e/support/themes";
 
 const SCREENSHOTS = join(process.cwd(), "..", "..", "docs", "user-guide");
 const PHONE = { width: 390, height: 844 };
@@ -38,6 +44,16 @@ async function openReportPage(
 ): Promise<void> {
 	await page.goto(reportUrl(kind, search));
 	await waitForSettledCards(page);
+	await waitForCharts(page);
+}
+
+async function openThemePage(
+	page: Page,
+	kind: ThemeKind,
+	search = "",
+): Promise<void> {
+	await page.goto(themeUrl(kind, search));
+	await waitForSettledThemeCards(page);
 	await waitForCharts(page);
 }
 
@@ -122,6 +138,21 @@ test("the Ngày shift card", async ({ page }) => {
 	const card = page.getByTestId("card-day-shifts");
 	await expect(card).toContainText("Ca 1");
 	await shootElement(card, "card-shifts");
+});
+
+test("the thematic reports: Doanh thu, the range picker and the Giờ & ngày heat table", async ({
+	page,
+}) => {
+	await page.setViewportSize(COMPUTER);
+	await openThemePage(page, "revenue");
+	await shootViewport(page, "theme-doanh-thu");
+	await shootElement(page.getByTestId("range-picker"), "theme-range-picker");
+	await page.setViewportSize(TALL_COMPUTER);
+	await openThemePage(page, "hours", "range=28d&store=MOCK-S1");
+	await shootElement(
+		themeCard(page, "hours", "heatmap"),
+		"theme-gio-ngay-heatmap",
+	);
 });
 
 test("the printed report", async ({ page }) => {

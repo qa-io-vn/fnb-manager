@@ -175,7 +175,7 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`period_summary`](#publicperiod_summary) | analytics | invoker, stable | 1 row | SQL: `metric_value` | verified locally (phase 8) |
 | [`weekday_profile_forecast`](#publicweekday_profile_forecast) | analytics | invoker, stable | `numeric` | no caller yet | verified locally (phase 8) |
 | [`seasonal_naive_forecast`](#publicseasonal_naive_forecast) | analytics | invoker, stable | `numeric` | no caller yet | verified locally (phase 8) |
-| [`hour_weekday_heatmap`](#publichour_weekday_heatmap) | analytics | invoker, stable | up to 168 rows | no caller yet (designed for 10a) | verified locally (phase 8) |
+| [`hour_weekday_heatmap`](#publichour_weekday_heatmap) | analytics | invoker, stable | up to 168 rows | web theme Giờ & ngày | verified locally (phase 8) |
 | [`menu_matrix`](#publicmenu_matrix) | analytics | invoker, stable | rows per item | no caller yet (designed for 10a) | verified locally (phase 8) |
 | [`cash_variance_flags`](#publiccash_variance_flags) | analytics | invoker, stable | flagged shifts | no caller yet (designed for 10a, 10b) | verified locally (phase 8) |
 | [`store_coverage`](#publicstore_coverage) | reports | invoker, stable | rows per store | web reports, digest | verified locally (phase 9) |
@@ -197,14 +197,14 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`metric_compare`](#publicmetric_compare) | metric_value | invoker, stable | rows per metric and period | web reports, digest | verified locally (phase 9) |
 | [`refresh_my_analytics`](#publicrefresh_my_analytics) | settings and writes | definer, volatile | `bigint` | no caller yet | verified locally (phase 8) |
 | [`analytics_catch_up_status`](#publicanalytics_catch_up_status) | settings and writes | invoker, stable | 0 or 1 row | no caller yet (Settings, phase 10a) | verified locally (phase 10a) |
-| [`report_settings_of`](#publicreport_settings_of) | themes | invoker, stable | rows per store | no caller yet (theme pages, phase 10a) | verified locally (phase 10a) |
-| [`range_totals`](#publicrange_totals) | themes | invoker, stable | rows per range and store | no caller yet (theme pages, phase 10a) | verified locally (phase 10a) |
-| [`opening_productivity`](#publicopening_productivity) | themes | invoker, stable | rows per store | no caller yet (theme pages, phase 10a) | verified locally (phase 10a) |
-| [`hour_profile`](#publichour_profile) | themes | invoker, stable | up to 82 rows | no caller yet (theme pages, phase 10a) | verified locally (phase 10a) |
+| [`report_settings_of`](#publicreport_settings_of) | themes | invoker, stable | rows per store | web theme Giờ & ngày | verified locally (phase 10a) |
+| [`range_totals`](#publicrange_totals) | themes | invoker, stable | rows per range and store | web theme Doanh thu | verified locally (phase 10a) |
+| [`opening_productivity`](#publicopening_productivity) | themes | invoker, stable | rows per store | web theme Giờ & ngày | verified locally (phase 10a) |
+| [`hour_profile`](#publichour_profile) | themes | invoker, stable | up to 82 rows | web theme Giờ & ngày | verified locally (phase 10a) |
 
 ### 3.1 Analytics
 
-Phase 8 query functions that no screen calls yet. The thematic reports of phase 10 (designed) are planned to read `hour_weekday_heatmap`, `menu_matrix` and `cash_variance_flags` ([`web-app.md`](web-app.md), "Data access"). They take any number of store ids and have no row guard. Tests: pgTAP `15_analytics_queries.sql`, `16_analytics_menu_and_cash.sql`, `17_analytics_access.sql`.
+Phase 8 query functions. The theme Giờ & ngày trong tuần reads `hour_weekday_heatmap`; the later thematic reports are planned to read `menu_matrix` and `cash_variance_flags` ([`web-app.md`](web-app.md), "Data access"). They take any number of store ids and have no row guard. Tests: pgTAP `15_analytics_queries.sql`, `16_analytics_menu_and_cash.sql`, `17_analytics_access.sql`.
 
 #### `public.same_weekday_baseline`
 
@@ -278,7 +278,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet; designed for Giờ & ngày trong tuần (phase 10a).
+- **Called by:** the web theme Giờ & ngày trong tuần (its heat tables).
 - **Notes:** one row per ISO weekday and local hour that has sales in the range. `days_with_data` counts the dates of that weekday with sales, and the averages divide by it, so a weekday without sales does not lower them.
 
 #### `public.menu_matrix`
@@ -703,7 +703,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet (the theme pages, phase 10a).
+- **Called by:** the web theme Giờ & ngày trong tuần (its productivity card); the other theme pages as they arrive.
 - **Notes:** one row per visible store in the order asked: the tenant's report settings (or the column defaults when the tenant has no row), the fixed z-score threshold 2, the store's seats, and whether opening hours, fee rates, item costs and item-type roles are set. Cards read it to show their thresholds and their "not configured" states. A publisher gets the defaults and false flags.
 
 #### `public.range_totals`
@@ -723,7 +723,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet (the theme pages, phase 10a).
+- **Called by:** the web theme Doanh thu & xu hướng (its totals, comparisons and store shares).
 - **Notes:** for each of 1 to 6 ranges (each at most 1,100 days; the lists must have equal lengths), a row for all requested stores (`store_id` null) and one per visible store, with the totals of `period_compare_by_store`. With the ranges of a period it equals that function's non-baseline rows.
 
 #### `public.opening_productivity`
@@ -737,7 +737,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet (Giờ & ngày trong tuần and So sánh cửa hàng).
+- **Called by:** the web theme Giờ & ngày trong tuần; So sánh cửa hàng later.
 - **Notes:** a row for all stores, then one per visible store, over the days with sales (at most 1,100 days). Opening minutes follow `app.opening_minutes`, split and overnight spans included; they are null when any store with sales has no opening hours. RevPASH is net revenue per seat-hour and needs seats on every such store. The two per-hour values equal `metric_value`.
 
 #### `public.hour_profile`
@@ -757,7 +757,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet (Giờ & ngày trong tuần).
+- **Called by:** the web theme Giờ & ngày trong tuần.
 - **Notes:** hours of the open span (first to last hour with sales, empty hours inside it as zeros) for the scopes `all`, `weekdays` and `weekend`, each followed by a summary row, then one row per ISO weekday. In `all`, the `peak_hours` largest hours are `peak` and hours below `dead_hour_ratio` times the span's mean are `dead`; the weekday groups are `busy` or `quiet` by invoices per day against `busy_hour_ratio` and `dead_hour_ratio`. The `all` summary carries `peak_share` and `dead_share`. Hours are placed from the first store's business-day start. At most 400 days; thresholds outside the table's checks raise `22023`.
 
 ## 4. Tables and views

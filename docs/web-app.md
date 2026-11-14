@@ -21,13 +21,13 @@ Scope: roadmap phases 6 (foundation and "Hôm nay"), 9 (periodic reports), 10 (t
 | `#/dang-nhap` | Login (email + password), password reset request | 6 |
 | `#/` | Hôm nay — today per store vs the same-weekday median baseline, freshness and verified badges | 6 |
 | `#/bao-cao/ngay`, `#/bao-cao/tuan`, `#/bao-cao/thang`, `#/bao-cao/nam` | Periodic reports | 9 |
-| `#/chu-de/doanh-thu`, `#/chu-de/gio-ngay`, `#/chu-de/thuc-don`, `#/chu-de/thanh-toan` | Thematic reports I | 10a |
+| `#/chu-de/doanh-thu`, `#/chu-de/gio-ngay`, `#/chu-de/thuc-don`, `#/chu-de/thanh-toan` | Thematic reports I (Doanh thu and Giờ & ngày built; `#/chu-de` and an unbuilt theme open Doanh thu) | 10a |
 | `#/chu-de/khuyen-mai`, `#/chu-de/ca-ket-tien`, `#/chu-de/so-sanh`, `#/chu-de/chat-luong` | Thematic reports II | 10b |
 | `#/cai-dat/cua-hang`, `#/cai-dat/du-lieu-nhap-tay`, `#/cai-dat/phan-loai`, `#/cai-dat/ngay-le`, `#/cai-dat/canh-bao`, `#/cai-dat/phap-ly` | Settings: store profile, manual data (costs, targets, fee rates), item-type roles and category mapping, holidays, alerts, legal texts and consent | 10b, 12 |
 | `#/xuat-du-lieu` | Exports and the AI data pack | 11a |
 | `#/ke-hoach`, `#/ke-hoach/:id` | Saved strategy plans, KPI follow-up, paste box | 11b |
 
-Deep links carry store, period and date in the query part of the hash (`#/bao-cao/thang?store=…&month=2026-10`).
+Deep links carry store, period and date in the query part of the hash (`#/bao-cao/thang?store=…&month=2026-10`); thematic reports carry a range (`#/chu-de/gio-ngay?range=28d` or `?from=2026-10-08&to=2026-11-06`, plus `&store=…`).
 
 ## Layout
 
@@ -52,7 +52,8 @@ Cards show a `provisional` marker when the registry says an input is missing (no
 |---|---|
 | Today | fact rows (`invoices`, `invoice_lines`, `invoice_payments`, `payment_methods`, `holidays`) through the `RowSource`; the `v_recent_*` plan is withdrawn (Phase 9 decisions) |
 | Period reports (phase 9) | `store_coverage`, `period_compare_by_store`, `period_compare`, `period_series`, `daily_baselines`, `hourly_profile`, `metric_compare`, `item_summary`, `payment_summary`, `promotion_summary`, `shift_review`, `store_targets`, `item_velocity`, `month_pace`, `forecast_accuracy`, `item_lifecycle`, called with `supabase.rpc()` through the `AnalyticsSource` of `@fnb/reports` |
-| Hours and weekdays | `hour_weekday_heatmap`, `agg_hourly_sales` |
+| Thematic reports (phase 10) | `store_coverage`, `range_totals`, `period_series`, `hour_weekday_heatmap`, `hour_profile`, `opening_productivity`, `report_settings_of`, called through the `ReportSource` of `@fnb/reports` (`call` for the phase 9 registry, `callTheme` for the thematic one) |
+| Hours and weekdays | `hour_weekday_heatmap`, `hour_profile`, `opening_productivity` |
 | Menu | `agg_item_daily`, `item_velocity`, `menu_matrix`, `agg_size_mix_daily`, `agg_attach_daily`, `agg_basket_pairs_28d`, `agg_modifier_prefs_daily` |
 | Payments and cash | `agg_payment_daily`, `agg_shift_cash`, `cash_variance_flags` |
 | Promotions | `agg_daily_sales` discount columns, `promotions` |
@@ -111,3 +112,14 @@ Periodic reports Ngày, Tuần, Tháng and Năm (`#/bao-cao/ngay|tuan|thang|nam`
 - **i18n files.** `src/i18n/messages/` holds one Vietnamese and one English file per area: `core` (every phase 6 string), `metrics` (`metric.*`, the label, formula, grain and convention of every metric and display series a card names), `reports` (`report.*` strings shared by all reports: comparison labels, unavailable states, decomposition and driver clauses, table labels, navigator and tabs) and one file per report (`report-day`, `report-week`, `report-month`, `report-year`). `catalog.ts` merges them statically; a test checks each pair for equal keys, non-empty values, equal placeholders, the file's prefix and no key in two files, and another runs the four reports on the demo engine and checks every key they produce exists in both languages. `docs/reports/cau-van-bao-cao.md` lists every template of the four reports with its English meaning and placeholders, for the owner's wording review.
 - **Demo calendar.** The demo tenant's two stores, opening dates, closed Tết days, seasonality, menu changes and targets come from `@fnb/demo-analytics`; the demo row source reads the same generated days, maps line kinds with the sync's `toDbLineKind` and excludes holidays and Tết days from Hôm nay's baseline. "Cửa hàng mẫu 2" always opens 8 to 13 weeks before the current month, so the young-store states are always visible.
 - **Size.** The initial JS stays under 400 kB gzipped; `scripts/check-size.mjs` treats the ECharts chunk, the demo modules, the four report pages and the live analytics source as lazy (each pattern must match at least one chunk); `@fnb/core`, `@fnb/metrics`, `@fnb/reports`, `@fnb/sync`, `@fnb/connector-mock` and `@fnb/demo-analytics` are marked free of side effects, so the bundler can split them: the entry chunk holds no zod, and the demo row source reaches only the date rules and the generator. A demo build also preloads the demo engine chunk and everything it imports.
+
+## Phase 10 decisions
+
+Thematic reports under `#/chu-de/…`, as built so far in phase 10a: Doanh thu & xu hướng and Giờ & ngày trong tuần ([doanh-thu.md](reports/doanh-thu.md), [gio-ngay.md](reports/gio-ngay.md)). ADR-035 and ADR-036 record the main choices.
+
+- **Theme definitions.** A theme is a `ThemeDefinition` of `@fnb/reports`: primary calls, follow-up calls (which receive the primary rows as well as the coverage), cards and a maximum range. Its cards build the phase 9 `CardModel`, so `ReportCard`, the adapter, CSV, print and "Giải thích chỉ số" are shared. `themeDefinitions` lists the built themes, and the tabs show only those.
+- **Ranges and deep links.** `src/themes/theme-route.ts` reads `range` or `from` and `to` and `store`, and writes the canonical form back with a replace; a user's step pushes a history entry. Presets, clamps (400 days, the as-of day), steps and references are pure functions in `@fnb/reports` (`resolveRange`, `stepRange`, `rangeOfPreset`). The last preset used is a per-device preference (`themePreset`), used when a link carries no range; moving between themes keeps the range (clipped to the target's maximum) and the stores. The top bar's period control is hidden on these pages, which have their own range picker.
+- **Loading.** `src/reports/use-cards-load.ts` holds the phase 9 loading logic generalised over a plan (`useCardsLoad`): one TanStack query per distinct call, keyed `["analytics", source kind, tenant, function, arguments]`, follow-ups once coverage has answered, the stale times of phase 9 (a range of several days counts its latest end), and the range before prefetched when the cards have settled. `useReportLoad` and `useThemeLoad` are thin wrappers, so phase 9's behaviour and tests are unchanged.
+- **One source for both registries.** The live source is `createRpcReportSource` and the demo source `createDemoReportSource`; both answer the phase 9 functions through `call` and the thematic functions through `callTheme`, so the phase 9 pages keep reading the same object as an `AnalyticsSource`.
+- **Metric registry.** Every card names a metric of the web registry; the thematic cards add `sales_per_opening_hour`, `invoices_per_opening_hour`, `revpash`, `peak_share_top_hours` and `dead_hour_share`, and the display series `moving_average_net`, `month_net`, `store_net_share`, `hour_heat` and `busy_window`. Metrics with their own SQL function are kept out of `metric_value` (`ownFunctions` in `@fnb/metrics`).
+- **Size.** The theme pages are lazy routes (`src/pages/themes/<slug>/<slug>-page.tsx`, a lazy pattern of the size check); their message files are static, as the report files are. The entry chunk still holds no zod.

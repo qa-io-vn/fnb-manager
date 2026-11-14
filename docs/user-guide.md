@@ -49,11 +49,11 @@ flowchart LR
 
 The navigation sits at the bottom on a phone and on the left on a wide screen.
 
-| Label | English | Opens | State on 2026-11-12 |
+| Label | English | Opens | State on 2026-11-14 |
 |---|---|---|---|
 | Hôm nay | Today | today and yesterday | verified locally |
 | Báo cáo | Reports | Ngày, Tuần, Tháng, Năm | verified locally |
-| Chủ đề | Topics | thematic reports | "Sắp có" (coming soon) |
+| Chủ đề | Topics | thematic reports: Doanh thu & xu hướng, Giờ & ngày trong tuần | verified locally |
 | Kế hoạch | Plans | saved strategy plans | "Sắp có" |
 | Cài đặt | Settings | settings and manual data | "Sắp có" |
 
@@ -240,6 +240,55 @@ Use the browser's own print command (Ctrl+P or ⌘P on a computer, Share then Pr
 
 "Tải CSV" under a table downloads exactly the rows shown, in UTF-8 with a byte-order mark so that Excel shows the Vietnamese letters correctly. Values are separated by commas; amounts are plain numbers without thousands separators, and percentage columns are marked "(%)". A card with two tables offers "Tải CSV: {table}" for each. Report files are named `<report>-<card>-<period>.csv`, for example `ngay-net-revenue-2026-11-07.csv`.
 
+## The thematic reports ("Chủ đề")
+
+"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. Two are built: **Doanh thu & xu hướng** and **Giờ & ngày trong tuần**. The others (Thực đơn, Thanh toán & tiền mặt, then Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu) come later; the tabs above the range show only the ones that exist.
+
+![Doanh thu & xu hướng on a computer: the theme tabs, the range presets and dates, then the Doanh thu thuần, Xu hướng doanh thu and Số hóa đơn cards](user-guide/theme-doanh-thu.png)
+
+### Choosing the range
+
+- **Presets:** 7 ngày, 4 tuần (the default), 13 tuần, 52 tuần, Tháng này, Tháng trước, Năm nay. Each ends at the last complete day, as the reports do.
+- **‹ and ›** move the range back or forward by its own length, or by a month or a year for the month and year presets. › stops at the last complete day.
+- **Từ ngày and Đến ngày** pick any range from 1 January 2023, at most 400 days.
+- The line under the presets says what is shown and what it is compared with: "07/10/2026 – 03/11/2026 · 28 ngày · so với 4 tuần trước". Every card also compares with the same weeks last year ("so với cùng kỳ năm trước"), except 52 tuần and Năm nay, whose range before is already last year.
+- The app remembers the last preset on this device, and keeps the range and the stores when you switch between Doanh thu and Giờ & ngày.
+
+![The range picker: the seven presets, the ‹ and › buttons, the range line and the two dates](user-guide/theme-range-picker.png)
+
+### Doanh thu & xu hướng (Revenue and trend)
+
+| Card | What it shows | Compared with |
+|---|---|---|
+| Doanh thu thuần (Net revenue) | net revenue of the range, with the store that moved most or the split into invoices, items per ticket and item price | the range before; the same weeks last year |
+| Xu hướng doanh thu (Revenue trend) | revenue per day (or per week for ranges over 92 days) with a 7-day (or 4-week) moving average; Tết is shaded | last year's moving average |
+| Số hóa đơn (Invoices) | invoices of the range | as net revenue |
+| Giá trị trung bình mỗi hóa đơn (Average ticket) | the average ticket with items per ticket and average item price | as net revenue |
+| Theo tháng (By month), from 56 days | each month's revenue and the best month | the same month last year, on the same stores |
+| Tỷ trọng từng cửa hàng (Share of each store), two or more stores | each store's share of revenue | the share in the range before, in points |
+
+More detail: [reports/doanh-thu.md](reports/doanh-thu.md).
+
+### Giờ & ngày trong tuần (Hours and weekdays)
+
+| Card | What it shows |
+|---|---|
+| Bản đồ nhiệt giờ × thứ (Hour × weekday heat map) | two tables, revenue and invoices per day for every hour (rows) and weekday (columns T2 to CN), darker for higher; the best and the quietest cell |
+| Giờ cao điểm và thấp điểm (Peak and quiet hours) | the hours that sell most (3 by default) and their share of revenue, and the quiet hours; compared with the range before in points |
+| Theo thứ trong tuần (By weekday) | revenue per day for each weekday, the best and weakest, and the weekday that changed most |
+| Doanh thu mỗi giờ mở cửa và mỗi ghế (Revenue per opening hour and per seat) | revenue and invoices per opening hour, and revenue per seat-hour (RevPASH) where the seat count is entered |
+| Gợi ý khung ca (Suggested shift windows) | runs of busy and slow hours on weekdays and at the weekend, from invoices per hour; it does not count staff |
+
+Revenue per opening hour needs the store's opening hours and RevPASH its seat count. Until they are entered, the card shows "—" and a link "Nhập giờ mở cửa và số ghế" to the store settings, which arrive with the settings pages. In the demo the young store has neither, so you can see that state.
+
+![The heat map card of Giờ & ngày for one store over 4 weeks: hours down the side, T2 to CN across, darker cells for busier hours](user-guide/theme-gio-ngay-heatmap.png)
+
+More detail: [reports/gio-ngay.md](reports/gio-ngay.md).
+
+### Links, printing and CSV
+
+The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08&to=2026-11-06`) and, when not every store is selected, the stores. Printing and "Tải CSV" work as on the reports; theme files are named `<theme>-<card>-<from>_<to>.csv`, for example `doanh-thu-net_revenue-2026-10-07_2026-11-03.csv`.
+
 ## Data freshness and the verified badge
 
 - **The freshness badge** in the top bar shows when the last sync for your business succeeded: "cập nhật lúc {time}" today, "cập nhật lúc {time} ngày {date}" on an earlier day, "chưa đồng bộ" if no sync has succeeded yet, and "chưa rõ lúc cập nhật" if the app could not read it. It checks again every 5 minutes. A sale rung up after that time appears after the next sync.
@@ -274,7 +323,7 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 ![The Kế hoạch page saying Sắp có and naming the roadmap phase that brings it](user-guide/coming-soon.png)
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
-- **Thematic reports** ("Chủ đề", phase 10, designed at roadmap level): Doanh thu & xu hướng; Giờ & ngày trong tuần; Thực đơn; Thanh toán & tiền mặt; then Khuyến mãi & giảm giá; Ca & két tiền; So sánh cửa hàng; Chất lượng dữ liệu.
+- **More thematic reports** ("Chủ đề", phase 10): Thực đơn and Thanh toán & tiền mặt next, then Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu. Doanh thu and Giờ & ngày are already there (see above).
 - **Settings and manual data** ("Cài đặt", phase 10, designed at roadmap level): the store profile, opening hours, seat counts, item costs, monthly targets, payment fees, item roles and categories, holidays and legal texts. Two of today's cards wait for them: the attach rates need item roles and target progress needs a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until they exist the links open "Sắp có".
 - **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).

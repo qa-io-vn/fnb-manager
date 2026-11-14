@@ -83,7 +83,28 @@ export const routes: RouteObject[] = [
 							{ path: "*", element: <Navigate to="ngay" replace /> },
 						],
 					},
-					{ path: "chu-de/*", element: <PlaceholderPage section="topics" /> },
+					{
+						path: "chu-de",
+						hydrateFallbackElement: <ReportRouteLoading />,
+						children: [
+							{ index: true, element: <Navigate to="doanh-thu" replace /> },
+							{
+								path: "doanh-thu",
+								lazy: () =>
+									import("./pages/themes/doanh-thu/doanh-thu-page").then(
+										(module) => ({ Component: module.DoanhThuPage }),
+									),
+							},
+							{
+								path: "gio-ngay",
+								lazy: () =>
+									import("./pages/themes/gio-ngay/gio-ngay-page").then(
+										(module) => ({ Component: module.GioNgayPage }),
+									),
+							},
+							{ path: "*", element: <Navigate to="doanh-thu" replace /> },
+						],
+					},
 					{ path: "ke-hoach/*", element: <PlaceholderPage section="plans" /> },
 					{
 						path: "cai-dat/*",

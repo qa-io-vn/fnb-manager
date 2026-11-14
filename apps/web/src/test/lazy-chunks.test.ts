@@ -15,6 +15,8 @@ const manifestKeys = [
 	"src/pages/reports/week/week-page.tsx",
 	"src/pages/reports/month/month-page.tsx",
 	"src/pages/reports/year/year-page.tsx",
+	"src/pages/themes/doanh-thu/doanh-thu-page.tsx",
+	"src/pages/themes/gio-ngay/gio-ngay-page.tsx",
 	"src/data/supabase-analytics-source.ts",
 ];
 
@@ -41,5 +43,9 @@ describe("the size check's lazy chunks", () => {
 		expect(isEagerSource("src/demo/demo-analytics-source.ts")).toBe(false);
 		expect(isLazySource("src/pages/reports/day/day-page.tsx")).toBe(true);
 		expect(isLazySource("src/pages/reports/day/cards.tsx")).toBe(false);
+		expect(isLazySource("src/pages/themes/gio-ngay/gio-ngay-page.tsx")).toBe(
+			true,
+		);
+		expect(isLazySource("src/themes/theme-page.tsx")).toBe(false);
 	});
 });

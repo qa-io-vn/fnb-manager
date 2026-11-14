@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	currentMetricIds,
 	findMetric,
 	hasStorePeriodValue,
 	isAvailableNow,
@@ -10,8 +11,11 @@ import {
 	metricsForReport,
 	metricsInGroup,
 	metricValueIds,
+	ownFunctionOf,
 	type ReportId,
 	reportNames,
+	supersededBy,
+	supersedingMetricOf,
 } from "../../src/index.js";
 
 describe("metric lookup", () => {
@@ -50,7 +54,32 @@ describe("metrics for a report", () => {
 			"revpash",
 			"peak_share_20_21",
 			"dead_hour_share_17_18",
+			"peak_share_top_hours",
+			"dead_hour_share",
 		]);
+	});
+
+	it("keeps metrics with their own SQL function out of metric_value", () => {
+		expect(ownFunctionOf("peak_share_top_hours")).toBe("hour_profile");
+		expect(ownFunctionOf("dead_hour_share")).toBe("hour_profile");
+		expect(ownFunctionOf("net_revenue")).toBeNull();
+		expect(metricValueIds()).not.toContain("peak_share_top_hours");
+		expect(metricValueIds()).not.toContain("dead_hour_share");
+		expect(metricValueIds()).toHaveLength(21);
+	});
+
+	it("marks the fixed-window hour shares as superseded for range views", () => {
+		expect(supersedingMetricOf("peak_share_20_21")).toBe(
+			"peak_share_top_hours",
+		);
+		expect(supersedingMetricOf("dead_hour_share_17_18")).toBe(
+			"dead_hour_share",
+		);
+		expect(currentMetricIds()).not.toContain("peak_share_20_21");
+		expect(currentMetricIds()).toContain("peak_share_top_hours");
+		for (const id of Object.values(supersededBy)) {
+			expect(isMetricId(id ?? ""), id).toBe(true);
+		}
 	});
 
 	it("puts a metric used by every periodic report on each of them", () => {

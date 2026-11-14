@@ -622,5 +622,14 @@ join public.customers cu on cu.id = cr.subject_id
 join seed_customers sc on sc.tenant_id = cu.tenant_id and sc.phone = cu.phone
 where cr.purpose = 'loyalty' and cr.revoked_at is null and sc.customer_no = 2;
 
+insert into public.report_settings (tenant_id)
+select tenant_id from seed_constants;
+
+insert into public.item_category_overrides (tenant_id, pos_account_id, item_external_id, item_type_external_id)
+select c.tenant_id, s.pos_account_id, 'item-15', 'type-03'
+from seed_stores s
+cross join seed_constants c
+where s.code = 'TEA';
+
 select app.refresh_analytics(c.tenant_id, current_date - 7, current_date)
 from seed_constants c;

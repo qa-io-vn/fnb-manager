@@ -10,6 +10,7 @@ import {
 	roundHalfAwayFromZero,
 	type TableCell,
 	type TableModel,
+	type ThemeKind,
 	type ValueUnit,
 } from "@fnb/reports";
 import { signed } from "../components/report-card/headline";
@@ -44,12 +45,28 @@ export const noticeRoutes: Readonly<Record<NoticeAction, string>> = {
 	today: "/",
 	settings_roles: "/cai-dat/phan-loai",
 	settings_targets: "/cai-dat/du-lieu-nhap-tay",
+	settings_costs: "/cai-dat/du-lieu-nhap-tay?tab=gia-von",
+	settings_fees: "/cai-dat/du-lieu-nhap-tay?tab=phi",
+	settings_store: "/cai-dat/cua-hang",
+	settings_categories: "/cai-dat/phan-loai?tab=nhom-mon",
+	settings_payment_kinds: "/cai-dat/phan-loai?tab=thanh-toan",
+	settings_holidays: "/cai-dat/ngay-le",
+	settings_thresholds: "/cai-dat/bao-cao",
+	settings_legal: "/cai-dat/phap-ly",
 };
 
 const actionKeys: Readonly<Record<NoticeAction, string>> = {
 	today: "report.action.today",
 	settings_roles: "report.action.settings_roles",
 	settings_targets: "report.action.settings_targets",
+	settings_costs: "report.action.settings_costs",
+	settings_fees: "report.action.settings_fees",
+	settings_store: "report.action.settings_store",
+	settings_categories: "report.action.settings_categories",
+	settings_payment_kinds: "report.action.settings_payment_kinds",
+	settings_holidays: "report.action.settings_holidays",
+	settings_thresholds: "report.action.settings_thresholds",
+	settings_legal: "report.action.settings_legal",
 };
 
 export function headlineKindOf(unit: ValueUnit): Exclude<ValueKind, "text"> {
@@ -310,13 +327,15 @@ export function tableOf(table: TableModel, t: Translate): TableSpec {
 	};
 }
 
-export function cardTestId(kind: ReportKind, id: string): string {
+export type CardKind = ReportKind | ThemeKind;
+
+export function cardTestId(kind: CardKind, id: string): string {
 	return `card-${kind}-${id}`;
 }
 
 export function toReportCardProps(
 	model: CardModel,
-	kind: ReportKind,
+	kind: CardKind,
 	t: Translate,
 	formatters: Formatters,
 ): ReportCardProps {

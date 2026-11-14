@@ -128,6 +128,14 @@ export const reportKeys = {
 	action: {
 		settings_roles: "report.action.settings_roles",
 		settings_targets: "report.action.settings_targets",
+		settings_costs: "report.action.settings_costs",
+		settings_fees: "report.action.settings_fees",
+		settings_store: "report.action.settings_store",
+		settings_categories: "report.action.settings_categories",
+		settings_payment_kinds: "report.action.settings_payment_kinds",
+		settings_holidays: "report.action.settings_holidays",
+		settings_thresholds: "report.action.settings_thresholds",
+		settings_legal: "report.action.settings_legal",
 		today: "report.action.today",
 	},
 	page: {

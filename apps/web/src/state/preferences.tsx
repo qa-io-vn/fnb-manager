@@ -1,3 +1,4 @@
+import { isNamedPreset, type NamedPreset } from "@fnb/reports";
 import {
 	createContext,
 	type ReactNode,
@@ -20,6 +21,7 @@ export interface Preferences {
 	storeIds: string[] | null;
 	period: Period;
 	periodSetOn: IsoDate;
+	themePreset: NamedPreset | null;
 }
 
 function localToday(now: Date): IsoDate {
@@ -34,6 +36,7 @@ export function defaultPreferences(now: Date = new Date()): Preferences {
 		storeIds: null,
 		period: defaultPeriod(today),
 		periodSetOn: today,
+		themePreset: null,
 	};
 }
 
@@ -57,6 +60,12 @@ export function parsePreferences(
 	const period = parsePeriod(stored.period);
 	if (period) parsed.period = period;
 	if (isIsoDate(stored.periodSetOn)) parsed.periodSetOn = stored.periodSetOn;
+	if (
+		typeof stored.themePreset === "string" &&
+		isNamedPreset(stored.themePreset)
+	) {
+		parsed.themePreset = stored.themePreset;
+	}
 	return parsed;
 }
 

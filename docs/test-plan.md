@@ -796,7 +796,7 @@ Coverage says whether tests exist. Whether they passed is the status column's jo
 
 ### 9.2 Coverage summary
 
-Coverage of the 375 requirements on 2026-11-12, by area.
+Coverage of the 375 requirements on 2026-11-14, by area.
 
 | Area | covered | partial | planned | owner check | Total |
 |---|---:|---:|---:|---:|---:|
@@ -806,7 +806,7 @@ Coverage of the 375 requirements on 2026-11-12, by area.
 | FR-DQ | 10 | – | 2 | 1 | 13 |
 | FR-ANA | 15 | – | 1 | 1 | 17 |
 | FR-REP | 17 | 2 | – | 2 | 21 |
-| FR-THM | – | – | 9 | – | 9 |
+| FR-THM | 2 | 1 | 6 | – | 9 |
 | FR-SET | 1 | 7 | 3 | – | 11 |
 | FR-EXP | – | 2 | 8 | – | 10 |
 | FR-STR | 1 | – | 9 | – | 10 |
@@ -816,7 +816,7 @@ Coverage of the 375 requirements on 2026-11-12, by area.
 | FR-STF | – | – | 23 | – | 23 |
 | FR-LOY | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | 7 | – | 12 |
-| **FR total** | **133** | **26** | **123** | **14** | **296** |
+| **FR total** | **135** | **27** | **120** | **14** | **296** |
 | NFR-SEC | 6 | 6 | 2 | 1 | 15 |
 | NFR-PRV | 5 | 1 | 1 | – | 7 |
 | NFR-PERF | 4 | 4 | 1 | – | 9 |
@@ -829,18 +829,18 @@ Coverage of the 375 requirements on 2026-11-12, by area.
 | NFR-OBS | 3 | 1 | – | – | 4 |
 | NFR-HYG | 4 | 1 | 1 | – | 6 |
 | **NFR total** | **47** | **22** | **9** | **2** | **80** |
-| **All** | **180** | **48** | **132** | **16** | **376** |
+| **All** | **182** | **49** | **129** | **16** | **376** |
 
 ```mermaid
 pie showData
-    title Coverage of the requirements on 2026-11-12
-    "covered" : 179
-    "partial" : 48
-    "planned" : 132
+    title Coverage of the requirements on 2026-11-14
+    "covered" : 181
+    "partial" : 49
+    "planned" : 129
     "owner check" : 16
 ```
 
-Of the 233 requirements that are verified locally, built, in build or waiting for the owner, 179 are covered, 37 partial, 1 planned and 16 owner checks. Of the 142 that are designed or planned, 131 have no test yet and 11 are partly held by tests of the database rules they rest on.
+Of the 236 requirements that are verified locally, built, in build or waiting for the owner, 181 are covered, 38 partial, 1 planned and 16 owner checks. Of the 139 that are designed or planned, 128 have no test yet and 11 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -976,7 +976,7 @@ Of the 233 requirements that are verified locally, built, in build or waiting fo
 | FR-REP-09 | Coverage and young stores | Must | verified locally | `reports:unit/coverage-and-comparison`, `e2e:live/reports`, `e2e:demo/report-year` | covered |
 | FR-REP-10 | Sentences from templates | Must | verified locally | `reports:unit/decomposition-and-narrative`, `web:metrics/sentences` | covered |
 | FR-REP-11 | Report card | Must | verified locally | `web:components/report-card/report-card`, `web:components/report-card/report-card-extensions` | covered |
-| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day` | partial |
+| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay` | partial |
 | FR-REP-13 | Print layout | Should | verified locally | `e2e:demo/demo`, `e2e:demo/report-day` | covered |
 | FR-REP-14 | Card loading and errors | Should | built | `e2e:demo/report-day` (cards settle); no named test for the error path | partial |
 | FR-REP-15 | Store and period selection | Must | verified locally | `web:shell/period-picker`, `web:state/preferences`, `pgtap:22_report_functions` | covered |
@@ -991,11 +991,11 @@ Of the 233 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| FR-THM-01 | Doanh thu & xu hướng | Should | designed | planned | planned |
-| FR-THM-02 | Giờ & ngày trong tuần | Should | designed | planned | planned |
+| FR-THM-01 | Doanh thu & xu hướng | Should | verified locally | `pgtap:33_theme_functions`, `demo-analytics:parity/theme-revenue-hours`, `demo-analytics:themes/revenue.smoke`, `reports:unit/themes/definition`, `e2e:demo/theme-doanh-thu`, `e2e:live/themes` | covered |
+| FR-THM-02 | Giờ & ngày trong tuần | Should | built | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `demo-analytics:parity/theme-revenue-hours`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-gio-ngay`, `e2e:live/themes` | partial |
 | FR-THM-03 | Thực đơn | Should | designed | planned (`menu_matrix` verified: `pgtap:16_analytics_menu_and_cash`) | planned |
 | FR-THM-04 | Thanh toán & tiền mặt | Should | designed | planned | planned |
-| FR-THM-05 | Range presets | Could | designed | planned | planned |
+| FR-THM-05 | Range presets | Could | verified locally | `reports:unit/themes/range`, `e2e:demo/theme-doanh-thu` | covered |
 | FR-THM-06 | Khuyến mãi & giảm giá | Should | designed | planned | planned |
 | FR-THM-07 | Ca & két tiền | Should | designed | planned | planned |
 | FR-THM-08 | So sánh cửa hàng | Should | designed | planned | planned |
@@ -1373,16 +1373,13 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | NFR-MNT-07 | Canonical column-name lint | P2, P4 | A lint that fails when a POS field name appears outside `raw` in the canonical schema; owner decision D4 (request R-F03). |
 | NFR-HYG-06 | Preflight log lint | P1 | A preflight check that fails a job printing a structured secret; masking at job start covers the risk today (request R-F03). |
 
-#### Phase 10: thematic reports, settings, manual data (15)
+#### Phase 10: thematic reports, settings, manual data (12)
 
 | ID | Requirement | Phase | Planned test |
 |---|---|---|---|
 | FR-DQ-12 | Data-quality page | P10b | A live Playwright spec on the seeded stack: the page flags the coffee store, whose seeded e-invoice status is `not_configured`; unit tests for each flag; axe and 360 px as on every page. |
-| FR-THM-01 | Doanh thu & xu hướng | P10a | Unit tests of the card models against `period_series` rows; a Playwright demo spec (cards settle, axe, 360 px, CSV, print) like the phase 9 specs; parity tests for any new SQL function. |
-| FR-THM-02 | Giờ & ngày trong tuần | P10a | pgTAP and parity for the heatmap and the opening-hour metrics; a unit test that RevPASH stays hidden without seats; owner check of the heatmap against the private reference window (OC-03). |
 | FR-THM-03 | Thực đơn | P10a, P10b | A Playwright spec that no modifier line appears among the items, and that costs entered for five items show the margin of those five only; `menu_matrix` is already held by `pgtap:16_analytics_menu_and_cash`. |
 | FR-THM-04 | Thanh toán & tiền mặt | P10a | Unit tests of the payment cards, a Playwright spec, and the owner's comparison of the payment mix with the private reference window (OC-03). |
-| FR-THM-05 | Range presets | P10a | A unit test that each preset selects its documented range ending at the as-of day. |
 | FR-THM-06 | Khuyến mãi & giảm giá | P10b | Unit or pgTAP tests that the lift equals a hand calculation on a synthetic promotion for each of the three comparators. |
 | FR-THM-07 | Ca & két tiền | P10b | A unit or live test that the flagged shifts equal those of `shift_review` and `cash_variance_flags`. |
 | FR-THM-08 | So sánh cửa hàng | P10b | A page test that per-store figures add up to the all-stores figure; `pgtap:22_report_functions` already holds the per-store sums of `period_compare_by_store`. |
@@ -1532,7 +1529,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 
 ### 9.6 Partial coverage
 
-48 requirements are partly covered. Each row says what the tests do not show yet and which test closes the gap.
+49 requirements are partly covered. Each row says what the tests do not show yet and which test closes the gap.
 
 | ID | Requirement | Status | What is missing | Planned test |
 |---|---|---|---|---|
@@ -1541,6 +1538,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-SYNC-17 | Edge Function runner | verified locally | pgTAP covers the tickets; the HTTP answers (202, 401, 429, 500, 503) were shown once, by serving the function locally at the phase 7 verification. No repeatable test exercises the handler. | A Deno test of `supabase/functions/sync-incremental/handler.ts` with a stubbed database for each answer, run in the CI `code` job next to `deno check`. |
 | FR-SYNC-21 | Backfill | verified locally | The local-stack integration test backfills a week of mock data; the one-month timing (under 5 minutes) and the full history were measured once, at the phase 7 verification. | Re-measure the month timing during the go-live backfill and record it in `docs/status.md`. |
 | FR-REP-12 | CSV download | verified locally | The BOM and the rows are tested on every report; opening a file in Excel is the owner's check (OC-04). | Owner check OC-04, repeated for the thematic tables (10a) and the exports (11a). |
+| FR-THM-02 | Giờ & ngày trong tuần | built | pgTAP, parity, the demo and live specs hold the functions and the page; the comparison of the heatmap and the hour shares with the private reference window is the owner's (OC-03), and the phase 10 live check that prints `matches` for it is not written yet. | The live check of the build spec (9.7, 2) with `LIVE_REFERENCE_SHEET`, then OC-03. |
 | FR-REP-14 | Card loading and errors | built | Settling is tested on the demo and the size refusal is classified in `reports:unit/rpc-source`; no test drives a failing card or the size message in the browser. | A web test that makes one card's call fail and expects the error card with its retry, and one that answers SQLSTATE 22023 and expects the request for fewer stores or a shorter period. |
 | FR-SET-03 | Item costs | designed | The write policies of `item_costs` are tested; the screen and the CSV import do not exist. | A live Playwright test that an imported CSV equals the stored rows and that the costs move the margin axis of the menu matrix (10b). |
 | FR-SET-04 | Targets | designed | The write policies of `targets` are tested; the screen does not exist. | A live Playwright test that a saved monthly target shows progress and pace on Tháng (10b). |

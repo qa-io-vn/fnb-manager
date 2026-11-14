@@ -71,10 +71,42 @@ export function hasStorePeriodValue(
 	);
 }
 
+export const ownFunctions: Readonly<Partial<Record<string, string>>> = {
+	peak_share_top_hours: "hour_profile",
+	dead_hour_share: "hour_profile",
+};
+
+export const supersededBy: Readonly<Partial<Record<string, string>>> = {
+	peak_share_20_21: "peak_share_top_hours",
+	dead_hour_share_17_18: "dead_hour_share",
+};
+
+export function ownFunctionOf(
+	metric: MetricDefinition | MetricId,
+): string | null {
+	return ownFunctions[definitionOf(metric).id] ?? null;
+}
+
+export function supersedingMetricOf(
+	metric: MetricDefinition | MetricId,
+): string | null {
+	return supersededBy[definitionOf(metric).id] ?? null;
+}
+
 export function isComputedByMetricValue(
 	metric: MetricDefinition | MetricId,
 ): boolean {
-	return isAvailableNow(metric) && hasStorePeriodValue(metric);
+	return (
+		isAvailableNow(metric) &&
+		hasStorePeriodValue(metric) &&
+		ownFunctionOf(metric) === null
+	);
+}
+
+export function currentMetricIds(): MetricId[] {
+	return metrics
+		.filter((metric) => supersedingMetricOf(metric) === null)
+		.map((metric) => metric.id);
 }
 
 export function metricValueIds(): MetricId[] {

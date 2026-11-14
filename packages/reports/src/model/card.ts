@@ -138,7 +138,18 @@ export interface ChartModel {
 	readonly zeroBased?: boolean;
 }
 
-export type NoticeAction = "today" | "settings_roles" | "settings_targets";
+export type NoticeAction =
+	| "today"
+	| "settings_roles"
+	| "settings_targets"
+	| "settings_costs"
+	| "settings_fees"
+	| "settings_store"
+	| "settings_categories"
+	| "settings_payment_kinds"
+	| "settings_holidays"
+	| "settings_thresholds"
+	| "settings_legal";
 
 export interface NoticeModel {
 	readonly tone: "info" | "warning";

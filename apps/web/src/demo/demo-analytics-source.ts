@@ -1,8 +1,8 @@
-import { createDemoAnalyticsSource, sharedDemoDays } from "@fnb/demo-analytics";
-import type { AnalyticsSource } from "@fnb/reports";
+import { createDemoReportSource, sharedDemoDays } from "@fnb/demo-analytics";
+import type { ReportSource } from "@fnb/reports";
 
-export function createWebDemoAnalyticsSource(): AnalyticsSource {
-	return createDemoAnalyticsSource({
+export function createWebDemoAnalyticsSource(): ReportSource {
+	return createDemoReportSource({
 		now: () => new Date(),
 		days: sharedDemoDays(),
 		validateRows: import.meta.env.DEV,

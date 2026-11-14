@@ -3,6 +3,7 @@ export const lazySources = [
 	/src\/demo\/demo-row-source\.ts$/,
 	/src\/demo\/demo-analytics-source\.ts$/,
 	/src\/pages\/reports\/(day|week|month|year)\/[a-z]+-page\.tsx$/,
+	/src\/pages\/themes\/[a-z-]+\/[a-z-]+-page\.tsx$/,
 	/src\/data\/supabase-analytics-source\.ts$/,
 ];
 

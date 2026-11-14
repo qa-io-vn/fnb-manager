@@ -12,6 +12,12 @@ import reportYearEn from "./messages/report-year.en.json";
 import reportYearVi from "./messages/report-year.vi.json";
 import reportsEn from "./messages/reports.en.json";
 import reportsVi from "./messages/reports.vi.json";
+import themeHoursEn from "./messages/theme-hours.en.json";
+import themeHoursVi from "./messages/theme-hours.vi.json";
+import themeRevenueEn from "./messages/theme-revenue.en.json";
+import themeRevenueVi from "./messages/theme-revenue.vi.json";
+import themesEn from "./messages/themes.en.json";
+import themesVi from "./messages/themes.vi.json";
 
 export type MessageKey =
 	| keyof typeof coreVi
@@ -20,7 +26,10 @@ export type MessageKey =
 	| keyof typeof reportDayVi
 	| keyof typeof reportWeekVi
 	| keyof typeof reportMonthVi
-	| keyof typeof reportYearVi;
+	| keyof typeof reportYearVi
+	| keyof typeof themesVi
+	| keyof typeof themeRevenueVi
+	| keyof typeof themeHoursVi;
 
 export interface MessageFile {
 	readonly name: string;
@@ -29,6 +38,8 @@ export interface MessageFile {
 	readonly vi: Readonly<Record<string, string>>;
 	readonly en: Readonly<Record<string, string>>;
 }
+
+const themeFilePrefixes = ["theme.revenue.", "theme.hours."] as const;
 
 const reportFilePrefixes = [
 	"report.day.",
@@ -41,7 +52,7 @@ export const messageFiles: readonly MessageFile[] = [
 	{
 		name: "core",
 		prefix: null,
-		excludedPrefixes: ["metric.", "report."],
+		excludedPrefixes: ["metric.", "report.", "theme."],
 		vi: coreVi,
 		en: coreEn,
 	},
@@ -86,6 +97,27 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: reportYearVi,
 		en: reportYearEn,
+	},
+	{
+		name: "themes",
+		prefix: "theme.",
+		excludedPrefixes: themeFilePrefixes,
+		vi: themesVi,
+		en: themesEn,
+	},
+	{
+		name: "theme-revenue",
+		prefix: "theme.revenue.",
+		excludedPrefixes: [],
+		vi: themeRevenueVi,
+		en: themeRevenueEn,
+	},
+	{
+		name: "theme-hours",
+		prefix: "theme.hours.",
+		excludedPrefixes: [],
+		vi: themeHoursVi,
+		en: themeHoursEn,
 	},
 ];
 

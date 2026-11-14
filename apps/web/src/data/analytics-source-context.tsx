@@ -1,4 +1,4 @@
-import type { AnalyticsSource } from "@fnb/reports";
+import type { ReportSource } from "@fnb/reports";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
 	createContext,
@@ -14,7 +14,7 @@ import { useSession } from "../auth/session";
 
 export type AnalyticsSourceState =
 	| { status: "loading" }
-	| { status: "ready"; source: AnalyticsSource }
+	| { status: "ready"; source: ReportSource }
 	| { status: "failed" };
 
 interface AnalyticsSourceHandle {
@@ -27,20 +27,20 @@ const AnalyticsSourceContext = createContext<AnalyticsSourceHandle>({
 	request: () => undefined,
 });
 
-export async function loadDemoAnalyticsSource(): Promise<AnalyticsSource> {
+export async function loadDemoAnalyticsSource(): Promise<ReportSource> {
 	const demo = await import("../demo/demo-analytics-source");
 	return demo.createWebDemoAnalyticsSource();
 }
 
 export async function loadSupabaseAnalyticsSource(
 	client: SupabaseClient,
-): Promise<AnalyticsSource> {
+): Promise<ReportSource> {
 	const live = await import("./supabase-analytics-source");
 	return live.createSupabaseAnalyticsSource(client);
 }
 
 function useLoadedAnalyticsSource(
-	load: (() => Promise<AnalyticsSource>) | null,
+	load: (() => Promise<ReportSource>) | null,
 ): AnalyticsSourceState {
 	const [state, setState] = useState<AnalyticsSourceState>({
 		status: "loading",

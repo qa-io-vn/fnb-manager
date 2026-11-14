@@ -1,5 +1,6 @@
 export { benchmarkContext } from "./context.js";
 export {
+	currentMetricIds,
 	findMetric,
 	hasStorePeriodValue,
 	isAvailableNow,
@@ -13,6 +14,10 @@ export {
 	metricsForReport,
 	metricsInGroup,
 	metricValueIds,
+	ownFunctionOf,
+	ownFunctions,
+	supersededBy,
+	supersedingMetricOf,
 } from "./registry.js";
 export {
 	type BenchmarkContextEntry,

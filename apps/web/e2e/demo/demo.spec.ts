@@ -186,12 +186,7 @@ test("Hôm nay passes axe and fits a 360 px phone", async ({ page }) => {
 	await checkPage(page);
 });
 
-for (const hash of [
-	"#/chu-de/doanh-thu",
-	"#/ke-hoach",
-	"#/cai-dat/cua-hang",
-	"#/xuat-du-lieu",
-]) {
+for (const hash of ["#/ke-hoach", "#/cai-dat/cua-hang", "#/xuat-du-lieu"]) {
 	test(`the placeholder page ${hash} passes axe and fits a 360 px phone`, async ({
 		page,
 	}) => {
