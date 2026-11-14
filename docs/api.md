@@ -157,11 +157,11 @@ A login holds one role per tenant in `tenant_members`, with an optional store sc
 
 ## 3. Functions in `public`
 
-The schema `public` holds 25 functions. `authenticated` and `service_role` may execute all of them; `anon` may execute none. 24 are `security invoker` and `stable`; `refresh_my_analytics` is `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
+The schema `public` holds 30 functions. `authenticated` and `service_role` may execute all of them; `anon` may execute none. 29 are `security invoker` and `stable`; `refresh_my_analytics` is `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
 
 Each entry gives the signature exactly as Postgres prints it (`pg_get_function_arguments` and `pg_get_function_result`), then what calls it today, its status and notes. Column meanings and computation rules are in [`schema.md`](schema.md), sections "Query functions" and "Report functions (phase 9)"; report rules are in [`metrics.md`](metrics.md#report-conventions).
 
-**Who may call.** Any signed-in member may call the 24 invoker functions. The numbers cover only the stores that the caller's data role reads, so a publisher gets nulls or no rows (see [How RLS shapes function results](#how-rls-shapes-function-results)). `refresh_my_analytics` has its own rule.
+**Who may call.** Any signed-in member may call the 29 invoker functions. The numbers cover only the stores that the caller's data role reads, so a publisher gets nulls or no rows (see [How RLS shapes function results](#how-rls-shapes-function-results)). `refresh_my_analytics` has its own rule.
 
 **Callers named below.**
 
@@ -196,6 +196,11 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`metric_value`](#publicmetric_value) | metric_value | invoker, stable | `numeric` | SQL: `metric_compare`; `fnb digest --check-ngay` | verified locally (phase 8) |
 | [`metric_compare`](#publicmetric_compare) | metric_value | invoker, stable | rows per metric and period | web reports, digest | verified locally (phase 9) |
 | [`refresh_my_analytics`](#publicrefresh_my_analytics) | settings and writes | definer, volatile | `bigint` | no caller yet | verified locally (phase 8) |
+| [`analytics_catch_up_status`](#publicanalytics_catch_up_status) | settings and writes | invoker, stable | 0 or 1 row | no caller yet (Settings, phase 10a) | verified locally (phase 10a) |
+| [`report_settings_of`](#publicreport_settings_of) | themes | invoker, stable | rows per store | no caller yet (theme pages, phase 10a) | verified locally (phase 10a) |
+| [`range_totals`](#publicrange_totals) | themes | invoker, stable | rows per range and store | no caller yet (theme pages, phase 10a) | verified locally (phase 10a) |
+| [`opening_productivity`](#publicopening_productivity) | themes | invoker, stable | rows per store | no caller yet (theme pages, phase 10a) | verified locally (phase 10a) |
+| [`hour_profile`](#publichour_profile) | themes | invoker, stable | up to 82 rows | no caller yet (theme pages, phase 10a) | verified locally (phase 10a) |
 
 ### 3.1 Analytics
 
@@ -631,6 +636,22 @@ returns bigint
 - **Status:** verified locally (phase 8; pgTAP `17_analytics_access.sql`).
 - **Notes:** rebuilds the aggregate tables of the tenant for at most 92 days and returns the number of rows written. With `p_tenant` null it refreshes every tenant where the caller is an owner or manager, in tenant id order. Refreshes of one tenant queue behind each other.
 
+#### `public.analytics_catch_up_status`
+
+```sql
+public.analytics_catch_up_status(p_tenant_id uuid)
+returns TABLE(
+  tenant_id uuid, inputs_changed_at timestamp with time zone,
+  history_from date, history_to date, pending_from date, pending_to date,
+  pending_days integer, can_refresh boolean
+)
+```
+
+- **Who may call:** any data member of the tenant; anyone else, the publisher included, gets no row.
+- **Called by:** no caller yet; Settings will run the catch-up from it (phase 10a).
+- **Status:** verified locally (phase 10a; pgTAP `34_theme_access.sql`, `35_mappings_and_catch_up.sql`).
+- **Notes:** the days whose refresh-time aggregates may still use mappings or fee rates from before the last change. Every write to `item_type_roles`, `item_category_overrides` or `payment_fee_rates` moves `tenants.analytics_inputs_version` and marks the whole history pending; `pending_from` starts at the tenant's first aggregate date. `pending_days` is 0 and both ends are null when nothing is pending. `can_refresh` follows the rule of `refresh_my_analytics`. It reads no refresh history.
+
 #### Writes through tables
 
 Settings are written as rows, not through functions. RLS decides each write.
@@ -639,6 +660,8 @@ Settings are written as rows, not through functions. RLS decides each write.
 |---|---|---|---|
 | `item_costs`, `payment_fee_rates`, `targets` | owner or manager whose scope covers the row's store | same | same |
 | `item_type_roles` | owner or manager with an unlimited scope | same | same |
+| `item_category_overrides` | owner or manager with an unlimited scope | same | same |
+| `report_settings` | owner with an unlimited scope | same | same |
 | `holidays` | owner or manager with an unlimited scope; tenant rows only, global rows are read-only | same | same |
 | `strategy_reports` | owner, manager or publisher whose scope covers the row's store | owner or manager whose scope covers the row's store | same as update |
 | `consent_records` | owner or manager of the tenant, any scope; never purpose `notifications` | the same; a trigger lets an update set `revoked_at` once and nothing else | never |
@@ -646,7 +669,7 @@ Settings are written as rows, not through functions. RLS decides each write.
 | `alert_rules` | owner with an unlimited scope; a trigger validates the rule and its parameters (`22023`) | the same | the same |
 | `channel_policies` | owner with an unlimited scope, tenant rows only; CHECK constraints keep the legal floors | the same | the same |
 
-Status: the tables, policies and triggers are verified locally (pgTAP `05_write_policies.sql`, `07_write_scope_and_attribution.sql`, `10_payment_fee_rates.sql`, `11_item_type_roles_and_holidays.sql`, `12_consent_and_legal.sql`, `31_notify_access.sql`). No screen writes them yet: the Settings screens are designed for phase 10b, Kế hoạch and `fnb publish-plan` (which will insert plans as the publisher) for 11b, and Settings → Cảnh báo after step 12c. `stores` has no client write today (store settings are designed for 10b), and destinations in `notification_channels` are written only by server code ([section 3.5](#35-notifications)).
+Status: the tables, policies and triggers are verified locally (pgTAP `05_write_policies.sql`, `07_write_scope_and_attribution.sql`, `10_payment_fee_rates.sql`, `11_item_type_roles_and_holidays.sql`, `12_consent_and_legal.sql`, `31_notify_access.sql`, `35_mappings_and_catch_up.sql`). Inserts must name the caller as `created_by`, and a trigger sets `updated_by` to the caller on every insert and update of the manual-input tables, `item_category_overrides` and `report_settings`. No screen writes them yet: the Settings screens are designed for phase 10b, Kế hoạch and `fnb publish-plan` (which will insert plans as the publisher) for 11b, and Settings → Cảnh báo after step 12c. `stores` has no client write today (store settings are designed for 10b), and destinations in `notification_channels` are written only by server code ([section 3.5](#35-notifications)).
 
 ### 3.5 Notifications
 
@@ -660,7 +683,82 @@ No function in `public`. A client writes `consent_records` and `data_subject_req
 
 ### 3.7 Others
 
-None. `authenticated` may execute 42 functions in `app`, because policies and invoker functions call them as the caller: membership helpers, analytics building blocks, argument checks and calendar checks. The API does not serve `app`, so no client can call them directly. [`schema.md`](schema.md) describes them under "Helpers in schema `app`".
+None. `authenticated` may execute 45 functions in `app`, because policies and invoker functions call them as the caller: membership helpers, analytics building blocks, argument checks and calendar checks. The API does not serve `app`, so no client can call them directly. [`schema.md`](schema.md) describes them under "Helpers in schema `app`".
+
+### 3.8 Thematic reports (phase 10)
+
+The functions behind the thematic reports under `#/chu-de/…`, called over a date range rather than a period. Each takes the thresholds of the tenant's `report_settings` row when the caller passes none, so every report and the digest flag the same hours and shifts. Tests: pgTAP `33_theme_functions.sql` and `34_theme_access.sql`, and the parity suite (`theme-revenue-hours.parity.test.ts`).
+
+#### `public.report_settings_of`
+
+```sql
+public.report_settings_of(store_ids uuid[])
+returns TABLE(
+  store_id uuid, tenant_id uuid, has_tenant_row boolean, menu_window_days integer,
+  menu_popularity_factor numeric, menu_low_sample_items integer,
+  cash_abs_threshold numeric, cash_rel_threshold numeric, z_threshold numeric,
+  peak_hours integer, dead_hour_ratio numeric, busy_hour_ratio numeric,
+  promo_pre_weeks integer, seat_count integer, opening_hours_known boolean,
+  fee_rates_configured boolean, costs_configured boolean, roles_configured boolean
+)
+```
+
+- **Called by:** no caller yet (the theme pages, phase 10a).
+- **Notes:** one row per visible store in the order asked: the tenant's report settings (or the column defaults when the tenant has no row), the fixed z-score threshold 2, the store's seats, and whether opening hours, fee rates, item costs and item-type roles are set. Cards read it to show their thresholds and their "not configured" states. A publisher gets the defaults and false flags.
+
+#### `public.range_totals`
+
+```sql
+public.range_totals(store_ids uuid[], from_dates date[], to_dates date[])
+returns TABLE(
+  range_index smallint, store_id uuid, from_date date, to_date date,
+  days_with_data integer, invoices bigint, net_amount numeric, gross_amount numeric,
+  item_discount_amount numeric, bill_discount_amount numeric, voucher_amount numeric,
+  discount_amount numeric, paid_amount numeric, cash_amount numeric, items_sold numeric,
+  voucher_invoices bigint, member_invoices bigint, identified_invoices bigint,
+  voided_invoices bigint, voided_amount numeric, edited_invoices bigint,
+  avg_ticket numeric, items_per_ticket numeric, avg_item_price numeric,
+  cash_share numeric, voucher_share numeric, member_share numeric,
+  identified_share numeric, discount_rate numeric
+)
+```
+
+- **Called by:** no caller yet (the theme pages, phase 10a).
+- **Notes:** for each of 1 to 6 ranges (each at most 1,100 days; the lists must have equal lengths), a row for all requested stores (`store_id` null) and one per visible store, with the totals of `period_compare_by_store`. With the ranges of a period it equals that function's non-baseline rows.
+
+#### `public.opening_productivity`
+
+```sql
+public.opening_productivity(store_ids uuid[], from_date date, to_date date)
+returns TABLE(
+  store_id uuid, days_with_sales integer, invoices bigint, net_amount numeric,
+  opening_minutes bigint, seat_count integer, seat_minutes bigint,
+  sales_per_opening_hour numeric, invoices_per_opening_hour numeric, revpash numeric
+)
+```
+
+- **Called by:** no caller yet (Giờ & ngày trong tuần and So sánh cửa hàng).
+- **Notes:** a row for all stores, then one per visible store, over the days with sales (at most 1,100 days). Opening minutes follow `app.opening_minutes`, split and overnight spans included; they are null when any store with sales has no opening hours. RevPASH is net revenue per seat-hour and needs seats on every such store. The two per-hour values equal `metric_value`.
+
+#### `public.hour_profile`
+
+```sql
+public.hour_profile(
+  store_ids uuid[], from_date date, to_date date,
+  peak_hours integer DEFAULT NULL::integer, dead_hour_ratio numeric DEFAULT NULL::numeric,
+  busy_hour_ratio numeric DEFAULT NULL::numeric
+)
+returns TABLE(
+  scope text, weekday smallint, hour_local smallint, hour_position smallint,
+  days_with_data integer, invoices bigint, net_amount numeric, avg_net_amount numeric,
+  avg_invoices numeric, net_share numeric, level text, peak_share numeric,
+  dead_share numeric, peak_hours_used integer, dead_hour_ratio_used numeric,
+  busy_hour_ratio_used numeric
+)
+```
+
+- **Called by:** no caller yet (Giờ & ngày trong tuần).
+- **Notes:** hours of the open span (first to last hour with sales, empty hours inside it as zeros) for the scopes `all`, `weekdays` and `weekend`, each followed by a summary row, then one row per ISO weekday. In `all`, the `peak_hours` largest hours are `peak` and hours below `dead_hour_ratio` times the span's mean are `dead`; the weekday groups are `busy` or `quiet` by invoices per day against `busy_hour_ratio` and `dead_hour_ratio`. The `all` summary carries `peak_share` and `dead_share`. Hours are placed from the first store's business-day start. At most 400 days; thresholds outside the table's checks raise `22023`.
 
 ## 4. Tables and views
 
@@ -715,6 +813,8 @@ Every table in `public` has RLS enabled, and `anon` holds no privilege on any ta
 | `payment_fee_rates` | fee % and fixed fee per payment method, from a date | data roles; tenant-wide rows and stores in scope | [yes](#writes-through-tables) | none |
 | `targets` | net-sales target per store and month or week | data roles, stores in scope | [yes](#writes-through-tables) | none (`store_targets` reads it) |
 | `item_type_roles` | the role of each POS item type: `drink`, `topping`, `food`, `snack`, `other` | data roles of the tenant | [yes](#writes-through-tables) | none |
+| `item_category_overrides` | an item moved to another POS item type of its account, for reports only | data roles of the tenant | [yes](#writes-through-tables) | none |
+| `report_settings` | the tenant's report thresholds (menu window, cash tolerances, peak and quiet hours, promotion pre-period) | data roles of the tenant | [yes](#writes-through-tables) | none (the functions read it) |
 | `holidays` | public holidays and Tết days (61 global rows for 2024 to 2028) and the tenant's own days off | global rows: every signed-in user; tenant rows: every member of the tenant | [yes](#writes-through-tables) | web app (Hôm nay's baseline) |
 | `strategy_reports` | strategy plans with their data pack and KPI ids | every member, all five roles; tenant-wide rows and stores in scope | [yes](#writes-through-tables) | none (Kế hoạch designed for 11b) |
 

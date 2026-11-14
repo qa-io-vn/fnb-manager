@@ -2218,6 +2218,65 @@
 			],
 			"type": "object"
 		},
+		"item_category_overrides": {
+			"properties": {
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"item_external_id": {
+					"description": "the item key of agg_item_daily: coalesce(invoice_lines.item_external_id, invoice_lines.item_name)",
+					"format": "text",
+					"type": "string"
+				},
+				"item_type_external_id": {
+					"description": "a POS item type of the same account that replaces the item's own type in reports",
+					"format": "text",
+					"type": "string"
+				},
+				"pos_account_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"pos_account_id",
+				"item_external_id",
+				"item_type_external_id",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"item_classes": {
 			"properties": {
 				"active": {
@@ -2318,6 +2377,11 @@
 					"default": "now()",
 					"format": "timestamp with time zone",
 					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
 				}
 			},
 			"required": [
@@ -2371,6 +2435,11 @@
 				"updated_at": {
 					"default": "now()",
 					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
 					"type": "string"
 				}
 			},
@@ -2989,6 +3058,11 @@
 					"default": "now()",
 					"format": "timestamp with time zone",
 					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
 				}
 			},
 			"required": [
@@ -3200,6 +3274,96 @@
 				"active",
 				"first_seen_at",
 				"last_seen_at"
+			],
+			"type": "object"
+		},
+		"report_settings": {
+			"description": "report thresholds of a tenant; a tenant without a row uses the column defaults",
+			"properties": {
+				"busy_hour_ratio": {
+					"default": 1.25,
+					"format": "numeric",
+					"type": "number"
+				},
+				"cash_abs_threshold": {
+					"default": 50000,
+					"format": "numeric",
+					"type": "number"
+				},
+				"cash_rel_threshold": {
+					"default": 0.005,
+					"format": "numeric",
+					"type": "number"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"dead_hour_ratio": {
+					"default": 0.5,
+					"format": "numeric",
+					"type": "number"
+				},
+				"menu_low_sample_items": {
+					"default": 10,
+					"format": "int32",
+					"type": "integer"
+				},
+				"menu_popularity_factor": {
+					"default": 0.7,
+					"format": "numeric",
+					"type": "number"
+				},
+				"menu_window_days": {
+					"default": 28,
+					"format": "int32",
+					"type": "integer"
+				},
+				"peak_hours": {
+					"default": 3,
+					"format": "int32",
+					"type": "integer"
+				},
+				"promo_pre_weeks": {
+					"default": 4,
+					"format": "int32",
+					"type": "integer"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"tenant_id",
+				"menu_window_days",
+				"menu_popularity_factor",
+				"menu_low_sample_items",
+				"cash_abs_threshold",
+				"cash_rel_threshold",
+				"peak_hours",
+				"dead_hour_ratio",
+				"busy_hour_ratio",
+				"promo_pre_weeks",
+				"created_at",
+				"updated_at"
 			],
 			"type": "object"
 		},
@@ -3800,6 +3964,11 @@
 					"default": "now()",
 					"format": "timestamp with time zone",
 					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
 				}
 			},
 			"required": [
@@ -3850,6 +4019,25 @@
 		},
 		"tenants": {
 			"properties": {
+				"analytics_inputs_changed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"analytics_inputs_version": {
+					"default": 0,
+					"description": "incremented by every write to a mapping or rate table that refresh-time aggregates read",
+					"format": "int64",
+					"type": "integer"
+				},
+				"analytics_pending_from": {
+					"description": "first business date whose refresh-time aggregates may still use earlier mappings; null when caught up",
+					"format": "date",
+					"type": "string"
+				},
+				"analytics_pending_to": {
+					"format": "date",
+					"type": "string"
+				},
 				"country_code": {
 					"default": "VN",
 					"format": "text",
@@ -3905,7 +4093,8 @@
 				"currency_code",
 				"timezone",
 				"legal_form",
-				"created_at"
+				"created_at",
+				"analytics_inputs_version"
 			],
 			"type": "object"
 		},
@@ -4334,6 +4523,15 @@
 				"$ref": "#/definitions/invoices"
 			}
 		},
+		"body.item_category_overrides": {
+			"description": "item_category_overrides",
+			"in": "body",
+			"name": "item_category_overrides",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/item_category_overrides"
+			}
+		},
 		"body.item_classes": {
 			"description": "item_classes",
 			"in": "body",
@@ -4440,6 +4638,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/promotions"
+			}
+		},
+		"body.report_settings": {
+			"description": "report_settings",
+			"in": "body",
+			"name": "report_settings",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/report_settings"
 			}
 		},
 		"body.shifts": {
@@ -6922,6 +7129,62 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.item_category_overrides.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.item_category_overrides.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.item_category_overrides.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.item_category_overrides.item_external_id": {
+			"description": "the item key of agg_item_daily: coalesce(invoice_lines.item_external_id, invoice_lines.item_name)",
+			"in": "query",
+			"name": "item_external_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.item_category_overrides.item_type_external_id": {
+			"description": "a POS item type of the same account that replaces the item's own type in reports",
+			"in": "query",
+			"name": "item_type_external_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.item_category_overrides.pos_account_id": {
+			"in": "query",
+			"name": "pos_account_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.item_category_overrides.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.item_category_overrides.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.item_category_overrides.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.item_classes.active": {
 			"in": "query",
 			"name": "active",
@@ -7031,6 +7294,12 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.item_costs.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.item_type_roles.created_at": {
 			"in": "query",
 			"name": "created_at",
@@ -7076,6 +7345,12 @@
 		"rowFilter.item_type_roles.updated_at": {
 			"in": "query",
 			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.item_type_roles.updated_by": {
+			"in": "query",
+			"name": "updated_by",
 			"required": false,
 			"type": "string"
 		},
@@ -7762,6 +8037,12 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.payment_fee_rates.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.payment_methods.active": {
 			"in": "query",
 			"name": "active",
@@ -7951,6 +8232,90 @@
 		"rowFilter.promotions.tenant_id": {
 			"in": "query",
 			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.busy_hour_ratio": {
+			"in": "query",
+			"name": "busy_hour_ratio",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.cash_abs_threshold": {
+			"in": "query",
+			"name": "cash_abs_threshold",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.cash_rel_threshold": {
+			"in": "query",
+			"name": "cash_rel_threshold",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.dead_hour_ratio": {
+			"in": "query",
+			"name": "dead_hour_ratio",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.menu_low_sample_items": {
+			"in": "query",
+			"name": "menu_low_sample_items",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.menu_popularity_factor": {
+			"in": "query",
+			"name": "menu_popularity_factor",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.menu_window_days": {
+			"in": "query",
+			"name": "menu_window_days",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.peak_hours": {
+			"in": "query",
+			"name": "peak_hours",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.promo_pre_weeks": {
+			"in": "query",
+			"name": "promo_pre_weeks",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.report_settings.updated_by": {
+			"in": "query",
+			"name": "updated_by",
 			"required": false,
 			"type": "string"
 		},
@@ -8586,6 +8951,12 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.targets.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.tenant_members.created_at": {
 			"in": "query",
 			"name": "created_at",
@@ -8614,6 +8985,32 @@
 		"rowFilter.tenant_members.user_id": {
 			"in": "query",
 			"name": "user_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.tenants.analytics_inputs_changed_at": {
+			"in": "query",
+			"name": "analytics_inputs_changed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.tenants.analytics_inputs_version": {
+			"description": "incremented by every write to a mapping or rate table that refresh-time aggregates read",
+			"in": "query",
+			"name": "analytics_inputs_version",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.tenants.analytics_pending_from": {
+			"description": "first business date whose refresh-time aggregates may still use earlier mappings; null when caught up",
+			"in": "query",
+			"name": "analytics_pending_from",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.tenants.analytics_pending_to": {
+			"in": "query",
+			"name": "analytics_pending_to",
 			"required": false,
 			"type": "string"
 		},
@@ -14721,6 +15118,177 @@
 				"tags": ["invoices"]
 			}
 		},
+		"/item_category_overrides": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.pos_account_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.item_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.item_type_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"tags": ["item_category_overrides"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.pos_account_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.item_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.item_type_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/item_category_overrides"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"tags": ["item_category_overrides"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.pos_account_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.item_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.item_type_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_category_overrides.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.item_category_overrides"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"tags": ["item_category_overrides"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.item_category_overrides"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"tags": ["item_category_overrides"]
+			}
+		},
 		"/item_classes": {
 			"delete": {
 				"parameters": [
@@ -14923,6 +15491,9 @@
 						"$ref": "#/parameters/rowFilter.item_costs.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.item_costs.updated_by"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -14961,6 +15532,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.item_costs.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_costs.updated_by"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -15030,6 +15604,9 @@
 						"$ref": "#/parameters/rowFilter.item_costs.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.item_costs.updated_by"
+					},
+					{
 						"$ref": "#/parameters/body.item_costs"
 					},
 					{
@@ -15091,6 +15668,9 @@
 						"$ref": "#/parameters/rowFilter.item_type_roles.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.item_type_roles.updated_by"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -15126,6 +15706,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.item_type_roles.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_type_roles.updated_by"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -15190,6 +15773,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.item_type_roles.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.item_type_roles.updated_by"
 					},
 					{
 						"$ref": "#/parameters/body.item_type_roles"
@@ -16626,6 +17212,9 @@
 						"$ref": "#/parameters/rowFilter.payment_fee_rates.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.payment_fee_rates.updated_by"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -16667,6 +17256,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.payment_fee_rates.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_fee_rates.updated_by"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -16737,6 +17329,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.payment_fee_rates.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_fee_rates.updated_by"
 					},
 					{
 						"$ref": "#/parameters/body.payment_fee_rates"
@@ -17330,6 +17925,283 @@
 				"tags": ["promotions"]
 			}
 		},
+		"/report_settings": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.menu_window_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.menu_popularity_factor"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.menu_low_sample_items"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.cash_abs_threshold"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.cash_rel_threshold"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.peak_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.dead_hour_ratio"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.busy_hour_ratio"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.promo_pre_weeks"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "report thresholds of a tenant; a tenant without a row uses the column defaults",
+				"tags": ["report_settings"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.menu_window_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.menu_popularity_factor"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.menu_low_sample_items"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.cash_abs_threshold"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.cash_rel_threshold"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.peak_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.dead_hour_ratio"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.busy_hour_ratio"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.promo_pre_weeks"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/report_settings"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "report thresholds of a tenant; a tenant without a row uses the column defaults",
+				"tags": ["report_settings"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.menu_window_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.menu_popularity_factor"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.menu_low_sample_items"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.cash_abs_threshold"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.cash_rel_threshold"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.peak_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.dead_hour_ratio"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.busy_hour_ratio"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.promo_pre_weeks"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.report_settings.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.report_settings"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "report thresholds of a tenant; a tenant without a row uses the column defaults",
+				"tags": ["report_settings"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.report_settings"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "report thresholds of a tenant; a tenant without a row uses the column defaults",
+				"tags": ["report_settings"]
+			}
+		},
+		"/rpc/analytics_catch_up_status": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_tenant_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) analytics_catch_up_status"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) analytics_catch_up_status"]
+			}
+		},
 		"/rpc/cash_variance_flags": {
 			"get": {
 				"parameters": [
@@ -17607,6 +18479,121 @@
 					}
 				},
 				"tags": ["(rpc) forecast_accuracy"]
+			}
+		},
+		"/rpc/hour_profile": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "peak_hours",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"format": "numeric",
+						"in": "query",
+						"name": "dead_hour_ratio",
+						"required": false,
+						"type": "number"
+					},
+					{
+						"format": "numeric",
+						"in": "query",
+						"name": "busy_hour_ratio",
+						"required": false,
+						"type": "number"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) hour_profile"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"busy_hour_ratio": {
+									"format": "numeric",
+									"type": "number"
+								},
+								"dead_hour_ratio": {
+									"format": "numeric",
+									"type": "number"
+								},
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"peak_hours": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["store_ids", "from_date", "to_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) hour_profile"]
 			}
 		},
 		"/rpc/hour_weekday_heatmap": {
@@ -18372,6 +19359,88 @@
 				"tags": ["(rpc) month_pace"]
 			}
 		},
+		"/rpc/opening_productivity": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) opening_productivity"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["store_ids", "from_date", "to_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) opening_productivity"]
+			}
+		},
 		"/rpc/payment_summary": {
 			"get": {
 				"parameters": [
@@ -18908,6 +19977,94 @@
 				"tags": ["(rpc) promotion_summary"]
 			}
 		},
+		"/rpc/range_totals": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date[]",
+						"in": "query",
+						"name": "from_dates",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date[]",
+						"in": "query",
+						"name": "to_dates",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) range_totals"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"from_dates": {
+									"format": "date[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_dates": {
+									"format": "date[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": ["store_ids", "from_dates", "to_dates"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) range_totals"]
+			}
+		},
 		"/rpc/refresh_my_analytics": {
 			"post": {
 				"parameters": [
@@ -18949,6 +20106,66 @@
 					}
 				},
 				"tags": ["(rpc) refresh_my_analytics"]
+			}
+		},
+		"/rpc/report_settings_of": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) report_settings_of"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": ["store_ids"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) report_settings_of"]
 			}
 		},
 		"/rpc/same_weekday_baseline": {
@@ -20981,6 +22198,9 @@
 						"$ref": "#/parameters/rowFilter.targets.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.targets.updated_by"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -21019,6 +22239,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.targets.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.targets.updated_by"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -21086,6 +22309,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.targets.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.targets.updated_by"
 					},
 					{
 						"$ref": "#/parameters/body.targets"
@@ -21284,6 +22510,18 @@
 						"$ref": "#/parameters/rowFilter.tenants.created_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.tenants.analytics_inputs_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.analytics_inputs_changed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.analytics_pending_from"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.analytics_pending_to"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -21319,6 +22557,18 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.tenants.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.analytics_inputs_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.analytics_inputs_changed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.analytics_pending_from"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.analytics_pending_to"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -21383,6 +22633,18 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.tenants.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.analytics_inputs_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.analytics_inputs_changed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.analytics_pending_from"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.analytics_pending_to"
 					},
 					{
 						"$ref": "#/parameters/body.tenants"

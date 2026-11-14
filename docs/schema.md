@@ -66,6 +66,9 @@ One row per owner organisation. Everything else hangs off it.
 | `timezone` | text | no | IANA zone, default `Asia/Ho_Chi_Minh`; default for new stores |
 | `legal_form` | legal_form | no | Entity type of the owner, default `unknown`; drives the cross-border dossier decision |
 | `created_at` | timestamptz | no | Row creation |
+| `analytics_inputs_version` | bigint | no | Default 0; moved by every write to a table that refresh-time aggregates read (`item_type_roles`, `item_category_overrides`, `payment_fee_rates`); never written by the browser (phase 10) |
+| `analytics_inputs_changed_at` | timestamptz | yes | When the version last moved |
+| `analytics_pending_from`, `analytics_pending_to` | date | yes | The business dates whose refresh-time aggregates may still use earlier mappings: 2023-01-01 to `current_date + 1` after a change, null when caught up; both set or both null, never reversed |
 
 ### `tenant_members`
 
@@ -502,6 +505,7 @@ Cost per item, tenant-wide or per store, with validity from a date. Unique on (`
 | `cost_amount` | numeric(14,2) | no | Cost per unit sold |
 | `effective_from` | date | no | First business date the cost applies to |
 | `created_by` | uuid | yes | Author, default `auth.uid()`, frozen on update |
+| `updated_by` | uuid | yes | Last writer, set to `auth.uid()` by trigger on every insert and update (null for service-role writes); backfilled from `created_by` (phase 10) |
 | `created_at`, `updated_at` | timestamptz | no | Audit timestamps |
 
 ### `payment_fee_rates`
@@ -518,6 +522,7 @@ Fee a payment method costs the shop, tenant-wide or per store, with validity fro
 | `fixed_fee_amount` | numeric(14,2) | no | Fixed fee per tender, default 0 |
 | `effective_from` | date | no | First business date the rate applies to |
 | `created_by` | uuid | yes | Author, default `auth.uid()`, frozen on update |
+| `updated_by` | uuid | yes | Last writer, set to `auth.uid()` by trigger on every insert and update (null for service-role writes); backfilled from `created_by` (phase 10) |
 | `created_at`, `updated_at` | timestamptz | no | Audit timestamps |
 
 ### `item_type_roles`
@@ -532,6 +537,7 @@ Maps each POS item type to a canonical role so attach-rate and mix reports work 
 | `item_type_external_id` | text | no | Item type by external id |
 | `role` | item_type_role | no | `drink`, `topping`, `food`, `snack` or `other` (default) |
 | `created_by` | uuid | yes | Author, default `auth.uid()`, frozen on update |
+| `updated_by` | uuid | yes | Last writer, set to `auth.uid()` by trigger on every insert and update (null for service-role writes); backfilled from `created_by` (phase 10) |
 | `created_at`, `updated_at` | timestamptz | no | Audit timestamps |
 
 ### `holidays`
@@ -563,6 +569,7 @@ Net-sales targets per store and period. Unique on (`store_id`, `period_kind`, `p
 | `period_start` | date | no | First day of the period |
 | `net_target_amount` | numeric(14,2) | no | Target net sales |
 | `created_by` | uuid | yes | Author, default `auth.uid()`, frozen on update |
+| `updated_by` | uuid | yes | Last writer, set to `auth.uid()` by trigger on every insert and update (null for service-role writes); backfilled from `created_by` (phase 10) |
 | `created_at`, `updated_at` | timestamptz | no | Audit timestamps |
 
 ### `strategy_reports`
@@ -583,6 +590,56 @@ Plans produced from the aggregate data pack.
 | `kpis` | jsonb | yes | KPI ids with baseline and target values |
 | `created_by` | uuid | yes | Author, default `auth.uid()`, frozen on update |
 | `created_at`, `updated_at` | timestamptz | no | Audit timestamps |
+
+## Settings and mappings (phase 10)
+
+Migration `report_settings_and_mappings` adds the tenant's report thresholds, item category overrides and the analytics catch-up. Every write to a mapping or rate that the refresh turns into aggregates is tracked on the tenant row, never inferred from `analytics_refreshes` (the scheduler prunes that log after 35 days).
+
+### `report_settings`
+
+One row per tenant; a tenant without a row uses the column defaults. `app.store_report_settings()` is the only reader, and `DEFAULT_REPORT_SETTINGS` in `@fnb/reports` mirrors the defaults.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `tenant_id` | uuid | no | Primary key, tenant |
+| `menu_window_days` | smallint | no | Menu-engineering window, 7 to 91, default 28 |
+| `menu_popularity_factor` | numeric(4,3) | no | Popularity factor, 0.1 to 1.0, default 0.7 |
+| `menu_low_sample_items` | smallint | no | Fewest items per role before the matrix is flagged as a low sample, 2 to 50, default 10 |
+| `cash_abs_threshold` | numeric(14,2) | no | Drawer variance worth a flag in the tenant's currency, default 50,000 |
+| `cash_rel_threshold` | numeric(6,4) | no | Drawer variance as a share of cash sales, 0 to 0.1, default 0.005 |
+| `peak_hours` | smallint | no | Hours counted as peak, 1 to 6, default 3 |
+| `dead_hour_ratio` | numeric(4,3) | no | An hour below this share of the mean hour is quiet, 0.1 to 0.9, default 0.5 |
+| `busy_hour_ratio` | numeric(4,3) | no | An hour at or above this multiple of the mean hour is busy, 1.05 to 3, default 1.25 |
+| `promo_pre_weeks` | smallint | no | Pre-period weeks of the promotion lift, 2 to 8, default 4 |
+| `created_by`, `updated_by` | uuid | yes | Author (frozen) and last writer (set by trigger) |
+| `created_at`, `updated_at` | timestamptz | no | Audit timestamps |
+
+The z-score threshold stays the constant 2 of `app.shift_variance_scores()`.
+
+### `item_category_overrides`
+
+An item moved to another POS item type of the same account, for reports only; the facts keep the type the POS sent. Unique on (`pos_account_id`, `item_external_id`); the target type is a foreign key to `item_types` of the same account.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | Primary key |
+| `tenant_id`, `pos_account_id` | uuid | no | Tenant and POS account (composite key to `pos_accounts`) |
+| `item_external_id` | text | no | The item key of `agg_item_daily`: the line's item id, else its name |
+| `item_type_external_id` | text | no | The item type that replaces the item's own |
+| `created_by`, `updated_by` | uuid | yes | Author (frozen) and last writer (set by trigger) |
+| `created_at`, `updated_at` | timestamptz | no | Audit timestamps |
+
+### Triggers and helpers
+
+| Name | On | Behaviour |
+| --- | --- | --- |
+| `<table>_set_updated_by` → `app.set_updated_by()` | before insert or update on `item_costs`, `payment_fee_rates`, `item_type_roles`, `targets`, `report_settings`, `item_category_overrides` | Sets `updated_by` to `auth.uid()`, whatever the request carries |
+| `<table>_touch_analytics_inputs` → `app.touch_analytics_inputs()` | after insert, update or delete, per row, on `item_type_roles`, `item_category_overrides`, `payment_fee_rates` | Moves the tenant's `analytics_inputs_version`, stamps `analytics_inputs_changed_at` and marks 2023-01-01 to `current_date + 1` pending; `security definer`, executable by no API role |
+| `app.opening_hours_present(jsonb)` | function | The body of phase 7's private `app.opening_hours_known`, executable by `authenticated` and `service_role` |
+| `app.store_report_settings(store_ids)` | function | One row per visible store in `store_ids` order: the tenant's settings or the defaults, and `z_threshold` 2 |
+| `app.item_category_map(store_ids)` | function | The overrides of the visible stores' POS accounts with the target type's name |
+
+`public.analytics_catch_up_status(p_tenant_id)` reads the pending range for a data member of the tenant: `pending_from` starts at the tenant's first aggregate date, `pending_days` is 0 when nothing is pending, and `can_refresh` follows `refresh_my_analytics`.
 
 ## Consent and legal records
 
@@ -821,6 +878,19 @@ Migration `report_functions` adds the functions that the periodic reports Ngày,
 | `store_targets(store_ids, period_kind, period_start)` | `store_id`, `net_target_amount` | The `targets` rows of the visible stores for that period |
 
 Helpers in `app`: `period_bounds(grain, anchor)` (`immutable`; the boundaries of `period_compare` by date arithmetic, plus the 8-week baseline range for `day`; another grain raises `22023`), `period_totals(store_ids, from_date, to_date)` (one row of sums and ratios over `app.daily_sales()`), `shift_variance_scores(store_ids, from_date, to_date, abs_threshold, rel_threshold)` (the trailing 56-day scores and flags of every shift with a variance; `cash_variance_flags()` is rebuilt on it with the same signature, columns, filter and order), `visible_stores(store_ids)`, and the argument checks `require_store_ids()`, `require_date_range()`, `require_compare_range()` and `require_report_rows()`. On a local two-store tenant with two years of history, the slowest call of each report takes under 50 ms.
+
+### Thematic report functions (phase 10)
+
+Migration `theme_revenue_hours_functions` adds the first functions of the thematic reports, which run over a date range. They follow the conventions of the report functions above; thresholds passed as null take `app.store_report_settings()`.
+
+| Function | Returns | Rule |
+| --- | --- | --- |
+| `report_settings_of(store_ids)` | per visible store: the columns of `app.store_report_settings()`, `seat_count`, `opening_hours_known`, `fee_rates_configured`, `costs_configured`, `roles_configured` | The store's settings and whether its opening hours, fee rates (its own or tenant-wide), item costs and item-type roles exist; a publisher gets the defaults and false flags |
+| `range_totals(store_ids, from_dates, to_dates)` | per range and block: `range_index`, `store_id`, `from_date`, `to_date` and the 25 columns of `app.period_totals()` | 1 to 6 ranges of at most 1,100 days each, with equal-length lists; a block for all stores, then one per visible store |
+| `opening_productivity(store_ids, from_date, to_date)` | per block: `days_with_sales`, `invoices`, `net_amount`, `opening_minutes`, `seat_count`, `seat_minutes`, `sales_per_opening_hour`, `invoices_per_opening_hour`, `revpash` | Over the store-days of `app.daily_sales()`; opening minutes from `app.opening_minutes()`, null when any store with sales has no opening hours; seats summed over the stores with sales, null when one lacks them; per-hour values equal `metric_value()`. At most 1,100 days |
+| `hour_profile(store_ids, from_date, to_date, peak_hours, dead_hour_ratio, busy_hour_ratio)` | per hour of the scopes `all`, `weekdays`, `weekend` with a summary each, then per ISO weekday: `days_with_data`, totals, means per day, `net_share`, `level`, `peak_share`, `dead_share` and the thresholds used | Hours of `app.hourly_sales()` placed from the first store's day-start hour; the open span runs from the first to the last hour with sales, empty hours inside it as zeros; `all` marks the largest hours `peak` (ties to the earlier hour) and hours below the quiet ratio × the span's mean `dead`; the weekday groups are `busy` or `quiet` by invoices per day; comparisons use unrounded values. At most 400 days |
+
+`hour_weekday_heatmap()` (phase 8) joins the theme contract unchanged; its callers keep it to 400 days.
 
 ### Publisher and aggregates
 
@@ -1063,7 +1133,7 @@ The partial index `outbound_messages_channel_digest_date_idx` (`channel_id`, `bu
 
 ## Row-level security
 
-Every table in `public` has RLS enabled. `anon` holds no privilege on any table. `authenticated` holds `SELECT` on every table except `pos_account_tokens`, `INSERT`, `UPDATE`, `DELETE` only on the manual-input tables (`item_costs`, `payment_fee_rates`, `item_type_roles`, `holidays`, `targets`) and `strategy_reports`, `INSERT`, `UPDATE` without `DELETE` on the legal ledgers `consent_records` and `data_subject_requests`, and `INSERT`, `UPDATE`, `DELETE` on the notification settings `alert_rules` and `channel_policies`. On `notification_channels` it holds column-level `SELECT` only, without `address`, `secret_name` and `config`. Default privileges are set so that a future table created by the migration role starts read-only for `authenticated` and invisible to `anon`. The sync jobs run as `service_role`, which bypasses RLS.
+Every table in `public` has RLS enabled. `anon` holds no privilege on any table. `authenticated` holds `SELECT` on every table except `pos_account_tokens`, `INSERT`, `UPDATE`, `DELETE` only on the manual-input tables (`item_costs`, `payment_fee_rates`, `item_type_roles`, `holidays`, `targets`), the report settings and mappings (`report_settings`, `item_category_overrides`) and `strategy_reports`, `INSERT`, `UPDATE` without `DELETE` on the legal ledgers `consent_records` and `data_subject_requests`, and `INSERT`, `UPDATE`, `DELETE` on the notification settings `alert_rules` and `channel_policies`. On `notification_channels` it holds column-level `SELECT` only, without `address`, `secret_name` and `config`. Default privileges are set so that a future table created by the migration role starts read-only for `authenticated` and invisible to `anon`. The sync jobs run as `service_role`, which bypasses RLS.
 
 ### Roles
 
@@ -1124,6 +1194,8 @@ Policies call the array-returning helpers as `(select app.helper())` so Postgres
 | --- | --- | --- |
 | `item_costs`, `payment_fee_rates`, `targets` | `can_manage_store_scope(tenant_id, store_id)` and `created_by = auth.uid()` | `can_manage_store_scope(tenant_id, store_id)` |
 | `item_type_roles` | `can_manage_store_scope(tenant_id, null)` and `created_by = auth.uid()`: owner or manager with an unlimited store scope | Same |
+| `item_category_overrides` | `can_manage_store_scope(tenant_id, null)` and `created_by = auth.uid()` | Same |
+| `report_settings` | `has_store_scope(tenant_id, null, owner)` and `created_by = auth.uid()`: owners with an unlimited scope, because the thresholds govern the managers too | Same rule |
 | `holidays` | `tenant_id` not null and `can_manage_store_scope(tenant_id, null)`; global rows are service-role only | Same |
 | `strategy_reports` | `can_publish_store_scope(tenant_id, store_id)` and `created_by = auth.uid()` | `can_manage_store_scope(tenant_id, store_id)` |
 | `consent_records` | `has_tenant_role(tenant_id, owner or manager)`: any owner or manager of the tenant, store-limited or not, because consent is captured at the till | Update only, same rule; the `keep_consent_grant` trigger lets the update set `revoked_at` once and nothing else; no delete |
@@ -1175,7 +1247,7 @@ The database therefore refuses a row that names tenant A together with a store o
 | --- | --- |
 | `01_schema.sql` | Schemas, helper functions, enums with their labels (the phase 12 enums and the `notifications` purpose included), tables and key columns |
 | `02_unique_keys.sql` | Unique natural keys and the tenant-consistent composite foreign keys |
-| `03_rls_enabled.sql` | RLS on every table of `public` with the expected table count (52), write policies and grants audited (`alert_rules` and `channel_policies` on the allow-lists), default privileges for future tables, no privilege for `anon` |
+| `03_rls_enabled.sql` | RLS on every table of `public` with the expected table count (54), write policies and grants audited (`alert_rules`, `channel_policies`, `report_settings` and `item_category_overrides` on the allow-lists), default privileges for future tables, no privilege for `anon` |
 | `04_tenant_isolation.sql` | Two-tenant isolation of reads |
 | `05_write_policies.sql` | Who may write the manual-input tables |
 | `06_anon_and_tokens.sql` | `anon` reads nothing; the token cache is service-role only |
@@ -1204,5 +1276,8 @@ The database therefore refuses a row that names tenant A together with a store o
 | `29_notify_alerts.sql` | Episodes: the M4 functions run as `postgres` only; `alert_destinations` by role, store scope, account scope, tenant scope, muted rules, webhooks with and without `store_ids`, failing destinations and the failing member's other destinations; `raise_alert` opening (key, severity, source, messages, template, dedupe key, expiry, count-only params), repeating, reminding at +24 hours, the cool-down (a silent episode keeping the last notice, and notifying again after it), `no_destination`, a disabled rule, refused input; folding under an open `auth_failed` and one resolved less than 30 minutes earlier; `record_runner_notification` for every kind and scope, the consecutive-incremental threshold and a success restarting it, window runs by facts and by run, the tenant's raised `sync_stale` threshold, covered and uncovered previous-day readings, dropped error text, refused input; `import_sync_alerts` (threshold, `notified_at`, no second raise for one reading, a newer reading, the runner and scheduler sharing one episode, a newer successful sync, a gap back within the threshold, a tenant without destinations, `sync_dispatch_failed`); `reconcile_alerts` for each rule, resolution notices only where the opening message was delivered, a waiting opening cancelled at claim, `schedule_disabled`, reminders and no reminder under an open root cause; `evaluate_channel_health` once per failure, a blocked destination, recovery and the cool-down; `record_job_event` (instant episodes without the run id, the 12-hour cool-down, critical migrations, the tenant filter, `root_cause_open` for an open `auth_failed` and for a sync episode seen since the run started); the rule toggle of acceptance A2 through RLS; the tick reconciling before it imports; the database half of acceptance A3; after a fixed credential failure the previous-day readings of the account's stores are covered (alert and recovery only), a later day is not; a failure inside the cool-down after a delivered or still waiting recovery notice alerts again, one after an undelivered episode stays silent; a paused account, an opted-out store, a paused store account and a restarted watch end their episodes as `superseded` without a recovery notice |
 | `30_notify_digests.sql` | Digests: close times for known, unknown, closed, 05:00-start, past-midnight and Tokyo hours; shift state by business day; the settle rule (a run at the closing instant, 22:00 close with a 22:40 shift close at 23:05 and 23:10, a grace of 0, failed, master-data, other-store and out-of-range runs, the nightly, an open shift, a closed day); `due_digests` (one-store and two-store scopes, keys, members, channels, excluded destinations, store facts, the tick's count, a disabled rule, built digests, the deadline with an open shift, only the newest date, nothing older than a built date, a failed build waiting and retried, a narrowed destination, Tokyo with Ho Chi Minh City, a 01:00 close with a 05:00 day start, closed days with and without `skip_closed_days`, no history, the link guard); `complete_digest` idempotent and refusing bad keys, stores, triggers and fingerprints; `enqueue_digest_message` per destination; `fail_digest` back-off and `digest_failed` at the fifth failure, cleared once built |
 | `31_notify_access.sql` | Notification access for owner, unlimited manager, store-limited manager, staff, viewer, publisher, another tenant's owner and `anon`; hidden destination columns; function privileges of every phase 12 function; the restrictive consent policies and owner-only rule writes; owners writing rules and policies through RLS, the floor and the member consent floor on browser writes, managers refused; no browser write on the other new tables |
+| `33_theme_functions.sql` | Thematic report functions: catalogue checks; `range_totals` against `app.period_totals` and against `period_compare_by_store` for a month anchor, six ranges and the limits; `opening_productivity` with split and overnight hours, seats and RevPASH, against `metric_value`, null without hours, a range without sales; `hour_profile` hand-computed (empty hours inside the span, peak and dead shares, busy and quiet weekday groups, weekday shares), against the heatmap by hour and by weekday, a 05:00 day start, a tie, explicit and tenant thresholds, the limits and the row order |
+| `34_theme_access.sql` | Access to the phase 10 functions: two-tenant isolation, a store-limited member, a viewer, the publisher's defaults and empty rows, `anon` refused; `app.opening_hours_present` executable by the API roles, `app.opening_hours_known` and `app.touch_analytics_inputs` by none |
+| `35_mappings_and_catch_up.sql` | `report_settings` and `item_category_overrides`: the write matrix (unlimited owner, unlimited manager, store-limited owner and manager, staff, viewer, publisher, another tenant), `created_by` refused in another member's name, `updated_by` set by trigger on insert and update, the checks; the defaults of `app.store_report_settings`; `app.item_category_map`; the catch-up version and pending range moved by roles, overrides and fee rates, `analytics_catch_up_status` |
 
-The notification tests (26 onwards) build their own fixture tenants (`notify-it-pgtap-…`) and destinations on `_IT` secret names and pass a tenant filter to every scanning function. The analytics tests scope every count to the demo tenant, and the report tests to their own fixture tenants (and the demo tenant where they compare with the seed), so further tenants in the database do not change their outcome. The seed is synthetic and the tests create their own fixture users and tenants inside a rolled-back transaction.
+The notification tests (26 to 32) build their own fixture tenants (`notify-it-pgtap-…`), the phase 10 tests (33 onwards) theirs (`theme-pgtap-…`), and destinations on `_IT` secret names and pass a tenant filter to every scanning function. The analytics tests scope every count to the demo tenant, and the report tests to their own fixture tenants (and the demo tenant where they compare with the seed), so further tenants in the database do not change their outcome. The seed is synthetic and the tests create their own fixture users and tenants inside a rolled-back transaction.

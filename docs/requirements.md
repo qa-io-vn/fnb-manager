@@ -60,7 +60,7 @@ The terms used here (business date, store-day, control totals, verified day, dat
 |---|---|
 | [roadmap.md](roadmap.md) | Programme v1.1: tracks, 20 phases with deliverables, acceptance and owner actions, Track Z, gates, portability, costs, risks, open questions |
 | [status.md](status.md) | What is built and verified, and how to continue on another machine |
-| [decisions.md](decisions.md) | ADR-001 to ADR-029 (ADR-030 to ADR-033 are reserved for phase 12) |
+| [decisions.md](decisions.md) | ADR-001 to ADR-029 and ADR-034 to ADR-036 (ADR-030 to ADR-033 are reserved for phase 12) |
 | [schema.md](schema.md) | Field dictionary of the database, RLS model, business date, storage rule, pgTAP files |
 | [sync.md](sync.md) | Sync engine, incremental runner, Edge Function, schedule, CLI reference and runbook |
 | [web-app.md](web-app.md) | Web app contract: routes, layout, report card, data access, testing |

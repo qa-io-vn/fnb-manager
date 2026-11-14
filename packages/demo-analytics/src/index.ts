@@ -60,6 +60,8 @@ export {
 	isHolidayDay,
 	isTetWindowDay,
 } from "./excluded.js";
+export { hourProfile } from "./functions/hour-profile.js";
+export { hourWeekdayHeatmap } from "./functions/hour-weekday-heatmap.js";
 export { soldDates } from "./functions/item-summary.js";
 export {
 	isMetricValueId,
@@ -67,7 +69,11 @@ export {
 	type MetricValueArgs,
 	metricValue,
 } from "./functions/metric-value.js";
+export { openingHoursPresent } from "./functions/opening-hours.js";
+export { openingProductivity } from "./functions/opening-productivity.js";
 export { seriesBuckets } from "./functions/period-series.js";
+export { rangeTotals } from "./functions/range-totals.js";
+export { reportSettingsOf } from "./functions/report-settings-of.js";
 export {
 	type BaselineSample,
 	baselineOf,
@@ -145,9 +151,23 @@ export {
 	stddevSample,
 } from "./pg-numeric.js";
 export {
+	DEMO_STORE_PROFILES,
+	type DemoSettingsSnapshot,
+	DemoSettingsStore,
+	type DemoStoreProfile,
+	demoSettings,
+} from "./settings.js";
+export {
 	createDemoAnalyticsSource,
 	type DemoAnalyticsSource,
 	type DemoAnalyticsSourceOptions,
 	handlers,
 	reads,
 } from "./source.js";
+export {
+	createDemoReportSource,
+	type DemoReportSource,
+	type DemoReportSourceOptions,
+	themeHandlers,
+	themeReads,
+} from "./theme-source.js";

@@ -704,7 +704,7 @@ Versions are the ranges in the `package.json` files; `pnpm-lock.yaml` fixes the 
 
 ## 10. Architecture decisions
 
-The records are in [decisions.md](decisions.md). ADR-001 to ADR-026 are dated 2026-11-07 and ADR-027 to ADR-029 2026-11-08. ADR-030 to ADR-033 are reserved for the phase 12 decisions and will be written in step 12c; the design they record is already described in [schema.md](schema.md), "Notifications and alerts (phase 12)".
+The records are in [decisions.md](decisions.md). ADR-001 to ADR-026 are dated 2026-11-07 and ADR-027 to ADR-029 2026-11-08. ADR-030 to ADR-033 are reserved for the phase 12 decisions and will be written in step 12c; the design they record is already described in [schema.md](schema.md), "Notifications and alerts (phase 12)". ADR-034 (the design system) and ADR-035 and ADR-036 (thematic reports, report settings and mappings) are dated 2026-11-14.
 
 | ADR | Title | Status | Effect on the architecture |
 |---|---|---|---|

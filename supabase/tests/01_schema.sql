@@ -1,5 +1,5 @@
 begin;
-select plan(152);
+select plan(170);
 
 select has_schema('app', 'app schema exists');
 select has_function('app', 'current_user_tenant_ids', 'app.current_user_tenant_ids exists');
@@ -97,6 +97,8 @@ select has_table('public', 'strategy_reports', 'strategy_reports table exists');
 select has_table('public', 'consent_records', 'consent_records table exists');
 select has_table('public', 'data_subject_requests', 'data_subject_requests table exists');
 select has_table('public', 'outbound_messages', 'outbound_messages table exists');
+select has_table('public', 'report_settings', 'report_settings table exists');
+select has_table('public', 'item_category_overrides', 'item_category_overrides table exists');
 
 select col_type_is('public', 'tenant_members', 'store_ids', 'uuid[]', 'tenant_members.store_ids is uuid[]');
 select col_type_is('public', 'payment_methods', 'kind', 'payment_kind', 'payment_methods.kind uses the enum');
@@ -156,6 +158,23 @@ select col_type_is('public', 'outbound_messages', 'cost_amount', 'numeric(14,2)'
 select col_is_null('public', 'outbound_messages', 'consent_record_id', 'outbound_messages.consent_record_id allows null');
 select has_trigger('public', 'data_subject_requests', 'data_subject_requests_fill_deadlines', 'data_subject_requests fills its deadlines before insert');
 select has_trigger('public', 'data_subject_requests', 'data_subject_requests_set_updated_at', 'data_subject_requests sets updated_at');
+
+select col_type_is('public', 'tenants', 'analytics_inputs_version', 'bigint', 'tenants.analytics_inputs_version is bigint');
+select col_not_null('public', 'tenants', 'analytics_inputs_version', 'tenants.analytics_inputs_version is not null');
+select col_default_is('public', 'tenants', 'analytics_inputs_version', 0, 'tenants.analytics_inputs_version starts at 0');
+select has_column('public', 'tenants', 'analytics_inputs_changed_at', 'tenants.analytics_inputs_changed_at exists');
+select col_type_is('public', 'tenants', 'analytics_pending_from', 'date', 'tenants.analytics_pending_from is date');
+select col_type_is('public', 'tenants', 'analytics_pending_to', 'date', 'tenants.analytics_pending_to is date');
+select col_default_is('public', 'item_costs', 'updated_by', 'auth.uid()', 'item_costs.updated_by defaults to auth.uid()');
+select col_default_is('public', 'payment_fee_rates', 'updated_by', 'auth.uid()', 'payment_fee_rates.updated_by defaults to auth.uid()');
+select col_default_is('public', 'item_type_roles', 'updated_by', 'auth.uid()', 'item_type_roles.updated_by defaults to auth.uid()');
+select col_default_is('public', 'targets', 'updated_by', 'auth.uid()', 'targets.updated_by defaults to auth.uid()');
+select col_type_is('public', 'report_settings', 'menu_popularity_factor', 'numeric(4,3)', 'report_settings.menu_popularity_factor is numeric(4,3)');
+select col_default_is('public', 'report_settings', 'cash_abs_threshold', '50000', 'report_settings.cash_abs_threshold defaults to 50000');
+select has_trigger('public', 'item_type_roles', 'item_type_roles_touch_analytics_inputs', 'item_type_roles moves the analytics catch-up');
+select has_trigger('public', 'item_category_overrides', 'item_category_overrides_touch_analytics_inputs', 'item_category_overrides moves the analytics catch-up');
+select has_trigger('public', 'payment_fee_rates', 'payment_fee_rates_touch_analytics_inputs', 'payment_fee_rates moves the analytics catch-up');
+select has_trigger('public', 'report_settings', 'report_settings_set_updated_by', 'report_settings sets updated_by');
 
 select * from finish();
 rollback;

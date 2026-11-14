@@ -31,6 +31,13 @@ export {
 	zonedInstant,
 } from "./rules/business-date.js";
 export {
+	classifyModifier,
+	type ModifierFamily,
+	ROLE_SUGGESTION_TERMS,
+	type SuggestedItemRole,
+	suggestRole,
+} from "./rules/item-role.js";
+export {
 	DEFAULT_MONEY_TOLERANCE,
 	MONEY_DECIMALS,
 	moneyEquals,

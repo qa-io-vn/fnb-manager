@@ -331,3 +331,5 @@ export {
 	type RpcClient,
 	type RpcError,
 } from "./source/source.js";
+
+export * from "./themes/index.js";

@@ -2,7 +2,7 @@
 
 Purpose and audience: the canonical, POS-agnostic data model that every other package speaks, and the business rules they share (business date, money, payment kinds, sizes, sale arithmetic, the Vietnam holiday calendar). For developers who change the model or a rule, or who need to know how a number is defined before it reaches the database.
 
-Last updated 2026-11-12
+Last updated 2026-11-14
 
 ## Main exports
 
@@ -14,6 +14,7 @@ Last updated 2026-11-12
 | Money | `roundMoney`, `sumMoney`, `moneyEquals`, `MONEY_DECIMALS`, `DEFAULT_MONEY_TOLERANCE` |
 | Payment kinds | `classifyPaymentKind` with `DEFAULT_PAYMENT_KIND_RULES` (Vietnamese defaults; exact-name overrides per tenant win first) |
 | Sizes | `parseSizeSuffix` with `DEFAULT_SIZE_LABELS` (S, M, L, XL, XXL) |
+| Item roles and modifiers | `suggestRole(itemTypeName)` (a suggested role, `drink`, `topping`, `snack` or `food`, from Vietnamese item-type names; the earliest term wins, then the longest; short terms match whole words) with `ROLE_SUGGESTION_TERMS`, and `classifyModifier(name)` (`sugar`, `ice` or `other`); suggestions only, saved by the owner in Settings |
 | Sale arithmetic | `lineNetTotal`, `paymentTotal`, `expectedNetFromLines`, `expectedNetFromComponents`, `itemQuantity`, `countsAsItem` |
 | Adjustments | `adjustmentKey`, the de-duplication key of a POS adjustment |
 | Vietnam calendar | `VIETNAM_HOLIDAYS`, `isHolidayDate`, `isTetWindowDate`, `isExcludedDay` |
@@ -31,7 +32,7 @@ pnpm --filter @fnb/core run test --maxWorkers=2
 pnpm --filter @fnb/core typecheck
 ```
 
-Unit tests in `test/unit` cover the business date (time zones, day starts after midnight, wall-clock conversion), money, payment-kind classification, size parsing, the adjustment key and the holiday calendar.
+Unit tests in `test/unit` cover the business date (time zones, day starts after midnight, wall-clock conversion), money, payment-kind classification, size parsing, role suggestions and modifier families, the adjustment key and the holiday calendar.
 
 ## Read more
 
