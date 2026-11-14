@@ -100,6 +100,13 @@ export async function expectLastColumnReachable(
 	await expectPageNeverScrollsSideways(page);
 }
 
+async function scrollTableToStart(tableScroll: Locator): Promise<void> {
+	await tableScroll.evaluate((element) => {
+		const scroller = element.firstElementChild;
+		if (scroller instanceof HTMLElement) scroller.scrollLeft = 0;
+	});
+}
+
 export async function expectEveryTableReachableOnPhone(
 	page: Page,
 ): Promise<void> {
@@ -107,7 +114,9 @@ export async function expectEveryTableReachableOnPhone(
 	const count = await tables.count();
 	for (let index = 0; index < count; index++) {
 		const table = tables.nth(index);
-		if (await table.isVisible()) await expectLastColumnReachable(page, table);
+		if (!(await table.isVisible())) continue;
+		await expectLastColumnReachable(page, table);
+		await scrollTableToStart(table);
 	}
 }
 
