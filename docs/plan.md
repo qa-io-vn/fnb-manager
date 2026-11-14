@@ -117,6 +117,13 @@ A step is done when all of these hold:
 
 The work is then ready for the owner, who reviews and commits it (roadmap principle 12). Nothing leaves the build machine before that.
 
+**Every GitHub issue meets this bar before it closes** (owner rule, 2026-11-14):
+
+- **All tests pass.** `pnpm verify` runs every check of item 4 that the build machine allows, and every one is green. Nothing CI runs is skipped, no assertion is weakened, and no retry, sleep or longer timeout is added to reach green. After the push, CI is green on the commit. A failure outside the issue's scope is fixed first or filed as its own issue; it never closes silently.
+- **Specs adapted.** Every document the change touches is updated in the same change: the requirement's statement, acceptance, status and trace in [requirements.md](requirements.md); cases, suite counts and the trace matrix in [test-plan.md](test-plan.md); the build spec; an ADR in [decisions.md](decisions.md) for every decision; [status.md](status.md) and the roadmap's status; and the user-facing documents ([user-guide.md](user-guide.md), [web-app.md](web-app.md), [api.md](api.md), [schema.md](schema.md), [operations.md](operations.md)). Every feature a user can see has its section in the user guide with screenshots taken from the demo by `pnpm --filter @fnb/web docs:screenshots`, and a change to a screen retakes its screenshots in the same change.
+- **Docs followed.** The change follows this plan's working rules (section 2.6), [development.md](development.md), [web-app.md](web-app.md), [security.md](security.md) and the ADRs. A departure needs an ADR before the code.
+- **Traced.** The commit names its issue (`Closes #n`), the issue lists its requirement ids and the tests that prove them, and the trace columns of the requirements and the test plan name those tests.
+
 ```mermaid
 flowchart LR
     S[Spec section] --> B[Build]
@@ -148,8 +155,9 @@ The step gate is the green verdict above. The programme gates are the roadmap's 
 - Run the `fnb` CLI with `CI=1` whenever its output is shared: it then names no shop.
 - No shop name, account e-mail, chat id, key or revenue figure goes into a tracked file. Run `node scripts/check-public-safe.mjs` before every commit. Shop-specific material stays in `docs/private/`.
 - Never print or copy credential values from `.env` or `apps/web/.env.local`.
-- Commits, pushes, deploys and anything else that leaves the build machine are the owner's to trigger.
+- Commits, pushes, deploys and anything else that leaves the build machine are the owner's to trigger, directly or by an explicit authorization. An authorized push carries only issues that meet the bar of section 2.4, never rewrites history and never forces.
 - The build machine is shared by work running in parallel: long test runs belong to the verifier.
+- Several working sessions can share one working tree and one local stack. Each commits only its own files, by explicit path (never `git add -A`), lists pending migrations before writing one, applies only its own, and starts no build in another stream without telling it.
 
 ## 3. Milestones
 

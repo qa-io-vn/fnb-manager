@@ -13,7 +13,8 @@
 		"check:bundle": "node scripts/check-bundle.mjs",
 		"check:size": "node scripts/check-size.mjs",
 		"e2e:install": "playwright install chromium",
-		"icons:render": "node scripts/render-icons.mjs"
+		"icons:render": "node scripts/render-icons.mjs",
+		"docs:screenshots": "playwright test -c playwright.user-guide.config.ts"
 	},
 	"dependencies": {
 		"@fnb/connector-core": "workspace:^",

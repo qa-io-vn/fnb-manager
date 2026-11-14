@@ -144,6 +144,7 @@ Run everything from the repository root.
 
 | What | Command | Notes |
 |---|---|---|
+| Every check before a push | `pnpm verify` | `scripts/verify.sh` runs, in order and stopping at the first failure, every check of [plan.md](plan.md) section 2.4 that the build machine allows: lint, typecheck, unit tests, the import map and Deno checks, the API reference, pgTAP, the web build, every end-to-end project, gitleaks and the public-safety scan. It needs the local stack running and never resets it. Set `E2E_PORT_OFFSET` when another run uses the default ports |
 | Install | `pnpm install` | CI uses `pnpm install --frozen-lockfile` |
 | Lint | `pnpm lint` | `biome check .`; Markdown is not linted |
 | Format | `pnpm format` | `biome format --write .`; `pnpm exec biome check --write .` also applies safe lint fixes and sorts imports |
@@ -157,7 +158,8 @@ Run everything from the repository root.
 | Parity on Postgres | `DATABASE_URL=<local database URL> pnpm --filter @fnb/demo-analytics test:parity:postgres` | refuses a database that holds a tenant whose slug does not start with `demo-` or `parity-`; CI runs it on a fresh stack |
 | Playwright, once | `pnpm --filter @fnb/web e2e:install` | installs the Chromium build Playwright needs |
 | Playwright, one spec | `E2E_PORT_OFFSET=10 pnpm --filter @fnb/web exec playwright test --project=demo e2e/demo/report-day.spec.ts` | `--project` starts only that project's server |
-| Playwright, everything | `pnpm --filter @fnb/web test:e2e` | 63 tests in 9 files (listed on 2026-11-12), one worker; long, so prefer one spec on a shared machine |
+| Playwright, everything | `pnpm --filter @fnb/web test:e2e` | 67 tests in 10 files (listed on 2026-11-14), one worker; long, so prefer one spec on a shared machine |
+| User-guide screenshots | `pnpm --filter @fnb/web docs:screenshots` | takes every screenshot of [user-guide.md](user-guide.md) from the demo at a fixed clock into `docs/user-guide/`, and the sign-in screens from a build pointed at an unreachable backend, so no real data can appear; retake them whenever a screen changes |
 | Build every package | `pnpm build` | `tsc -p tsconfig.build.json` into each `dist/` (gitignored), plus the web build; packages are consumed as TypeScript source, so nothing needs building to run |
 | Web build | `pnpm --filter @fnb/web build` | `vite build`, then `scripts/check-bundle.mjs` and `scripts/check-size.mjs` |
 | Pages demo build | `VITE_BASE_PATH=/fnb-manager/ VITE_SUPABASE_URL= VITE_SUPABASE_PUBLISHABLE_KEY= pnpm --filter @fnb/web build` | empty variables in the environment win over `apps/web/.env.local`; rebuild the default `dist` afterwards |

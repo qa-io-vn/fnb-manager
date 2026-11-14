@@ -1,8 +1,10 @@
 # User guide
 
-Purpose and audience: what the FNB Manager app shows and how to read it, for the owner and the store managers. The app speaks Vietnamese by default; this guide is in English and quotes the Vietnamese labels exactly as the app shows them, with the app's own English label in brackets where it helps. It describes the app as built and verified locally on 2026-11-12; parts that are designed or planned say so.
+Purpose and audience: what the FNB Manager app shows and how to read it, for the owner and the store managers. The app speaks Vietnamese by default; this guide is in English and quotes the Vietnamese labels exactly as the app shows them, with the app's own English label in brackets where it helps. It describes the app as built and verified on 2026-11-14; parts that are designed or planned say so.
 
-Last updated 2026-11-12
+The screenshots come from the demo, so they show the sample stores "Cửa hàng mẫu 1" and "Cửa hàng mẫu 2" and generated numbers, never a real shop. They are taken on 4 November 2026 at 12:30 in Vietnam, in Vietnamese unless a caption says otherwise, and are retaken whenever a screen changes (`pnpm --filter @fnb/web docs:screenshots`).
+
+Last updated 2026-11-14
 
 ## What the app is for
 
@@ -39,6 +41,10 @@ flowchart LR
 - "Tài khoản này chưa thuộc chủ sở hữu nào…" means the login exists but has no access yet; ask the owner to add you.
 - On the local app, reset e-mails do not reach a real inbox: they land in the local mail catcher of the build machine (`http://127.0.0.1:54324`). On the cloud app they need the e-mail sender the owner sets up at go-live.
 
+| Đăng nhập (Sign in) | Quên mật khẩu? (Forgot your password?) |
+|---|---|
+| ![The sign-in screen on a phone: E-mail and Mật khẩu fields, the Đăng nhập button and the Quên mật khẩu? link](user-guide/sign-in-phone.png) | ![The forgotten-password screen on a phone: an E-mail field and the Gửi liên kết button](user-guide/forgot-password-phone.png) |
+
 ## Finding your way
 
 The navigation sits at the bottom on a phone and on the left on a wide screen.
@@ -56,6 +62,15 @@ The navigation sits at the bottom on a phone and on the left on a wide screen.
 - **VI** is the default. **EN** switches every label, sentence and number format to English. The browser remembers the choice.
 - When a new version is published, a prompt says "Có phiên bản mới — tải lại"; tap it to reload.
 - The app can be added to a phone's home screen (as "FNB Manager", or "FNB" where space is short) and then opens without the browser bar. It does not work offline.
+- The app follows the light or dark setting of the phone or computer.
+
+![Hôm nay on a computer: the navigation on the left, the language switch and store choice in the top bar, the demo banner above the cards](user-guide/today-computer.png)
+
+| On a phone, the controls fold into one summary button | Tapped open | Dark setting |
+|---|---|---|
+| ![Hôm nay on a phone with the navigation at the bottom](user-guide/today-phone.png) | ![The phone's summary button opened, showing the store choice and the language switch](user-guide/controls-phone.png) | ![Hôm nay on a phone in the dark colour scheme](user-guide/today-dark-phone.png) |
+
+![Hôm nay in English after pressing EN](user-guide/today-english.png)
 
 ## Choosing stores
 
@@ -64,6 +79,8 @@ The navigation sits at the bottom on a phone and on the left on a wide screen.
 - With several stores, every figure is the sum of the stores before any ratio is taken. The average ticket of two stores is their total net revenue divided by their total invoices, not the average of two averages.
 - You see only the stores your role covers. If your login belongs to more than one business, a "Chủ sở hữu" (Owner) list appears to switch between them.
 - The browser remembers the choice, and report links carry it.
+
+![The open store choice on a computer, with "Tất cả" and the two sample stores ticked](user-guide/store-choice.png)
 
 ## Hôm nay (Today)
 
@@ -93,6 +110,8 @@ Hôm nay has two sections, each with a badge that says whether the day is reconc
 - Reports stop at the last complete business day. Today belongs to Hôm nay: a link to today, or to a week, month or year that starts today, shows the latest complete period with "Ngày hôm nay chưa kết thúc; báo cáo dừng ở ngày …" and a link "Xem Hôm nay". A later period shows the latest one with "Kỳ này chưa bắt đầu; đang hiển thị kỳ gần nhất đến hết ngày …".
 - Dates go back to 1 January 2023.
 
+![The four report tabs and the period navigator: Kỳ trước, the period label, Kỳ sau and Chọn ngày](user-guide/period-navigator.png)
+
 ### Reading a card
 
 Every report is a stack of cards, and every card has the same parts.
@@ -108,11 +127,13 @@ Every report is a stack of cards, and every card has the same parts.
 | "Giải thích chỉ số" (About these numbers) | the formula, the level of detail and the conventions of each metric on the card |
 | Markers | "chưa đối soát" (not reconciled), "đang cập nhật" (updating), "tạm tính" (provisional), "dữ liệu mẫu" (sample data), "Đang tải…" (loading) |
 
+![The Doanh thu thuần card of Ngày: the headline, three comparison chips, the change line, the sentence, the chart by store, the table with Tải CSV, and Giải thích chỉ số](user-guide/card-anatomy.png)
+
 When a comparison has no number, the chip says why: "chưa có dữ liệu năm trước" (the stores have no data from last year), "cửa hàng mới, chưa đủ 4 tuần" (a new store, not 4 weeks yet), "đang tích lũy dữ liệu" (still collecting data), "chưa có số để so sánh" (nothing to compare with), "chưa thiết lập" (not set up).
 
 ### "Cùng cửa hàng": comparing like with like
 
-When only some of the selected stores have sales history back to the reference period, the comparison uses only those stores and says so: "so với cùng thứ năm trước · cùng cửa hàng (1/2)" means the comparison with the same weekday last year covers one of the two selected stores. The sentence then names both figures: "Mức so sánh chỉ tính 1/2 cửa hàng có đủ dữ liệu: … so với …". A store that opened later shows "chưa có dữ liệu năm trước" (or "kỳ trước") in its own row instead of a change. The same-weekday baseline is never like for like.
+When only some of the selected stores have sales history back to the reference period, the comparison uses only those stores and says so: "so với cùng thứ năm trước · cùng cửa hàng (1/2)" means the comparison with the same weekday last year covers one of the two selected stores. The sentence then names both figures: "Mức so sánh chỉ tính 1/2 cửa hàng có đủ dữ liệu: … so với …". A store that opened later shows "chưa có dữ liệu năm trước" (or "kỳ trước") in its own row instead of a change. The same-weekday baseline is never like for like. In the card above, the third chip compares with last year using "cùng cửa hàng (1/2)": the young sample store has no sales from last year.
 
 ### The sentences
 
@@ -140,6 +161,8 @@ Every template, with its English meaning, is listed for the owner's wording revi
 
 More detail: [reports/ngay.md](reports/ngay.md).
 
+![The top of Ngày on a computer](user-guide/report-ngay.png)
+
 ### Tuần (Báo cáo tuần, Weekly report)
 
 | Card | What it shows | Compared with |
@@ -154,6 +177,8 @@ More detail: [reports/ngay.md](reports/ngay.md).
 | Ngày tốt nhất và kém nhất (Best and worst days) | the best and the worst day against each day's 8-week same-weekday median; a holiday is pointed out | none |
 
 More detail: [reports/tuan.md](reports/tuan.md).
+
+![The top of Tuần on a computer](user-guide/report-tuan.png)
 
 ### Tháng (Báo cáo tháng, Monthly report)
 
@@ -172,6 +197,8 @@ More detail: [reports/tuan.md](reports/tuan.md).
 
 More detail: [reports/thang.md](reports/thang.md).
 
+![The top of Tháng on a computer](user-guide/report-thang.png)
+
 ### Năm (Báo cáo năm, Yearly report)
 
 | Card | What it shows | Compared with |
@@ -185,6 +212,8 @@ More detail: [reports/thang.md](reports/thang.md).
 | Từ ngày khai trương (Since opening) | for a store that opened during the last year, its average daily net revenue week by week since opening | its first week; shown only while a selected store is that young |
 
 More detail: [reports/nam.md](reports/nam.md).
+
+![The top of Năm on a computer](user-guide/report-nam.png)
 
 ### Links to a given day, week, month or year
 
@@ -202,6 +231,8 @@ Choose the stores first; the link then ends with `&store=…`. Opening such a li
 ### Printing
 
 Use the browser's own print command (Ctrl+P or ⌘P on a computer, Share then Print on a phone). The app prints on A4 portrait, black on white, one card per row, without the navigation, banners and buttons, and starts with a line that names the report, the period, the stores and the last day included. "Giải thích chỉ số" prints only when it is open.
+
+![The top of a printed Ngày: the summary line, then the cards black on white without navigation or buttons](user-guide/report-print.png)
 
 ### CSV downloads
 
@@ -229,12 +260,16 @@ The demo shows the app with sample numbers and no login.
 
 - The young store shows the states a new store goes through: no data from last year, a baseline still building, and the "Từ ngày khai trương" card.
 - The first screen can take a few seconds while the browser generates the sample days.
-- Before go-live the project's Pages address serves the demo. It is rebuilt from each published version; on 2026-11-12 the published version predates the reports, so Báo cáo there still says "Sắp có" until the next version is published.
+- Before go-live the project's Pages address serves the demo. It is rebuilt from each published version; since 2026-11-13 it includes the four reports.
+
+![The demo banner](user-guide/demo-banner.png)
 - After go-live the Pages address serves the real app. "Xem bản demo" on the login page opens the demo for that browser session, and "Thoát bản demo" in the top bar returns to the login page.
 
 ## What is coming next
 
-No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.md](status.md) the progress.
+No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.md](status.md) the progress. A page that is not built yet looks like this:
+
+![The Kế hoạch page saying Sắp có and naming the roadmap phase that brings it](user-guide/coming-soon.png)
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
 - **Thematic reports** ("Chủ đề", phase 10, designed at roadmap level): Doanh thu & xu hướng; Giờ & ngày trong tuần; Thực đơn; Thanh toán & tiền mặt; then Khuyến mãi & giảm giá; Ca & két tiền; So sánh cửa hàng; Chất lượng dữ liệu.
