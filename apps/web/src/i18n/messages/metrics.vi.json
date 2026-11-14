@@ -90,7 +90,7 @@
 	"metric.cash_variance_zscore.label": "Điểm z chênh lệch tiền mặt",
 	"metric.cash_variance_zscore.formula": "(Chênh lệch − chênh lệch trung bình của các ca 56 ngày trước) ÷ độ lệch chuẩn của chúng.",
 	"metric.cash_variance_zscore.grain": "Ca.",
-	"metric.cash_variance_zscore.convention": "Cần ít nhất 3 ca trước; ca bị đánh dấu khi vượt 2, hoặc vượt ngưỡng tuyệt đối 50.000 ₫ hay ngưỡng tương đối 0,5 % tiền mặt thu.",
+	"metric.cash_variance_zscore.convention": "Cần ít nhất 3 ca trước; ca bị đánh dấu khi vượt 2, hoặc vượt ngưỡng tuyệt đối hay tương đối trong Cài đặt (mặc định 50.000 ₫ và 0,5 % tiền mặt thu).",
 	"metric.hourly_net.label": "Doanh thu thuần theo giờ",
 	"metric.hourly_net.formula": "Tổng số tiền thuần theo giờ bán, tính theo giờ địa phương của cửa hàng.",
 	"metric.hourly_net.grain": "Cửa hàng-giờ.",

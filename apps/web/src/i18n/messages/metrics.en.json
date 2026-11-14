@@ -90,7 +90,7 @@
 	"metric.cash_variance_zscore.label": "Cash variance z-score",
 	"metric.cash_variance_zscore.formula": "(Variance − mean variance of the store's shifts in the previous 56 days) ÷ their standard deviation.",
 	"metric.cash_variance_zscore.grain": "Shift.",
-	"metric.cash_variance_zscore.convention": "Needs at least 3 earlier shifts; a shift is flagged over 2, or over the absolute 50,000 VND or relative 0.5 % of cash sales thresholds.",
+	"metric.cash_variance_zscore.convention": "Needs at least 3 earlier shifts; a shift is flagged over 2, or over the absolute or relative threshold set in Settings (by default 50,000 VND and 0.5 % of cash sales).",
 	"metric.hourly_net.label": "Net revenue by hour",
 	"metric.hourly_net.formula": "Sum of the net amount by hour of sale, in the store's local time.",
 	"metric.hourly_net.grain": "Store-hour.",

@@ -27,7 +27,7 @@ export const cashMetrics = [
 		},
 		unit: "z",
 		formula:
-			"(variance − mean variance of the store's shifts in the trailing 56 days) ÷ their sample standard deviation; needs 3 shifts and a non-zero spread; flagged over 2, together with the absolute (50,000 VND) and relative (0.5 % of cash sales) thresholds",
+			"(variance − mean variance of the store's shifts in the trailing 56 days) ÷ their sample standard deviation; needs 3 shifts and a non-zero spread; flagged over 2, together with the tenant's absolute and relative thresholds from `report_settings` (by default 50,000 VND and 0.5 % of cash sales)",
 		grains: ["shift"],
 		direction: "lower",
 		directionOnAbsoluteValue: true,

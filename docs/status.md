@@ -42,7 +42,7 @@ Two streams can run side by side because they touch different files. The web str
 ### Web stream
 
 1. **Phase 9, periodic reports: done.** Report numbers come from the SQL functions through RPC, and the demo runs a parity-tested TypeScript port (ADR-029). `docs/reports/` documents each report, and `docs/reports/cau-van-bao-cao.md` lists every Vietnamese sentence for the owner's wording review.
-2. **Phase 10a and 10b, thematic reports, settings and manual data (3 + 3 d).** The build spec is final (`docs/private/phase-10-build-spec.md`) and split into the issues under #21 and #22. Done in 10a: the settings and mapping tables, the range model, the revenue and hours functions with their demo ports, the Doanh thu and Giờ & ngày pages, and the menu functions (`menu_engineering`, `item_margins`, `item_attach`, effective categories in `item_summary`). Next: their demo ports, Thực đơn, Thanh toán and Settings.
+2. **Phase 10a and 10b, thematic reports, settings and manual data (3 + 3 d).** The build spec is final (`docs/private/phase-10-build-spec.md`) and split into the issues under #21 and #22. Done in 10a: the settings and mapping tables, the range model, the revenue and hours functions with their demo ports, the Doanh thu and Giờ & ngày pages, the menu functions (`menu_engineering`, `item_margins`, `item_attach`, effective categories in `item_summary`), `basket_pairs`, `modifier_summary` and the cash thresholds of `shift_review` and `cash_variance_flags` read from the settings. Next: their demo ports, Thực đơn, Thanh toán and Settings.
 3. **The web parts of phases 11 and 12:** export and data-pack buttons, the paste box, the Kế hoạch tab and KPI follow-up, Settings → Cảnh báo and the Bản tin panel.
 
 ### Backend stream

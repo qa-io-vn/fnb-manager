@@ -691,7 +691,7 @@ From the run of 2026-11-14 at about 10:20, in every package. Skipped files and t
 
 ### 8.2 pgTAP files
 
-Planned tests per file, read from each file's `select plan(…)` on 2026-11-14 after migration `theme_menu_functions`. Files 33 to 35 are phase 10a's.
+Planned tests per file, read from each file's `select plan(…)` on 2026-11-14 after migration `theme_basket_and_cash_functions`. Files 33 to 35 are phase 10a's.
 
 | File | Plan | File | Plan |
 |---|---:|---|---:|
@@ -709,14 +709,14 @@ Planned tests per file, read from each file's `select plan(…)` on 2026-11-14 a
 | `12_consent_and_legal.sql` | 57 | `29_notify_alerts.sql` | 169 |
 | `13_analytics_schema.sql` | 72 | `30_notify_digests.sql` | 84 |
 | `14_analytics_refresh.sql` | 45 | `31_notify_access.sql` | 64 |
-| `15_analytics_queries.sql` | 63 | `33_theme_functions.sql` | 60 |
-| `16_analytics_menu_and_cash.sql` | 27 | `34_theme_access.sql` | 33 |
-| `17_analytics_access.sql` | 39 | `35_mappings_and_catch_up.sql` | 34 |
-| | | **34 files** | **1,793** |
+| `15_analytics_queries.sql` | 63 | `33_theme_functions.sql` | 74 |
+| `16_analytics_menu_and_cash.sql` | 27 | `34_theme_access.sql` | 45 |
+| `17_analytics_access.sql` | 39 | `35_mappings_and_catch_up.sql` | 42 |
+| | | **34 files** | **1,827** |
 
-By phase (files grouped by the phase that created them; 01, 03 and 12 were extended in 12a, 01 and 03 again in 10a): phase 2, 385; phase 7, 153; phase 8, 291; phase 9, 143; phase 10a, 127; phase 12, 694.
+By phase (files grouped by the phase that created them; 01, 03 and 12 were extended in 12a, 01 and 03 again in 10a): phase 2, 385; phase 7, 153; phase 8, 291; phase 9, 143; phase 10a, 161; phase 12, 694.
 
-Full run on 2026-11-14 after migration `theme_menu_functions`: 1,793 of 1,793 in 34 files. Earlier full runs: 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
+Full run on 2026-11-14 after migration `theme_basket_and_cash_functions`: 1,827 of 1,827 in 34 files. Earlier full runs: 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
 
 ### 8.3 Playwright specs
 
@@ -808,7 +808,7 @@ Coverage of the 376 requirements on 2026-11-14, by area.
 | FR-DQ | 10 | – | 2 | 1 | 13 |
 | FR-ANA | 15 | – | 1 | 1 | 17 |
 | FR-REP | 17 | 2 | – | 2 | 21 |
-| FR-THM | 2 | 3 | 4 | – | 9 |
+| FR-THM | 2 | 4 | 3 | – | 9 |
 | FR-SET | 1 | 7 | 3 | – | 11 |
 | FR-EXP | – | 2 | 8 | – | 10 |
 | FR-STR | 1 | – | 9 | – | 10 |
@@ -818,7 +818,7 @@ Coverage of the 376 requirements on 2026-11-14, by area.
 | FR-STF | – | – | 23 | – | 23 |
 | FR-LOY | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | 7 | – | 12 |
-| **FR total** | **135** | **29** | **118** | **14** | **296** |
+| **FR total** | **135** | **30** | **117** | **14** | **296** |
 | NFR-SEC | 6 | 6 | 2 | 1 | 15 |
 | NFR-PRV | 5 | 1 | 1 | – | 7 |
 | NFR-PERF | 4 | 4 | 1 | – | 9 |
@@ -831,18 +831,18 @@ Coverage of the 376 requirements on 2026-11-14, by area.
 | NFR-OBS | 3 | 1 | – | – | 4 |
 | NFR-HYG | 4 | 1 | 1 | – | 6 |
 | **NFR total** | **47** | **22** | **9** | **2** | **80** |
-| **All** | **182** | **51** | **127** | **16** | **376** |
+| **All** | **182** | **52** | **126** | **16** | **376** |
 
 ```mermaid
 pie showData
     title Coverage of the requirements on 2026-11-14
     "covered" : 182
-    "partial" : 51
-    "planned" : 127
+    "partial" : 52
+    "planned" : 126
     "owner check" : 16
 ```
 
-Of the 238 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 39 partial, 1 planned and 16 owner checks. Of the 138 that are designed or planned, 126 have no test yet and 12 are partly held by tests of the database rules they rest on.
+Of the 238 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 39 partial, 1 planned and 16 owner checks. Of the 138 that are designed or planned, 125 have no test yet and 13 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -955,7 +955,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 | FR-ANA-08 | Median same-weekday baseline | Must | verified locally | `pgtap:15_analytics_queries`, `demo-analytics:parity/core-functions`, `web:metrics/today` | covered |
 | FR-ANA-09 | Benchmark forecasts with tracked error | Must | verified locally | `pgtap:15_analytics_queries`, `demo-analytics:parity/forecasts` | covered |
 | FR-ANA-10 | Exact ticket decomposition | Must | verified locally | `reports:unit/decomposition-and-narrative` | covered |
-| FR-ANA-11 | Query functions | Must | verified locally | `pgtap:15_analytics_queries`, `pgtap:16_analytics_menu_and_cash`, `demo-analytics:parity/item-velocity`, `pgtap:33_theme_functions` | covered |
+| FR-ANA-11 | Query functions | Must | verified locally | `pgtap:15_analytics_queries`, `pgtap:16_analytics_menu_and_cash`, `demo-analytics:parity/item-velocity`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up` | covered |
 | FR-ANA-12 | Report functions with limits | Must | verified locally | `pgtap:13_analytics_schema`, `pgtap:22_report_functions`, `pgtap:23_report_access`, `reports:unit/rpc-source`, `pgtap:33_theme_functions`, `pgtap:34_theme_access` | covered |
 | FR-ANA-13 | Parity of the browser port | Must | verified locally | `demo-analytics:parity/*` (7 files), CI `database` job | covered |
 | FR-ANA-14 | Benchmark context kept apart | Should | verified locally | `metrics:consistency/document` | covered |
@@ -996,7 +996,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 | FR-THM-01 | Doanh thu & xu hướng | Should | verified locally | `pgtap:33_theme_functions`, `demo-analytics:parity/theme-revenue-hours`, `demo-analytics:themes/revenue.smoke`, `reports:unit/themes/definition`, `e2e:demo/theme-doanh-thu`, `e2e:live/themes` | covered |
 | FR-THM-02 | Giờ & ngày trong tuần | Should | built | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `demo-analytics:parity/theme-revenue-hours`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-gio-ngay`, `e2e:live/themes` | partial |
 | FR-THM-03 | Thực đơn | Should | in build | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `pgtap:35_mappings_and_catch_up`; page planned | partial |
-| FR-THM-04 | Thanh toán & tiền mặt | Should | designed | planned | planned |
+| FR-THM-04 | Thanh toán & tiền mặt | Should | designed | `pgtap:35_mappings_and_catch_up` (cash thresholds from the settings); page planned | partial |
 | FR-THM-05 | Range presets | Could | verified locally | `reports:unit/themes/range`, `e2e:demo/theme-doanh-thu` | covered |
 | FR-THM-06 | Khuyến mãi & giảm giá | Should | designed | planned | planned |
 | FR-THM-07 | Ca & két tiền | Should | designed | planned | planned |
@@ -1209,7 +1209,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| FR-POR-01 | Configuration over code | Must | verified locally | `scripts/check-public-safe.mjs`, `e2e:demo/demo` | covered |
+| FR-POR-01 | Configuration over code | Must | verified locally | `scripts/check-public-safe.mjs`, `e2e:demo/demo`, `pgtap:35_mappings_and_catch_up` | covered |
 | FR-POR-02 | Another store or account | Must | verified locally | `jobs:integration/local-stack`, `sync:unit/master-data` | covered |
 | FR-POR-03 | Another POS | Must | built | conformance suite (`@fnb/connector-core/conformance`) | partial |
 | FR-POR-04 | Onboarding wizard | Should | planned | planned | planned |
@@ -1363,7 +1363,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 
 Each requirement below has no test yet. They are grouped by the phase that builds them; the planned test is the test design this plan commits to. Phases 10 and 11 follow their roadmap acceptance lines, because their detailed design is pending; Tracks B, C and D are at roadmap level.
 
-127 requirements in 7 groups.
+126 requirements in 7 groups.
 
 #### Open items of phases 1 to 9 (5)
 
@@ -1375,12 +1375,11 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | NFR-MNT-07 | Canonical column-name lint | P2, P4 | A lint that fails when a POS field name appears outside `raw` in the canonical schema; owner decision D4 (request R-F03). |
 | NFR-HYG-06 | Preflight log lint | P1 | A preflight check that fails a job printing a structured secret; masking at job start covers the risk today (request R-F03). |
 
-#### Phase 10: thematic reports, settings, manual data (10)
+#### Phase 10: thematic reports, settings, manual data (9)
 
 | ID | Requirement | Phase | Planned test |
 |---|---|---|---|
 | FR-DQ-12 | Data-quality page | P10b | A live Playwright spec on the seeded stack: the page flags the coffee store, whose seeded e-invoice status is `not_configured`; unit tests for each flag; axe and 360 px as on every page. |
-| FR-THM-04 | Thanh toán & tiền mặt | P10a | Unit tests of the payment cards, a Playwright spec, and the owner's comparison of the payment mix with the private reference window (OC-03). |
 | FR-THM-06 | Khuyến mãi & giảm giá | P10b | Unit or pgTAP tests that the lift equals a hand calculation on a synthetic promotion for each of the three comparators. |
 | FR-THM-07 | Ca & két tiền | P10b | A unit or live test that the flagged shifts equal those of `shift_review` and `cash_variance_flags`. |
 | FR-THM-08 | So sánh cửa hàng | P10b | A page test that per-store figures add up to the all-stores figure; `pgtap:22_report_functions` already holds the per-store sums of `period_compare_by_store`. |
@@ -1529,7 +1528,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 
 ### 9.6 Partial coverage
 
-51 requirements are partly covered. Each row says what the tests do not show yet and which test closes the gap.
+52 requirements are partly covered. Each row says what the tests do not show yet and which test closes the gap.
 
 | ID | Requirement | Status | What is missing | Planned test |
 |---|---|---|---|---|
@@ -1541,6 +1540,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-THM-02 | Giờ & ngày trong tuần | built | pgTAP, parity, the demo and live specs hold the functions and the page; the comparison of the heatmap and the hour shares with the private reference window is the owner's (OC-03), and the phase 10 live check that prints `matches` for it is not written yet. | The live check of the build spec (9.7, 2) with `LIVE_REFERENCE_SHEET`, then OC-03. |
 | FR-THM-03 | Thực đơn | in build | pgTAP holds `menu_engineering`, `item_margins`, `item_attach` and the effective categories of `item_summary`, modifier lines named like items included; the demo ports and the page do not exist yet. | Parity of the three functions in `demo-analytics` (#94), and a Playwright spec that no modifier line appears among the items and that costs entered for five items show the margin of those five only. |
 | FR-THM-09 | Sections a POS cannot feed | designed | pgTAP shows the provisional menu roles without costs and the null attach rates without a role; no card shows them yet. | Unit and Playwright tests with a connector that declares no costs and no manual costs: the margin sections are hidden or marked provisional. |
+| FR-THM-04 | Thanh toán & tiền mặt | designed | pgTAP shows `shift_review` and `cash_variance_flags` following the tenant's cash thresholds; the payment cards and the page do not exist yet. | Unit tests of the payment cards, a Playwright spec, and the owner's comparison of the payment mix with the private reference window (OC-03). |
 | FR-REP-14 | Card loading and errors | built | Settling is tested on the demo and the size refusal is classified in `reports:unit/rpc-source`; no test drives a failing card or the size message in the browser. | A web test that makes one card's call fail and expects the error card with its retry, and one that answers SQLSTATE 22023 and expects the request for fewer stores or a shorter period. |
 | FR-SET-03 | Item costs | designed | The write policies of `item_costs` are tested; the screen and the CSV import do not exist. | A live Playwright test that an imported CSV equals the stored rows and that the costs move the margin axis of the menu matrix (10b). |
 | FR-SET-04 | Targets | designed | The write policies of `targets` are tested; the screen does not exist. | A live Playwright test that a saved monthly target shows progress and pace on Tháng (10b). |

@@ -1,5 +1,5 @@
 begin;
-select plan(60);
+select plan(74);
 
 create temp table fixture as
 select
@@ -743,6 +743,91 @@ select throws_ok(
   'item_attach refuses a range of 93 days'
 );
 
+insert into public.agg_modifier_prefs_daily (tenant_id, store_id, business_date, modifier_name, count)
+select f.tenant_id, f.split_store, m.business_date, m.modifier_name, m.lines
+from fixture f
+cross join lateral (
+  values
+    ('2025-03-01'::date, '50% đường', 2), ('2025-03-02'::date, '50% đường', 2), ('2025-03-03'::date, '50% đường', 2),
+    ('2025-03-04'::date, '50% đường', 2), ('2025-03-05'::date, '50% đường', 2), ('2025-03-06'::date, '50% đường', 2),
+    ('2025-03-07'::date, '50% đường', 2), ('2025-03-03'::date, 'Ít đá', 5), ('2025-03-01'::date, 'Thêm trân châu', 3)
+) as m (business_date, modifier_name, lines);
+
+select is(
+  (
+    select count(*)::int
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in ('basket_pairs', 'modifier_summary', 'shift_review', 'cash_variance_flags')
+      and not p.prosecdef
+      and p.provolatile = 's'
+      and p.proconfig = array['search_path=""']
+  ),
+  4,
+  'basket_pairs, modifier_summary and the rebuilt cash functions are stable security invoker functions with an empty search_path'
+);
+
+select is(
+  (
+    select array_agg(p.proname::text || '(' || pg_get_function_arguments(p.oid) || ')' order by p.proname)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname in ('basket_pairs', 'modifier_summary', 'shift_review', 'cash_variance_flags')
+  ),
+  array[
+    'basket_pairs(store_ids uuid[], from_date date, to_date date, min_pair_invoices integer DEFAULT 3, max_pairs integer DEFAULT 50)',
+    'cash_variance_flags(store_ids uuid[], from_date date, to_date date, abs_threshold numeric DEFAULT NULL::numeric, rel_threshold numeric DEFAULT NULL::numeric)',
+    'modifier_summary(store_ids uuid[], from_date date, to_date date, compare_from date DEFAULT NULL::date, compare_to date DEFAULT NULL::date)',
+    'shift_review(store_ids uuid[], from_date date, to_date date, abs_threshold numeric DEFAULT NULL::numeric, rel_threshold numeric DEFAULT NULL::numeric)'
+  ],
+  'the new functions have their documented arguments and the cash thresholds default to null'
+);
+
+select results_eq(
+  $$
+    select m.modifier_name, m.lines, m.share, m.compare_lines, m.compare_share
+    from public.modifier_summary(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-03', '2025-03-07', '2025-03-01', '2025-03-02') m
+  $$,
+  $$
+    values
+      ('50% đường'::text, 10::bigint, 0.666667::numeric, 4::bigint, 0.571429::numeric),
+      ('Ít đá', 5, 0.333333, 0, 0.000000),
+      ('Thêm trân châu', 0, 0.000000, 3, 0.428571)
+  $$,
+  'modifier_summary gives lines and shares per name, zero for a name one range lacks'
+);
+
+select results_eq(
+  $$
+    select m.modifier_name, m.lines, m.compare_lines, m.compare_share
+    from public.modifier_summary(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-03', '2025-03-07') m
+  $$,
+  $$ values ('50% đường'::text, 10::bigint, null::bigint, null::numeric), ('Ít đá', 5, null, null) $$,
+  'without a compare range the compare columns are empty and only names of the range appear'
+);
+
+select throws_ok(
+  $$ select * from public.basket_pairs(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-01-01', '2025-04-03') $$,
+  '22023',
+  null,
+  'basket_pairs refuses a range of 93 days'
+);
+
+select throws_ok(
+  $$ select * from public.basket_pairs(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-01', '2025-03-28', 0) $$,
+  '22023',
+  'basket_pairs needs min_pair_invoices between 1 and 50',
+  'basket_pairs refuses a minimum of 0 pair invoices'
+);
+
+select throws_ok(
+  $$ select * from public.basket_pairs(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-01', '2025-03-28', 3, 901) $$,
+  '22023',
+  'basket_pairs needs max_pairs between 1 and 900',
+  'basket_pairs refuses more than 900 pairs'
+);
+
 create temp table seed as
 select
   '11111111-1111-4111-8111-111111111111'::uuid as tenant_id,
@@ -789,6 +874,117 @@ select is(
   ),
   array['item-13:topping', 'item-13:snack'],
   'an item takes the role of each store''s POS account, so it appears once per role whatever the store order'
+);
+
+select results_eq(
+  $$
+    select b.item_a_external_id collate "C", b.item_b_external_id collate "C", b.item_a_name, b.item_b_name, b.pair_invoices, b.support_a, b.support_b, b.lift
+    from public.basket_pairs(array['22222222-2222-4222-8222-000000000001']::uuid[], (select to_date - 27 from seed), (select to_date from seed), 3, 900) b
+    order by 1, 2
+  $$,
+  $$
+    select
+      least(a.item_a_external_id collate "C", a.item_b_external_id collate "C"),
+      greatest(a.item_a_external_id collate "C", a.item_b_external_id collate "C"),
+      case when a.item_a_external_id collate "C" < a.item_b_external_id collate "C" then a.item_a_name else a.item_b_name end,
+      case when a.item_a_external_id collate "C" < a.item_b_external_id collate "C" then a.item_b_name else a.item_a_name end,
+      a.pair_invoices,
+      case when a.item_a_external_id collate "C" < a.item_b_external_id collate "C" then a.support_a else a.support_b end,
+      case when a.item_a_external_id collate "C" < a.item_b_external_id collate "C" then a.support_b else a.support_a end,
+      a.lift
+    from public.agg_basket_pairs_28d a, seed s
+    where a.store_id = s.tea_store and a.as_of_date = s.to_date
+    order by 1, 2
+  $$,
+  'over the 28 days the refresh wrote, basket_pairs of the tea store equals agg_basket_pairs_28d as unordered pairs'
+);
+
+select results_eq(
+  $$
+    select b.item_a_external_id collate "C", b.item_b_external_id collate "C", b.pair_invoices, b.lift
+    from public.basket_pairs(array['22222222-2222-4222-8222-000000000002']::uuid[], (select to_date - 27 from seed), (select to_date from seed), 3, 900) b
+    order by 1, 2
+  $$,
+  $$
+    select
+      least(a.item_a_external_id collate "C", a.item_b_external_id collate "C"),
+      greatest(a.item_a_external_id collate "C", a.item_b_external_id collate "C"),
+      a.pair_invoices,
+      a.lift
+    from public.agg_basket_pairs_28d a, seed s
+    where a.store_id = s.coffee_store and a.as_of_date = s.to_date
+    order by 1, 2
+  $$,
+  'the coffee store''s pairs equal its aggregate too'
+);
+
+create temp table pair_cut as
+select least(50, max(b.pair_invoices)) as cut, count(*) as all_pairs
+from seed s
+cross join lateral public.basket_pairs(s.both_stores, s.from_date, s.to_date, 1, 900) b;
+
+select ok(
+  (
+    select count(*) > 0
+      and count(*) < (select all_pairs from pair_cut)
+      and bool_and(b.pair_invoices >= (select cut from pair_cut))
+      and count(*) = (
+        select count(*)
+        from seed s2
+        cross join lateral public.basket_pairs(s2.both_stores, s2.from_date, s2.to_date, 1, 900) x
+        where x.pair_invoices >= (select cut from pair_cut)
+      )
+    from seed s
+    cross join lateral public.basket_pairs(s.both_stores, s.from_date, s.to_date, (select cut from pair_cut), 900) b
+  ),
+  'basket_pairs keeps exactly the pairs bought together at least min_pair_invoices times'
+);
+
+select is(
+  (
+    select count(*)::int
+    from seed s
+    cross join lateral public.basket_pairs(array[s.tea_store], s.to_date - 27, s.to_date, 1, 900) b
+    where b.window_invoices <> (
+        select count(*) from public.invoices i
+        where i.store_id = s.tea_store and i.business_date between s.to_date - 27 and s.to_date and i.status <> 'voided'
+          and exists (select 1 from public.invoice_lines l where l.invoice_id = i.id and l.line_kind = 'item')
+      )
+      or b.invoices_a <> (
+        select count(*) from public.invoices i
+        where i.store_id = s.tea_store and i.business_date between s.to_date - 27 and s.to_date and i.status <> 'voided'
+          and exists (select 1 from public.invoice_lines l where l.invoice_id = i.id and l.line_kind = 'item' and coalesce(l.item_external_id, l.item_name) = b.item_a_external_id)
+      )
+      or b.invoices_b <> (
+        select count(*) from public.invoices i
+        where i.store_id = s.tea_store and i.business_date between s.to_date - 27 and s.to_date and i.status <> 'voided'
+          and exists (select 1 from public.invoice_lines l where l.invoice_id = i.id and l.line_kind = 'item' and coalesce(l.item_external_id, l.item_name) = b.item_b_external_id)
+      )
+      or b.confidence_a_to_b <> round(b.pair_invoices::numeric / b.invoices_a, 6)
+      or b.confidence_b_to_a <> round(b.pair_invoices::numeric / b.invoices_b, 6)
+      or b.support_a <> round(b.invoices_a::numeric / b.window_invoices, 6)
+      or b.support_b <> round(b.invoices_b::numeric / b.window_invoices, 6)
+  ),
+  0,
+  'window and item invoice counts equal a direct count, and confidences and supports follow them'
+);
+
+select results_eq(
+  $$ select b.item_a_external_id, b.item_b_external_id from seed s cross join lateral public.basket_pairs(s.both_stores, s.from_date, s.to_date, 3, 2) b $$,
+  $$ select b.item_a_external_id, b.item_b_external_id from seed s cross join lateral public.basket_pairs(s.both_stores, s.from_date, s.to_date, 3, 900) b limit 2 $$,
+  'max_pairs returns the first pairs of the full order'
+);
+
+select results_eq(
+  $$ select m.modifier_name, m.lines from seed s cross join lateral public.modifier_summary(s.both_stores, s.from_date, s.to_date) m order by 1 $$,
+  $$
+    select a.modifier_name, sum(a.count)::bigint
+    from public.agg_modifier_prefs_daily a, seed s
+    where a.store_id = any (s.both_stores) and a.business_date between s.from_date and s.to_date
+    group by a.modifier_name
+    order by 1
+  $$,
+  'modifier_summary equals the sums of agg_modifier_prefs_daily'
 );
 
 create temp table attach_summary as
@@ -880,7 +1076,8 @@ select
   (select array_agg(i.item_external_id || ':' || i.quantity order by i.item_external_id) from seed s cross join lateral public.item_summary(s.both_stores, s.from_date, s.to_date) i) as summary_items,
   (select array_agg(m.role || ':' || m.item_external_id || ':' || m.quantity order by m.role, m.item_external_id) from seed s cross join lateral public.menu_engineering(s.both_stores, s.to_date, 7) m) as menu_items,
   (select array_agg(i.item_external_id || ':' || i.quantity order by i.item_external_id) from seed s cross join lateral public.item_margins(s.both_stores, s.from_date, s.to_date) i) as margin_items,
-  (select array_agg(coalesce(a.item_external_id, '-') || ':' || a.drink_invoices order by a.item_external_id nulls first) from seed s cross join lateral public.item_attach(s.both_stores, s.from_date, s.to_date) a) as attach_items;
+  (select array_agg(coalesce(a.item_external_id, '-') || ':' || a.drink_invoices order by a.item_external_id nulls first) from seed s cross join lateral public.item_attach(s.both_stores, s.from_date, s.to_date) a) as attach_items,
+  (select array_agg(b.item_a_external_id || '+' || b.item_b_external_id || ':' || b.pair_invoices order by b.item_a_external_id, b.item_b_external_id) from seed s cross join lateral public.basket_pairs(s.both_stores, s.from_date, s.to_date, 1, 900) b) as pair_items;
 
 update public.invoice_lines l
 set item_external_id = 'item-05', item_name = 'Peach Tea (M)', item_type_external_id = 'type-02'
@@ -896,11 +1093,29 @@ select is(
       (select array_agg(i.item_external_id || ':' || i.quantity order by i.item_external_id) from seed s cross join lateral public.item_summary(s.both_stores, s.from_date, s.to_date) i),
       (select array_agg(m.role || ':' || m.item_external_id || ':' || m.quantity order by m.role, m.item_external_id) from seed s cross join lateral public.menu_engineering(s.both_stores, s.to_date, 7) m),
       (select array_agg(i.item_external_id || ':' || i.quantity order by i.item_external_id) from seed s cross join lateral public.item_margins(s.both_stores, s.from_date, s.to_date) i),
-      (select array_agg(coalesce(a.item_external_id, '-') || ':' || a.drink_invoices order by a.item_external_id nulls first) from seed s cross join lateral public.item_attach(s.both_stores, s.from_date, s.to_date) a)
+      (select array_agg(coalesce(a.item_external_id, '-') || ':' || a.drink_invoices order by a.item_external_id nulls first) from seed s cross join lateral public.item_attach(s.both_stores, s.from_date, s.to_date) a),
+      (select array_agg(b.item_a_external_id || '+' || b.item_b_external_id || ':' || b.pair_invoices order by b.item_a_external_id, b.item_b_external_id) from seed s cross join lateral public.basket_pairs(s.both_stores, s.from_date, s.to_date, 1, 900) b)
     )
   ),
-  (select (summary_items, menu_items, margin_items, attach_items) from before_modifiers),
-  'modifier lines named and typed like an item never count as that item'
+  (select (summary_items, menu_items, margin_items, attach_items, pair_items) from before_modifiers),
+  'modifier lines named and typed like an item never count as that item, nor join a pair'
+);
+
+update public.invoice_lines l
+set item_external_id = 'Z-01'
+from seed s
+where l.tenant_id = s.tenant_id
+  and l.line_kind = 'item'
+  and l.item_external_id = 'item-01';
+
+select ok(
+  (
+    select count(*) > 0 and bool_and(b.item_a_external_id = 'Z-01')
+    from seed s
+    cross join lateral public.basket_pairs(s.both_stores, s.from_date, s.to_date, 1, 900) b
+    where 'Z-01' in (b.item_a_external_id, b.item_b_external_id)
+  ),
+  'pairs are oriented in byte order, so an upper-case key comes before lower-case ones'
 );
 
 select * from finish();

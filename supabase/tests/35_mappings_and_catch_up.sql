@@ -1,5 +1,5 @@
 begin;
-select plan(34);
+select plan(42);
 
 create temp table fixture as
 select
@@ -542,6 +542,248 @@ select is(
   (array['drink:type-03:override', 'snack:type-04:pos'], array['drink:type-03:override', 'snack:type-04:pos']),
   'menu_engineering applies an override to the sales of its own POS account only, whatever the store order'
 );
+
+create function pg_temp.shift_review_before(
+  store_ids uuid[],
+  from_date date,
+  to_date date,
+  abs_threshold numeric default 50000,
+  rel_threshold numeric default 0.005
+)
+returns table (
+  store_id uuid,
+  shift_id uuid,
+  shift_external_id text,
+  shift_name text,
+  business_date date,
+  cashier_name text,
+  opened_at timestamptz,
+  closed_at timestamptz,
+  orders integer,
+  sales_amount numeric,
+  cash_sales_amount numeric,
+  opening_float_amount numeric,
+  expected_cash_amount numeric,
+  drawer_amount numeric,
+  variance_amount numeric,
+  trailing_shifts integer,
+  z_score numeric,
+  over_abs_threshold boolean,
+  over_rel_threshold boolean,
+  over_z_threshold boolean,
+  flagged boolean,
+  reasons text[]
+)
+language plpgsql
+stable
+security invoker
+set search_path = ''
+as $$
+declare
+  max_range_days constant integer := 92;
+  returned_rows bigint;
+begin
+  perform app.require_store_ids('shift_review', shift_review_before.store_ids);
+  perform app.require_date_range('shift_review', shift_review_before.from_date, shift_review_before.to_date, max_range_days);
+
+  return query
+  select
+    s.store_id,
+    s.shift_id,
+    s.shift_external_id,
+    sh.name,
+    s.business_date,
+    s.cashier_name,
+    s.opened_at,
+    s.closed_at,
+    s.orders,
+    s.sales_amount,
+    s.cash_sales_amount,
+    s.opening_float_amount,
+    s.expected_cash_amount,
+    s.drawer_amount,
+    s.variance_amount,
+    v.trailing_shifts,
+    v.z_score,
+    coalesce(v.over_abs_threshold, false),
+    coalesce(v.over_rel_threshold, false),
+    coalesce(v.over_z_threshold, false),
+    coalesce(v.over_abs_threshold or v.over_rel_threshold or v.over_z_threshold, false),
+    coalesce(v.reasons, '{}'::text[])
+  from public.agg_shift_cash s
+  left join public.shifts sh on sh.id = s.shift_id
+  left join app.shift_variance_scores(
+    shift_review_before.store_ids,
+    shift_review_before.from_date,
+    shift_review_before.to_date,
+    shift_review_before.abs_threshold,
+    shift_review_before.rel_threshold
+  ) v on v.shift_id = s.shift_id
+  where s.store_id = any (shift_review_before.store_ids)
+    and s.business_date between shift_review_before.from_date and shift_review_before.to_date
+  order by s.business_date, s.store_id, s.opened_at, s.shift_external_id collate "C";
+
+  get diagnostics returned_rows = row_count;
+  perform app.require_report_rows('shift_review', returned_rows);
+end;
+$$;
+
+create function pg_temp.cash_variance_flags_before(
+  store_ids uuid[],
+  from_date date,
+  to_date date,
+  abs_threshold numeric default 50000,
+  rel_threshold numeric default 0.005
+)
+returns table (
+  store_id uuid,
+  shift_id uuid,
+  shift_external_id text,
+  business_date date,
+  cashier_name text,
+  cash_sales_amount numeric,
+  variance_amount numeric,
+  trailing_shifts integer,
+  trailing_mean_variance numeric,
+  trailing_stddev_variance numeric,
+  z_score numeric,
+  over_abs_threshold boolean,
+  over_rel_threshold boolean,
+  over_z_threshold boolean,
+  reasons text[]
+)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
+    s.store_id,
+    s.shift_id,
+    s.shift_external_id,
+    s.business_date,
+    s.cashier_name,
+    s.cash_sales_amount,
+    s.variance_amount,
+    v.trailing_shifts,
+    v.trailing_mean_variance,
+    v.trailing_stddev_variance,
+    v.z_score,
+    v.over_abs_threshold,
+    v.over_rel_threshold,
+    v.over_z_threshold,
+    v.reasons
+  from app.shift_variance_scores(store_ids, from_date, to_date, abs_threshold, rel_threshold) v
+  join public.agg_shift_cash s on s.shift_id = v.shift_id
+  where s.store_id = any (cash_variance_flags_before.store_ids)
+    and s.business_date between cash_variance_flags_before.from_date and cash_variance_flags_before.to_date
+    and (v.over_abs_threshold or v.over_rel_threshold or v.over_z_threshold)
+  order by s.business_date, s.store_id, s.shift_external_id;
+$$;
+
+create temp table cash_window as
+select
+  '11111111-1111-4111-8111-111111111111'::uuid as tenant_id,
+  array['22222222-2222-4222-8222-000000000001', '22222222-2222-4222-8222-000000000002']::uuid[] as both_stores,
+  max(i.business_date) - 6 as from_date,
+  max(i.business_date) as to_date
+from public.invoices i
+where i.tenant_id = '11111111-1111-4111-8111-111111111111';
+
+delete from public.report_settings where tenant_id = (select tenant_id from cash_window);
+
+select results_eq(
+  $$ select r.* from cash_window w cross join lateral public.shift_review(w.both_stores, w.from_date, w.to_date) r $$,
+  $$ select r.* from cash_window w cross join lateral pg_temp.shift_review_before(w.both_stores, w.from_date, w.to_date) r $$,
+  'without a settings row shift_review equals its phase 9 body'
+);
+
+select results_eq(
+  $$ select c.* from cash_window w cross join lateral public.cash_variance_flags(w.both_stores, w.from_date, w.to_date) c $$,
+  $$ select c.* from cash_window w cross join lateral pg_temp.cash_variance_flags_before(w.both_stores, w.from_date, w.to_date) c $$,
+  'without a settings row cash_variance_flags equals its phase 9 body'
+);
+
+insert into public.report_settings (tenant_id, cash_abs_threshold, cash_rel_threshold)
+select tenant_id, 10000, 0.001 from cash_window;
+
+select is(
+  (
+    select (
+      (select array_agg(r.shift_id order by r.shift_id) filter (where r.flagged) from cash_window w cross join lateral public.shift_review(w.both_stores, w.from_date, w.to_date) r),
+      (select array_agg(c.shift_id order by c.shift_id) from cash_window w cross join lateral public.cash_variance_flags(w.both_stores, w.from_date, w.to_date) c)
+    )
+  ),
+  (
+    select (
+      (select array_agg(r.shift_id order by r.shift_id) filter (where r.flagged) from cash_window w cross join lateral pg_temp.shift_review_before(w.both_stores, w.from_date, w.to_date, 10000, 0.001) r),
+      (select array_agg(c.shift_id order by c.shift_id) from cash_window w cross join lateral pg_temp.cash_variance_flags_before(w.both_stores, w.from_date, w.to_date, 10000, 0.001) c)
+    )
+  ),
+  'with a settings row both functions flag the shifts its thresholds flag'
+);
+
+select results_eq(
+  $$ select r.* from cash_window w cross join lateral public.shift_review(w.both_stores, w.from_date, w.to_date, 50000, 0.005) r $$,
+  $$ select r.* from cash_window w cross join lateral pg_temp.shift_review_before(w.both_stores, w.from_date, w.to_date, 50000, 0.005) r $$,
+  'explicit thresholds win over the settings row'
+);
+
+select results_eq(
+  $$ select c.* from cash_window w cross join lateral public.cash_variance_flags(w.both_stores, w.from_date, w.to_date, 50000, 0.005) c $$,
+  $$ select c.* from cash_window w cross join lateral pg_temp.cash_variance_flags_before(w.both_stores, w.from_date, w.to_date, 50000, 0.005) c $$,
+  'explicit thresholds win over the settings row in cash_variance_flags too'
+);
+
+select results_eq(
+  $$ select r.* from cash_window w cross join lateral public.shift_review(w.both_stores, w.from_date, w.to_date, 50000, null) r $$,
+  $$ select r.* from cash_window w cross join lateral pg_temp.shift_review_before(w.both_stores, w.from_date, w.to_date, 50000, 0.001) r $$,
+  'one explicit threshold wins and the other is read from the row'
+);
+
+insert into public.report_settings (tenant_id, cash_abs_threshold, cash_rel_threshold)
+select tenant_id, 10000000, 0.1 from fixture
+on conflict (tenant_id) do update set cash_abs_threshold = excluded.cash_abs_threshold, cash_rel_threshold = excluded.cash_rel_threshold;
+
+create temp table cash_expected as
+select
+  (select array_agg(r.shift_id order by r.shift_id) filter (where r.flagged) from cash_window w cross join lateral pg_temp.shift_review_before(w.both_stores, w.from_date, w.to_date, 10000000, 0.1) r) as with_fixture_thresholds,
+  (select array_agg(r.shift_id order by r.shift_id) filter (where r.flagged) from cash_window w cross join lateral pg_temp.shift_review_before(w.both_stores, w.from_date, w.to_date, 10000, 0.001) r) as with_seed_thresholds;
+
+insert into public.tenant_members (tenant_id, user_id, role, store_ids)
+select w.tenant_id, u.user_id, 'owner', null
+from cash_window w
+cross join fixture f
+cross join lateral (values (f.owner_id), (f.other_owner_id)) as u (user_id);
+
+grant select on cash_window, cash_expected, fixture to authenticated;
+
+set local role authenticated;
+set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000000401", "role": "authenticated"}';
+
+select is(
+  (
+    select array_agg(r.shift_id order by r.shift_id) filter (where r.flagged)
+    from cash_window w
+    cross join lateral public.shift_review(array[(select store_a from fixture)] || w.both_stores, w.from_date, w.to_date) r
+  ),
+  (select with_fixture_thresholds from cash_expected),
+  'a member of two tenants gets the thresholds of the first requested store'
+);
+
+set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000000408", "role": "authenticated"}';
+
+select is(
+  (
+    select array_agg(r.shift_id order by r.shift_id) filter (where r.flagged)
+    from cash_window w
+    cross join lateral public.shift_review(array[(select store_a from fixture)] || w.both_stores, w.from_date, w.to_date) r
+  ),
+  (select with_seed_thresholds from cash_expected),
+  'a store the caller cannot see is skipped, so the first visible store sets the thresholds'
+);
+
+reset role;
 
 select * from finish();
 rollback;

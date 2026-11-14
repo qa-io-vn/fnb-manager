@@ -157,11 +157,11 @@ A login holds one role per tenant in `tenant_members`, with an optional store sc
 
 ## 3. Functions in `public`
 
-The schema `public` holds 33 functions. `authenticated` and `service_role` may execute all of them; `anon` may execute none. 32 are `security invoker` and `stable`; `refresh_my_analytics` is `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
+The schema `public` holds 35 functions. `authenticated` and `service_role` may execute all of them; `anon` may execute none. 34 are `security invoker` and `stable`; `refresh_my_analytics` is `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
 
 Each entry gives the signature exactly as Postgres prints it (`pg_get_function_arguments` and `pg_get_function_result`), then what calls it today, its status and notes. Column meanings and computation rules are in [`schema.md`](schema.md), sections "Query functions" and "Report functions (phase 9)"; report rules are in [`metrics.md`](metrics.md#report-conventions).
 
-**Who may call.** Any signed-in member may call the 32 invoker functions. The numbers cover only the stores that the caller's data role reads, so a publisher gets nulls or no rows (see [How RLS shapes function results](#how-rls-shapes-function-results)). `refresh_my_analytics` has its own rule.
+**Who may call.** Any signed-in member may call the 34 invoker functions. The numbers cover only the stores that the caller's data role reads, so a publisher gets nulls or no rows (see [How RLS shapes function results](#how-rls-shapes-function-results)). `refresh_my_analytics` has its own rule.
 
 **Callers named below.**
 
@@ -205,6 +205,8 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`menu_engineering`](#publicmenu_engineering) | themes | invoker, stable | rows per item | no caller yet (Thực đơn, phase 10a) | verified locally (phase 10a) |
 | [`item_margins`](#publicitem_margins) | themes | invoker, stable | rows per item | no caller yet (Thực đơn, phase 10a) | verified locally (phase 10a) |
 | [`item_attach`](#publicitem_attach) | themes | invoker, stable | 1 row, then rows per drink | no caller yet (Thực đơn, phase 10a) | verified locally (phase 10a) |
+| [`basket_pairs`](#publicbasket_pairs) | themes | invoker, stable | up to 900 pairs | no caller yet (Thực đơn, phase 10a) | verified locally (phase 10a) |
+| [`modifier_summary`](#publicmodifier_summary) | themes | invoker, stable | rows per modifier name | no caller yet (Thực đơn, phase 10a) | verified locally (phase 10a) |
 
 ### 3.1 Analytics
 
@@ -312,8 +314,8 @@ public.cash_variance_flags(
   store_ids uuid[],
   from_date date,
   to_date date,
-  abs_threshold numeric DEFAULT 50000,
-  rel_threshold numeric DEFAULT 0.005
+  abs_threshold numeric DEFAULT NULL::numeric,
+  rel_threshold numeric DEFAULT NULL::numeric
 )
 returns TABLE(
   store_id uuid, shift_id uuid, shift_external_id text, business_date date,
@@ -325,8 +327,8 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet; designed for Thanh toán & tiền mặt (10a) and Ca & két tiền (10b). `shift_review` returns the same flagged shifts together with the others.
-- **Notes:** the shifts whose drawer variance passes one of three rules: more than `abs_threshold` (in the tenant's currency), more than `rel_threshold` × the shift's cash sales, or more than 2 standard deviations from the mean of the store's shifts of the trailing 56 days (at least 3 such shifts). The range has no limit, so a long one can pass 1,000 rows.
+- **Called by:** no screen; the registry source of `cash_variance_zscore`. Thanh toán & tiền mặt and Ca & két tiền read `shift_review`, which returns the same flagged shifts together with the others.
+- **Notes:** the shifts whose drawer variance passes one of three rules: more than `abs_threshold` (in the tenant's currency), more than `rel_threshold` × the shift's cash sales (both read from the tenant's report settings when null, 50,000 and 0.005 by default, since phase 10a), or more than 2 standard deviations from the mean of the store's shifts of the trailing 56 days (at least 3 such shifts). The range has no limit, so a long one can pass 1,000 rows.
 
 ### 3.2 Reports
 
@@ -511,8 +513,8 @@ public.shift_review(
   store_ids uuid[],
   from_date date,
   to_date date,
-  abs_threshold numeric DEFAULT 50000,
-  rel_threshold numeric DEFAULT 0.005
+  abs_threshold numeric DEFAULT NULL::numeric,
+  rel_threshold numeric DEFAULT NULL::numeric
 )
 returns TABLE(
   store_id uuid, shift_id uuid, shift_external_id text, shift_name text,
@@ -527,7 +529,7 @@ returns TABLE(
 ```
 
 - **Called by:** web reports (Ngày shifts, Tháng shift statistics), digest.
-- **Notes:** every shift of `agg_shift_cash` in the range, with the cash columns, the trailing z-score, the three threshold flags, `flagged` and `reasons`. The flagged rows equal `cash_variance_flags`. At most 92 days.
+- **Notes:** every shift of `agg_shift_cash` in the range, with the cash columns, the trailing z-score, the three threshold flags, `flagged` and `reasons`. Null thresholds read the tenant's report settings of the first visible store (50,000 and 0.005 without a settings row), so Ngày, Tháng and the digest flag what the settings say without passing them; explicit thresholds win, each on its own. A call with stores of two tenants applies the first visible store's thresholds to all of them; the web app never mixes tenants. The flagged rows equal `cash_variance_flags`. At most 92 days.
 
 #### `public.store_targets`
 
@@ -814,6 +816,37 @@ returns TABLE(
 
 - **Called by:** no caller yet (Thực đơn, phase 10a).
 - **Notes:** non-voided invoices of the range, each item line with the role of its effective type on the invoice's POS account. First a summary row (`item_external_id` null) over the invoices with a drink, then one row per drink item over the invoices holding it. Topping and snack rates count only the stores whose POS account maps that role, as `agg_attach_daily` and `metric_value` do; a role no requested account maps gives a null rate. At most 92 days.
+
+#### `public.basket_pairs`
+
+```sql
+public.basket_pairs(
+  store_ids uuid[], from_date date, to_date date,
+  min_pair_invoices integer DEFAULT 3, max_pairs integer DEFAULT 50
+)
+returns TABLE(
+  item_a_external_id text, item_a_name text, item_b_external_id text, item_b_name text,
+  pair_invoices integer, invoices_a integer, invoices_b integer, window_invoices integer,
+  support_a numeric, support_b numeric, confidence_a_to_b numeric, confidence_b_to_a numeric,
+  lift numeric
+)
+```
+
+- **Called by:** no caller yet (Thực đơn, phase 10a).
+- **Notes:** the definitions of `agg_basket_pairs_28d` over any range and over the requested stores together: non-voided invoices with an item line (`window_invoices`), the distinct item keys of each invoice (so never a modifier), unordered pairs with `item_a < item_b` in `collate "C"`, kept from `min_pair_invoices` (1 to 50). Supports and confidences to 6 digits, lift to 4 on unrounded supports; names are `max(item_name)` in the range. Ordered by pair invoices, lift and the two keys; the first `max_pairs` (1 to 900). At most 92 days. Over 28 days of one store ending on a refreshed date it equals `agg_basket_pairs_28d` as unordered pairs.
+
+#### `public.modifier_summary`
+
+```sql
+public.modifier_summary(
+  store_ids uuid[], from_date date, to_date date,
+  compare_from date DEFAULT NULL::date, compare_to date DEFAULT NULL::date
+)
+returns TABLE(modifier_name text, lines bigint, share numeric, compare_lines bigint, compare_share numeric)
+```
+
+- **Called by:** no caller yet (Thực đơn, phase 10a).
+- **Notes:** per modifier name of `agg_modifier_prefs_daily`, the lines and their share of all modifier lines in the range (6 digits), for names seen in either range. The compare columns are null without a compare range and 0 for a name the compare range lacks; `compare_from` and `compare_to` go together. Each range at most 400 days. Ordered by lines, then name. The sugar and ice families are a classification of the names in TypeScript.
 
 ## 4. Tables and views
 

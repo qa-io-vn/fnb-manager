@@ -1,5 +1,5 @@
 begin;
-select plan(33);
+select plan(45);
 
 create temp table fixture as
 select
@@ -96,6 +96,38 @@ select f.tenant_id, null::uuid, 'A1', 12000, '2025-01-01'::date from fixture f
 union all
 select f.other_tenant_id, null, 'A1', 1000, '2025-01-01' from fixture f;
 
+insert into public.agg_modifier_prefs_daily (tenant_id, store_id, business_date, modifier_name, count)
+select s.tenant_id, s.store_id, d::date, '50% đường', s.lines
+from (
+  select f.tenant_id, f.store_a as store_id, 3 as lines from fixture f
+  union all select f.tenant_id, f.store_b, 2 from fixture f
+  union all select f.other_tenant_id, f.other_store, 7 from fixture f
+) s
+cross join generate_series('2025-03-03'::date, '2025-03-09'::date, interval '1 day') as d;
+
+create temp table seed_window as
+select
+  '22222222-2222-4222-8222-000000000001'::uuid as seed_store,
+  array['22222222-2222-4222-8222-000000000001', '22222222-2222-4222-8222-000000000002']::uuid[] as seed_stores,
+  max(i.business_date) as to_date
+from public.invoices i
+where i.tenant_id = '11111111-1111-4111-8111-111111111111';
+
+create temp table seed_pairs as
+select
+  (select array_agg(b.item_a_external_id || '+' || b.item_b_external_id || ':' || b.pair_invoices) from seed_window w cross join lateral public.basket_pairs(array[w.seed_store], w.to_date - 27, w.to_date, 1, 900) b) as tea_pairs,
+  (select array_agg(b.item_a_external_id || '+' || b.item_b_external_id || ':' || b.pair_invoices) from seed_window w cross join lateral public.basket_pairs(w.seed_stores, w.to_date - 27, w.to_date, 1, 900) b) as both_pairs;
+
+insert into public.tenant_members (tenant_id, user_id, role, store_ids)
+select '11111111-1111-4111-8111-111111111111'::uuid, m.user_id, m.role::public.tenant_role, m.store_ids
+from fixture f
+cross join lateral (
+  values
+    (f.store_staff_id, 'staff', array['22222222-2222-4222-8222-000000000001']::uuid[]),
+    (f.publisher_id, 'publisher', null::uuid[]),
+    (f.viewer_id, 'viewer', null::uuid[])
+) as m (user_id, role, store_ids);
+
 update public.tenants
 set analytics_pending_from = null, analytics_pending_to = null
 where id = (select tenant_id from fixture);
@@ -142,7 +174,20 @@ select ok(
   'authenticated may call the menu functions and their helpers and anon may not'
 );
 
+select ok(
+  (
+    select bool_and(has_function_privilege('authenticated', p.oid, 'execute') and not has_function_privilege('anon', p.oid, 'execute'))
+      and count(*) = 2
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname in ('basket_pairs', 'modifier_summary')
+  ),
+  'authenticated may call basket_pairs and modifier_summary and anon may not'
+);
+
 grant select on fixture to authenticated;
+grant select on seed_window to authenticated;
+grant select on seed_pairs to authenticated;
 
 set local role authenticated;
 set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000000301", "role": "authenticated"}';
@@ -246,6 +291,24 @@ select is(
   'item_attach counts no invoice of another tenant''s store'
 );
 
+select is(
+  (select array_agg(m.modifier_name || ':' || m.lines) from public.modifier_summary((select both_stores from fixture), '2025-03-03', '2025-03-09') m),
+  array['50% đường:35'],
+  'the owner gets the modifier lines of both stores'
+);
+
+select is(
+  (select count(*)::int from public.modifier_summary((select array[other_store] from fixture), '2025-03-03', '2025-03-09')),
+  0,
+  'modifier_summary returns nothing for another tenant''s store'
+);
+
+select is(
+  (select count(*)::int from public.basket_pairs((select array[seed_store] from seed_window), (select to_date - 27 from seed_window), (select to_date from seed_window), 1, 900)),
+  0,
+  'basket_pairs finds no pair in another tenant''s invoices'
+);
+
 set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000000302", "role": "authenticated"}';
 
 select is(
@@ -277,6 +340,18 @@ select is(
   'a member limited to one store gets the margins of that store only'
 );
 
+select is(
+  (select array_agg(m.modifier_name || ':' || m.lines) from public.modifier_summary((select both_stores from fixture), '2025-03-03', '2025-03-09') m),
+  array['50% đường:21'],
+  'a member limited to one store gets that store''s modifier lines only'
+);
+
+select is(
+  (select array_agg(b.item_a_external_id || '+' || b.item_b_external_id || ':' || b.pair_invoices) from seed_window w cross join lateral public.basket_pairs(w.seed_stores, w.to_date - 27, w.to_date, 1, 900) b),
+  (select tea_pairs from seed_pairs),
+  'a member limited to one store gets the pairs of that store only'
+);
+
 set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000000304", "role": "authenticated"}';
 
 select ok(
@@ -300,6 +375,18 @@ select is(
   ),
   1,
   'a viewer reads the menu matrix'
+);
+
+select is(
+  (select count(*)::int from public.modifier_summary((select both_stores from fixture), '2025-03-03', '2025-03-09')),
+  1,
+  'a viewer reads the modifier summary'
+);
+
+select is(
+  (select array_agg(b.item_a_external_id || '+' || b.item_b_external_id || ':' || b.pair_invoices) from seed_window w cross join lateral public.basket_pairs(w.seed_stores, w.to_date - 27, w.to_date, 1, 900) b),
+  (select both_pairs from seed_pairs),
+  'a viewer gets the pairs of every store'
 );
 
 set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000000303", "role": "authenticated"}';
@@ -335,6 +422,18 @@ select is(
   ),
   (0, 0),
   'the publisher reads no item'
+);
+
+select is(
+  (select count(*)::int from public.modifier_summary((select both_stores from fixture), '2025-03-03', '2025-03-09')),
+  0,
+  'the publisher reads no modifier line'
+);
+
+select is(
+  (select count(*)::int from seed_window w cross join lateral public.basket_pairs(w.seed_stores, w.to_date - 27, w.to_date, 1, 900)),
+  0,
+  'the publisher gets no pair'
 );
 
 reset role;
@@ -373,6 +472,20 @@ select throws_ok(
   '42501',
   null,
   'anon calling item_attach is refused'
+);
+
+select throws_ok(
+  $$ select * from public.basket_pairs(array['88888888-8888-4888-8888-000000000021']::uuid[], '2025-03-03', '2025-03-09') $$,
+  '42501',
+  null,
+  'anon calling basket_pairs is refused'
+);
+
+select throws_ok(
+  $$ select * from public.modifier_summary(array['88888888-8888-4888-8888-000000000021']::uuid[], '2025-03-03', '2025-03-09') $$,
+  '42501',
+  null,
+  'anon calling modifier_summary is refused'
 );
 
 select * from finish();
