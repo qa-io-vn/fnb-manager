@@ -1,3 +1,4 @@
+import { MENU } from "@fnb/connector-mock";
 import {
 	DEFAULT_REPORT_SETTINGS,
 	type IsoDate,
@@ -54,6 +55,38 @@ export function demoSettings(): DemoSettingsSnapshot {
 		costs: [],
 		feeRateStoreIds: [],
 	};
+}
+
+const REPORT_SETTING_RANGES: readonly [
+	keyof ReportSettings,
+	number,
+	number,
+	number,
+][] = [
+	["menuWindowDays", 7, 91, 0],
+	["menuPopularityFactor", 0.1, 1, 3],
+	["menuLowSampleItems", 2, 50, 0],
+	["cashAbsThreshold", 0, Number.MAX_SAFE_INTEGER, 2],
+	["cashRelThreshold", 0, 0.1, 4],
+	["peakHours", 1, 6, 0],
+	["deadHourRatio", 0.1, 0.9, 3],
+	["busyHourRatio", 1.05, 3, 3],
+	["promoPreWeeks", 2, 8, 0],
+];
+
+function checkReportSettings(settings: ReportSettings): void {
+	for (const [field, low, high, digits] of REPORT_SETTING_RANGES) {
+		const value = settings[field];
+		const scaled = value * 10 ** digits;
+		if (
+			!(value >= low && value <= high) ||
+			Math.abs(scaled - Math.round(scaled)) > 1e-9
+		) {
+			throw new RangeError(
+				`${field} must lie between ${low} and ${high} with at most ${digits} decimals`,
+			);
+		}
+	}
 }
 
 function appliesTo(scope: readonly string[] | "tenant", storeId: string) {
@@ -139,8 +172,15 @@ export class DemoSettingsStore implements IngestMappings {
 	}
 
 	saveOverrides(overrides: readonly CategoryOverride[]): void {
-		this.snapshot = { ...this.snapshot, overrides };
-		this.overrideIndex = DemoSettingsStore.indexOverrides(overrides);
+		const named = overrides.map((override) => ({
+			...override,
+			itemTypeName:
+				MENU.catalog.itemTypes.find(
+					(type) => type.externalId === override.itemTypeExternalId,
+				)?.name ?? null,
+		}));
+		this.snapshot = { ...this.snapshot, overrides: named };
+		this.overrideIndex = DemoSettingsStore.indexOverrides(named);
 		this.mappingsChanged();
 	}
 
@@ -168,6 +208,7 @@ export class DemoSettingsStore implements IngestMappings {
 	}
 
 	saveReportSettings(settings: ReportSettings | null): void {
+		if (settings !== null) checkReportSettings(settings);
 		this.snapshot = { ...this.snapshot, reportSettings: settings };
 		this.versionCount += 1;
 	}

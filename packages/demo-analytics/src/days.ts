@@ -53,6 +53,7 @@ export function nextTask(): Promise<void> {
 
 interface Epoch {
 	readonly asOf: IsoDate;
+	readonly mappings: IngestMappings;
 	readonly mappingsVersion: number;
 	readonly stores: readonly DemoStoreDefinition[];
 	readonly raw: Map<string, GeneratedDay>;
@@ -106,21 +107,31 @@ export class DemoDayCache {
 		this.mappings = mappings;
 	}
 
+	currentMappings(): IngestMappings {
+		return this.mappings;
+	}
+
 	private current(): Epoch {
 		const { asOf } = this.dates();
-		const mappingsVersion = this.mappings.ingestVersion;
+		const mappings = this.mappings;
+		const mappingsVersion = mappings.ingestVersion;
 		if (this.epoch === null || this.epoch.asOf !== asOf) {
 			this.epoch = {
 				asOf,
+				mappings,
 				mappingsVersion,
 				stores: demoStores(asOf),
 				raw: new Map(),
 				aggregates: new Map(),
 				pending: new Map(),
 			};
-		} else if (this.epoch.mappingsVersion !== mappingsVersion) {
+		} else if (
+			this.epoch.mappings !== mappings ||
+			this.epoch.mappingsVersion !== mappingsVersion
+		) {
 			this.epoch = {
 				...this.epoch,
+				mappings,
 				mappingsVersion,
 				aggregates: new Map(),
 				pending: new Map(),

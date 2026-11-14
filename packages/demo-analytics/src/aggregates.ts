@@ -2,6 +2,7 @@ import { addDays, type IsoDate } from "@fnb/reports";
 import type { DemoStoreDefinition } from "./calendar.js";
 import type { DemoDayCache } from "./days.js";
 import type { StoreDayAggregates } from "./ingest.js";
+import type { IngestMappings } from "./mappings.js";
 
 export interface StoreDayRange {
 	readonly storeIds: readonly string[];
@@ -35,6 +36,10 @@ export class AggregateStore {
 			if (store !== undefined) visible.push(store);
 		}
 		return visible;
+	}
+
+	mappings(): IngestMappings {
+		return this.days.currentMappings();
 	}
 
 	asOf(): IsoDate {

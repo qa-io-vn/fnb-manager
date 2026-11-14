@@ -107,3 +107,33 @@ describe("DemoDayCache and the settings' mappings", () => {
 		expect(days.generations()).toBe(generated);
 	});
 });
+
+describe("DemoDayCache with a new settings store", () => {
+	it("re-ingests when another store at the same version replaces the mappings", () => {
+		const days = cache();
+		const before = days.aggregatesNow("MOCK-S1", "2026-11-03");
+		expect(before?.attach?.attachRateSnack).not.toBeNull();
+		const withoutSnacks = new DemoSettingsStore({
+			...demoSettings(),
+			roles: demoRoles().filter((role) => role.role !== "snack"),
+		});
+		expect(withoutSnacks.ingestVersion).toBe(0);
+		days.useMappings(withoutSnacks);
+		expect(
+			days.aggregatesNow("MOCK-S1", "2026-11-03")?.attach?.attachRateSnack,
+		).toBeNull();
+	});
+
+	it("refuses report settings outside the database's checks", () => {
+		const settings = new DemoSettingsStore(demoSettings());
+		const valid = settings.reportSettings();
+		expect(() =>
+			settings.saveReportSettings({ ...valid, menuWindowDays: 92 }),
+		).toThrow(RangeError);
+		expect(() =>
+			settings.saveReportSettings({ ...valid, menuPopularityFactor: 0.7555 }),
+		).toThrow(RangeError);
+		settings.saveReportSettings({ ...valid, menuPopularityFactor: 0.75 });
+		expect(settings.reportSettings().menuPopularityFactor).toBe(0.75);
+	});
+});

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { MENU } from "@fnb/connector-mock";
 import { addDays, daysBetween } from "@fnb/reports";
 import {
@@ -5,6 +6,8 @@ import {
 	DEMO_UNCATEGORISED_ITEM,
 	type DemoItemCost,
 	type DemoReportSource,
+	type DemoRole,
+	demoRoles,
 } from "../../src/index.js";
 import {
 	insertStatements,
@@ -15,6 +18,26 @@ import {
 export const MOVED_DRINK = "DR-001-M";
 export const MOVED_DRINK_TYPE = "TYPE-002";
 export const SNACK_TYPE = "TYPE-009";
+export const COSTED_TOPPINGS = [
+	"TP-001",
+	"TP-002",
+	"TP-003",
+	"TP-004",
+	"TP-005",
+	"TP-006",
+	"FT-001",
+	"FT-002",
+] as const;
+export const SECOND_ACCOUNT = "parity-second-account";
+const SECOND_ACCOUNT_TYPES: readonly (readonly [string, DemoRole["role"]])[] = [
+	["TYPE-001", "drink"],
+	["TYPE-002", "drink"],
+	["TYPE-003", "drink"],
+	["TYPE-004", "drink"],
+	["TYPE-005", "drink"],
+	["TYPE-006", "drink"],
+	["TYPE-009", "snack"],
+];
 
 export interface MenuVariant {
 	readonly overrides: readonly CategoryOverride[];
@@ -80,6 +103,12 @@ export function menuVariant(
 				costAmount: 3_000,
 				effectiveFrom: addDays(from, -30),
 			},
+			...COSTED_TOPPINGS.map((itemExternalId, index) => ({
+				storeId: null,
+				itemExternalId,
+				costAmount: itemExternalId.startsWith("FT-") ? 0 : 2_000 + 500 * index,
+				effectiveFrom: addDays(from, -60),
+			})),
 		],
 	};
 }
@@ -149,4 +178,73 @@ export async function applyMenuVariant(
 	engine.settings.saveCosts(variant.costs);
 	seeded.days.useMappings(engine.settings);
 	return variant;
+}
+
+export async function applySecondAccount(
+	context: ParityContext,
+	seeded: SeededDataset,
+	engine: DemoReportSource,
+): Promise<void> {
+	const second = randomUUID();
+	const youngStore = seeded.uuidOf("MOCK-S2");
+	const statements = [
+		...insertStatements(
+			"public.pos_accounts",
+			["id", "tenant_id", "connector", "account_key", "display_name"],
+			[
+				{
+					id: second,
+					tenant_id: seeded.tenantId,
+					connector: "mock",
+					account_key: `parity-${seeded.dataset.id}-second`,
+					display_name: "Parity second",
+				},
+			],
+		),
+		...insertStatements(
+			"public.payment_methods",
+			["tenant_id", "pos_account_id", "external_id", "name", "kind"],
+			MENU.catalog.paymentMethods.map((method) => ({
+				tenant_id: seeded.tenantId,
+				pos_account_id: second,
+				external_id: method.externalId,
+				name: method.name,
+				kind: method.kind,
+			})),
+		),
+		...insertStatements(
+			"public.item_type_roles",
+			["tenant_id", "pos_account_id", "item_type_external_id", "role"],
+			SECOND_ACCOUNT_TYPES.map(([type, role]) => ({
+				tenant_id: seeded.tenantId,
+				pos_account_id: second,
+				item_type_external_id: type,
+				role,
+			})),
+		),
+	];
+	for (const statement of statements) {
+		await context.connection.rows(statement);
+	}
+	await context.connection.rows(
+		"update public.stores set pos_account_id = $1::uuid where id = $2::uuid",
+		[second, youngStore],
+	);
+	await context.connection.rows(
+		"update public.invoices set pos_account_id = $1::uuid where store_id = $2::uuid",
+		[second, youngStore],
+	);
+	await context.connection.rows(
+		"select app.refresh_analytics($1::uuid, $2::date, $3::date)",
+		[seeded.tenantId, seeded.window.from, seeded.window.to],
+	);
+	engine.settings.saveStoreAccounts({ "MOCK-S2": SECOND_ACCOUNT });
+	engine.settings.saveRoles([
+		...demoRoles(),
+		...SECOND_ACCOUNT_TYPES.map(([itemTypeExternalId, role]) => ({
+			posAccountId: SECOND_ACCOUNT,
+			itemTypeExternalId,
+			role,
+		})),
+	]);
 }

@@ -6,7 +6,6 @@ import {
 	minDate,
 } from "@fnb/reports";
 import type { AggregateStore } from "../aggregates.js";
-import { demoRoleOf } from "../calendar.js";
 import type { ItemAggregate } from "../ingest.js";
 import { isOnMenu } from "../menus.js";
 import { money, quantity, roundedRatio } from "../pg-numeric.js";
@@ -41,6 +40,7 @@ interface ItemTotals {
 	days: Set<IsoDate>;
 	compareQuantityMilli: number;
 	compareNetMinor: number;
+	firstPosition: number;
 }
 
 function emptyLabels(): Labels {
@@ -164,8 +164,11 @@ export function itemSummary(
 	);
 	const hasCompare = args.compare_from !== undefined;
 	const totals = new Map<string, ItemTotals>();
+	const visibleStores = store.visibleStores(args.store_ids);
+	const mappings = store.mappings();
+	const accounts = visibleStores.map((entry) => mappings.accountOf(entry.id));
 	const collect = (from: IsoDate, to: IsoDate) => {
-		for (const visible of store.visibleStores(args.store_ids)) {
+		visibleStores.forEach((visible, position) => {
 			for (const day of store.daysOf(visible, from, to)) {
 				const current = inRange(day.date, args.from_date, args.to_date);
 				const compare = inRange(day.date, args.compare_from, args.compare_to);
@@ -180,7 +183,9 @@ export function itemSummary(
 						days: new Set(),
 						compareQuantityMilli: 0,
 						compareNetMinor: 0,
+						firstPosition: position,
 					};
+					known.firstPosition = Math.min(known.firstPosition, position);
 					if (current) {
 						known.soldInCurrent = true;
 						known.current = withLabels(known.current, item);
@@ -197,7 +202,7 @@ export function itemSummary(
 					totals.set(item.itemExternalId, known);
 				}
 			}
-		}
+		});
 	};
 	const ranges: [IsoDate, IsoDate][] = [[args.from_date, args.to_date]];
 	if (args.compare_from !== undefined && args.compare_to !== undefined) {
@@ -225,14 +230,25 @@ export function itemSummary(
 		.map(([key, item]) => {
 			const labels = item.soldInCurrent ? item.current : item.compare;
 			const dates = sold.get(key);
+			const override = mappings.overrideOf(
+				accounts[item.firstPosition] as string,
+				key,
+			);
+			const typeId = override?.itemTypeExternalId ?? labels.typeId;
+			let role: Row["role"] = null;
+			for (const account of accounts) {
+				role = mappings.roleOf(account, typeId);
+				if (role !== null) break;
+			}
 			return {
 				item_external_id: key,
 				item_name: labels.itemName ?? key,
 				base_name: labels.baseName,
 				size_label: labels.sizeLabel,
-				item_type_external_id: labels.typeId,
-				item_type_name: labels.typeName,
-				role: demoRoleOf(labels.typeId),
+				item_type_external_id: typeId,
+				item_type_name:
+					override !== null ? override.itemTypeName : labels.typeName,
+				role,
 				quantity: quantity(item.quantityMilli).toNumber(),
 				net_amount: money(item.netMinor).toNumber(),
 				invoices: item.invoices,

@@ -1,4 +1,5 @@
 import {
+	addDays,
 	INVALID_ARGUMENTS_CODE,
 	INVALID_ROWS_CODE,
 	type IsoDate,
@@ -13,6 +14,12 @@ import { z } from "zod";
 import type { AggregateStore, StoreDayRange } from "./aggregates.js";
 import { hourProfile } from "./functions/hour-profile.js";
 import { hourWeekdayHeatmap } from "./functions/hour-weekday-heatmap.js";
+import { ITEM_ATTACH_MAX_DAYS, itemAttach } from "./functions/item-attach.js";
+import {
+	ITEM_MARGINS_MAX_DAYS,
+	itemMargins,
+} from "./functions/item-margins.js";
+import { menuEngineering } from "./functions/menu-engineering.js";
 import { openingProductivity } from "./functions/opening-productivity.js";
 import { rangeTotals } from "./functions/range-totals.js";
 import { reportSettingsOf } from "./functions/report-settings-of.js";
@@ -27,6 +34,8 @@ import {
 	type DemoAnalyticsSource,
 	type DemoAnalyticsSourceOptions,
 } from "./source.js";
+
+const MENU_WINDOW_MAX_DAYS = 91;
 
 type ThemeHandlers = {
 	readonly [N in ThemeFunctionName]: ThemeHandler<N>;
@@ -44,9 +53,9 @@ export const themeHandlers: ThemeHandlers = {
 	opening_productivity: openingProductivity,
 	hour_weekday_heatmap: hourWeekdayHeatmap,
 	hour_profile: hourProfile,
-	menu_engineering: notImplemented("menu_engineering"),
-	item_margins: notImplemented("item_margins"),
-	item_attach: notImplemented("item_attach"),
+	menu_engineering: menuEngineering,
+	item_margins: itemMargins,
+	item_attach: itemAttach,
 	basket_pairs: notImplemented("basket_pairs"),
 	modifier_summary: notImplemented("modifier_summary"),
 };
@@ -65,6 +74,17 @@ function span(
 	return { storeIds, from, to };
 }
 
+function limitedSpan(
+	storeIds: readonly string[],
+	from: IsoDate,
+	to: IsoDate,
+	maxDays: number,
+): StoreDayRange[] {
+	if (from > to) return [];
+	const earliest = addDays(to, -(maxDays - 1));
+	return [span(storeIds, from < earliest ? earliest : from, to)];
+}
+
 export const themeReads: ThemeReads = {
 	report_settings_of: () => [],
 	range_totals: (args) =>
@@ -78,10 +98,37 @@ export const themeReads: ThemeReads = {
 		span(args.store_ids, args.from_date, args.to_date),
 	],
 	hour_profile: (args) => [span(args.store_ids, args.from_date, args.to_date)],
-	menu_engineering: () => [],
-	item_margins: (args) => [span(args.store_ids, args.from_date, args.to_date)],
-	item_attach: (args) => [span(args.store_ids, args.from_date, args.to_date)],
-	basket_pairs: (args) => [span(args.store_ids, args.from_date, args.to_date)],
+	menu_engineering: (args) =>
+		limitedSpan(
+			args.store_ids,
+			addDays(
+				args.as_of_date,
+				-((args.window_days ?? MENU_WINDOW_MAX_DAYS) - 1),
+			),
+			args.as_of_date,
+			MENU_WINDOW_MAX_DAYS,
+		),
+	item_margins: (args) =>
+		limitedSpan(
+			args.store_ids,
+			args.from_date,
+			args.to_date,
+			ITEM_MARGINS_MAX_DAYS,
+		),
+	item_attach: (args) =>
+		limitedSpan(
+			args.store_ids,
+			args.from_date,
+			args.to_date,
+			ITEM_ATTACH_MAX_DAYS,
+		),
+	basket_pairs: (args) =>
+		limitedSpan(
+			args.store_ids,
+			args.from_date,
+			args.to_date,
+			ITEM_ATTACH_MAX_DAYS,
+		),
 	modifier_summary: (args) => [
 		span(args.store_ids, args.from_date, args.to_date),
 		...(args.compare_from != null && args.compare_to != null

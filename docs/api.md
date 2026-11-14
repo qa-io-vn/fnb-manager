@@ -783,7 +783,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet (Thực đơn, phase 10a).
+- **Called by:** no screen yet (Thực đơn, phase 10a); the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/menu`.
 - **Notes:** phase 8's `menu_matrix` method over a trailing window ending on `as_of_date` (7 to 91 days), per effective item-type role. Each store's sales take the type and role of its POS account, an override in `item_category_overrides` winning over the POS type (`category_source` is `override`, `pos` or `none`), so an item whose type two accounts map differently appears once per role, as in `menu_matrix`; an item whose type has no role is in `other` with `role_mapped` false. `unit_cost` is the quantity-weighted cost of the item's store-days, each costed with the row in force on its business date (a store row before a tenant-wide row); one store-day without a cost leaves the item without one and its role `provisional`. `low_sample` when the role has fewer items than `low_sample_items_used`. Null arguments take the tenant's report settings; out-of-range arguments raise `22023`. With the default settings, no override and no cost change in the window it equals `menu_matrix` on their shared columns.
 
 #### `public.item_margins`
@@ -799,7 +799,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet (Thực đơn, phase 10a).
+- **Called by:** no screen yet (Thực đơn, phase 10a); the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/menu`.
 - **Notes:** one row per item key of `agg_item_daily`, so never a modifier, with the effective type and role. The cost, margin and margin rate cover the costed store-days only (the cost-by-date rule of `menu_engineering`) and are null for an item without any cost; the type and role are those of the first requested store that sold the item; `cost_coverage` is the costed share of net revenue. `unit_cost_latest` is the cost in force on `to_date` at the first requested store that has one. At most 400 days and 900 rows. Ordered by net.
 
 #### `public.item_attach`
@@ -814,7 +814,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet (Thực đơn, phase 10a).
+- **Called by:** no screen yet (Thực đơn, phase 10a); the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/menu`.
 - **Notes:** non-voided invoices of the range, each item line with the role of its effective type on the invoice's POS account. First a summary row (`item_external_id` null) over the invoices with a drink, then one row per drink item over the invoices holding it. Topping and snack rates count only the stores whose POS account maps that role, as `agg_attach_daily` and `metric_value` do; a role no requested account maps gives a null rate. At most 92 days.
 
 #### `public.basket_pairs`

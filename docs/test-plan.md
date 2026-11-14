@@ -957,7 +957,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 | FR-ANA-10 | Exact ticket decomposition | Must | verified locally | `reports:unit/decomposition-and-narrative` | covered |
 | FR-ANA-11 | Query functions | Must | verified locally | `pgtap:15_analytics_queries`, `pgtap:16_analytics_menu_and_cash`, `demo-analytics:parity/item-velocity`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up` | covered |
 | FR-ANA-12 | Report functions with limits | Must | verified locally | `pgtap:13_analytics_schema`, `pgtap:22_report_functions`, `pgtap:23_report_access`, `reports:unit/rpc-source`, `pgtap:33_theme_functions`, `pgtap:34_theme_access` | covered |
-| FR-ANA-13 | Parity of the browser port | Must | verified locally | `demo-analytics:parity/*` (7 files), CI `database` job, `demo-analytics:parity/overrides` | covered |
+| FR-ANA-13 | Parity of the browser port | Must | verified locally | `demo-analytics:parity/*` (7 files), CI `database` job, `demo-analytics:parity/overrides`, `demo-analytics:parity/menu` | covered |
 | FR-ANA-14 | Benchmark context kept apart | Should | verified locally | `metrics:consistency/document` | covered |
 | FR-ANA-15 | Refresh on demand | Should | verified locally | `pgtap:17_analytics_access`, `pgtap:35_mappings_and_catch_up` | covered |
 | FR-ANA-16 | Reference-window figures | Must | verified locally | phase 8 verification (private sheet) | owner check |
@@ -995,7 +995,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 |---|---|---|---|---|---|
 | FR-THM-01 | Doanh thu & xu hướng | Should | verified locally | `pgtap:33_theme_functions`, `demo-analytics:parity/theme-revenue-hours`, `demo-analytics:themes/revenue.smoke`, `reports:unit/themes/definition`, `e2e:demo/theme-doanh-thu`, `e2e:live/themes` | covered |
 | FR-THM-02 | Giờ & ngày trong tuần | Should | built | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `demo-analytics:parity/theme-revenue-hours`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-gio-ngay`, `e2e:live/themes` | partial |
-| FR-THM-03 | Thực đơn | Should | in build | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `pgtap:35_mappings_and_catch_up`; page planned | partial |
+| FR-THM-03 | Thực đơn | Should | in build | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `pgtap:35_mappings_and_catch_up`; page planned, `demo-analytics:parity/menu` | partial |
 | FR-THM-04 | Thanh toán & tiền mặt | Should | designed | `pgtap:35_mappings_and_catch_up` (cash thresholds from the settings); page planned | partial |
 | FR-THM-05 | Range presets | Could | verified locally | `reports:unit/themes/range`, `e2e:demo/theme-doanh-thu` | covered |
 | FR-THM-06 | Khuyến mãi & giảm giá | Should | designed | planned | planned |
@@ -1013,7 +1013,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 | FR-SET-04 | Targets | Must | designed | `pgtap:05_write_policies` (table); screen planned | partial |
 | FR-SET-05 | Payment fee rates | Should | designed | `pgtap:10_payment_fee_rates` (table); screen planned | partial |
 | FR-SET-06 | Payment-kind mapping | Should | designed | `core:unit/payment-kind` (override rule); screen planned | partial |
-| FR-SET-07 | Item-type roles and categories | Must | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`; screen planned, `demo-analytics:parity/overrides` | partial |
+| FR-SET-07 | Item-type roles and categories | Must | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`; screen planned, `demo-analytics:parity/overrides`, `demo-analytics:parity/menu` | partial |
 | FR-SET-08 | Tenant holidays | Should | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:22_report_functions`; screen planned | partial |
 | FR-SET-09 | Default language | Could | designed | planned | planned |
 | FR-SET-10 | Legal texts | Must | designed | `pgtap:12_consent_and_legal` (tables); screen planned | partial |

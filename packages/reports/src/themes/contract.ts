@@ -179,7 +179,7 @@ export const itemMarginsRow = z.object({
 	net_amount: requiredNumericValue,
 	costed_quantity: requiredNumericValue,
 	costed_net_amount: requiredNumericValue,
-	cost_amount: requiredNumericValue,
+	cost_amount: numericValue,
 	unit_cost_latest: numericValue,
 	margin_amount: numericValue,
 	margin_rate: numericValue,
