@@ -81,7 +81,7 @@ function sortedDeep(value) {
 function assertMigrationsMatchTheRepository() {
 	const output = execFileSync(
 		"pnpm",
-		["exec", "supabase", "migration", "list", "--local"],
+		["exec", "supabase", "migration", "list", "--output-format", "json"],
 		{
 			cwd: REPOSITORY_ROOT,
 			encoding: "utf8",
