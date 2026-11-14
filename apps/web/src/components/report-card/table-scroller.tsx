@@ -25,11 +25,16 @@ const unmeasured: ScrollEdges = {
 	snapEndPadding: 0,
 };
 
+function visibleWidth(element: HTMLElement): number {
+	return element.parentElement?.clientWidth || element.clientWidth;
+}
+
 export function measureScrollEdges(element: HTMLElement): ScrollEdges {
 	const contentWidth =
 		(element.firstElementChild as HTMLElement | null)?.scrollWidth ??
 		element.scrollWidth;
-	const hiddenWidth = contentWidth - element.clientWidth;
+	const viewportWidth = visibleWidth(element);
+	const hiddenWidth = contentWidth - viewportWidth;
 	const overflowing = hiddenWidth > EDGE_TOLERANCE_PX;
 	const position = Math.abs(element.scrollLeft);
 	const stickyCell = element.querySelector<HTMLElement>("[data-sticky-column]");
@@ -38,10 +43,7 @@ export function measureScrollEdges(element: HTMLElement): ScrollEdges {
 		"thead tr > :last-child",
 	);
 	const snapEndPadding = overflowing
-		? Math.max(
-				0,
-				element.clientWidth - stickyInset - (lastColumn?.offsetWidth ?? 0),
-			)
+		? Math.max(0, viewportWidth - stickyInset - (lastColumn?.offsetWidth ?? 0))
 		: 0;
 	return {
 		overflowing,
@@ -78,6 +80,7 @@ export function useScrollEdges(
 		const observer =
 			typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
 		observer?.observe(element);
+		if (element.parentElement) observer?.observe(element.parentElement);
 		if (element.firstElementChild) observer?.observe(element.firstElementChild);
 		return () => {
 			element.removeEventListener("scroll", update);

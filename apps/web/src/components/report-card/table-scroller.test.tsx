@@ -85,6 +85,26 @@ describe("measureScrollEdges", () => {
 		expect(edges.snapEndPadding).toBe(0);
 	});
 
+	it("measures the space its wrapper gives it, so a padding left from a wider layout cannot hold it wide", () => {
+		const scroller = scrollerWith({
+			clientWidth: 537,
+			scrollWidth: 537,
+			scrollLeft: 0,
+			tableWidth: 522,
+			stickyWidth: 104,
+			lastColumnWidth: 96,
+		});
+		const wrapper = document.createElement("div");
+		wrapper.append(scroller);
+		Object.defineProperty(wrapper, "clientWidth", {
+			configurable: true,
+			value: 294,
+		});
+		const edges = measureScrollEdges(scroller);
+		expect(edges.overflowing).toBe(true);
+		expect(edges.snapEndPadding).toBe(94);
+	});
+
 	it("reports the end as soon as the last column is in view, before the snap padding", () => {
 		const edges = measureScrollEdges(
 			scrollerWith({
