@@ -23,6 +23,7 @@ import {
 } from "./calendar.js";
 import { dressFreshDemoDay } from "./dressing.js";
 import { aggregateStoreDay, type StoreDayAggregates } from "./ingest.js";
+import { DEFAULT_INGEST_MAPPINGS, type IngestMappings } from "./mappings.js";
 
 export const RAW_DAY_RETENTION_DAYS = 70;
 
@@ -52,6 +53,7 @@ export function nextTask(): Promise<void> {
 
 interface Epoch {
 	readonly asOf: IsoDate;
+	readonly mappingsVersion: number;
 	readonly stores: readonly DemoStoreDefinition[];
 	readonly raw: Map<string, GeneratedDay>;
 	readonly aggregates: Map<string, StoreDayAggregates | null>;
@@ -68,6 +70,7 @@ export class DemoDayCache {
 	readonly window: DateRange | null;
 	private readonly clock: () => Date;
 	private epoch: Epoch | null = null;
+	private mappings: IngestMappings = DEFAULT_INGEST_MAPPINGS;
 	private generationCount = 0;
 	private clockMinute = Number.NaN;
 	private clockDates: { readonly asOf: IsoDate; readonly today: IsoDate } = {
@@ -99,13 +102,26 @@ export class DemoDayCache {
 		return this.clockDates;
 	}
 
+	useMappings(mappings: IngestMappings): void {
+		this.mappings = mappings;
+	}
+
 	private current(): Epoch {
 		const { asOf } = this.dates();
+		const mappingsVersion = this.mappings.ingestVersion;
 		if (this.epoch === null || this.epoch.asOf !== asOf) {
 			this.epoch = {
 				asOf,
+				mappingsVersion,
 				stores: demoStores(asOf),
 				raw: new Map(),
+				aggregates: new Map(),
+				pending: new Map(),
+			};
+		} else if (this.epoch.mappingsVersion !== mappingsVersion) {
+			this.epoch = {
+				...this.epoch,
+				mappingsVersion,
 				aggregates: new Map(),
 				pending: new Map(),
 			};
@@ -175,16 +191,13 @@ export class DemoDayCache {
 		return daysBetween(date, this.today(store)) <= this.rawRetentionDays;
 	}
 
-	private produce(
-		epoch: Epoch,
-		storeId: string,
+	private generate(
+		store: DemoStoreDefinition,
+		plan: DemoDayPlan,
 		date: IsoDate,
-	): { day: GeneratedDay | null; aggregates: StoreDayAggregates | null } {
-		const planned = this.planned(storeId, date);
-		if (planned === null) return { day: null, aggregates: null };
-		const { store, plan } = planned;
+	): GeneratedDay {
 		this.generationCount += 1;
-		const day = dressFreshDemoDay(
+		return dressFreshDemoDay(
 			generateDay(
 				DEMO_SEED,
 				plan.profile,
@@ -193,8 +206,20 @@ export class DemoDayCache {
 				plan.menu,
 			),
 		);
-		const aggregates = aggregateStoreDay(store, day);
+	}
+
+	private produce(
+		epoch: Epoch,
+		storeId: string,
+		date: IsoDate,
+	): { day: GeneratedDay | null; aggregates: StoreDayAggregates | null } {
+		const planned = this.planned(storeId, date);
+		if (planned === null) return { day: null, aggregates: null };
+		const { store, plan } = planned;
 		const key = dayKey(storeId, date);
+		const kept = epoch.raw.get(key);
+		const day = kept ?? this.generate(store, plan, date);
+		const aggregates = aggregateStoreDay(store, day, this.mappings);
 		epoch.aggregates.set(key, aggregates);
 		if (this.keepsRaw(store, date)) epoch.raw.set(key, day);
 		return { day, aggregates };

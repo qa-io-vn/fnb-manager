@@ -8,7 +8,8 @@ import {
 } from "@fnb/core";
 import type { IsoDate, PromotionKind } from "@fnb/reports";
 import { toDbLineKind } from "@fnb/sync";
-import { type DemoStoreDefinition, demoRoleOf, demoRoles } from "./calendar.js";
+import type { DemoStoreDefinition } from "./calendar.js";
+import { DEFAULT_INGEST_MAPPINGS, type IngestMappings } from "./mappings.js";
 import { PgDecimal } from "./pg-numeric.js";
 
 export interface DailyAggregate {
@@ -102,6 +103,14 @@ export interface PromotionUsage {
 	readonly discountMinor: number;
 }
 
+export interface DrinkAttach {
+	readonly itemExternalId: string;
+	readonly itemName: string;
+	readonly drinkInvoices: number;
+	readonly toppingInvoices: number;
+	readonly snackInvoices: number;
+}
+
 export interface StoreDayAggregates {
 	readonly storeId: string;
 	readonly date: IsoDate;
@@ -111,6 +120,9 @@ export interface StoreDayAggregates {
 	readonly payments: readonly PaymentAggregate[];
 	readonly sizes: readonly SizeAggregate[];
 	readonly attach: AttachAggregate | null;
+	readonly drinks: readonly DrinkAttach[];
+	readonly pairs: ReadonlyMap<string, number>;
+	readonly invoicesWithItems: number;
 	readonly shifts: readonly ShiftAggregate[];
 	readonly promotions: readonly PromotionUsage[];
 	readonly itemLines: number;
@@ -253,7 +265,13 @@ function attachRate(
 		.round(6);
 }
 
-const mappedRoles = new Set(demoRoles().map((role) => role.role));
+export const PAIR_SEPARATOR = "\u0000";
+
+export function pairKey(left: string, right: string): string {
+	return left < right
+		? `${left}${PAIR_SEPARATOR}${right}`
+		: `${right}${PAIR_SEPARATOR}${left}`;
+}
 
 type Writable<T> = { -readonly [Key in keyof T]: T[Key] };
 type Accumulating<T> = Writable<T> & { invoiceIds: Set<string> };
@@ -261,8 +279,12 @@ type Accumulating<T> = Writable<T> & { invoiceIds: Set<string> };
 export function aggregateStoreDay(
 	store: DemoStoreDefinition,
 	day: GeneratedDay,
+	mappings: IngestMappings = DEFAULT_INGEST_MAPPINGS,
 ): StoreDayAggregates {
 	const date = day.date;
+	const account = mappings.accountOf(store.id);
+	const drinks = new Map<string, Writable<DrinkAttach>>();
+	const pairs = new Map<string, number>();
 	const daily = emptyDaily();
 	const hourly = new Map<
 		number,
@@ -363,6 +385,8 @@ export function aggregateStoreDay(
 		let saleToppingLines = 0;
 		let saleSnackLines = 0;
 		let saleItemLines = 0;
+		const saleKeys = new Set<string>();
+		const saleDrinks = new Map<string, string>();
 		for (const line of sale.lines) {
 			if (!isItemLine(line)) continue;
 			saleItemLines += 1;
@@ -419,8 +443,20 @@ export function aggregateStoreDay(
 					size.netMinor += netMinor;
 				}
 			}
-			const role = demoRoleOf(textOrNull(line.itemTypeExternalId)) ?? "other";
-			if (role === "drink") hasDrink = true;
+			const override = mappings.overrideOf(account, itemId);
+			const role =
+				mappings.roleOf(
+					account,
+					override?.itemTypeExternalId ?? textOrNull(line.itemTypeExternalId),
+				) ?? "other";
+			saleKeys.add(itemId);
+			if (role === "drink") {
+				hasDrink = true;
+				saleDrinks.set(
+					itemId,
+					maxText(saleDrinks.get(itemId) ?? null, itemName) ?? itemName,
+				);
+			}
 			if (role === "topping") {
 				hasTopping = true;
 				saleToppingLines += 1;
@@ -446,12 +482,38 @@ export function aggregateStoreDay(
 		itemLines += saleItemLines;
 		if (saleItemLines > 0) {
 			invoicesWithItems += 1;
+			const keys = [...saleKeys].sort((left, right) =>
+				left < right ? -1 : left > right ? 1 : 0,
+			);
+			for (let first = 0; first < keys.length; first += 1) {
+				for (let second = first + 1; second < keys.length; second += 1) {
+					const key = `${keys[first]}${PAIR_SEPARATOR}${keys[second]}`;
+					pairs.set(key, (pairs.get(key) ?? 0) + 1);
+				}
+			}
 			if (hasDrink) {
 				drinkInvoices += 1;
 				if (hasTopping) toppingInvoices += 1;
 				if (hasSnack) snackInvoices += 1;
 				toppingLines += saleToppingLines;
 				snackLines += saleSnackLines;
+				for (const [key, name] of saleDrinks) {
+					const known = drinks.get(key);
+					if (known === undefined) {
+						drinks.set(key, {
+							itemExternalId: key,
+							itemName: name,
+							drinkInvoices: 1,
+							toppingInvoices: hasTopping ? 1 : 0,
+							snackInvoices: hasSnack ? 1 : 0,
+						});
+					} else {
+						known.itemName = maxText(known.itemName, name) ?? name;
+						known.drinkInvoices += 1;
+						if (hasTopping) known.toppingInvoices += 1;
+						if (hasSnack) known.snackInvoices += 1;
+					}
+				}
 			}
 		}
 
@@ -574,8 +636,8 @@ export function aggregateStoreDay(
 		);
 	}
 
-	const hasToppingRole = mappedRoles.has("topping");
-	const hasSnackRole = mappedRoles.has("snack");
+	const hasToppingRole = mappings.mapsRole(account, "topping");
+	const hasSnackRole = mappings.mapsRole(account, "snack");
 
 	return {
 		storeId: store.id,
@@ -613,6 +675,9 @@ export function aggregateStoreDay(
 						),
 					}
 				: null,
+		drinks: [...drinks.values()],
+		pairs,
+		invoicesWithItems,
 		shifts,
 		promotions: [...promotions.values()].map(({ invoiceIds, ...usage }) => ({
 			...usage,

@@ -36,6 +36,6 @@ export function reportSettingsOf(
 		opening_hours_known: openingHoursPresent(visible.openingHours),
 		fee_rates_configured: context.settings.feeRatesConfigured(visible.id),
 		costs_configured: context.settings.costsConfigured(visible.id),
-		roles_configured: context.settings.rolesConfigured(),
+		roles_configured: context.settings.rolesConfigured(visible.id),
 	}));
 }

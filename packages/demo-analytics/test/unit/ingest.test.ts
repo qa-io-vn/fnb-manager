@@ -6,7 +6,14 @@ import type {
 	CanonicalShift,
 } from "@fnb/core";
 import { describe, expect, it } from "vitest";
-import { aggregateStoreDay, demoStores } from "../../src/index.js";
+import {
+	aggregateStoreDay,
+	DemoSettingsStore,
+	demoRoles,
+	demoSettings,
+	demoStores,
+	PAIR_SEPARATOR,
+} from "../../src/index.js";
 
 const DATE = "2026-11-03";
 const [store] = demoStores("2026-11-03");
@@ -366,5 +373,121 @@ describe("aggregateStoreDay", () => {
 		]);
 		expect(day.itemLines).toBe(5);
 		expect([...day.removedLinesByDate.entries()]).toEqual([["2026-11-04", 1]]);
+	});
+});
+
+describe("aggregateStoreDay with the settings' mappings", () => {
+	if (store === undefined) throw new Error("missing demo store");
+
+	it("counts each unordered item pair once per invoice, in byte order", () => {
+		const day = aggregateStoreDay(store, fixture);
+		expect(day.invoicesWithItems).toBe(2);
+		expect(
+			[...day.pairs.entries()].map(([key, count]) => [
+				key.split(PAIR_SEPARATOR).join("+"),
+				count,
+			]),
+		).toEqual([
+			["DR-001-M+SN-001", 1],
+			["DR-001-M+TP-001", 1],
+			["SN-001+TP-001", 1],
+			["DR-008-M+DR-015", 1],
+		]);
+	});
+
+	it("records each drink's invoices with a topping and with a snack", () => {
+		const day = aggregateStoreDay(store, fixture);
+		expect(day.drinks).toEqual([
+			{
+				itemExternalId: "DR-001-M",
+				itemName: "Trà đào cam sả (M)",
+				drinkInvoices: 1,
+				toppingInvoices: 1,
+				snackInvoices: 1,
+			},
+			{
+				itemExternalId: "DR-008-M",
+				itemName: "Trà sữa truyền thống (M)",
+				drinkInvoices: 1,
+				toppingInvoices: 0,
+				snackInvoices: 0,
+			},
+			{
+				itemExternalId: "DR-015",
+				itemName: "Cà phê đen",
+				drinkInvoices: 1,
+				toppingInvoices: 0,
+				snackInvoices: 0,
+			},
+		]);
+	});
+
+	it("follows a category override of the store's POS account", () => {
+		const settings = new DemoSettingsStore(demoSettings());
+		settings.saveOverrides([
+			{
+				posAccountId: settings.accountOf(store.id),
+				itemExternalId: "SN-001",
+				itemTypeExternalId: "TYPE-001",
+				itemTypeName: "Trà trái cây",
+			},
+		]);
+		expect(settings.ingestVersion).toBe(1);
+		const day = aggregateStoreDay(store, fixture, settings);
+		expect(day.attach).toMatchObject({
+			drinkInvoices: 2,
+			toppingInvoices: 1,
+			snackInvoices: 0,
+			snackLines: 0,
+		});
+		expect(day.drinks.map((drink) => drink.itemExternalId)).toEqual([
+			"DR-001-M",
+			"SN-001",
+			"DR-008-M",
+			"DR-015",
+		]);
+		expect(
+			day.items.find((item) => item.itemExternalId === "SN-001"),
+		).toMatchObject({
+			itemTypeExternalId: "TYPE-009",
+		});
+	});
+
+	it("measures no topping rate at a store whose account maps no topping", () => {
+		const settings = new DemoSettingsStore(demoSettings());
+		settings.saveStoreAccounts({ [store.id]: "second-account" });
+		settings.saveRoles([
+			...demoRoles(),
+			{
+				posAccountId: "second-account",
+				itemTypeExternalId: "TYPE-001",
+				role: "drink",
+			},
+			{
+				posAccountId: "second-account",
+				itemTypeExternalId: "TYPE-002",
+				role: "drink",
+			},
+			{
+				posAccountId: "second-account",
+				itemTypeExternalId: "TYPE-003",
+				role: "drink",
+			},
+			{
+				posAccountId: "second-account",
+				itemTypeExternalId: "TYPE-009",
+				role: "snack",
+			},
+		]);
+		const day = aggregateStoreDay(store, fixture, settings);
+		expect(day.attach).toMatchObject({
+			drinkInvoices: 2,
+			toppingInvoices: 0,
+			snackInvoices: 1,
+			attachRateTopping: null,
+		});
+		expect(day.attach?.attachRateSnack?.toString()).toBe("0.500000");
+		expect(settings.rolesConfigured(store.id)).toBe(true);
+		expect(settings.rolesConfigured("MOCK-S2")).toBe(true);
 	});
 });

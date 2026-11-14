@@ -139,6 +139,7 @@ export function createDemoReportSource(
 	const analytics: DemoAnalyticsSource = createDemoAnalyticsSource(options);
 	const settings = options.settings ?? new DemoSettingsStore();
 	const { aggregates } = analytics;
+	aggregates.days.useMappings(settings);
 	return {
 		kind: "demo",
 		aggregates,

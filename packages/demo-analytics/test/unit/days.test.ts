@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	AggregateStore,
 	DemoDayCache,
+	DemoSettingsStore,
+	demoRoles,
+	demoSettings,
 	sharedDemoDays,
 } from "../../src/index.js";
 
@@ -84,5 +87,23 @@ describe("DemoDayCache", () => {
 
 	it("shares one cache between the demo sources", () => {
 		expect(sharedDemoDays()).toBe(sharedDemoDays());
+	});
+});
+
+describe("DemoDayCache and the settings' mappings", () => {
+	it("re-ingests a cached day after roles change and keeps the raw day", () => {
+		const days = cache();
+		const settings = new DemoSettingsStore(demoSettings());
+		days.useMappings(settings);
+		const before = days.aggregatesNow("MOCK-S1", "2026-11-03");
+		expect(before?.attach?.attachRateSnack).not.toBeNull();
+		expect(days.hasAggregates("MOCK-S1", "2026-11-03")).toBe(true);
+		const generated = days.generations();
+		settings.saveRoles(demoRoles().filter((role) => role.role !== "snack"));
+		expect(days.hasAggregates("MOCK-S1", "2026-11-03")).toBe(false);
+		const after = days.aggregatesNow("MOCK-S1", "2026-11-03");
+		expect(after?.attach?.attachRateSnack).toBeNull();
+		expect(after?.daily).toEqual(before?.daily);
+		expect(days.generations()).toBe(generated);
 	});
 });

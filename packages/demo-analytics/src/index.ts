@@ -114,16 +114,26 @@ export {
 	type AttachAggregate,
 	aggregateStoreDay,
 	type DailyAggregate,
+	type DrinkAttach,
 	type HourlyAggregate,
 	type ItemAggregate,
 	minorUnits,
+	PAIR_SEPARATOR,
 	type PaymentAggregate,
 	type PromotionUsage,
+	pairKey,
 	type ShiftAggregate,
 	type SizeAggregate,
 	type StoreDayAggregates,
 	thousandths,
 } from "./ingest.js";
+export {
+	type CategoryOverride,
+	DEFAULT_INGEST_MAPPINGS,
+	type DemoRoleName,
+	type IngestMappings,
+	RoleTable,
+} from "./mappings.js";
 export {
 	demoMenu,
 	isOnMenu,
@@ -152,6 +162,7 @@ export {
 } from "./pg-numeric.js";
 export {
 	DEMO_STORE_PROFILES,
+	type DemoItemCost,
 	type DemoSettingsSnapshot,
 	DemoSettingsStore,
 	type DemoStoreProfile,
