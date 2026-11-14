@@ -76,3 +76,12 @@ test("the Pages demo build serves its icons and manifest under the base path", a
 	expect(parsed.errors).toEqual([]);
 	expect(failed).toEqual([]);
 });
+
+test("the production build serves no design catalogue", async ({ page }) => {
+	await page.goto("./#/thiet-ke");
+	await expect(page.getByTestId("card-today-net_revenue")).toBeVisible();
+	expect(new URL(page.url()).hash).toBe("#/");
+	await expect(
+		page.getByRole("heading", { name: "Thành phần giao diện" }),
+	).toHaveCount(0);
+});

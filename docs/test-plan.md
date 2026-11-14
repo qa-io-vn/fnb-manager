@@ -274,8 +274,8 @@ Playwright (`@playwright/test` ^1.65.0 with `@axe-core/playwright`) drives Chrom
 | Project | Server | What it covers | Skips when |
 |---|---|---|---|
 | `live` (port 5191) | Vite against the local stack, from `apps/web/.env.local` | Sign-in and sign-out, password-reset mail in the mail catcher, an expired recovery link, the demo offered from the login page, zero rows for a client without a session, Hôm nay on the seed for all stores and per store with its verification state, the language toggle, placeholder pages, the four reports on the seed, Hôm nay's yesterday equal to Ngày | `VITE_SUPABASE_URL` or `VITE_SUPABASE_PUBLISHABLE_KEY` is empty (normally read from `apps/web/.env.local`) |
-| `demo` (port 5192) | Vite with empty Supabase variables | The demo banner and numbers, every demo page with axe at 360 px, the store table inside its card, print, favicon and manifest, no login route without a backend, the nine, eight, ten and seven cards of the reports, deep links, the as-of rule, the young store's states, CSV with a BOM, no request outside the origin, English | never |
-| `pages` (port 5193) | `vite build` under `/fnb-manager/`, then `vite preview` | Icons and manifest under the Pages base path, and Năm within 8 seconds on a CPU four times slower in the production build | never |
+| `demo` (port 5192) | Vite with empty Supabase variables | The demo banner and numbers, every demo page with axe at 360 px, the store table inside its card, print, favicon and manifest, no login route without a backend, the nine, eight, ten and seven cards of the reports, deep links, the as-of rule, the young store's states, CSV with a BOM, no request outside the origin, English, the design catalogue with axe and its popover, focus never hidden under the top bar | never |
+| `pages` (port 5193) | `vite build` under `/fnb-manager/`, then `vite preview` | Icons and manifest under the Pages base path, Năm within 8 seconds on a CPU four times slower in the production build, and no design catalogue in the production build | never |
 
 Common rules:
 
@@ -725,14 +725,14 @@ Listed with `playwright test --list` on 2026-11-12: 63 tests in 9 files.
 | `live` | `e2e/live/auth.spec.ts` | 6 |
 | `live` | `e2e/live/reports.spec.ts` | 3 |
 | `live` | `e2e/live/today.spec.ts` | 5 |
-| `demo` | `e2e/demo/demo.spec.ts` | 13 |
+| `demo` | `e2e/demo/demo.spec.ts` | 14 |
 | `demo` | `e2e/demo/report-day.spec.ts` | 11 |
 | `demo` | `e2e/demo/report-week.spec.ts` | 8 |
 | `demo` | `e2e/demo/report-month.spec.ts` | 12 |
 | `demo` | `e2e/demo/report-year.spec.ts` | 8 |
-| `pages` | `e2e/pages/install.spec.ts` | 1 |
+| `pages` | `e2e/pages/install.spec.ts` | 2 |
 | `pages` | `e2e/pages/report-year-performance.spec.ts` | 1 |
-| | **Total** | **68** (live 14, demo 52, pages 2) |
+| | **Total** | **70** (live 14, demo 53, pages 3) |
 
 At the phase 9 verification the suite had 63 tests and all passed; phase 6 had 20.
 

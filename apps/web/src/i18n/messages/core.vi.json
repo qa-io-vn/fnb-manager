@@ -169,5 +169,11 @@
 	"payment.kind.voucher": "Voucher",
 	"payment.kind.other": "Khác",
 	"money.million": "tr",
-	"money.billion": "tỷ"
+	"money.billion": "tỷ",
+	"design.title": "Thành phần giao diện",
+	"design.button": "Nút (Button)",
+	"design.fields": "Trường nhập (fieldVariants, TextField)",
+	"design.textLink": "Liên kết (TextLink)",
+	"design.popover": "Bảng bật lên (Popover)",
+	"design.languageToggle": "Chuyển ngôn ngữ (LanguageToggle)"
 }

@@ -6,14 +6,16 @@ export const Popover = RadixPopover.Root;
 export const PopoverTrigger = RadixPopover.Trigger;
 
 export function PopoverContent({
+	label,
 	className,
 	align = "start",
 	sideOffset = 4,
 	...props
-}: ComponentProps<typeof RadixPopover.Content>) {
+}: ComponentProps<typeof RadixPopover.Content> & { label: string }) {
 	return (
 		<RadixPopover.Portal>
 			<RadixPopover.Content
+				aria-label={label}
 				align={align}
 				sideOffset={sideOffset}
 				collisionPadding={16}

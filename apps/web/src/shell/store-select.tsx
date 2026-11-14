@@ -82,7 +82,7 @@ export function StoreSelect({ stores, selected, onChange }: StoreSelectProps) {
 					</span>
 					<span aria-hidden="true">▾</span>
 				</PopoverTrigger>
-				<PopoverContent>
+				<PopoverContent label={t("shell.stores")}>
 					<fieldset>
 						<legend className="sr-only">{t("shell.stores")}</legend>
 						<label className="flex min-h-11 items-center gap-2 rounded px-2 hover:bg-surface-sunken">

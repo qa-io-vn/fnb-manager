@@ -169,5 +169,11 @@
 	"payment.kind.voucher": "Voucher",
 	"payment.kind.other": "Other",
 	"money.million": "M",
-	"money.billion": "B"
+	"money.billion": "B",
+	"design.title": "Interface components",
+	"design.button": "Buttons (Button)",
+	"design.fields": "Fields (fieldVariants, TextField)",
+	"design.textLink": "Links (TextLink)",
+	"design.popover": "Popover (Popover)",
+	"design.languageToggle": "Language switch (LanguageToggle)"
 }

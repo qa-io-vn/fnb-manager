@@ -93,6 +93,17 @@ export const routes: RouteObject[] = [
 						path: "xuat-du-lieu",
 						element: <PlaceholderPage section="exports" />,
 					},
+					...(import.meta.env.DEV
+						? [
+								{
+									path: "thiet-ke",
+									lazy: () =>
+										import("./pages/design-catalogue").then((module) => ({
+											Component: module.DesignCataloguePage,
+										})),
+								},
+							]
+						: []),
 					{ path: "*", element: <Navigate to="/" replace /> },
 				],
 			},

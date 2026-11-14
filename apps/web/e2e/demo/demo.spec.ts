@@ -3,6 +3,7 @@ import {
 	checkPage,
 	expectHorizontallyInside,
 	expectLastColumnReachable,
+	expectNoSeriousAxeViolations,
 	expectPageNeverScrollsSideways,
 	PHONE_WIDTH,
 	parseExactMoney,
@@ -144,6 +145,21 @@ test("keyboard focus is never hidden under the sticky top bar on a phone", async
 		if (verdict !== null) covered.push(verdict);
 	}
 	expect(covered).toEqual([]);
+});
+
+test("the design catalogue passes axe and fits a 360 px phone, its popover open too", async ({
+	page,
+}) => {
+	await page.goto("/#/thiet-ke");
+	await expect(
+		page.getByRole("heading", { level: 1, name: "Thành phần giao diện" }),
+	).toBeVisible();
+	await checkPage(page);
+	await page.getByTestId("catalogue-popover").click();
+	await expect(page.getByRole("dialog")).toBeVisible();
+	await expectNoSeriousAxeViolations(page);
+	await page.keyboard.press("Escape");
+	await expect(page.getByTestId("catalogue-popover")).toBeFocused();
 });
 
 test("Hôm nay passes axe and fits a 360 px phone", async ({ page }) => {

@@ -54,7 +54,7 @@ Tokens are named for their role, never for their colour: `accent`, not `green`. 
 | `fieldVariants` | classes for a native `<input>`, `<select>` or a field-like `<button>` | `kind`: `control` (the period inputs and selects, the tenant select), `trigger` (the store picker and the folded-controls summary), `form` (the sign-in fields) |
 | `TextField` | a labelled `<input>` | label linked by `id`, `required`, and the `autocomplete` value password managers need |
 | `TextLink` | React Router's `Link` | the underlined accent link of the auth pages and the report cards |
-| `Popover`, `PopoverTrigger`, `PopoverContent` | Radix Popover | focus moves into the panel and back to the trigger, Escape and outside clicks close it, the panel stays inside the viewport; the store picker opens in it |
+| `Popover`, `PopoverTrigger`, `PopoverContent` | Radix Popover | focus moves into the panel and back to the trigger, Escape and outside clicks close it, the panel stays inside the viewport; `PopoverContent` requires a `label`, which names its dialog for screen readers; the store picker opens in it |
 | `cn` | `clsx` and `tailwind-merge` | joins classes so that a screen's override replaces a variant's class instead of adding a second one |
 
 Two patterns stay native because they already follow the WAI-ARIA pattern and Radix would add nothing: the language switch is a pair of toggle buttons with `aria-pressed`, and the folded store and period controls are a disclosure button with `aria-expanded` and `aria-controls`. A control moves into `components/ui` as soon as a second screen needs it, together with a line in this table and a case in `ui.test.tsx`.
@@ -81,7 +81,9 @@ Every page meets WCAG 2.2 AA. axe runs with the `wcag2a`, `wcag2aa`, `wcag21a`, 
 
 ## 5. Catalogue
 
-In development builds, `#/thiet-ke` shows every component of section 3.1 in each variant and state, in both languages. It is not linked from the navigation and is absent from production builds. An end-to-end check runs axe on it in light and dark and at 360 px, so a component's accessibility is tested once, in isolation, as well as on the pages that use it.
+In development builds, `#/thiet-ke` shows every export of section 3.1 in each variant and state: the six tone and size combinations of `Button` and a disabled one, `TextField`, an input and a select with `fieldVariants`, `TextLink`, the `Popover`, and the native language switch. Its title, section titles and labels come from the message catalogue in both languages, like every visible string of the app; each section title names the export in brackets. The route is added only when `import.meta.env.DEV` is true, so the production build contains neither the route nor the page.
+
+An end-to-end check opens it, runs the page check (axe in light at 1280 px, at 360 px and in dark, no sideways scroll), opens the popover and runs axe again, and checks that Escape returns focus to the trigger. Another checks that the production build sends `#/thiet-ke` back to Hôm nay. A component's accessibility is therefore tested once, in isolation, as well as on the pages that use it; the first run found that the popover panel was a dialog without a name, which is why `PopoverContent` now requires a `label`.
 
 ## 6. Migration
 
@@ -91,4 +93,6 @@ The design system replaces the hand-written styles in three verified steps. Each
 |---|---|---|---|
 | DS1 | the token package, generated CSS and chart palette; `styles.css` and the chart theme read them; no visible change | before-and-after full-page screenshots of every demo page in light, dark, dark at 360 px and print equal to the byte; the token tests; the raw-colour check | verified locally on 2026-11-14 |
 | DS2 | the `components/ui` controls of section 3.1; the shell, the auth pages, Hôm nay and the report cards use them; WCAG 2.2 AA with the focus and target-size fixes of section 4 | the end-to-end suite with the WCAG 2.2 axe tags and the keyboard check, the unit tests of the controls and the table scroller, and the before-and-after screenshots (identical, apart from rounding of at most 1/255 inside the blurred top bar) | verified locally on 2026-11-14 |
-| DS3 | the catalogue page and its checks; this document's tables final | the catalogue's end-to-end check | planned |
+| DS3 | the catalogue page and its checks; this document's tables final | the catalogue's end-to-end checks in development and production | verified locally on 2026-11-14 |
+
+The shared controls added about 33 kB gzipped to the start-up JavaScript (248.5 kB after DS1, 281.1 kB after DS2: Radix Popover with its positioning, `tailwind-merge` and `class-variance-authority`), inside the 400 kB budget of `scripts/check-size.mjs`.
