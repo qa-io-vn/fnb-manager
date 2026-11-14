@@ -19,6 +19,7 @@ import {
 } from "./values.js";
 
 export const FLAT_THRESHOLD = 0.005;
+export const MIN_VISIBLE_SHARE_CHANGE = 0.0005;
 
 export type DriverDimension =
 	| "store"
@@ -65,6 +66,13 @@ export function mainClauseOf(
 		return "noReference";
 	}
 	if (Math.abs(comparison.change) < FLAT_THRESHOLD) return "flat";
+	if (
+		comparison.unit === "fraction" &&
+		comparison.difference !== null &&
+		Math.abs(comparison.difference) < MIN_VISIBLE_SHARE_CHANGE
+	) {
+		return "flat";
+	}
 	return comparison.change > 0 ? "up" : "down";
 }
 

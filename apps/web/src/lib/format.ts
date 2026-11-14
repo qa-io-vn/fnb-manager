@@ -1,3 +1,4 @@
+import { roundHalfAwayFromZero } from "@fnb/reports";
 import { dateFromIso, type IsoDate } from "./business-dates";
 
 export interface CompactUnitLabels {
@@ -54,6 +55,7 @@ export function localeForCurrency(
 const MILLION = 1_000_000;
 const BILLION = 1_000_000_000;
 const POINTS_PER_FRACTION = 100;
+const POINT_DIGITS = 1;
 
 function currencySymbol(locale: string, currencyCode: string): string {
 	const parts = new Intl.NumberFormat(locale, {
@@ -151,7 +153,10 @@ export function createFormatters(options: FormatterOptions): Formatters {
 		count: (value) => integer.format(value),
 		decimal: (value) => oneDecimal.format(value),
 		ratio: (value) => twoDecimals.format(value),
-		points: (fraction) => signedPoints.format(fraction * POINTS_PER_FRACTION),
+		points: (fraction) =>
+			signedPoints.format(
+				roundHalfAwayFromZero(fraction * POINTS_PER_FRACTION, POINT_DIGITS),
+			),
 		pointMagnitude: (points) => headlineDecimal.format(Math.abs(points)),
 		percent: (fraction) => percentFormat.format(fraction),
 		signedPercent: (fraction) => signedPercentFormat.format(fraction),

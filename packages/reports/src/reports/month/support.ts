@@ -383,7 +383,7 @@ export function storeName(
 }
 
 const POINTS_PER_FRACTION = 100;
-const POINT_DIGITS = 2;
+const POINT_DIGITS = 1;
 
 export function pointsValue(comparison: Comparison | null): TypedValue | null {
 	if (

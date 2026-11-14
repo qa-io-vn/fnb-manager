@@ -160,6 +160,29 @@ describe("narrate", () => {
 		).toBe(main.down);
 	});
 
+	it("calls a share flat when its change would read 0.0 points", () => {
+		const share = (difference: number): Comparison => ({
+			...comparisonOf(difference / 0.03),
+			current: 0.03 + difference,
+			reference: 0.03,
+			difference,
+			unit: "fraction",
+		});
+		const base = {
+			main,
+			values: {},
+			notes: [],
+			drivers: [],
+			decomposition: null,
+		};
+		expect(
+			narrate({ ...base, current: 0.0298, comparison: share(-0.0002) })[0]?.key,
+		).toBe(main.flat);
+		expect(
+			narrate({ ...base, current: 0.0294, comparison: share(-0.0006) })[0]?.key,
+		).toBe(main.down);
+	});
+
 	it("states the like-for-like figures right after the main clause", () => {
 		const parts = narrate({
 			main,

@@ -174,7 +174,7 @@ describe("Tháng size mix", () => {
 		expect(card.narrative[0]?.key).toBe(monthKeys.size.down);
 		expect(card.narrative[0]?.values.points).toEqual({
 			kind: "pointMagnitude",
-			value: 11.82,
+			value: 11.8,
 		});
 		expect(card.narrative[1]).toMatchObject({
 			key: reportKeys.clause.driver.item,
