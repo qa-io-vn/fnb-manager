@@ -251,6 +251,39 @@ describe("card adapter", () => {
 		});
 	});
 
+	it("writes shift cells as Ca n and cashier keys as their label, never a raw value", () => {
+		const model: TableModel = {
+			captionKey: "report.day.shifts.table",
+			columns: [
+				{ key: "shift", labelKey: "report.table.shift", kind: "shift" },
+				{ key: "cashier", labelKey: "report.table.cashier", kind: "label" },
+			],
+			rows: [
+				{ id: "a", cells: { shift: 1, cashier: "Lan" } },
+				{
+					id: "b",
+					cells: { shift: 2, cashier: "report.label.unknownCashier" },
+				},
+			],
+			initialSort: null,
+			variant: "standard",
+			heatColumns: [],
+		};
+		const table = tableOf(model, t);
+		expect(table.columns.map((column) => column.kind)).toEqual([
+			"text",
+			"text",
+		]);
+		expect(table.rows.map((row) => row.cells)).toEqual([
+			{ shift: "Ca 1", cashier: "Lan" },
+			{ shift: "Ca 2", cashier: "chưa rõ thu ngân" },
+		]);
+		const english = tableOf(model, (key, params) =>
+			translate("en", key, params),
+		);
+		expect(english.rows[0]?.cells.shift).toBe("Shift 1");
+	});
+
 	it("maps charts with a right axis, stacks, mark lines and areas", () => {
 		const chart: ChartModel = {
 			labelKey: "report.day.hourly.chart",

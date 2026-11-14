@@ -70,7 +70,9 @@ The common placeholders; every other one is named after what it holds, and the E
 | `{count}`, `{days}`, `{weeks}`, `{quantity}`, `{rank}`, `{minimum}` | a number of shifts, items, days, weeks, units sold, a rank or the minimum quantity rule |
 | `{store}`, `{stores}` | a store name from the POS, or the stores of the selection |
 | `{item}`, `{riser}`, `{faller}` | an item name from the POS |
-| `{category}`, `{promotion}`, `{payment}`, `{method}`, `{cashier}`, `{shift}` | a category, promotion, payment method, cashier or shift name from the POS |
+| `{category}`, `{promotion}`, `{payment}`, `{method}` | a category, promotion or payment method name from the POS |
+| `{cashier}` | a cashier name from the POS, or "chưa rõ thu ngân" when it is missing or shaped like an e-mail address |
+| `{shift}` | a shift's number in its store and day by opening time, written with `report.label.shiftNumber` ("Ca 2"); never the POS shift name |
 | `{kind}` | a payment or promotion kind of this sheet (`report.paymentKind.*`, `report.promotionKind.*`) |
 | `{holiday}` | a holiday kind of this sheet (`report.holiday.*`) |
 | `{reasons}` | the shift reasons of this sheet (`report.shiftReasons.*`), joined |
@@ -350,6 +352,8 @@ The common placeholders; every other one is named after what it holds, and the E
 | Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
 | --- | --- | --- | --- |
 | `report.label.unknownCashier` | chưa rõ thu ngân | unknown cashier | — |
+| `report.label.shiftNumber` | Ca {number} | Shift {number} | `{number}` |
+| `report.label.storeAndLabel` | {store} · {label} | {store} · {label} | `{store}` `{label}` |
 | `report.label.unnamed` | không tên | unnamed | — |
 | `report.label.uncategorised` | Chưa phân loại | Uncategorised | — |
 

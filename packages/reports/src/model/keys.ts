@@ -223,6 +223,8 @@ export const reportKeys = {
 	},
 	label: {
 		unknownCashier: "report.label.unknownCashier",
+		shiftNumber: "report.label.shiftNumber",
+		storeAndLabel: "report.label.storeAndLabel",
 		unnamed: "report.label.unnamed",
 		uncategorised: "report.label.uncategorised",
 	},

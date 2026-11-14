@@ -9,8 +9,10 @@ import {
 	expectDeepLinkRoundTrip,
 	expectEnglishWithoutKeys,
 	expectEveryCardSettled,
+	expectNoConsoleErrors,
 	expectNoExternalRequests,
 	expectPrintLayout,
+	expectShiftsLabelledByNumber,
 	expectStepping,
 	openReport,
 	REPORT_CLOCK,
@@ -204,4 +206,16 @@ test("Tháng makes no request outside its origin and reads well in English", asy
 	});
 	await expectEnglishWithoutKeys(page);
 	await expect(card(page, "month_pace").getByTestId("headline")).toBeVisible();
+});
+
+test("the shift card numbers shifts Ca n and its CSV and print show no POS shift name or e-mail", async ({
+	page,
+}) => {
+	await openReport(page, "month");
+	await expectShiftsLabelledByNumber(
+		page,
+		"card-month-shift_stats",
+		/Ca (sáng|chiều|tối)/,
+	);
+	expectNoConsoleErrors(page);
 });

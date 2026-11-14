@@ -4,7 +4,9 @@ import {
 	paymentKindKey,
 	promotionKindKey,
 	reportKeys,
+	shiftNumberValue,
 	shiftReasonsKey,
+	storeAndLabelValue,
 } from "../../../../src/index.js";
 import {
 	buildDiscountsCard,
@@ -168,6 +170,47 @@ describe("Ngày shifts", () => {
 			value: -120_000,
 		});
 		expect(card.chart?.series[1]?.values).toEqual([-120_000, null, null]);
+	});
+
+	it("labels shifts Ca n by opening time and never shows a POS name or e-mail", () => {
+		const card = buildShiftsCard(
+			dayInput({
+				shifts: [
+					shiftRow("S9", {
+						opened_at: "2026-11-03T09:00:00.000Z",
+						shift_name: "minh@example.com - ca tối",
+						cashier_name: "minh@example.com",
+						variance_amount: -90_000,
+						flagged: true,
+						reasons: ["absolute"],
+					}),
+					shiftRow("S1", {
+						opened_at: "2026-11-03T01:00:00.000Z",
+						shift_name: "lan@example.com - ca sáng",
+						cashier_name: "Lan",
+					}),
+				],
+			}),
+		);
+		const cells = Object.fromEntries(
+			(card.tables[0]?.rows ?? []).map((row) => [row.id, row.cells]),
+		);
+		expect(cells.S1?.shift).toBe(1);
+		expect(cells.S9?.shift).toBe(2);
+		expect(cells.S9?.cashier).toBe(reportKeys.label.unknownCashier);
+		expect(cells.S1?.cashier).toBe("Lan");
+		expect(
+			card.tables[0]?.columns.find((col) => col.key === "shift")?.kind,
+		).toBe("shift");
+		expect(card.narrative[0]?.values.shift).toEqual(shiftNumberValue(2));
+		expect(card.narrative[0]?.values.cashier).toEqual({
+			kind: "message",
+			value: reportKeys.label.unknownCashier,
+		});
+		expect(card.chart?.categories[0]).toEqual(
+			storeAndLabelValue("Store 1", shiftNumberValue(2)),
+		);
+		expect(JSON.stringify(card)).not.toMatch(/@|example\.com|ca (sáng|tối)/);
 	});
 
 	it("has no headline and a notice on a day without shifts", () => {

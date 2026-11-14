@@ -9,8 +9,10 @@ import {
 	expectDeepLinkRoundTrip,
 	expectEnglishWithoutKeys,
 	expectEveryCardSettled,
+	expectNoConsoleErrors,
 	expectNoExternalRequests,
 	expectPrintLayout,
+	expectShiftsLabelledByNumber,
 	expectStepping,
 	headlineExact,
 	openReport,
@@ -187,4 +189,16 @@ test("Ngày makes no request outside its origin and reads well in English", asyn
 		await waitForSettledCards(page);
 	});
 	await expectEnglishWithoutKeys(page);
+});
+
+test("the shift card numbers shifts Ca n and its CSV and print show no POS shift name or e-mail", async ({
+	page,
+}) => {
+	await openReport(page, "day");
+	await expectShiftsLabelledByNumber(
+		page,
+		"card-day-shifts",
+		/Ca (sáng|chiều|tối)/,
+	);
+	expectNoConsoleErrors(page);
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reportKeys } from "../../../../src/index.js";
+import { reportKeys, shiftNumberValue } from "../../../../src/index.js";
 import {
 	buildShiftStatsCard,
 	buildTargetProgressCard,
@@ -17,17 +17,32 @@ import {
 } from "./fixtures.js";
 
 describe("Tháng shift statistics", () => {
+	const DAY_TWO = "2026-11-02";
 	const shifts = [
-		shiftRow("1", { flagged: true, variance_amount: -80_000 }),
+		shiftRow("1", {
+			opened_at: "2026-11-01T01:00:00.000Z",
+			flagged: true,
+			variance_amount: -80_000,
+			shift_name: "lan@example.com - ca sáng",
+		}),
 		shiftRow("2", {
+			opened_at: "2026-11-01T09:00:00.000Z",
 			flagged: true,
 			variance_amount: 60_000,
-			shift_name: "Ca tối",
+			shift_name: "lan@example.com - ca tối",
 		}),
 		shiftRow("3", {
+			business_date: DAY_TWO,
+			opened_at: "2026-11-02T09:00:00.000Z",
 			flagged: true,
 			variance_amount: -70_000,
-			shift_name: "Ca tối",
+			shift_name: "minh@example.com - ca tối",
+			cashier_name: "minh@example.com",
+		}),
+		shiftRow("3m", {
+			business_date: DAY_TWO,
+			opened_at: "2026-11-02T01:00:00.000Z",
+			shift_name: "minh@example.com - ca sáng",
 			cashier_name: "Minh",
 		}),
 		shiftRow("4", { variance_amount: 10_000, store_id: STORE_B }),
@@ -44,7 +59,7 @@ describe("Tháng shift statistics", () => {
 		expect(card.headline).toMatchObject({ value: 3, unit: "count" });
 		expect(card.headline.caption?.values.count).toEqual({
 			kind: "count",
-			value: 5,
+			value: 6,
 		});
 		expect(card.comparisons[0]).toMatchObject({
 			kind: "previous",
@@ -58,7 +73,7 @@ describe("Tháng shift statistics", () => {
 			values: {
 				cashier: { kind: "text", value: "Lan" },
 				cashierFlags: { kind: "count", value: 2 },
-				shift: { kind: "text", value: "Ca tối" },
+				shift: shiftNumberValue(2),
 				shiftFlags: { kind: "count", value: 2 },
 			},
 		});
@@ -66,23 +81,42 @@ describe("Tháng shift statistics", () => {
 		expect(card.markers.stale).toBe(false);
 	});
 
-	it("sums the variance per cashier and shift", () => {
+	it("groups slots by their number in the day and masks e-mail-shaped cashiers", () => {
 		const groups = shiftGroups(shifts, { byStore: false, bySlot: true });
 		expect(groups[0]).toMatchObject({
 			cashier: "Lan",
-			shift: "Ca sáng",
-			shifts: 3,
+			shift: 1,
+			shifts: 2,
 			flagged: 1,
 			totalVariance: 90_000,
 			meanVariance: 45_000,
 			largestShortage: -80_000,
 			largestOverage: 10_000,
 		});
-		const cashiers = shiftGroups(shifts, { byStore: false, bySlot: false });
-		expect(cashiers.map((group) => [group.cashier, group.flagged])).toEqual([
+		expect(groups.map((group) => [group.cashier, group.shift])).toEqual([
+			["Lan", 1],
+			[null, 2],
 			["Lan", 2],
 			["Minh", 1],
 		]);
+		const cashiers = shiftGroups(shifts, { byStore: false, bySlot: false });
+		expect(cashiers.map((group) => [group.cashier, group.flagged])).toEqual([
+			["Lan", 2],
+			[null, 1],
+			["Minh", 0],
+		]);
+	});
+
+	it("never shows a POS shift name or an e-mail in the table, the chart or the sentence", () => {
+		const card = buildShiftStatsCard(monthInput({ shifts }));
+		const masked = card.tables[0]?.rows.find(
+			(row) => row.cells.cashier === reportKeys.label.unknownCashier,
+		);
+		expect(masked?.cells.shift).toBe(2);
+		expect(
+			card.tables[0]?.columns.find((col) => col.key === "shift")?.kind,
+		).toBe("shift");
+		expect(JSON.stringify(card)).not.toMatch(/@|example\.com|ca (sáng|tối)/);
 	});
 
 	it("keeps the comparison to the stores that had last month", () => {

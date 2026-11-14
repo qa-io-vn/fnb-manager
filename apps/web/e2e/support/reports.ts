@@ -237,6 +237,45 @@ export async function selectStores(
 	await waitForSettledCards(page);
 }
 
+export async function csvTextOf(
+	page: Page,
+	cardTestId: string,
+): Promise<string> {
+	const card = page.getByTestId(cardTestId);
+	const downloading = page.waitForEvent("download");
+	await card
+		.getByRole("button", { name: /Tải CSV|Download CSV/ })
+		.first()
+		.click();
+	const download = await downloading;
+	return (await readFile(await download.path())).subarray(3).toString("utf8");
+}
+
+const EMAIL_PATTERN = /[^\s@]+@[^\s@]+\.[^\s@]+/;
+
+export async function expectShiftsLabelledByNumber(
+	page: Page,
+	cardTestId: string,
+	posNames: RegExp,
+): Promise<void> {
+	const card = page.getByTestId(cardTestId);
+	await card.scrollIntoViewIfNeeded();
+	await expect(card).toContainText("Ca 1");
+	await expect(card).not.toContainText(posNames);
+	await expect(card).not.toContainText(EMAIL_PATTERN);
+	const csv = await csvTextOf(page, cardTestId);
+	expect(csv).toContain("Ca 1");
+	expect(csv).not.toMatch(posNames);
+	expect(csv).not.toMatch(EMAIL_PATTERN);
+	await page.emulateMedia({ media: "print" });
+	try {
+		await expect(card).toContainText("Ca 1");
+		await expect(card).not.toContainText(posNames);
+	} finally {
+		await page.emulateMedia({ media: "screen" });
+	}
+}
+
 export async function expectCsvWithBom(
 	page: Page,
 	cardTestId: string,

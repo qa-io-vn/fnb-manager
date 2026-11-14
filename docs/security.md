@@ -297,7 +297,8 @@ Hosting personal data on Supabase in Singapore and on GitHub is a cross-border t
 ### 8.6 Personal-data minimisation in practice
 
 - Alerts and message parameters hold counts and short tokens only (`app.facts_are_count_only`), so no error text, name, address or URL reaches them.
-- Digests hold aggregates and store, item and shift names; no customer data and no cashier names.
+- Digests hold aggregates, store and item names and shift numbers; no customer data and no cashier names.
+- Reports label shifts by their number in the store and day ("Ca 1", "Ca 2") and never show the POS shift name, which on the real data carries the cashier's POS login e-mail, nor its external id. A cashier value shaped like an e-mail address shows as "chưa rõ thu ngân", in the table, chart, sentence, print view and CSV (FR-REP-21).
 - The outbox never stores an address: `recipient_ref` is `channel:<id>`.
 - The data pack is planned to hold aggregates only (phase 11 acceptance).
 - Every data role can read customer phones and names (on invoices within its stores, in `customers` across the tenant) and the consent ledger. Narrowing this for staff and viewers is an open decision before Track C.

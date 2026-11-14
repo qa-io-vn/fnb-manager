@@ -13,6 +13,7 @@ import {
 	cards,
 	currentKey,
 	expectEveryCardSettled,
+	expectShiftsLabelledByNumber,
 	headlineExact,
 	type ReportKind,
 	reportUrl,
@@ -109,4 +110,19 @@ test("Năm says there is no data from last year on a seven-day seed", async ({
 	await expect(page.getByTestId("report-cards")).toContainText(
 		"chưa có dữ liệu năm trước",
 	);
+});
+
+test("the shift cards number shifts Ca n and never show the seeded POS shift name", async ({
+	page,
+}) => {
+	const clock = await seededClock();
+	await signIn(page, clock);
+	for (const [kind, cardTestId] of [
+		["day", "card-day-shifts"],
+		["month", "card-month-shift_stats"],
+	] as const) {
+		await page.goto(reportUrl(kind));
+		await waitForSettledCards(page);
+		await expectShiftsLabelledByNumber(page, cardTestId, /Shift \d/);
+	}
 });

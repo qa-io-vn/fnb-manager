@@ -116,6 +116,14 @@ test("the period navigator, a card and its like-for-like chip", async ({
 	await shootElement(card, "card-anatomy");
 });
 
+test("the Ngày shift card", async ({ page }) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await openReportPage(page, "day");
+	const card = page.getByTestId("card-day-shifts");
+	await expect(card).toContainText("Ca 1");
+	await shootElement(card, "card-shifts");
+});
+
 test("the printed report", async ({ page }) => {
 	await page.setViewportSize({ width: A4_WIDTH_PX, height: 1123 });
 	await openReportPage(page, "day");

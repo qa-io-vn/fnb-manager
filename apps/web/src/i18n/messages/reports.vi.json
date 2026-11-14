@@ -147,6 +147,8 @@
 	"report.role.other": "Khác",
 	"report.role.unmapped": "Chưa gán vai trò",
 	"report.label.unknownCashier": "chưa rõ thu ngân",
+	"report.label.shiftNumber": "Ca {number}",
+	"report.label.storeAndLabel": "{store} · {label}",
 	"report.label.unnamed": "không tên",
 	"report.label.uncategorised": "Chưa phân loại",
 	"report.periodRow.current": "Kỳ này",

@@ -4,7 +4,7 @@ This document states what FNB Manager must do and how well, for the whole progra
 
 Last updated 2026-11-12
 
-375 requirements: 295 functional in 16 areas and 80 non-functional in 11 categories. By status: 174 verified locally, 26 built, 16 in build, 44 designed, 98 planned, 17 waits for owner.
+376 requirements: 296 functional in 16 areas and 80 non-functional in 11 categories. By status: 175 verified locally, 26 built, 16 in build, 44 designed, 98 planned, 17 waits for owner.
 
 ## 1. Introduction
 
@@ -360,6 +360,7 @@ Hôm nay (phase 6) and the periodic reports Ngày, Tuần, Tháng and Năm (phas
 | FR-REP-18 | **Navigation.** The system shall offer Hôm nay, Báo cáo, Chủ đề, Kế hoạch and Cài đặt as a bottom bar on phones and a side rail on wide screens, with placeholders that say what is coming and in which phase. | P6 | Placeholder pages name their phase. | Must | verified locally | `e2e:live/today` |
 | FR-REP-19 | **Owner wording review.** The system shall have its Vietnamese report sentences (679 templates in `docs/reports/cau-van-bao-cao.md`) reviewed by the owner. | P9 | The owner approves or corrects the wording list. | Should | waits for owner | owner check |
 | FR-REP-20 | **Owner comparison with POS reports.** The system shall match the POS reports A01 and B01 on three random days and one month, and show the right peak month and year-over-year change on Năm against the private sheet. | P9 acceptance | The owner check passes after the verifier's live check. | Must | waits for owner | owner check after `reports:live/live-check` |
+| FR-REP-21 | **Shift labels carry no personal data.** The system shall label shifts in reports by their number within the store and day ("Ca 1", "Ca 2", by opening time, the same numbering as the digest) and never show the POS shift name or external id, and shall show the unknown-cashier label instead of a cashier value shaped like an e-mail address, in the table, chart, sentence, print view and CSV. | Privacy review 2026-11-14 · ADR-021 | Ngày and Tháng show "Ca n" for one store and for all stores; no e-mail-shaped text appears in their card models, print or CSV on the demo, the seed or the real tenant. | Must | verified locally | `reports:unit/model/shifts`, `reports:unit/reports/day/details`, `reports:unit/reports/month/shifts-targets`, `web:reports/card-adapter`, `e2e:demo/report-day`, `e2e:demo/report-month`, `e2e:live/reports`, `reports:live/live-check` |
 
 ### 3.7 THM — Thematic reports
 
@@ -981,7 +982,7 @@ A possible legal change after the deep dive: Decree 239/2026/NĐ-CP of 26 June 2
 ```mermaid
 pie showData
     title Requirements by status on 2026-11-12
-    "verified locally" : 174
+    "verified locally" : 175
     "built" : 26
     "in build" : 16
     "designed" : 44
@@ -998,7 +999,7 @@ Functional requirements:
 | FR-SYNC | 27 | – | – | – | – | 1 | 28 |
 | FR-DQ | 10 | – | – | 1 | 1 | 1 | 13 |
 | FR-ANA | 16 | – | – | – | 1 | – | 17 |
-| FR-REP | 17 | 1 | – | – | – | 2 | 20 |
+| FR-REP | 18 | 1 | – | – | – | 2 | 21 |
 | FR-THM | – | – | – | 9 | – | – | 9 |
 | FR-SET | 1 | – | – | 10 | – | – | 11 |
 | FR-EXP | – | – | – | 10 | – | – | 10 |
@@ -1009,7 +1010,7 @@ Functional requirements:
 | FR-STF | – | – | – | – | 23 | – | 23 |
 | FR-LOY | – | – | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | – | – | 7 | – | 12 |
-| **FR total** | **127** | **8** | **13** | **43** | **90** | **14** | **295** |
+| **FR total** | **128** | **8** | **13** | **43** | **90** | **14** | **296** |
 
 Non-functional requirements:
 
@@ -1032,7 +1033,7 @@ Non-functional requirements:
 
 | Priority | verified locally | built | in build | designed | planned | waits for owner | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Must | 158 | 13 | 14 | 26 | 65 | 15 | 291 |
+| Must | 159 | 13 | 14 | 26 | 65 | 15 | 292 |
 | Should | 16 | 13 | 2 | 15 | 30 | 2 | 78 |
 | Could | – | – | – | 3 | 3 | – | 6 |
 

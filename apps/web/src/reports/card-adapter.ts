@@ -6,7 +6,9 @@ import {
 	type Decomposition,
 	type NoticeAction,
 	type ReportKind,
+	reportKeys,
 	roundHalfAwayFromZero,
+	type TableCell,
 	type TableModel,
 	type ValueUnit,
 } from "@fnb/reports";
@@ -90,8 +92,12 @@ function chartScale(unit: ValueUnit | null): number {
 	return unit === "percentChange" ? 0.01 : 1;
 }
 
+const SHIFT_NUMBER_KEY = reportKeys.label.shiftNumber;
+
 export function columnKindOf(kind: ColumnKind): ValueKind {
-	return kind === "message" || kind === "label" ? "text" : kind;
+	return kind === "message" || kind === "label" || kind === "shift"
+		? "text"
+		: kind;
 }
 
 export function metricFor(id: string): MetricDefinition {
@@ -269,6 +275,20 @@ export function tableOf(table: TableModel, t: Translate): TableSpec {
 			.filter((column) => column.kind === "message" || column.kind === "label")
 			.map((column) => column.key),
 	);
+	const shiftColumns = new Set(
+		table.columns
+			.filter((column) => column.kind === "shift")
+			.map((column) => column.key),
+	);
+	const cellText = (key: string, value: TableCell): TableCell => {
+		if (messageColumns.has(key) && typeof value === "string") {
+			return translateKey(t, value);
+		}
+		if (shiftColumns.has(key) && typeof value === "number") {
+			return translateKey(t, SHIFT_NUMBER_KEY, { number: value });
+		}
+		return value;
+	};
 	return {
 		caption: translateKey(t, table.captionKey),
 		columns: table.columns.map((column) => ({
@@ -281,9 +301,7 @@ export function tableOf(table: TableModel, t: Translate): TableSpec {
 			cells: Object.fromEntries(
 				Object.entries(row.cells).map(([key, value]) => [
 					key,
-					messageColumns.has(key) && typeof value === "string"
-						? translateKey(t, value)
-						: value,
+					cellText(key, value),
 				]),
 			),
 		})),

@@ -147,6 +147,8 @@
 	"report.role.other": "Other",
 	"report.role.unmapped": "No role yet",
 	"report.label.unknownCashier": "unknown cashier",
+	"report.label.shiftNumber": "Shift {number}",
+	"report.label.storeAndLabel": "{store} · {label}",
 	"report.label.unnamed": "unnamed",
 	"report.label.uncategorised": "Uncategorised",
 	"report.periodRow.current": "This period",

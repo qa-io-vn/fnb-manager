@@ -15,9 +15,15 @@ import { groupRows } from "../../../model/grouping.js";
 import { previousLabelKey, reportKeys } from "../../../model/keys.js";
 import { sumMoney } from "../../../model/money.js";
 import { ratio } from "../../../model/numeric.js";
+import {
+	cashierShownValue,
+	shiftNumbers,
+	shiftNumberValue,
+	shownCashier,
+	storeAndLabelValue,
+} from "../../../model/shifts.js";
 import { column, STORE_COLUMN, tableModel } from "../../../model/tables.js";
 import {
-	messageValue,
 	numberValue,
 	part,
 	type SentencePart,
@@ -53,17 +59,7 @@ export interface ShiftGroup extends ShiftTotals {
 	readonly id: string;
 	readonly storeId: string | null;
 	readonly cashier: string | null;
-	readonly shift: string | null;
-}
-
-export function shiftLabel(row: ShiftRow): string {
-	return row.shift_name ?? row.shift_external_id;
-}
-
-function cashierValue(cashier: string | null): TypedValue {
-	return cashier === null
-		? messageValue(reportKeys.label.unknownCashier)
-		: textValue("text", cashier);
+	readonly shift: number | null;
 }
 
 export function shiftTotals(members: readonly ShiftRow[]): ShiftTotals {
@@ -95,11 +91,13 @@ export function shiftGroups(
 	rows: readonly ShiftRow[],
 	options: { readonly byStore: boolean; readonly bySlot: boolean },
 ): ShiftGroup[] {
+	const numbers = shiftNumbers(rows);
+	const slotOf = (row: ShiftRow) => numbers.get(row.shift_id) ?? null;
 	const groups = groupRows(rows, (row) =>
 		JSON.stringify([
 			options.byStore ? row.store_id : null,
-			row.cashier_name,
-			options.bySlot ? shiftLabel(row) : null,
+			shownCashier(row.cashier_name),
+			options.bySlot ? slotOf(row) : null,
 		]),
 	);
 	return [...groups.entries()]
@@ -108,8 +106,8 @@ export function shiftGroups(
 			return {
 				id,
 				storeId: options.byStore ? first.store_id : null,
-				cashier: first.cashier_name,
-				shift: options.bySlot ? shiftLabel(first) : null,
+				cashier: shownCashier(first.cashier_name),
+				shift: options.bySlot ? slotOf(first) : null,
 				...shiftTotals(members),
 			};
 		})
@@ -195,16 +193,24 @@ function narrativeOf(
 			}),
 		];
 	}
-	const cashier = mostFlagged(rows, (row) => row.cashier_name ?? "");
-	const slot = mostFlagged(rows, shiftLabel);
+	const numbers = shiftNumbers(rows);
+	const slotOf = (row: ShiftRow) => numbers.get(row.shift_id) ?? 0;
+	const cashier = mostFlagged(
+		rows,
+		(row) => shownCashier(row.cashier_name) ?? "",
+	);
+	const slot = mostFlagged(rows, (row) => String(slotOf(row)));
 	return [
 		part(monthKeys.shifts.main, {
 			month,
 			count: numberValue("count", flagged),
 			total: numberValue("count", rows.length),
-			cashier: cashierValue(cashier?.row.cashier_name ?? null),
+			cashier: cashierShownValue(cashier?.row.cashier_name ?? null),
 			cashierFlags: numberValue("count", cashier?.flagged ?? 0),
-			shift: textValue("text", slot === null ? "" : shiftLabel(slot.row)),
+			shift:
+				slot === null
+					? textValue("text", "")
+					: shiftNumberValue(slotOf(slot.row)),
 			shiftFlags: numberValue("count", slot?.flagged ?? 0),
 		}),
 	];
@@ -221,8 +227,8 @@ export function buildShiftStatsCard(input: CardInput): CardModel {
 	const cashiers = shiftGroups(rows, { byStore: multiStore, bySlot: false });
 	const columns: TableColumnModel[] = [
 		...(multiStore ? [STORE_COLUMN] : []),
-		column("cashier", reportKeys.table.cashier, "text"),
-		column("shift", reportKeys.table.shift, "text"),
+		column("cashier", reportKeys.table.cashier, "label"),
+		column("shift", reportKeys.table.shift, "shift"),
 		column("shifts", monthKeys.table.shifts, "count"),
 		column("flagged", monthKeys.table.flagged, "count"),
 		column("totalVariance", monthKeys.table.totalVariance, "money"),
@@ -230,11 +236,13 @@ export function buildShiftStatsCard(input: CardInput): CardModel {
 		column("largestShortage", monthKeys.table.largestShortage, "money"),
 		column("largestOverage", monthKeys.table.largestOverage, "money"),
 	];
-	const cashierCategory = (group: ShiftGroup): TypedValue => {
-		if (!multiStore) return cashierValue(group.cashier);
-		const name = group.cashier ?? "";
-		return textValue("text", `${storeName(context, group.storeId)} · ${name}`);
-	};
+	const cashierCategory = (group: ShiftGroup): TypedValue =>
+		multiStore
+			? storeAndLabelValue(
+					storeName(context, group.storeId),
+					cashierShownValue(group.cashier),
+				)
+			: cashierShownValue(group.cashier);
 	const notice: NoticeModel | null =
 		rows.length === 0
 			? { tone: "info", part: part(monthKeys.shifts.noShifts), action: null }
@@ -266,7 +274,7 @@ export function buildShiftStatsCard(input: CardInput): CardModel {
 					id: group.id,
 					cells: {
 						store: storeName(context, group.storeId),
-						cashier: group.cashier,
+						cashier: group.cashier ?? reportKeys.label.unknownCashier,
 						shift: group.shift,
 						shifts: group.shifts,
 						flagged: group.flagged,

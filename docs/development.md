@@ -158,7 +158,7 @@ Run everything from the repository root.
 | Parity on Postgres | `DATABASE_URL=<local database URL> pnpm --filter @fnb/demo-analytics test:parity:postgres` | refuses a database that holds a tenant whose slug does not start with `demo-` or `parity-`; CI runs it on a fresh stack |
 | Playwright, once | `pnpm --filter @fnb/web e2e:install` | installs the Chromium build Playwright needs |
 | Playwright, one spec | `E2E_PORT_OFFSET=10 pnpm --filter @fnb/web exec playwright test --project=demo e2e/demo/report-day.spec.ts` | `--project` starts only that project's server |
-| Playwright, everything | `pnpm --filter @fnb/web test:e2e` | 70 tests in 10 files (listed on 2026-11-14), one worker; long, so prefer one spec on a shared machine |
+| Playwright, everything | `pnpm --filter @fnb/web test:e2e` | 73 tests in 10 files (listed on 2026-11-14), one worker; long, so prefer one spec on a shared machine |
 | User-guide screenshots | `pnpm --filter @fnb/web docs:screenshots` | takes every screenshot of [user-guide.md](user-guide.md) from the demo at a fixed clock into `docs/user-guide/`, and the sign-in screens from a build pointed at an unreachable backend, so no real data can appear; retake them whenever a screen changes |
 | Build every package | `pnpm build` | `tsc -p tsconfig.build.json` into each `dist/` (gitignored), plus the web build; packages are consumed as TypeScript source, so nothing needs building to run |
 | Web build | `pnpm --filter @fnb/web build` | `vite build`, then `scripts/check-bundle.mjs` and `scripts/check-size.mjs` |

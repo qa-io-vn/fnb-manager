@@ -155,13 +155,15 @@ Every template, with its English meaning, is listed for the owner's wording revi
 | Theo giờ so với thường lệ (By hour against usual) | the peak hour and every hour against the usual curve of that weekday | the 20:00 to 22:00 share against the day before |
 | 5 món bán chạy (Top 5 items) | the five best sellers: quantity, net revenue, share | the day before |
 | Thanh toán và tiền mặt cần đếm (Payments and cash to count) | cash to count and each payment method | the cash share against the day before |
-| Ca và chênh lệch két (Shifts and drawer variance) | shifts whose drawer differs from the expected cash by more than 50,000 ₫, by more than 0.5 % of the cash sales, or unusually against earlier shifts | none |
+| Ca và chênh lệch két (Shifts and drawer variance) | shifts whose drawer differs from the expected cash by more than 50,000 ₫, by more than 0.5 % of the cash sales, or unusually against earlier shifts. Shifts are numbered "Ca 1", "Ca 2" by their opening time in each store and day; a cashier the POS records by an e-mail address shows as "chưa rõ thu ngân" | none |
 | Giảm giá và voucher (Discounts and vouchers) | discount cost (item, bill, voucher), its share of gross revenue, and each promotion | the day before; the discount rate also against last year |
 | Hóa đơn có số điện thoại thành viên (Invoices with a member phone number) | the share of invoices that carry a member's phone number | the day before |
 
 More detail: [reports/ngay.md](reports/ngay.md).
 
 ![The top of Ngày on a computer](user-guide/report-ngay.png)
+
+![The Ca và chênh lệch két card of Ngày: shifts numbered Ca 1 to Ca 3 for each sample store, with the cashier, opening and closing times and the drawer variance](user-guide/card-shifts.png)
 
 ### Tuần (Báo cáo tuần, Weekly report)
 

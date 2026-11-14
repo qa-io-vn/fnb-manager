@@ -676,16 +676,16 @@ From the run of 2026-11-14 at about 10:20, in every package. Skipped files and t
 | `@fnb/metrics` | 3 | 109 | 0 |
 | `@fnb/design-tokens` | 2 | 9 | 0 |
 | `@fnb/connector-core` | 3 | 26 | 0 |
-| `@fnb/reports` | 25 + 1 | 287 | 7 |
+| `@fnb/reports` | 26 + 1 | 295 | 7 |
 | `@fnb/connector-mock` | 3 | 56 | 0 |
 | `@fnb/connector-ipos` | 10 + 3 | 155 | 4 |
 | `@fnb/sync` | 15 + 1 | 98 | 2 |
 | `@fnb/demo-analytics` | 17 | 109 | 0 |
 | `@fnb/runner` | 5 | 26 | 0 |
-| `@fnb/web` | 23 | 278 | 0 |
+| `@fnb/web` | 23 | 279 | 0 |
 | `@fnb/notify` | 16 + 3 | 163 | 11 |
 | `@fnb/jobs` | 8 + 2 | 62 | 8 |
-| **Total** | **137 + 10 = 147** | **1,447** | **32** |
+| **Total** | **138 + 10 = 148** | **1,456** | **32** |
 
 `packages/runner/test/integration` exists but holds no test.
 
@@ -723,16 +723,16 @@ Listed with `playwright test --list` on 2026-11-12: 63 tests in 9 files.
 | Project | File | Tests |
 |---|---|---:|
 | `live` | `e2e/live/auth.spec.ts` | 6 |
-| `live` | `e2e/live/reports.spec.ts` | 3 |
+| `live` | `e2e/live/reports.spec.ts` | 4 |
 | `live` | `e2e/live/today.spec.ts` | 5 |
 | `demo` | `e2e/demo/demo.spec.ts` | 14 |
-| `demo` | `e2e/demo/report-day.spec.ts` | 11 |
+| `demo` | `e2e/demo/report-day.spec.ts` | 12 |
 | `demo` | `e2e/demo/report-week.spec.ts` | 8 |
-| `demo` | `e2e/demo/report-month.spec.ts` | 12 |
+| `demo` | `e2e/demo/report-month.spec.ts` | 13 |
 | `demo` | `e2e/demo/report-year.spec.ts` | 8 |
 | `pages` | `e2e/pages/install.spec.ts` | 2 |
 | `pages` | `e2e/pages/report-year-performance.spec.ts` | 1 |
-| | **Total** | **70** (live 14, demo 53, pages 3) |
+| | **Total** | **73** (live 15, demo 55, pages 3) |
 
 At the phase 9 verification the suite had 63 tests and all passed; phase 6 had 20.
 
@@ -805,7 +805,7 @@ Coverage of the 375 requirements on 2026-11-12, by area.
 | FR-SYNC | 25 | 2 | – | 1 | 28 |
 | FR-DQ | 10 | – | 2 | 1 | 13 |
 | FR-ANA | 15 | – | 1 | 1 | 17 |
-| FR-REP | 16 | 2 | – | 2 | 20 |
+| FR-REP | 17 | 2 | – | 2 | 21 |
 | FR-THM | – | – | 9 | – | 9 |
 | FR-SET | 1 | 7 | 3 | – | 11 |
 | FR-EXP | – | 2 | 8 | – | 10 |
@@ -816,7 +816,7 @@ Coverage of the 375 requirements on 2026-11-12, by area.
 | FR-STF | – | – | 23 | – | 23 |
 | FR-LOY | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | 7 | – | 12 |
-| **FR total** | **132** | **26** | **123** | **14** | **295** |
+| **FR total** | **133** | **26** | **123** | **14** | **296** |
 | NFR-SEC | 6 | 6 | 2 | 1 | 15 |
 | NFR-PRV | 5 | 1 | 1 | – | 7 |
 | NFR-PERF | 4 | 4 | 1 | – | 9 |
@@ -829,7 +829,7 @@ Coverage of the 375 requirements on 2026-11-12, by area.
 | NFR-OBS | 3 | 1 | – | – | 4 |
 | NFR-HYG | 4 | 1 | 1 | – | 6 |
 | **NFR total** | **47** | **22** | **9** | **2** | **80** |
-| **All** | **179** | **48** | **132** | **16** | **375** |
+| **All** | **180** | **48** | **132** | **16** | **376** |
 
 ```mermaid
 pie showData
@@ -985,6 +985,7 @@ Of the 233 requirements that are verified locally, built, in build or waiting fo
 | FR-REP-18 | Navigation | Must | verified locally | `e2e:live/today` | covered |
 | FR-REP-19 | Owner wording review | Should | waits for owner | owner check | owner check |
 | FR-REP-20 | Owner comparison with POS reports | Must | waits for owner | owner check after `reports:live/live-check` | owner check |
+| FR-REP-21 | Shift labels carry no personal data | Must | verified locally | `reports:unit/model/shifts`, `reports:unit/reports/day/details`, `reports:unit/reports/month/shifts-targets`, `web:reports/card-adapter`, `e2e:demo/report-day`, `e2e:demo/report-month`, `e2e:live/reports`, `reports:live/live-check` | covered |
 
 #### FR-THM — Thematic reports
 

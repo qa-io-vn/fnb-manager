@@ -10,6 +10,7 @@ import {
 	firstOfMonth,
 	firstOfYear,
 	type IsoDate,
+	isEmailLike,
 	lastOfMonth,
 	periodContaining,
 	type ReportContext,
@@ -34,6 +35,7 @@ const RANDOM_STORE_DAYS = 3;
 const TOLERANCE_ABSOLUTE = 1_000;
 const TOLERANCE_RELATIVE = 0.0005;
 const SLOWEST_CALL_MS = 1_500;
+const SHIFT_CHECK_DAYS = 3;
 const YEAR_DAYS = 364;
 const CARD = {
 	dayNet: "net_revenue",
@@ -497,5 +499,59 @@ describe.skipIf(!LIVE)("live check against the tenant database", () => {
 			change !== undefined &&
 			Math.abs(change - sheet.yearOverYearChange) < 0.0005;
 		console.info(`matches: ${matches}`);
+	});
+	it("8. no Ngày or Tháng card shows a POS shift name or an e-mail-shaped value", async () => {
+		const active = live();
+		const recent = await active.sql`
+			select distinct business_date::text as business_date
+			from public.sync_checks
+			where tenant_id = ${active.tenantId}::uuid
+				and source_invoice_count > 0
+				and business_date < ${active.asOf}::date
+			order by business_date desc
+			limit ${SHIFT_CHECK_DAYS}
+		`;
+		const lastMonth = addDays(firstOfMonth(active.asOf), -1);
+		const runs: {
+			kind: ReportKind;
+			date: IsoDate;
+			stores: readonly ReportStore[];
+		}[] = [
+			...recent.flatMap((row) => [
+				{
+					kind: "day" as const,
+					date: String(row.business_date),
+					stores: active.stores,
+				},
+				...active.stores.map((store) => ({
+					kind: "day" as const,
+					date: String(row.business_date),
+					stores: [store],
+				})),
+			]),
+			{ kind: "month", date: lastMonth, stores: active.stores },
+		];
+		let emailFound = false;
+		let shiftRows = 0;
+		for (const run of runs) {
+			const cards = await runReport(
+				reportDefinitions[run.kind],
+				contextFor(active, run.kind, run.date, run.stores),
+				active.source,
+			);
+			for (const model of cards) {
+				if (isEmailLike(JSON.stringify(model))) emailFound = true;
+				if (model.id === "shifts" || model.id === "shift_stats") {
+					shiftRows += model.tables[0]?.rows.length ?? 0;
+				}
+			}
+		}
+		report("8 shift labels", {
+			reports: runs.length,
+			shiftRows,
+			noEmailShapedValue: !emailFound,
+		});
+		expect(shiftRows).toBeGreaterThan(0);
+		expect(emailFound).toBe(false);
 	});
 });

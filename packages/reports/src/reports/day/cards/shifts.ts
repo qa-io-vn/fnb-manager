@@ -6,6 +6,13 @@ import type {
 	TableColumnModel,
 } from "../../../model/card.js";
 import { reportKeys, shiftReasonsKey } from "../../../model/keys.js";
+import {
+	cashierCell,
+	cashierShownValue,
+	shiftNumbers,
+	shiftNumberValue,
+	storeAndLabelValue,
+} from "../../../model/shifts.js";
 import { column, STORE_COLUMN, tableModel } from "../../../model/tables.js";
 import {
 	messageValue,
@@ -13,7 +20,6 @@ import {
 	part,
 	type SentencePart,
 	type TypedValue,
-	textValue,
 } from "../../../model/values.js";
 import { dayKeys } from "../keys.js";
 import {
@@ -63,20 +69,11 @@ export function byVariance(rows: readonly ShiftRow[]): ShiftRow[] {
 		.map(({ row }) => row);
 }
 
-function shiftLabel(row: ShiftRow): string {
-	return row.shift_name ?? row.shift_external_id;
-}
-
-function cashierValue(row: ShiftRow): TypedValue {
-	return row.cashier_name === null
-		? messageValue(reportKeys.label.unknownCashier)
-		: textValue("text", row.cashier_name);
-}
-
 function narrativeOf(
 	input: CardInput,
 	rows: readonly ShiftRow[],
 	flagged: readonly ShiftRow[],
+	numberOf: (row: ShiftRow) => number,
 ): readonly SentencePart[] {
 	const day = dayValue(input.context);
 	if (rows.length === 0) return [part(dayKeys.shifts.noData, { day })];
@@ -94,8 +91,8 @@ function narrativeOf(
 		part(dayKeys.shifts.largest, {
 			day,
 			count: numberValue("count", flagged.length),
-			shift: textValue("text", shiftLabel(largest)),
-			cashier: cashierValue(largest),
+			shift: shiftNumberValue(numberOf(largest)),
+			cashier: cashierShownValue(largest.cashier_name),
 			variance: numberValue("moneySigned", largest.variance_amount),
 			reasons: messageValue(reasons ?? reportKeys.shiftReasons.absolute),
 		}),
@@ -108,13 +105,15 @@ export function buildShiftsCard(input: CardInput): CardModel {
 		input.results.rows(dayCalls.shifts, "shift_review") ?? [],
 	);
 	const flagged = rows.filter((row) => row.flagged);
+	const numbers = shiftNumbers(rows);
+	const numberOf = (row: ShiftRow) => numbers.get(row.shift_id) ?? 0;
 	const multiStore = isMultiStore(context);
 	const storeOf = (storeId: string | null) =>
 		context.stores.find((store) => store.id === storeId);
 	const columns: TableColumnModel[] = [
 		...(multiStore ? [STORE_COLUMN] : []),
-		column("shift", reportKeys.table.shift, "text"),
-		column("cashier", reportKeys.table.cashier, "text"),
+		column("shift", reportKeys.table.shift, "shift"),
+		column("cashier", reportKeys.table.cashier, "label"),
 		column("openedAt", reportKeys.table.openedAt, "text"),
 		column("closedAt", reportKeys.table.closedAt, "text"),
 		column("cashSales", reportKeys.table.cashSales, "money"),
@@ -124,10 +123,13 @@ export function buildShiftsCard(input: CardInput): CardModel {
 		column("zScore", reportKeys.table.zScore, "decimal"),
 		column("reasons", reportKeys.table.reasons, "message"),
 	];
-	const categoryOf = (row: ShiftRow) =>
+	const categoryOf = (row: ShiftRow): TypedValue =>
 		multiStore
-			? `${storeOf(row.store_id)?.name ?? ""} · ${shiftLabel(row)}`
-			: shiftLabel(row);
+			? storeAndLabelValue(
+					storeOf(row.store_id)?.name ?? "",
+					shiftNumberValue(numberOf(row)),
+				)
+			: shiftNumberValue(numberOf(row));
 	const notice: NoticeModel | null =
 		rows.length === 0
 			? { tone: "info", part: part(dayKeys.shifts.noShifts), action: null }
@@ -150,7 +152,7 @@ export function buildShiftsCard(input: CardInput): CardModel {
 		},
 		comparisons: [],
 		decomposition: null,
-		narrative: narrativeOf(input, rows, flagged),
+		narrative: narrativeOf(input, rows, flagged, numberOf),
 		tables: [
 			tableModel({
 				captionKey: dayKeys.shifts.table,
@@ -162,8 +164,8 @@ export function buildShiftsCard(input: CardInput): CardModel {
 						id: row.shift_id,
 						cells: {
 							store: store?.name ?? null,
-							shift: shiftLabel(row),
-							cashier: row.cashier_name,
+							shift: numberOf(row),
+							cashier: cashierCell(row.cashier_name),
 							openedAt: wallClock(row.opened_at, timeZone),
 							closedAt: wallClock(row.closed_at, timeZone),
 							cashSales: row.cash_sales_amount,
@@ -182,7 +184,7 @@ export function buildShiftsCard(input: CardInput): CardModel {
 				? null
 				: {
 						labelKey: dayKeys.shifts.chart,
-						categories: rows.map((row) => textValue("text", categoryOf(row))),
+						categories: rows.map(categoryOf),
 						series: [
 							{
 								label: part(dayKeys.shifts.over),

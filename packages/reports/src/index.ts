@@ -189,6 +189,15 @@ export {
 	roundHalfAwayFromZero,
 } from "./model/numeric.js";
 export {
+	cashierCell,
+	cashierShownValue,
+	isEmailLike,
+	shiftNumbers,
+	shiftNumberValue,
+	shownCashier,
+	storeAndLabelValue,
+} from "./model/shifts.js";
+export {
 	column,
 	isLabelKey,
 	LABEL_KEY_PREFIX,
