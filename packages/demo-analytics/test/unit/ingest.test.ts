@@ -395,6 +395,11 @@ describe("aggregateStoreDay with the settings' mappings", () => {
 		]);
 	});
 
+	it("counts modifier lines per name over non-voided sales", () => {
+		const day = aggregateStoreDay(store, fixture);
+		expect([...day.modifiers.entries()]).toEqual([["0% Đường", 1]]);
+	});
+
 	it("records each drink's invoices with a topping and with a snack", () => {
 		const day = aggregateStoreDay(store, fixture);
 		expect(day.drinks).toEqual([

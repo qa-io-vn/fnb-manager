@@ -11,6 +11,7 @@ import { toDbLineKind } from "@fnb/sync";
 import type { DemoStoreDefinition } from "./calendar.js";
 import { DEFAULT_INGEST_MAPPINGS, type IngestMappings } from "./mappings.js";
 import { PgDecimal } from "./pg-numeric.js";
+import { byteOrder } from "./text-order.js";
 
 export interface DailyAggregate {
 	readonly invoices: number;
@@ -123,6 +124,7 @@ export interface StoreDayAggregates {
 	readonly drinks: readonly DrinkAttach[];
 	readonly pairs: ReadonlyMap<string, number>;
 	readonly invoicesWithItems: number;
+	readonly modifiers: ReadonlyMap<string, number>;
 	readonly shifts: readonly ShiftAggregate[];
 	readonly promotions: readonly PromotionUsage[];
 	readonly itemLines: number;
@@ -268,7 +270,7 @@ function attachRate(
 export const PAIR_SEPARATOR = "\u0000";
 
 export function pairKey(left: string, right: string): string {
-	return left < right
+	return byteOrder(left, right) < 0
 		? `${left}${PAIR_SEPARATOR}${right}`
 		: `${right}${PAIR_SEPARATOR}${left}`;
 }
@@ -285,6 +287,7 @@ export function aggregateStoreDay(
 	const account = mappings.accountOf(store.id);
 	const drinks = new Map<string, Writable<DrinkAttach>>();
 	const pairs = new Map<string, number>();
+	const modifiers = new Map<string, number>();
 	const daily = emptyDaily();
 	const hourly = new Map<
 		number,
@@ -341,7 +344,10 @@ export function aggregateStoreDay(
 		for (const line of sale.lines) {
 			const kind = toDbLineKind(line.lineKind);
 			if (kind === "item") itemMilli += thousandths(line.quantity);
-			else if (kind === "modifier") modifierLines += 1;
+			else if (kind === "modifier") {
+				modifierLines += 1;
+				modifiers.set(line.itemName, (modifiers.get(line.itemName) ?? 0) + 1);
+			}
 		}
 		const cashMinor = sale.payments
 			.filter(
@@ -482,9 +488,7 @@ export function aggregateStoreDay(
 		itemLines += saleItemLines;
 		if (saleItemLines > 0) {
 			invoicesWithItems += 1;
-			const keys = [...saleKeys].sort((left, right) =>
-				left < right ? -1 : left > right ? 1 : 0,
-			);
+			const keys = [...saleKeys].sort(byteOrder);
 			for (let first = 0; first < keys.length; first += 1) {
 				for (let second = first + 1; second < keys.length; second += 1) {
 					const key = `${keys[first]}${PAIR_SEPARATOR}${keys[second]}`;
@@ -678,6 +682,7 @@ export function aggregateStoreDay(
 		drinks: [...drinks.values()],
 		pairs,
 		invoicesWithItems,
+		modifiers,
 		shifts,
 		promotions: [...promotions.values()].map(({ invoiceIds, ...usage }) => ({
 			...usage,

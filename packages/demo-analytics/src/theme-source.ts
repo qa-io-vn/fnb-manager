@@ -12,6 +12,10 @@ import {
 } from "@fnb/reports";
 import { z } from "zod";
 import type { AggregateStore, StoreDayRange } from "./aggregates.js";
+import {
+	BASKET_PAIRS_MAX_DAYS,
+	basketPairs,
+} from "./functions/basket-pairs.js";
 import { hourProfile } from "./functions/hour-profile.js";
 import { hourWeekdayHeatmap } from "./functions/hour-weekday-heatmap.js";
 import { ITEM_ATTACH_MAX_DAYS, itemAttach } from "./functions/item-attach.js";
@@ -20,6 +24,10 @@ import {
 	itemMargins,
 } from "./functions/item-margins.js";
 import { menuEngineering } from "./functions/menu-engineering.js";
+import {
+	MODIFIER_SUMMARY_MAX_DAYS,
+	modifierSummary,
+} from "./functions/modifier-summary.js";
 import { openingProductivity } from "./functions/opening-productivity.js";
 import { rangeTotals } from "./functions/range-totals.js";
 import { reportSettingsOf } from "./functions/report-settings-of.js";
@@ -56,15 +64,9 @@ export const themeHandlers: ThemeHandlers = {
 	menu_engineering: menuEngineering,
 	item_margins: itemMargins,
 	item_attach: itemAttach,
-	basket_pairs: notImplemented("basket_pairs"),
-	modifier_summary: notImplemented("modifier_summary"),
+	basket_pairs: basketPairs,
+	modifier_summary: modifierSummary,
 };
-
-function notImplemented<N extends ThemeFunctionName>(name: N): ThemeHandler<N> {
-	return () => {
-		throw new ThemeCallError(name, "not_implemented");
-	};
-}
 
 function span(
 	storeIds: readonly string[],
@@ -127,12 +129,22 @@ export const themeReads: ThemeReads = {
 			args.store_ids,
 			args.from_date,
 			args.to_date,
-			ITEM_ATTACH_MAX_DAYS,
+			BASKET_PAIRS_MAX_DAYS,
 		),
 	modifier_summary: (args) => [
-		span(args.store_ids, args.from_date, args.to_date),
+		...limitedSpan(
+			args.store_ids,
+			args.from_date,
+			args.to_date,
+			MODIFIER_SUMMARY_MAX_DAYS,
+		),
 		...(args.compare_from != null && args.compare_to != null
-			? [span(args.store_ids, args.compare_from, args.compare_to)]
+			? limitedSpan(
+					args.store_ids,
+					args.compare_from,
+					args.compare_to,
+					MODIFIER_SUMMARY_MAX_DAYS,
+				)
 			: []),
 	],
 };

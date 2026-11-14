@@ -832,7 +832,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet (Thực đơn, phase 10a).
+- **Called by:** no screen yet (Thực đơn, phase 10a); the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/basket-modifiers`.
 - **Notes:** the definitions of `agg_basket_pairs_28d` over any range and over the requested stores together: non-voided invoices with an item line (`window_invoices`), the distinct item keys of each invoice (so never a modifier), unordered pairs with `item_a < item_b` in `collate "C"`, kept from `min_pair_invoices` (1 to 50). Supports and confidences to 6 digits, lift to 4 on unrounded supports; names are `max(item_name)` in the range. Ordered by pair invoices, lift and the two keys; the first `max_pairs` (1 to 900). At most 92 days. Over 28 days of one store ending on a refreshed date it equals `agg_basket_pairs_28d` as unordered pairs.
 
 #### `public.modifier_summary`
@@ -845,7 +845,7 @@ public.modifier_summary(
 returns TABLE(modifier_name text, lines bigint, share numeric, compare_lines bigint, compare_share numeric)
 ```
 
-- **Called by:** no caller yet (Thực đơn, phase 10a).
+- **Called by:** no screen yet (Thực đơn, phase 10a); the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/basket-modifiers`.
 - **Notes:** per modifier name of `agg_modifier_prefs_daily`, the lines and their share of all modifier lines in the range (6 digits), for names seen in either range. The compare columns are null without a compare range and 0 for a name the compare range lacks; `compare_from` and `compare_to` go together. Each range at most 400 days. Ordered by lines, then name. The sugar and ice families are a classification of the names in TypeScript.
 
 ## 4. Tables and views

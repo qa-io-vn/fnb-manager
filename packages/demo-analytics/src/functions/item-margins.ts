@@ -1,6 +1,7 @@
 import type { ThemeRow } from "@fnb/reports";
 import type { AggregateStore } from "../aggregates.js";
 import { money, PgDecimal, quantity } from "../pg-numeric.js";
+import { byteOrder } from "../text-order.js";
 import { CostBook, effectiveItemTypes } from "./menu-support.js";
 import {
 	requireThemeDateRange,
@@ -128,11 +129,7 @@ export function itemMargins(
 		.sort(
 			(left, right) =>
 				right.net.compare(left.net) ||
-				(left.row.item_external_id < right.row.item_external_id
-					? -1
-					: left.row.item_external_id > right.row.item_external_id
-						? 1
-						: 0),
+				byteOrder(left.row.item_external_id, right.row.item_external_id),
 		)
 		.map(({ row }) => row);
 	requireThemeRows("item_margins", rows.length);

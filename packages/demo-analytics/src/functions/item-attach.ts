@@ -1,6 +1,7 @@
 import type { ThemeRow } from "@fnb/reports";
 import type { AggregateStore } from "../aggregates.js";
 import { count, roundedRatio } from "../pg-numeric.js";
+import { byteOrder } from "../text-order.js";
 import {
 	requireThemeDateRange,
 	requireThemeRows,
@@ -114,8 +115,7 @@ export function itemAttach(
 		...[...drinks.entries()]
 			.sort(
 				([leftKey, left], [rightKey, right]) =>
-					right.drinks - left.drinks ||
-					(leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0),
+					right.drinks - left.drinks || byteOrder(leftKey, rightKey),
 			)
 			.map(([key, counts]) => rowOf(key, counts)),
 	];

@@ -2,6 +2,7 @@ import { addDays, type ThemeRow } from "@fnb/reports";
 import type { AggregateStore } from "../aggregates.js";
 import type { DemoRoleName } from "../mappings.js";
 import { count, money, PgDecimal, quantity } from "../pg-numeric.js";
+import { byteOrder } from "../text-order.js";
 import { CostBook } from "./menu-support.js";
 import {
 	invalidTheme,
@@ -41,10 +42,6 @@ function maxText(left: string | null, right: string | null): string | null {
 	if (left === null) return right;
 	if (right === null) return left;
 	return right > left ? right : left;
-}
-
-function byteOrder(left: string, right: string): number {
-	return left < right ? -1 : left > right ? 1 : 0;
 }
 
 export function menuEngineering(
