@@ -40,7 +40,7 @@ Every report is built from one component with these parts, in this order:
 1. **Headline** — one metric from the registry, formatted compactly, with the exact value on hover.
 2. **Comparison chips** — vs previous period and, when history exists, vs same period last year or the same-weekday baseline; colour follows the metric's `direction` from the registry (higher-is-better green when up).
 3. **Sentence** — one plain-language explanation generated from a template in the i18n file with driver attribution (which weekday, category or item moved the number most), rendered from the data, never from a model.
-4. **Chart** — ECharts, lazy-loaded, with the accessible table underneath as the fallback.
+4. **Chart** — ECharts, lazy-loaded, with the accessible table underneath as the fallback. A chart with two to six categories, such as one bar per store, shows every category label and wraps it to its category's width, measured after each render and resize, so no store name disappears on a phone; a chart with more categories (hours, days) lets crowded labels hide each other. While printing, charts redraw at the 660 px print width.
 5. **Table** — sortable, with a CSV download (UTF-8 with BOM) of exactly the rows shown.
 6. **Giải thích chỉ số** — collapsed definitions from the registry (formula, grain, convention, what is missing when provisional).
 

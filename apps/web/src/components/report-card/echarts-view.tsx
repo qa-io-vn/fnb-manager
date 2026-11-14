@@ -21,6 +21,9 @@ export const PRINT_CHART_WIDTH_PX = 660;
 const LEGEND_HEIGHT_PX = 32;
 const PLAIN_TOP_PX = 12;
 const TIDY_SIGNIFICANT_DIGITS = 2;
+export const WRAPPED_CATEGORY_LIMIT = 6;
+const LABEL_GAP_PX = 8;
+const MIN_LABEL_WIDTH_PX = 32;
 
 use([
 	BarChart,
@@ -181,6 +184,40 @@ function axisKind(spec: ChartSpec, axis: ChartAxis) {
 		: spec.valueKind;
 }
 
+export function wrapsCategoryLabels(spec: ChartSpec): boolean {
+	return (
+		spec.categories.length >= 2 &&
+		spec.categories.length <= WRAPPED_CATEGORY_LIMIT
+	);
+}
+
+function categoryAxisLabel(spec: ChartSpec, palette: ChartPalette) {
+	return wrapsCategoryLabels(spec)
+		? {
+				color: palette.inkMuted,
+				interval: 0,
+				hideOverlap: false,
+				overflow: "break" as const,
+			}
+		: { color: palette.inkMuted, hideOverlap: true };
+}
+
+export function categoryLabelWidth(bandWidth: number): number {
+	return Math.max(MIN_LABEL_WIDTH_PX, Math.floor(bandWidth) - LABEL_GAP_PX);
+}
+
+function fitCategoryLabels(instance: EChartsType, spec: ChartSpec): void {
+	if (!wrapsCategoryLabels(spec)) return;
+	const first = instance.convertToPixel({ xAxisIndex: 0 }, 0);
+	const second = instance.convertToPixel({ xAxisIndex: 0 }, 1);
+	if (typeof first !== "number" || typeof second !== "number") return;
+	instance.setOption({
+		xAxis: {
+			axisLabel: { width: categoryLabelWidth(Math.abs(second - first)) },
+		},
+	});
+}
+
 export function optionOf(
 	spec: ChartSpec,
 	palette: ChartPalette,
@@ -224,7 +261,7 @@ export function optionOf(
 		xAxis: {
 			type: "category",
 			data: [...spec.categories],
-			axisLabel: { color: palette.inkMuted, hideOverlap: true },
+			axisLabel: categoryAxisLabel(spec, palette),
 			axisLine: { lineStyle: { color: palette.line } },
 		},
 		yAxis: twoAxes
@@ -275,6 +312,8 @@ export default function EChartsView(props: EChartsViewProps) {
 	const printing = usePrinting();
 	const printingNow = useRef(printing);
 	printingNow.current = printing;
+	const specNow = useRef(props.spec);
+	specNow.current = props.spec;
 
 	useEffect(() => {
 		const element = container.current;
@@ -284,9 +323,10 @@ export default function EChartsView(props: EChartsViewProps) {
 			...initialChartSizeFor(printingNow.current),
 		});
 		chart.current = instance;
-		const observer = new ResizeObserver(() =>
-			instance.resize(chartSizeFor(printingNow.current)),
-		);
+		const observer = new ResizeObserver(() => {
+			instance.resize(chartSizeFor(printingNow.current));
+			fitCategoryLabels(instance, specNow.current);
+		});
 		observer.observe(element);
 		return () => {
 			observer.disconnect();
@@ -296,11 +336,17 @@ export default function EChartsView(props: EChartsViewProps) {
 	}, []);
 
 	useLayoutEffect(() => {
-		chart.current?.resize(chartSizeFor(printing));
+		const instance = chart.current;
+		if (instance === null) return;
+		instance.resize(chartSizeFor(printing));
+		fitCategoryLabels(instance, specNow.current);
 	}, [printing]);
 
 	useEffect(() => {
-		chart.current?.setOption(optionOf(props.spec, palette, props), true);
+		const instance = chart.current;
+		if (instance === null) return;
+		instance.setOption(optionOf(props.spec, palette, props), true);
+		fitCategoryLabels(instance, props.spec);
 	}, [props, palette]);
 
 	return (

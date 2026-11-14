@@ -7,6 +7,7 @@ import { renderWithLanguage, vndFormatters } from "../../test/render";
 import { printPalette } from "./chart-theme";
 import { csvOfRows, displayCell, HEAT_LEVELS, heatLevels } from "./data-table";
 import {
+	categoryLabelWidth,
 	chartSizeFor,
 	dataExtent,
 	initialChartSizeFor,
@@ -15,6 +16,8 @@ import {
 	optionOf,
 	PRINT_CHART_WIDTH_PX,
 	tidyCeiling,
+	WRAPPED_CATEGORY_LIMIT,
+	wrapsCategoryLabels,
 } from "./echarts-view";
 import { axisFormats } from "./lazy-chart";
 import { ReportCard, type ReportCardProps } from "./report-card";
@@ -318,5 +321,56 @@ describe("chart option mapping", () => {
 	it("gives a new chart a width only while printing, so its svg never reads width auto", () => {
 		expect(initialChartSizeFor(true)).toEqual({ width: PRINT_CHART_WIDTH_PX });
 		expect(initialChartSizeFor(false)).toEqual({});
+	});
+});
+
+describe("category labels", () => {
+	function specWith(count: number): ChartSpec {
+		return {
+			label: "Doanh thu theo cửa hàng",
+			categories: Array.from(
+				{ length: count },
+				(_, index) => `Cửa hàng ${index + 1}`,
+			),
+			series: [
+				{
+					name: "Kỳ này",
+					kind: "bar",
+					tone: "primary",
+					values: Array.from({ length: count }, () => 1),
+				},
+			],
+			valueKind: "money",
+		};
+	}
+
+	it("show and wrap every label of a chart with few categories, such as one bar per store", () => {
+		const spec = specWith(2);
+		const option = optionOf(spec, printPalette, {
+			spec,
+			formats: axisFormats(spec, formatters),
+		});
+		expect(wrapsCategoryLabels(spec)).toBe(true);
+		expect(option.xAxis.axisLabel).toMatchObject({
+			interval: 0,
+			hideOverlap: false,
+			overflow: "break",
+		});
+	});
+
+	it("let crowded labels hide each other on charts with many categories", () => {
+		const spec = specWith(WRAPPED_CATEGORY_LIMIT + 1);
+		const option = optionOf(spec, printPalette, {
+			spec,
+			formats: axisFormats(spec, formatters),
+		});
+		expect(wrapsCategoryLabels(spec)).toBe(false);
+		expect(option.xAxis.axisLabel).toMatchObject({ hideOverlap: true });
+		expect(option.xAxis.axisLabel).not.toHaveProperty("interval");
+	});
+
+	it("size a wrapped label to its category's band, never below a readable minimum", () => {
+		expect(categoryLabelWidth(140.6)).toBe(132);
+		expect(categoryLabelWidth(20)).toBe(32);
 	});
 });

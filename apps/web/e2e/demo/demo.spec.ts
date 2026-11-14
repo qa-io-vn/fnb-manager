@@ -162,6 +162,23 @@ test("the design catalogue passes axe and fits a 360 px phone, its popover open 
 	await expect(page.getByTestId("catalogue-popover")).toBeFocused();
 });
 
+test("a store chart on a 360 px phone names every store under its bar", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: PHONE_WIDTH, height: 800 });
+	await page.goto("/");
+	const chart = page
+		.getByTestId("card-today-net_revenue")
+		.getByTestId("echarts");
+	await chart.scrollIntoViewIfNeeded();
+	await expect(chart.locator("svg")).toBeVisible();
+	const labels = (await chart.locator("svg text").allTextContents())
+		.join(" ")
+		.replace(/\s+/g, " ");
+	expect(labels).toContain("mẫu 1");
+	expect(labels).toContain("mẫu 2");
+});
+
 test("Hôm nay passes axe and fits a 360 px phone", async ({ page }) => {
 	await page.goto("/");
 	await expect(page.getByTestId("card-yesterday-net_revenue")).toBeVisible();

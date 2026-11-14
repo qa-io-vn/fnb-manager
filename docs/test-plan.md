@@ -682,10 +682,10 @@ From the run of 2026-11-14 at about 10:20, in every package. Skipped files and t
 | `@fnb/sync` | 15 + 1 | 98 | 2 |
 | `@fnb/demo-analytics` | 17 | 109 | 0 |
 | `@fnb/runner` | 5 | 26 | 0 |
-| `@fnb/web` | 23 | 279 | 0 |
+| `@fnb/web` | 23 | 282 | 0 |
 | `@fnb/notify` | 16 + 3 | 163 | 11 |
 | `@fnb/jobs` | 8 + 2 | 62 | 8 |
-| **Total** | **138 + 10 = 148** | **1,456** | **32** |
+| **Total** | **138 + 10 = 148** | **1,459** | **32** |
 
 `packages/runner/test/integration` exists but holds no test.
 
@@ -725,14 +725,14 @@ Listed with `playwright test --list` on 2026-11-12: 63 tests in 9 files.
 | `live` | `e2e/live/auth.spec.ts` | 6 |
 | `live` | `e2e/live/reports.spec.ts` | 4 |
 | `live` | `e2e/live/today.spec.ts` | 5 |
-| `demo` | `e2e/demo/demo.spec.ts` | 14 |
+| `demo` | `e2e/demo/demo.spec.ts` | 15 |
 | `demo` | `e2e/demo/report-day.spec.ts` | 12 |
 | `demo` | `e2e/demo/report-week.spec.ts` | 8 |
 | `demo` | `e2e/demo/report-month.spec.ts` | 13 |
 | `demo` | `e2e/demo/report-year.spec.ts` | 8 |
 | `pages` | `e2e/pages/install.spec.ts` | 2 |
 | `pages` | `e2e/pages/report-year-performance.spec.ts` | 1 |
-| | **Total** | **73** (live 15, demo 55, pages 3) |
+| | **Total** | **74** (live 15, demo 56, pages 3) |
 
 At the phase 9 verification the suite had 63 tests and all passed; phase 6 had 20.
 
