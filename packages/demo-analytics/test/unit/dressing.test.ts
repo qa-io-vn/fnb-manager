@@ -3,6 +3,7 @@ import {
 	DEMO_BILL_DISCOUNT_NAME,
 	DEMO_CASHIERS,
 	DEMO_ITEM_PROMOTION_NAME,
+	DEMO_UNCATEGORISED_ITEM,
 	DemoDayCache,
 	demoCashierFor,
 } from "../../src/index.js";
@@ -57,5 +58,36 @@ describe("demo dressing", () => {
 				),
 			).size,
 		).toBe(DEMO_CASHIERS.length);
+	});
+
+	it("leaves the cheapest snack without an item type and changes nothing else", async () => {
+		const days = new DemoDayCache({ now: () => NOW, volumeScale: 0.5 });
+		const dates = [
+			"2026-10-30",
+			"2026-10-31",
+			"2026-11-01",
+			"2026-11-02",
+			"2026-11-03",
+		];
+		const lines = (
+			await Promise.all(dates.map((date) => days.generated("MOCK-S1", date)))
+		).flatMap((day) => (day?.sales ?? []).flatMap((sale) => sale.lines));
+		const uncategorised = lines.filter(
+			(line) => line.itemExternalId === DEMO_UNCATEGORISED_ITEM,
+		);
+		expect(uncategorised.length).toBeGreaterThan(0);
+		for (const line of uncategorised) {
+			expect(line.itemTypeExternalId).toBeUndefined();
+			expect(line.itemTypeName).toBeUndefined();
+		}
+		const otherSnacks = lines.filter(
+			(line) =>
+				line.itemExternalId?.startsWith("SN-") === true &&
+				line.itemExternalId !== DEMO_UNCATEGORISED_ITEM,
+		);
+		expect(otherSnacks.length).toBeGreaterThan(0);
+		expect(new Set(otherSnacks.map((line) => line.itemTypeExternalId))).toEqual(
+			new Set(["TYPE-009"]),
+		);
 	});
 });

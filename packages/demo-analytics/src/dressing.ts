@@ -3,6 +3,7 @@ import type { IsoDate } from "@fnb/reports";
 
 export const DEMO_ITEM_PROMOTION_NAME = "Giảm 10% món";
 export const DEMO_BILL_DISCOUNT_NAME = "Giảm 5% hóa đơn";
+export const DEMO_UNCATEGORISED_ITEM = "SN-001";
 
 export interface DemoCashier {
 	readonly externalId: string;
@@ -66,6 +67,10 @@ export function dressFreshDemoDay(day: GeneratedDay): GeneratedDay {
 		for (const line of sale.lines) {
 			if (line.promotionName !== undefined) {
 				line.promotionName = DEMO_ITEM_PROMOTION_NAME;
+			}
+			if (line.itemExternalId === DEMO_UNCATEGORISED_ITEM) {
+				delete line.itemTypeExternalId;
+				delete line.itemTypeName;
 			}
 		}
 	}

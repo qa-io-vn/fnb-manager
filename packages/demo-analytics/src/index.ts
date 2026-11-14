@@ -50,6 +50,7 @@ export {
 	DEMO_BILL_DISCOUNT_NAME,
 	DEMO_CASHIERS,
 	DEMO_ITEM_PROMOTION_NAME,
+	DEMO_UNCATEGORISED_ITEM,
 	type DemoCashier,
 	demoCashierFor,
 	dressDemoDay,

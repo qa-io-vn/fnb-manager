@@ -948,7 +948,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 | FR-ANA-01 | Calendar | Must | verified locally | `pgtap:13_analytics_schema` | covered |
 | FR-ANA-02 | Holidays and Tết | Must | verified locally | `pgtap:24_vn_public_holidays`, `pgtap:11_item_type_roles_and_holidays`, `core:unit/vietnam-holidays` | covered |
 | FR-ANA-03 | Aggregates are tables with RLS | Must | verified locally | `pgtap:13_analytics_schema`, `pgtap:17_analytics_access` | covered |
-| FR-ANA-04 | Refresh reproduces the facts | Must | verified locally | `pgtap:14_analytics_refresh`, `demo-analytics:parity/aggregates`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up` | covered |
+| FR-ANA-04 | Refresh reproduces the facts | Must | verified locally | `pgtap:14_analytics_refresh`, `demo-analytics:parity/aggregates`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`, `demo-analytics:parity/overrides` | covered |
 | FR-ANA-05 | Hot and cold days | Must | verified locally | `pgtap:15_analytics_queries`, `pgtap:25_live_half_lateral` | covered |
 | FR-ANA-06 | Metric registry | Must | verified locally | `metrics:consistency/document`, `metrics:unit/registry`, `web:metrics/registry` | covered |
 | FR-ANA-07 | One function for any metric | Must | verified locally | `pgtap:18_metric_value`, `metrics:consistency/metric-value`, `demo-analytics:parity/metric-value` | covered |
@@ -957,7 +957,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 | FR-ANA-10 | Exact ticket decomposition | Must | verified locally | `reports:unit/decomposition-and-narrative` | covered |
 | FR-ANA-11 | Query functions | Must | verified locally | `pgtap:15_analytics_queries`, `pgtap:16_analytics_menu_and_cash`, `demo-analytics:parity/item-velocity`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up` | covered |
 | FR-ANA-12 | Report functions with limits | Must | verified locally | `pgtap:13_analytics_schema`, `pgtap:22_report_functions`, `pgtap:23_report_access`, `reports:unit/rpc-source`, `pgtap:33_theme_functions`, `pgtap:34_theme_access` | covered |
-| FR-ANA-13 | Parity of the browser port | Must | verified locally | `demo-analytics:parity/*` (7 files), CI `database` job | covered |
+| FR-ANA-13 | Parity of the browser port | Must | verified locally | `demo-analytics:parity/*` (7 files), CI `database` job, `demo-analytics:parity/overrides` | covered |
 | FR-ANA-14 | Benchmark context kept apart | Should | verified locally | `metrics:consistency/document` | covered |
 | FR-ANA-15 | Refresh on demand | Should | verified locally | `pgtap:17_analytics_access`, `pgtap:35_mappings_and_catch_up` | covered |
 | FR-ANA-16 | Reference-window figures | Must | verified locally | phase 8 verification (private sheet) | owner check |
@@ -1013,7 +1013,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 | FR-SET-04 | Targets | Must | designed | `pgtap:05_write_policies` (table); screen planned | partial |
 | FR-SET-05 | Payment fee rates | Should | designed | `pgtap:10_payment_fee_rates` (table); screen planned | partial |
 | FR-SET-06 | Payment-kind mapping | Should | designed | `core:unit/payment-kind` (override rule); screen planned | partial |
-| FR-SET-07 | Item-type roles and categories | Must | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`; screen planned | partial |
+| FR-SET-07 | Item-type roles and categories | Must | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`; screen planned, `demo-analytics:parity/overrides` | partial |
 | FR-SET-08 | Tenant holidays | Should | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:22_report_functions`; screen planned | partial |
 | FR-SET-09 | Default language | Could | designed | planned | planned |
 | FR-SET-10 | Legal texts | Must | designed | `pgtap:12_consent_and_legal` (tables); screen planned | partial |
