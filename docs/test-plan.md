@@ -691,7 +691,7 @@ From the run of 2026-11-14 at about 10:20, in every package. Skipped files and t
 
 ### 8.2 pgTAP files
 
-Planned tests per file, read from each file's `select plan(…)` on 2026-11-14 after migration `theme_basket_and_cash_functions`. Files 33 to 35 are phase 10a's.
+Planned tests per file, read from each file's `select plan(…)` on 2026-11-14 after migration `refresh_overrides_and_catch_up`. Files 33 to 35 are phase 10a's.
 
 | File | Plan | File | Plan |
 |---|---:|---|---:|
@@ -710,13 +710,13 @@ Planned tests per file, read from each file's `select plan(…)` on 2026-11-14 a
 | `13_analytics_schema.sql` | 72 | `30_notify_digests.sql` | 84 |
 | `14_analytics_refresh.sql` | 45 | `31_notify_access.sql` | 64 |
 | `15_analytics_queries.sql` | 63 | `33_theme_functions.sql` | 74 |
-| `16_analytics_menu_and_cash.sql` | 27 | `34_theme_access.sql` | 45 |
-| `17_analytics_access.sql` | 39 | `35_mappings_and_catch_up.sql` | 42 |
-| | | **34 files** | **1,827** |
+| `16_analytics_menu_and_cash.sql` | 27 | `34_theme_access.sql` | 46 |
+| `17_analytics_access.sql` | 39 | `35_mappings_and_catch_up.sql` | 59 |
+| | | **34 files** | **1,845** |
 
-By phase (files grouped by the phase that created them; 01, 03 and 12 were extended in 12a, 01 and 03 again in 10a): phase 2, 385; phase 7, 153; phase 8, 291; phase 9, 143; phase 10a, 161; phase 12, 694.
+By phase (files grouped by the phase that created them; 01, 03 and 12 were extended in 12a, 01 and 03 again in 10a): phase 2, 385; phase 7, 153; phase 8, 291; phase 9, 143; phase 10a, 179; phase 12, 694.
 
-Full run on 2026-11-14 after migration `theme_basket_and_cash_functions`: 1,827 of 1,827 in 34 files. Earlier full runs: 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
+Full run on 2026-11-14 after migration `refresh_overrides_and_catch_up`: 1,845 of 1,845 in 34 files. Earlier full runs: 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
 
 ### 8.3 Playwright specs
 
@@ -936,7 +936,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 | FR-DQ-07 | Data-quality flags in the run summary | Must | verified locally | `sync:unit/mapping`, `sync:unit/window-robustness`, `sync:unit/business-date` | covered |
 | FR-DQ-08 | Hôm nay equals the POS | Must | verified locally | `e2e:live/today`, phase 6 verification | covered |
 | FR-DQ-09 | Report numbers equal the POS | Must | verified locally | `reports:live/live-check` (opt-in) | covered |
-| FR-DQ-10 | Lagging aggregates marked | Should | verified locally | `pgtap:22_report_functions`, `reports:unit/coverage-and-comparison` | covered |
+| FR-DQ-10 | Lagging aggregates marked | Should | verified locally | `pgtap:22_report_functions`, `reports:unit/coverage-and-comparison`, `pgtap:35_mappings_and_catch_up` | covered |
 | FR-DQ-11 | Unmeasured is null | Must | verified locally | `pgtap:18_metric_value` | covered |
 | FR-DQ-12 | Data-quality page | Should | designed | planned | planned |
 | FR-DQ-13 | Parallel verification before v1.0 | Must | planned | planned | planned |
@@ -948,7 +948,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 | FR-ANA-01 | Calendar | Must | verified locally | `pgtap:13_analytics_schema` | covered |
 | FR-ANA-02 | Holidays and Tết | Must | verified locally | `pgtap:24_vn_public_holidays`, `pgtap:11_item_type_roles_and_holidays`, `core:unit/vietnam-holidays` | covered |
 | FR-ANA-03 | Aggregates are tables with RLS | Must | verified locally | `pgtap:13_analytics_schema`, `pgtap:17_analytics_access` | covered |
-| FR-ANA-04 | Refresh reproduces the facts | Must | verified locally | `pgtap:14_analytics_refresh`, `demo-analytics:parity/aggregates`, `pgtap:33_theme_functions` | covered |
+| FR-ANA-04 | Refresh reproduces the facts | Must | verified locally | `pgtap:14_analytics_refresh`, `demo-analytics:parity/aggregates`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up` | covered |
 | FR-ANA-05 | Hot and cold days | Must | verified locally | `pgtap:15_analytics_queries`, `pgtap:25_live_half_lateral` | covered |
 | FR-ANA-06 | Metric registry | Must | verified locally | `metrics:consistency/document`, `metrics:unit/registry`, `web:metrics/registry` | covered |
 | FR-ANA-07 | One function for any metric | Must | verified locally | `pgtap:18_metric_value`, `metrics:consistency/metric-value`, `demo-analytics:parity/metric-value` | covered |
@@ -959,7 +959,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 | FR-ANA-12 | Report functions with limits | Must | verified locally | `pgtap:13_analytics_schema`, `pgtap:22_report_functions`, `pgtap:23_report_access`, `reports:unit/rpc-source`, `pgtap:33_theme_functions`, `pgtap:34_theme_access` | covered |
 | FR-ANA-13 | Parity of the browser port | Must | verified locally | `demo-analytics:parity/*` (7 files), CI `database` job | covered |
 | FR-ANA-14 | Benchmark context kept apart | Should | verified locally | `metrics:consistency/document` | covered |
-| FR-ANA-15 | Refresh on demand | Should | verified locally | `pgtap:17_analytics_access` | covered |
+| FR-ANA-15 | Refresh on demand | Should | verified locally | `pgtap:17_analytics_access`, `pgtap:35_mappings_and_catch_up` | covered |
 | FR-ANA-16 | Reference-window figures | Must | verified locally | phase 8 verification (private sheet) | owner check |
 | FR-ANA-17 | Customer metrics | Should | planned | planned | planned |
 
@@ -1236,7 +1236,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 | NFR-SEC-06 | Redaction | Must | verified locally | `sync:unit/helpers`, `sync:unit/run-bookkeeping`, `runner:unit/notifier` | covered |
 | NFR-SEC-07 | Masking on GitHub Actions | Must | in build | `jobs:unit/config`, `jobs:unit/cli` (the POS entries, `IPOS_APP_KEY`, the secret key and the database URL, verified locally since phase 5); `jobs:unit/digest-and-alerts` (the `NOTIFY_*` credentials and the fallback targets, step 12b, in build) | covered |
 | NFR-SEC-08 | Secrets only on the steps that need them | Must | built | review of the two workflow files | partial |
-| NFR-SEC-09 | Hardened database functions | Must | built | `pgtap:06_anon_and_tokens`, `pgtap:23_report_access`, `pgtap:31_notify_access` (grants); `pgtap:13_analytics_schema`, `pgtap:18_metric_value`, `pgtap:19_sale_payloads`, `pgtap:22_report_functions` (definer and `search_path` of their own functions); a read-only catalogue query and `supabase db advisors` on 2026-11-12; no pgTAP audit covers every function yet (request R-T01) | partial |
+| NFR-SEC-09 | Hardened database functions | Must | built | `pgtap:06_anon_and_tokens`, `pgtap:23_report_access`, `pgtap:31_notify_access` (grants); `pgtap:13_analytics_schema`, `pgtap:18_metric_value`, `pgtap:19_sale_payloads`, `pgtap:22_report_functions` (definer and `search_path` of their own functions); a read-only catalogue query and `supabase db advisors` on 2026-11-12; no pgTAP audit covers every function yet (request R-T01), `pgtap:34_theme_access` | partial |
 | NFR-SEC-10 | No reliance on HTTP security headers | Should | built | ADR-023, `apps/web/scripts/check-bundle.mjs` | partial |
 | NFR-SEC-11 | SMTP and SSL on the cloud project | Must | waits for owner | owner check | owner check |
 | NFR-SEC-12 | Key rotation | Must | planned | planned | planned |

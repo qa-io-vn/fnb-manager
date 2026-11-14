@@ -34,7 +34,7 @@ Every database read and write the engine needs goes through `SyncRepository` (`p
 | `loadChecks(storeId, range)` | The stored `sync_checks` rows of a range, for change detection |
 | `openRun(start)`, `closeRun(id, finish)`, `markAccountSynced(id, at)` | `sync_runs` bookkeeping, including the run's `store_id` and `store_ids`, and `pos_accounts.last_synced_at` |
 | `staleAnalyticsDates(storeId, range)` | Dates of the store in the range whose `sync_checks` row is newer than every finished analytics refresh covering them (`app.stale_analytics_dates`), for the incremental run to refresh again |
-| `refreshAnalytics(tenantId, range)` | Calls `app.refresh_analytics(p_tenant, p_from, p_to)` when `to_regprocedure` finds it, otherwise reports it unavailable |
+| `refreshAnalytics(tenantId, range)` | Calls `app.refresh_analytics(p_tenant, p_from, p_to)` when `to_regprocedure` finds it, otherwise reports it unavailable; the refresh also shrinks the tenant's pending catch-up range when the window covers one of its ends |
 
 `createPostgresClient` asks for TLS (`sslmode=require`) for every database host that is not local (loopback, `host.docker.internal`, the local stack's database container by its name `supabase_db_*` or its network aliases `db` and `db.supabase.internal`) unless the connection string carries its own `sslmode`; postgres.js would otherwise connect in plaintext, because it uses TLS only when told to. `PostgresSyncRepository` implements it with postgres.js: parameterised SQL only (table and column names come from fixed lists in the package), multi-row inserts batched under the parameter limit, `sql.begin` transactions and two advisory locks, both keyed by a stable 64-bit FNV-1a hash of a namespaced store id:
 

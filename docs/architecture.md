@@ -311,7 +311,7 @@ The full backfill of both shops put the database at about 850 MB, two thirds of 
 ### 5.6 Aggregates and the hot and cold rule (ADR-010)
 
 - Ten aggregate tables (`agg_daily_sales`, `agg_hourly_sales`, `agg_item_daily`, `agg_category_daily`, `agg_payment_daily`, `agg_shift_cash`, `agg_size_mix_daily`, `agg_modifier_prefs_daily`, `agg_basket_pairs_28d`, `agg_attach_daily`), the refresh log `analytics_refreshes` and the calendar `dim_calendar` form the analytics layer. They are ordinary tables with the same RLS as the facts, because Postgres does not apply RLS to materialised views.
-- `app.refresh_analytics` (`security definer`, one advisory lock per tenant) rewrites a date range; the sync calls it for every window and touched date, and an owner or manager may call `refresh_my_analytics` for at most 92 days.
+- `app.refresh_analytics` (`security definer`, one advisory lock per tenant) rewrites a date range; the sync calls it for every window and touched date, and an owner or manager may call `refresh_my_analytics` for at most 92 days. It applies item category overrides to the category and attach aggregates, and at its end shrinks the tenant's pending catch-up range (the dates a role, override or fee-rate write left on older mappings) when the inputs did not change meanwhile (ADR-036).
 - Business dates before yesterday are read from the aggregates; yesterday and today are computed live from the facts, so today is right after every incremental run without a refresh ([schema.md](schema.md), "Hot and cold rule").
 
 ### 5.7 Metric registry (ADR-026)

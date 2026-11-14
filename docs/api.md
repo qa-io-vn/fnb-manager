@@ -656,7 +656,7 @@ returns TABLE(
 - **Who may call:** any data member of the tenant; anyone else, the publisher included, gets no row.
 - **Called by:** no caller yet; Settings will run the catch-up from it (phase 10a).
 - **Status:** verified locally (phase 10a; pgTAP `34_theme_access.sql`, `35_mappings_and_catch_up.sql`).
-- **Notes:** the days whose refresh-time aggregates may still use mappings or fee rates from before the last change. Every write to `item_type_roles`, `item_category_overrides` or `payment_fee_rates` moves `tenants.analytics_inputs_version` and marks the whole history pending; `pending_from` starts at the tenant's first aggregate date. `pending_days` is 0 and both ends are null when nothing is pending. `can_refresh` follows the rule of `refresh_my_analytics`. It reads no refresh history.
+- **Notes:** the days whose refresh-time aggregates may still use mappings or fee rates from before the last change. Every write to `item_type_roles`, `item_category_overrides` or `payment_fee_rates` moves `tenants.analytics_inputs_version` and marks the whole history pending; `pending_from` starts at the tenant's first aggregate date. `pending_days` is 0 and both ends are null when nothing is pending, and also for a tenant without any aggregate yet, whose first refresh empties the range. Every refresh shrinks the range by the days it covers (`app.shrink_analytics_pending`, [`schema.md`](schema.md), "Refresh"). `can_refresh` follows the rule of `refresh_my_analytics`. It reads no refresh history.
 
 #### Writes through tables
 

@@ -1,5 +1,5 @@
 begin;
-select plan(45);
+select plan(46);
 
 create temp table fixture as
 select
@@ -183,6 +183,13 @@ select ok(
     where n.nspname = 'public' and p.proname in ('basket_pairs', 'modifier_summary')
   ),
   'authenticated may call basket_pairs and modifier_summary and anon may not'
+);
+
+select ok(
+  not has_function_privilege('anon', 'app.shrink_analytics_pending(uuid, date, date, bigint)', 'execute')
+  and not has_function_privilege('authenticated', 'app.shrink_analytics_pending(uuid, date, date, bigint)', 'execute')
+  and not has_function_privilege('service_role', 'app.shrink_analytics_pending(uuid, date, date, bigint)', 'execute'),
+  'no API role executes app.shrink_analytics_pending'
 );
 
 grant select on fixture to authenticated;
