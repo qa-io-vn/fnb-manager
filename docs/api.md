@@ -157,15 +157,16 @@ A login holds one role per tenant in `tenant_members`, with an optional store sc
 
 ## 3. Functions in `public`
 
-The schema `public` holds 30 functions. `authenticated` and `service_role` may execute all of them; `anon` may execute none. 29 are `security invoker` and `stable`; `refresh_my_analytics` is `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
+The schema `public` holds 33 functions. `authenticated` and `service_role` may execute all of them; `anon` may execute none. 32 are `security invoker` and `stable`; `refresh_my_analytics` is `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
 
 Each entry gives the signature exactly as Postgres prints it (`pg_get_function_arguments` and `pg_get_function_result`), then what calls it today, its status and notes. Column meanings and computation rules are in [`schema.md`](schema.md), sections "Query functions" and "Report functions (phase 9)"; report rules are in [`metrics.md`](metrics.md#report-conventions).
 
-**Who may call.** Any signed-in member may call the 29 invoker functions. The numbers cover only the stores that the caller's data role reads, so a publisher gets nulls or no rows (see [How RLS shapes function results](#how-rls-shapes-function-results)). `refresh_my_analytics` has its own rule.
+**Who may call.** Any signed-in member may call the 32 invoker functions. The numbers cover only the stores that the caller's data role reads, so a publisher gets nulls or no rows (see [How RLS shapes function results](#how-rls-shapes-function-results)). `refresh_my_analytics` has its own rule.
 
 **Callers named below.**
 
 - **Web reports:** the Ngày, Tuần, Tháng and Năm pages in live mode, through `supabase.rpc()` and `createRpcAnalyticsSource`.
+- **Web themes:** the thematic pages under `#/chu-de` in live mode, through `createRpcReportSource`, which serves both the report and the theme registries.
 - **Digest:** the daily digest, which `fnb digest` and `fnb notify tick` build by running the Ngày report as the member (`@fnb/notify`; step 12b, in build). It therefore makes every call that Ngày makes.
 - **Demo port:** the TypeScript copy in `@fnb/demo-analytics` that demo mode runs in the browser. The parity suite holds it to the SQL.
 
@@ -201,6 +202,9 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`range_totals`](#publicrange_totals) | themes | invoker, stable | rows per range and store | web theme Doanh thu | verified locally (phase 10a) |
 | [`opening_productivity`](#publicopening_productivity) | themes | invoker, stable | rows per store | web theme Giờ & ngày | verified locally (phase 10a) |
 | [`hour_profile`](#publichour_profile) | themes | invoker, stable | up to 82 rows | web theme Giờ & ngày | verified locally (phase 10a) |
+| [`menu_engineering`](#publicmenu_engineering) | themes | invoker, stable | rows per item | no caller yet (Thực đơn, phase 10a) | verified locally (phase 10a) |
+| [`item_margins`](#publicitem_margins) | themes | invoker, stable | rows per item | no caller yet (Thực đơn, phase 10a) | verified locally (phase 10a) |
+| [`item_attach`](#publicitem_attach) | themes | invoker, stable | 1 row, then rows per drink | no caller yet (Thực đơn, phase 10a) | verified locally (phase 10a) |
 
 ### 3.1 Analytics
 
@@ -298,7 +302,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet; designed for Thực đơn (phase 10a). It is the source of the metric `menu_class`.
+- **Called by:** no screen; Thực đơn reads `menu_engineering`, which keeps this method and adds the tenant's settings, overrides and costs by date. It is the source of the metric `menu_class`.
 - **Notes:** the Kasavana–Smith menu matrix per item-type role over the 28 days ending `as_of_date`. When any item of a role lacks a cost, the whole role is `provisional` and its margin axis is the average price. `low_sample` is true for a role with fewer than 10 items. `menu_class` is star, plowhorse, puzzle or dog ([`metrics.md`](metrics.md)).
 
 #### `public.cash_variance_flags`
@@ -464,7 +468,7 @@ returns TABLE(
 ```
 
 - **Called by:** web reports (Ngày top items, Tuần category mix, Tháng Pareto and new items), digest.
-- **Notes:** one row per item sold in either range, from `agg_item_daily`, so never a modifier. Shares are of the range's item net. The compare columns are null without a compare range and 0 for an item not sold in it; `compare_from` and `compare_to` go together. At most 400 days per range. Ordered by net, then quantity.
+- **Notes:** one row per item sold in either range, from `agg_item_daily`, so never a modifier. Since phase 10a `item_type_external_id`, `item_type_name` and `role` are the effective ones: an override in `item_category_overrides` on the POS account of the first requested store that sold the item replaces its POS type from the next statement on. Shares are of the range's item net. The compare columns are null without a compare range and 0 for an item not sold in it; `compare_from` and `compare_to` go together. At most 400 days per range. Ordered by net, then quantity.
 
 #### `public.payment_summary`
 
@@ -683,7 +687,7 @@ No function in `public`. A client writes `consent_records` and `data_subject_req
 
 ### 3.7 Others
 
-None. `authenticated` may execute 45 functions in `app`, because policies and invoker functions call them as the caller: membership helpers, analytics building blocks, argument checks and calendar checks. The API does not serve `app`, so no client can call them directly. [`schema.md`](schema.md) describes them under "Helpers in schema `app`".
+None. `authenticated` may execute 47 functions in `app`, because policies and invoker functions call them as the caller: membership helpers, analytics building blocks, argument checks and calendar checks. The API does not serve `app`, so no client can call them directly. [`schema.md`](schema.md) describes them under "Helpers in schema `app`".
 
 ### 3.8 Thematic reports (phase 10)
 
@@ -759,6 +763,57 @@ returns TABLE(
 
 - **Called by:** the web theme Giờ & ngày trong tuần.
 - **Notes:** hours of the open span (first to last hour with sales, empty hours inside it as zeros) for the scopes `all`, `weekdays` and `weekend`, each followed by a summary row, then one row per ISO weekday. In `all`, the `peak_hours` largest hours are `peak` and hours below `dead_hour_ratio` times the span's mean are `dead`; the weekday groups are `busy` or `quiet` by invoices per day against `busy_hour_ratio` and `dead_hour_ratio`. The `all` summary carries `peak_share` and `dead_share`. Hours are placed from the first store's business-day start. At most 400 days; thresholds outside the table's checks raise `22023`.
+
+#### `public.menu_engineering`
+
+```sql
+public.menu_engineering(
+  store_ids uuid[], as_of_date date, window_days integer DEFAULT NULL::integer,
+  popularity_factor numeric DEFAULT NULL::numeric, low_sample_items integer DEFAULT NULL::integer
+)
+returns TABLE(
+  role item_type_role, role_mapped boolean, item_external_id text, item_name text,
+  item_type_external_id text, item_type_name text, category_source text,
+  quantity numeric, net_amount numeric, menu_mix_pct numeric, popularity_threshold_pct numeric,
+  avg_unit_price numeric, unit_cost numeric, margin_axis numeric, margin_threshold numeric,
+  provisional boolean, low_sample boolean, menu_class text, window_from date,
+  window_days_used integer, popularity_factor_used numeric, low_sample_items_used integer
+)
+```
+
+- **Called by:** no caller yet (Thực đơn, phase 10a).
+- **Notes:** phase 8's `menu_matrix` method over a trailing window ending on `as_of_date` (7 to 91 days), per effective item-type role. Each store's sales take the type and role of its POS account, an override in `item_category_overrides` winning over the POS type (`category_source` is `override`, `pos` or `none`), so an item whose type two accounts map differently appears once per role, as in `menu_matrix`; an item whose type has no role is in `other` with `role_mapped` false. `unit_cost` is the quantity-weighted cost of the item's store-days, each costed with the row in force on its business date (a store row before a tenant-wide row); one store-day without a cost leaves the item without one and its role `provisional`. `low_sample` when the role has fewer items than `low_sample_items_used`. Null arguments take the tenant's report settings; out-of-range arguments raise `22023`. With the default settings, no override and no cost change in the window it equals `menu_matrix` on their shared columns.
+
+#### `public.item_margins`
+
+```sql
+public.item_margins(store_ids uuid[], from_date date, to_date date)
+returns TABLE(
+  item_external_id text, item_name text, base_name text, size_label text,
+  item_type_external_id text, item_type_name text, role item_type_role,
+  quantity numeric, net_amount numeric, costed_quantity numeric, costed_net_amount numeric,
+  cost_amount numeric, unit_cost_latest numeric, margin_amount numeric, margin_rate numeric,
+  cost_coverage numeric
+)
+```
+
+- **Called by:** no caller yet (Thực đơn, phase 10a).
+- **Notes:** one row per item key of `agg_item_daily`, so never a modifier, with the effective type and role. The cost, margin and margin rate cover the costed store-days only (the cost-by-date rule of `menu_engineering`) and are null for an item without any cost; the type and role are those of the first requested store that sold the item; `cost_coverage` is the costed share of net revenue. `unit_cost_latest` is the cost in force on `to_date` at the first requested store that has one. At most 400 days and 900 rows. Ordered by net.
+
+#### `public.item_attach`
+
+```sql
+public.item_attach(store_ids uuid[], from_date date, to_date date)
+returns TABLE(
+  item_external_id text, item_name text, drink_invoices bigint,
+  topping_base_invoices bigint, topping_invoices bigint,
+  snack_base_invoices bigint, snack_invoices bigint,
+  topping_rate numeric, snack_rate numeric
+)
+```
+
+- **Called by:** no caller yet (Thực đơn, phase 10a).
+- **Notes:** non-voided invoices of the range, each item line with the role of its effective type on the invoice's POS account. First a summary row (`item_external_id` null) over the invoices with a drink, then one row per drink item over the invoices holding it. Topping and snack rates count only the stores whose POS account maps that role, as `agg_attach_daily` and `metric_value` do; a role no requested account maps gives a null rate. At most 92 days.
 
 ## 4. Tables and views
 

@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(33);
 
 create temp table fixture as
 select
@@ -79,6 +79,23 @@ cross join (values (9), (15)) as h (hour_local);
 insert into public.item_type_roles (tenant_id, pos_account_id, item_type_external_id, role)
 select f.tenant_id, f.account_id, 'DRINKS', 'drink'::public.item_type_role from fixture f;
 
+insert into public.agg_item_daily (
+  tenant_id, store_id, business_date, item_external_id, item_name, base_name, size_label,
+  item_type_external_id, item_type_name, quantity, net_amount, invoices
+)
+select s.tenant_id, s.store_id, d::date, 'A1', 'Trà đào', 'Trà đào', null, 'DRINKS', 'Đồ uống', s.quantity, s.quantity * 30000, s.quantity::integer
+from (
+  select f.tenant_id, f.store_a as store_id, 3::numeric as quantity from fixture f
+  union all select f.tenant_id, f.store_b, 2 from fixture f
+  union all select f.other_tenant_id, f.other_store, 7 from fixture f
+) s
+cross join generate_series('2025-03-03'::date, '2025-03-09'::date, interval '1 day') as d;
+
+insert into public.item_costs (tenant_id, store_id, item_external_id, cost_amount, effective_from)
+select f.tenant_id, null::uuid, 'A1', 12000, '2025-01-01'::date from fixture f
+union all
+select f.other_tenant_id, null, 'A1', 1000, '2025-01-01' from fixture f;
+
 update public.tenants
 set analytics_pending_from = null, analytics_pending_to = null
 where id = (select tenant_id from fixture);
@@ -110,6 +127,19 @@ select ok(
       and p.proname in ('report_settings_of', 'analytics_catch_up_status', 'range_totals', 'opening_productivity', 'hour_profile')
   ),
   'authenticated may call the new public functions and anon may not'
+);
+
+select ok(
+  (
+    select bool_and(has_function_privilege('authenticated', p.oid, 'execute') and not has_function_privilege('anon', p.oid, 'execute'))
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where (n.nspname, p.proname) in (
+      ('public', 'menu_engineering'), ('public', 'item_margins'), ('public', 'item_attach'),
+      ('app', 'item_cost_periods'), ('app', 'effective_item_types')
+    )
+  ),
+  'authenticated may call the menu functions and their helpers and anon may not'
 );
 
 grant select on fixture to authenticated;
@@ -180,6 +210,42 @@ select is(
   'the catch-up status of another tenant has no row'
 );
 
+select is(
+  (
+    select (m.quantity, m.unit_cost, m.role)
+    from public.menu_engineering((select both_stores from fixture), '2025-03-09', 7) m
+  ),
+  (35::numeric, 12000.00::numeric, 'drink'::public.item_type_role),
+  'the owner sees the item of both stores with the tenant''s own cost'
+);
+
+select is(
+  (
+    select count(*)::int
+    from public.menu_engineering((select array[other_store] from fixture), '2025-03-09', 7)
+  ),
+  0,
+  'menu_engineering returns nothing for another tenant''s store'
+);
+
+select is(
+  (
+    select count(*)::int
+    from public.item_margins((select array[other_store] from fixture), '2025-03-03', '2025-03-09')
+  ),
+  0,
+  'item_margins returns nothing for another tenant''s store'
+);
+
+select is(
+  (
+    select array_agg(coalesce(a.item_external_id, '-') || ':' || a.drink_invoices)
+    from public.item_attach((select array[other_store] from fixture), '2025-03-03', '2025-03-09') a
+  ),
+  array['-:0'],
+  'item_attach counts no invoice of another tenant''s store'
+);
+
 set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000000302", "role": "authenticated"}';
 
 select is(
@@ -202,6 +268,15 @@ select is(
   'staff read the catch-up status but may not refresh'
 );
 
+select is(
+  (
+    select (i.quantity, i.cost_amount)
+    from public.item_margins((select both_stores from fixture), '2025-03-03', '2025-03-09') i
+  ),
+  (21::numeric, 252000.00::numeric),
+  'a member limited to one store gets the margins of that store only'
+);
+
 set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000000304", "role": "authenticated"}';
 
 select ok(
@@ -216,6 +291,15 @@ select is(
   (select c.can_refresh from public.analytics_catch_up_status((select tenant_id from fixture)) c),
   false,
   'a viewer may not refresh'
+);
+
+select is(
+  (
+    select count(*)::int
+    from public.menu_engineering((select both_stores from fixture), '2025-03-09', 7)
+  ),
+  1,
+  'a viewer reads the menu matrix'
 );
 
 set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000000303", "role": "authenticated"}';
@@ -242,6 +326,17 @@ select is(
   'the publisher reads no catch-up status'
 );
 
+select is(
+  (
+    select (
+      (select count(*)::int from public.menu_engineering((select both_stores from fixture), '2025-03-09', 7)),
+      (select count(*)::int from public.item_margins((select both_stores from fixture), '2025-03-03', '2025-03-09'))
+    )
+  ),
+  (0, 0),
+  'the publisher reads no item'
+);
+
 reset role;
 set local role anon;
 
@@ -257,6 +352,27 @@ select throws_ok(
   '42501',
   null,
   'anon calling hour_profile is refused'
+);
+
+select throws_ok(
+  $$ select * from public.menu_engineering(array['88888888-8888-4888-8888-000000000021']::uuid[], '2025-03-09') $$,
+  '42501',
+  null,
+  'anon calling menu_engineering is refused'
+);
+
+select throws_ok(
+  $$ select * from public.item_margins(array['88888888-8888-4888-8888-000000000021']::uuid[], '2025-03-03', '2025-03-09') $$,
+  '42501',
+  null,
+  'anon calling item_margins is refused'
+);
+
+select throws_ok(
+  $$ select * from public.item_attach(array['88888888-8888-4888-8888-000000000021']::uuid[], '2025-03-03', '2025-03-09') $$,
+  '42501',
+  null,
+  'anon calling item_attach is refused'
 );
 
 select * from finish();

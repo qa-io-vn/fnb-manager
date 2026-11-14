@@ -1,5 +1,5 @@
 begin;
-select plan(32);
+select plan(60);
 
 create temp table fixture as
 select
@@ -462,6 +462,445 @@ select ok(
     where p.hour_local is null
   ),
   'summary and weekday rows have no level'
+);
+
+insert into public.item_types (tenant_id, pos_account_id, external_id, name)
+select f.tenant_id, f.account_id, t.external_id, t.name
+from fixture f
+cross join lateral (
+  values ('T-DRINK', 'Trà sữa'), ('T-TOP', 'Topping'), ('T-SNACK', 'Đồ ăn vặt'), ('T-NEW', 'Món mới')
+) as t (external_id, name);
+
+insert into public.item_type_roles (tenant_id, pos_account_id, item_type_external_id, role)
+select f.tenant_id, f.account_id, r.type_id, r.role::public.item_type_role
+from fixture f
+cross join lateral (values ('T-DRINK', 'drink'), ('T-TOP', 'topping'), ('T-SNACK', 'snack')) as r (type_id, role);
+
+insert into public.agg_item_daily (
+  tenant_id, store_id, business_date, item_external_id, item_name, base_name, size_label,
+  item_type_external_id, item_type_name, quantity, net_amount, invoices
+)
+select f.tenant_id, i.store_id, d::date, i.item_id, i.item_name, i.item_name, null, i.type_id, i.type_name, i.quantity, i.net_amount, i.quantity::integer
+from fixture f
+cross join generate_series('2025-03-01'::date, '2025-03-28'::date, interval '1 day') as d
+cross join lateral (
+  values
+    (f.split_store, 'D1', 'Trà đào', 'T-DRINK', 'Trà sữa', 10::numeric, 400000::numeric),
+    (f.split_store, 'D2', 'Trà vải', 'T-DRINK', 'Trà sữa', 4::numeric, 120000::numeric),
+    (f.split_store, 'D3', 'Sữa tươi', 'T-DRINK', 'Trà sữa', 1::numeric, 45000::numeric),
+    (f.split_store, 'S1', 'Hướng dương', 'T-SNACK', 'Đồ ăn vặt', 3::numeric, 45000::numeric),
+    (f.split_store, 'N1', 'Bánh flan', 'T-NEW', 'Món mới', 2::numeric, 50000::numeric),
+    (f.overnight_store, 'D1', 'Trà đào', 'T-DRINK', 'Trà sữa', 5::numeric, 200000::numeric)
+) as i (store_id, item_id, item_name, type_id, type_name, quantity, net_amount);
+
+select is(
+  (
+    select count(*)::int
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where (n.nspname, p.proname) in (
+        ('public', 'menu_engineering'), ('public', 'item_margins'), ('public', 'item_attach'),
+        ('app', 'item_cost_periods'), ('app', 'effective_item_types')
+      )
+      and not p.prosecdef
+      and p.provolatile = 's'
+      and p.proconfig = array['search_path=""']
+  ),
+  5,
+  'the menu functions and their helpers are stable security invoker functions with an empty search_path'
+);
+
+select is(
+  (
+    select array_agg(p.proname::text || '(' || pg_get_function_identity_arguments(p.oid) || ')' order by p.proname)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname in ('menu_engineering', 'item_margins', 'item_attach')
+  ),
+  array[
+    'item_attach(store_ids uuid[], from_date date, to_date date)',
+    'item_margins(store_ids uuid[], from_date date, to_date date)',
+    'menu_engineering(store_ids uuid[], as_of_date date, window_days integer, popularity_factor numeric, low_sample_items integer)'
+  ],
+  'each menu function has one signature with the documented argument types'
+);
+
+select results_eq(
+  $$
+    select m.role, m.item_external_id, m.item_name, m.quantity, m.net_amount, m.menu_mix_pct, m.popularity_threshold_pct,
+      m.avg_unit_price, m.unit_cost, m.margin_axis, m.margin_threshold, m.provisional, m.low_sample, m.menu_class
+    from public.menu_engineering(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-28') m
+    order by m.role, m.item_external_id
+  $$,
+  $$
+    select m.role, m.item_external_id, m.item_name, m.quantity, m.net_amount, m.menu_mix_pct, m.popularity_threshold_pct,
+      m.avg_unit_price, m.unit_cost, m.margin_axis, m.margin_threshold, m.provisional, m.low_sample, m.menu_class
+    from public.menu_matrix(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-28') m
+    order by m.role, m.item_external_id
+  $$,
+  'with default settings, no override and no cost menu_engineering equals menu_matrix row for row'
+);
+
+select is(
+  (
+    select array_agg(
+      m.item_external_id || ':' || m.role || ':' || m.menu_class || ':' || m.role_mapped || ':' || m.category_source || ':' || m.low_sample
+      order by o
+    )
+    from public.menu_engineering(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-28') with ordinality as m (
+      role, role_mapped, item_external_id, item_name, item_type_external_id, item_type_name, category_source, quantity, net_amount,
+      menu_mix_pct, popularity_threshold_pct, avg_unit_price, unit_cost, margin_axis, margin_threshold, provisional, low_sample,
+      menu_class, window_from, window_days_used, popularity_factor_used, low_sample_items_used, o
+    )
+  ),
+  array[
+    'D1:drink:star:true:pos:true',
+    'D2:drink:plowhorse:true:pos:true',
+    'D3:drink:puzzle:true:pos:true',
+    'S1:snack:star:true:pos:true',
+    'N1:other:star:false:pos:true'
+  ],
+  'rows come by role then quantity; an item whose type has no role is in other and not role-mapped'
+);
+
+select is(
+  (
+    select (m.popularity_threshold_pct, m.margin_threshold, m.provisional, m.window_from, m.window_days_used, m.popularity_factor_used, m.low_sample_items_used)
+    from public.menu_engineering(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-28') m
+    where m.item_external_id = 'D1'
+  ),
+  (23.333::numeric, 37666.67::numeric, true, '2025-03-01'::date, 28, 0.700::numeric, 10),
+  'without a settings row the window is 28 days, the factor 0.7 and the minimum 10, and an uncosted role is placed on price'
+);
+
+insert into public.report_settings (tenant_id, menu_window_days, menu_popularity_factor, menu_low_sample_items)
+select tenant_id, 14, 0.5, 2 from fixture;
+
+select is(
+  (
+    select array_agg(m.item_external_id || ':' || m.quantity || ':' || m.menu_class || ':' || m.low_sample || ':' || m.popularity_threshold_pct order by m.role, m.item_external_id)
+    from public.menu_engineering(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-28') m
+  ),
+  array['D1:140.000:star:false:16.667', 'D2:56.000:plowhorse:false:16.667', 'D3:14.000:puzzle:false:16.667', 'S1:42.000:star:true:50.000', 'N1:28.000:star:true:50.000'],
+  'a tenant settings row sets the window, the popularity factor and the low-sample minimum'
+);
+
+select is(
+  (
+    select (m.window_from, m.window_days_used, m.popularity_factor_used, m.low_sample_items_used, m.low_sample)
+    from public.menu_engineering(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-28', 21, 0.9, 3) m
+    where m.item_external_id = 'D1'
+  ),
+  ('2025-03-08'::date, 21, 0.9::numeric, 3, false),
+  'arguments win over the settings row'
+);
+
+delete from public.report_settings where tenant_id = (select tenant_id from fixture);
+
+insert into public.item_category_overrides (tenant_id, pos_account_id, item_external_id, item_type_external_id)
+select tenant_id, account_id, 'D3', 'T-SNACK' from fixture;
+
+select is(
+  (
+    select array_agg(m.item_external_id || ':' || m.role || ':' || m.item_type_external_id || ':' || m.item_type_name || ':' || m.category_source || ':' || m.popularity_threshold_pct order by m.role, m.item_external_id)
+    from public.menu_engineering(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-28') m
+    where m.role in ('drink', 'snack')
+  ),
+  array[
+    'D1:drink:T-DRINK:Trà sữa:pos:35.000',
+    'D2:drink:T-DRINK:Trà sữa:pos:35.000',
+    'D3:snack:T-SNACK:Đồ ăn vặt:override:35.000',
+    'S1:snack:T-SNACK:Đồ ăn vặt:pos:35.000'
+  ],
+  'an override written in the transaction moves the item to the role of its new type at once'
+);
+
+select is(
+  (
+    select array_agg(i.item_external_id || ':' || i.item_type_external_id || ':' || i.role order by i.item_external_id)
+    from public.item_margins(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-01', '2025-03-28') i
+    where i.item_external_id in ('D2', 'D3')
+  ),
+  array['D2:T-DRINK:drink', 'D3:T-SNACK:snack'],
+  'item_margins reports the effective type and role'
+);
+
+delete from public.item_category_overrides where tenant_id = (select tenant_id from fixture);
+
+insert into public.item_costs (tenant_id, store_id, item_external_id, cost_amount, effective_from)
+select f.tenant_id, c.store_id, c.item_id, c.amount, c.effective_from
+from fixture f
+cross join lateral (
+  values
+    (null::uuid, 'D1', 25000::numeric, '2025-01-01'::date),
+    (f.split_store, 'D1', 30000::numeric, '2025-03-15'::date),
+    (null::uuid, 'D1', 26000::numeric, '2025-03-20'::date),
+    (null::uuid, 'D2', 20000::numeric, '2025-01-01'::date),
+    (null::uuid, 'D3', 25000::numeric, '2025-01-01'::date),
+    (null::uuid, 'S1', 8000::numeric, '2025-01-01'::date),
+    (null::uuid, 'N1', 20000::numeric, '2025-01-01'::date)
+) as c (store_id, item_id, amount, effective_from);
+
+select is(
+  (
+    select array_agg(m.item_external_id || ':' || m.unit_cost || ':' || m.margin_axis || ':' || m.margin_threshold || ':' || m.provisional || ':' || m.menu_class order by m.item_external_id)
+    from public.menu_engineering(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-28') m
+    where m.role = 'drink'
+  ),
+  array[
+    'D1:27500.00:12500.00:12333.33:false:star',
+    'D2:20000.00:10000.00:12333.33:false:plowhorse',
+    'D3:25000.00:20000.00:12333.33:false:puzzle'
+  ],
+  'each store-day takes the cost valid on its date, a store row winning over a newer tenant-wide row'
+);
+
+select is(
+  (
+    select count(*)::int
+    from public.menu_engineering(array['77777777-7777-4777-8777-000000000021', '77777777-7777-4777-8777-000000000022']::uuid[], '2025-03-28') m
+    join public.item_margins(array['77777777-7777-4777-8777-000000000021', '77777777-7777-4777-8777-000000000022']::uuid[], '2025-03-01', '2025-03-28') i
+      using (item_external_id)
+    where m.unit_cost is distinct from round(i.cost_amount / nullif(i.costed_quantity, 0), 2)
+  ),
+  0,
+  'the menu unit cost equals the margins cost over the costed quantity for the same stores and days'
+);
+
+select is(
+  (
+    select (i.quantity, i.costed_quantity, i.cost_amount, i.unit_cost_latest, i.margin_amount, i.cost_coverage)
+    from public.item_margins(array['77777777-7777-4777-8777-000000000021', '77777777-7777-4777-8777-000000000022']::uuid[], '2025-03-01', '2025-03-28') i
+    where i.item_external_id = 'D1'
+  ),
+  (420::numeric, 420::numeric, 11245000.00::numeric, 30000::numeric, 5555000.00::numeric, 1.000000::numeric),
+  'item_margins costs each store-day by its date and reads the latest cost at the first store'
+);
+
+select is(
+  (
+    select i.unit_cost_latest
+    from public.item_margins(array['77777777-7777-4777-8777-000000000022', '77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-01', '2025-03-28') i
+    where i.item_external_id = 'D1'
+  ),
+  26000::numeric,
+  'the latest cost follows the order of the requested stores'
+);
+
+delete from public.item_costs c using fixture f where c.tenant_id = f.tenant_id and c.item_external_id = 'D2';
+
+select is(
+  (
+    select array_agg(m.item_external_id || ':' || coalesce(m.unit_cost::text, '-') || ':' || (m.margin_axis = m.avg_unit_price) || ':' || m.provisional order by m.item_external_id)
+    from public.menu_engineering(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-28') m
+    where m.role = 'drink'
+  ),
+  array['D1:27500.00:true:true', 'D2:-:true:true', 'D3:25000.00:true:true'],
+  'one drink without a cost makes the role provisional and places every drink on price'
+);
+
+select is(
+  (
+    select (i.costed_quantity, i.cost_amount, i.margin_amount, i.margin_rate, i.cost_coverage, i.unit_cost_latest)
+    from public.item_margins(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-01', '2025-03-28') i
+    where i.item_external_id = 'D2'
+  ),
+  (0::numeric, null::numeric, null::numeric, null::numeric, 0.000000::numeric, null::numeric),
+  'an item without any cost has a null cost, a null margin and no coverage'
+);
+
+insert into public.item_costs (tenant_id, store_id, item_external_id, cost_amount, effective_from)
+select tenant_id, null, 'D2', 20000, '2025-03-15' from fixture;
+
+select is(
+  (
+    select (i.costed_quantity, i.costed_net_amount, i.cost_amount, i.margin_amount, i.margin_rate, i.cost_coverage)
+    from public.item_margins(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-01', '2025-03-28') i
+    where i.item_external_id = 'D2'
+  ),
+  (56::numeric, 1680000::numeric, 1120000.00::numeric, 560000.00::numeric, 0.333333::numeric, 0.500000::numeric),
+  'a tenant-wide cost starting mid-range costs only the days from its start'
+);
+
+select throws_ok(
+  $$ select * from public.menu_engineering(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-03-28', 92) $$,
+  '22023',
+  'menu_engineering needs window_days between 7 and 91',
+  'menu_engineering refuses a window of 92 days'
+);
+
+select throws_ok(
+  $$ select * from public.item_margins(array['77777777-7777-4777-8777-000000000021']::uuid[], '2024-02-22', '2025-03-28') $$,
+  '22023',
+  null,
+  'item_margins refuses a range of 401 days'
+);
+
+select throws_ok(
+  $$ select * from public.item_attach(array['77777777-7777-4777-8777-000000000021']::uuid[], '2025-01-01', '2025-04-03') $$,
+  '22023',
+  null,
+  'item_attach refuses a range of 93 days'
+);
+
+create temp table seed as
+select
+  '11111111-1111-4111-8111-111111111111'::uuid as tenant_id,
+  '22222222-2222-4222-8222-000000000001'::uuid as tea_store,
+  '22222222-2222-4222-8222-000000000002'::uuid as coffee_store,
+  '33333333-3333-4333-8333-000000000001'::uuid as tea_account,
+  array['22222222-2222-4222-8222-000000000001', '22222222-2222-4222-8222-000000000002']::uuid[] as both_stores,
+  (a.anchor - 7)::date as from_date,
+  (a.anchor - 1)::date as to_date
+from (select max(i.business_date) + 1 as anchor from public.invoices i where i.tenant_id = '11111111-1111-4111-8111-111111111111') as a;
+
+delete from public.item_category_overrides where tenant_id = (select tenant_id from seed);
+
+update public.item_type_roles r
+set role = 'topping'
+from seed s
+where r.pos_account_id = s.tea_account
+  and r.item_type_external_id = 'type-04';
+
+select app.refresh_analytics(s.tenant_id, s.from_date, s.to_date) from seed s;
+
+select results_eq(
+  $$
+    select m.role, m.item_external_id, m.item_name, m.quantity, m.net_amount, m.menu_mix_pct, m.popularity_threshold_pct,
+      m.avg_unit_price, m.unit_cost, m.margin_axis, m.margin_threshold, m.provisional, m.low_sample, m.menu_class
+    from seed s cross join lateral public.menu_engineering(s.both_stores, s.to_date) m
+    order by m.role, m.item_external_id
+  $$,
+  $$
+    select m.role, m.item_external_id, m.item_name, m.quantity, m.net_amount, m.menu_mix_pct, m.popularity_threshold_pct,
+      m.avg_unit_price, m.unit_cost, m.margin_axis, m.margin_threshold, m.provisional, m.low_sample, m.menu_class
+    from seed s cross join lateral public.menu_matrix(s.both_stores, s.to_date) m
+    order by m.role, m.item_external_id
+  $$,
+  'with costs in force before the window and two POS accounts mapping a type to different roles, menu_engineering equals menu_matrix'
+);
+
+select is(
+  (
+    select array_agg(m.item_external_id || ':' || m.role order by m.item_external_id, m.role)
+    from seed s
+    cross join lateral public.menu_engineering(array[s.coffee_store, s.tea_store], s.to_date) m
+    where m.item_external_id = 'item-13'
+  ),
+  array['item-13:topping', 'item-13:snack'],
+  'an item takes the role of each store''s POS account, so it appears once per role whatever the store order'
+);
+
+create temp table attach_summary as
+select a.*
+from seed s
+cross join lateral public.item_attach(s.both_stores, s.from_date, s.to_date) a
+where a.item_external_id is null;
+
+select results_eq(
+  $$ select drink_invoices::bigint, topping_base_invoices, topping_invoices, snack_base_invoices, snack_invoices from attach_summary $$,
+  $$
+    select
+      sum(a.drink_invoices)::bigint,
+      coalesce(sum(a.drink_invoices) filter (where a.attach_rate_topping is not null), 0)::bigint,
+      coalesce(sum(a.topping_invoices) filter (where a.attach_rate_topping is not null), 0)::bigint,
+      coalesce(sum(a.drink_invoices) filter (where a.attach_rate_snack is not null), 0)::bigint,
+      coalesce(sum(a.snack_invoices) filter (where a.attach_rate_snack is not null), 0)::bigint
+    from public.agg_attach_daily a, seed s
+    where a.store_id = any (s.both_stores) and a.business_date between s.from_date and s.to_date
+  $$,
+  'the attach summary equals the attach aggregate over the measured store-days'
+);
+
+select is(
+  (select (topping_rate, snack_rate) from attach_summary),
+  (
+    select (
+      public.metric_value(s.both_stores, 'attach_rate_topping', s.from_date, s.to_date),
+      public.metric_value(s.both_stores, 'attach_rate_snack', s.from_date, s.to_date)
+    )
+    from seed s
+  ),
+  'the attach rates equal metric_value'
+);
+
+select is(
+  (
+    select (a.topping_base_invoices, a.topping_rate, a.snack_base_invoices, a.snack_rate)
+    from attach_summary a
+  ),
+  (
+    select (tea.drink_invoices, tea.topping_rate, coffee.drink_invoices, coffee.snack_rate)
+    from seed s
+    cross join lateral public.item_attach(array[s.tea_store], s.from_date, s.to_date) tea
+    cross join lateral public.item_attach(array[s.coffee_store], s.from_date, s.to_date) coffee
+    where tea.item_external_id is null and coffee.item_external_id is null
+  ),
+  'a store whose account does not map a role neither dilutes nor feeds its rate'
+);
+
+select is(
+  (
+    select (a.topping_base_invoices, a.topping_invoices, a.topping_rate)
+    from seed s
+    cross join lateral public.item_attach(array[s.coffee_store], s.from_date, s.to_date) a
+    where a.item_external_id is null
+  ),
+  (0::bigint, 0::bigint, null::numeric),
+  'a role no requested account maps gives a null rate'
+);
+
+select ok(
+  (
+    select count(*) > 0 and bool_and(a.item_external_id between 'item-01' and 'item-12')
+    from seed s
+    cross join lateral public.item_attach(s.both_stores, s.from_date, s.to_date) a
+    where a.item_external_id is not null
+  ),
+  'every item row of item_attach is a drink'
+);
+
+insert into public.item_category_overrides (tenant_id, pos_account_id, item_external_id, item_type_external_id)
+select tenant_id, tea_account, 'item-15', 'type-03' from seed;
+
+select ok(
+  (
+    select count(*) = 1
+    from seed s
+    cross join lateral public.item_attach(array[s.tea_store], s.from_date, s.to_date) a
+    where a.item_external_id = 'item-15'
+  ),
+  'an override that makes an item a drink adds its row to item_attach at once'
+);
+
+delete from public.item_category_overrides where tenant_id = (select tenant_id from seed);
+
+create temp table before_modifiers as
+select
+  (select array_agg(i.item_external_id || ':' || i.quantity order by i.item_external_id) from seed s cross join lateral public.item_summary(s.both_stores, s.from_date, s.to_date) i) as summary_items,
+  (select array_agg(m.role || ':' || m.item_external_id || ':' || m.quantity order by m.role, m.item_external_id) from seed s cross join lateral public.menu_engineering(s.both_stores, s.to_date, 7) m) as menu_items,
+  (select array_agg(i.item_external_id || ':' || i.quantity order by i.item_external_id) from seed s cross join lateral public.item_margins(s.both_stores, s.from_date, s.to_date) i) as margin_items,
+  (select array_agg(coalesce(a.item_external_id, '-') || ':' || a.drink_invoices order by a.item_external_id nulls first) from seed s cross join lateral public.item_attach(s.both_stores, s.from_date, s.to_date) a) as attach_items;
+
+update public.invoice_lines l
+set item_external_id = 'item-05', item_name = 'Peach Tea (M)', item_type_external_id = 'type-02'
+from seed s
+where l.tenant_id = s.tenant_id
+  and l.line_kind = 'modifier';
+
+select app.refresh_analytics(s.tenant_id, s.from_date, s.to_date) from seed s;
+
+select is(
+  (
+    select (
+      (select array_agg(i.item_external_id || ':' || i.quantity order by i.item_external_id) from seed s cross join lateral public.item_summary(s.both_stores, s.from_date, s.to_date) i),
+      (select array_agg(m.role || ':' || m.item_external_id || ':' || m.quantity order by m.role, m.item_external_id) from seed s cross join lateral public.menu_engineering(s.both_stores, s.to_date, 7) m),
+      (select array_agg(i.item_external_id || ':' || i.quantity order by i.item_external_id) from seed s cross join lateral public.item_margins(s.both_stores, s.from_date, s.to_date) i),
+      (select array_agg(coalesce(a.item_external_id, '-') || ':' || a.drink_invoices order by a.item_external_id nulls first) from seed s cross join lateral public.item_attach(s.both_stores, s.from_date, s.to_date) a)
+    )
+  ),
+  (select (summary_items, menu_items, margin_items, attach_items) from before_modifiers),
+  'modifier lines named and typed like an item never count as that item'
 );
 
 select * from finish();

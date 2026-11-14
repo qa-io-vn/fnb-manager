@@ -18760,6 +18760,88 @@
 				"tags": ["(rpc) hourly_profile"]
 			}
 		},
+		"/rpc/item_attach": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) item_attach"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["store_ids", "from_date", "to_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) item_attach"]
+			}
+		},
 		"/rpc/item_lifecycle": {
 			"get": {
 				"parameters": [
@@ -18829,6 +18911,88 @@
 					}
 				},
 				"tags": ["(rpc) item_lifecycle"]
+			}
+		},
+		"/rpc/item_margins": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) item_margins"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["store_ids", "from_date", "to_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) item_margins"]
 			}
 		},
 		"/rpc/item_summary": {
@@ -19004,6 +19168,110 @@
 					}
 				},
 				"tags": ["(rpc) item_velocity"]
+			}
+		},
+		"/rpc/menu_engineering": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "as_of_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "window_days",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"format": "numeric",
+						"in": "query",
+						"name": "popularity_factor",
+						"required": false,
+						"type": "number"
+					},
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "low_sample_items",
+						"required": false,
+						"type": "integer"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) menu_engineering"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"as_of_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"low_sample_items": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"popularity_factor": {
+									"format": "numeric",
+									"type": "number"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"window_days": {
+									"format": "int32",
+									"type": "integer"
+								}
+							},
+							"required": ["store_ids", "as_of_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) menu_engineering"]
 			}
 		},
 		"/rpc/menu_matrix": {
