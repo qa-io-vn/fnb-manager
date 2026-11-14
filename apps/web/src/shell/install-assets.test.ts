@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { colors } from "@fnb/design-tokens";
 import { describe, expect, it } from "vitest";
 
 const appRoot = join(import.meta.dirname, "..", "..");
@@ -25,19 +26,7 @@ const manifest = JSON.parse(readText("public/manifest.webmanifest")) as {
 	background_color: string;
 	icons: ManifestIcon[];
 };
-const styles = readText("src/styles.css");
 const indexHtml = readText("index.html");
-
-function tokenIn(block: string | undefined, name: string): string {
-	const value = block?.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6});`, "i"));
-	if (!value?.[1]) throw new Error(`token --${name} not found`);
-	return value[1];
-}
-
-const lightTokens = styles.match(/:root\s*\{([^}]*)\}/)?.[1];
-const darkTokens = styles.match(
-	/@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^}]*)\}/,
-)?.[1];
 
 function pngSize(path: string): string {
 	const png = readFileSync(join(appRoot, "public", path));
@@ -62,19 +51,17 @@ describe("install assets", () => {
 	});
 
 	it("takes its colours from the app's colour tokens", () => {
-		const surface = tokenIn(lightTokens, "surface");
+		const surface = colors.light.surface;
 		expect(manifest.theme_color).toBe(surface);
 		expect(manifest.background_color).toBe(surface);
 		expect(indexHtml).toContain(
 			`<meta name="theme-color" content="${surface}" media="(prefers-color-scheme: light)" />`,
 		);
 		expect(indexHtml).toContain(
-			`<meta name="theme-color" content="${tokenIn(darkTokens, "surface")}" media="(prefers-color-scheme: dark)" />`,
+			`<meta name="theme-color" content="${colors.dark.surface}" media="(prefers-color-scheme: dark)" />`,
 		);
 		expect(readText("public/favicon.svg")).toMatch(
-			new RegExp(
-				`id="background"[^>]*fill="${tokenIn(lightTokens, "accent")}"`,
-			),
+			new RegExp(`id="background"[^>]*fill="${colors.light.accent}"`),
 		);
 	});
 

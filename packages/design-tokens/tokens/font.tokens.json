@@ -1,0 +1,22 @@
+{
+	"font": {
+		"$type": "fontFamily",
+		"$description": "Font stacks. The app ships no web font: each device uses its own interface font.",
+		"sans": {
+			"$value": [
+				"system-ui",
+				"-apple-system",
+				"Segoe UI",
+				"Roboto",
+				"Helvetica Neue",
+				"Arial",
+				"sans-serif"
+			],
+			"$description": "every interface text"
+		},
+		"mono": {
+			"$value": ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+			"$description": "code and identifiers"
+		}
+	}
+}

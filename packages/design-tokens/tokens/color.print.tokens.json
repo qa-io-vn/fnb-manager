@@ -1,0 +1,230 @@
+{
+	"color": {
+		"$type": "color",
+		"$description": "Semantic colours, print theme. Named for their role, never for their hue.",
+		"surface": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [1, 1, 1],
+				"hex": "#ffffff"
+			},
+			"$description": "page background"
+		},
+		"surface-raised": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [1, 1, 1],
+				"hex": "#ffffff"
+			},
+			"$description": "cards, menus and the top bar"
+		},
+		"surface-sunken": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [1, 1, 1],
+				"hex": "#ffffff"
+			},
+			"$description": "hover and pressed backgrounds"
+		},
+		"ink": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0, 0, 0],
+				"hex": "#000000"
+			},
+			"$description": "body text"
+		},
+		"ink-muted": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.2, 0.2, 0.2],
+				"hex": "#333333"
+			},
+			"$description": "secondary text, axis labels"
+		},
+		"line": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.549, 0.549, 0.549],
+				"hex": "#8c8c8c"
+			},
+			"$description": "borders and dividers"
+		},
+		"accent": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.0392, 0.4196, 0.3373],
+				"hex": "#0a6b56"
+			},
+			"$description": "primary actions, the active navigation item, links"
+		},
+		"accent-ink": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [1, 1, 1],
+				"hex": "#ffffff"
+			},
+			"$description": "text on the accent colour"
+		},
+		"positive": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.1059, 0.4784, 0.2824],
+				"hex": "#1b7a48"
+			},
+			"$description": "good changes"
+		},
+		"positive-soft": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [1, 1, 1],
+				"hex": "#ffffff"
+			},
+			"$description": "background of a good change"
+		},
+		"negative": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.702, 0.149, 0.1176],
+				"hex": "#b3261e"
+			},
+			"$description": "bad changes"
+		},
+		"negative-soft": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [1, 1, 1],
+				"hex": "#ffffff"
+			},
+			"$description": "background of a bad change"
+		},
+		"neutral": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.2, 0.2, 0.2],
+				"hex": "#333333"
+			},
+			"$description": "changes that are neither good nor bad"
+		},
+		"neutral-soft": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [1, 1, 1],
+				"hex": "#ffffff"
+			},
+			"$description": "background of a neutral change"
+		},
+		"warning": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.5412, 0.3529, 0],
+				"hex": "#8a5a00"
+			},
+			"$description": "warnings and markers"
+		},
+		"warning-soft": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [1, 1, 1],
+				"hex": "#ffffff"
+			},
+			"$description": "background of a warning, the demo banner"
+		},
+		"focus": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.0392, 0.4196, 0.3373],
+				"hex": "#0a6b56"
+			},
+			"$description": "the focus outline"
+		},
+		"chart-1": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.0392, 0.4196, 0.3373],
+				"hex": "#0a6b56"
+			},
+			"$description": "first chart series"
+		},
+		"chart-2": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.6902, 0.4784, 0.1216],
+				"hex": "#b07a1f"
+			},
+			"$description": "second chart series"
+		},
+		"chart-3": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.298, 0.3725, 0.6392],
+				"hex": "#4c5fa3"
+			},
+			"$description": "third chart series"
+		},
+		"chart-4": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.6118, 0.3098, 0.4784],
+				"hex": "#9c4f7a"
+			},
+			"$description": "fourth chart series"
+		},
+		"chart-5": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.3725, 0.5412, 0.1725],
+				"hex": "#5f8a2c"
+			},
+			"$description": "fifth chart series"
+		},
+		"chart-muted": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.549, 0.549, 0.549],
+				"hex": "#8c8c8c"
+			},
+			"$description": "reference series such as a baseline"
+		},
+		"heat-0": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [1, 1, 1],
+				"hex": "#ffffff"
+			},
+			"$description": "heat table, lowest"
+		},
+		"heat-1": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.9294, 0.9294, 0.9294],
+				"hex": "#ededed"
+			},
+			"$description": "heat table"
+		},
+		"heat-2": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.8588, 0.8588, 0.8588],
+				"hex": "#dbdbdb"
+			},
+			"$description": "heat table"
+		},
+		"heat-3": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.7843, 0.7843, 0.7843],
+				"hex": "#c8c8c8"
+			},
+			"$description": "heat table"
+		},
+		"heat-4": {
+			"$value": {
+				"colorSpace": "srgb",
+				"components": [0.7098, 0.7098, 0.7098],
+				"hex": "#b5b5b5"
+			},
+			"$description": "heat table, highest"
+		}
+	}
+}

@@ -197,11 +197,12 @@ Every package runs `vitest run` on its `test/` folder (`test/unit`, plus the gat
 | `@fnb/sync` | Mapping, business dates, reconciliation tolerance, change detection, voids and edits, robustness (repeats, overlaps, NUL characters), the incremental run, the run guard, payload documents, run bookkeeping, TLS rules, redaction |
 | `@fnb/runner` | Account entries, budgets, the dead-man's switch, the incremental run with a rejected login, the Notifier |
 | `@fnb/metrics` | The registry; consistency with [metrics.md](metrics.md) and with the latest `metric_value` migration |
+| `@fnb/design-tokens` | The token files: the same tokens in every theme, components equal to the hex form, WCAG 2.2 AA contrast of the text and focus pairs in the light, dark and print themes; the generated CSS and palette equal to a fresh build |
 | `@fnb/reports` | Periods and ISO weeks, the as-of rule, coverage and like-for-like comparisons, the exact decomposition, the narrative, the RPC source (errors, truncation guard), each card of Ngày, Tuần, Tháng and Năm |
 | `@fnb/demo-analytics` | The demo calendar, generated days, ingest, Postgres-exact numerics, the source; plus the parity suite (2.6) and a smoke run of each report on the demo engine |
 | `@fnb/notify` | Channel adapters (Zalo Bot, Brevo), secret resolution, timed fetch, rendering and truncation, templates, the digest model and fingerprint, the digest-line rules, the dispatch cycle, link parsing, the outbox notifier, the tenant-filter guard and the synthetic-environment guard |
 | `@fnb/jobs` | The CLI and its help, configuration and masking, numbered output in CI, `doctor`, the status window, the incremental checks, `notify` and `digest` commands |
-| `@fnb/web` | The report card and its extensions, keyset paging, the demo row source, i18n completeness and key parity, CSV, formatting, the Hôm nay metrics, verification and sentences, the web registry, the card adapter, the period navigator and picker, report routes, install assets, preferences, the lazy-chunk patterns |
+| `@fnb/web` | The report card and its extensions, keyset paging, the demo row source, i18n completeness and key parity, CSV, formatting, the Hôm nay metrics, verification and sentences, the web registry, the card adapter, the period navigator and picker, report routes, install assets (their colours equal to the design tokens), preferences, the lazy-chunk patterns, no raw colour outside the token package |
 
 ### 2.5 Database tests (pgTAP)
 
@@ -667,12 +668,13 @@ Figures as dated in each table. Step 12b is still adding tests, so later runs wi
 
 ### 8.1 Unit tests per package
 
-From the run of 2026-11-12, 14:00 to 14:02, in every package. Skipped files and tests are the gated suites of sections 2.7 and 2.9, which had no switch in that run.
+From the run of 2026-11-14 at about 10:20, in every package. Skipped files and tests are the gated suites of sections 2.7 and 2.9, which had no switch in that run.
 
 | Package | Test files (passed + skipped) | Tests passed | Tests skipped |
 |---|---:|---:|---:|
 | `@fnb/core` | 7 | 69 | 0 |
 | `@fnb/metrics` | 3 | 109 | 0 |
+| `@fnb/design-tokens` | 2 | 9 | 0 |
 | `@fnb/connector-core` | 3 | 26 | 0 |
 | `@fnb/reports` | 25 + 1 | 287 | 7 |
 | `@fnb/connector-mock` | 3 | 56 | 0 |
@@ -680,10 +682,10 @@ From the run of 2026-11-12, 14:00 to 14:02, in every package. Skipped files and 
 | `@fnb/sync` | 15 + 1 | 98 | 2 |
 | `@fnb/demo-analytics` | 17 | 109 | 0 |
 | `@fnb/runner` | 5 | 26 | 0 |
-| `@fnb/web` | 20 | 266 | 0 |
-| `@fnb/notify` | 16 + 3 | 153 | 11 |
-| `@fnb/jobs` | 8 + 2 | 61 | 8 |
-| **Total** | **132 + 10 = 142** | **1,415** | **32** |
+| `@fnb/web` | 21 | 267 | 0 |
+| `@fnb/notify` | 16 + 3 | 163 | 11 |
+| `@fnb/jobs` | 8 + 2 | 62 | 8 |
+| **Total** | **135 + 10 = 145** | **1,436** | **32** |
 
 `packages/runner/test/integration` exists but holds no test.
 
@@ -1291,7 +1293,7 @@ Of the 233 requirements that are verified locally, built, in build or waiting fo
 |---|---|---|---|---|---|
 | NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day` | covered |
 | NFR-A11Y-02 | Lighthouse accessibility | Must | verified locally | Lighthouse recipe in `apps/web/README.md` | covered |
-| NFR-A11Y-03 | Contrast | Must | verified locally | `apps/web/e2e/support/checks.ts` | covered |
+| NFR-A11Y-03 | Contrast | Must | verified locally | `apps/web/e2e/support/checks.ts`, `design-tokens:tokens` | covered |
 | NFR-A11Y-04 | Charts have tables | Must | verified locally | `web:components/report-card/report-card` | covered |
 | NFR-A11Y-05 | Keyboard and screen readers | Should | verified locally | `web:reports/period-navigator` | covered |
 
@@ -1325,7 +1327,7 @@ Of the 233 requirements that are verified locally, built, in build or waiting fo
 | NFR-MNT-01 | Typed code | Must | verified locally | CI `code` job | covered |
 | NFR-MNT-02 | Lint and format | Must | verified locally | CI `code` job | covered |
 | NFR-MNT-03 | Tests at every layer | Must | verified locally | `pnpm test`, `pnpm exec supabase test db`, `pnpm --filter @fnb/web test:e2e` | covered |
-| NFR-MNT-04 | Consistency checks | Must | verified locally | `metrics:consistency/document`, `metrics:consistency/metric-value`, `web:i18n/report-keys`, `web:test/lazy-chunks`, `node scripts/function-imports.mjs --check`, `demo-analytics:parity/*` | covered |
+| NFR-MNT-04 | Consistency checks | Must | verified locally | `metrics:consistency/document`, `metrics:consistency/metric-value`, `web:i18n/report-keys`, `web:test/lazy-chunks`, `node scripts/function-imports.mjs --check`, `demo-analytics:parity/*`, `design-tokens:generated`, `web:test/no-raw-colours` | covered |
 | NFR-MNT-05 | No code comments | Should | built | review | partial |
 | NFR-MNT-06 | Schema drift checks | Should | planned | planned (request R-F03) | planned |
 | NFR-MNT-07 | Canonical column-name lint | Should | planned | planned (request R-F03) | planned |

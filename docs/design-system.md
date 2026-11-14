@@ -16,21 +16,21 @@ How the web app's look, components and accessibility are kept consistent and che
 
 ### 2.1 Where they live
 
-`packages/design-tokens/tokens/` holds the DTCG files; nothing else defines a colour, a radius or a font stack.
+`packages/design-tokens/tokens/` holds the DTCG files; nothing else defines a colour or a font stack.
 
 | File | Content |
 |---|---|
-| `color.tokens.json` | the semantic colours (`surface`, `ink`, `line`, `accent`, `positive`, `negative`, `neutral`, `warning`, `focus`), the chart series (`chart.1` to `chart.5`, `chart.muted`) and the heat scale (`heat.0` to `heat.4`), each with a light, a dark and a print value |
-| `typography.tokens.json` | the font stacks and the print table sizes |
+| `color.light.tokens.json`, `color.dark.tokens.json`, `color.print.tokens.json` | the 28 semantic colours of each theme: the surfaces, ink, line, accent, the positive, negative, neutral and warning pairs, focus, the chart series `chart-1` to `chart-5` and `chart-muted`, and the heat scale `heat-0` to `heat-4`. Each value is an sRGB colour with its hex form |
+| `font.tokens.json` | the sans and mono font stacks |
 
-`pnpm --filter @fnb/design-tokens build` runs Style Dictionary and writes, into the package's `generated/` folder:
+`pnpm --filter @fnb/design-tokens build` runs Style Dictionary, formats the result with Biome and writes into `packages/design-tokens/src/generated/`:
 
 | Output | Used by |
 |---|---|
-| `tokens.css` | `apps/web/src/styles.css` imports it: the light values on `:root`, the dark values under `prefers-color-scheme: dark`, the print values under `@media print`, and the Tailwind `@theme inline` mapping |
-| `tokens.ts` | the chart theme: the screen fallback palette and the print palette for ECharts, which cannot read CSS variables while printing |
+| `tokens.css` | `apps/web/src/styles.css` imports it as `@fnb/design-tokens/tokens.css`: the light values on `:root`, the dark values under `prefers-color-scheme: dark`, the print values under `@media print`, and the Tailwind `@theme inline` mapping behind `bg-surface`, `text-ink` and the other colour utilities |
+| `palette.ts` | `colors.light`, `colors.dark`, `colors.print` and `fontStacks`, typed; the chart theme builds its screen fallback and its print palette from them, and the install-assets test compares the manifest, `index.html` and favicon colours with them |
 
-The generated files are committed, so the web app builds without a token step. `pnpm --filter @fnb/design-tokens check` regenerates into memory and fails when a committed file differs; CI and `pnpm verify` run it, the same way the Edge Function's import map is kept in step.
+The generated files are committed, so the web app builds without a token step. A unit test of the package renders the tokens in memory and fails when a committed file differs (`pnpm --filter @fnb/design-tokens check` does the same from the command line), so `pnpm test`, CI and `pnpm verify` keep them in step. Another test checks that every theme defines the same tokens and that the text and focus pairs meet WCAG 2.2 AA contrast in all three themes, and `apps/web/src/test/no-raw-colours.test.ts` fails on a colour value written anywhere in the web app's source.
 
 ### 2.2 Naming
 
@@ -38,9 +38,9 @@ Tokens are named for their role, never for their colour: `accent`, not `green`. 
 
 ### 2.3 Changing a colour
 
-1. Edit the value in `packages/design-tokens/tokens/color.tokens.json` (light, dark and print where they differ).
+1. Edit the value in `packages/design-tokens/tokens/color.light.tokens.json`, and in the dark and print files where it should differ there (give both `components` and `hex`; a test keeps them equal).
 2. Run `pnpm --filter @fnb/design-tokens build`.
-3. Run `pnpm verify`: axe checks the contrast of every page in both schemes, and the end-to-end print checks cover the print values.
+3. Run `pnpm verify`: the token tests check the contrast pairs, axe checks the contrast of every page in both schemes, and the end-to-end print checks cover the print values.
 
 ## 3. Components
 
@@ -91,6 +91,6 @@ The design system replaces the hand-written styles in three verified steps. Each
 
 | Step | Content | Verified by | State |
 |---|---|---|---|
-| DS1 | the token package, generated CSS and chart palette; `styles.css` and the chart theme read them; no visible change | before-and-after screenshots of every demo page in light, dark and print equal to the pixel; the token check | planned |
+| DS1 | the token package, generated CSS and chart palette; `styles.css` and the chart theme read them; no visible change | before-and-after full-page screenshots of every demo page in light, dark, dark at 360 px and print equal to the byte; the token tests; the raw-colour check | verified locally on 2026-11-14 |
 | DS2 | the `components/ui` controls of section 3.1; the shell, the auth pages and the report card use them; WCAG 2.2 AA | the end-to-end suite, axe with the `wcag22aa` tag, the new keyboard and auth checks | planned |
 | DS3 | the catalogue page and its checks; this document's tables final | the catalogue's end-to-end check | planned |

@@ -21,6 +21,7 @@
 		"@fnb/connector-mock": "workspace:^",
 		"@fnb/core": "workspace:^",
 		"@fnb/demo-analytics": "workspace:^",
+		"@fnb/design-tokens": "workspace:^",
 		"@fnb/metrics": "workspace:^",
 		"@fnb/reports": "workspace:^",
 		"@supabase/supabase-js": "^2.119.0",
