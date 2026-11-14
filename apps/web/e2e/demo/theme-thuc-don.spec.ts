@@ -72,11 +72,57 @@ test("every Thực đơn table downloads as UTF-8 CSV with a BOM", async ({
 	page,
 }) => {
 	await openTheme(page, "menu");
-	const headers = await expectCsvTablesWithBom(
-		page,
-		themeCard(page, "menu", "menu_matrix"),
-	);
-	expect(headers.join(" ")).toContain("Món");
+	const headers: string[] = [];
+	for (const id of themeCardIds.menu) {
+		headers.push(
+			...(await expectCsvTablesWithBom(page, themeCard(page, "menu", id))),
+		);
+	}
+	const text = headers.join(" ");
+	for (const label of [
+		"Món",
+		"Xu hướng",
+		"Tỷ trọng kỳ trước",
+		"Độ nâng",
+		"Lượt chọn",
+	]) {
+		expect(text).toContain(label);
+	}
+});
+
+test("no modifier name shows up in a Thực đơn table apart from the sugar and ice card", async ({
+	page,
+}) => {
+	await openTheme(page, "menu");
+	const modifier = /\d{1,3}% (Đường|Đá)/;
+	for (const id of themeCardIds.menu) {
+		const tables = themeCard(page, "menu", id).getByTestId("table-scroll");
+		const text = (await tables.allTextContents()).join(" ");
+		if (id === "preferences") {
+			expect(text).toMatch(modifier);
+		} else {
+			expect(text, id).not.toMatch(modifier);
+		}
+	}
+});
+
+test("the uncategorised demo item shows in the category mix with the categories link", async ({
+	page,
+}) => {
+	await openTheme(page, "menu");
+	const categories = themeCard(page, "menu", "category_mix");
+	await expect(
+		categories.getByRole("table", {
+			name: "Doanh thu theo nhóm món",
+			exact: true,
+		}),
+	).toContainText("Chưa phân loại");
+	await expect(
+		categories.getByRole("link", { name: "Phân loại món" }),
+	).toHaveAttribute("href", /cai-dat\/phan-loai\?tab=nhom-mon/);
+	const attach = themeCard(page, "menu", "attach");
+	await expect(attach.getByTestId("headline")).not.toHaveText("—");
+	await expect(attach.getByTestId("comparison-chip")).toHaveCount(2);
 });
 
 test("Thực đơn prints without controls, passes axe, fits 360 px, stays local and reads in English", async ({

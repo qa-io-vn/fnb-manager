@@ -85,7 +85,7 @@ export function sizeGroups(rows: readonly ItemRow[]): SizeGroup[] {
 		);
 }
 
-function drinkDrivers(groups: readonly SizeGroup[]): DriverCandidate[] {
+export function drinkDrivers(groups: readonly SizeGroup[]): DriverCandidate[] {
 	return groups.flatMap((group) =>
 		group.change === null ||
 		group.sizedQuantity < MIN_DRIVER_QUANTITY ||

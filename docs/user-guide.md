@@ -242,7 +242,7 @@ Use the browser's own print command (Ctrl+P or ⌘P on a computer, Share then Pr
 
 ## The thematic reports ("Chủ đề")
 
-"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. Two are built: **Doanh thu & xu hướng** and **Giờ & ngày trong tuần**. The others (Thực đơn, Thanh toán & tiền mặt, then Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu) come later; the tabs above the range show only the ones that exist.
+"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. Three are built: **Doanh thu & xu hướng**, **Giờ & ngày trong tuần** and **Thực đơn**. The others (Thanh toán & tiền mặt, then Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu) come later; the tabs above the range show only the ones that exist.
 
 ![Doanh thu & xu hướng on a computer: the theme tabs, the range presets and dates, then the Doanh thu thuần, Xu hướng doanh thu and Số hóa đơn cards](user-guide/theme-doanh-thu.png)
 
@@ -295,6 +295,30 @@ Thực đơn shows which items carry the menu. **Ma trận thực đơn** classe
 
 ![The margins card of the demo: no item has a cost yet, with the link to enter costs](user-guide/theme-thuc-don-margins.png)
 
+**Món tăng, món giảm** compares each item's quantity with the range before: the five that rose and fell most among items that sold at least 10 in the range before (a rising item also at least 10 in this one), and the best-selling new items. When a store has no sales in the range before, it says so instead of guessing.
+
+![The movers card: the top riser's change at the top, then the rising, falling and new items with both ranges' quantities](user-guide/theme-thuc-don-movers.png)
+
+**Cơ cấu nhóm món** shows each category's share of item revenue and how it moved. An item without a category is listed as **Chưa phân loại**, and the card links to **Phân loại món** in Settings so you can give it one.
+
+![The category mix card: the largest category's share, the shares against the range before, and the uncategorised item with its Settings link](user-guide/theme-thuc-don-category-mix.png)
+
+**Cơ cấu size** is the share of size L among drinks sold by size, against the range before in points, with the L share of each drink.
+
+![The size mix card: the L share with its change in points and the L share per drink](user-guide/theme-thuc-don-size-mix.png)
+
+**Tỷ lệ kèm topping và đồ ăn nhẹ** is how many invoices with a drink also have a topping or a snack, over the last 92 days of the range at most (the subtitle says how many), against as many days before. It names the drink most often taken with a topping. A rate shows "—" with a link to Settings until an item type of the selected stores carries the topping or snack role, and both do until one carries the drink role.
+
+![The attach card: the topping rate with both chips, the snack rate in the caption and the rates per drink](user-guide/theme-thuc-don-attach.png)
+
+**Món hay bán cùng nhau** lists the pairs of items found together on at least 3 invoices over the same window, with how often one comes with the other and the lift (above 1 means more often than chance): candidates for a combo.
+
+![The pairs card: the top pair's invoices and the 20 pairs most often sold together](user-guide/theme-thuc-don-pairs.png)
+
+**Đường và đá** shows which sugar and ice levels customers choose, each as a share of its kind against the range before. Other options are listed apart under **Khác**.
+
+![The sugar and ice card: the most chosen sugar level, the sugar and ice levels with their shares and changes](user-guide/theme-thuc-don-preferences.png)
+
 More detail: [reports/thuc-don.md](reports/thuc-don.md).
 
 ### Links, printing and CSV
@@ -335,7 +359,7 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 ![The Kế hoạch page saying Sắp có and naming the roadmap phase that brings it](user-guide/coming-soon.png)
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
-- **More thematic reports** ("Chủ đề", phase 10): Thực đơn and Thanh toán & tiền mặt next, then Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu. Doanh thu and Giờ & ngày are already there (see above).
+- **More thematic reports** ("Chủ đề", phase 10): Thanh toán & tiền mặt next, then Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu. Doanh thu, Giờ & ngày and Thực đơn are already there (see above).
 - **Settings and manual data** ("Cài đặt", phase 10, designed at roadmap level): the store profile, opening hours, seat counts, item costs, monthly targets, payment fees, item roles and categories, holidays and legal texts. Two of today's cards wait for them: the attach rates need item roles and target progress needs a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until they exist the links open "Sắp có".
 - **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).

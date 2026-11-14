@@ -1,3 +1,4 @@
+import type { DateRange } from "../contract/values.js";
 import type { CardMarkers } from "../model/card.js";
 import type { CoverageModel } from "../model/coverage.js";
 import {
@@ -9,13 +10,17 @@ import {
 import { catchUpOverlaps, type ThemeContext } from "./context.js";
 import { themeKeys } from "./keys.js";
 
-export function rangeValue(context: Pick<ThemeContext, "range">): TypedValue {
+export function spanValue(span: DateRange): TypedValue {
 	return partValue(
 		part(themeKeys.range.span, {
-			from: textValue("date", context.range.from),
-			to: textValue("date", context.range.to),
+			from: textValue("date", span.from),
+			to: textValue("date", span.to),
 		}),
 	);
+}
+
+export function rangeValue(context: Pick<ThemeContext, "range">): TypedValue {
+	return spanValue(context.range);
 }
 
 export function themeMarkers(

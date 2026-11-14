@@ -18,7 +18,16 @@ export const themeSlugs: Record<ThemeKind, string> = {
 export const themeCardIds: Record<ThemeKind, readonly string[]> = {
 	revenue: ["net_revenue", "trend", "invoices", "avg_ticket", "store_share"],
 	hours: ["heatmap", "peak_dead", "weekday", "productivity", "shift_windows"],
-	menu: ["menu_matrix", "margins"],
+	menu: [
+		"menu_matrix",
+		"margins",
+		"movers",
+		"category_mix",
+		"size_mix",
+		"attach",
+		"pairs",
+		"preferences",
+	],
 };
 
 const RAW_KEY = /\b(report|metric|theme)\.[a-z]+[A-Za-z_]*\./;

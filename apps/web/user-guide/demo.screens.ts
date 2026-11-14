@@ -166,6 +166,16 @@ test("the Thực đơn matrix and its margins card", async ({ page }) => {
 		themeCard(page, "menu", "margins"),
 		"theme-thuc-don-margins",
 	);
+	for (const [card, name] of [
+		["movers", "theme-thuc-don-movers"],
+		["category_mix", "theme-thuc-don-category-mix"],
+		["size_mix", "theme-thuc-don-size-mix"],
+		["attach", "theme-thuc-don-attach"],
+		["pairs", "theme-thuc-don-pairs"],
+		["preferences", "theme-thuc-don-preferences"],
+	] as const) {
+		await shootElement(themeCard(page, "menu", card), name);
+	}
 });
 
 test("the printed report", async ({ page }) => {

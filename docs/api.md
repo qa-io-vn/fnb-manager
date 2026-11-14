@@ -204,9 +204,9 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`hour_profile`](#publichour_profile) | themes | invoker, stable | up to 82 rows | web theme Giờ & ngày | verified locally (phase 10a) |
 | [`menu_engineering`](#publicmenu_engineering) | themes | invoker, stable | rows per item | web theme Thực đơn | verified locally (phase 10a) |
 | [`item_margins`](#publicitem_margins) | themes | invoker, stable | rows per item | web theme Thực đơn | verified locally (phase 10a) |
-| [`item_attach`](#publicitem_attach) | themes | invoker, stable | 1 row, then rows per drink | no caller yet (Thực đơn, phase 10a) | verified locally (phase 10a) |
-| [`basket_pairs`](#publicbasket_pairs) | themes | invoker, stable | up to 900 pairs | no caller yet (Thực đơn, phase 10a) | verified locally (phase 10a) |
-| [`modifier_summary`](#publicmodifier_summary) | themes | invoker, stable | rows per modifier name | no caller yet (Thực đơn, phase 10a) | verified locally (phase 10a) |
+| [`item_attach`](#publicitem_attach) | themes | invoker, stable | 1 row, then rows per drink | Thực đơn (attach rates, last 92 days and the 92 before) | verified locally (phase 10a) |
+| [`basket_pairs`](#publicbasket_pairs) | themes | invoker, stable | up to 900 pairs | Thực đơn (items sold together, last 92 days, 3 invoices, top 50) | verified locally (phase 10a) |
+| [`modifier_summary`](#publicmodifier_summary) | themes | invoker, stable | rows per modifier name | Thực đơn (sugar and ice, with the previous range) | verified locally (phase 10a) |
 
 ### 3.1 Analytics
 
@@ -814,7 +814,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no screen yet (Thực đơn's attach card, #97); the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/menu`.
+- **Called by:** Thực đơn's attach card (`attach`, `attachPrevious`, and the covered stores' `attachCovered` and `attachPreviousCovered`); the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/menu`.
 - **Notes:** non-voided invoices of the range, each item line with the role of its effective type on the invoice's POS account. First a summary row (`item_external_id` null) over the invoices with a drink, then one row per drink item over the invoices holding it. Topping and snack rates count only the stores whose POS account maps that role, as `agg_attach_daily` and `metric_value` do; a role no requested account maps gives a null rate. At most 92 days.
 
 #### `public.basket_pairs`
@@ -832,7 +832,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no screen yet (Thực đơn, phase 10a); the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/basket-modifiers`.
+- **Called by:** Thực đơn's pairs card; the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/basket-modifiers`.
 - **Notes:** the definitions of `agg_basket_pairs_28d` over any range and over the requested stores together: non-voided invoices with an item line (`window_invoices`), the distinct item keys of each invoice (so never a modifier), unordered pairs with `item_a < item_b` in `collate "C"`, kept from `min_pair_invoices` (1 to 50). Supports and confidences to 6 digits, lift to 4 on unrounded supports; names are `max(item_name)` in the range. Ordered by pair invoices, lift and the two keys; the first `max_pairs` (1 to 900). At most 92 days. Over 28 days of one store ending on a refreshed date it equals `agg_basket_pairs_28d` as unordered pairs.
 
 #### `public.modifier_summary`
@@ -845,7 +845,7 @@ public.modifier_summary(
 returns TABLE(modifier_name text, lines bigint, share numeric, compare_lines bigint, compare_share numeric)
 ```
 
-- **Called by:** no screen yet (Thực đơn, phase 10a); the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/basket-modifiers`.
+- **Called by:** Thực đơn's sugar and ice card; the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/basket-modifiers`.
 - **Notes:** per modifier name of `agg_modifier_prefs_daily`, the lines and their share of all modifier lines in the range (6 digits), for names seen in either range. The compare columns are null without a compare range and 0 for a name the compare range lacks; `compare_from` and `compare_to` go together. Each range at most 400 days. Ordered by lines, then name. The sugar and ice families are a classification of the names in TypeScript.
 
 ## 4. Tables and views
