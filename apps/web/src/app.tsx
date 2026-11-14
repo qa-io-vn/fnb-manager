@@ -109,6 +109,13 @@ export const routes: RouteObject[] = [
 										(module) => ({ Component: module.ThucDonPage }),
 									),
 							},
+							{
+								path: "thanh-toan",
+								lazy: () =>
+									import("./pages/themes/thanh-toan/thanh-toan-page").then(
+										(module) => ({ Component: module.ThanhToanPage }),
+									),
+							},
 							{ path: "*", element: <Navigate to="doanh-thu" replace /> },
 						],
 					},

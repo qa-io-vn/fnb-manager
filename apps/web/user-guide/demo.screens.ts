@@ -178,6 +178,19 @@ test("the Thực đơn matrix and its margins card", async ({ page }) => {
 	}
 });
 
+test("the Thanh toán payment mix and cash trend", async ({ page }) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await openThemePage(page, "payments", "range=28d&store=MOCK-S1");
+	await shootElement(
+		themeCard(page, "payments", "payment_mix"),
+		"theme-thanh-toan-mix",
+	);
+	await shootElement(
+		themeCard(page, "payments", "cash_trend"),
+		"theme-thanh-toan-cash-trend",
+	);
+});
+
 test("the printed report", async ({ page }) => {
 	await page.setViewportSize({ width: A4_WIDTH_PX, height: 1123 });
 	await openReportPage(page, "day");

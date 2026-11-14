@@ -842,7 +842,7 @@ pie showData
     "owner check" : 16
 ```
 
-Of the 238 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 39 partial, 1 planned and 16 owner checks. Of the 138 that are designed or planned, 125 have no test yet and 13 are partly held by tests of the database rules they rest on.
+Of the 239 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 40 partial, 1 planned and 16 owner checks. Of the 137 that are designed or planned, 125 have no test yet and 12 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -996,7 +996,7 @@ Of the 238 requirements that are verified locally, built, in build or waiting fo
 | FR-THM-01 | Doanh thu & xu hướng | Should | verified locally | `pgtap:33_theme_functions`, `demo-analytics:parity/theme-revenue-hours`, `demo-analytics:themes/revenue.smoke`, `reports:unit/themes/definition`, `e2e:demo/theme-doanh-thu`, `e2e:live/themes` | covered |
 | FR-THM-02 | Giờ & ngày trong tuần | Should | built | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `demo-analytics:parity/theme-revenue-hours`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-gio-ngay`, `e2e:live/themes` | partial |
 | FR-THM-03 | Thực đơn | Should | in build | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `pgtap:35_mappings_and_catch_up` (the menu functions); `demo-analytics:parity/menu`, `demo-analytics:parity/basket-modifiers`, `demo-analytics:themes/menu.smoke`, `e2e:demo/theme-thuc-don`, `e2e:live/themes` | partial |
-| FR-THM-04 | Thanh toán & tiền mặt | Should | designed | `pgtap:35_mappings_and_catch_up` (cash thresholds from the settings); page planned | partial |
+| FR-THM-04 | Thanh toán & tiền mặt | Should | in build | `pgtap:35_mappings_and_catch_up` (cash thresholds from the settings); `demo-analytics:themes/payments.smoke`, `e2e:demo/theme-thanh-toan` (payment mix and cash trend) | partial |
 | FR-THM-05 | Range presets | Could | verified locally | `reports:unit/themes/range`, `e2e:demo/theme-doanh-thu` | covered |
 | FR-THM-06 | Khuyến mãi & giảm giá | Should | designed | planned | planned |
 | FR-THM-07 | Ca & két tiền | Should | designed | planned | planned |
@@ -1540,7 +1540,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-THM-02 | Giờ & ngày trong tuần | built | pgTAP, parity, the demo and live specs hold the functions and the page; the comparison of the heatmap and the hour shares with the private reference window is the owner's (OC-03), and the phase 10 live check that prints `matches` for it is not written yet. | The live check of the build spec (9.7, 2) with `LIVE_REFERENCE_SHEET`, then OC-03. |
 | FR-THM-03 | Thực đơn | in build | pgTAP, the parity suite and the demo and live specs hold the menu functions and the eight cards; the engine smoke test and the demo spec hold that no modifier name appears in an item table (the sugar and ice card lists them on purpose) and that the uncategorised item shows with its action. | A spec that costs entered for five items show the margin of those five only, once the costs page exists (#161); the semicolon CSV dialect with #83. |
 | FR-THM-09 | Sections a POS cannot feed | designed | pgTAP shows the provisional menu roles without costs and the null attach rates without a role; no card shows them yet. | Unit and Playwright tests with a connector that declares no costs and no manual costs: the margin sections are hidden or marked provisional. |
-| FR-THM-04 | Thanh toán & tiền mặt | designed | pgTAP shows `shift_review` and `cash_variance_flags` following the tenant's cash thresholds; the payment cards and the page do not exist yet. | Unit tests of the payment cards, a Playwright spec, and the owner's comparison of the payment mix with the private reference window (OC-03). |
+| FR-THM-04 | Thanh toán & tiền mặt | in build | pgTAP shows `shift_review` and `cash_variance_flags` following the tenant's cash thresholds; the unit, engine smoke and demo specs hold the payment mix (kind shares summing to 1 and matching the methods) and the cash trend; the drawer and fee cards (#99) do not exist yet. | Unit tests and a Playwright spec of the drawer and fee cards (#99), and the owner's comparison of the payment mix with the private reference window (OC-03). |
 | FR-REP-14 | Card loading and errors | built | Settling is tested on the demo and the size refusal is classified in `reports:unit/rpc-source`; no test drives a failing card or the size message in the browser. | A web test that makes one card's call fail and expects the error card with its retry, and one that answers SQLSTATE 22023 and expects the request for fewer stores or a shorter period. |
 | FR-SET-03 | Item costs | designed | The write policies of `item_costs` are tested; the screen and the CSV import do not exist. | A live Playwright test that an imported CSV equals the stored rows and that the costs move the margin axis of the menu matrix (10b). |
 | FR-SET-04 | Targets | designed | The write policies of `targets` are tested; the screen does not exist. | A live Playwright test that a saved monthly target shows progress and pace on Tháng (10b). |

@@ -16,6 +16,8 @@ import themeHoursEn from "./messages/theme-hours.en.json";
 import themeHoursVi from "./messages/theme-hours.vi.json";
 import themeMenuEn from "./messages/theme-menu.en.json";
 import themeMenuVi from "./messages/theme-menu.vi.json";
+import themePaymentsEn from "./messages/theme-payments.en.json";
+import themePaymentsVi from "./messages/theme-payments.vi.json";
 import themeRevenueEn from "./messages/theme-revenue.en.json";
 import themeRevenueVi from "./messages/theme-revenue.vi.json";
 import themesEn from "./messages/themes.en.json";
@@ -45,6 +47,7 @@ const themeFilePrefixes = [
 	"theme.revenue.",
 	"theme.hours.",
 	"theme.menu.",
+	"theme.payments.",
 ] as const;
 
 const reportFilePrefixes = [
@@ -131,6 +134,13 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: themeMenuVi,
 		en: themeMenuEn,
+	},
+	{
+		name: "theme-payments",
+		prefix: "theme.payments.",
+		excludedPrefixes: [],
+		vi: themePaymentsVi,
+		en: themePaymentsEn,
 	},
 ];
 

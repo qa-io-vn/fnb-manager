@@ -242,7 +242,7 @@ Use the browser's own print command (Ctrl+P or ⌘P on a computer, Share then Pr
 
 ## The thematic reports ("Chủ đề")
 
-"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. Three are built: **Doanh thu & xu hướng**, **Giờ & ngày trong tuần** and **Thực đơn**. The others (Thanh toán & tiền mặt, then Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu) come later; the tabs above the range show only the ones that exist.
+"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. Four are built: **Doanh thu & xu hướng**, **Giờ & ngày trong tuần**, **Thực đơn** and **Thanh toán & tiền mặt**. The others (Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu) come later; the tabs above the range show only the ones that exist.
 
 ![Doanh thu & xu hướng on a computer: the theme tabs, the range presets and dates, then the Doanh thu thuần, Xu hướng doanh thu and Số hóa đơn cards](user-guide/theme-doanh-thu.png)
 
@@ -321,6 +321,18 @@ Thực đơn shows which items carry the menu. **Ma trận thực đơn** classe
 
 More detail: [reports/thuc-don.md](reports/thuc-don.md).
 
+### Thanh toán & tiền mặt (Payments and cash)
+
+Thanh toán shows how customers pay. **Cơ cấu thanh toán theo loại** gives the share of cash in the money taken, against the range before and the same range last year in points, then each kind (cash, bank transfer, e-wallet, card…) and each payment method with its share. The bars put the range before beside this one, so a shift from cash to e-wallets shows at a glance. Apart from cash, the sentence names the kind whose share moved most.
+
+![The payment mix card: the cash share with its two chips, the kinds with their previous shares and the stacked kind shares](user-guide/theme-thanh-toan-mix.png)
+
+**Xu hướng tỷ trọng tiền mặt** follows the cash share day by day (week by week beyond 35 days), with the cash taken as bars and its share as a line. When, over the range, the cash share rises while revenue per day falls, the card says so: a sign worth checking against the cash counted in each shift.
+
+![The cash trend card: the last day's cash share against the first, with cash per day and its share](user-guide/theme-thanh-toan-cash-trend.png)
+
+More detail: [reports/thanh-toan.md](reports/thanh-toan.md).
+
 ### Links, printing and CSV
 
 The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08&to=2026-11-06`) and, when not every store is selected, the stores. Printing and "Tải CSV" work as on the reports; theme files are named `<theme>-<card>-<from>_<to>.csv`, for example `doanh-thu-net_revenue-2026-10-07_2026-11-03.csv`.
@@ -359,7 +371,7 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 ![The Kế hoạch page saying Sắp có and naming the roadmap phase that brings it](user-guide/coming-soon.png)
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
-- **More thematic reports** ("Chủ đề", phase 10): Thanh toán & tiền mặt next, then Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu. Doanh thu, Giờ & ngày and Thực đơn are already there (see above).
+- **More thematic reports** ("Chủ đề", phase 10): the drawer and fee cards of Thanh toán & tiền mặt next, then Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu. Doanh thu, Giờ & ngày, Thực đơn and Thanh toán are already there (see above).
 - **Settings and manual data** ("Cài đặt", phase 10, designed at roadmap level): the store profile, opening hours, seat counts, item costs, monthly targets, payment fees, item roles and categories, holidays and legal texts. Two of today's cards wait for them: the attach rates need item roles and target progress needs a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until they exist the links open "Sắp có".
 - **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).

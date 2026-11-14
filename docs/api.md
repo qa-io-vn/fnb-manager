@@ -182,11 +182,11 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`store_coverage`](#publicstore_coverage) | reports | invoker, stable | rows per store | web reports, digest | verified locally (phase 9) |
 | [`period_compare`](#publicperiod_compare) | reports | invoker, stable | 3 or 4 rows | web reports, digest | verified locally (phase 8) |
 | [`period_compare_by_store`](#publicperiod_compare_by_store) | reports | invoker, stable | rows per store and period | web reports, digest | verified locally (phase 9) |
-| [`period_series`](#publicperiod_series) | reports | invoker, stable | rows per bucket | web reports, digest | verified locally (phase 9) |
+| [`period_series`](#publicperiod_series) | reports | invoker, stable | rows per bucket | web reports, digest, web themes Doanh thu and Thanh toán | verified locally (phase 9) |
 | [`daily_baselines`](#publicdaily_baselines) | reports | invoker, stable | rows per date | web reports | verified locally (phase 9) |
 | [`hourly_profile`](#publichourly_profile) | reports | invoker, stable | 24 rows | web reports, digest | verified locally (phase 9) |
 | [`item_summary`](#publicitem_summary) | reports | invoker, stable | rows per item | web reports, digest | verified locally (phase 9) |
-| [`payment_summary`](#publicpayment_summary) | reports | invoker, stable | rows per payment method | web reports, digest | verified locally (phase 9) |
+| [`payment_summary`](#publicpayment_summary) | reports | invoker, stable | rows per payment method | web reports, digest, web theme Thanh toán | verified locally (phase 9) |
 | [`promotion_summary`](#publicpromotion_summary) | reports | invoker, stable | rows per promotion | web reports, digest | verified locally (phase 9) |
 | [`shift_review`](#publicshift_review) | reports | invoker, stable | rows per shift | web reports, digest | verified locally (phase 9) |
 | [`store_targets`](#publicstore_targets) | reports | invoker, stable | rows per store | web reports | verified locally (phase 9) |
@@ -198,8 +198,8 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`metric_compare`](#publicmetric_compare) | metric_value | invoker, stable | rows per metric and period | web reports, digest | verified locally (phase 9) |
 | [`refresh_my_analytics`](#publicrefresh_my_analytics) | settings and writes | definer, volatile | `bigint` | no caller yet | verified locally (phase 8) |
 | [`analytics_catch_up_status`](#publicanalytics_catch_up_status) | settings and writes | invoker, stable | 0 or 1 row | no caller yet (Settings, phase 10a) | verified locally (phase 10a) |
-| [`report_settings_of`](#publicreport_settings_of) | themes | invoker, stable | rows per store | web theme Giờ & ngày | verified locally (phase 10a) |
-| [`range_totals`](#publicrange_totals) | themes | invoker, stable | rows per range and store | web theme Doanh thu | verified locally (phase 10a) |
+| [`report_settings_of`](#publicreport_settings_of) | themes | invoker, stable | rows per store | web themes Giờ & ngày, Thực đơn and Thanh toán | verified locally (phase 10a) |
+| [`range_totals`](#publicrange_totals) | themes | invoker, stable | rows per range and store | web themes Doanh thu and Thanh toán | verified locally (phase 10a) |
 | [`opening_productivity`](#publicopening_productivity) | themes | invoker, stable | rows per store | web theme Giờ & ngày | verified locally (phase 10a) |
 | [`hour_profile`](#publichour_profile) | themes | invoker, stable | up to 82 rows | web theme Giờ & ngày | verified locally (phase 10a) |
 | [`menu_engineering`](#publicmenu_engineering) | themes | invoker, stable | rows per item | web theme Thực đơn | verified locally (phase 10a) |
