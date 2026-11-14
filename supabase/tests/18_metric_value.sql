@@ -52,7 +52,8 @@ select
   bool_or(r.role = 'snack') as has_snack,
   bool_or(r.role = 'topping') as has_topping
 from demo_item_lines l
-left join public.item_type_roles r on r.pos_account_id = l.pos_account_id and r.item_type_external_id = l.item_type_external_id
+left join public.item_category_overrides o on o.pos_account_id = l.pos_account_id and o.item_external_id = coalesce(l.item_external_id, l.item_name)
+left join public.item_type_roles r on r.pos_account_id = l.pos_account_id and r.item_type_external_id = coalesce(o.item_type_external_id, l.item_type_external_id)
 group by l.invoice_id;
 
 create temp table expected as
@@ -233,11 +234,12 @@ select is(
     from (
       select l.invoice_id, bool_or(r.role = 'drink') as has_drink, bool_or(r.role = 'topping') as has_topping
       from demo_item_lines l
-      left join public.item_type_roles r on r.pos_account_id = l.pos_account_id and r.item_type_external_id = l.item_type_external_id
+      left join public.item_category_overrides o on o.pos_account_id = l.pos_account_id and o.item_external_id = coalesce(l.item_external_id, l.item_name)
+      left join public.item_type_roles r on r.pos_account_id = l.pos_account_id and r.item_type_external_id = coalesce(o.item_type_external_id, l.item_type_external_id)
       group by l.invoice_id
     ) x
   ),
-  'once a topping role is mapped the attach rate is drink invoices with a topping over drink invoices'
+  'once a topping role is mapped the attach rate is drink invoices with a topping over drink invoices, each line in the role of its effective type'
 );
 
 insert into auth.users (id, instance_id, aud, role, email)
