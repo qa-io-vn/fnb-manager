@@ -63,6 +63,12 @@ jobs:
       - run: pnpm exec supabase test db
       - name: The OpenAPI description matches the database
         run: pnpm docs:check-openapi
+      - name: Show how the OpenAPI description differs
+        if: failure()
+        run: |
+          pnpm docs:openapi
+          git diff --stat -- docs/api/openapi.json
+          git diff -- docs/api/openapi.json | head -400
       - run: pnpm --filter @fnb/demo-analytics test:parity:postgres
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
