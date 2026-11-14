@@ -4,6 +4,7 @@ export * from "./contract.js";
 export * from "./definition.js";
 export * from "./hours/index.js";
 export * from "./keys.js";
+export * from "./menu/index.js";
 export * from "./range.js";
 export * from "./registry.js";
 export * from "./revenue/index.js";

@@ -7,16 +7,18 @@ import {
 	watchConsoleErrors,
 } from "./reports";
 
-export type ThemeKind = "revenue" | "hours";
+export type ThemeKind = "revenue" | "hours" | "menu";
 
 export const themeSlugs: Record<ThemeKind, string> = {
 	revenue: "doanh-thu",
 	hours: "gio-ngay",
+	menu: "thuc-don",
 };
 
 export const themeCardIds: Record<ThemeKind, readonly string[]> = {
 	revenue: ["net_revenue", "trend", "invoices", "avg_ticket", "store_share"],
 	hours: ["heatmap", "peak_dead", "weekday", "productivity", "shift_windows"],
+	menu: ["menu_matrix", "margins"],
 };
 
 const RAW_KEY = /\b(report|metric|theme)\.[a-z]+[A-Za-z_]*\./;

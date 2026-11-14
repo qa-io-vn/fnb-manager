@@ -67,7 +67,7 @@ function ThemeCards({
 				})}
 			</p>
 			<div
-				className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 print:grid-cols-1"
+				className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3 print:grid-cols-1"
 				data-testid="report-cards"
 			>
 				{load.cards.map((state) => (

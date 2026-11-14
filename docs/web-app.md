@@ -21,7 +21,7 @@ Scope: roadmap phases 6 (foundation and "Hôm nay"), 9 (periodic reports), 10 (t
 | `#/dang-nhap` | Login (email + password), password reset request | 6 |
 | `#/` | Hôm nay — today per store vs the same-weekday median baseline, freshness and verified badges | 6 |
 | `#/bao-cao/ngay`, `#/bao-cao/tuan`, `#/bao-cao/thang`, `#/bao-cao/nam` | Periodic reports | 9 |
-| `#/chu-de/doanh-thu`, `#/chu-de/gio-ngay`, `#/chu-de/thuc-don`, `#/chu-de/thanh-toan` | Thematic reports I (Doanh thu and Giờ & ngày built; `#/chu-de` and an unbuilt theme open Doanh thu) | 10a |
+| `#/chu-de/doanh-thu`, `#/chu-de/gio-ngay`, `#/chu-de/thuc-don`, `#/chu-de/thanh-toan` | Thematic reports I (Doanh thu, Giờ & ngày and Thực đơn built; `#/chu-de` and an unbuilt theme open Doanh thu) | 10a |
 | `#/chu-de/khuyen-mai`, `#/chu-de/ca-ket-tien`, `#/chu-de/so-sanh`, `#/chu-de/chat-luong` | Thematic reports II | 10b |
 | `#/cai-dat/cua-hang`, `#/cai-dat/du-lieu-nhap-tay`, `#/cai-dat/phan-loai`, `#/cai-dat/ngay-le`, `#/cai-dat/canh-bao`, `#/cai-dat/phap-ly` | Settings: store profile, manual data (costs, targets, fee rates), item-type roles and category mapping, holidays, alerts, legal texts and consent | 10b, 12 |
 | `#/xuat-du-lieu` | Exports and the AI data pack | 11a |
@@ -115,7 +115,7 @@ Periodic reports Ngày, Tuần, Tháng and Năm (`#/bao-cao/ngay|tuan|thang|nam`
 
 ## Phase 10 decisions
 
-Thematic reports under `#/chu-de/…`, as built so far in phase 10a: Doanh thu & xu hướng and Giờ & ngày trong tuần ([doanh-thu.md](reports/doanh-thu.md), [gio-ngay.md](reports/gio-ngay.md)). ADR-035 and ADR-036 record the main choices.
+Thematic reports under `#/chu-de/…`, as built so far in phase 10a: Doanh thu & xu hướng, Giờ & ngày trong tuần and Thực đơn ([doanh-thu.md](reports/doanh-thu.md), [gio-ngay.md](reports/gio-ngay.md), [thuc-don.md](reports/thuc-don.md)). Theme cards size to their content, so a short card beside a long one keeps its own height. ADR-035 and ADR-036 record the main choices.
 
 - **Theme definitions.** A theme is a `ThemeDefinition` of `@fnb/reports`: primary calls, follow-up calls (which receive the primary rows as well as the coverage), cards and a maximum range. Its cards build the phase 9 `CardModel`, so `ReportCard`, the adapter, CSV, print and "Giải thích chỉ số" are shared. `themeDefinitions` lists the built themes, and the tabs show only those.
 - **Ranges and deep links.** `src/themes/theme-route.ts` reads `range` or `from` and `to` and `store`, and writes the canonical form back with a replace; a user's step pushes a history entry. Presets, clamps (400 days, the as-of day), steps and references are pure functions in `@fnb/reports` (`resolveRange`, `stepRange`, `rangeOfPreset`). The last preset used is a per-device preference (`themePreset`), used when a link carries no range; moving between themes keeps the range (clipped to the target's maximum) and the stores. The top bar's period control is hidden on these pages, which have their own range picker.

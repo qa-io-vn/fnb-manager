@@ -43,6 +43,7 @@ export const registryMetricIds = [
 	"attach_rate_snack",
 	"cash_variance",
 	"cash_variance_zscore",
+	"menu_class",
 	"gross_margin_rate",
 	"cost_coverage",
 	"payment_fee_estimate",
@@ -108,6 +109,7 @@ const unitOfRegistryUnit: Partial<Record<RegistryMetricUnit, MetricUnit>> = {
 	"VND / hour": "money",
 	"count / hour": "decimal",
 	"VND / seat-hour": "money",
+	class: "count",
 };
 
 export function webUnitOf(unit: RegistryMetricUnit): MetricUnit {

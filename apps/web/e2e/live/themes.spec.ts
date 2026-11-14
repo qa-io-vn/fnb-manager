@@ -25,6 +25,7 @@ test.skip(
 const titles = {
 	revenue: "Doanh thu & xu hướng",
 	hours: "Giờ & ngày trong tuần",
+	menu: "Thực đơn",
 } as const;
 
 async function seededClock(): Promise<SeededClock> {
@@ -46,12 +47,12 @@ async function signIn(page: Page, clock: SeededClock) {
 	).toBeVisible();
 }
 
-test("the revenue and hours themes render on the seeded stack through the SQL functions", async ({
+test("the revenue, hours and menu themes render on the seeded stack through the SQL functions", async ({
 	page,
 }) => {
 	const clock = await seededClock();
 	await signIn(page, clock);
-	for (const kind of ["revenue", "hours"] as const) {
+	for (const kind of ["revenue", "hours", "menu"] as const) {
 		await page.goto(themeUrl(kind, "range=7d"));
 		await waitForSettledThemeCards(page);
 		await expect(
@@ -60,6 +61,11 @@ test("the revenue and hours themes render on the seeded stack through the SQL fu
 		await expect(page.getByRole("alert")).toHaveCount(0);
 		await expectEveryThemeCardSettled(page, kind);
 	}
+	await expect(
+		themeCard(page, "menu", "margins").getByTestId("headline"),
+	).toHaveText(/\d/);
+	await page.goto(themeUrl("hours", "range=7d"));
+	await waitForSettledThemeCards(page);
 	await expect(
 		themeCard(page, "hours", "heatmap").getByTestId("headline"),
 	).toHaveText(/\d/);

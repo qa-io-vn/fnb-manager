@@ -14,6 +14,8 @@ import reportsEn from "./messages/reports.en.json";
 import reportsVi from "./messages/reports.vi.json";
 import themeHoursEn from "./messages/theme-hours.en.json";
 import themeHoursVi from "./messages/theme-hours.vi.json";
+import themeMenuEn from "./messages/theme-menu.en.json";
+import themeMenuVi from "./messages/theme-menu.vi.json";
 import themeRevenueEn from "./messages/theme-revenue.en.json";
 import themeRevenueVi from "./messages/theme-revenue.vi.json";
 import themesEn from "./messages/themes.en.json";
@@ -39,7 +41,11 @@ export interface MessageFile {
 	readonly en: Readonly<Record<string, string>>;
 }
 
-const themeFilePrefixes = ["theme.revenue.", "theme.hours."] as const;
+const themeFilePrefixes = [
+	"theme.revenue.",
+	"theme.hours.",
+	"theme.menu.",
+] as const;
 
 const reportFilePrefixes = [
 	"report.day.",
@@ -118,6 +124,13 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: themeHoursVi,
 		en: themeHoursEn,
+	},
+	{
+		name: "theme-menu",
+		prefix: "theme.menu.",
+		excludedPrefixes: [],
+		vi: themeMenuVi,
+		en: themeMenuEn,
 	},
 ];
 

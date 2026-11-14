@@ -218,5 +218,9 @@
 	"metric.store_day_index.label": "Store day index",
 	"metric.store_day_index.formula": "The store's revenue of the day ÷ its average daily revenue over the range.",
 	"metric.store_day_index.grain": "Store-day.",
-	"metric.store_day_index.convention": "1 is an ordinary day for that store."
+	"metric.store_day_index.convention": "1 is an ordinary day for that store.",
+	"metric.menu_class.label": "Menu class (Kasavana–Smith)",
+	"metric.menu_class.formula": "Within each item group: popular when the item's share of quantity reaches the factor × an equal share; high margin when its margin per item (or price while costs are missing) reaches the group's average.",
+	"metric.menu_class.grain": "Item-period, within each group and each store.",
+	"metric.menu_class.convention": "Star: popular, high margin; Plowhorse: popular, low margin; Puzzle: less popular, high margin; Dog: less popular, low margin. The window and factor come from Settings."
 }

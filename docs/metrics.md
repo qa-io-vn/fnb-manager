@@ -228,6 +228,8 @@ Items last sold before 1 January of last year are left out. Year to date and las
 
 The thematic reports of phase 10 (`#/chu-de/…`, ADR-035) read the same SQL as the periodic reports, over a date range instead of a calendar period.
 
+Thực đơn classes the menu over the menu window that ends on the range's last day (`menu_window_days`, 28 by default, with the popularity factor and the low-sample minimum from the tenant's report settings), store by store, so its matrix does not follow the length of the range. Costs apply from their `effective_from` date: each store-day is costed at the cost in force on its business date, a store's own cost before the tenant-wide one, and before an item's first cost the item has none, so its margin covers only the costed days (`cost_coverage`).
+
 ### Ranges and references
 
 - A range is a preset (7, 28, 91 or 364 days; this month; last month; this year) or two dates, and ends at the as-of day. It covers at most 400 days (the limit of `store_coverage`); a longer request keeps its last 400 days.

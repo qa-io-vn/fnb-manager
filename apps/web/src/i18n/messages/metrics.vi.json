@@ -218,5 +218,9 @@
 	"metric.store_day_index.label": "Chỉ số ngày của cửa hàng",
 	"metric.store_day_index.formula": "Doanh thu của cửa hàng trong ngày ÷ doanh thu trung bình mỗi ngày của cửa hàng trong khoảng.",
 	"metric.store_day_index.grain": "Cửa hàng-ngày.",
-	"metric.store_day_index.convention": "1 là một ngày bình thường của cửa hàng đó."
+	"metric.store_day_index.convention": "1 là một ngày bình thường của cửa hàng đó.",
+	"metric.menu_class.label": "Phân loại thực đơn",
+	"metric.menu_class.formula": "Trong từng nhóm món: phổ biến khi tỷ trọng số lượng đạt hệ số × tỷ trọng đều; lãi cao khi lãi mỗi món (hoặc giá bán khi chưa đủ giá vốn) từ mức bình quân của nhóm trở lên.",
+	"metric.menu_class.grain": "Món-kỳ, trong từng nhóm và từng cửa hàng.",
+	"metric.menu_class.convention": "Ngôi sao: phổ biến và lãi cao; Ngựa kéo cày: phổ biến, lãi thấp; Câu đố: ít bán, lãi cao; Chó: ít bán, lãi thấp. Cửa sổ ngày và hệ số lấy từ Cài đặt."
 }

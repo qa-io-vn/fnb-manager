@@ -42,7 +42,7 @@ describe("web metrics and packages/metrics", () => {
 		expect(webUnitOf("fraction")).toBe("fraction");
 		expect(webUnitOf("% change")).toBe("percentChange");
 		expect(webUnitOf("VND and count")).toBe("money");
-		expect(() => webUnitOf("class")).toThrow();
+		expect(webUnitOf("class")).toBe("count");
 	});
 
 	it("explains every metric and display series in both languages", () => {

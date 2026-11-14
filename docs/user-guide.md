@@ -285,6 +285,18 @@ Revenue per opening hour needs the store's opening hours and RevPASH its seat co
 
 More detail: [reports/gio-ngay.md](reports/gio-ngay.md).
 
+### Thực đơn (Menu)
+
+Thực đơn shows which items carry the menu. **Ma trận thực đơn** classes every item within its group (drinks, toppings, snacks) and store, over the menu window that ends on the range's last day (28 days unless Settings says otherwise): *Ngôi sao* sells well and earns more than its group's average, *Ngựa kéo cày* sells well but earns less, *Câu đố* earns well but sells little, *Chó* does neither. The number at the top is the stars among the drinks; the bars count each class per group, and the table lists every item with its share of the group's quantity, its price, its cost and its class. While a group still has an item without a cost, it is classed on price and marked "tạm tính".
+
+![The Thực đơn matrix for one store over 4 weeks: 30 stars among 75 drinks, stacked bars of the classes per group, and the first rows of the item table](user-guide/theme-thuc-don-matrix.png)
+
+**Biên lợi nhuận món** shows the gross margin of the items that have a cost, with their cost, margin and the share of their revenue the cost covers. In the demo no item has a cost yet, so the card asks you to enter costs and links to Settings.
+
+![The margins card of the demo: no item has a cost yet, with the link to enter costs](user-guide/theme-thuc-don-margins.png)
+
+More detail: [reports/thuc-don.md](reports/thuc-don.md).
+
 ### Links, printing and CSV
 
 The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08&to=2026-11-06`) and, when not every store is selected, the stores. Printing and "Tải CSV" work as on the reports; theme files are named `<theme>-<card>-<from>_<to>.csv`, for example `doanh-thu-net_revenue-2026-10-07_2026-11-03.csv`.
