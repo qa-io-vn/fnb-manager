@@ -4,6 +4,8 @@ export const metricGroups = {
 	baselines: "Baselines and forecasts",
 	menu: "Menu",
 	cash: "Cash and adjustments",
+	promotions: "Promotions and compliance",
+	quality: "Data quality",
 	customers: "Customers and loyalty",
 } as const;
 
@@ -21,6 +23,7 @@ export const reportNames = {
 	payments: "Thanh toán & tiền mặt",
 	promotions: "Khuyến mãi & giảm giá",
 	shifts: "Ca & két tiền",
+	stores: "So sánh cửa hàng",
 	data_quality: "Chất lượng dữ liệu",
 	customers: "Khách hàng",
 	data_pack: "data pack",

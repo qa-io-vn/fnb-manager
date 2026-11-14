@@ -2,13 +2,13 @@
 
 Purpose and audience: the typed metric registry, mirrored from [docs/metrics.md](../../docs/metrics.md): every metric's id, Vietnamese and English labels, unit, formula, grains, direction, source, report mapping and status, plus the benchmark context kept apart from them (ADR-026). Reports, the web app, and later the data pack, digests and KPI follow-up read their definitions from here. For developers who add or change a metric and for reviewers who check that the code, the document and the SQL agree.
 
-Last updated 2026-11-12
+Last updated 2026-11-14
 
 ## Main exports
 
 | Area | Exports |
 |---|---|
-| The registry | `metrics` (41 metrics on 2026-11-12, in six groups: sales, time, baselines, menu, cash, customers), `metricById`, `findMetric`, `isMetricId`, `metricsForReport`, `metricsInGroup` |
+| The registry | `metrics` (55 metrics on 2026-11-14, in eight groups: sales, time, baselines, menu, cash, promotions, quality, customers), `metricById`, `findMetric`, `isMetricId`, `metricsForReport`, `metricsInGroup`. A metric made by its own SQL function (`ownFunctions`, `ownFunctionOf`, such as `item_margins` or `hour_profile`) stays out of `metric_value`; `supersededBy` and `supersedingMetricOf` name the id that replaces a metric in range views, the data pack and KPI follow-up while it keeps its definition; `currentMetricIds()` lists the ids without a replacement |
 | `metric_value` | `metricValueIds()`: the 21 ids that `public.metric_value` computes (available now, with a store-day or store-period value); `isAvailableNow`, `isComputedByMetricValue`, `hasStorePeriodValue` |
 | Benchmark context | `benchmarkContext` (10 entries of published market figures, never mixed with a tenant's metrics) |
 | Vocabularies | `metricGroups`, `reportNames` (the Vietnamese report names, such as Hôm nay, Ngày, Thực đơn), `periodicReports`, `metricGrains`, `storeGrains`, `metricDirections`, `metricStatuses`, `metricUnits` |

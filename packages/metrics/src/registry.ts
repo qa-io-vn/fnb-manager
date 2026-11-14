@@ -2,6 +2,8 @@ import { baselineMetrics } from "./metrics/baselines.js";
 import { cashMetrics } from "./metrics/cash.js";
 import { customerMetrics } from "./metrics/customers.js";
 import { menuMetrics } from "./metrics/menu.js";
+import { promotionMetrics } from "./metrics/promotions.js";
+import { qualityMetrics } from "./metrics/quality.js";
 import { salesMetrics } from "./metrics/sales.js";
 import { timeMetrics } from "./metrics/time.js";
 import type {
@@ -18,6 +20,8 @@ export const metrics = [
 	...baselineMetrics,
 	...menuMetrics,
 	...cashMetrics,
+	...promotionMetrics,
+	...qualityMetrics,
 	...customerMetrics,
 ] as const satisfies readonly MetricDefinition[];
 
@@ -74,6 +78,18 @@ export function hasStorePeriodValue(
 export const ownFunctions: Readonly<Partial<Record<string, string>>> = {
 	peak_share_top_hours: "hour_profile",
 	dead_hour_share: "hour_profile",
+	gross_margin_rate: "item_margins",
+	cost_coverage: "item_margins",
+	payment_fee_estimate: "payment_summary",
+	shift_void_rate: "shift_adjustments",
+	shift_void_rate_zscore: "shift_adjustments",
+	removed_line_rate_zscore: "shift_adjustments",
+	edits_after_close: "shift_adjustments",
+	promo_lift: "promotion_lift",
+	promo_net_lift: "promotion_lift",
+	discount_days: "item_discount_days",
+	modifier_line_share: "data_quality_summary",
+	consent_coverage: "data_quality_summary",
 };
 
 export const supersededBy: Readonly<Partial<Record<string, string>>> = {

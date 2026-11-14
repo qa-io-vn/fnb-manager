@@ -12,6 +12,7 @@ import {
 	metricsInGroup,
 	metricValueIds,
 	ownFunctionOf,
+	ownFunctions,
 	type ReportId,
 	reportNames,
 	supersededBy,
@@ -56,13 +57,41 @@ describe("metrics for a report", () => {
 			"dead_hour_share_17_18",
 			"peak_share_top_hours",
 			"dead_hour_share",
+			"weekday_share",
 		]);
+		expect(metricsForReport("stores").map((metric) => metric.id)).toEqual([
+			"net_revenue",
+			"invoices",
+			"avg_ticket",
+			"items_per_ticket",
+			"avg_item_price",
+			"cash_share",
+			"sales_per_opening_hour",
+			"invoices_per_opening_hour",
+			"revpash",
+			"customer_capture_rate",
+		]);
+		const shifts = metricsForReport("shifts").map((metric) => metric.id);
+		expect(shifts).not.toContain("void_rate");
+		expect(shifts).toContain("shift_void_rate");
+		expect(currentMetricIds()).not.toContain("dead_hour_share_17_18");
+		expect(currentMetricIds()).toContain("dead_hour_share");
+		for (const id of [
+			...Object.keys(ownFunctions),
+			...Object.keys(supersededBy),
+		]) {
+			expect(isMetricId(id), id).toBe(true);
+		}
 	});
 
 	it("keeps metrics with their own SQL function out of metric_value", () => {
 		expect(ownFunctionOf("peak_share_top_hours")).toBe("hour_profile");
 		expect(ownFunctionOf("dead_hour_share")).toBe("hour_profile");
 		expect(ownFunctionOf("net_revenue")).toBeNull();
+		expect(ownFunctionOf("gross_margin_rate")).toBe("item_margins");
+		expect(ownFunctionOf("payment_fee_estimate")).toBe("payment_summary");
+		expect(ownFunctionOf("shift_void_rate")).toBe("shift_adjustments");
+		expect(metricValueIds()).not.toContain("gross_margin_rate");
 		expect(metricValueIds()).not.toContain("peak_share_top_hours");
 		expect(metricValueIds()).not.toContain("dead_hour_share");
 		expect(metricValueIds()).toHaveLength(21);
@@ -113,6 +142,17 @@ describe("metrics for a report", () => {
 		expect(metricsInGroup("menu").map((metric) => metric.id)).toEqual([
 			"item_velocity",
 			"menu_class",
+			"gross_margin_rate",
+			"cost_coverage",
+		]);
+		expect(metricsInGroup("promotions").map((metric) => metric.id)).toEqual([
+			"promo_lift",
+			"promo_net_lift",
+			"discount_days",
+		]);
+		expect(metricsInGroup("quality").map((metric) => metric.id)).toEqual([
+			"modifier_line_share",
+			"consent_coverage",
 		]);
 	});
 });

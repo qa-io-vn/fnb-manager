@@ -33,10 +33,43 @@ export const menuMetrics = [
 		grains: ["item-period"],
 		grainNote: "28 days",
 		direction: "neutral",
-		source: "`menu_matrix()`",
+		source:
+			"`menu_matrix()`; `menu_engineering()` for the thematic reports (tenant thresholds, effective categories, costs by business date)",
 		reports: ["menu"],
 		status: "needs costs",
 		statusNote:
 			"(a role with any item lacking a cost is `provisional = true` and ranked on price); a role with fewer than 10 sold items carries `low_sample = true` and is shown with a low-sample badge, because the thresholds are unstable below about 10 items",
+	},
+	{
+		id: "gross_margin_rate",
+		group: "menu",
+		label: {
+			vi: "Biên lợi nhuận gộp món",
+			en: "Item gross margin rate",
+		},
+		unit: "fraction",
+		formula:
+			"(net of the costed store-days − their cost) ÷ net of the costed store-days, each store-day costed on its business date",
+		grains: ["store-period", "item-period"],
+		direction: "higher",
+		source: "`item_margins()` (`margin_rate`)",
+		reports: ["menu"],
+		status: "needs costs",
+	},
+	{
+		id: "cost_coverage",
+		group: "menu",
+		label: {
+			vi: "Tỷ trọng doanh thu món có giá vốn",
+			en: "Costed share of item revenue",
+		},
+		unit: "fraction",
+		formula:
+			"net of the item store-days with a cost on their business date ÷ item net",
+		grains: ["store-period"],
+		direction: "higher",
+		source: "`item_margins()` (`cost_coverage`)",
+		reports: ["menu", "data_quality"],
+		status: "available now",
 	},
 ] as const satisfies readonly MetricDefinition[];

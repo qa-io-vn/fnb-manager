@@ -43,6 +43,9 @@ export const registryMetricIds = [
 	"attach_rate_snack",
 	"cash_variance",
 	"cash_variance_zscore",
+	"gross_margin_rate",
+	"cost_coverage",
+	"payment_fee_estimate",
 ] as const satisfies readonly RegistryMetricId[];
 
 export const displaySeries = {
@@ -66,6 +69,10 @@ export const displaySeries = {
 	store_net_share: { unit: "fraction", direction: "neutral" },
 	hour_heat: { unit: "money", direction: "neutral" },
 	busy_window: { unit: "count", direction: "neutral" },
+	pair_lift: { unit: "decimal", direction: "neutral" },
+	modifier_pref: { unit: "fraction", direction: "neutral" },
+	shift_net: { unit: "money", direction: "neutral" },
+	store_day_index: { unit: "decimal", direction: "neutral" },
 } as const satisfies Record<
 	string,
 	{ unit: MetricUnit; direction: MetricDirection }

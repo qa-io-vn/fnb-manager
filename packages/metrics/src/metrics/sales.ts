@@ -14,7 +14,16 @@ export const salesMetrics = [
 		direction: "higher",
 		source:
 			"`agg_daily_sales.net_amount`, `v_recent_daily_sales`, `period_summary().net_amount`",
-		reports: ["today", "day", "week", "month", "year", "revenue", "data_pack"],
+		reports: [
+			"today",
+			"day",
+			"week",
+			"month",
+			"year",
+			"revenue",
+			"data_pack",
+			"stores",
+		],
 		status: "available now",
 	},
 	{
@@ -44,7 +53,7 @@ export const salesMetrics = [
 		grains: ["store-day"],
 		direction: "higher",
 		source: "`agg_daily_sales.invoices`, `period_summary().invoices`",
-		reports: ["day", "week", "month", "year", "today"],
+		reports: ["day", "week", "month", "year", "today", "revenue", "stores"],
 		status: "available now",
 	},
 	{
@@ -59,7 +68,7 @@ export const salesMetrics = [
 		grains: ["store-period"],
 		direction: "higher",
 		source: "`period_summary().avg_ticket`",
-		reports: ["today", "day", "week", "month", "year"],
+		reports: ["today", "day", "week", "month", "year", "revenue", "stores"],
 		status: "available now",
 	},
 	{
@@ -74,7 +83,7 @@ export const salesMetrics = [
 		grains: ["store-period"],
 		direction: "higher",
 		source: "`period_summary().items_per_ticket`",
-		reports: ["day", "week", "month", "year", "menu"],
+		reports: ["day", "week", "month", "year", "menu", "revenue", "stores"],
 		status: "available now",
 	},
 	{
@@ -90,7 +99,7 @@ export const salesMetrics = [
 		grains: ["store-period"],
 		direction: "neutral",
 		source: "`period_summary().avg_item_price`",
-		reports: ["menu", "day", "week", "month", "year"],
+		reports: ["menu", "day", "week", "month", "year", "revenue", "stores"],
 		status: "available now",
 	},
 	{
@@ -105,7 +114,7 @@ export const salesMetrics = [
 		grains: ["store-period"],
 		direction: "neutral",
 		source: "`period_summary().cash_share`, `agg_payment_daily`",
-		reports: ["payments", "day", "month"],
+		reports: ["payments", "day", "month", "stores"],
 		status: "available now",
 	},
 	{
