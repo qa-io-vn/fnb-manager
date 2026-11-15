@@ -1,5 +1,14 @@
-import { randomBytes, randomUUID } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import {
+	constants,
+	cpSync,
+	existsSync,
+	readdirSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
 import { MENU } from "@fnb/connector-mock";
@@ -19,6 +28,7 @@ import type postgres from "postgres";
 import {
 	createDemoAnalyticsSource,
 	DEMO_SEED,
+	DEMO_STORE_PROFILES,
 	type DemoAnalyticsSource,
 	DemoDayCache,
 	type DemoStoreDefinition,
@@ -26,7 +36,11 @@ import {
 	demoRoles,
 	minorUnits,
 } from "../../src/index.js";
-import type { ParityClock, ParityDataset } from "./datasets.js";
+import {
+	type ParityClock,
+	type ParityDataset,
+	providedText,
+} from "./datasets.js";
 
 export const repositoryRoot = join(import.meta.dirname, "..", "..", "..", "..");
 export const migrationsRoot = join(repositoryRoot, "supabase", "migrations");
@@ -92,16 +106,21 @@ export interface SqlConnection {
 
 const rawText = (value: string) => value;
 
-async function pgliteConnection(): Promise<SqlConnection> {
+async function pgliteConnection(dataDir?: string): Promise<SqlConnection> {
 	const { PGlite } = await import("@electric-sql/pglite");
+	const migrated =
+		dataDir !== undefined && existsSync(join(dataDir, "PG_VERSION"));
 	const db: PGlite = await PGlite.create({
 		parsers: { 1082: rawText, 1114: rawText, 1184: rawText },
+		...(dataDir === undefined ? {} : { dataDir }),
 	});
-	await db.exec(PGLITE_STUB);
-	for (const name of migrationFiles()) {
-		await db.exec(
-			pgliteMigrationSql(readFileSync(join(migrationsRoot, name), "utf8")),
-		);
+	if (!migrated) {
+		await db.exec(PGLITE_STUB);
+		for (const name of migrationFiles()) {
+			await db.exec(
+				pgliteMigrationSql(readFileSync(join(migrationsRoot, name), "utf8")),
+			);
+		}
 	}
 	return {
 		mode: "pglite",
@@ -114,6 +133,9 @@ async function pgliteConnection(): Promise<SqlConnection> {
 		},
 		async close() {
 			await db.close();
+			if (dataDir !== undefined) {
+				rmSync(dataDir, { recursive: true, force: true });
+			}
 		},
 	};
 }
@@ -250,15 +272,27 @@ export interface SeededDataset {
 	readonly stores: Readonly<Record<DemoStoreId, SeededStore>>;
 	readonly days: DemoDayCache;
 	readonly engine: DemoAnalyticsSource;
-	readonly counts: {
-		invoices: number;
-		lines: number;
-		shifts: number;
-		events: number;
-		checks: number;
-	};
+	readonly counts: SeededCounts;
 	uuidOf(storeId: DemoStoreId): string;
 	demoIdOf(uuid: string): DemoStoreId | undefined;
+}
+
+export interface SeededCounts {
+	invoices: number;
+	lines: number;
+	shifts: number;
+	events: number;
+	checks: number;
+}
+
+interface SeededRecord {
+	readonly dataset: ParityDataset;
+	readonly tenantId: string;
+	readonly slug: string;
+	readonly posAccountId: string;
+	readonly window: DateRange;
+	readonly storeUuids: Readonly<Record<DemoStoreId, string>>;
+	readonly counts: SeededCounts;
 }
 
 export interface ParityContext {
@@ -450,24 +484,66 @@ function monthsOf(window: DateRange): IsoDate[] {
 	return months;
 }
 
+function datasetWindow(dataset: ParityDataset, clock: ParityClock): DateRange {
+	return { from: dataset.from, to: minDate(dataset.to, clock.today) };
+}
+
+function datasetDays(dataset: ParityDataset, clock: ParityClock): DemoDayCache {
+	return new DemoDayCache({
+		now: () => clock.now,
+		volumeScale: dataset.volumeScale,
+		window: datasetWindow(dataset, clock),
+	});
+}
+
+function seededDataset(
+	record: SeededRecord,
+	clock: ParityClock,
+	days: DemoDayCache = datasetDays(record.dataset, clock),
+): SeededDataset {
+	const stores = Object.fromEntries(
+		days
+			.stores()
+			.map((definition) => [
+				definition.id,
+				{ definition, uuid: record.storeUuids[definition.id] },
+			]),
+	) as Record<DemoStoreId, SeededStore>;
+	const demoIdByUuid = new Map(
+		Object.values(stores).map((store) => [store.uuid, store.definition.id]),
+	);
+	const engine = createDemoAnalyticsSource({
+		now: () => clock.now,
+		days,
+		volumeScale: record.dataset.volumeScale,
+		validateRows: true,
+	});
+	return {
+		dataset: record.dataset,
+		tenantId: record.tenantId,
+		slug: record.slug,
+		posAccountId: record.posAccountId,
+		window: record.window,
+		stores,
+		days,
+		engine,
+		counts: record.counts,
+		uuidOf: (storeId) => stores[storeId].uuid,
+		demoIdOf: (uuid) => demoIdByUuid.get(uuid),
+	};
+}
+
 async function seedDataset(
 	connection: SqlConnection,
 	clock: ParityClock,
 	dataset: ParityDataset,
-): Promise<SeededDataset> {
+): Promise<{ record: SeededRecord; days: DemoDayCache }> {
 	const token = syntheticToken();
 	const tenantId = `${token}-0000-4000-8000-000000000000`;
 	const posAccountId = `${token}-0000-4000-8000-0000000000ac`;
 	const slug = `parity-${token}`;
-	const window: DateRange = {
-		from: dataset.from,
-		to: minDate(dataset.to, clock.today),
-	};
-	const days = new DemoDayCache({
-		now: () => clock.now,
-		volumeScale: dataset.volumeScale,
-		window,
-	});
+	const window = datasetWindow(dataset, clock);
+	const days = datasetDays(dataset, clock);
 	const definitions = days.stores();
 	const stores = Object.fromEntries(
 		definitions.map((definition) => [
@@ -475,9 +551,6 @@ async function seedDataset(
 			{ definition, uuid: storeUuid(token, definition.index) },
 		]),
 	) as Record<DemoStoreId, SeededStore>;
-	const demoIdByUuid = new Map(
-		Object.values(stores).map((store) => [store.uuid, store.definition.id]),
-	);
 
 	const statements: string[] = [
 		...insertStatements(
@@ -530,7 +603,10 @@ async function seedDataset(
 				name: definition.name,
 				timezone: definition.timeZone,
 				business_day_start_minutes: definition.businessDayStartMinutes,
-				opening_hours: definition.openingHours,
+				opening_hours:
+					DEMO_STORE_PROFILES.find(
+						(profile) => profile.storeId === definition.id,
+					)?.openingHours ?? null,
 				opened_on: definition.openedOn,
 			})),
 		),
@@ -586,7 +662,13 @@ async function seedDataset(
 	);
 	await connection.exec(statements.join("\n"));
 
-	const counts = { invoices: 0, lines: 0, shifts: 0, events: 0, checks: 0 };
+	const counts: SeededCounts = {
+		invoices: 0,
+		lines: 0,
+		shifts: 0,
+		events: 0,
+		checks: 0,
+	};
 	for (const { definition, uuid } of Object.values(stores)) {
 		const invoices: Record<string, unknown>[] = [];
 		const lines: Record<string, unknown>[] = [];
@@ -675,25 +757,162 @@ async function seedDataset(
 			[tenantId, from, to],
 		);
 	}
-	const engine = createDemoAnalyticsSource({
-		now: () => clock.now,
-		days,
-		volumeScale: dataset.volumeScale,
-		validateRows: true,
-	});
-	return {
+	const record: SeededRecord = {
 		dataset,
 		tenantId,
 		slug,
 		posAccountId,
 		window,
-		stores,
-		days,
-		engine,
+		storeUuids: Object.fromEntries(
+			Object.values(stores).map(({ definition, uuid }) => [
+				definition.id,
+				uuid,
+			]),
+		) as Record<DemoStoreId, string>,
 		counts,
-		uuidOf: (storeId) => stores[storeId].uuid,
-		demoIdOf: (uuid) => demoIdByUuid.get(uuid),
 	};
+	return { record, days };
+}
+
+interface ParityTemplate {
+	readonly now: string;
+	readonly dataPath: string;
+	readonly records: readonly SeededRecord[];
+}
+
+const CLONE_TREE = { recursive: true, mode: constants.COPYFILE_FICLONE };
+
+function datasetKey(dataset: ParityDataset): string {
+	return [dataset.id, dataset.from, dataset.to, dataset.volumeScale].join("|");
+}
+
+function readTemplates(
+	directory: string,
+	clock: ParityClock,
+): ParityTemplate[] {
+	const now = clock.now.toISOString();
+	return readdirSync(directory)
+		.filter((name) => name.endsWith(".json"))
+		.map(
+			(name) =>
+				JSON.parse(
+					readFileSync(join(directory, name), "utf8"),
+				) as ParityTemplate,
+		)
+		.filter((template) => template.now === now);
+}
+
+function closestTemplate(
+	templates: readonly ParityTemplate[],
+	requested: readonly ParityDataset[],
+): ParityTemplate | null {
+	const wanted = new Set(requested.map(datasetKey));
+	let best: ParityTemplate | null = null;
+	let bestShared = 0;
+	for (const template of templates) {
+		const shared = template.records.filter((record) =>
+			wanted.has(datasetKey(record.dataset)),
+		).length;
+		const fewerExtras =
+			best !== null && template.records.length < best.records.length;
+		if (
+			shared > bestShared ||
+			(shared > 0 && shared === bestShared && fewerExtras)
+		) {
+			best = template;
+			bestShared = shared;
+		}
+	}
+	return best;
+}
+
+function saveTemplate(
+	directory: string,
+	clock: ParityClock,
+	records: readonly SeededRecord[],
+	workDir: string,
+): void {
+	const name = createHash("sha256")
+		.update(clock.now.toISOString())
+		.update(records.map((record) => datasetKey(record.dataset)).join(","))
+		.digest("hex")
+		.slice(0, 24);
+	const staging = join(directory, `${name}.${process.pid}.staging`);
+	const dataPath = join(directory, `${name}.pgdata`);
+	cpSync(workDir, staging, CLONE_TREE);
+	renameSync(staging, dataPath);
+	const template: ParityTemplate = {
+		now: clock.now.toISOString(),
+		dataPath,
+		records,
+	};
+	writeFileSync(staging, JSON.stringify(template));
+	renameSync(staging, join(directory, `${name}.json`));
+}
+
+async function openSeededConnection(
+	datasets: readonly ParityDataset[],
+	clock: ParityClock,
+): Promise<{
+	connection: SqlConnection;
+	records: SeededRecord[];
+	seededDays: Map<SeededRecord, DemoDayCache>;
+}> {
+	const directory =
+		parityMode() === "pglite" ? providedText("parityTemplateDirectory") : null;
+	const template =
+		directory === null
+			? null
+			: closestTemplate(readTemplates(directory, clock), datasets);
+	const workDir =
+		directory === null
+			? null
+			: join(directory, `work-${process.pid}-${syntheticToken()}`);
+	if (workDir !== null && template !== null) {
+		cpSync(template.dataPath, workDir, CLONE_TREE);
+	}
+	const connection =
+		workDir === null ? await openConnection() : await pgliteConnection(workDir);
+	const records = [...(template?.records ?? [])];
+	const seededDays = new Map<SeededRecord, DemoDayCache>();
+	const loaded = new Set(records.map((record) => datasetKey(record.dataset)));
+	try {
+		const missing = datasets.filter(
+			(dataset) => !loaded.has(datasetKey(dataset)),
+		);
+		for (const dataset of missing) {
+			const { record, days } = await seedDataset(connection, clock, dataset);
+			records.push(record);
+			seededDays.set(record, days);
+		}
+		if (missing.length > 0) {
+			await connection.exec("analyze");
+			if (directory !== null && workDir !== null) {
+				await connection.exec("checkpoint");
+				saveTemplate(directory, clock, records, workDir);
+			}
+		}
+	} catch (error) {
+		await closeAndForget(connection, records);
+		throw error;
+	}
+	return { connection, records, seededDays };
+}
+
+async function closeAndForget(
+	connection: SqlConnection,
+	records: readonly SeededRecord[],
+): Promise<void> {
+	try {
+		if (connection.mode === "postgres" && records.length > 0) {
+			await connection.rows(
+				"delete from public.tenants where id = any($1::uuid[])",
+				[pgArray(records.map((record) => record.tenantId))],
+			);
+		}
+	} finally {
+		await connection.close();
+	}
 }
 
 function sqlArgument(value: unknown): unknown {
@@ -737,28 +956,23 @@ export async function openParityDatabase(
 	datasets: readonly ParityDataset[],
 	clock: ParityClock,
 ): Promise<OpenParityDatabase> {
-	const connection = await openConnection();
-	const seeded: SeededDataset[] = [];
-	const close = async () => {
-		try {
-			if (connection.mode === "postgres" && seeded.length > 0) {
-				await connection.rows(
-					"delete from public.tenants where id = any($1::uuid[])",
-					[pgArray(seeded.map((item) => item.tenantId))],
-				);
-			}
-		} finally {
-			await connection.close();
-		}
-	};
-	try {
-		for (const dataset of datasets) {
-			seeded.push(await seedDataset(connection, clock, dataset));
-		}
-		await connection.exec("analyze");
-	} catch (error) {
+	const { connection, records, seededDays } = await openSeededConnection(
+		datasets,
+		clock,
+	);
+	const close = () => closeAndForget(connection, records);
+	const byKey = new Map(
+		records.map((record) => [datasetKey(record.dataset), record]),
+	);
+	const seeded = datasets.flatMap((dataset) => {
+		const record = byKey.get(datasetKey(dataset));
+		return record === undefined
+			? []
+			: [seededDataset(record, clock, seededDays.get(record))];
+	});
+	if (seeded.length !== datasets.length) {
 		await close();
-		throw error;
+		throw new Error("the parity database lacks a requested dataset");
 	}
 	return {
 		mode: connection.mode,

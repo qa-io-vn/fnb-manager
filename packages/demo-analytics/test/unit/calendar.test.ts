@@ -4,6 +4,7 @@ import {
 	captureRate,
 	demoDayPlan,
 	demoMenu,
+	demoOpeningHours,
 	demoRoles,
 	demoStores,
 	demoSyncCheck,
@@ -38,14 +39,17 @@ describe("demo stores", () => {
 		expect(store(0).openedOn).toBe("2024-12-02");
 	});
 
-	it("gives only the established store opening hours and targets", () => {
+	it("gives only the established store targets and counts the demo opening hours", () => {
 		expect(store(0)).toMatchObject({ id: "MOCK-S1", hasMonthlyTargets: true });
 		expect(store(1)).toMatchObject({
 			id: "MOCK-S2",
-			openingHours: null,
 			hasMonthlyTargets: false,
 		});
-		expect(openingMinutes(store(0).openingHours, "2026-11-03")).toBe(930);
+		expect(openingMinutes(demoOpeningHours, "2026-11-03")).toBe(930);
+		expect(openingMinutes({ mon: [["22:00", "02:00"]] }, "2026-11-02")).toBe(
+			240,
+		);
+		expect(openingMinutes({ mon: [["07:00", "11:00"]] }, "2026-11-03")).toBe(0);
 		expect(openingMinutes(null, "2026-11-03")).toBeNull();
 	});
 });

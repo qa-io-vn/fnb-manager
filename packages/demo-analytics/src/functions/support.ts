@@ -22,6 +22,7 @@ import {
 	quantity,
 	roundedRatio,
 } from "../pg-numeric.js";
+import type { DemoSettingsStore } from "../settings.js";
 
 export const INVALID_PARAMETER_VALUE = "22023";
 export const MAX_REPORT_ROWS = 900;
@@ -30,6 +31,7 @@ export interface HandlerContext {
 	readonly now: Date;
 	readonly holidays: readonly HolidayEntry[];
 	readonly reportSettings: ReportSettings;
+	readonly settings: DemoSettingsStore;
 }
 
 export type HandlerArgs<N extends AnalyticsFunctionName> = z.output<

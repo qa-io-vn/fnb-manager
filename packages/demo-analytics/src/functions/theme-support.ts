@@ -9,16 +9,13 @@ import {
 } from "@fnb/reports";
 import type { z } from "zod";
 import type { AggregateStore } from "../aggregates.js";
-import type { DemoSettingsStore } from "../settings.js";
 import {
 	type HandlerContext,
 	INVALID_PARAMETER_VALUE,
 	MAX_REPORT_ROWS,
 } from "./support.js";
 
-export interface ThemeHandlerContext extends HandlerContext {
-	readonly settings: DemoSettingsStore;
-}
+export type ThemeHandlerContext = HandlerContext;
 
 export type ThemeHandlerArgs<N extends ThemeFunctionName> = z.output<
 	(typeof themeFunctions)[N]["args"]

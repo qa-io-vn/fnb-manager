@@ -36,7 +36,11 @@ import type {
 	ThemeHandlerArgs,
 	ThemeHandlerContext,
 } from "./functions/theme-support.js";
-import { DemoSettingsStore } from "./settings.js";
+import {
+	currentDemoAsOf,
+	DemoSettingsStore,
+	demoSettings,
+} from "./settings.js";
 import {
 	createDemoAnalyticsSource,
 	type DemoAnalyticsSource,
@@ -182,9 +186,7 @@ function validateThemeRows<N extends ThemeFunctionName>(
 	return parsed.data as ThemeRow<N>[];
 }
 
-export interface DemoReportSourceOptions extends DemoAnalyticsSourceOptions {
-	readonly settings?: DemoSettingsStore;
-}
+export type DemoReportSourceOptions = DemoAnalyticsSourceOptions;
 
 export interface DemoReportSource extends ReportSource {
 	readonly kind: "demo";
@@ -195,10 +197,12 @@ export interface DemoReportSource extends ReportSource {
 export function createDemoReportSource(
 	options: DemoReportSourceOptions,
 ): DemoReportSource {
-	const settings = options.settings ?? new DemoSettingsStore();
+	const settings =
+		options.settings ??
+		new DemoSettingsStore(demoSettings(currentDemoAsOf(options.now())));
 	const analytics: DemoAnalyticsSource = createDemoAnalyticsSource({
 		...options,
-		reportSettings: () => settings.reportSettings(),
+		settings,
 	});
 	const { aggregates } = analytics;
 	aggregates.days.useMappings(settings);
@@ -218,8 +222,8 @@ export function createDemoReportSource(
 			await aggregates.ensureAll(read(parsed));
 			const context: ThemeHandlerContext = {
 				now: options.now(),
-				holidays: [],
-				reportSettings: settings.reportSettings(),
+				holidays: options.holidays ?? settings.holidays(),
+				reportSettings: options.reportSettings?.() ?? settings.reportSettings(),
 				settings,
 			};
 			const handler = themeHandlers[name] as ThemeHandler<N>;

@@ -8,7 +8,11 @@ import {
 	periodBounds,
 } from "@fnb/reports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { sameWeekdayBaseline } from "../../src/index.js";
+import {
+	DemoSettingsStore,
+	demoSettings,
+	sameWeekdayBaseline,
+} from "../../src/index.js";
 import { ParityReport } from "./compare.js";
 import { parityClock, parityDatasets } from "./datasets.js";
 import {
@@ -22,6 +26,7 @@ import { compareCall, GRAINS, matrixAnchors, STORE_SETS } from "./matrix.js";
 const clock = parityClock();
 const datasets = parityDatasets(clock);
 const RANDOM_ANCHORS = 10;
+const settings = new DemoSettingsStore(demoSettings(clock.asOf));
 
 describe("the engine ports of the report functions equal the SQL", () => {
 	let database: OpenParityDatabase | null = null;
@@ -168,6 +173,7 @@ describe("the engine ports of the report functions equal the SQL", () => {
 					now: clock.now,
 					holidays: VIETNAM_HOLIDAYS,
 					reportSettings: DEFAULT_REPORT_SETTINGS,
+					settings,
 				},
 			);
 			report.compareRows(

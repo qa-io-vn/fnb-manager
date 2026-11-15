@@ -54,7 +54,7 @@ export function themeEngine(
 		days: seeded.days,
 		volumeScale: seeded.dataset.volumeScale,
 		validateRows: true,
-		settings: new DemoSettingsStore(demoSettings()),
+		settings: new DemoSettingsStore(demoSettings(clock.asOf)),
 	});
 }
 

@@ -11,6 +11,7 @@ import {
 	DEMO_TENANT_ID,
 	demoTenant,
 } from "./demo-row-source";
+import { sharedDemoSettings } from "./demo-settings";
 
 const now = new Date("2026-11-08T05:30:00.000Z");
 
@@ -147,6 +148,29 @@ describe("demo row source", () => {
 				"2026-11-03",
 			]),
 		).toEqual(["2026-02-17", "2026-09-02"]);
+	});
+
+	it("also excludes a custom holiday saved in the demo's settings", async () => {
+		const { source } = demoAt(now);
+		const settings = sharedDemoSettings();
+		const before = settings.customHolidays();
+		try {
+			settings.saveHolidays([
+				...before,
+				{
+					countryCode: "VN",
+					holidayDate: "2026-11-03",
+					name: "Ngày nghỉ riêng",
+					kind: "custom",
+				},
+			]);
+			expect(
+				await source.excludedDates(demoTenant, ["2026-11-02", "2026-11-03"]),
+			).toEqual(["2026-11-03"]);
+		} finally {
+			settings.saveHolidays(before);
+		}
+		expect(await source.excludedDates(demoTenant, ["2026-11-03"])).toEqual([]);
 	});
 
 	it("reports sample freshness and verification without any network call", async () => {

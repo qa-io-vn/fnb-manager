@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { MENU } from "@fnb/connector-mock";
-import { addDays, daysBetween } from "@fnb/reports";
+import { isExcludedDay, VIETNAM_HOLIDAYS } from "@fnb/core";
+import { addDays, daysBetween, type IsoDate } from "@fnb/reports";
 import {
 	type CategoryOverride,
 	DEMO_UNCATEGORISED_ITEM,
+	type DemoFeeRate,
+	type DemoHoliday,
 	type DemoItemCost,
 	type DemoReportSource,
 	type DemoRole,
@@ -39,9 +42,15 @@ const SECOND_ACCOUNT_TYPES: readonly (readonly [string, DemoRole["role"]])[] = [
 	["TYPE-009", "snack"],
 ];
 
+export const FEE_RATE_METHOD = "PM-EWALLET";
+export const CUSTOM_HOLIDAY_NAME = "Ngày nghỉ riêng của chuỗi";
+const CUSTOM_HOLIDAY_DAYS_BEFORE_TODAY = 8;
+
 export interface MenuVariant {
 	readonly overrides: readonly CategoryOverride[];
 	readonly costs: readonly DemoItemCost[];
+	readonly feeRates: readonly DemoFeeRate[];
+	readonly holidays: readonly DemoHoliday[];
 }
 
 function typeName(externalId: string): string | null {
@@ -51,13 +60,58 @@ function typeName(externalId: string): string | null {
 	);
 }
 
+export function customHolidayDate(seeded: SeededDataset): IsoDate {
+	const first = addDays(seeded.window.to, -CUSTOM_HOLIDAY_DAYS_BEFORE_TODAY);
+	const span = daysBetween(seeded.window.from, seeded.window.to);
+	for (let distance = 0; distance <= span; distance += 1) {
+		for (const date of [addDays(first, -distance), addDays(first, distance)]) {
+			if (
+				date >= seeded.window.from &&
+				date <= seeded.window.to &&
+				!isExcludedDay(VIETNAM_HOLIDAYS, date)
+			) {
+				return date;
+			}
+		}
+	}
+	throw new Error(
+		`no day of ${seeded.dataset.id}'s window is free for a custom holiday`,
+	);
+}
+
 export function menuVariant(
 	seeded: SeededDataset,
 	accountId: string,
 ): MenuVariant {
 	const { from, to } = seeded.window;
-	const middle = addDays(from, Math.floor(daysBetween(from, to) / 2));
+	const span = daysBetween(from, to);
+	const middle = addDays(from, Math.floor(span / 2));
+	const lastQuarter = addDays(from, Math.floor((span * 3) / 4));
 	return {
+		feeRates: [
+			{
+				storeId: null,
+				paymentMethodExternalId: FEE_RATE_METHOD,
+				feePct: 1.237,
+				fixedFeeAmount: 200,
+				effectiveFrom: middle,
+			},
+			{
+				storeId: "MOCK-S2",
+				paymentMethodExternalId: FEE_RATE_METHOD,
+				feePct: 0.9,
+				fixedFeeAmount: 0,
+				effectiveFrom: lastQuarter,
+			},
+		],
+		holidays: [
+			{
+				countryCode: "VN",
+				holidayDate: customHolidayDate(seeded),
+				name: CUSTOM_HOLIDAY_NAME,
+				kind: "custom",
+			},
+		],
 		overrides: [
 			{
 				posAccountId: accountId,
@@ -166,6 +220,39 @@ export async function applyMenuVariant(
 				effective_from: cost.effectiveFrom,
 			})),
 		),
+		...insertStatements(
+			"public.payment_fee_rates",
+			[
+				"tenant_id",
+				"store_id",
+				"payment_method_external_id",
+				"fee_pct",
+				"fixed_fee_amount",
+				"effective_from",
+			],
+			variant.feeRates.map((rate) => ({
+				tenant_id: seeded.tenantId,
+				store_id:
+					rate.storeId === null
+						? null
+						: seeded.uuidOf(rate.storeId as "MOCK-S1" | "MOCK-S2"),
+				payment_method_external_id: rate.paymentMethodExternalId,
+				fee_pct: rate.feePct,
+				fixed_fee_amount: rate.fixedFeeAmount,
+				effective_from: rate.effectiveFrom,
+			})),
+		),
+		...insertStatements(
+			"public.holidays",
+			["tenant_id", "country_code", "holiday_date", "name", "kind"],
+			variant.holidays.map((holiday) => ({
+				tenant_id: seeded.tenantId,
+				country_code: holiday.countryCode,
+				holiday_date: holiday.holidayDate,
+				name: holiday.name,
+				kind: holiday.kind,
+			})),
+		),
 	];
 	for (const statement of statements) {
 		await context.connection.rows(statement);
@@ -176,6 +263,8 @@ export async function applyMenuVariant(
 	);
 	engine.settings.saveOverrides(variant.overrides);
 	engine.settings.saveCosts(variant.costs);
+	engine.settings.saveFeeRates(variant.feeRates);
+	engine.settings.saveHolidays(variant.holidays);
 	seeded.days.useMappings(engine.settings);
 	return variant;
 }

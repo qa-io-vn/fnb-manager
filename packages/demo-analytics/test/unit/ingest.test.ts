@@ -12,6 +12,7 @@ import {
 	demoRoles,
 	demoSettings,
 	demoStores,
+	feeEstimateMinor,
 	PAIR_SEPARATOR,
 } from "../../src/index.js";
 
@@ -494,5 +495,88 @@ describe("aggregateStoreDay with the settings' mappings", () => {
 		expect(day.attach?.attachRateSnack?.toString()).toBe("0.500000");
 		expect(settings.rolesConfigured(store.id)).toBe(true);
 		expect(settings.rolesConfigured("MOCK-S2")).toBe(true);
+	});
+});
+
+describe("fee estimates", () => {
+	if (store === undefined) throw new Error("missing demo store");
+
+	it("rounds amount times the rate plus the fixed fee to cents, half away from zero, as the refresh does", () => {
+		const rate = { feePct: 1.237, fixedFeeAmount: 200 };
+		expect(feeEstimateMinor(4_050_000, rate)).toBe(70_099);
+		expect(feeEstimateMinor(-4_050_000, rate)).toBe(-30_099);
+		expect(feeEstimateMinor(10_000, { feePct: 1.005, fixedFeeAmount: 0 })).toBe(
+			101,
+		);
+		expect(
+			feeEstimateMinor(-10_000, { feePct: 1.005, fixedFeeAmount: 0 }),
+		).toBe(-101);
+		expect(feeEstimateMinor(10_000, { feePct: 1.004, fixedFeeAmount: 0 })).toBe(
+			100,
+		);
+		expect(
+			feeEstimateMinor(99_999_999_999, { feePct: 999.999, fixedFeeAmount: 0 }),
+		).toBe(999_998_999_990);
+		expect(feeEstimateMinor(4_300_000, null)).toBe(0);
+	});
+
+	it("estimates each tender with the store's own rate first, then the tenant's latest rate in force", () => {
+		const settings = new DemoSettingsStore(demoSettings(DATE));
+		settings.saveFeeRates([
+			{
+				storeId: null,
+				paymentMethodExternalId: "PM-BANK",
+				feePct: 1.237,
+				fixedFeeAmount: 150.5,
+				effectiveFrom: "2026-11-01",
+			},
+			{
+				storeId: store.id,
+				paymentMethodExternalId: "PM-BANK",
+				feePct: 0.4,
+				fixedFeeAmount: 0,
+				effectiveFrom: "2026-11-04",
+			},
+			{
+				storeId: "MOCK-S2",
+				paymentMethodExternalId: "PM-BANK",
+				feePct: 2,
+				fixedFeeAmount: 0,
+				effectiveFrom: "2026-10-01",
+			},
+			{
+				storeId: store.id,
+				paymentMethodExternalId: "PM-CASH",
+				feePct: 0.8,
+				fixedFeeAmount: 0,
+				effectiveFrom: "2026-10-01",
+			},
+			{
+				storeId: null,
+				paymentMethodExternalId: "PM-CASH",
+				feePct: 3,
+				fixedFeeAmount: 0,
+				effectiveFrom: "2026-11-02",
+			},
+			{
+				storeId: null,
+				paymentMethodExternalId: "PM-EWALLET",
+				feePct: 1,
+				fixedFeeAmount: 0,
+				effectiveFrom: "2026-01-01",
+			},
+		]);
+		expect(settings.ingestVersion).toBe(1);
+		const day = aggregateStoreDay(store, fixture, settings);
+		expect(
+			day.payments.map((payment) => [
+				payment.methodExternalId,
+				payment.amountMinor,
+				payment.feeEstimateMinor,
+			]),
+		).toEqual([
+			["PM-CASH", 10_800_000, 54_400 + 32_000],
+			["PM-BANK", 4_300_000, 68_241],
+		]);
 	});
 });

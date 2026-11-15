@@ -1,5 +1,6 @@
 import { MENU, type Menu, type MenuItem } from "@fnb/connector-mock";
 import { roundMoney } from "@fnb/core";
+import { dressDemoCatalogItem } from "./dressing.js";
 
 export const SEASONAL_DRINK = "Nước ép dưa hấu";
 export const RETIRED_DRINK = "Trà vải hoa hồng";
@@ -123,7 +124,9 @@ function buildVariant(variant: MenuVariant): Menu {
 		drinks,
 		catalog: {
 			...MENU.catalog,
-			items: allItems.map(({ role: _role, ...item }) => item),
+			items: allItems.map(({ role: _role, ...item }) =>
+				dressDemoCatalogItem(item),
+			),
 		},
 		itemsById: new Map(allItems.map((item) => [item.externalId, item])),
 	};

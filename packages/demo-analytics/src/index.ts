@@ -53,6 +53,7 @@ export {
 	DEMO_UNCATEGORISED_ITEM,
 	type DemoCashier,
 	demoCashierFor,
+	dressDemoCatalogItem,
 	dressDemoDay,
 } from "./dressing.js";
 export {
@@ -116,6 +117,7 @@ export {
 	aggregateStoreDay,
 	type DailyAggregate,
 	type DrinkAttach,
+	feeEstimateMinor,
 	type HourlyAggregate,
 	type ItemAggregate,
 	minorUnits,
@@ -131,7 +133,9 @@ export {
 export {
 	type CategoryOverride,
 	DEFAULT_INGEST_MAPPINGS,
+	type DemoFeeRate,
 	type DemoRoleName,
+	FeeRateTable,
 	type IngestMappings,
 	RoleTable,
 } from "./mappings.js";
@@ -162,13 +166,29 @@ export {
 	stddevSample,
 } from "./pg-numeric.js";
 export {
+	currentDemoAsOf,
+	DEMO_LEGAL_DOCUMENT_KINDS,
+	DEMO_LEGAL_FORMS,
+	DEMO_PERIOD_KINDS,
 	DEMO_STORE_PROFILES,
+	DEMO_TENANT_PROFILE,
+	type DemoHoliday,
 	type DemoItemCost,
+	type DemoLegalDocument,
+	type DemoLegalDocumentKind,
+	type DemoLegalForm,
 	type DemoSettingsSnapshot,
 	DemoSettingsStore,
 	type DemoStoreProfile,
+	type DemoTarget,
+	type DemoTenantProfile,
 	demoSettings,
+	demoTargetRows,
 } from "./settings.js";
+export {
+	DemoSettingsError,
+	type DemoSettingsRefusal,
+} from "./settings-checks.js";
 export {
 	createDemoAnalyticsSource,
 	type DemoAnalyticsSource,

@@ -61,7 +61,7 @@ const CLOSED_TET_DAYS: readonly string[] = [
 export type DemoStoreId = "MOCK-S1" | "MOCK-S2";
 export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type OpeningHours = Readonly<
-	Record<Weekday, readonly [string, string][]>
+	Partial<Record<Weekday, readonly (readonly [string, string])[]>>
 >;
 
 export const WEEKDAY_KEYS: readonly Weekday[] = [
@@ -91,7 +91,6 @@ export interface DemoStoreDefinition {
 	readonly posAccountId: "demo-account";
 	readonly openedOn: IsoDate;
 	readonly profile: MockProfile;
-	readonly openingHours: OpeningHours | null;
 	readonly hasMonthlyTargets: boolean;
 }
 
@@ -130,7 +129,6 @@ export function demoStores(asOf: IsoDate): readonly DemoStoreDefinition[] {
 			posAccountId: DEMO_POS_ACCOUNT_ID,
 			openedOn: ESTABLISHED_STORE_OPENED_ON,
 			profile: establishedProfile,
-			openingHours: demoOpeningHours,
 			hasMonthlyTargets: true,
 		},
 		{
@@ -142,7 +140,6 @@ export function demoStores(asOf: IsoDate): readonly DemoStoreDefinition[] {
 			posAccountId: DEMO_POS_ACCOUNT_ID,
 			openedOn: youngStoreOpenedOn(asOf),
 			profile: youngProfile,
-			openingHours: null,
 			hasMonthlyTargets: false,
 		},
 	];

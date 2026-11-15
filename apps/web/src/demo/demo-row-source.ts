@@ -1,5 +1,5 @@
 import { MENU } from "@fnb/connector-mock";
-import { type CanonicalSale, isExcludedDay, VIETNAM_HOLIDAYS } from "@fnb/core";
+import { type CanonicalSale, isExcludedDay } from "@fnb/core";
 import {
 	DEMO_POS_ACCOUNT_ID,
 	DEMO_TENANT_ID,
@@ -23,6 +23,7 @@ import {
 	compareIsoDates,
 	type IsoDate,
 } from "../lib/business-dates";
+import { sharedDemoSettings } from "./demo-settings";
 
 export { DEMO_TENANT_ID };
 
@@ -167,8 +168,10 @@ export function createDemoRowSource(
 		stores: async (tenantId) =>
 			tenantId === DEMO_TENANT_ID ? storeRows() : [],
 		paymentMethods: async () => paymentMethods,
-		excludedDates: async (_tenant, dates) =>
-			dates.filter((date) => isExcludedDay(VIETNAM_HOLIDAYS, date)),
+		excludedDates: async (_tenant, dates) => {
+			const holidays = sharedDemoSettings().holidays();
+			return dates.filter((date) => isExcludedDay(holidays, date));
+		},
 		invoices: (scope) => collect(scope, (rows) => rows.invoices),
 		invoiceLines: (scope) => collect(scope, (rows) => rows.lines),
 		payments: (scope) => collect(scope, (rows) => rows.payments),

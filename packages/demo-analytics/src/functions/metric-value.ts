@@ -108,16 +108,18 @@ function hourShare(
 function perOpeningHour(
 	store: AggregateStore,
 	args: MetricValueArgs,
+	context: HandlerContext,
 	value: "net" | "invoices",
 ): number | null {
 	const rows = dailySales(store, args.store_ids, args.from_date, args.to_date);
 	if (rows.length === 0) return null;
-	if (rows.some((row) => row.store.openingHours === null)) return null;
+	const hoursOf = (storeId: string) => context.settings.openingHoursOf(storeId);
+	if (rows.some((row) => hoursOf(row.store.id) === null)) return null;
 	let minutes = 0;
 	let netMinor = 0;
 	let invoices = 0;
 	for (const row of rows) {
-		minutes += openingMinutes(row.store.openingHours, row.date) ?? 0;
+		minutes += openingMinutes(hoursOf(row.store.id), row.date) ?? 0;
 		netMinor += row.daily.netMinor;
 		invoices += row.daily.invoices;
 	}
@@ -216,9 +218,10 @@ const computations: Readonly<Record<string, Computation>> = {
 	attach_rate_snack: (store, args) =>
 		attachRate(store, args, "snackInvoices", "attachRateSnack"),
 	size_l_share: (store, args) => sizeLargeShare(store, args),
-	sales_per_opening_hour: (store, args) => perOpeningHour(store, args, "net"),
-	invoices_per_opening_hour: (store, args) =>
-		perOpeningHour(store, args, "invoices"),
+	sales_per_opening_hour: (store, args, context) =>
+		perOpeningHour(store, args, context, "net"),
+	invoices_per_opening_hour: (store, args, context) =>
+		perOpeningHour(store, args, context, "invoices"),
 	peak_share_20_21: (store, args) => hourShare(store, args, [20, 21]),
 	dead_hour_share_17_18: (store, args) => hourShare(store, args, [17, 18]),
 	void_rate: (store, args) =>

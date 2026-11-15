@@ -7,6 +7,7 @@ import {
 	lastOfMonth,
 	storeBusinessDate,
 } from "@fnb/reports";
+import { inject } from "vitest";
 import {
 	DEMO_DAY_START_MINUTES,
 	DEMO_TIME_ZONE,
@@ -35,7 +36,23 @@ const DEMO_CLOCK = {
 
 export const PARITY_SEED = 20_261_108;
 
-export function parityClock(now: Date = new Date()): ParityClock {
+export function providedText(
+	key: "parityNow" | "parityTemplateDirectory",
+): string | null {
+	try {
+		const value: unknown = inject(key);
+		return typeof value === "string" && value !== "" ? value : null;
+	} catch {
+		return null;
+	}
+}
+
+function runStart(): Date {
+	const provided = providedText("parityNow");
+	return provided === null ? new Date() : new Date(provided);
+}
+
+export function parityClock(now: Date = runStart()): ParityClock {
 	return {
 		now,
 		today: storeBusinessDate(DEMO_CLOCK, now),

@@ -1,4 +1,4 @@
-import { type HolidayEntry, VIETNAM_HOLIDAYS } from "@fnb/core";
+import type { HolidayEntry } from "@fnb/core";
 import {
 	type AnalyticsArgs,
 	AnalyticsCallError,
@@ -8,7 +8,6 @@ import {
 	addDays,
 	analyticsFunctions,
 	BASELINE_WEEKS,
-	DEFAULT_REPORT_SETTINGS,
 	firstOfMonth,
 	INVALID_ARGUMENTS_CODE,
 	INVALID_ROWS_CODE,
@@ -42,6 +41,11 @@ import type {
 	HandlerArgs,
 	HandlerContext,
 } from "./functions/support.js";
+import {
+	currentDemoAsOf,
+	DemoSettingsStore,
+	demoSettings,
+} from "./settings.js";
 
 export interface DemoAnalyticsSourceOptions {
 	readonly now: () => Date;
@@ -50,6 +54,7 @@ export interface DemoAnalyticsSourceOptions {
 	readonly validateRows?: boolean;
 	readonly holidays?: readonly HolidayEntry[];
 	readonly reportSettings?: () => ReportSettings;
+	readonly settings?: DemoSettingsStore;
 }
 
 export interface DemoAnalyticsSource extends AnalyticsSource {
@@ -252,7 +257,9 @@ export function createDemoAnalyticsSource(
 		);
 	}
 	const aggregates = new AggregateStore(days);
-	const holidays = options.holidays ?? VIETNAM_HOLIDAYS;
+	const settings =
+		options.settings ??
+		new DemoSettingsStore(demoSettings(currentDemoAsOf(options.now())));
 	return {
 		kind: "demo",
 		aggregates,
@@ -268,8 +275,9 @@ export function createDemoAnalyticsSource(
 			await aggregates.ensureAll(read(parsed, aggregates));
 			const context: HandlerContext = {
 				now: options.now(),
-				holidays,
-				reportSettings: options.reportSettings?.() ?? DEFAULT_REPORT_SETTINGS,
+				holidays: options.holidays ?? settings.holidays(),
+				reportSettings: options.reportSettings?.() ?? settings.reportSettings(),
+				settings,
 			};
 			const handler = handlers[name] as Handler<N>;
 			const rows = handler(aggregates, parsed, context);

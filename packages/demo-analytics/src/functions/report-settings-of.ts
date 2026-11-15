@@ -33,7 +33,9 @@ export function reportSettingsOf(
 		busy_hour_ratio: settings.busyHourRatio,
 		promo_pre_weeks: settings.promoPreWeeks,
 		seat_count: context.settings.seatCount(visible.id),
-		opening_hours_known: openingHoursPresent(visible.openingHours),
+		opening_hours_known: openingHoursPresent(
+			context.settings.openingHoursOf(visible.id),
+		),
 		fee_rates_configured: context.settings.feeRatesConfigured(visible.id),
 		costs_configured: context.settings.costsConfigured(visible.id),
 		roles_configured: context.settings.rolesConfigured(visible.id),

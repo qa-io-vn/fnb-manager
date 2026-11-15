@@ -2,7 +2,12 @@ import { VIETNAM_HOLIDAYS } from "@fnb/core";
 import { metricValueIds } from "@fnb/metrics";
 import { DEFAULT_REPORT_SETTINGS } from "@fnb/reports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { METRIC_VALUE_IDS, metricValue } from "../../src/index.js";
+import {
+	DemoSettingsStore,
+	demoSettings,
+	METRIC_VALUE_IDS,
+	metricValue,
+} from "../../src/index.js";
 import { ParityReport } from "./compare.js";
 import { parityClock, parityDatasets, seededRanges } from "./datasets.js";
 import {
@@ -17,6 +22,7 @@ const datasets = parityDatasets(clock);
 const RANGES_PER_DATASET = 20;
 const MAX_RANGE_DAYS = 120;
 const COMPARE_ANCHORS = 3;
+const settings = new DemoSettingsStore(demoSettings(clock.asOf));
 
 describe("metric_value and metric_compare in the engine equal the SQL", () => {
 	let database: OpenParityDatabase | null = null;
@@ -77,6 +83,7 @@ describe("metric_value and metric_compare in the engine equal the SQL", () => {
 									now: clock.now,
 									holidays: VIETNAM_HOLIDAYS,
 									reportSettings: DEFAULT_REPORT_SETTINGS,
+									settings,
 								},
 							)[0]?.value ?? null,
 					}));

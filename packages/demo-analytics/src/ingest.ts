@@ -9,7 +9,11 @@ import {
 import type { IsoDate, PromotionKind } from "@fnb/reports";
 import { toDbLineKind } from "@fnb/sync";
 import type { DemoStoreDefinition } from "./calendar.js";
-import { DEFAULT_INGEST_MAPPINGS, type IngestMappings } from "./mappings.js";
+import {
+	DEFAULT_INGEST_MAPPINGS,
+	type DemoFeeRate,
+	type IngestMappings,
+} from "./mappings.js";
 import { PgDecimal } from "./pg-numeric.js";
 import { byteOrder } from "./text-order.js";
 
@@ -265,6 +269,32 @@ function attachRate(
 	return PgDecimal.integer(numerator)
 		.div(PgDecimal.integer(denominator))
 		.round(6);
+}
+
+const FEE_PCT_THOUSANDTHS = 1000;
+const MINOR_FEE_DIVISOR = BigInt(FEE_PCT_THOUSANDTHS * 100);
+
+function divideHalfAwayFromZero(dividend: bigint, divisor: bigint): bigint {
+	const quotient = dividend / divisor;
+	const remainder = dividend % divisor;
+	const twiceRemainder = (remainder < 0n ? -remainder : remainder) * 2n;
+	if (twiceRemainder < divisor) return quotient;
+	return dividend < 0n ? quotient - 1n : quotient + 1n;
+}
+
+export function feeEstimateMinor(
+	amountMinor: number,
+	rate: Pick<DemoFeeRate, "feePct" | "fixedFeeAmount"> | null,
+): number {
+	if (rate === null) return 0;
+	const feeThousandths = BigInt(Math.round(rate.feePct * FEE_PCT_THOUSANDTHS));
+	const fixedMinor = BigInt(minorUnits(rate.fixedFeeAmount));
+	return Number(
+		divideHalfAwayFromZero(
+			BigInt(amountMinor) * feeThousandths + fixedMinor * MINOR_FEE_DIVISOR,
+			MINOR_FEE_DIVISOR,
+		),
+	);
 }
 
 export const PAIR_SEPARATOR = "\u0000";
@@ -546,11 +576,16 @@ export function aggregateStoreDay(
 		}
 
 		for (const payment of sale.payments) {
-			const methodId = textOrNull(payment.methodExternalId) ?? "unknown";
-			const method = paymentMethodOf(textOrNull(payment.methodExternalId));
+			const rawMethodId = textOrNull(payment.methodExternalId);
+			const methodId = rawMethodId ?? "unknown";
+			const method = paymentMethodOf(rawMethodId);
 			const known = payments.get(methodId);
 			const amountMinor = minorUnits(payment.amount);
 			const feeMinor = minorUnits(payment.feeAmount);
+			const feeEstimate = feeEstimateMinor(
+				amountMinor,
+				mappings.feeRateOf(store.id, rawMethodId, date),
+			);
 			if (known === undefined) {
 				payments.set(methodId, {
 					methodExternalId: methodId,
@@ -559,12 +594,13 @@ export function aggregateStoreDay(
 					invoices: 0,
 					amountMinor,
 					feeMinor,
-					feeEstimateMinor: 0,
+					feeEstimateMinor: feeEstimate,
 					invoiceIds: new Set([sale.externalId]),
 				});
 			} else {
 				known.amountMinor += amountMinor;
 				known.feeMinor += feeMinor;
+				known.feeEstimateMinor += feeEstimate;
 				known.invoiceIds.add(sale.externalId);
 			}
 		}

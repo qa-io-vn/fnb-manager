@@ -1,4 +1,5 @@
 import type { GeneratedDay } from "@fnb/connector-mock";
+import type { CanonicalItem } from "@fnb/core";
 import type { IsoDate } from "@fnb/reports";
 
 export const DEMO_ITEM_PROMOTION_NAME = "Giảm 10% món";
@@ -26,6 +27,16 @@ export function demoCashierFor(date: IsoDate, shiftIndex: number): DemoCashier {
 			DEMO_CASHIERS.length) %
 		DEMO_CASHIERS.length;
 	return DEMO_CASHIERS[index] as DemoCashier;
+}
+
+export function dressDemoCatalogItem(item: CanonicalItem): CanonicalItem {
+	if (item.externalId !== DEMO_UNCATEGORISED_ITEM) return item;
+	const {
+		itemTypeExternalId: _itemTypeExternalId,
+		itemTypeName: _itemTypeName,
+		...dressed
+	} = item;
+	return dressed;
 }
 
 export function dressDemoDay(day: GeneratedDay): GeneratedDay {

@@ -94,14 +94,17 @@ export function openingProductivity(
 		args.store_ids,
 		args.from_date,
 		args.to_date,
-	).map((row) => ({
-		storeId: row.store.id,
-		invoices: row.daily.invoices,
-		netMinor: row.daily.netMinor,
-		hoursMissing: row.store.openingHours === null,
-		minutes: openingMinutes(row.store.openingHours, row.date) ?? 0,
-		seats: context.settings.seatCount(row.store.id),
-	}));
+	).map((row) => {
+		const hours = context.settings.openingHoursOf(row.store.id);
+		return {
+			storeId: row.store.id,
+			invoices: row.daily.invoices,
+			netMinor: row.daily.netMinor,
+			hoursMissing: hours === null,
+			minutes: openingMinutes(hours, row.date) ?? 0,
+			seats: context.settings.seatCount(row.store.id),
+		};
+	});
 	const storesWithDays = visible.filter((entry) =>
 		days.some((day) => day.storeId === entry.id),
 	);

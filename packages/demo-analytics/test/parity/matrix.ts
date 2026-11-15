@@ -3,6 +3,7 @@ import {
 	type AnalyticsArgs,
 	AnalyticsCallError,
 	type AnalyticsFunctionName,
+	type AnalyticsSource,
 	addDays,
 	type IsoDate,
 } from "@fnb/reports";
@@ -95,22 +96,22 @@ export async function compareCall<N extends AnalyticsFunctionName>(
 	name: N,
 	args: AnalyticsArgs<N>,
 	options: Omit<CompareOptions, "demoIdOf">,
-): Promise<void> {
-	const label = `${seeded.dataset.id} ${name}(${JSON.stringify(args)})`;
+	source: AnalyticsSource = seeded.engine,
+	labelSuffix = "",
+): Promise<CallOutcome> {
+	const label = `${seeded.dataset.id}${labelSuffix} ${name}(${JSON.stringify(args)})`;
 	const sql = await outcome(() => context.call(seeded, name, args));
 	const engine = await outcome(
 		async () =>
-			(await seeded.engine.call(name, args)) as unknown as Record<
-				string,
-				unknown
-			>[],
+			(await source.call(name, args)) as unknown as Record<string, unknown>[],
 	);
 	if (sql.code !== null || engine.code !== null) {
 		report.compareValues(label, "error code", sql.code, engine.code);
-		return;
+		return engine;
 	}
 	report.compareRows(label, sql.rows ?? [], engine.rows ?? [], {
 		...options,
 		demoIdOf: seeded.demoIdOf,
 	});
+	return engine;
 }
