@@ -42,6 +42,7 @@ export {
 export {
 	DemoDayCache,
 	type DemoDayCacheOptions,
+	type DemoDayRewrite,
 	nextTask,
 	RAW_DAY_RETENTION_DAYS,
 	sharedDemoDays,
@@ -113,10 +114,15 @@ export {
 	totalsOf,
 } from "./functions/support.js";
 export {
+	type AdjustmentEvent,
 	type AttachAggregate,
 	aggregateStoreDay,
 	type DailyAggregate,
+	type DiscountedInvoice,
+	type DiscountedItem,
+	type DiscountRow,
 	type DrinkAttach,
+	effectivePaymentKind,
 	feeEstimateMinor,
 	type HourlyAggregate,
 	type ItemAggregate,
@@ -125,9 +131,13 @@ export {
 	type PaymentAggregate,
 	type PromotionUsage,
 	pairKey,
+	type ReceiptNumbers,
+	receiptNumbersOf,
 	type ShiftAggregate,
+	type ShiftSales,
 	type SizeAggregate,
 	type StoreDayAggregates,
+	saleDiscountRows,
 	thousandths,
 } from "./ingest.js";
 export {
@@ -167,13 +177,15 @@ export {
 } from "./pg-numeric.js";
 export {
 	currentDemoAsOf,
+	DEMO_LANGUAGES,
 	DEMO_LEGAL_DOCUMENT_KINDS,
 	DEMO_LEGAL_FORMS,
 	DEMO_PERIOD_KINDS,
-	DEMO_STORE_PROFILES,
+	DEMO_PRIVACY_NOTICE_TITLE,
 	DEMO_TENANT_PROFILE,
 	type DemoHoliday,
 	type DemoItemCost,
+	type DemoLanguage,
 	type DemoLegalDocument,
 	type DemoLegalDocumentKind,
 	type DemoLegalForm,
@@ -182,8 +194,16 @@ export {
 	type DemoStoreProfile,
 	type DemoTarget,
 	type DemoTenantProfile,
+	demoLegalDocuments,
 	demoSettings,
+	demoStoreProfiles,
 	demoTargetRows,
+	LEGAL_BODY_MAX_LENGTH,
+	LEGAL_TITLE_MAX_LENGTH,
+	LEGAL_VERSION_PATTERN,
+	legalDraftSkeleton,
+	legalVersionLabel,
+	type PaymentKindOverride,
 } from "./settings.js";
 export {
 	DemoSettingsError,

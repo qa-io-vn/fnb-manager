@@ -1,13 +1,24 @@
 import { MENU } from "@fnb/connector-mock";
-import { type HolidayEntry, VIETNAM_HOLIDAYS } from "@fnb/core";
+import {
+	type HolidayEntry,
+	type PaymentKind,
+	paymentKindSchema,
+	VIETNAM_HOLIDAYS,
+} from "@fnb/core";
 import {
 	addDays,
 	addMonths,
 	asOfDate,
 	DEFAULT_REPORT_SETTINGS,
+	E_INVOICE_STATUSES,
+	type EInvoiceStatus,
 	firstOfMonth,
 	type IsoDate,
+	POS_FEATURE_STATUSES,
+	type PosFeatureStatus,
 	type ReportSettings,
+	TRAN_NO_RESET_PERIODS,
+	type TranNoResetPeriod,
 } from "@fnb/reports";
 import {
 	DEMO_DAY_START_MINUTES,
@@ -28,6 +39,7 @@ import {
 	type DemoRoleName,
 	FeeRateTable,
 	type IngestMappings,
+	type PaymentKindOverride,
 	RoleTable,
 } from "./mappings.js";
 import {
@@ -39,6 +51,7 @@ import {
 	openingHoursValid,
 	requireChoice,
 	requireDate,
+	requireDateOrNull,
 	requireNumber,
 	requireNumberOrNull,
 	requireOneOf,
@@ -59,12 +72,17 @@ export const DEMO_LEGAL_FORMS = [
 
 export type DemoLegalForm = (typeof DEMO_LEGAL_FORMS)[number];
 
+export const DEMO_LANGUAGES = ["vi", "en"] as const;
+
+export type DemoLanguage = (typeof DEMO_LANGUAGES)[number];
+
 export interface DemoTenantProfile {
 	readonly name: string;
 	readonly countryCode: string;
 	readonly currencyCode: string;
 	readonly timeZone: string;
 	readonly legalForm: DemoLegalForm;
+	readonly defaultLanguage: DemoLanguage;
 }
 
 export interface DemoStoreProfile {
@@ -72,6 +90,10 @@ export interface DemoStoreProfile {
 	readonly code: string | null;
 	readonly openingHours: OpeningHours | null;
 	readonly seatCount: number | null;
+	readonly openedOn: IsoDate | null;
+	readonly eInvoiceStatus: EInvoiceStatus;
+	readonly tranNoResetPeriod: TranNoResetPeriod;
+	readonly memberCaptureStatus: PosFeatureStatus;
 }
 
 export interface DemoItemCost {
@@ -99,8 +121,11 @@ export interface DemoHoliday {
 
 export const DEMO_LEGAL_DOCUMENT_KINDS = [
 	"privacy_notice",
-	"information_protection_rules",
-	"consent_wording",
+	"data_protection_rules",
+	"mini_app_terms",
+	"staff_notice",
+	"loyalty_consent_text",
+	"marketing_consent_text",
 ] as const;
 
 export type DemoLegalDocumentKind = (typeof DEMO_LEGAL_DOCUMENT_KINDS)[number];
@@ -112,6 +137,7 @@ export interface DemoLegalDocument {
 	readonly title: string;
 	readonly body: string;
 	readonly publishedAt: string | null;
+	readonly retiredAt: string | null;
 }
 
 export interface DemoSettingsSnapshot {
@@ -121,6 +147,7 @@ export interface DemoSettingsSnapshot {
 	readonly storeAccounts: Readonly<Record<string, string>>;
 	readonly roles: readonly DemoRole[];
 	readonly overrides: readonly CategoryOverride[];
+	readonly paymentKindOverrides: readonly PaymentKindOverride[];
 	readonly costs: readonly DemoItemCost[];
 	readonly feeRates: readonly DemoFeeRate[];
 	readonly targets: readonly DemoTarget[];
@@ -128,25 +155,105 @@ export interface DemoSettingsSnapshot {
 	readonly legalDocuments: readonly DemoLegalDocument[];
 }
 
-export type { DemoFeeRate };
+export type { DemoFeeRate, PaymentKindOverride };
 
 export const DEMO_TENANT_PROFILE: DemoTenantProfile = {
 	name: "Demo",
 	countryCode: "VN",
 	currencyCode: "VND",
 	timeZone: DEMO_TIME_ZONE,
-	legalForm: "unknown",
+	legalForm: "household_business",
+	defaultLanguage: "vi",
 };
 
-export const DEMO_STORE_PROFILES: readonly DemoStoreProfile[] = [
+type StoreDefaults = Omit<DemoStoreProfile, "openedOn">;
+
+const DEMO_STORE_DEFAULTS: readonly StoreDefaults[] = [
 	{
 		storeId: "MOCK-S1",
 		code: "CH1",
 		openingHours: demoOpeningHours,
 		seatCount: 40,
+		eInvoiceStatus: "configured",
+		tranNoResetPeriod: "daily",
+		memberCaptureStatus: "enabled",
 	},
-	{ storeId: "MOCK-S2", code: "CH2", openingHours: null, seatCount: null },
+	{
+		storeId: "MOCK-S2",
+		code: "CH2",
+		openingHours: null,
+		seatCount: null,
+		eInvoiceStatus: "not_configured",
+		tranNoResetPeriod: "unknown",
+		memberCaptureStatus: "unknown",
+	},
 ];
+
+export function demoStoreProfiles(
+	asOf: IsoDate = currentDemoAsOf(),
+): DemoStoreProfile[] {
+	const opened = new Map(
+		demoStores(asOf).map((store) => [store.id, store.openedOn]),
+	);
+	return DEMO_STORE_DEFAULTS.map((defaults) => ({
+		...defaults,
+		openedOn: opened.get(defaults.storeId) ?? null,
+	}));
+}
+
+const LEGAL_SKELETON_HEADINGS: Readonly<
+	Record<DemoLanguage, readonly string[]>
+> = {
+	vi: [
+		"Mục đích xử lý dữ liệu",
+		"Dữ liệu được thu thập",
+		"Thời gian lưu trữ",
+		"Quyền của chủ thể dữ liệu và cách thực hiện",
+		"Liên hệ",
+		"Bên xử lý dữ liệu và lưu trữ ở nước ngoài",
+	],
+	en: [
+		"Purpose of processing",
+		"Data collected",
+		"Retention",
+		"Your rights and how to use them",
+		"Contact",
+		"Processors and hosting abroad",
+	],
+};
+
+export function legalDraftSkeleton(language: DemoLanguage): string {
+	return LEGAL_SKELETON_HEADINGS[language]
+		.map((heading) => `## ${heading}`)
+		.join("\n\n");
+}
+
+export const DEMO_PRIVACY_NOTICE_TITLE = "Thông báo bảo mật";
+
+export const LEGAL_VERSION_PATTERN = /^[a-z0-9][a-z0-9.-]{0,39}$/;
+export const LEGAL_TITLE_MAX_LENGTH = 200;
+export const LEGAL_BODY_MAX_LENGTH = 100_000;
+
+export function legalVersionLabel(
+	kind: DemoLegalDocumentKind,
+	date: IsoDate,
+): string {
+	return `${kind.replaceAll("_", "-")}-${date.slice(0, 7)}`;
+}
+
+export function demoLegalDocuments(asOf: IsoDate): DemoLegalDocument[] {
+	return [
+		{
+			kind: "privacy_notice",
+			versionLabel: legalVersionLabel("privacy_notice", asOf),
+			language: "vi",
+			title: DEMO_PRIVACY_NOTICE_TITLE,
+			body: legalDraftSkeleton("vi"),
+			publishedAt: null,
+			retiredAt: null,
+		},
+	];
+}
 
 const ROLE_NAMES: readonly DemoRoleName[] = [
 	"drink",
@@ -163,6 +270,10 @@ const DEMO_ITEM_TYPES: ReadonlyMap<string, string> = new Map(
 const DEMO_ITEM_TYPE_IDS: ReadonlySet<string> = new Set(DEMO_ITEM_TYPES.keys());
 
 const DEMO_STORES: ReadonlySet<string> = new Set(demoStoreIds());
+
+const DEMO_PAYMENT_METHOD_IDS: ReadonlySet<string> = new Set(
+	MENU.catalog.paymentMethods.map((method) => method.externalId),
+);
 
 const GLOBAL_HOLIDAYS: Readonly<Record<string, readonly HolidayEntry[]>> = {
 	VN: VIETNAM_HOLIDAYS,
@@ -209,15 +320,16 @@ export function demoSettings(
 	return {
 		tenant: DEMO_TENANT_PROFILE,
 		reportSettings: null,
-		stores: DEMO_STORE_PROFILES,
+		stores: demoStoreProfiles(asOf),
 		storeAccounts: {},
 		roles: demoRoles(),
 		overrides: [],
+		paymentKindOverrides: [],
 		costs: [],
 		feeRates: [],
 		targets: demoTargetRows(asOf),
 		holidays: [],
-		legalDocuments: [],
+		legalDocuments: demoLegalDocuments(asOf),
 	};
 }
 
@@ -232,6 +344,11 @@ function checkTenant(tenant: DemoTenantProfile): DemoTenantProfile {
 		currencyCode: requireText("currencyCode", tenant.currencyCode),
 		timeZone: requireText("timeZone", tenant.timeZone),
 		legalForm: requireChoice("legalForm", tenant.legalForm, DEMO_LEGAL_FORMS),
+		defaultLanguage: requireChoice(
+			"defaultLanguage",
+			tenant.defaultLanguage,
+			DEMO_LANGUAGES,
+		),
 	};
 }
 
@@ -257,6 +374,22 @@ function checkStoreProfile(profile: DemoStoreProfile): DemoStoreProfile {
 				? null
 				: structuredClone(profile.openingHours),
 		seatCount: requireNumberOrNull("seatCount", profile.seatCount, SEAT_COUNT),
+		openedOn: requireDateOrNull("openedOn", profile.openedOn),
+		eInvoiceStatus: requireChoice(
+			"eInvoiceStatus",
+			profile.eInvoiceStatus,
+			E_INVOICE_STATUSES,
+		),
+		tranNoResetPeriod: requireChoice(
+			"tranNoResetPeriod",
+			profile.tranNoResetPeriod,
+			TRAN_NO_RESET_PERIODS,
+		),
+		memberCaptureStatus: requireChoice(
+			"memberCaptureStatus",
+			profile.memberCaptureStatus,
+			POS_FEATURE_STATUSES,
+		),
 	};
 }
 
@@ -349,6 +482,41 @@ function checkOverrides(
 	return checked;
 }
 
+function checkPaymentKindOverrides(
+	overrides: readonly PaymentKindOverride[],
+	accounts: ReadonlySet<string>,
+): PaymentKindOverride[] {
+	const checked = overrides.map((override) => {
+		requireOneOf(
+			"posAccountId",
+			requireText("posAccountId", override.posAccountId),
+			accounts,
+			"a POS account of the demo",
+		);
+		return {
+			posAccountId: override.posAccountId,
+			paymentMethodExternalId: requireOneOf(
+				"paymentMethodExternalId",
+				requireText(
+					"paymentMethodExternalId",
+					override.paymentMethodExternalId,
+				),
+				DEMO_PAYMENT_METHOD_IDS,
+				"a payment method of the same POS account",
+			),
+			kind: requireChoice("kind", override.kind, paymentKindSchema.options),
+		};
+	});
+	requireUnique(
+		checked,
+		"paymentMethodExternalId",
+		"POS account and payment method",
+		(override) =>
+			keyOf(override.posAccountId, override.paymentMethodExternalId),
+	);
+	return checked;
+}
+
 function checkStoreScope(storeId: unknown): string | null {
 	if (storeId === null) return null;
 	return requireOneOf(
@@ -436,21 +604,119 @@ function checkHolidays(holidays: readonly DemoHoliday[]): DemoHoliday[] {
 	return checked;
 }
 
+function requireLength(field: string, text: string, max: number): string {
+	if (text.length > max) {
+		throw new DemoSettingsError(
+			field,
+			"range",
+			`hold at most ${max} characters`,
+		);
+	}
+	return text;
+}
+
+function checkLegalDocument(document: DemoLegalDocument): DemoLegalDocument {
+	const versionLabel = requireText("versionLabel", document.versionLabel);
+	if (!LEGAL_VERSION_PATTERN.test(versionLabel)) {
+		throw new DemoSettingsError(
+			"versionLabel",
+			"format",
+			"start with a lower-case letter or digit and hold at most 40 lower-case letters, digits, dots and hyphens",
+		);
+	}
+	const checked = {
+		kind: requireChoice("kind", document.kind, DEMO_LEGAL_DOCUMENT_KINDS),
+		versionLabel,
+		language: requireChoice("language", document.language, DEMO_LANGUAGES),
+		title: requireLength(
+			"title",
+			requireText("title", document.title),
+			LEGAL_TITLE_MAX_LENGTH,
+		),
+		body: requireLength(
+			"body",
+			requireText("body", document.body),
+			LEGAL_BODY_MAX_LENGTH,
+		),
+		publishedAt: requireTimestampOrNull("publishedAt", document.publishedAt),
+		retiredAt: requireTimestampOrNull("retiredAt", document.retiredAt),
+	};
+	if (checked.retiredAt !== null && checked.publishedAt === null) {
+		throw new DemoSettingsError(
+			"retiredAt",
+			"format",
+			"be null for a document that was never published",
+		);
+	}
+	return checked;
+}
+
+function legalKey(document: DemoLegalDocument): string {
+	return keyOf(document.kind, document.language, document.versionLabel);
+}
+
 function checkLegalDocuments(
 	documents: readonly DemoLegalDocument[],
 ): DemoLegalDocument[] {
-	const checked = documents.map((document) => ({
-		kind: requireChoice("kind", document.kind, DEMO_LEGAL_DOCUMENT_KINDS),
-		versionLabel: requireText("versionLabel", document.versionLabel),
-		language: requireText("language", document.language),
-		title: requireText("title", document.title),
-		body: requireText("body", document.body),
-		publishedAt: requireTimestampOrNull("publishedAt", document.publishedAt),
-	}));
-	requireUnique(checked, "versionLabel", "kind, language and version", (row) =>
-		keyOf(row.kind, row.language, row.versionLabel),
+	const checked = documents.map(checkLegalDocument);
+	requireUnique(
+		checked,
+		"versionLabel",
+		"kind, language and version",
+		legalKey,
+	);
+	requireUnique(
+		checked.filter(
+			(document) =>
+				document.publishedAt !== null && document.retiredAt === null,
+		),
+		"publishedAt",
+		"kind and language among the published documents",
+		(document) => keyOf(document.kind, document.language),
 	);
 	return checked;
+}
+
+function unchangedOnceIssued(
+	before: DemoLegalDocument,
+	after: DemoLegalDocument | undefined,
+): boolean {
+	return (
+		after !== undefined &&
+		after.title === before.title &&
+		after.body === before.body &&
+		after.publishedAt === before.publishedAt &&
+		(before.retiredAt === null || after.retiredAt === before.retiredAt)
+	);
+}
+
+function requireLegalHistory(
+	previous: readonly DemoLegalDocument[],
+	next: readonly DemoLegalDocument[],
+): void {
+	const nextByKey = new Map(
+		next.map((document) => [legalKey(document), document]),
+	);
+	for (const before of previous) {
+		if (before.publishedAt === null) continue;
+		if (!unchangedOnceIssued(before, nextByKey.get(legalKey(before)))) {
+			throw new DemoSettingsError(
+				"body",
+				"frozen",
+				"stay as it was published: a published or retired text is never edited or deleted",
+			);
+		}
+	}
+	const previousKeys = new Set(previous.map(legalKey));
+	for (const after of next) {
+		if (!previousKeys.has(legalKey(after)) && after.publishedAt !== null) {
+			throw new DemoSettingsError(
+				"publishedAt",
+				"format",
+				"be null for a new document, which starts as a draft",
+			);
+		}
+	}
 }
 
 function accountsOf(
@@ -472,6 +738,10 @@ function checkSnapshot(snapshot: DemoSettingsSnapshot): DemoSettingsSnapshot {
 		storeAccounts,
 		roles: checkRoles(snapshot.roles, accounts),
 		overrides: checkOverrides(snapshot.overrides, accounts),
+		paymentKindOverrides: checkPaymentKindOverrides(
+			snapshot.paymentKindOverrides,
+			accounts,
+		),
 		costs: checkCosts(snapshot.costs),
 		feeRates: checkFeeRates(snapshot.feeRates),
 		targets: checkTargets(snapshot.targets),
@@ -507,6 +777,7 @@ export class DemoSettingsStore implements IngestMappings {
 	private ingestVersionCount = 0;
 	private roleTable: RoleTable;
 	private overrideIndex: Map<string, CategoryOverride>;
+	private kindOverrideIndex: Map<string, PaymentKind>;
 	private feeRateTable: FeeRateTable;
 	private calendar: readonly HolidayEntry[];
 
@@ -515,6 +786,9 @@ export class DemoSettingsStore implements IngestMappings {
 		this.snapshotValue = checked;
 		this.roleTable = new RoleTable(checked.roles);
 		this.overrideIndex = DemoSettingsStore.indexOverrides(checked.overrides);
+		this.kindOverrideIndex = DemoSettingsStore.indexKindOverrides(
+			checked.paymentKindOverrides,
+		);
 		this.feeRateTable = new FeeRateTable(checked.feeRates);
 		this.calendar = calendarOf(checked.tenant, checked.holidays);
 	}
@@ -526,6 +800,17 @@ export class DemoSettingsStore implements IngestMappings {
 			overrides.map((override) => [
 				overrideKey(override.posAccountId, override.itemExternalId),
 				override,
+			]),
+		);
+	}
+
+	private static indexKindOverrides(
+		overrides: readonly PaymentKindOverride[],
+	): Map<string, PaymentKind> {
+		return new Map(
+			overrides.map((override) => [
+				keyOf(override.posAccountId, override.paymentMethodExternalId),
+				override.kind,
 			]),
 		);
 	}
@@ -551,6 +836,11 @@ export class DemoSettingsStore implements IngestMappings {
 		if (next.overrides !== previous.overrides) {
 			this.overrideIndex = DemoSettingsStore.indexOverrides(next.overrides);
 		}
+		if (next.paymentKindOverrides !== previous.paymentKindOverrides) {
+			this.kindOverrideIndex = DemoSettingsStore.indexKindOverrides(
+				next.paymentKindOverrides,
+			);
+		}
 		if (next.feeRates !== previous.feeRates) {
 			this.feeRateTable = new FeeRateTable(next.feeRates);
 		}
@@ -572,6 +862,9 @@ export class DemoSettingsStore implements IngestMappings {
 			...accountsOf(storeAccounts),
 			...this.snapshotValue.roles.map((role) => role.posAccountId),
 			...this.snapshotValue.overrides.map((override) => override.posAccountId),
+			...this.snapshotValue.paymentKindOverrides.map(
+				(override) => override.posAccountId,
+			),
 		]);
 	}
 
@@ -592,6 +885,16 @@ export class DemoSettingsStore implements IngestMappings {
 
 	overrideOf(accountId: string, itemKey: string): CategoryOverride | null {
 		return this.overrideIndex.get(overrideKey(accountId, itemKey)) ?? null;
+	}
+
+	paymentKindOverrideOf(
+		accountId: string,
+		paymentMethodExternalId: string,
+	): PaymentKind | null {
+		return (
+			this.kindOverrideIndex.get(keyOf(accountId, paymentMethodExternalId)) ??
+			null
+		);
 	}
 
 	feeRateOf(
@@ -624,6 +927,10 @@ export class DemoSettingsStore implements IngestMappings {
 
 	overrides(): readonly CategoryOverride[] {
 		return this.snapshotValue.overrides;
+	}
+
+	paymentKindOverrides(): readonly PaymentKindOverride[] {
+		return this.snapshotValue.paymentKindOverrides;
 	}
 
 	costs(): readonly DemoItemCost[] {
@@ -706,6 +1013,19 @@ export class DemoSettingsStore implements IngestMappings {
 		);
 	}
 
+	savePaymentKindOverrides(overrides: readonly PaymentKindOverride[]): void {
+		this.commit(
+			{
+				...this.snapshotValue,
+				paymentKindOverrides: checkPaymentKindOverrides(
+					overrides,
+					this.knownAccounts(),
+				),
+			},
+			"ingest",
+		);
+	}
+
 	saveCosts(costs: readonly DemoItemCost[]): void {
 		this.commit({ ...this.snapshotValue, costs: checkCosts(costs) }, "query");
 	}
@@ -732,13 +1052,9 @@ export class DemoSettingsStore implements IngestMappings {
 	}
 
 	saveLegalDocuments(documents: readonly DemoLegalDocument[]): void {
-		this.commit(
-			{
-				...this.snapshotValue,
-				legalDocuments: checkLegalDocuments(documents),
-			},
-			"query",
-		);
+		const legalDocuments = checkLegalDocuments(documents);
+		requireLegalHistory(this.snapshotValue.legalDocuments, legalDocuments);
+		this.commit({ ...this.snapshotValue, legalDocuments }, "query");
 	}
 
 	saveReportSettings(settings: ReportSettings | null): void {

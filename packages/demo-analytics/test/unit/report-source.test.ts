@@ -8,6 +8,8 @@ import {
 } from "@fnb/reports";
 import { describe, expect, it } from "vitest";
 import { BASKET_PAIRS_MAX_DAYS } from "../../src/functions/basket-pairs.js";
+import { DATA_QUALITY_ITEMS_MAX_DAYS } from "../../src/functions/data-quality-items.js";
+import { DATA_QUALITY_PAYMENTS_MAX_DAYS } from "../../src/functions/data-quality-payments.js";
 import { ITEM_ATTACH_MAX_DAYS } from "../../src/functions/item-attach.js";
 import { ITEM_MARGINS_MAX_DAYS } from "../../src/functions/item-margins.js";
 import { MODIFIER_SUMMARY_MAX_DAYS } from "../../src/functions/modifier-summary.js";
@@ -16,12 +18,15 @@ import {
 	PORT_PENDING_FUNCTIONS,
 	type PortPendingFunction,
 } from "../../src/functions/port-pending.js";
+import { PROMOTION_COMPLIANCE_MAX_DAYS } from "../../src/functions/promotion-compliance.js";
+import { PROMOTION_DAYS_MAX_DAYS } from "../../src/functions/promotion-days.js";
 import {
 	createDemoAnalyticsSource,
 	createDemoReportSource,
 	DemoDayCache,
 	DemoSettingsStore,
 	demoSettings,
+	ESTABLISHED_STORE_OPENED_ON,
 	handlers,
 	themeHandlers,
 	themeReads,
@@ -164,12 +169,13 @@ describe("createDemoReportSource", () => {
 		}
 	});
 
-	it("refuses every 10b function whose port has not landed with not_implemented, before reading a store-day", async () => {
+	it("refuses every 10b function whose port has not landed with not_implemented, after ingesting exactly the store-days its port will read", async () => {
 		expect(PORT_PENDING_FUNCTIONS.length).toBeGreaterThan(0);
 		for (const name of PORT_PENDING_FUNCTIONS) {
+			const days = new DemoDayCache({ now: () => NOW, volumeScale: 0.05 });
 			const source = createDemoReportSource({
 				now: () => NOW,
-				volumeScale: 0.2,
+				days,
 				settings: new DemoSettingsStore(demoSettings(AS_OF)),
 			});
 			await expect(
@@ -179,7 +185,21 @@ describe("createDemoReportSource", () => {
 				code: NOT_IMPLEMENTED_CODE,
 				functionName: name,
 			});
-			expect(source.aggregates.days.generations(), name).toBe(0);
+			const planned = new Set<string>();
+			for (const range of themeReads[name](minimalArgs[name] as never)) {
+				for (const storeId of range.storeIds) {
+					for (
+						let date = range.from;
+						date <= range.to;
+						date = addDays(date, 1)
+					) {
+						if (days.isPlanned(storeId, date))
+							planned.add(`${storeId}|${date}`);
+					}
+				}
+			}
+			expect(planned.size, name).toBeGreaterThan(0);
+			expect(days.generations(), name).toBe(planned.size);
 		}
 	});
 
@@ -265,6 +285,10 @@ describe("themeReads", () => {
 			["item_attach", ITEM_ATTACH_MAX_DAYS],
 			["basket_pairs", BASKET_PAIRS_MAX_DAYS],
 			["modifier_summary", MODIFIER_SUMMARY_MAX_DAYS],
+			["promotion_days", PROMOTION_DAYS_MAX_DAYS],
+			["promotion_compliance", PROMOTION_COMPLIANCE_MAX_DAYS],
+			["data_quality_items", DATA_QUALITY_ITEMS_MAX_DAYS],
+			["data_quality_payments", DATA_QUALITY_PAYMENTS_MAX_DAYS],
 		] as const) {
 			const within = themeReads[name]({
 				store_ids: STORES,
@@ -319,5 +343,105 @@ describe("themeReads", () => {
 				1,
 			);
 		}
+	});
+
+	it("plans the promotion catalogue from the first demo sale to its as-of day", () => {
+		expect(
+			themeReads.promotion_catalogue({ store_ids: STORES, as_of_date: AS_OF }),
+		).toEqual([
+			{ storeIds: STORES, from: ESTABLISHED_STORE_OPENED_ON, to: AS_OF },
+		]);
+	});
+
+	it("plans the lift's range with the 56 days before it, clamped to 92 days plus those 56", () => {
+		const lift = {
+			store_ids: STORES,
+			promotion_kind: "item",
+			promotion_key: "PROMO-1",
+			comparator: "baseline",
+		} as const;
+		expect(
+			themeReads.promotion_lift({
+				...lift,
+				from_date: "2026-10-28",
+				to_date: AS_OF,
+			}),
+		).toEqual([{ storeIds: STORES, from: "2026-09-02", to: AS_OF }]);
+		const [clamped] = themeReads.promotion_lift({
+			...lift,
+			from_date: "2025-01-01",
+			to_date: AS_OF,
+		});
+		expect(daysBetween(clamped?.from ?? AS_OF, AS_OF) + 1).toBe(92 + 56);
+	});
+
+	it("plans the calendar year of item_discount_days up to its as-of day, and nothing for a year past 9999", () => {
+		expect(
+			themeReads.item_discount_days({ store_ids: STORES, calendar_year: 2025 }),
+		).toEqual([{ storeIds: STORES, from: "2025-01-01", to: "2025-12-31" }]);
+		expect(
+			themeReads.item_discount_days({
+				store_ids: STORES,
+				calendar_year: 2026,
+				as_of_date: AS_OF,
+			}),
+		).toEqual([{ storeIds: STORES, from: "2026-01-01", to: AS_OF }]);
+		expect(
+			themeReads.item_discount_days({
+				store_ids: STORES,
+				calendar_year: 2025,
+				as_of_date: AS_OF,
+			}),
+		).toEqual([{ storeIds: STORES, from: "2025-01-01", to: "2025-12-31" }]);
+		expect(
+			themeReads.item_discount_days({
+				store_ids: STORES,
+				calendar_year: 10_000,
+			}),
+		).toEqual([]);
+	});
+
+	it("plans the shifts' 56 trailing days and a day either side for events, clamped alike", () => {
+		const range = {
+			store_ids: STORES,
+			from_date: "2026-10-28",
+			to_date: AS_OF,
+		};
+		expect(themeReads.shift_adjustments(range)).toEqual([
+			{ storeIds: STORES, from: "2026-09-01", to: "2026-11-04" },
+		]);
+		const [clamped] = themeReads.shift_adjustments({
+			...range,
+			from_date: "2025-01-01",
+		});
+		expect(clamped?.to).toBe("2026-11-04");
+		expect(daysBetween(clamped?.from ?? AS_OF, "2026-11-04") + 1).toBe(
+			92 + 56 + 2,
+		);
+	});
+
+	it("plans the data-quality summary over its range, the 120 receipt days and the shift windows around it", () => {
+		expect(
+			themeReads.data_quality_summary({
+				store_ids: STORES,
+				from_date: "2026-10-28",
+				to_date: AS_OF,
+			}),
+		).toEqual([{ storeIds: STORES, from: "2026-07-07", to: "2026-11-04" }]);
+		expect(
+			themeReads.data_quality_summary({
+				store_ids: STORES,
+				from_date: addDays(AS_OF, -399),
+				to_date: AS_OF,
+			}),
+		).toEqual([
+			{ storeIds: STORES, from: addDays(AS_OF, -401), to: "2026-11-04" },
+		]);
+		const [clamped] = themeReads.data_quality_summary({
+			store_ids: STORES,
+			from_date: "2020-01-01",
+			to_date: AS_OF,
+		});
+		expect(daysBetween(clamped?.from ?? AS_OF, "2026-11-04") + 1).toBe(403);
 	});
 });

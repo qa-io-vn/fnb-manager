@@ -14,7 +14,8 @@ export type DemoSettingsRefusal =
 	| "range"
 	| "format"
 	| "duplicate"
-	| "reference";
+	| "reference"
+	| "frozen";
 
 export class DemoSettingsError extends RangeError {
 	readonly field: string;
@@ -73,6 +74,14 @@ export function requireDate(field: string, value: unknown): string {
 		throw new DemoSettingsError(field, "format", "be a calendar date");
 	}
 	return value;
+}
+
+export function requireDateOrNull(
+	field: string,
+	value: unknown,
+): string | null {
+	if (value === null) return null;
+	return requireDate(field, value);
 }
 
 const ISO_TIMESTAMP_REGEX =

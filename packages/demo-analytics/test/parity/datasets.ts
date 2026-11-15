@@ -11,8 +11,10 @@ import { inject } from "vitest";
 import {
 	DEMO_DAY_START_MINUTES,
 	DEMO_TIME_ZONE,
+	type DemoDayRewrite,
 	ESTABLISHED_STORE_OPENED_ON,
 } from "../../src/index.js";
+import { complianceCases } from "./compliance-cases.js";
 
 export type ParityDatasetId = "D1" | "D2" | "D3";
 
@@ -21,6 +23,7 @@ export interface ParityDataset {
 	readonly from: IsoDate;
 	readonly to: IsoDate;
 	readonly volumeScale: number;
+	readonly rewriteDay?: DemoDayRewrite;
 }
 
 export interface ParityClock {
@@ -81,6 +84,7 @@ export function parityDatasets(
 			from: addDays(clock.today, -13),
 			to: clock.today,
 			volumeScale: 1,
+			rewriteDay: complianceCases(clock.asOf),
 		},
 	};
 }

@@ -8,12 +8,14 @@ import type {
 import { describe, expect, it } from "vitest";
 import {
 	aggregateStoreDay,
+	DEMO_POS_ACCOUNT_ID,
 	DemoSettingsStore,
 	demoRoles,
 	demoSettings,
 	demoStores,
 	feeEstimateMinor,
 	PAIR_SEPARATOR,
+	receiptNumbersOf,
 } from "../../src/index.js";
 
 const DATE = "2026-11-03";
@@ -577,6 +579,228 @@ describe("fee estimates", () => {
 		).toEqual([
 			["PM-CASH", 10_800_000, 54_400 + 32_000],
 			["PM-BANK", 4_300_000, 68_241],
+		]);
+	});
+});
+
+describe("aggregateStoreDay's 10b structures", () => {
+	if (store === undefined) throw new Error("missing demo store");
+	const day = aggregateStoreDay(store, fixture);
+
+	it("writes one discount row per discounted item line, bill and voucher, with its base and rate", () => {
+		expect(
+			day.discounts.map((row) => ({ ...row, rate: row.rate?.toString() })),
+		).toEqual([
+			{
+				invoiceExternalId: "C",
+				kind: "item",
+				key: "PROMO-04",
+				name: "Giảm giá món",
+				itemKey: "DR-008-M",
+				discountMinor: 800_000,
+				baseMinor: 7_600_000,
+				rate: "0.105263",
+			},
+			{
+				invoiceExternalId: "C",
+				kind: "bill",
+				key: "Giảm giá hoá đơn",
+				name: "Giảm giá hoá đơn",
+				itemKey: null,
+				discountMinor: 500_000,
+				baseMinor: 9_800_000,
+				rate: "0.051020",
+			},
+			{
+				invoiceExternalId: "C",
+				kind: "voucher",
+				key: "Voucher 10k",
+				name: "Voucher 10k",
+				itemKey: null,
+				discountMinor: 1_000_000,
+				baseMinor: 9_300_000,
+				rate: "0.107527",
+			},
+		]);
+		expect(day.discountedInvoices).toEqual([
+			{
+				invoiceExternalId: "C",
+				grossMinor: 10_600_000,
+				items: [
+					{ itemKey: "DR-008-M", itemName: "Trà sữa truyền thống (M)" },
+					{ itemKey: "DR-015", itemName: "Cà phê đen" },
+				],
+			},
+		]);
+	});
+
+	it("counts orders and item lines per shift over non-voided sales", () => {
+		expect(day.shiftSales).toEqual([
+			{ shiftExternalId: morning, orders: 1, itemLines: 3 },
+			{ shiftExternalId: evening, orders: 1, itemLines: 2 },
+		]);
+		expect(day.shifts.map((item) => item.changedAfterClose)).toEqual([
+			false,
+			false,
+		]);
+	});
+
+	it("records each adjustment event with its business day, amount, sale and the sale's shift", () => {
+		expect(day.events).toEqual([
+			{
+				invoiceExternalId: "B",
+				kind: "voided",
+				occurredAt: "2026-11-03T03:05:00.000Z",
+				businessDate: DATE,
+				amountMinor: 9_000_000,
+				saleExists: true,
+				saleShiftExternalId: morning,
+			},
+			{
+				invoiceExternalId: "C",
+				kind: "line_removed",
+				occurredAt: "2026-11-03T17:08:00.000Z",
+				businessDate: "2026-11-04",
+				amountMinor: 3_000_000,
+				saleExists: true,
+				saleShiftExternalId: evening,
+			},
+		]);
+		expect(day.receipts).toBeNull();
+	});
+
+	it("keeps events of an unknown sale and sales without a shift apart, drops a repeated event and merges two at one time as the sync does", () => {
+		const unshifted = fixture.sales.map((sale) =>
+			sale.externalId === "A" ? { ...sale, shiftExternalId: undefined } : sale,
+		);
+		const variant = aggregateStoreDay(store, {
+			...fixture,
+			sales: unshifted,
+			shifts: fixture.shifts.map((item, index) =>
+				index === 0 ? { ...item, changedAfterClose: true } : item,
+			),
+			adjustments: [
+				...fixture.adjustments,
+				{
+					kind: "edited",
+					saleExternalId: "Z",
+					occurredAt: new Date("2026-11-03T05:00:00.000Z"),
+					raw: null,
+				},
+				{
+					kind: "edited",
+					saleExternalId: "A",
+					occurredAt: new Date("2026-11-03T06:00:00.000Z"),
+					amount: 1_000,
+					raw: { part: 1 },
+				},
+				{
+					kind: "edited",
+					saleExternalId: "A",
+					occurredAt: new Date("2026-11-03T06:00:00.000Z"),
+					amount: 2_000,
+					raw: { part: 2 },
+				},
+				{
+					kind: "line_removed",
+					saleExternalId: "A",
+					lineExternalId: "A-L2",
+					occurredAt: new Date("2026-11-03T06:30:00.000Z"),
+					amount: 8_000,
+					raw: null,
+				},
+				{
+					kind: "line_removed",
+					saleExternalId: "A",
+					lineExternalId: "A-L4",
+					occurredAt: new Date("2026-11-03T06:30:00.000Z"),
+					amount: 15_000,
+					raw: null,
+				},
+			],
+		});
+		expect(variant.shiftSales).toEqual([
+			{ shiftExternalId: evening, orders: 1, itemLines: 2 },
+		]);
+		expect(variant.shifts.map((item) => item.changedAfterClose)).toEqual([
+			true,
+			false,
+		]);
+		expect(
+			variant.events.map((event) => [
+				event.invoiceExternalId,
+				event.kind,
+				event.amountMinor,
+				event.saleExists,
+				event.saleShiftExternalId,
+			]),
+		).toEqual([
+			["A", "edited", 100_000, true, null],
+			["A", "line_removed", 2_300_000, true, null],
+			["B", "voided", 9_000_000, true, morning],
+			["C", "line_removed", 3_000_000, true, evening],
+			["Z", "edited", null, false, null],
+		]);
+	});
+
+	it("tells whether every receipt number of the day is made of digits, voided sales included, and finds the smallest", () => {
+		const withReceipts = (receipts: readonly (string | undefined)[]) =>
+			fixture.sales.map((sale, index) => ({
+				...sale,
+				receiptNo: receipts[index],
+			}));
+		expect(receiptNumbersOf(withReceipts(["0003", "17", "000002"]))).toEqual({
+			allDigits: true,
+			smallest: 2n,
+		});
+		expect(receiptNumbersOf(withReceipts(["0003", "HD17", " "]))).toEqual({
+			allDigits: false,
+			smallest: 3n,
+		});
+		expect(
+			receiptNumbersOf(
+				withReceipts(["1234567890123456789", "12345678901234567890"]),
+			),
+		).toEqual({ allDigits: true, smallest: null });
+		expect(receiptNumbersOf(withReceipts([undefined, "  "]))).toBeNull();
+		expect(
+			aggregateStoreDay(store, {
+				...fixture,
+				sales: withReceipts(["HD2611030001", "HD2611030002", "HD2611030003"]),
+			}).receipts,
+		).toEqual({ allDigits: false, smallest: null });
+	});
+
+	it("follows a payment-kind override for the cash totals and the payment rows, but keeps the drawer's expected cash of the sync", () => {
+		const settings = new DemoSettingsStore(demoSettings(DATE));
+		settings.savePaymentKindOverrides([
+			{
+				posAccountId: DEMO_POS_ACCOUNT_ID,
+				paymentMethodExternalId: "PM-BANK",
+				kind: "cash",
+			},
+		]);
+		expect(settings.ingestVersion).toBe(1);
+		const overridden = aggregateStoreDay(store, fixture, settings);
+		expect(overridden.daily?.cashMinor).toBe(15_100_000);
+		expect(
+			overridden.payments.map((payment) => [
+				payment.methodExternalId,
+				payment.kind,
+			]),
+		).toEqual([
+			["PM-CASH", "cash"],
+			["PM-BANK", "cash"],
+		]);
+		expect(
+			overridden.shifts.map((item) => [
+				item.cashSalesMinor,
+				item.expectedCashMinor,
+				item.varianceMinor,
+			]),
+		).toEqual([
+			[6_800_000, 156_800_000, 500_000],
+			[8_300_000, 154_000_000, -1_000_000],
 		]);
 	});
 });

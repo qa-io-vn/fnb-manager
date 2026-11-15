@@ -11,6 +11,7 @@ import {
 	type DemoReportSource,
 	type DemoRole,
 	demoRoles,
+	type PaymentKindOverride,
 } from "../../src/index.js";
 import {
 	insertStatements,
@@ -43,11 +44,13 @@ const SECOND_ACCOUNT_TYPES: readonly (readonly [string, DemoRole["role"]])[] = [
 ];
 
 export const FEE_RATE_METHOD = "PM-EWALLET";
+export const KIND_OVERRIDE_METHOD = "PM-BANK";
 export const CUSTOM_HOLIDAY_NAME = "Ngày nghỉ riêng của chuỗi";
 const CUSTOM_HOLIDAY_DAYS_BEFORE_TODAY = 8;
 
 export interface MenuVariant {
 	readonly overrides: readonly CategoryOverride[];
+	readonly kindOverrides: readonly PaymentKindOverride[];
 	readonly costs: readonly DemoItemCost[];
 	readonly feeRates: readonly DemoFeeRate[];
 	readonly holidays: readonly DemoHoliday[];
@@ -126,6 +129,13 @@ export function menuVariant(
 				itemTypeName: typeName(MOVED_DRINK_TYPE),
 			},
 		],
+		kindOverrides: [
+			{
+				posAccountId: accountId,
+				paymentMethodExternalId: KIND_OVERRIDE_METHOD,
+				kind: "cash",
+			},
+		],
 		costs: [
 			{
 				storeId: null,
@@ -201,6 +211,16 @@ export async function applyMenuVariant(
 			})),
 		),
 		...insertStatements(
+			"public.payment_kind_overrides",
+			["tenant_id", "pos_account_id", "payment_method_external_id", "kind"],
+			variant.kindOverrides.map((override) => ({
+				tenant_id: seeded.tenantId,
+				pos_account_id: seeded.posAccountId,
+				payment_method_external_id: override.paymentMethodExternalId,
+				kind: override.kind,
+			})),
+		),
+		...insertStatements(
 			"public.item_costs",
 			[
 				"tenant_id",
@@ -262,6 +282,7 @@ export async function applyMenuVariant(
 		[seeded.tenantId, seeded.window.from, seeded.window.to],
 	);
 	engine.settings.saveOverrides(variant.overrides);
+	engine.settings.savePaymentKindOverrides(variant.kindOverrides);
 	engine.settings.saveCosts(variant.costs);
 	engine.settings.saveFeeRates(variant.feeRates);
 	engine.settings.saveHolidays(variant.holidays);

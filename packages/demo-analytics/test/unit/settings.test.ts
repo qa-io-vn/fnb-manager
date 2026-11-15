@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
 	createDemoReportSource,
 	DEMO_POS_ACCOUNT_ID,
-	DEMO_STORE_PROFILES,
+	DEMO_PRIVACY_NOTICE_TITLE,
 	DEMO_TENANT_PROFILE,
 	DemoDayCache,
 	type DemoFeeRate,
@@ -14,15 +14,20 @@ import {
 	DemoSettingsError,
 	type DemoSettingsRefusal,
 	DemoSettingsStore,
+	type DemoStoreProfile,
 	type DemoTarget,
 	demoOpeningHours,
 	demoRoles,
 	demoSettings,
+	demoStoreProfiles,
 	demoStores,
 	demoTargets,
 	feeEstimateMinor,
 	isExcludedDemoDay,
+	legalDraftSkeleton,
+	legalVersionLabel,
 	minorUnits,
+	type PaymentKindOverride,
 } from "../../src/index.js";
 
 const AS_OF = "2026-11-03";
@@ -32,6 +37,20 @@ const SECOND_ACCOUNT = "demo-second-account";
 function fresh(): DemoSettingsStore {
 	return new DemoSettingsStore(demoSettings(AS_OF));
 }
+
+function profileDefaults(storeId: "MOCK-S1" | "MOCK-S2"): DemoStoreProfile {
+	const profile = demoStoreProfiles(AS_OF).find(
+		(candidate) => candidate.storeId === storeId,
+	);
+	if (profile === undefined) throw new Error(`no profile of ${storeId}`);
+	return profile;
+}
+
+const KIND_OVERRIDE: PaymentKindOverride = {
+	posAccountId: DEMO_POS_ACCOUNT_ID,
+	paymentMethodExternalId: "PM-BANK",
+	kind: "cash",
+};
 
 const COST: DemoItemCost = {
 	storeId: null,
@@ -69,6 +88,7 @@ const NOTICE: DemoLegalDocument = {
 	title: "Thông báo xử lý dữ liệu cá nhân",
 	body: "Nội dung mẫu.",
 	publishedAt: null,
+	retiredAt: null,
 };
 
 function refusal(write: () => void): {
@@ -97,18 +117,35 @@ describe("the demo settings store's defaults", () => {
 		expect(settings.tenantProfile()).toMatchObject({
 			countryCode: "VN",
 			currencyCode: "VND",
-			legalForm: "unknown",
+			legalForm: "household_business",
+			defaultLanguage: "vi",
 		});
+		const [established, young] = demoStores(AS_OF);
 		expect(settings.storeProfiles()).toEqual([
 			{
 				storeId: "MOCK-S1",
 				code: "CH1",
 				openingHours: demoOpeningHours,
 				seatCount: 40,
+				openedOn: "2024-12-02",
+				eInvoiceStatus: "configured",
+				tranNoResetPeriod: "daily",
+				memberCaptureStatus: "enabled",
 			},
-			{ storeId: "MOCK-S2", code: "CH2", openingHours: null, seatCount: null },
+			{
+				storeId: "MOCK-S2",
+				code: "CH2",
+				openingHours: null,
+				seatCount: null,
+				openedOn: young?.openedOn,
+				eInvoiceStatus: "not_configured",
+				tranNoResetPeriod: "unknown",
+				memberCaptureStatus: "unknown",
+			},
 		]);
-		expect(settings.storeProfiles()).toEqual(DEMO_STORE_PROFILES);
+		expect(established?.openedOn).toBe("2024-12-02");
+		expect(young?.openedOn).not.toBeUndefined();
+		expect(settings.storeProfiles()).toEqual(demoStoreProfiles(AS_OF));
 		expect(settings.openingHoursOf("MOCK-S1")).toEqual(demoOpeningHours);
 		expect(settings.openingHoursOf("MOCK-S2")).toBeNull();
 		expect(settings.openingHoursOf("MOCK-S9")).toBeNull();
@@ -117,11 +154,25 @@ describe("the demo settings store's defaults", () => {
 		expect(settings.accountOf("MOCK-S1")).toBe(DEMO_POS_ACCOUNT_ID);
 		expect(settings.accountOf("MOCK-S2")).toBe(DEMO_POS_ACCOUNT_ID);
 		expect(settings.overrides()).toEqual([]);
+		expect(settings.paymentKindOverrides()).toEqual([]);
+		expect(settings.paymentKindOverrideOf(DEMO_POS_ACCOUNT_ID, "PM-BANK")).toBe(
+			null,
+		);
 		expect(settings.costs()).toEqual([]);
 		expect(settings.feeRates()).toEqual([]);
 		expect(settings.customHolidays()).toEqual([]);
 		expect(settings.holidays()).toBe(VIETNAM_HOLIDAYS);
-		expect(settings.legalDocuments()).toEqual([]);
+		expect(settings.legalDocuments()).toEqual([
+			{
+				kind: "privacy_notice",
+				versionLabel: "privacy-notice-2026-11",
+				language: "vi",
+				title: DEMO_PRIVACY_NOTICE_TITLE,
+				body: legalDraftSkeleton("vi"),
+				publishedAt: null,
+				retiredAt: null,
+			},
+		]);
 		expect(settings.hasReportSettingsRow()).toBe(false);
 		expect(settings.reportSettings()).toEqual(DEFAULT_REPORT_SETTINGS);
 		for (const storeId of ["MOCK-S1", "MOCK-S2"]) {
@@ -228,14 +279,21 @@ describe("which writes move which version", () => {
 			write: (settings) =>
 				settings.saveTenantProfile({
 					...DEMO_TENANT_PROFILE,
-					legalForm: "household_business",
+					legalForm: "micro_enterprise",
+					defaultLanguage: "en",
 				}),
+		},
+		{
+			name: "payment kind overrides",
+			ingest: true,
+			write: (settings) => settings.savePaymentKindOverrides([KIND_OVERRIDE]),
 		},
 		{
 			name: "a store profile",
 			ingest: false,
 			write: (settings) =>
 				settings.saveStoreProfile({
+					...profileDefaults("MOCK-S2"),
 					storeId: "MOCK-S2",
 					code: "CH2",
 					openingHours: { mon: [["07:00", "22:00"]] },
@@ -560,6 +618,7 @@ describe("refused writes", () => {
 			name: "a negative seat count",
 			write: (settings) =>
 				settings.saveStoreProfile({
+					...profileDefaults("MOCK-S1"),
 					storeId: "MOCK-S1",
 					code: "CH1",
 					openingHours: demoOpeningHours,
@@ -572,6 +631,7 @@ describe("refused writes", () => {
 			name: "half a seat",
 			write: (settings) =>
 				settings.saveStoreProfile({
+					...profileDefaults("MOCK-S1"),
 					storeId: "MOCK-S1",
 					code: "CH1",
 					openingHours: demoOpeningHours,
@@ -584,6 +644,7 @@ describe("refused writes", () => {
 			name: "an opening time past midnight",
 			write: (settings) =>
 				settings.saveStoreProfile({
+					...profileDefaults("MOCK-S1"),
 					storeId: "MOCK-S1",
 					code: "CH1",
 					openingHours: { mon: [["07:00", "25:00"]] },
@@ -596,6 +657,7 @@ describe("refused writes", () => {
 			name: "opening hours keyed by something other than a weekday",
 			write: (settings) =>
 				settings.saveStoreProfile({
+					...profileDefaults("MOCK-S1"),
 					storeId: "MOCK-S1",
 					code: "CH1",
 					openingHours: { holiday: [] } as never,
@@ -605,9 +667,154 @@ describe("refused writes", () => {
 			refusal: "format",
 		},
 		{
+			name: "an e-invoice status the table does not know",
+			write: (settings) =>
+				settings.saveStoreProfile({
+					...profileDefaults("MOCK-S2"),
+					eInvoiceStatus: "pending" as "configured",
+				}),
+			field: "eInvoiceStatus",
+			refusal: "format",
+		},
+		{
+			name: "a receipt numbering period the table does not know",
+			write: (settings) =>
+				settings.saveStoreProfile({
+					...profileDefaults("MOCK-S1"),
+					tranNoResetPeriod: "weekly" as "daily",
+				}),
+			field: "tranNoResetPeriod",
+			refusal: "format",
+		},
+		{
+			name: "a member feature status the table does not know",
+			write: (settings) =>
+				settings.saveStoreProfile({
+					...profileDefaults("MOCK-S1"),
+					memberCaptureStatus: "on" as "enabled",
+				}),
+			field: "memberCaptureStatus",
+			refusal: "format",
+		},
+		{
+			name: "an opening date that is not a calendar date",
+			write: (settings) =>
+				settings.saveStoreProfile({
+					...profileDefaults("MOCK-S1"),
+					openedOn: "2025-02-30",
+				}),
+			field: "openedOn",
+			refusal: "format",
+		},
+		{
+			name: "a default language the app does not offer",
+			write: (settings) =>
+				settings.saveTenantProfile({
+					...DEMO_TENANT_PROFILE,
+					defaultLanguage: "fr" as "vi",
+				}),
+			field: "defaultLanguage",
+			refusal: "format",
+		},
+		{
+			name: "a kind override of a payment method the account does not have",
+			write: (settings) =>
+				settings.savePaymentKindOverrides([
+					{ ...KIND_OVERRIDE, paymentMethodExternalId: "PM-GOLD" },
+				]),
+			field: "paymentMethodExternalId",
+			refusal: "reference",
+		},
+		{
+			name: "a kind override on a POS account no store uses",
+			write: (settings) =>
+				settings.savePaymentKindOverrides([
+					{ ...KIND_OVERRIDE, posAccountId: SECOND_ACCOUNT },
+				]),
+			field: "posAccountId",
+			refusal: "reference",
+		},
+		{
+			name: "a payment kind the table does not know",
+			write: (settings) =>
+				settings.savePaymentKindOverrides([
+					{ ...KIND_OVERRIDE, kind: "crypto" as "cash" },
+				]),
+			field: "kind",
+			refusal: "format",
+		},
+		{
+			name: "two kind overrides of one payment method",
+			write: (settings) =>
+				settings.savePaymentKindOverrides([
+					KIND_OVERRIDE,
+					{ ...KIND_OVERRIDE, kind: "ewallet" },
+				]),
+			field: "paymentMethodExternalId",
+			refusal: "duplicate",
+		},
+		{
+			name: "a retired draft",
+			write: (settings) =>
+				settings.saveLegalDocuments([
+					{ ...NOTICE, retiredAt: "2026-11-01T08:00:00Z" },
+				]),
+			field: "retiredAt",
+			refusal: "format",
+		},
+		{
+			name: "a new legal text saved as published rather than as a draft",
+			write: (settings) =>
+				settings.saveLegalDocuments([
+					{ ...NOTICE, publishedAt: "2026-11-01T08:00:00+07:00" },
+				]),
+			field: "publishedAt",
+			refusal: "format",
+		},
+		{
+			name: "a legal text in a language the table does not take",
+			write: (settings) =>
+				settings.saveLegalDocuments([{ ...NOTICE, language: "fr" }]),
+			field: "language",
+			refusal: "format",
+		},
+		{
+			name: "a version label with an underscore",
+			write: (settings) =>
+				settings.saveLegalDocuments([
+					{ ...NOTICE, versionLabel: "privacy_notice-2026-11" },
+				]),
+			field: "versionLabel",
+			refusal: "format",
+		},
+		{
+			name: "a legal title of 201 characters",
+			write: (settings) =>
+				settings.saveLegalDocuments([{ ...NOTICE, title: "a".repeat(201) }]),
+			field: "title",
+			refusal: "range",
+		},
+		{
+			name: "a legal body over 100,000 characters",
+			write: (settings) =>
+				settings.saveLegalDocuments([{ ...NOTICE, body: "a".repeat(100_001) }]),
+			field: "body",
+			refusal: "range",
+		},
+		{
+			name: "a legal document kind the table does not know",
+			write: (settings) =>
+				settings.saveLegalDocuments([
+					{ ...NOTICE, kind: "consent_wording" as "privacy_notice" },
+				]),
+			field: "kind",
+			refusal: "format",
+		},
+		{
 			name: "a profile of an unknown store",
 			write: (settings) =>
 				settings.saveStoreProfile({
+					...profileDefaults("MOCK-S1"),
 					storeId: "MOCK-S9" as "MOCK-S1",
 					code: null,
 					openingHours: null,
@@ -665,6 +872,7 @@ describe("refused writes", () => {
 		const settings = fresh();
 		const hours = structuredClone(demoOpeningHours);
 		settings.saveStoreProfile({
+			...profileDefaults("MOCK-S2"),
 			storeId: "MOCK-S2",
 			code: "CH2",
 			openingHours: hours,
@@ -685,8 +893,10 @@ describe("refused writes", () => {
 				publishedAt,
 			).toThrow(DemoSettingsError);
 		}
+		const settings = fresh();
+		settings.saveLegalDocuments([NOTICE]);
 		expect(() =>
-			fresh().saveLegalDocuments([
+			settings.saveLegalDocuments([
 				{ ...NOTICE, publishedAt: "2026-11-01T08:00:00+07:00" },
 			]),
 		).not.toThrow();
@@ -700,6 +910,7 @@ describe("refused writes", () => {
 			{ ...FEE_RATE, storeId: "MOCK-S2", feePct: 999.999, fixedFeeAmount: 0 },
 		]);
 		settings.saveStoreProfile({
+			...profileDefaults("MOCK-S2"),
 			storeId: "MOCK-S2",
 			code: null,
 			openingHours: { sat: [["7:05", "24:00"]], sun: [] },
@@ -710,8 +921,8 @@ describe("refused writes", () => {
 			{ ...TARGET, periodKind: "week", periodStart: "2026-11-02" },
 		]);
 		settings.saveLegalDocuments([
-			NOTICE,
-			{ ...NOTICE, versionLabel: "v2", publishedAt: "2026-11-01T08:00:00Z" },
+			{ ...NOTICE, title: "a".repeat(200), body: "a".repeat(100_000) },
+			{ ...NOTICE, versionLabel: "0.a-b", language: "en" },
 		]);
 		expect(settings.version).toBe(5);
 		expect(settings.openingHoursOf("MOCK-S2")).toEqual({
@@ -875,5 +1086,162 @@ describe("the second POS account", () => {
 		settings.saveStoreAccounts({ "MOCK-S2": SECOND_ACCOUNT });
 		expect(settings.rolesConfigured("MOCK-S2")).toBe(false);
 		expect(settings.rolesConfigured("MOCK-S1")).toBe(true);
+	});
+});
+
+describe("the 10b settings of the demo store", () => {
+	it("drafts a legal text from the skeleton's six headings, with no wording under them", () => {
+		expect(legalDraftSkeleton("vi")).toBe(
+			[
+				"## Mục đích xử lý dữ liệu",
+				"## Dữ liệu được thu thập",
+				"## Thời gian lưu trữ",
+				"## Quyền của chủ thể dữ liệu và cách thực hiện",
+				"## Liên hệ",
+				"## Bên xử lý dữ liệu và lưu trữ ở nước ngoài",
+			].join("\n\n"),
+		);
+		const english = legalDraftSkeleton("en").split("\n\n");
+		expect(english).toHaveLength(6);
+		expect(english.every((line) => /^## \S/.test(line))).toBe(true);
+	});
+
+	it("takes every kind of the table and suggests version labels the table accepts", () => {
+		const settings = fresh();
+		const kinds = [
+			"privacy_notice",
+			"data_protection_rules",
+			"mini_app_terms",
+			"staff_notice",
+			"loyalty_consent_text",
+			"marketing_consent_text",
+		] as const;
+		settings.saveLegalDocuments(
+			kinds.map((kind) => ({
+				...NOTICE,
+				kind,
+				versionLabel: legalVersionLabel(kind, AS_OF),
+			})),
+		);
+		expect(settings.legalDocuments().map((row) => row.versionLabel)).toEqual([
+			"privacy-notice-2026-11",
+			"data-protection-rules-2026-11",
+			"mini-app-terms-2026-11",
+			"staff-notice-2026-11",
+			"loyalty-consent-text-2026-11",
+			"marketing-consent-text-2026-11",
+		]);
+	});
+
+	it("publishes a draft, retires the text it replaces, and never edits or deletes a published or retired text", () => {
+		const settings = fresh();
+		const v1 = { ...NOTICE, versionLabel: "v1" };
+		const v2 = { ...NOTICE, versionLabel: "v2", body: "Bản mới." };
+		settings.saveLegalDocuments([v1, v2]);
+		const published = { ...v1, publishedAt: "2026-11-01T08:00:00+07:00" };
+		settings.saveLegalDocuments([published, v2]);
+		const retired = { ...published, retiredAt: "2026-11-02T08:00:00+07:00" };
+		const current = { ...v2, publishedAt: "2026-11-02T08:00:00+07:00" };
+		settings.saveLegalDocuments([retired, current]);
+		expect(
+			settings
+				.legalDocuments()
+				.map((row) => [
+					row.versionLabel,
+					row.publishedAt !== null,
+					row.retiredAt !== null,
+				]),
+		).toEqual([
+			["v1", true, true],
+			["v2", true, false],
+		]);
+		const before = settings.snapshot();
+		const cases: readonly [() => void, string, DemoSettingsRefusal][] = [
+			[
+				() =>
+					settings.saveLegalDocuments([retired, { ...current, body: "Sửa." }]),
+				"body",
+				"frozen",
+			],
+			[
+				() =>
+					settings.saveLegalDocuments([{ ...retired, title: "Khác" }, current]),
+				"body",
+				"frozen",
+			],
+			[() => settings.saveLegalDocuments([retired]), "body", "frozen"],
+			[() => settings.saveLegalDocuments([current]), "body", "frozen"],
+			[
+				() =>
+					settings.saveLegalDocuments([
+						{ ...retired, retiredAt: null },
+						current,
+					]),
+				"publishedAt",
+				"duplicate",
+			],
+			[
+				() =>
+					settings.saveLegalDocuments([
+						retired,
+						current,
+						{
+							...NOTICE,
+							language: "en",
+							versionLabel: "v3",
+							publishedAt: "2026-11-03T08:00:00Z",
+						},
+					]),
+				"publishedAt",
+				"format",
+			],
+		];
+		for (const [write, field, refused] of cases) {
+			expect(refusal(write)).toEqual({ field, refusal: refused });
+		}
+		expect(settings.snapshot()).toBe(before);
+		settings.saveLegalDocuments([
+			retired,
+			current,
+			{ ...NOTICE, versionLabel: "v3" },
+		]);
+		expect(
+			refusal(() =>
+				settings.saveLegalDocuments([
+					retired,
+					current,
+					{
+						...NOTICE,
+						versionLabel: "v3",
+						publishedAt: "2026-11-03T08:00:00Z",
+					},
+				]),
+			),
+		).toEqual({ field: "publishedAt", refusal: "duplicate" });
+		settings.saveLegalDocuments([retired, current]);
+		expect(settings.legalDocuments()).toHaveLength(2);
+	});
+
+	it("answers the effective kind override of each account and payment method", () => {
+		const settings = fresh();
+		settings.saveStoreAccounts({ "MOCK-S2": SECOND_ACCOUNT });
+		settings.savePaymentKindOverrides([
+			KIND_OVERRIDE,
+			{ ...KIND_OVERRIDE, posAccountId: SECOND_ACCOUNT, kind: "ewallet" },
+		]);
+		expect(settings.ingestVersion).toBe(2);
+		expect(settings.paymentKindOverrideOf(DEMO_POS_ACCOUNT_ID, "PM-BANK")).toBe(
+			"cash",
+		);
+		expect(settings.paymentKindOverrideOf(SECOND_ACCOUNT, "PM-BANK")).toBe(
+			"ewallet",
+		);
+		expect(
+			settings.paymentKindOverrideOf(DEMO_POS_ACCOUNT_ID, "PM-CASH"),
+		).toBeNull();
+		settings.savePaymentKindOverrides([]);
+		expect(
+			settings.paymentKindOverrideOf(DEMO_POS_ACCOUNT_ID, "PM-BANK"),
+		).toBeNull();
 	});
 });

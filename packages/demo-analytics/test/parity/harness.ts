@@ -28,12 +28,13 @@ import type postgres from "postgres";
 import {
 	createDemoAnalyticsSource,
 	DEMO_SEED,
-	DEMO_STORE_PROFILES,
+	DEMO_TENANT_PROFILE,
 	type DemoAnalyticsSource,
 	DemoDayCache,
 	type DemoStoreDefinition,
 	type DemoStoreId,
 	demoRoles,
+	demoStoreProfiles,
 	minorUnits,
 } from "../../src/index.js";
 import {
@@ -493,6 +494,9 @@ function datasetDays(dataset: ParityDataset, clock: ParityClock): DemoDayCache {
 		now: () => clock.now,
 		volumeScale: dataset.volumeScale,
 		window: datasetWindow(dataset, clock),
+		...(dataset.rewriteDay === undefined
+			? {}
+			: { rewriteDay: dataset.rewriteDay }),
 	});
 }
 
@@ -545,6 +549,9 @@ async function seedDataset(
 	const window = datasetWindow(dataset, clock);
 	const days = datasetDays(dataset, clock);
 	const definitions = days.stores();
+	const profiles = new Map(
+		demoStoreProfiles(clock.asOf).map((profile) => [profile.storeId, profile]),
+	);
 	const stores = Object.fromEntries(
 		definitions.map((definition) => [
 			definition.id,
@@ -555,7 +562,16 @@ async function seedDataset(
 	const statements: string[] = [
 		...insertStatements(
 			"public.tenants",
-			["id", "slug", "name", "country_code", "currency_code", "timezone"],
+			[
+				"id",
+				"slug",
+				"name",
+				"country_code",
+				"currency_code",
+				"timezone",
+				"legal_form",
+				"default_language",
+			],
 			[
 				{
 					id: tenantId,
@@ -564,6 +580,8 @@ async function seedDataset(
 					country_code: "VN",
 					currency_code: "VND",
 					timezone: "Asia/Ho_Chi_Minh",
+					legal_form: DEMO_TENANT_PROFILE.legalForm,
+					default_language: DEMO_TENANT_PROFILE.defaultLanguage,
 				},
 			],
 		),
@@ -593,22 +611,28 @@ async function seedDataset(
 				"business_day_start_minutes",
 				"opening_hours",
 				"opened_on",
+				"e_invoice_status",
+				"tran_no_reset_period",
+				"member_capture_status",
 			],
-			Object.values(stores).map(({ definition, uuid }) => ({
-				id: uuid,
-				tenant_id: tenantId,
-				pos_account_id: posAccountId,
-				external_id: definition.id,
-				code: definition.id,
-				name: definition.name,
-				timezone: definition.timeZone,
-				business_day_start_minutes: definition.businessDayStartMinutes,
-				opening_hours:
-					DEMO_STORE_PROFILES.find(
-						(profile) => profile.storeId === definition.id,
-					)?.openingHours ?? null,
-				opened_on: definition.openedOn,
-			})),
+			Object.values(stores).map(({ definition, uuid }) => {
+				const profile = profiles.get(definition.id);
+				return {
+					id: uuid,
+					tenant_id: tenantId,
+					pos_account_id: posAccountId,
+					external_id: definition.id,
+					code: definition.id,
+					name: definition.name,
+					timezone: definition.timeZone,
+					business_day_start_minutes: definition.businessDayStartMinutes,
+					opening_hours: profile?.openingHours ?? null,
+					opened_on: definition.openedOn,
+					e_invoice_status: profile?.eInvoiceStatus ?? "unknown",
+					tran_no_reset_period: profile?.tranNoResetPeriod ?? "unknown",
+					member_capture_status: profile?.memberCaptureStatus ?? "unknown",
+				};
+			}),
 		),
 		...insertStatements(
 			"public.payment_methods",
@@ -968,7 +992,7 @@ export async function openParityDatabase(
 		const record = byKey.get(datasetKey(dataset));
 		return record === undefined
 			? []
-			: [seededDataset(record, clock, seededDays.get(record))];
+			: [seededDataset({ ...record, dataset }, clock, seededDays.get(record))];
 	});
 	if (seeded.length !== datasets.length) {
 		await close();

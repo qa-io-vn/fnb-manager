@@ -34,11 +34,17 @@ const DEMO_STORE_CLOCK = {
 const DEMO_STORE_CLOCKS = [DEMO_STORE_CLOCK];
 const MILLISECONDS_PER_MINUTE = 60_000;
 
+export type DemoDayRewrite = (
+	store: DemoStoreDefinition,
+	day: GeneratedDay,
+) => GeneratedDay;
+
 export interface DemoDayCacheOptions {
 	readonly now?: () => Date;
 	readonly volumeScale?: number;
 	readonly rawRetentionDays?: number;
 	readonly window?: DateRange;
+	readonly rewriteDay?: DemoDayRewrite;
 }
 
 interface YieldingScheduler {
@@ -70,6 +76,7 @@ export class DemoDayCache {
 	readonly rawRetentionDays: number;
 	readonly window: DateRange | null;
 	private readonly clock: () => Date;
+	private readonly rewriteDay: DemoDayRewrite | null;
 	private epoch: Epoch | null = null;
 	private mappings: IngestMappings = DEFAULT_INGEST_MAPPINGS;
 	private generationCount = 0;
@@ -84,6 +91,7 @@ export class DemoDayCache {
 		this.volumeScale = options.volumeScale ?? 1;
 		this.rawRetentionDays = options.rawRetentionDays ?? RAW_DAY_RETENTION_DAYS;
 		this.window = options.window ?? null;
+		this.rewriteDay = options.rewriteDay ?? null;
 	}
 
 	now(): Date {
@@ -208,7 +216,7 @@ export class DemoDayCache {
 		date: IsoDate,
 	): GeneratedDay {
 		this.generationCount += 1;
-		return dressFreshDemoDay(
+		const day = dressFreshDemoDay(
 			generateDay(
 				DEMO_SEED,
 				plan.profile,
@@ -217,6 +225,7 @@ export class DemoDayCache {
 				plan.menu,
 			),
 		);
+		return this.rewriteDay === null ? day : this.rewriteDay(store, day);
 	}
 
 	private produce(

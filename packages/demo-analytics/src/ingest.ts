@@ -1,5 +1,6 @@
 import { type GeneratedDay, MENU } from "@fnb/connector-mock";
 import {
+	type AdjustmentKind,
 	businessDate,
 	type CanonicalLine,
 	type CanonicalSale,
@@ -7,14 +8,14 @@ import {
 	roundMoney,
 } from "@fnb/core";
 import type { IsoDate, PromotionKind } from "@fnb/reports";
-import { toDbLineKind } from "@fnb/sync";
+import { adjustmentEvents, toDbLineKind } from "@fnb/sync";
 import type { DemoStoreDefinition } from "./calendar.js";
 import {
 	DEFAULT_INGEST_MAPPINGS,
 	type DemoFeeRate,
 	type IngestMappings,
 } from "./mappings.js";
-import { PgDecimal } from "./pg-numeric.js";
+import { money, PgDecimal } from "./pg-numeric.js";
 import { byteOrder } from "./text-order.js";
 
 export interface DailyAggregate {
@@ -97,6 +98,50 @@ export interface ShiftAggregate {
 	readonly expectedCashMinor: number | null;
 	readonly drawerMinor: number | null;
 	readonly varianceMinor: number | null;
+	readonly changedAfterClose: boolean;
+}
+
+export interface ShiftSales {
+	readonly shiftExternalId: string;
+	readonly orders: number;
+	readonly itemLines: number;
+}
+
+export interface DiscountRow {
+	readonly invoiceExternalId: string;
+	readonly kind: PromotionKind;
+	readonly key: string;
+	readonly name: string;
+	readonly itemKey: string | null;
+	readonly discountMinor: number;
+	readonly baseMinor: number;
+	readonly rate: PgDecimal | null;
+}
+
+export interface DiscountedItem {
+	readonly itemKey: string;
+	readonly itemName: string;
+}
+
+export interface DiscountedInvoice {
+	readonly invoiceExternalId: string;
+	readonly grossMinor: number;
+	readonly items: readonly DiscountedItem[];
+}
+
+export interface AdjustmentEvent {
+	readonly invoiceExternalId: string;
+	readonly kind: AdjustmentKind;
+	readonly occurredAt: string;
+	readonly businessDate: IsoDate;
+	readonly amountMinor: number | null;
+	readonly saleExists: boolean;
+	readonly saleShiftExternalId: string | null;
+}
+
+export interface ReceiptNumbers {
+	readonly allDigits: boolean;
+	readonly smallest: bigint | null;
 }
 
 export interface PromotionUsage {
@@ -133,6 +178,11 @@ export interface StoreDayAggregates {
 	readonly promotions: readonly PromotionUsage[];
 	readonly itemLines: number;
 	readonly removedLinesByDate: ReadonlyMap<IsoDate, number>;
+	readonly shiftSales: readonly ShiftSales[];
+	readonly discounts: readonly DiscountRow[];
+	readonly discountedInvoices: readonly DiscountedInvoice[];
+	readonly events: readonly AdjustmentEvent[];
+	readonly receipts: ReceiptNumbers | null;
 }
 
 export function minorUnits(value: number): number {
@@ -179,6 +229,169 @@ export function paymentMethodOf(
 	externalId: string | null,
 ): PaymentMethodInfo | undefined {
 	return externalId === null ? undefined : paymentMethods.get(externalId);
+}
+
+export function effectivePaymentKind(
+	mappings: IngestMappings,
+	accountId: string,
+	externalId: string | null,
+): PaymentKind | undefined {
+	const method = paymentMethodOf(externalId);
+	if (method === undefined || externalId === null) return undefined;
+	return mappings.paymentKindOverrideOf(accountId, externalId) ?? method.kind;
+}
+
+const DIGITS = /^[0-9]+$/;
+const BIGINT_DIGITS = /^[0-9]{1,18}$/;
+
+export function receiptNumbersOf(
+	sales: readonly CanonicalSale[],
+): ReceiptNumbers | null {
+	let seen = false;
+	let allDigits = true;
+	let smallest: bigint | null = null;
+	for (const sale of sales) {
+		const receipt = textOrNull(sale.receiptNo);
+		if (receipt === null) continue;
+		seen = true;
+		if (!DIGITS.test(receipt)) allDigits = false;
+		if (BIGINT_DIGITS.test(receipt)) {
+			const value = BigInt(receipt);
+			if (smallest === null || value < smallest) smallest = value;
+		}
+	}
+	return seen ? { allDigits, smallest } : null;
+}
+
+function discountRate(
+	discountMinor: number,
+	baseMinor: number,
+): PgDecimal | null {
+	if (baseMinor === 0) return null;
+	return money(discountMinor).div(money(baseMinor)).round(6);
+}
+
+function discountRow(
+	invoiceExternalId: string,
+	kind: PromotionKind,
+	key: string,
+	name: string | null,
+	itemKey: string | null,
+	discountMinor: number,
+	baseMinor: number,
+): DiscountRow {
+	return {
+		invoiceExternalId,
+		kind,
+		key,
+		name: name ?? key,
+		itemKey,
+		discountMinor,
+		baseMinor,
+		rate: discountRate(discountMinor, baseMinor),
+	};
+}
+
+export function saleDiscountRows(sale: CanonicalSale): DiscountRow[] {
+	const rows: DiscountRow[] = [];
+	for (const line of sale.lines) {
+		if (!isItemLine(line)) continue;
+		const lineDiscount = minorUnits(line.discountAmount);
+		if (lineDiscount <= 0) continue;
+		const name = textOrNull(line.promotionName);
+		rows.push(
+			discountRow(
+				sale.externalId,
+				"item",
+				textOrNull(line.promotionExternalId) ?? name ?? "unnamed",
+				name,
+				textOrNull(line.itemExternalId) ?? line.itemName,
+				lineDiscount,
+				minorUnits(line.grossAmount),
+			),
+		);
+	}
+	const grossMinor = minorUnits(sale.grossAmount);
+	const itemDiscountMinor = minorUnits(sale.itemDiscountAmount);
+	const billMinor = minorUnits(sale.billDiscountAmount);
+	if (billMinor > 0) {
+		const name = textOrNull(sale.billDiscountName);
+		rows.push(
+			discountRow(
+				sale.externalId,
+				"bill",
+				name ?? "unnamed",
+				name,
+				null,
+				billMinor,
+				grossMinor - itemDiscountMinor,
+			),
+		);
+	}
+	if (hasVoucher(sale)) {
+		const name = textOrNull(sale.voucherName);
+		rows.push(
+			discountRow(
+				sale.externalId,
+				"voucher",
+				name ?? textOrNull(sale.voucherCode) ?? "unnamed",
+				name,
+				null,
+				minorUnits(sale.voucherAmount),
+				grossMinor - itemDiscountMinor - billMinor,
+			),
+		);
+	}
+	return rows;
+}
+
+function discountedInvoice(sale: CanonicalSale): DiscountedInvoice {
+	const names = new Map<string, string>();
+	for (const line of sale.lines) {
+		if (!isItemLine(line)) continue;
+		const key = textOrNull(line.itemExternalId) ?? line.itemName;
+		names.set(
+			key,
+			maxText(names.get(key) ?? null, line.itemName) ?? line.itemName,
+		);
+	}
+	return {
+		invoiceExternalId: sale.externalId,
+		grossMinor: minorUnits(sale.grossAmount),
+		items: [...names.entries()].map(([itemKey, itemName]) => ({
+			itemKey,
+			itemName,
+		})),
+	};
+}
+
+function adjustmentEventsOf(
+	store: DemoStoreDefinition,
+	day: GeneratedDay,
+): AdjustmentEvent[] {
+	const sales = new Map(day.sales.map((sale) => [sale.externalId, sale]));
+	return adjustmentEvents(day.adjustments, {
+		tenantId: "",
+		storeId: store.id,
+	}).events.map((event) => {
+		const sale = sales.get(event.invoice_external_id);
+		const occurredAt = new Date(event.occurred_at);
+		return {
+			invoiceExternalId: event.invoice_external_id,
+			kind: event.kind,
+			occurredAt: occurredAt.toISOString(),
+			businessDate: businessDate(
+				occurredAt,
+				store.timeZone,
+				store.businessDayStartMinutes,
+			),
+			amountMinor:
+				event.amount === null ? null : minorUnits(Number(event.amount)),
+			saleExists: sale !== undefined,
+			saleShiftExternalId:
+				sale === undefined ? null : textOrNull(sale.shiftExternalId),
+		};
+	});
 }
 
 const hourOffsets = new Map<string, Map<number, number>>();
@@ -327,6 +540,9 @@ export function aggregateStoreDay(
 	const payments = new Map<string, Accumulating<PaymentAggregate>>();
 	const sizes = new Map<string, Writable<SizeAggregate>>();
 	const promotions = new Map<string, Accumulating<PromotionUsage>>();
+	const shiftSales = new Map<string, Writable<ShiftSales>>();
+	const discounts: DiscountRow[] = [];
+	const discountedInvoices: DiscountedInvoice[] = [];
 	let itemLines = 0;
 	let drinkInvoices = 0;
 	let toppingInvoices = 0;
@@ -382,8 +598,11 @@ export function aggregateStoreDay(
 		const cashMinor = sale.payments
 			.filter(
 				(payment) =>
-					paymentMethodOf(textOrNull(payment.methodExternalId))?.kind ===
-					"cash",
+					effectivePaymentKind(
+						mappings,
+						account,
+						textOrNull(payment.methodExternalId),
+					) === "cash",
 			)
 			.reduce((total, payment) => total + minorUnits(payment.amount), 0);
 		daily.invoices += 1;
@@ -516,6 +735,25 @@ export function aggregateStoreDay(
 			}
 		}
 		itemLines += saleItemLines;
+		const saleShift = textOrNull(sale.shiftExternalId);
+		if (saleShift !== null) {
+			const known = shiftSales.get(saleShift);
+			if (known === undefined) {
+				shiftSales.set(saleShift, {
+					shiftExternalId: saleShift,
+					orders: 1,
+					itemLines: saleItemLines,
+				});
+			} else {
+				known.orders += 1;
+				known.itemLines += saleItemLines;
+			}
+		}
+		const saleDiscounts = saleDiscountRows(sale);
+		if (saleDiscounts.length > 0) {
+			discounts.push(...saleDiscounts);
+			discountedInvoices.push(discountedInvoice(sale));
+		}
 		if (saleItemLines > 0) {
 			invoicesWithItems += 1;
 			const keys = [...saleKeys].sort(byteOrder);
@@ -590,7 +828,7 @@ export function aggregateStoreDay(
 				payments.set(methodId, {
 					methodExternalId: methodId,
 					methodName: method?.name ?? textOrNull(payment.methodName),
-					kind: method?.kind ?? "other",
+					kind: effectivePaymentKind(mappings, account, rawMethodId) ?? "other",
 					invoices: 0,
 					amountMinor,
 					feeMinor,
@@ -607,19 +845,23 @@ export function aggregateStoreDay(
 	}
 
 	const cashByShift = new Map<string, number>();
+	const posCashByShift = new Map<string, number>();
 	for (const sale of day.sales) {
 		if (sale.status === "voided") continue;
 		const shiftId = textOrNull(sale.shiftExternalId);
 		if (shiftId === null) continue;
 		for (const payment of sale.payments) {
-			if (
-				paymentMethodOf(textOrNull(payment.methodExternalId))?.kind !== "cash"
-			)
-				continue;
-			cashByShift.set(
-				shiftId,
-				(cashByShift.get(shiftId) ?? 0) + minorUnits(payment.amount),
-			);
+			const methodId = textOrNull(payment.methodExternalId);
+			const amount = minorUnits(payment.amount);
+			if (paymentMethodOf(methodId)?.kind === "cash") {
+				posCashByShift.set(
+					shiftId,
+					(posCashByShift.get(shiftId) ?? 0) + amount,
+				);
+			}
+			if (effectivePaymentKind(mappings, account, methodId) === "cash") {
+				cashByShift.set(shiftId, (cashByShift.get(shiftId) ?? 0) + amount);
+			}
 		}
 	}
 
@@ -635,7 +877,9 @@ export function aggregateStoreDay(
 				? null
 				: minorUnits(shift.openingFloatAmount);
 		const expectedCashMinor =
-			openingFloatMinor === null ? null : openingFloatMinor + cashSalesMinor;
+			openingFloatMinor === null
+				? null
+				: openingFloatMinor + (posCashByShift.get(shift.externalId) ?? 0);
 		const drawerMinor =
 			shift.cashDrawerAmount === undefined
 				? null
@@ -659,6 +903,7 @@ export function aggregateStoreDay(
 				drawerMinor === null || expectedCashMinor === null
 					? null
 					: drawerMinor - expectedCashMinor,
+			changedAfterClose: shift.changedAfterClose,
 		};
 	});
 
@@ -726,5 +971,10 @@ export function aggregateStoreDay(
 		})),
 		itemLines,
 		removedLinesByDate,
+		shiftSales: [...shiftSales.values()],
+		discounts,
+		discountedInvoices,
+		events: adjustmentEventsOf(store, day),
+		receipts: receiptNumbersOf(day.sales),
 	};
 }

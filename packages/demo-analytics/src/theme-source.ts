@@ -1,5 +1,6 @@
 import {
 	addDays,
+	daysBetween,
 	INVALID_ARGUMENTS_CODE,
 	INVALID_ROWS_CODE,
 	type IsoDate,
@@ -12,13 +13,28 @@ import {
 } from "@fnb/reports";
 import { z } from "zod";
 import type { AggregateStore, StoreDayRange } from "./aggregates.js";
+import { ESTABLISHED_STORE_OPENED_ON } from "./calendar.js";
 import {
 	BASKET_PAIRS_MAX_DAYS,
 	basketPairs,
 } from "./functions/basket-pairs.js";
+import {
+	DATA_QUALITY_ITEMS_MAX_DAYS,
+	dataQualityItems,
+} from "./functions/data-quality-items.js";
+import {
+	DATA_QUALITY_PAYMENTS_MAX_DAYS,
+	dataQualityPayments,
+} from "./functions/data-quality-payments.js";
+import {
+	DATA_QUALITY_SUMMARY_MAX_DAYS,
+	dataQualitySummary,
+	RECEIPT_LOOKBACK_DAYS,
+} from "./functions/data-quality-summary.js";
 import { hourProfile } from "./functions/hour-profile.js";
 import { hourWeekdayHeatmap } from "./functions/hour-weekday-heatmap.js";
 import { ITEM_ATTACH_MAX_DAYS, itemAttach } from "./functions/item-attach.js";
+import { itemDiscountDays } from "./functions/item-discount-days.js";
 import {
 	ITEM_MARGINS_MAX_DAYS,
 	itemMargins,
@@ -29,9 +45,27 @@ import {
 	modifierSummary,
 } from "./functions/modifier-summary.js";
 import { openingProductivity } from "./functions/opening-productivity.js";
-import { noPlannedRead, portPending } from "./functions/port-pending.js";
+import { promotionCatalogue } from "./functions/promotion-catalogue.js";
+import {
+	PROMOTION_COMPLIANCE_MAX_DAYS,
+	promotionCompliance,
+} from "./functions/promotion-compliance.js";
+import {
+	PROMOTION_DAYS_MAX_DAYS,
+	promotionDays,
+} from "./functions/promotion-days.js";
+import {
+	PROMOTION_LIFT_LOOKBACK_DAYS,
+	PROMOTION_LIFT_MAX_DAYS,
+	promotionLift,
+} from "./functions/promotion-lift.js";
 import { rangeTotals } from "./functions/range-totals.js";
 import { reportSettingsOf } from "./functions/report-settings-of.js";
+import {
+	SHIFT_ADJUSTMENTS_MAX_DAYS,
+	SHIFT_ADJUSTMENTS_TRAILING_DAYS,
+	shiftAdjustments,
+} from "./functions/shift-adjustments.js";
 import type {
 	ThemeHandler,
 	ThemeHandlerArgs,
@@ -49,6 +83,9 @@ import {
 } from "./source.js";
 
 const MENU_WINDOW_MAX_DAYS = 91;
+const LAST_FOUR_DIGIT_YEAR = 9999;
+const EVENT_DAYS_AFTER_SALE = 1;
+const SHIFT_WINDOW_DAYS_BEFORE = 2;
 
 type ThemeHandlers = {
 	readonly [N in ThemeFunctionName]: ThemeHandler<N>;
@@ -71,15 +108,15 @@ export const themeHandlers: ThemeHandlers = {
 	item_attach: itemAttach,
 	basket_pairs: basketPairs,
 	modifier_summary: modifierSummary,
-	promotion_days: portPending("promotion_days"),
-	promotion_catalogue: portPending("promotion_catalogue"),
-	promotion_lift: portPending("promotion_lift"),
-	promotion_compliance: portPending("promotion_compliance"),
-	item_discount_days: portPending("item_discount_days"),
-	shift_adjustments: portPending("shift_adjustments"),
-	data_quality_items: portPending("data_quality_items"),
-	data_quality_summary: portPending("data_quality_summary"),
-	data_quality_payments: portPending("data_quality_payments"),
+	promotion_days: promotionDays,
+	promotion_catalogue: promotionCatalogue,
+	promotion_lift: promotionLift,
+	promotion_compliance: promotionCompliance,
+	item_discount_days: itemDiscountDays,
+	shift_adjustments: shiftAdjustments,
+	data_quality_items: dataQualityItems,
+	data_quality_summary: dataQualitySummary,
+	data_quality_payments: dataQualityPayments,
 };
 
 function span(
@@ -161,15 +198,82 @@ export const themeReads: ThemeReads = {
 				)
 			: []),
 	],
-	promotion_days: noPlannedRead,
-	promotion_catalogue: noPlannedRead,
-	promotion_lift: noPlannedRead,
-	promotion_compliance: noPlannedRead,
-	item_discount_days: noPlannedRead,
-	shift_adjustments: noPlannedRead,
-	data_quality_items: noPlannedRead,
-	data_quality_summary: noPlannedRead,
-	data_quality_payments: noPlannedRead,
+	promotion_days: (args) =>
+		limitedSpan(
+			args.store_ids,
+			args.from_date,
+			args.to_date,
+			PROMOTION_DAYS_MAX_DAYS,
+		),
+	promotion_catalogue: (args) => [
+		span(args.store_ids, ESTABLISHED_STORE_OPENED_ON, args.as_of_date),
+	],
+	promotion_lift: (args) =>
+		limitedSpan(
+			args.store_ids,
+			addDays(args.from_date, -PROMOTION_LIFT_LOOKBACK_DAYS),
+			args.to_date,
+			PROMOTION_LIFT_MAX_DAYS + PROMOTION_LIFT_LOOKBACK_DAYS,
+		),
+	promotion_compliance: (args) =>
+		limitedSpan(
+			args.store_ids,
+			args.from_date,
+			args.to_date,
+			PROMOTION_COMPLIANCE_MAX_DAYS,
+		),
+	item_discount_days: (args) => {
+		if (args.calendar_year > LAST_FOUR_DIGIT_YEAR) return [];
+		const yearEnd = `${args.calendar_year}-12-31`;
+		const asOf = args.as_of_date ?? yearEnd;
+		return [
+			span(
+				args.store_ids,
+				`${args.calendar_year}-01-01`,
+				asOf < yearEnd ? asOf : yearEnd,
+			),
+		];
+	},
+	shift_adjustments: (args) =>
+		limitedSpan(
+			args.store_ids,
+			addDays(
+				args.from_date,
+				-(SHIFT_ADJUSTMENTS_TRAILING_DAYS + EVENT_DAYS_AFTER_SALE),
+			),
+			addDays(args.to_date, EVENT_DAYS_AFTER_SALE),
+			SHIFT_ADJUSTMENTS_MAX_DAYS +
+				SHIFT_ADJUSTMENTS_TRAILING_DAYS +
+				2 * EVENT_DAYS_AFTER_SALE,
+		),
+	data_quality_items: (args) =>
+		limitedSpan(
+			args.store_ids,
+			args.from_date,
+			args.to_date,
+			DATA_QUALITY_ITEMS_MAX_DAYS,
+		),
+	data_quality_summary: (args) => {
+		const daysBack = Math.max(
+			daysBetween(args.from_date, args.to_date) + SHIFT_WINDOW_DAYS_BEFORE,
+			RECEIPT_LOOKBACK_DAYS - 1,
+		);
+		return limitedSpan(
+			args.store_ids,
+			addDays(args.to_date, -daysBack),
+			addDays(args.to_date, EVENT_DAYS_AFTER_SALE),
+			DATA_QUALITY_SUMMARY_MAX_DAYS +
+				SHIFT_WINDOW_DAYS_BEFORE +
+				EVENT_DAYS_AFTER_SALE,
+		);
+	},
+	data_quality_payments: (args) =>
+		limitedSpan(
+			args.store_ids,
+			args.from_date,
+			args.to_date,
+			DATA_QUALITY_PAYMENTS_MAX_DAYS,
+		),
 };
 
 function issues(error: z.ZodError): string {

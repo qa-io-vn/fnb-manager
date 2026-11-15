@@ -1,5 +1,4 @@
 import { ThemeCallError, type ThemeFunctionName } from "@fnb/reports";
-import type { StoreDayRange } from "../aggregates.js";
 import type { ThemeHandler } from "./theme-support.js";
 
 export const NOT_IMPLEMENTED_CODE = "not_implemented";
@@ -28,8 +27,4 @@ export function portPending<N extends PortPendingFunction>(
 			"the demo has no port of this function yet",
 		);
 	};
-}
-
-export function noPlannedRead(): readonly StoreDayRange[] {
-	return [];
 }

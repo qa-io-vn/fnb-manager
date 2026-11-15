@@ -1,3 +1,4 @@
+import type { PaymentKind } from "@fnb/core";
 import type { IsoDate } from "@fnb/reports";
 import { DEMO_POS_ACCOUNT_ID, type DemoRole, demoRoles } from "./calendar.js";
 
@@ -8,6 +9,12 @@ export interface CategoryOverride {
 	readonly itemExternalId: string;
 	readonly itemTypeExternalId: string;
 	readonly itemTypeName: string | null;
+}
+
+export interface PaymentKindOverride {
+	readonly posAccountId: string;
+	readonly paymentMethodExternalId: string;
+	readonly kind: PaymentKind;
 }
 
 export interface DemoFeeRate {
@@ -27,6 +34,10 @@ export interface IngestMappings {
 	): DemoRoleName | null;
 	mapsRole(accountId: string, role: DemoRoleName): boolean;
 	overrideOf(accountId: string, itemKey: string): CategoryOverride | null;
+	paymentKindOverrideOf(
+		accountId: string,
+		paymentMethodExternalId: string,
+	): PaymentKind | null;
 	feeRateOf(
 		storeId: string,
 		paymentMethodExternalId: string | null,
@@ -126,5 +137,6 @@ export const DEFAULT_INGEST_MAPPINGS: IngestMappings = {
 		DEFAULT_ROLES.roleOf(accountId, itemTypeExternalId),
 	mapsRole: (accountId, role) => DEFAULT_ROLES.mapsRole(accountId, role),
 	overrideOf: () => null,
+	paymentKindOverrideOf: () => null,
 	feeRateOf: () => null,
 };

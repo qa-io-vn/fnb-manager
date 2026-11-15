@@ -19,7 +19,13 @@ import {
 } from "../../src/index.js";
 import { ParityReport } from "./compare.js";
 import { inWindow, parityClock, parityDatasets } from "./datasets.js";
-import { attachRows, itemRows, paymentRows } from "./engine-rows.js";
+import {
+	attachRows,
+	dailyRows,
+	itemRows,
+	paymentRows,
+	shiftCashRows,
+} from "./engine-rows.js";
 import {
 	type OpenParityDatabase,
 	openParityDatabase,
@@ -30,6 +36,7 @@ import { compareCall, GRAINS, STORE_SETS } from "./matrix.js";
 import {
 	applyMenuVariant,
 	CUSTOM_HOLIDAY_NAME,
+	KIND_OVERRIDE_METHOD,
 	type MenuVariant,
 } from "./settings-fixture.js";
 import { compareThemeCall, seedSeats, themeEngine } from "./theme-harness.js";
@@ -202,6 +209,55 @@ describe("aggregates and settings follow category overrides, costs, fee rates an
 					);
 				}
 			}
+		}
+		expect(report.differences).toEqual([]);
+		expect(report.mismatches).toBe(0);
+	}, 600_000);
+
+	it("follows a payment-kind override in the payment rows and the daily and shift cash, and keeps the drawer's expected cash of the sync", async () => {
+		for (const seeded of active().datasets) {
+			const kinds = await active().connection.rows(
+				"select distinct kind from public.agg_payment_daily where tenant_id = $1::uuid and payment_method_external_id = $2 and store_id = $3::uuid",
+				[seeded.tenantId, KIND_OVERRIDE_METHOD, seeded.uuidOf("MOCK-S1")],
+			);
+			expect(kinds).toEqual([{ kind: "cash" }]);
+			for (const [table, rows, key, timestamps, ignore] of [
+				[
+					"agg_daily_sales",
+					dailyRows,
+					["store_id", "business_date"],
+					[],
+					["tenant_id", "refreshed_at"],
+				],
+				[
+					"agg_shift_cash",
+					shiftCashRows,
+					["store_id", "shift_external_id"],
+					["opened_at", "closed_at"],
+					["tenant_id", "refreshed_at", "shift_id"],
+				],
+			] as const) {
+				report.compareRows(
+					`${seeded.dataset.id} ${table} with a payment-kind override`,
+					await active().connection.rows(
+						`select * from public.${table} where tenant_id = $1::uuid order by store_id, business_date`,
+						[seeded.tenantId],
+					),
+					rows(seeded),
+					{
+						key,
+						ignore,
+						timestampColumns: timestamps,
+						demoIdOf: seeded.demoIdOf,
+						checkOrder: false,
+					},
+				);
+			}
+			const shifts = await active().connection.rows(
+				"select count(*)::integer as shifts from public.agg_shift_cash where tenant_id = $1::uuid and store_id = $2::uuid and cash_sales_amount + opening_float_amount <> expected_cash_amount",
+				[seeded.tenantId, seeded.uuidOf("MOCK-S1")],
+			);
+			expect(shifts[0]?.shifts).toBeGreaterThan(0);
 		}
 		expect(report.differences).toEqual([]);
 		expect(report.mismatches).toBe(0);
