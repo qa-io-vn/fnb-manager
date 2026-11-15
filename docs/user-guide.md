@@ -406,3 +406,6 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 | Tải CSV | Download CSV | the table as a file |
 | Giải thích chỉ số | About these numbers | the definitions behind a card |
 | Sắp có | Coming soon | a page that is not built yet |
+| Lưu, Hủy thay đổi | Save, Discard changes | the bar at the foot of a settings page: save the pending changes, or go back to the saved values |
+| Khôi phục mặc định | Restore defaults | put a settings page back to the platform's default values; nothing changes until you press Lưu |
+| Nghỉ cả ngày | Closed all day | a weekday without opening hours |

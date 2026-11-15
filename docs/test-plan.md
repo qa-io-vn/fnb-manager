@@ -1008,7 +1008,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
 | FR-SET-01 | Store profile | Must | designed | planned | planned |
-| FR-SET-02 | Opening-hours shape | Must | verified locally | `pgtap:20_incremental_schedule` | covered |
+| FR-SET-02 | Opening-hours shape | Must | verified locally | `pgtap:20_incremental_schedule`, `web:settings/validation`, `web:settings/forms/opening-hours-editor` | covered |
 | FR-SET-03 | Item costs | Must | designed | `pgtap:05_write_policies` (table); screen planned | partial |
 | FR-SET-04 | Targets | Must | designed | `pgtap:05_write_policies` (table); screen planned | partial |
 | FR-SET-05 | Payment fee rates | Should | designed | `pgtap:10_payment_fee_rates` (table); screen planned | partial |
@@ -1305,7 +1305,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
 | NFR-I18N-01 | Vietnamese first, English second | Must | verified locally | `web:i18n/i18n`, `web:i18n/report-keys`, `e2e:live/today`, `e2e:demo/demo` | covered |
-| NFR-I18N-02 | Formatting by locale and currency | Must | verified locally | `web:lib/format`, `notify:unit/render/format` | covered |
+| NFR-I18N-02 | Formatting by locale and currency | Must | verified locally | `web:lib/format`, `notify:unit/render/format`, `web:settings/number-text`, `web:settings/forms/money-field` | covered |
 | NFR-I18N-03 | Registry spelling | Should | verified locally | `web:i18n/i18n` | covered |
 | NFR-I18N-04 | Notification language | Should | in build | `notify:unit/render/templates` | covered |
 | NFR-I18N-05 | Time zones and day starts | Must | verified locally | `core:unit/business-date`, `core:unit/wall-clock`, `sync:unit/incremental-window`, `pgtap:20_incremental_schedule`, `pgtap:27_notify_policy`, `pgtap:30_notify_digests` | covered |
@@ -1315,7 +1315,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller` | covered |
+| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar` | covered |
 | NFR-UX-02 | Layout on phones and desktops | Should | built | `e2e:demo/demo` (360 px) | partial |
 | NFR-UX-03 | Installable | Should | verified locally | `e2e:demo/demo`, `e2e:pages/install`, `web:shell/install-assets` | covered |
 | NFR-UX-04 | New version prompt | Should | built | no automated test | partial |

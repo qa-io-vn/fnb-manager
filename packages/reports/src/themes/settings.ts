@@ -40,6 +40,54 @@ export const REPORT_SETTINGS_COLUMNS: Readonly<
 	promoPreWeeks: "promo_pre_weeks",
 };
 
+export interface ReportSettingLimit {
+	readonly min: number;
+	readonly max: number;
+	readonly fractionDigits: number;
+}
+
+export const MONEY_COLUMN_MAX = 999_999_999_999.99;
+
+const FRACTION_TOLERANCE_EPSILONS = 8;
+
+export const REPORT_SETTING_LIMITS: Readonly<
+	Record<keyof ReportSettings, ReportSettingLimit>
+> = {
+	menuWindowDays: { min: 7, max: 91, fractionDigits: 0 },
+	menuPopularityFactor: { min: 0.1, max: 1, fractionDigits: 3 },
+	menuLowSampleItems: { min: 2, max: 50, fractionDigits: 0 },
+	cashAbsThreshold: { min: 0, max: MONEY_COLUMN_MAX, fractionDigits: 2 },
+	cashRelThreshold: { min: 0, max: 0.1, fractionDigits: 4 },
+	peakHours: { min: 1, max: 6, fractionDigits: 0 },
+	deadHourRatio: { min: 0.1, max: 0.9, fractionDigits: 3 },
+	busyHourRatio: { min: 1.05, max: 3, fractionDigits: 3 },
+	promoPreWeeks: { min: 2, max: 8, fractionDigits: 0 },
+};
+
+export function hasAtMostFractionDigits(
+	value: number,
+	fractionDigits: number,
+): boolean {
+	const scaled = value * 10 ** fractionDigits;
+	const tolerance = FRACTION_TOLERANCE_EPSILONS * Number.EPSILON;
+	return (
+		Math.abs(scaled - Math.round(scaled)) <=
+		tolerance * Math.max(1, Math.abs(scaled))
+	);
+}
+
+export function withinReportSettingLimit(
+	value: number,
+	limit: ReportSettingLimit,
+): boolean {
+	return (
+		Number.isFinite(value) &&
+		value >= limit.min &&
+		value <= limit.max &&
+		hasAtMostFractionDigits(value, limit.fractionDigits)
+	);
+}
+
 export interface StoreSettingsState {
 	readonly storeId: string | null;
 	readonly settings: ReportSettings;

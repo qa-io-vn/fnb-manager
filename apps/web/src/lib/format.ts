@@ -57,7 +57,7 @@ const BILLION = 1_000_000_000;
 const POINTS_PER_FRACTION = 100;
 const POINT_DIGITS = 1;
 
-function currencySymbol(locale: string, currencyCode: string): string {
+export function currencySymbol(locale: string, currencyCode: string): string {
 	const parts = new Intl.NumberFormat(locale, {
 		style: "currency",
 		currency: currencyCode,

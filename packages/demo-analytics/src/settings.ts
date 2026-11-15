@@ -2,7 +2,9 @@ import { MENU } from "@fnb/connector-mock";
 import {
 	DEFAULT_REPORT_SETTINGS,
 	type IsoDate,
+	REPORT_SETTING_LIMITS,
 	type ReportSettings,
+	withinReportSettingLimit,
 } from "@fnb/reports";
 import {
 	DEMO_POS_ACCOUNT_ID,
@@ -57,33 +59,14 @@ export function demoSettings(): DemoSettingsSnapshot {
 	};
 }
 
-const REPORT_SETTING_RANGES: readonly [
-	keyof ReportSettings,
-	number,
-	number,
-	number,
-][] = [
-	["menuWindowDays", 7, 91, 0],
-	["menuPopularityFactor", 0.1, 1, 3],
-	["menuLowSampleItems", 2, 50, 0],
-	["cashAbsThreshold", 0, Number.MAX_SAFE_INTEGER, 2],
-	["cashRelThreshold", 0, 0.1, 4],
-	["peakHours", 1, 6, 0],
-	["deadHourRatio", 0.1, 0.9, 3],
-	["busyHourRatio", 1.05, 3, 3],
-	["promoPreWeeks", 2, 8, 0],
-];
-
 function checkReportSettings(settings: ReportSettings): void {
-	for (const [field, low, high, digits] of REPORT_SETTING_RANGES) {
-		const value = settings[field];
-		const scaled = value * 10 ** digits;
-		if (
-			!(value >= low && value <= high) ||
-			Math.abs(scaled - Math.round(scaled)) > 1e-9
-		) {
+	for (const field of Object.keys(
+		REPORT_SETTING_LIMITS,
+	) as (keyof ReportSettings)[]) {
+		const limit = REPORT_SETTING_LIMITS[field];
+		if (!withinReportSettingLimit(settings[field], limit)) {
 			throw new RangeError(
-				`${field} must lie between ${low} and ${high} with at most ${digits} decimals`,
+				`${field} must lie between ${limit.min} and ${limit.max} with at most ${limit.fractionDigits} decimals`,
 			);
 		}
 	}
