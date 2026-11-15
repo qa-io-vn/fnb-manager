@@ -2,7 +2,7 @@
 
 This runbook is for whoever runs FNB Manager day to day: the owner, a manager the owner trusts with operations, and the developer on call. It lists the environments and who holds which credential, what runs when, how to see that everything is healthy, what to do when something breaks, the maintenance calendar and whom to call. It builds on [sync.md](sync.md) (sync engine and CLI reference), [go-live.md](go-live.md) (first deployment) and [secrets.md](secrets.md) (secrets contract); [security.md](security.md) describes the threats and controls, [development.md](development.md) the local setup and checks, and [requirements.md](requirements.md) the operational requirements behind this runbook (FR-OPS, NFR-AVL and NFR-OBS). Phase 12 parts are marked as verified locally (12a), in build (12b) or planned (12c).
 
-Last updated 2026-11-12
+Last updated 2026-11-16
 
 ## 0. Read first: the state on 2026-11-12
 
@@ -439,7 +439,7 @@ Retention runs only while the incremental schedule is enabled (2.1).
 **Fix.**
 
 1. Run the sync retention by hand: `select app.prune_incremental_sync_history();`
-2. Reclaim dead rows after heavy reruns or tests: `vacuum (full, analyze)` on the large fact tables, one statement per table (`public.invoices`, `public.invoice_lines`, `public.invoice_payments`, `public.shifts`, `public.sale_payloads`). VACUUM cannot run inside a transaction block, needs free disk about the size of the table and locks it while it runs: do it after the nightly and outside opening hours. On the build machine this took the database from 338 MiB to 285 MiB after phase 7's test runs; on the cloud, autovacuum reuses most of that space by itself.
+2. Reclaim dead rows after heavy reruns or tests: `vacuum (full, analyze)` on the large fact tables, one statement per table (`public.invoices`, `public.invoice_lines`, `public.invoice_payments`, `public.shifts`, `public.sale_payloads`), then on the aggregate tables the analytics refresh rewrites (every `public.agg_*` table: `agg_attach_daily`, `agg_basket_pairs_28d`, `agg_category_daily`, `agg_daily_sales`, `agg_hourly_sales`, `agg_item_daily`, `agg_modifier_prefs_daily`, `agg_payment_daily`, `agg_shift_cash`, `agg_size_mix_daily`). VACUUM cannot run inside a transaction block, needs free disk about the size of the table and locks it while it runs: do it after the nightly and outside opening hours. On the build machine this took the database from 338 MiB to 285 MiB after phase 7's test runs; at phase 10a's verification the fact tables alone left 308 MB and the aggregate tables brought it to 288 MB. On the cloud, autovacuum reuses most of that space by itself.
 3. Ask the delivery team for code-level savings: two indexes duplicate the leading column of unique indexes (about 7 MB).
 4. Decide gate G4: move to Pro before the database reaches the Free quota.
 

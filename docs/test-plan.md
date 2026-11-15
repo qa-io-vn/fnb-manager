@@ -2,7 +2,7 @@
 
 Purpose and audience: this is the master test plan of FNB Manager. It says how the programme proves that the platform does what [requirements.md](requirements.md) asks: which quality risks the tests address, which test levels exist and where they run, which data they use, the exact commands, the process from a build to a verdict, what CI checks, which tests exist today, how every requirement traces to a test or an owner check, how each phase is accepted, and how results are reported. It is written for the owner (a café and tea-shop owner who reads English; the app speaks Vietnamese), for a developer who takes the work over on another machine, for reviewers and testers who plan and run the checks, and for whoever operates the platform after go-live.
 
-Last updated 2026-11-12
+Last updated 2026-11-16
 
 ## Contents
 
@@ -302,17 +302,17 @@ Live checks read the real tenant on the build machine. They are opt-in (`LIVE=1`
 
 | Budget | Check | Where | Latest result |
 |---|---|---|---|
-| Initial JavaScript at or under 400 kB gzipped; ECharts, the demo modules, the four report pages and the live analytics source loaded lazily | `apps/web/scripts/check-size.mjs` after every `vite build`; `web:test/lazy-chunks` | every `pnpm --filter @fnb/web build` and every Pages deploy; not in CI | about 215 kB at phase 6 ([roadmap](roadmap.md), phase 6) |
+| Initial JavaScript at or under 400 kB gzipped; ECharts, the demo modules, the four report pages and the live analytics source loaded lazily | `apps/web/scripts/check-size.mjs` after every `vite build`; `web:test/lazy-chunks` | every `pnpm --filter @fnb/web build` and every Pages deploy; not in CI | 284.2 kB at phase 10a's verification on 2026-11-16; about 215 kB at phase 6 ([roadmap](roadmap.md), phase 6) |
 | Lighthouse mobile: performance at least 85, accessibility at least 90 | The recipe in [apps/web/README.md](../apps/web/README.md) (Lighthouse 13.5.0 through `pnpm dlx`, Playwright's Chromium) | manual, by the verifier | demo build: 95 performance, 100 accessibility, 100 best practices, 60 SEO because of the deliberate `noindex` |
 | Năm settles within 8 seconds on a CPU four times slower | `e2e:pages/report-year-performance` on the production build with Chrome DevTools CPU throttling | every end-to-end run | passing at the phase 9 verification |
 | Report-sized SQL calls under 1.5 seconds | `reports:live/live-check` check 6 (slowest call per report on the real tenant) | each verification of report work | passing; phase 8 measured well under a second on a synthetic tenant of 54,000 invoices |
-| Theme calls within their per-function budgets (50 to 400 ms at the default range, the slowest call of a page under 600 ms, any call under 1.5 s at 400 days) | `reports:live/theme-live-check` check 1 on the real tenant, each call timed alone | each verification of theme work | passing on 2026-11-15: every default-range call within its budget and the slowest under 50 ms; every call at 400 days under 200 ms |
+| Theme calls within their per-function budgets (50 to 400 ms at the default range, the slowest call of a page under 600 ms, any call under 1.5 s at 400 days) | `reports:live/theme-live-check` check 1 on the real tenant, each call timed alone | each verification of theme work | passing on 2026-11-15 and again at phase 10a's verification on 2026-11-16: every default-range call within its budget and the slowest under 50 ms; every call at 400 days under 200 ms; each new function run alone with `\timing` as the owner under 50 ms |
 | Analytics refresh: the demo range under 10 seconds locally; under 2 minutes on production | `pgtap:14_analytics_refresh`; a cloud measurement | every pgTAP run; after go-live | local passing; production waits for the owner |
 | Incremental run within 105 s of wall time (10 s reserve) and 1.2 s of estimated CPU (Free plan: 150 s, 2 s, 256 MB) | `sync:unit/run-guard`, `runner:unit/budget` | every run; the cloud after go-live | passing locally |
 | Notification cycle: 90 s, 4 digests, 30 sends on Supabase; 120 s, 50 digests, 500 sends from the CLI | `notify:unit/dispatch/cycle` | every run | passing |
 | At most 400 connector calls per run | `sync:unit/run-bookkeeping` | every run | passing |
 | Digest text within 1,900 units for 50 stores and 20 findings | `notify:unit/render/digest` | every run | in build (12b) |
-| Database under 300 MB with the full history | `fnb doctor` after `vacuum (full, analyze)` on the fact tables | each phase verification | 285 MiB after compaction at the phase 7 verification |
+| Database under 300 MB with the full history | `fnb doctor` after `vacuum (full, analyze)` on the fact and aggregate tables | each phase verification | 288 MB after compaction at phase 10a's verification on 2026-11-16 (308 MB with the fact tables alone); 285 MiB at the phase 7 verification |
 
 ### 2.11 Security and privacy tests
 
@@ -668,34 +668,34 @@ CI runs on every push to `main` and every pull request. Runs of the same ref sha
 
 ## 8. Test inventory
 
-Figures as dated in each table. Step 12b is still adding tests, so later runs will show higher counts.
+Figures as dated in each table. Phase 10b and step 12c will add tests, so later runs will show higher counts.
 
 ### 8.1 Unit tests per package
 
-From the run of 2026-11-14 at about 10:20, in every package. Skipped files and tests are the gated suites of sections 2.7 and 2.9, which had no switch in that run.
+From the run of 2026-11-16 at phase 10a's verification (#102), every package with `pnpm -r --workspace-concurrency=1 --if-present run test --maxWorkers=2`. Skipped files and tests are the gated suites of sections 2.7 and 2.9, which had no switch in that run.
 
 | Package | Test files (passed + skipped) | Tests passed | Tests skipped |
 |---|---:|---:|---:|
-| `@fnb/core` | 7 | 69 | 0 |
-| `@fnb/metrics` | 3 | 109 | 0 |
+| `@fnb/core` | 9 | 131 | 0 |
+| `@fnb/metrics` | 3 | 139 | 0 |
 | `@fnb/design-tokens` | 2 | 9 | 0 |
 | `@fnb/connector-core` | 3 | 26 | 0 |
-| `@fnb/reports` | 26 + 1 | 295 | 7 |
+| `@fnb/reports` | 59 + 2 | 508 | 14 |
 | `@fnb/connector-mock` | 3 | 56 | 0 |
 | `@fnb/connector-ipos` | 10 + 3 | 155 | 4 |
 | `@fnb/sync` | 15 + 1 | 98 | 2 |
-| `@fnb/demo-analytics` | 17 | 109 | 0 |
+| `@fnb/demo-analytics` | 30 | 284 | 0 |
 | `@fnb/runner` | 5 | 26 | 0 |
-| `@fnb/web` | 23 | 282 | 0 |
+| `@fnb/web` | 58 | 718 | 0 |
 | `@fnb/notify` | 16 + 3 | 163 | 11 |
 | `@fnb/jobs` | 8 + 2 | 62 | 8 |
-| **Total** | **138 + 10 = 148** | **1,459** | **32** |
+| **Total** | **221 + 11 = 232** | **2,375** | **39** |
 
 `packages/runner/test/integration` exists but holds no test.
 
 ### 8.2 pgTAP files
 
-Planned tests per file, read from each file's `select plan(…)` on 2026-11-14 after migration `refresh_overrides_and_catch_up`. Files 33 to 35 are phase 10a's.
+Planned tests per file, read from each file's `select plan(…)` on 2026-11-16 at phase 10a's verification. Files 33 to 35 are phase 10a's.
 
 | File | Plan | File | Plan |
 |---|---:|---|---:|
@@ -715,41 +715,51 @@ Planned tests per file, read from each file's `select plan(…)` on 2026-11-14 a
 | `14_analytics_refresh.sql` | 45 | `31_notify_access.sql` | 64 |
 | `15_analytics_queries.sql` | 63 | `33_theme_functions.sql` | 74 |
 | `16_analytics_menu_and_cash.sql` | 27 | `34_theme_access.sql` | 46 |
-| `17_analytics_access.sql` | 39 | `35_mappings_and_catch_up.sql` | 59 |
-| | | **34 files** | **1,845** |
+| `17_analytics_access.sql` | 39 | `35_mappings_and_catch_up.sql` | 63 |
+| | | **34 files** | **1,849** |
 
-By phase (files grouped by the phase that created them; 01, 03 and 12 were extended in 12a, 01 and 03 again in 10a): phase 2, 385; phase 7, 153; phase 8, 291; phase 9, 143; phase 10a, 179; phase 12, 694.
+By phase (files grouped by the phase that created them; 01, 03 and 12 were extended in 12a, 01 and 03 again in 10a): phase 2, 385; phase 7, 153; phase 8, 291; phase 9, 143; phase 10a, 183; phase 12, 694.
 
-Full run on 2026-11-14 after migration `refresh_overrides_and_catch_up`: 1,845 of 1,845 in 34 files. Earlier full runs: 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
+Full run on 2026-11-16 at phase 10a's verification: 1,849 of 1,849 in 34 files. Earlier full runs: 1,845 of 1,845 on 2026-11-14; 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
 
 ### 8.3 Playwright specs
 
-Listed with `playwright test --list` on 2026-11-12: 63 tests in 9 files.
+Listed with `playwright test --list` on 2026-11-16 at phase 10a's verification: 126 tests in 19 files.
 
 | Project | File | Tests |
 |---|---|---:|
 | `live` | `e2e/live/auth.spec.ts` | 6 |
 | `live` | `e2e/live/reports.spec.ts` | 4 |
-| `live` | `e2e/live/today.spec.ts` | 5 |
-| `demo` | `e2e/demo/demo.spec.ts` | 15 |
+| `live` | `e2e/live/themes.spec.ts` | 2 |
+| `live` | `e2e/live/today.spec.ts` | 7 |
+| `demo` | `e2e/demo/demo.spec.ts` | 13 |
 | `demo` | `e2e/demo/report-day.spec.ts` | 12 |
 | `demo` | `e2e/demo/report-week.spec.ts` | 8 |
 | `demo` | `e2e/demo/report-month.spec.ts` | 13 |
 | `demo` | `e2e/demo/report-year.spec.ts` | 8 |
+| `demo` | `e2e/demo/settings-layout.spec.ts` | 4 |
+| `demo` | `e2e/demo/settings-bao-cao.spec.ts` | 5 |
+| `demo` | `e2e/demo/settings-phan-loai.spec.ts` | 4 |
+| `demo` | `e2e/demo/theme-doanh-thu.spec.ts` | 9 |
+| `demo` | `e2e/demo/theme-gio-ngay.spec.ts` | 8 |
+| `demo` | `e2e/demo/theme-thuc-don.spec.ts` | 8 |
+| `demo` | `e2e/demo/theme-thanh-toan.spec.ts` | 8 |
+| `demo` | `e2e/demo/theme-navigation.spec.ts` | 4 |
 | `pages` | `e2e/pages/install.spec.ts` | 2 |
 | `pages` | `e2e/pages/report-year-performance.spec.ts` | 1 |
-| | **Total** | **74** (live 15, demo 56, pages 3) |
+| | **Total** | **126** (live 19, demo 104, pages 3) |
 
-At the phase 9 verification the suite had 63 tests and all passed; phase 6 had 20.
+At phase 10a's verification all 126 passed with one worker and no retries; the phase 9 verification had 63 and phase 6 had 20.
 
 ### 8.4 Parity, smoke, consistency, live and integration suites
 
 | Suite | Files | Tests | Gate |
 |---|---|---:|---|
-| Parity | `packages/demo-analytics/test/parity/*.parity.test.ts` | 7 files | none for PGlite; `PARITY_DATABASE=postgres` and `DATABASE_URL` for Postgres |
+| Parity | `packages/demo-analytics/test/parity/*.parity.test.ts` | 12 files | none for PGlite; `PARITY_DATABASE=postgres` and `DATABASE_URL` for Postgres |
 | Report smoke on the demo engine | `packages/demo-analytics/test/reports/{day,week,month,year}.smoke.test.ts` | 4 files | none |
+| Theme smoke on the demo engine | `packages/demo-analytics/test/themes/{revenue,hours,menu,payments}.smoke.test.ts` | 4 files | none |
 | Registry consistency | `packages/metrics/test/consistency/document.test.ts`, `metric-value.test.ts` | 2 files | none |
-| Reports live check | `packages/reports/test/live/live-check.test.ts` | 7 | `LIVE=1`, `DATABASE_URL` |
+| Reports live check | `packages/reports/test/live/live-check.test.ts` | 8 | `LIVE=1`, `DATABASE_URL` |
 | Theme live check | `packages/reports/test/live/theme-live-check.test.ts` | 6 | `LIVE=1`, `DATABASE_URL`; `LIVE_REFERENCE_SHEET` for A1 and the menu checks |
 | Digest equals Ngày | `packages/notify/test/live/digest-equals-ngay.test.ts` | 1 | `LIVE=1`, `DATABASE_URL` |
 | iPOS live | `packages/connector-ipos/test/live/{smoke,connector,adjustments}.test.ts` | 4 smoke tests, plus per-account tests | `LIVE=1`, `POS_ACCOUNTS_JSON` |
@@ -774,17 +784,22 @@ At the phase 9 verification the suite had 63 tests and all passed; phase 6 had 2
 
 | Check | Result | Date and source |
 |---|---|---|
-| Unit tests | 1,415 passed, 32 skipped (gated), 142 files, 12 packages | 2026-11-12, 14:02 run |
-| pgTAP | 31 files, 1,648 planned; on the build machine two date-dependent tests were failing and files 15 to 17 were re-anchored on 2026-11-12; the next full run confirms | file plans at 15:41 |
-| Playwright | 63 tests in 9 files; 63 passing at the phase 9 verification | listing of 2026-11-12; [roadmap](roadmap.md), phase 9 |
+| Unit tests | 2,375 passed, 39 skipped (gated), 232 files, 13 packages | 2026-11-16, phase 10a's verification (#102) |
+| pgTAP | 1,849 of 1,849 in 34 files; `20_incremental_schedule.sql` unedited | 2026-11-16, #102 |
+| Parity in Postgres | every parity file green in CI's `database` job on `b8779ab` | 2026-11-16, #102 |
+| Integration suites on the local stack | sync 100 of 100; jobs 64, 6 gated; notification CLI 6 of 6; notification digests and alerts 9 of 10, the failure a defect of the test's own helper, not of the product, fixed by the step 12c stream | 2026-11-16, #102 |
+| Live checks on the real tenant | reports live check 8 of 8; theme live check 6 of 6, with `LIVE_REFERENCE_SHEET` every compared value `matches: true` and no call over budget | 2026-11-16, #102 |
+| Playwright | 126 of 126 in 19 files (demo, live and pages), one worker, no retries | 2026-11-16, `pnpm verify` on `b8779ab` |
+| Initial JavaScript | 284.2 kB gzipped against the 400 kB budget | 2026-11-16, `pnpm --filter @fnb/web build` |
 | Lighthouse mobile, demo build | performance 95, accessibility 100, best practices 100, SEO 60 | [status.md](status.md) |
-| Public-safety scan | no findings | 2026-11-12 |
-| API reference check | 25 functions, 25 documented | 2026-11-12 |
-| Import map | up to date | 2026-11-12 |
+| Public-safety scan and gitleaks | no findings | 2026-11-16, #102 |
+| Comment scan over the lines 10a added | none | 2026-11-16, #102 |
+| API reference check | 35 functions, 35 documented | 2026-11-16, #102 |
+| Import map | up to date | 2026-11-16, CI `code` job |
 | Database advisors (security) | no table without RLS, no materialised view; one warning (`app.data_roles` without a pinned `search_path`) | 2026-11-12 |
-| Store-days equal to the POS control totals | all, both stores, from each store's first sales day (930 of 930 checked at the phase 7 verification) | [status.md](status.md) |
-| Database size with the full history | 285 MiB after compaction at the phase 7 verification | [status.md](status.md) |
-| CI on GitHub | `0f8fa1d`: `code`, `database`, `e2e` green; `secrets` red in its setup step | 2026-11-08 ([plan.md](plan.md)) |
+| Store-days equal to the POS control totals | all, both stores, from each store's first sales day; check 1 and 2 of the reports live check on 2026-11-16 | [status.md](status.md) |
+| Database size with the full history | 288 MB after compacting the fact and aggregate tables | 2026-11-16, #102 |
+| CI on GitHub | `b8779ab`: `code`, `database` (Postgres parity included), `e2e` and `secrets` green | 2026-11-16 |
 
 ## 9. Traceability matrix
 
@@ -803,7 +818,7 @@ Coverage says whether tests exist. Whether they passed is the status column's jo
 
 ### 9.2 Coverage summary
 
-Coverage of the 376 requirements on 2026-11-15, by area.
+Coverage of the 376 requirements on 2026-11-16, by area.
 
 | Area | covered | partial | planned | owner check | Total |
 |---|---:|---:|---:|---:|---:|
@@ -840,14 +855,14 @@ Coverage of the 376 requirements on 2026-11-15, by area.
 
 ```mermaid
 pie showData
-    title Coverage of the requirements on 2026-11-15
+    title Coverage of the requirements on 2026-11-16
     "covered" : 182
     "partial" : 55
     "planned" : 123
     "owner check" : 16
 ```
 
-Of the 243 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 44 partial, 1 planned and 16 owner checks. Of the 133 that are designed or planned, 122 have no test yet and 11 are partly held by tests of the database rules they rest on.
+Of the 244 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 45 partial, 1 planned and 16 owner checks. Of the 132 that are designed or planned, 122 have no test yet and 10 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -983,7 +998,7 @@ Of the 243 requirements that are verified locally, built, in build or waiting fo
 | FR-REP-09 | Coverage and young stores | Must | verified locally | `reports:unit/coverage-and-comparison`, `e2e:live/reports`, `e2e:demo/report-year` | covered |
 | FR-REP-10 | Sentences from templates | Must | verified locally | `reports:unit/decomposition-and-narrative`, `web:metrics/sentences`, `web:i18n/wording-sheets` | covered |
 | FR-REP-11 | Report card | Must | verified locally | `web:components/report-card/report-card`, `web:components/report-card/report-card-extensions` | covered |
-| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan`, `web:settings/thresholds/thresholds-form`, `e2e:demo/settings-bao-cao` | partial |
+| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan`, `web:settings/thresholds/thresholds-form`, `e2e:demo/settings-bao-cao`, phase 10a's verification (#102) (one CSV per theme from the real tenant: BOM, strict UTF-8, Vietnamese headers) | partial |
 | FR-REP-13 | Print layout | Should | verified locally | `e2e:demo/demo`, `e2e:demo/report-day`, the four theme specs (`expectThemePrintLayout`: the summary line, no buttons, no tabs or pickers) | covered |
 | FR-REP-14 | Card loading and errors | Should | built | `e2e:demo/report-day` (cards settle); `web:reports/use-cards-load` (a failed card with its retry, a failed coverage call) | partial |
 | FR-REP-15 | Store and period selection | Must | verified locally | `web:shell/period-picker`, `web:state/preferences`, `pgtap:22_report_functions` | covered |
@@ -999,14 +1014,14 @@ Of the 243 requirements that are verified locally, built, in build or waiting fo
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
 | FR-THM-01 | Doanh thu & xu hướng | Should | verified locally | `pgtap:33_theme_functions`, `demo-analytics:parity/theme-revenue-hours` (`range_totals` equals the SQL, and the totals equal the day buckets of `period_series`), `demo-analytics:themes/revenue.smoke` (every preset; like for like while one store is too young), `reports:unit/themes/definition`, `reports:unit/themes/revenue` (each card from fixtures), `e2e:demo/theme-doanh-thu`, `e2e:live/themes` | covered |
-| FR-THM-02 | Giờ & ngày trong tuần | Should | built | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `reports:unit/themes/hours` (each card from fixtures, shift-window merging, the heat-table rows), `demo-analytics:parity/theme-revenue-hours`, `demo-analytics:themes/hours.smoke` (every preset; RevPASH only for the store with seats, "chưa có số ghế" for the one without), `e2e:demo/theme-gio-ngay`, `e2e:live/themes` (a dated deep link per seeded store shows RevPASH with its seats), `reports:live/theme-live-check` (opt-in: hours and weekdays of the reference window) | partial |
+| FR-THM-02 | Giờ & ngày trong tuần | Should | verified locally | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `reports:unit/themes/hours` (each card from fixtures, shift-window merging, the heat-table rows), `demo-analytics:parity/theme-revenue-hours`, `demo-analytics:themes/hours.smoke` (every preset; RevPASH only for the store with seats, "chưa có số ghế" for the one without), `e2e:demo/theme-gio-ngay`, `e2e:live/themes` (a dated deep link per seeded store shows RevPASH with its seats), `reports:live/theme-live-check` (opt-in: hours and weekdays of the reference window), phase 10a's verification (#102) (the page on the real tenant for the reference window) | partial |
 | FR-THM-03 | Thực đơn | Should | in build | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `pgtap:35_mappings_and_catch_up` (the menu functions); `demo-analytics:parity/menu`, `demo-analytics:parity/basket-modifiers`, `demo-analytics:themes/menu.smoke`, `e2e:demo/theme-thuc-don`, `e2e:live/themes`, `e2e:demo/settings-bao-cao` (a saved minimum reaches the matrix) | partial |
-| FR-THM-04 | Thanh toán & tiền mặt | Should | in build | `pgtap:35_mappings_and_catch_up` (cash thresholds from the settings); `demo-analytics:parity/shift-review`, `demo-analytics:themes/payments.smoke`, `e2e:demo/theme-thanh-toan` (the four cards), `e2e:demo/settings-bao-cao` (a saved cash threshold reaches the drawer card), `reports:live/theme-live-check` (opt-in: the payment mix of the reference window; the default thresholds change neither `shift_review` nor `cash_variance_flags`) | partial |
+| FR-THM-04 | Thanh toán & tiền mặt | Should | verified locally | `pgtap:35_mappings_and_catch_up` (cash thresholds from the settings); `demo-analytics:parity/shift-review`, `demo-analytics:themes/payments.smoke`, `e2e:demo/theme-thanh-toan` (the four cards), `e2e:demo/settings-bao-cao` (a saved cash threshold reaches the drawer card), `reports:live/theme-live-check` (opt-in: the payment mix of the reference window; the default thresholds change neither `shift_review` nor `cash_variance_flags`), phase 10a's verification (#102) (the page on the real tenant for the reference window) | partial |
 | FR-THM-05 | Range presets | Could | verified locally | `reports:unit/themes/range`, `web:themes/range-picker`, `web:themes/theme-route`, `web:themes/theme-wiring` (the device's last preset; the range notices), `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-navigation` | covered |
 | FR-THM-06 | Khuyến mãi & giảm giá | Should | designed | planned | planned |
 | FR-THM-07 | Ca & két tiền | Should | designed | planned | planned |
 | FR-THM-08 | So sánh cửa hàng | Should | designed | planned | planned |
-| FR-THM-09 | Sections a POS cannot feed | Should | designed | `pgtap:33_theme_functions` (provisional menu roles, null attach rates); cards planned | partial |
+| FR-THM-09 | Sections a POS cannot feed | Should | built | `pgtap:33_theme_functions` (provisional menu roles, null attach rates), `reports:unit/themes/menu/margins`, `reports:unit/themes/menu/attach`, `reports:unit/themes/hours/productivity`, `reports:unit/themes/payments/fees`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-thanh-toan`, phase 10a's verification (#102) (each missing-input state on the real tenant) | partial |
 
 #### FR-SET — Settings and manual data
 
@@ -1539,10 +1554,10 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-SYNC-17 | Edge Function runner | verified locally | pgTAP covers the tickets; the HTTP answers (202, 401, 429, 500, 503) were shown once, by serving the function locally at the phase 7 verification. No repeatable test exercises the handler. | A Deno test of `supabase/functions/sync-incremental/handler.ts` with a stubbed database for each answer, run in the CI `code` job next to `deno check`. |
 | FR-SYNC-21 | Backfill | verified locally | The local-stack integration test backfills a week of mock data; the one-month timing (under 5 minutes) and the full history were measured once, at the phase 7 verification. | Re-measure the month timing during the go-live backfill and record it in `docs/status.md`. |
 | FR-REP-12 | CSV download | verified locally | The BOM and the rows are tested on every report; opening a file in Excel is the owner's check (OC-04). | Owner check OC-04, repeated for the thematic tables (10a) and the exports (11a). |
-| FR-THM-02 | Giờ & ngày trong tuần | built | pgTAP, parity, the demo and live specs hold the functions and the page; `reports:live/theme-live-check` with `LIVE_REFERENCE_SHEET` prints `matches: true` for every hour, weekday, hour band and weekend share of the private reference window (2026-11-15). | The owner's reading of Giờ & ngày beside the private sheet (OC-03, #189). |
+| FR-THM-02 | Giờ & ngày trong tuần | verified locally | pgTAP, parity, the demo and live specs hold the functions and the page; `reports:live/theme-live-check` with `LIVE_REFERENCE_SHEET` prints `matches: true` for every hour, weekday, hour band and weekend share of the private reference window (2026-11-15, again at phase 10a's verification (#102) on 2026-11-16), and the page opened on the real tenant for that window shows it. | The owner's reading of Giờ & ngày beside the private sheet (OC-03, #189). |
 | FR-THM-03 | Thực đơn | in build | pgTAP, the parity suite and the demo and live specs hold the menu functions and the eight cards; the engine smoke test and the demo spec hold that no modifier name appears in an item table (the sugar and ice card lists them on purpose) and that the uncategorised item shows with its action; the demo spec of Ngưỡng báo cáo holds that a saved minimum of items per role reaches the matrix, and the page downloads once in the semicolon dialect. | A spec that costs entered for five items show the margin of those five only, once the costs page exists (#161). |
-| FR-THM-09 | Sections a POS cannot feed | designed | pgTAP shows the provisional menu roles without costs and the null attach rates without a role; no card shows them yet. | Unit and Playwright tests with a connector that declares no costs and no manual costs: the margin sections are hidden or marked provisional. |
-| FR-THM-04 | Thanh toán & tiền mặt | in build | pgTAP shows `shift_review` and `cash_variance_flags` following the tenant's cash thresholds; the parity suite holds the demo's `shift_review` to them; the unit, engine smoke and demo specs hold the payment mix (kind shares summing to 1 and matching the methods), the cash trend, the drawer card (thresholds line, no e-mail-like text) and the fee card (the dash and the fees link without a rate); the demo spec of Ngưỡng báo cáo holds the round trip from a saved cash threshold to the drawer card's thresholds line and back to the default, and the page downloads once in the semicolon dialect. | The owner's reading of Thanh toán beside the private sheet (OC-03, #189); `reports:live/theme-live-check` already prints `matches: true` for the payment mix of the reference window, compared as shares of invoices (2026-11-15). |
+| FR-THM-09 | Sections a POS cannot feed | built | pgTAP shows the provisional menu roles without costs and the null attach rates without a role; unit tests hold the margin card asking for costs, the attach card's dash and roles action while a role is unmapped, RevPASH only with seats and the fee card's dash without a rate; phase 10a's verification (#102) saw each of these states on the real tenant. | Sections that follow a connector's declared capabilities (no costs, no customer identity), with a connector that declares no costs and no manual costs entered (10b). |
+| FR-THM-04 | Thanh toán & tiền mặt | verified locally | pgTAP shows `shift_review` and `cash_variance_flags` following the tenant's cash thresholds; the parity suite holds the demo's `shift_review` to them; the unit, engine smoke and demo specs hold the payment mix (kind shares summing to 1 and matching the methods), the cash trend, the drawer card (thresholds line, no e-mail-like text) and the fee card (the dash and the fees link without a rate); the demo spec of Ngưỡng báo cáo holds the round trip from a saved cash threshold to the drawer card's thresholds line and back to the default, and the page downloads once in the semicolon dialect. | The owner's reading of Thanh toán beside the private sheet (OC-03, #189); `reports:live/theme-live-check` prints `matches: true` for the payment mix of the reference window, compared as shares of invoices (2026-11-15, again at phase 10a's verification on 2026-11-16). |
 | FR-REP-14 | Card loading and errors | built | Settling is tested on the demo, the size refusal is classified in `reports:unit/rpc-source`, and `web:reports/use-cards-load` drives a failing card and its retry in the loader; no test shows the error card or the size message in the browser. | A web test that makes one card's call fail and expects the error card with its retry, and one that answers SQLSTATE 22023 and expects the request for fewer stores or a shorter period. |
 | FR-SET-03 | Item costs | designed | The write policies of `item_costs` are tested; the screen and the CSV import do not exist. | A live Playwright test that an imported CSV equals the stored rows and that the costs move the margin axis of the menu matrix (10b). |
 | FR-SET-04 | Targets | designed | The write policies of `targets` are tested; the screen does not exist. | A live Playwright test that a saved monthly target shows progress and pace on Tháng (10b). |
@@ -1751,17 +1766,17 @@ The verifier's checklist for report work, run at the phase 9 verification and ag
 
 ### 10.11 Phase 10 — Thematic reports, settings, manual data, compliance checks
 
-State: designed at roadmap level; detailed design pending. A draft build spec dated 2026-11-12 exists privately; its verification checklist will refine this table when it is final.
+State: step 10a verified locally on 2026-11-16 (#102); step 10b is next; the owner checks are open. The private build spec of phase 10 is final, and its verification checklist names the 10a and 10b lines that this table summarises.
 
-| # | Roadmap acceptance | Planned procedure | Who |
-|---|---|---|---|
-| 10.1 | The heatmap and the payment mix reproduce the reference window (private sheet) | `DATABASE_URL=<db> LIVE_REFERENCE_SHEET=docs/private/acceptance-figures.md pnpm --filter @fnb/reports test:live`: `reports:live/theme-live-check` check 2 prints `matches: true` for every compared hour, weekday, band, share and payment item and no `owner check pending` from the theme file (all 66 true on 2026-11-15); then the owner reads Giờ & ngày and Thanh toán beside the sheet (#189) | verifier, owner (OC-03) |
-| 10.2 | Modifier lines never appear as items | `pgtap:16_analytics_menu_and_cash` and `pgtap:33_theme_functions` in CI; on the real tenant, `reports:live/theme-live-check` check 3 over the reference window and the last 365 days (item quantities equal `items_sold`, no item key is a catalogue modifier; with the sheet, its top sellers and a day's modifier share; all true on 2026-11-15); a Playwright spec on Thực đơn on the demo and the seeded stack | CI, verifier |
-| 10.3 | Entering a cost for five items shows their margin only; a target shows pace on Tháng | Live Playwright on the seeded stack, which already holds item costs and a monthly target per store | CI, verifier |
-| 10.4 | A viewer cannot save settings | Live Playwright write tests per settings form as owner, store-limited manager, staff and viewer, on top of `pgtap:05_write_policies` and `07_write_scope_and_attribution` | CI |
-| 10.5 | Re-mapping an uncategorised item moves it immediately | Live Playwright on the item-type role mapping | CI |
-| 10.6 | The data-quality page flags a store without e-invoicing | Live Playwright: the seeded coffee store (`not_configured`) is flagged | CI |
-| 10.7 | Every CSV opens in Excel with correct Vietnamese characters | BOM and row tests per table as in phase 9; then the owner | CI, owner (OC-04) |
+| # | Roadmap acceptance | How it is shown | Who | State |
+|---|---|---|---|---|
+| 10.1 | The heatmap and the payment mix reproduce the reference window (private sheet) | `DATABASE_URL=<db> LIVE_REFERENCE_SHEET=docs/private/acceptance-figures.md pnpm --filter @fnb/reports test:live`: `reports:live/theme-live-check` check 2 prints `matches: true` for every compared hour, weekday, band, share and payment item and no `owner check pending` from the theme file; then Giờ & ngày and Thanh toán opened on the real tenant for the reference window, per store; then the owner reads both pages beside the sheet (#189) | verifier, owner (OC-03) | build side passed on 2026-11-15 and again at #102 on 2026-11-16 (all 66 compared values true; both pages show the window for each store); the owner's reading is open |
+| 10.2 | Modifier lines never appear as items | `pgtap:16_analytics_menu_and_cash` and `pgtap:33_theme_functions` in CI; on the real tenant, `reports:live/theme-live-check` check 3 over the reference window and the last 365 days (item quantities equal `items_sold`, no item key is a catalogue modifier; with the sheet, its top sellers and a day's modifier share); `e2e:demo/theme-thuc-don` and `demo-analytics:themes/menu.smoke` | CI, verifier | passed at #102: pgTAP green, every live check true, no modifier among the 365 days' item keys, the Thực đơn spec green |
+| 10.3 | Entering a cost for five items shows their margin only; a target shows pace on Tháng | Live Playwright on the seeded stack, which already holds item costs and a monthly target per store | CI, verifier | 10b (the costs page #161 and targets #163); in 10a the margins card shows only costed items on the seeded stack (`e2e:live/themes`) |
+| 10.4 | A viewer cannot save settings | Live Playwright write tests per settings form as owner, store-limited manager, staff and viewer, on top of `pgtap:05_write_policies` and `07_write_scope_and_attribution` | CI | 10a's forms pass in pgTAP and the demo specs; the live write tests per role come with 10b (#165) |
+| 10.5 | Re-mapping an uncategorised item moves it immediately | Live Playwright on the item-type role mapping | CI | `pgtap:35_mappings_and_catch_up` holds the override read at once; the category tab and its live test come with 10b (#160) |
+| 10.6 | The data-quality page flags a store without e-invoicing | Live Playwright: the seeded coffee store (`not_configured`) is flagged | CI | 10b (#158) |
+| 10.7 | Every CSV opens in Excel with correct Vietnamese characters | BOM and row tests per table in both dialects, as in phase 9; one CSV per theme downloaded from the real tenant and decoded as strict UTF-8; then the owner | CI, verifier, owner (OC-04) | build side passed at #102: every theme spec's CSV checks green in both dialects, and the four downloaded files start with the BOM, decode as strict UTF-8 and have Vietnamese headers; the owner's Excel check is open (#189) |
 
 Owner inputs for this phase: item costs for the top items of one store, one monthly target, seat counts and opening hours (OC-12).
 

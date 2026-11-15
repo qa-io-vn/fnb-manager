@@ -2,7 +2,7 @@
 
 This plan explains how the FNB Manager programme is delivered: how work is cut into small steps that are built, reviewed and verified, in which order the remaining work runs, who decides and who does what, which risks are watched, and how changes and progress are recorded. The programme itself (tracks, 20 phases, deliverables, acceptance criteria, gates) is defined in the [roadmap](roadmap.md), and what the system must do is in the [requirements](requirements.md); this plan does not repeat them. It is written for the owner (a café and tea-shop owner), for a developer who takes the work over on another machine, for reviewers and testers, and for whoever runs the platform after go-live.
 
-Last updated 2026-11-12
+Last updated 2026-11-16
 
 ## 1. Purpose and scope baseline
 
@@ -173,7 +173,7 @@ Dates come from the git history, the GitHub Actions history and [status.md](stat
 | M6 | Step 12a verified locally | 2026-11-09 | verified locally, not committed | status.md |
 | M7 | Step 12b verified | – | in build (integration and verification on 2026-11-12) | – |
 | M8 | Step 12c verified: phase 12 complete locally | – | planned | – |
-| M9 | Phase 10a, then 10b, verified | – | designed | – |
+| M9 | Phase 10a, then 10b, verified | 10a: 2026-11-16 | 10a verified locally, its owner checks open (#189); 10b next | status.md; test-plan §10.11; #102 |
 | M10 | Phase 11a, then 11b, verified | – | designed | – |
 | M11 | Settings → Cảnh báo and the Bản tin panel | – | designed | – |
 | M12 | Final integration pass: Track A complete locally, roadmap and status current | – | planned | – |
@@ -190,7 +190,7 @@ Dates come from the git history, the GitHub Actions history and [status.md](stat
 |---|---|---|---|---|---|---|---|
 | WP-12b | Step 12b: alert episodes and rules, the digest lines, the daily digest equal to Ngày, the Brevo e-mail adapter, `fnb digest`, `fnb notify unlink`, `fnb notify job-failed`, the outbox notifier in the CLI, the digest and send steps of `sync.yml`, `notify.yml` | backend | part of phase 12 (2.5 d) | in the private phase 12 spec | 12a | in build | acceptance items A1 to A3 shown on the local stack; digests and alerts sent through Actions |
 | WP-12c | Step 12c: the `notify` Edge Function and its `pg_cron` schedule (`app.enable_notify`), `sync-incremental` writing to the outbox, the failure listener `notify-on-failure.yml` with a database-free fallback, the Telegram, Resend and webhook adapters, `fnb notify check`, `notify resend`, `notify setup`, `digest --revise` and corrections, the intraday rules (`zero_sales_open`, `nightly_missing`), the database functions for the web screens, `docs/notifications.md`, `packages/notify/README.md`, ADR-030 to ADR-033, go-live step 8 | backend | part of phase 12 | in the private phase 12 spec | 12b | planned | the whole phase 12 verification checklist green |
-| WP-10a | Phase 10a: Doanh thu & xu hướng; Giờ & ngày trong tuần; Thực đơn; Thanh toán & tiền mặt; item-type role mapping; range presets; CSV with a UTF-8 BOM | web, with SQL | 3 d | detailed design pending (a spec dated 2026-11-12 awaits review) | phase 9 | designed | four thematic reports on the real data |
+| WP-10a | Phase 10a: Doanh thu & xu hướng; Giờ & ngày trong tuần; Thực đơn; Thanh toán & tiền mặt; item-type role mapping; range presets; CSV with a UTF-8 BOM | web, with SQL | 3 d | the private build spec of phase 10, final; issues under #21 | phase 9 | verified locally on 2026-11-16 (#102); the owner checks are open (#189) | four thematic reports on the real data |
 | WP-10b | Phase 10b: Khuyến mãi & giảm giá; Ca & két tiền; So sánh cửa hàng; Chất lượng dữ liệu; the settings pages (store profile, hours, seats, legal form, item costs with CSV import, targets, fees, mappings, roles, holidays, language, legal texts; the day start stays with the POS, FR-SET-01); audit columns; browser write tests | web, with SQL | 3 d | detailed design pending (a spec dated 2026-11-12 awaits review) | 10a | designed | four more reports and every settings page; a viewer cannot save settings |
 | WP-11a | Phase 11a: exports (CSV or JSON, split by month), `packages/datapack`, `fnb datapack`, the data-pack buttons and the "Dán kế hoạch" paste box | both | 2.5 d | detailed design pending (a spec dated 2026-11-12, under review) | phase 10 | designed | a month's export equals the invoices table; browser and CLI packs are byte-identical apart from the timestamp |
 | WP-11b | Phase 11b: the versioned strategy prompt inside the pack, `/strategy` in the owner's own assistant, `fnb publish-plan` signing in as the `publisher` member, the Kế hoạch tab with KPI follow-up | both | 2.5 d | detailed design pending (a spec dated 2026-11-12, under review) | 11a | designed | a plan published and shown in Kế hoạch with live KPI values |
