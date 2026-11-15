@@ -32,10 +32,18 @@ export function themePlan(
 	};
 }
 
+export interface ThemeLoad extends Omit<CardsLoad, "answered"> {
+	readonly answered: ThemeCallResults;
+}
+
 export function useThemeLoad(
 	definition: ThemeDefinition,
 	context: ThemeContext,
-): CardsLoad {
+): ThemeLoad {
 	const plan = useMemo(() => themePlan(definition), [definition]);
-	return useCardsLoad(plan, context);
+	const load = useCardsLoad(plan, context);
+	return {
+		...load,
+		answered: load.answered as unknown as ThemeCallResults,
+	};
 }

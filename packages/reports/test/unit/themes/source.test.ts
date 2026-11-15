@@ -142,6 +142,126 @@ describe("createRpcReportSource", () => {
 		).rejects.toMatchObject({ code: POSSIBLE_TRUNCATION_CODE });
 	});
 
+	it("calls each 10b function with named arguments", async () => {
+		const range = {
+			store_ids: [STORE_A],
+			from_date: "2026-10-01",
+			to_date: "2026-10-31",
+		};
+		const calls = [
+			[
+				"promotion_days",
+				{ ...range, kind_filter: "item", key_filter: "KM-01" },
+			],
+			[
+				"promotion_catalogue",
+				{ store_ids: [STORE_A], as_of_date: "2026-10-31" },
+			],
+			[
+				"promotion_lift",
+				{
+					store_ids: [STORE_A],
+					promotion_kind: "voucher",
+					promotion_key: "Giảm 20k",
+					from_date: "2026-08-01",
+					to_date: "2026-10-31",
+					comparator: "sister_store",
+					pre_weeks: 6,
+				},
+			],
+			["promotion_compliance", { ...range, cap_rate: 0.5 }],
+			[
+				"item_discount_days",
+				{
+					store_ids: [STORE_A],
+					calendar_year: 2026,
+					as_of_date: "2026-10-31",
+				},
+			],
+			["shift_adjustments", { ...range, z_threshold: 2.5 }],
+			["data_quality_items", range],
+			["data_quality_summary", range],
+			["data_quality_payments", range],
+		] as const;
+		const fake = client(() => ({ data: [], error: null }));
+		const source = createRpcReportSource(fake.client);
+		for (const [name, args] of calls) {
+			await expect(
+				source.callTheme(name, args as never),
+				name,
+			).resolves.toEqual([]);
+		}
+		expect(fake.calls).toEqual(
+			calls.map(([name, args]) => ({ fn: name, args })),
+		);
+	});
+
+	it("maps a 10b function's database error, a row of the wrong shape and a possibly truncated answer as phase 9 does", async () => {
+		const lift = {
+			store_ids: [STORE_A],
+			promotion_kind: "item" as const,
+			promotion_key: "KM-01",
+			from_date: "2026-07-01",
+			to_date: "2026-10-31",
+			comparator: "baseline" as const,
+		};
+		const refused = createRpcReportSource(
+			client(() => ({
+				data: null,
+				error: {
+					message: "promotion_lift covers at most 92 days",
+					code: "22023",
+				},
+			})).client,
+		);
+		const error = await refused
+			.callTheme("promotion_lift", lift)
+			.catch((caught: unknown) => caught);
+		expect(error).toBeInstanceOf(ThemeCallError);
+		expect(error).toMatchObject({
+			code: "22023",
+			functionName: "promotion_lift",
+		});
+		const range = {
+			store_ids: [STORE_A],
+			from_date: "2026-10-01",
+			to_date: "2026-10-31",
+		};
+		const paymentRow = {
+			pos_account_id: null,
+			payment_method_external_id: "unknown",
+			payment_method_name: null,
+			kind: "other",
+			pos_kind: null,
+			override_kind: null,
+			in_catalogue: true,
+			invoices: null,
+			amount: null,
+		};
+		const many = createRpcReportSource(
+			client(() => ({
+				data: Array.from({ length: TRUNCATION_ROW_LIMIT }, () => paymentRow),
+				error: null,
+			})).client,
+		);
+		await expect(
+			many.callTheme("data_quality_payments", range),
+		).rejects.toMatchObject({ code: POSSIBLE_TRUNCATION_CODE });
+		const wrongKind = createRpcReportSource(
+			client(() => ({
+				data: [{ ...paymentRow, kind: "crypto" }],
+				error: null,
+			})).client,
+		);
+		await expect(
+			wrongKind.callTheme("data_quality_payments", range),
+		).rejects.toMatchObject({ code: INVALID_ROWS_CODE });
+		const parsed = await createRpcReportSource(
+			client(() => ({ data: [paymentRow], error: null })).client,
+		).callTheme("data_quality_payments", range);
+		expect(parsed).toEqual([paymentRow]);
+	});
+
 	it("knows the names of both registries", () => {
 		expect(isReportFunctionName("item_summary")).toBe(true);
 		expect(isReportFunctionName("hour_profile")).toBe(true);

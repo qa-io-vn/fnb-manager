@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { type ReactNode, useId } from "react";
 import type { Formatters } from "../../lib/format";
 import type { MetricDefinition } from "../../metrics/registry";
 import { TextLink } from "../ui/text-link";
@@ -40,6 +40,7 @@ export interface ReportCardProps {
 	chips: readonly ChipSpec[];
 	sentence: string;
 	notice?: CardNotice;
+	controls?: ReactNode;
 	decomposition?: CardDecomposition;
 	chart?: ChartSpec;
 	table?: TableSpec;
@@ -115,6 +116,7 @@ export function ReportCard(props: ReportCardProps) {
 				formatters={props.formatters}
 				{...(props.headline.caption ? { caption: props.headline.caption } : {})}
 			/>
+			{props.controls ?? null}
 			{props.notice ? <Notice notice={props.notice} /> : null}
 			<ComparisonChips chips={props.chips} formatters={props.formatters} />
 			{props.decomposition ? (

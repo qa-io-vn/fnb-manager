@@ -1,4 +1,5 @@
 import { fireEvent, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { metricRegistry } from "../../metrics/registry";
 import { CsvDialectProvider } from "../../state/csv-dialect";
@@ -94,6 +95,45 @@ describe("ReportCard", () => {
 		expect(positions).toEqual(
 			[...positions].sort((left, right) => left - right),
 		);
+	});
+
+	it("places a card's controls after the headline and before the chips, and leaves the slot empty without them", async () => {
+		const { container, unmount } = renderWithLanguage(
+			<ReportCard
+				{...props({
+					controls: (
+						<label data-testid="card-controls">
+							Chương trình
+							<select>
+								<option>Mua 2 tặng 1</option>
+							</select>
+						</label>
+					),
+				})}
+			/>,
+		);
+		await screen.findByTestId("echarts");
+		const order = [
+			screen.getByTestId("headline"),
+			screen.getByTestId("card-controls"),
+			screen.getAllByTestId("comparison-chip")[0],
+		].map((element) =>
+			[...container.querySelectorAll("*")].indexOf(element as Element),
+		);
+		expect(order).toEqual([...order].sort((left, right) => left - right));
+		const select = screen.getByRole("combobox", { name: "Chương trình" });
+		const user = userEvent.setup();
+		while (document.activeElement !== select) {
+			const before = document.activeElement;
+			await user.tab();
+			expect(document.activeElement).not.toBe(before);
+		}
+		expect(document.activeElement).toBe(select);
+		unmount();
+		renderWithLanguage(<ReportCard {...props()} />);
+		await screen.findByTestId("echarts");
+		expect(screen.queryByTestId("card-controls")).toBeNull();
+		expect(screen.queryByRole("combobox")).toBeNull();
 	});
 
 	it("shows a compact headline with the exact value as a tooltip", () => {

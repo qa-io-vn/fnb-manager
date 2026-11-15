@@ -1,4 +1,8 @@
 import {
+	COMPARATOR_PARAM,
+	PROMOTION_PARAM,
+	PROMOTIONS_W92_CALL_KEY,
+	promotionParams,
 	rangeOfPreset,
 	type ThemeDefinition,
 	themeDefinitions,
@@ -6,13 +10,21 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
 	act,
+	fireEvent,
 	render,
 	renderHook,
 	screen,
 	waitFor,
+	within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { MemoryRouter, useNavigationType } from "react-router-dom";
+import {
+	MemoryRouter,
+	useLocation,
+	useNavigate,
+	useNavigationType,
+} from "react-router-dom";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../i18n";
 import type { CatchUpStatus } from "../settings/source";
@@ -81,8 +93,18 @@ vi.mock("../settings/catch-up/use-analytics-catch-up", () => ({
 	}),
 }));
 
+const loaded = vi.hoisted(() => ({
+	cards: [] as unknown[],
+	rows: {} as Record<string, readonly unknown[]>,
+}));
+
 vi.mock("./use-theme-load", () => ({
-	useThemeLoad: () => ({ failed: false, cards: [], retry: () => undefined }),
+	useThemeLoad: () => ({
+		failed: false,
+		cards: loaded.cards,
+		retry: () => undefined,
+		answered: { rows: (key: string) => loaded.rows[key] },
+	}),
 }));
 
 function paymentsTheme(): ThemeDefinition {
@@ -90,6 +112,33 @@ function paymentsTheme(): ThemeDefinition {
 	if (definition === undefined)
 		throw new Error("the payments theme is missing");
 	return definition;
+}
+
+const probed = { search: "", navigation: "" };
+
+function AddressProbe() {
+	probed.search = useLocation().search;
+	probed.navigation = useNavigationType();
+	return null;
+}
+
+const PROMOTION_ROWS = [
+	{
+		promotion_kind: "bill",
+		promotion_key: "unnamed",
+		promotion_name: null,
+		discount_amount: 90_000,
+	},
+	{
+		promotion_kind: "item",
+		promotion_key: "KM-01",
+		promotion_name: "Mua 2 tặng 1",
+		discount_amount: 410_000,
+	},
+];
+
+function withPromotionParams(): ThemeDefinition {
+	return { ...paymentsTheme(), params: promotionParams };
 }
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -271,5 +320,186 @@ describe("the theme address in the history", () => {
 			expect(result.current.location.context.range.preset).toBe("91d"),
 		);
 		expect(result.current.navigation).toBe("PUSH");
+	});
+});
+
+describe("the parameters of a theme card", () => {
+	beforeAll(() => {
+		Element.prototype.scrollIntoView = () => undefined;
+	});
+
+	beforeEach(() => {
+		current.status = undefined;
+		current.pendingDays = 0;
+		loaded.cards = [];
+		loaded.rows = {};
+		window.localStorage.clear();
+	});
+
+	it("replaces an entry whose parameters it cannot read, and pushes one entry for each change", async () => {
+		const definition = withPromotionParams();
+		const { result } = renderHook(
+			() => ({
+				location: useThemeContext(definition),
+				navigation: useNavigationType(),
+				address: useLocation(),
+				navigate: useNavigate(),
+			}),
+			{
+				wrapper: wrapperAt(
+					"/chu-de/thanh-toan?range=28d&promo=combo%3AKM-01&cmp=sometimes",
+				),
+			},
+		);
+		await waitFor(() => expect(result.current.navigation).toBe("REPLACE"));
+		expect(result.current.location.context.params).toEqual({
+			[PROMOTION_PARAM]: "",
+			[COMPARATOR_PARAM]: "baseline",
+		});
+		expect(result.current.address.search).toBe("?range=28d");
+		const change = (id: string, value: string) =>
+			act(() =>
+				result.current.location.goTo(result.current.location.context.range, {
+					params: { ...result.current.location.context.params, [id]: value },
+				}),
+			);
+		change(COMPARATOR_PARAM, "sister_store");
+		await waitFor(() =>
+			expect(result.current.location.context.params[COMPARATOR_PARAM]).toBe(
+				"sister_store",
+			),
+		);
+		expect(result.current.navigation).toBe("PUSH");
+		expect(result.current.address.search).toBe("?range=28d&cmp=sister_store");
+		change(PROMOTION_PARAM, "voucher:Giảm 20k");
+		await waitFor(() =>
+			expect(result.current.location.context.params[PROMOTION_PARAM]).toBe(
+				"voucher:Giảm 20k",
+			),
+		);
+		expect(result.current.navigation).toBe("PUSH");
+		expect(result.current.address.search).toBe(
+			"?range=28d&promo=voucher%3AGi%E1%BA%A3m%2020k&cmp=sister_store",
+		);
+		change(COMPARATOR_PARAM, "baseline");
+		await waitFor(() =>
+			expect(result.current.address.search).toBe(
+				"?range=28d&promo=voucher%3AGi%E1%BA%A3m%2020k",
+			),
+		);
+		act(() => result.current.navigate(-1));
+		await waitFor(() =>
+			expect(result.current.location.context.params).toEqual({
+				[PROMOTION_PARAM]: "voucher:Giảm 20k",
+				[COMPARATOR_PARAM]: "sister_store",
+			}),
+		);
+		act(() => result.current.navigate(-1));
+		await waitFor(() =>
+			expect(result.current.location.context.params).toEqual({
+				[PROMOTION_PARAM]: "",
+				[COMPARATOR_PARAM]: "sister_store",
+			}),
+		);
+	});
+
+	it("shows the parameters inside their card, ordered by discount, and writes a change into the address", async () => {
+		loaded.cards = [{ id: "lift", status: "error", retry: () => undefined }];
+		loaded.rows = { [PROMOTIONS_W92_CALL_KEY]: PROMOTION_ROWS };
+		render(
+			<>
+				<ThemePage definition={withPromotionParams()} />
+				<AddressProbe />
+			</>,
+			{ wrapper: wrapperAt("/chu-de/thanh-toan?range=28d") },
+		);
+		const card = screen.getByTestId("card-payments-lift");
+		const select = within(card).getByRole("combobox", { name: "Chương trình" });
+		expect(
+			within(select)
+				.getAllByRole("option")
+				.map((option) => option.textContent),
+		).toEqual(["Mua 2 tặng 1 (Giảm giá món)", "Giảm giá hóa đơn không tên"]);
+		expect(select).toHaveValue("item:KM-01");
+		expect(within(card).getByRole("group", { name: "So với" })).toBeVisible();
+		fireEvent.change(select, { target: { value: "bill:unnamed" } });
+		fireEvent.blur(select);
+		await waitFor(() =>
+			expect(probed.search).toBe("?range=28d&promo=bill%3Aunnamed"),
+		);
+		expect(probed.navigation).toBe("PUSH");
+		expect(
+			within(screen.getByTestId("card-payments-lift")).getByRole("combobox", {
+				name: "Chương trình",
+			}),
+		).toHaveValue("bill:unnamed");
+	});
+
+	it("drops a promotion the answered call does not offer from the address, replacing the entry", async () => {
+		loaded.cards = [{ id: "lift", status: "error", retry: () => undefined }];
+		loaded.rows = {};
+		const view = render(
+			<>
+				<ThemePage definition={withPromotionParams()} />
+				<AddressProbe />
+			</>,
+			{
+				wrapper: wrapperAt("/chu-de/thanh-toan?range=28d&promo=item%3AKM-OLD"),
+			},
+		);
+		expect(probed.search).toBe("?range=28d&promo=item%3AKM-OLD");
+		expect(
+			within(screen.getByTestId("card-payments-lift")).getByRole("combobox", {
+				name: "Chương trình",
+			}),
+		).toBeDisabled();
+		loaded.rows = { [PROMOTIONS_W92_CALL_KEY]: PROMOTION_ROWS };
+		view.rerender(
+			<>
+				<ThemePage definition={withPromotionParams()} />
+				<AddressProbe />
+			</>,
+		);
+		await waitFor(() => expect(probed.search).toBe("?range=28d"));
+		expect(probed.navigation).toBe("REPLACE");
+	});
+
+	it("keeps a card's controls while it loads and gives the focus back to the control that changed", async () => {
+		const user = userEvent.setup();
+		loaded.cards = [{ id: "lift", status: "error", retry: () => undefined }];
+		loaded.rows = { [PROMOTIONS_W92_CALL_KEY]: PROMOTION_ROWS };
+		const page = (
+			<>
+				<ThemePage definition={withPromotionParams()} />
+				<AddressProbe />
+			</>
+		);
+		const view = render(page, {
+			wrapper: wrapperAt("/chu-de/thanh-toan?range=28d"),
+		});
+		await user.click(
+			within(screen.getByTestId("card-payments-lift")).getByRole("radio", {
+				name: "Cửa hàng không chạy chương trình",
+			}),
+		);
+		await waitFor(() =>
+			expect(probed.search).toBe("?range=28d&cmp=sister_store"),
+		);
+		loaded.cards = [{ id: "lift", status: "loading" }];
+		view.rerender(page);
+		const loading = screen.getByTestId("card-payments-lift");
+		expect(loading).toHaveAttribute("aria-busy", "true");
+		const radio = within(loading).getByRole("radio", {
+			name: "Cửa hàng không chạy chương trình",
+		});
+		expect(radio).toBeChecked();
+		expect(document.activeElement).toBe(radio);
+		loaded.cards = [{ id: "lift", status: "error", retry: () => undefined }];
+		view.rerender(page);
+		expect(document.activeElement).toBe(
+			within(screen.getByTestId("card-payments-lift")).getByRole("radio", {
+				name: "Cửa hàng không chạy chương trình",
+			}),
+		);
 	});
 });

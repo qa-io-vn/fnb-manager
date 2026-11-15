@@ -153,7 +153,140 @@ beforeEach(() => {
 	source.current = current;
 });
 
+interface ParamContext extends Context {
+	readonly cmp: string;
+}
+
+function paramPlan(): CardsPlan<ParamContext> {
+	const base = plan();
+	return {
+		...(base as unknown as CardsPlan<ParamContext>),
+		cards: [
+			...(base.cards as unknown as CardsPlan<ParamContext>["cards"]),
+			{
+				id: "lift",
+				needs: ["lift"],
+				visible: () => true,
+				build: ({ results }) =>
+					card(`lift:${results.rows("lift", "promotion_lift")?.length}`),
+			},
+		],
+		followUpCalls: (context, coverage, results): PlannedCall[] => [
+			...base.followUpCalls(context, coverage, results),
+			{
+				key: "lift",
+				name: "promotion_lift",
+				args: {
+					store_ids: [STORE.id],
+					promotion_kind: "item",
+					promotion_key: "KM-01",
+					from_date: "2026-08-04",
+					to_date: context.to,
+					comparator: context.cmp,
+				},
+			},
+		],
+	};
+}
+
 describe("useCardsLoad", () => {
+	it("asks again only for the follow-up whose arguments a theme parameter changes", async () => {
+		const client = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		const wrapper = ({ children }: { children: ReactNode }) => (
+			<QueryClientProvider client={client}>{children}</QueryClientProvider>
+		);
+		const cardsPlan = paramPlan();
+		const { result, rerender } = renderHook(
+			({ context }: { context: ParamContext }) =>
+				useCardsLoad(cardsPlan, context),
+			{ wrapper, initialProps: { context: { ...CONTEXT, cmp: "baseline" } } },
+		);
+		await waitFor(() =>
+			expect(idsOf(result)).toEqual(["totals:2", "series:1", "lift:1"]),
+		);
+		const namesOf = () => current.log.map((entry) => entry.split(" ")[0]);
+		expect(namesOf()).toEqual([
+			"store_coverage",
+			"range_totals",
+			"period_series",
+			"promotion_lift",
+		]);
+		rerender({ context: { ...CONTEXT, cmp: "sister_store" } });
+		await waitFor(() =>
+			expect(
+				namesOf().filter((name) => name === "promotion_lift"),
+			).toHaveLength(2),
+		);
+		await waitFor(() =>
+			expect(idsOf(result)).toEqual(["totals:2", "series:1", "lift:1"]),
+		);
+		expect(namesOf().slice(4)).toEqual(["promotion_lift"]);
+		expect(current.log.at(-1)).toContain('"comparator":"sister_store"');
+	});
+
+	it("hands out the rows of answered calls only, and none for a call it did not plan", async () => {
+		let releaseLift: () => void = () => undefined;
+		const liftHeld = new Promise<void>((resolve) => {
+			releaseLift = resolve;
+		});
+		const answer = current.callTheme;
+		current.callTheme = (async (name: string, args: unknown) => {
+			if (name === "promotion_lift") await liftHeld;
+			return answer(name as never, args as never);
+		}) as typeof current.callTheme;
+		const client = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		const wrapper = ({ children }: { children: ReactNode }) => (
+			<QueryClientProvider client={client}>{children}</QueryClientProvider>
+		);
+		const cardsPlan = paramPlan();
+		const { result } = renderHook(
+			() => useCardsLoad(cardsPlan, { ...CONTEXT, cmp: "baseline" }),
+			{ wrapper },
+		);
+		await waitFor(() =>
+			expect(result.current.answered.rows("totals", "range_totals")).toEqual([
+				{ row: 1 },
+				{ row: 2 },
+			]),
+		);
+		expect(
+			result.current.answered.rows("lift", "promotion_lift"),
+		).toBeUndefined();
+		expect(
+			result.current.answered.rows("unplanned", "promotion_summary"),
+		).toBeUndefined();
+		act(() => releaseLift());
+		await waitFor(() =>
+			expect(result.current.answered.rows("lift", "promotion_lift")).toEqual([
+				{ row: 1 },
+			]),
+		);
+	});
+
+	it("hands out no rows for a failed call, so a control that waits on it stops waiting", async () => {
+		current.failNext.add("range_totals");
+		const client = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		const wrapper = ({ children }: { children: ReactNode }) => (
+			<QueryClientProvider client={client}>{children}</QueryClientProvider>
+		);
+		const cardsPlan = paramPlan();
+		const { result } = renderHook(
+			() => useCardsLoad(cardsPlan, { ...CONTEXT, cmp: "baseline" }),
+			{ wrapper },
+		);
+		await waitFor(() =>
+			expect(result.current.answered.rows("totals", "range_totals")).toEqual(
+				[],
+			),
+		);
+	});
+
 	it("plans the follow-ups once coverage answers and plans them again when their inputs arrive", async () => {
 		let releaseTotals: () => void = () => undefined;
 		const totalsHeld = new Promise<void>((resolve) => {

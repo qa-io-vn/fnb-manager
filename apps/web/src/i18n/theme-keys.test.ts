@@ -6,6 +6,8 @@ import {
 import {
 	type NamedPreset,
 	parseThemeParams,
+	promotionParams,
+	promotionsKeys,
 	rangeOfPreset,
 	runTheme,
 	type ThemeContext,
@@ -88,6 +90,24 @@ describe("theme keys", () => {
 			(key) => !isMessageKey(key) || messages.en[key].trim() === "",
 		);
 		expect(missing).toEqual([]);
+	});
+
+	it("declares the Khuyến mãi keys and every parameter label and option label in both languages", () => {
+		const keys = [
+			...stringsOf(promotionsKeys),
+			...promotionParams.flatMap((spec) => [
+				spec.labelKey,
+				...spec.options.flatMap((option) =>
+					"labelKey" in option ? [option.labelKey] : [],
+				),
+			]),
+		];
+		expect(keys.length).toBeGreaterThan(5);
+		expect(
+			keys.filter(
+				(key) => !isMessageKey(key) || messages.en[key].trim() === "",
+			),
+		).toEqual([]);
 	});
 
 	it.each(

@@ -1,5 +1,5 @@
 import type { CardModel } from "@fnb/reports";
-import { useMemo, useRef } from "react";
+import { type ReactNode, useMemo, useRef } from "react";
 import {
 	ReportCard,
 	type ReportCardProps,
@@ -15,7 +15,15 @@ function spanOf(wide: boolean): string {
 	return wide ? ` ${WIDE_CARD_SPAN}` : "";
 }
 
-function CardSkeleton({ testId, wide }: { testId: string; wide: boolean }) {
+function CardSkeleton({
+	testId,
+	wide,
+	controls,
+}: {
+	testId: string;
+	wide: boolean;
+	controls?: ReactNode;
+}) {
 	const t = useT();
 	return (
 		<article
@@ -23,6 +31,7 @@ function CardSkeleton({ testId, wide }: { testId: string; wide: boolean }) {
 			className={`flex min-h-48 min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface-raised p-4${spanOf(wide)}`}
 			data-testid={testId}
 		>
+			{controls ?? null}
 			<p role="status" className="text-sm text-ink-muted">
 				{t("app.loading")}
 			</p>
@@ -35,11 +44,13 @@ function CardError({
 	retry,
 	wide,
 	limit = false,
+	controls,
 }: {
 	testId: string;
 	retry: () => void;
 	wide: boolean;
 	limit?: boolean;
+	controls?: ReactNode;
 }) {
 	const t = useT();
 	return (
@@ -48,6 +59,7 @@ function CardError({
 			data-testid={testId}
 			data-state={limit ? "limit" : "error"}
 		>
+			{controls ?? null}
 			<p role="alert" className="text-sm">
 				{t(limit ? "report.card.overLimit" : "report.card.error")}
 			</p>
@@ -83,11 +95,13 @@ export function ReportCardView({
 	state,
 	formatters,
 	wide = false,
+	controls,
 }: {
 	kind: CardKind;
 	state: CardState;
 	formatters: Formatters;
 	wide?: boolean;
+	controls?: ReactNode;
 }) {
 	const t = useT();
 	const testId = cardTestId(kind, state.id);
@@ -106,16 +120,20 @@ export function ReportCardView({
 				retry={state.retry}
 				wide={wide}
 				limit={state.limit === true}
+				controls={controls}
 			/>
 		);
 	}
-	if (adapted === null) return <CardSkeleton testId={testId} wide={wide} />;
+	if (adapted === null) {
+		return <CardSkeleton testId={testId} wide={wide} controls={controls} />;
+	}
 	if ("failure" in adapted) {
 		return (
 			<CardError
 				testId={testId}
 				wide={wide}
 				retry={() => window.location.reload()}
+				controls={controls}
 			/>
 		);
 	}
@@ -124,6 +142,7 @@ export function ReportCardView({
 			{...adapted.props}
 			wide={wide || adapted.props.wide === true}
 			busy={state.status === "loading"}
+			controls={controls}
 		/>
 	);
 }

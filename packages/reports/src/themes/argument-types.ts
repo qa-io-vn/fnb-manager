@@ -28,6 +28,15 @@ export const ARGUMENT_SQL_TYPES: Readonly<Record<string, string>> = {
 	low_sample_items: "integer",
 	min_pair_invoices: "integer",
 	max_pairs: "integer",
+	kind_filter: "text",
+	key_filter: "text",
+	promotion_kind: "text",
+	promotion_key: "text",
+	comparator: "text",
+	pre_weeks: "integer",
+	cap_rate: "numeric",
+	calendar_year: "integer",
+	z_threshold: "numeric",
 };
 
 export function argumentSqlType(name: string): string | undefined {

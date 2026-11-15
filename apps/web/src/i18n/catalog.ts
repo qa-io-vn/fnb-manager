@@ -14,8 +14,16 @@ import reportsEn from "./messages/reports.en.json";
 import reportsVi from "./messages/reports.vi.json";
 import settingsEn from "./messages/settings.en.json";
 import settingsVi from "./messages/settings.vi.json";
+import settingsHolidaysEn from "./messages/settings-holidays.en.json";
+import settingsHolidaysVi from "./messages/settings-holidays.vi.json";
+import settingsLegalEn from "./messages/settings-legal.en.json";
+import settingsLegalVi from "./messages/settings-legal.vi.json";
+import settingsManualEn from "./messages/settings-manual.en.json";
+import settingsManualVi from "./messages/settings-manual.vi.json";
 import settingsMappingEn from "./messages/settings-mapping.en.json";
 import settingsMappingVi from "./messages/settings-mapping.vi.json";
+import settingsStoreEn from "./messages/settings-store.en.json";
+import settingsStoreVi from "./messages/settings-store.vi.json";
 import settingsThresholdsEn from "./messages/settings-thresholds.en.json";
 import settingsThresholdsVi from "./messages/settings-thresholds.vi.json";
 import themeHoursEn from "./messages/theme-hours.en.json";
@@ -24,8 +32,16 @@ import themeMenuEn from "./messages/theme-menu.en.json";
 import themeMenuVi from "./messages/theme-menu.vi.json";
 import themePaymentsEn from "./messages/theme-payments.en.json";
 import themePaymentsVi from "./messages/theme-payments.vi.json";
+import themePromotionsEn from "./messages/theme-promotions.en.json";
+import themePromotionsVi from "./messages/theme-promotions.vi.json";
+import themeQualityEn from "./messages/theme-quality.en.json";
+import themeQualityVi from "./messages/theme-quality.vi.json";
 import themeRevenueEn from "./messages/theme-revenue.en.json";
 import themeRevenueVi from "./messages/theme-revenue.vi.json";
+import themeShiftsEn from "./messages/theme-shifts.en.json";
+import themeShiftsVi from "./messages/theme-shifts.vi.json";
+import themeStoresEn from "./messages/theme-stores.en.json";
+import themeStoresVi from "./messages/theme-stores.vi.json";
 import themesEn from "./messages/themes.en.json";
 import themesVi from "./messages/themes.vi.json";
 
@@ -57,11 +73,19 @@ const themeFilePrefixes = [
 	"theme.hours.",
 	"theme.menu.",
 	"theme.payments.",
+	"theme.promotions.",
+	"theme.shifts.",
+	"theme.stores.",
+	"theme.quality.",
 ] as const;
 
 const settingsFilePrefixes = [
 	"settings.thresholds.",
 	"settings.mapping.",
+	"settings.store.",
+	"settings.holidays.",
+	"settings.manual.",
+	"settings.legal.",
 ] as const;
 
 const reportFilePrefixes = [
@@ -176,6 +200,62 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: themePaymentsVi,
 		en: themePaymentsEn,
+	},
+	{
+		name: "theme-promotions",
+		prefix: "theme.promotions.",
+		excludedPrefixes: [],
+		vi: themePromotionsVi,
+		en: themePromotionsEn,
+	},
+	{
+		name: "theme-shifts",
+		prefix: "theme.shifts.",
+		excludedPrefixes: [],
+		vi: themeShiftsVi,
+		en: themeShiftsEn,
+	},
+	{
+		name: "theme-stores",
+		prefix: "theme.stores.",
+		excludedPrefixes: [],
+		vi: themeStoresVi,
+		en: themeStoresEn,
+	},
+	{
+		name: "theme-quality",
+		prefix: "theme.quality.",
+		excludedPrefixes: [],
+		vi: themeQualityVi,
+		en: themeQualityEn,
+	},
+	{
+		name: "settings-store",
+		prefix: "settings.store.",
+		excludedPrefixes: [],
+		vi: settingsStoreVi,
+		en: settingsStoreEn,
+	},
+	{
+		name: "settings-holidays",
+		prefix: "settings.holidays.",
+		excludedPrefixes: [],
+		vi: settingsHolidaysVi,
+		en: settingsHolidaysEn,
+	},
+	{
+		name: "settings-manual",
+		prefix: "settings.manual.",
+		excludedPrefixes: [],
+		vi: settingsManualVi,
+		en: settingsManualEn,
+	},
+	{
+		name: "settings-legal",
+		prefix: "settings.legal.",
+		excludedPrefixes: [],
+		vi: settingsLegalVi,
+		en: settingsLegalEn,
 	},
 ];
 

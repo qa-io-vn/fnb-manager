@@ -1,4 +1,12 @@
-import { type ThemeDefinition, themeKeys } from "@fnb/reports";
+import {
+	type ThemeCallResults,
+	type ThemeContext,
+	type ThemeDefinition,
+	themeKeys,
+	themeParamOptions,
+	themeParamsOfCard,
+} from "@fnb/reports";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../components/ui/button";
 import { useT } from "../i18n";
 import { ReportCardView } from "../reports/report-card-view";
@@ -10,6 +18,7 @@ import { storeSelectionLabel } from "../shell/store-select";
 import { useFormatters } from "../state/formatters";
 import { useReadyTenantScope } from "../state/tenant-scope";
 import { RangePicker } from "./range-picker";
+import { ThemeParamControls } from "./theme-param-controls";
 import { ThemeTabs } from "./theme-tabs";
 import { type ThemeLocation, useThemeContext } from "./use-theme-context";
 import { useThemeLoad } from "./use-theme-load";
@@ -26,6 +35,55 @@ function Notice({ testId, children }: { testId: string; children: string }) {
 	);
 }
 
+function CardControls({
+	definition,
+	cardId,
+	context,
+	answered,
+	focusParam,
+	onChange,
+}: {
+	definition: ThemeDefinition;
+	cardId: string;
+	context: ThemeContext;
+	answered: ThemeCallResults;
+	focusParam: string | null;
+	onChange: (id: string, value: string, replace: boolean) => void;
+}) {
+	const specs = themeParamsOfCard(definition.params, cardId);
+	const choices = specs.map((spec) => ({
+		spec,
+		options: themeParamOptions(spec, answered),
+		value: context.params[spec.id] ?? spec.defaultValue,
+	}));
+	const unoffered = choices.find(
+		(choice) =>
+			choice.spec.optionsFrom !== undefined &&
+			choice.options !== null &&
+			choice.value !== choice.spec.defaultValue &&
+			!choice.options.some(
+				(option) => option.value === choice.value && option.disabled !== true,
+			),
+	);
+	const unofferedId = unoffered?.spec.id ?? null;
+	const unofferedDefault = unoffered?.spec.defaultValue ?? "";
+	const latestChange = useRef(onChange);
+	latestChange.current = onChange;
+	useEffect(() => {
+		if (unofferedId !== null) {
+			latestChange.current(unofferedId, unofferedDefault, true);
+		}
+	}, [unofferedId, unofferedDefault]);
+	if (specs.length === 0) return null;
+	return (
+		<ThemeParamControls
+			choices={choices}
+			focusParam={focusParam}
+			onChange={(id, value) => onChange(id, value, false)}
+		/>
+	);
+}
+
 function ThemeCards({
 	definition,
 	location,
@@ -38,6 +96,21 @@ function ThemeCards({
 	const formatters = useFormatters(scope.tenant);
 	const { context } = location;
 	const load = useThemeLoad(definition, context);
+	const [focused, setFocused] = useState<{
+		readonly cardId: string;
+		readonly paramId: string;
+	} | null>(null);
+	const { goTo } = location;
+	const changeParam = useCallback(
+		(cardId: string, id: string, value: string, replace: boolean) => {
+			if (!replace) setFocused({ cardId, paramId: id });
+			goTo(context.range, {
+				replace,
+				params: { ...context.params, [id]: value },
+			});
+		},
+		[goTo, context.range, context.params],
+	);
 	return (
 		<>
 			{load.failed ? (
@@ -80,6 +153,20 @@ function ThemeCards({
 						wide={
 							definition.cards.find((card) => card.id === state.id)?.wide ===
 							true
+						}
+						controls={
+							<CardControls
+								definition={definition}
+								cardId={state.id}
+								context={context}
+								answered={load.answered}
+								focusParam={
+									focused?.cardId === state.id ? focused.paramId : null
+								}
+								onChange={(id, value, replace) =>
+									changeParam(state.id, id, value, replace)
+								}
+							/>
 						}
 					/>
 				))}

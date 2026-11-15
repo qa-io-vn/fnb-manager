@@ -270,6 +270,7 @@ function onIdle(task: () => void): () => void {
 export interface CardsLoad {
 	readonly cards: readonly CardState[];
 	readonly coverage: CoverageModel | null;
+	readonly answered: LoadResults;
 	readonly failed: boolean;
 	readonly retry: () => void;
 }
@@ -369,6 +370,15 @@ export function useCardsLoad<C extends LoadContext>(
 			return state.status === "ready" ? state.rows : EMPTY_ROWS;
 		},
 	};
+	const answered: LoadResults = {
+		rows(key: string) {
+			const state = keyState(key);
+			if (state.status === "error") return EMPTY_ROWS;
+			return state.status === "ready" && state !== UNPLANNED
+				? state.rows
+				: undefined;
+		},
+	};
 	const lastCoverage = useRef<CoverageModel | null>(null);
 	if (coverage !== null) lastCoverage.current = coverage;
 	const visibleCoverage =
@@ -462,6 +472,7 @@ export function useCardsLoad<C extends LoadContext>(
 	return {
 		cards,
 		coverage,
+		answered,
 		failed: failedSource || coverageState.status === "error",
 		retry: () => {
 			if (failedSource) {

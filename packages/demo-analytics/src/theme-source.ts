@@ -29,6 +29,7 @@ import {
 	modifierSummary,
 } from "./functions/modifier-summary.js";
 import { openingProductivity } from "./functions/opening-productivity.js";
+import { noPlannedRead, portPending } from "./functions/port-pending.js";
 import { rangeTotals } from "./functions/range-totals.js";
 import { reportSettingsOf } from "./functions/report-settings-of.js";
 import type {
@@ -70,6 +71,15 @@ export const themeHandlers: ThemeHandlers = {
 	item_attach: itemAttach,
 	basket_pairs: basketPairs,
 	modifier_summary: modifierSummary,
+	promotion_days: portPending("promotion_days"),
+	promotion_catalogue: portPending("promotion_catalogue"),
+	promotion_lift: portPending("promotion_lift"),
+	promotion_compliance: portPending("promotion_compliance"),
+	item_discount_days: portPending("item_discount_days"),
+	shift_adjustments: portPending("shift_adjustments"),
+	data_quality_items: portPending("data_quality_items"),
+	data_quality_summary: portPending("data_quality_summary"),
+	data_quality_payments: portPending("data_quality_payments"),
 };
 
 function span(
@@ -151,6 +161,15 @@ export const themeReads: ThemeReads = {
 				)
 			: []),
 	],
+	promotion_days: noPlannedRead,
+	promotion_catalogue: noPlannedRead,
+	promotion_lift: noPlannedRead,
+	promotion_compliance: noPlannedRead,
+	item_discount_days: noPlannedRead,
+	shift_adjustments: noPlannedRead,
+	data_quality_items: noPlannedRead,
+	data_quality_summary: noPlannedRead,
+	data_quality_payments: noPlannedRead,
 };
 
 function issues(error: z.ZodError): string {

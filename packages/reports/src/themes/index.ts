@@ -6,6 +6,7 @@ export * from "./hours/index.js";
 export * from "./keys.js";
 export * from "./menu/index.js";
 export * from "./payments/index.js";
+export * from "./promotions/index.js";
 export * from "./range.js";
 export * from "./registry.js";
 export * from "./revenue/index.js";

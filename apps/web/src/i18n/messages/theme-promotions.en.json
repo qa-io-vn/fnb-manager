@@ -1,0 +1,10 @@
+{
+	"theme.promotions.lift.comparator.baseline": "The same weekday in earlier weeks",
+	"theme.promotions.lift.comparator.prior_weeks": "The weeks before the promotion",
+	"theme.promotions.lift.comparator.sister_store": "A store that did not run it",
+	"theme.promotions.lift.comparatorLabel": "Compared with",
+	"theme.promotions.lift.option": "{name} ({kind})",
+	"theme.promotions.lift.optionUnnamed": "{kind}, unnamed",
+	"theme.promotions.lift.promotion": "Promotion",
+	"theme.promotions.title": "Promotions & discounts"
+}

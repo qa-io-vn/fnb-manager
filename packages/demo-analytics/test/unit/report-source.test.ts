@@ -1,6 +1,7 @@
 import {
 	addDays,
 	daysBetween,
+	INVALID_ARGUMENTS_CODE,
 	type ThemeArgs,
 	type ThemeFunctionName,
 	themeFunctions,
@@ -10,6 +11,11 @@ import { BASKET_PAIRS_MAX_DAYS } from "../../src/functions/basket-pairs.js";
 import { ITEM_ATTACH_MAX_DAYS } from "../../src/functions/item-attach.js";
 import { ITEM_MARGINS_MAX_DAYS } from "../../src/functions/item-margins.js";
 import { MODIFIER_SUMMARY_MAX_DAYS } from "../../src/functions/modifier-summary.js";
+import {
+	NOT_IMPLEMENTED_CODE,
+	PORT_PENDING_FUNCTIONS,
+	type PortPendingFunction,
+} from "../../src/functions/port-pending.js";
 import {
 	createDemoAnalyticsSource,
 	createDemoReportSource,
@@ -59,7 +65,51 @@ const minimalArgs: { [N in ThemeFunctionName]: ThemeArgs<N> } = {
 		compare_from: "2026-10-21",
 		compare_to: "2026-10-27",
 	},
+	promotion_days: {
+		store_ids: STORES,
+		from_date: "2026-10-28",
+		to_date: AS_OF,
+	},
+	promotion_catalogue: { store_ids: STORES, as_of_date: AS_OF },
+	promotion_lift: {
+		store_ids: STORES,
+		promotion_kind: "item",
+		promotion_key: "PROMO-1",
+		from_date: "2026-08-04",
+		to_date: AS_OF,
+		comparator: "baseline",
+	},
+	promotion_compliance: {
+		store_ids: STORES,
+		from_date: "2026-10-28",
+		to_date: AS_OF,
+	},
+	item_discount_days: { store_ids: STORES, calendar_year: 2026 },
+	shift_adjustments: {
+		store_ids: STORES,
+		from_date: "2026-10-28",
+		to_date: AS_OF,
+	},
+	data_quality_items: {
+		store_ids: STORES,
+		from_date: "2026-10-28",
+		to_date: AS_OF,
+	},
+	data_quality_summary: {
+		store_ids: STORES,
+		from_date: "2026-10-28",
+		to_date: AS_OF,
+	},
+	data_quality_payments: {
+		store_ids: STORES,
+		from_date: "2026-10-28",
+		to_date: AS_OF,
+	},
 };
+
+function portPending(name: ThemeFunctionName): name is PortPendingFunction {
+	return (PORT_PENDING_FUNCTIONS as readonly string[]).includes(name);
+}
 
 describe("createDemoReportSource", () => {
 	it("has a handler and a read plan for every thematic function of the contract, and keeps phase 9's handlers", async () => {
@@ -100,6 +150,7 @@ describe("createDemoReportSource", () => {
 
 	it("answers every thematic function with rows of its contract and reads only the store-days it planned", async () => {
 		for (const name of Object.keys(themeFunctions) as ThemeFunctionName[]) {
+			if (portPending(name)) continue;
 			const source = createDemoReportSource({
 				now: () => NOW,
 				volumeScale: 0.2,
@@ -111,6 +162,35 @@ describe("createDemoReportSource", () => {
 			expect(rows.length, name).toBeGreaterThan(0);
 			expect(source.aggregates.misses(), name).toBe(0);
 		}
+	});
+
+	it("refuses every 10b function whose port has not landed with not_implemented, before reading a store-day", async () => {
+		expect(PORT_PENDING_FUNCTIONS.length).toBeGreaterThan(0);
+		for (const name of PORT_PENDING_FUNCTIONS) {
+			const source = createDemoReportSource({
+				now: () => NOW,
+				volumeScale: 0.2,
+				settings: new DemoSettingsStore(demoSettings(AS_OF)),
+			});
+			await expect(
+				source.callTheme(name, minimalArgs[name] as never),
+				name,
+			).rejects.toMatchObject({
+				code: NOT_IMPLEMENTED_CODE,
+				functionName: name,
+			});
+			expect(source.aggregates.days.generations(), name).toBe(0);
+		}
+	});
+
+	it("still checks the arguments of a function whose port has not landed", async () => {
+		const source = createDemoReportSource({ now: () => NOW, volumeScale: 0.2 });
+		await expect(
+			source.callTheme("promotion_lift", {
+				...minimalArgs.promotion_lift,
+				comparator: "sister" as never,
+			}),
+		).rejects.toMatchObject({ code: INVALID_ARGUMENTS_CODE });
 	});
 
 	it("shares the day cache and the settings store it is given", async () => {

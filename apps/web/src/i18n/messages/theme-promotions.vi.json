@@ -1,0 +1,10 @@
+{
+	"theme.promotions.lift.comparator.baseline": "Cùng thứ các tuần trước",
+	"theme.promotions.lift.comparator.prior_weeks": "Các tuần trước chương trình",
+	"theme.promotions.lift.comparator.sister_store": "Cửa hàng không chạy chương trình",
+	"theme.promotions.lift.comparatorLabel": "So với",
+	"theme.promotions.lift.option": "{name} ({kind})",
+	"theme.promotions.lift.optionUnnamed": "{kind} không tên",
+	"theme.promotions.lift.promotion": "Chương trình",
+	"theme.promotions.title": "Khuyến mãi & giảm giá"
+}
