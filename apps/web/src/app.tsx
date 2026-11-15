@@ -6,6 +6,7 @@ import {
 	Outlet,
 	type RouteObject,
 	RouterProvider,
+	useLocation,
 	useNavigate,
 } from "react-router-dom";
 import { AppModeProvider } from "./app-mode/app-mode";
@@ -27,6 +28,11 @@ import { ReportRouteLoading } from "./reports/route-loading";
 import { NewVersionPrompt } from "./shell/new-version-prompt";
 import { CsvDialectProvider } from "./state/csv-dialect";
 import { PreferencesProvider, usePreferences } from "./state/preferences";
+
+function RedirectKeepingSearch({ to }: { to: string }) {
+	const { search } = useLocation();
+	return <Navigate to={`${to}${search}`} replace />;
+}
 
 function RecoveryRedirect() {
 	const navigate = useNavigate();
@@ -52,7 +58,10 @@ export const routes: RouteObject[] = [
 						path: "bao-cao",
 						hydrateFallbackElement: <ReportRouteLoading />,
 						children: [
-							{ index: true, element: <Navigate to="ngay" replace /> },
+							{
+								index: true,
+								element: <RedirectKeepingSearch to="/bao-cao/ngay" />,
+							},
 							{
 								path: "ngay",
 								lazy: () =>
@@ -81,14 +90,20 @@ export const routes: RouteObject[] = [
 										Component: module.YearReportPage,
 									})),
 							},
-							{ path: "*", element: <Navigate to="ngay" replace /> },
+							{
+								path: "*",
+								element: <RedirectKeepingSearch to="/bao-cao/ngay" />,
+							},
 						],
 					},
 					{
 						path: "chu-de",
 						hydrateFallbackElement: <ReportRouteLoading />,
 						children: [
-							{ index: true, element: <Navigate to="doanh-thu" replace /> },
+							{
+								index: true,
+								element: <RedirectKeepingSearch to="/chu-de/doanh-thu" />,
+							},
 							{
 								path: "doanh-thu",
 								lazy: () =>
@@ -117,7 +132,17 @@ export const routes: RouteObject[] = [
 										(module) => ({ Component: module.ThanhToanPage }),
 									),
 							},
-							{ path: "*", element: <Navigate to="doanh-thu" replace /> },
+							{
+								path: ":slug",
+								lazy: () =>
+									import("./pages/themes/later/later-page").then((module) => ({
+										Component: module.LaterThemePage,
+									})),
+							},
+							{
+								path: "*",
+								element: <RedirectKeepingSearch to="/chu-de/doanh-thu" />,
+							},
 						],
 					},
 					{ path: "ke-hoach/*", element: <PlaceholderPage section="plans" /> },

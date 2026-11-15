@@ -264,17 +264,52 @@ export async function expectSemicolonCsv(
 	return text;
 }
 
+export async function expectRangeRoundTrip(
+	page: Page,
+	kind: ThemeKind,
+): Promise<void> {
+	await openTheme(page, kind, "from=2026-10-08&to=2026-10-21");
+	expect(themeSearch(page).get("from")).toBe("2026-10-08");
+	await expect(page.getByTestId("range-label")).toContainText("14 ngày");
+	await page.reload();
+	await waitForSettledThemeCards(page);
+	expect(themeSearch(page).get("from")).toBe("2026-10-08");
+	expect(themeSearch(page).get("to")).toBe("2026-10-21");
+	await page.getByRole("button", { name: "Khoảng trước" }).click();
+	await waitForSettledThemeCards(page);
+	expect(themeSearch(page).get("from")).toBe("2026-09-24");
+	expect(themeSearch(page).get("to")).toBe("2026-10-07");
+	await page.goBack();
+	await waitForSettledThemeCards(page);
+	expect(themeSearch(page).get("from")).toBe("2026-10-08");
+	expect(themeSearch(page).get("to")).toBe("2026-10-21");
+}
+
 export async function expectThemePrintLayout(page: Page): Promise<void> {
 	const screenSize = page.viewportSize();
 	await page.setViewportSize({
 		width: PRINTED_CONTENT_WIDTH_PX,
 		height: screenSize?.height ?? PRINTED_CONTENT_WIDTH_PX,
 	});
+	const title =
+		(await page.getByRole("heading", { level: 1 }).textContent())?.trim() ?? "";
+	const span =
+		((await page.getByTestId("range-label").textContent()) ?? "").split(
+			" · ",
+		)[0] ?? "";
 	await page.emulateMedia({ media: "print" });
 	try {
 		await expect(page.getByTestId("theme-tabs")).toBeHidden();
 		await expect(page.getByTestId("range-picker")).toBeHidden();
-		await expect(page.getByTestId("print-summary")).toBeVisible();
+		await expect(page.getByTestId("bottom-navigation")).toBeHidden();
+		await expect(page.getByTestId("side-rail")).toBeHidden();
+		const summary = page.getByTestId("print-summary");
+		await expect(summary).toBeVisible();
+		await expect(summary).toContainText(`${title} · ${span.trim()} · `);
+		await expect(summary).toContainText("đến hết ngày");
+		await expect(page.locator("button:visible")).toHaveCount(
+			await page.locator("th button:visible").count(),
+		);
 		await waitForCharts(page);
 	} finally {
 		await page.emulateMedia({ media: "screen" });

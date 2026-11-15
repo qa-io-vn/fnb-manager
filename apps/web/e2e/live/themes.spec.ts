@@ -27,6 +27,7 @@ const titles = {
 	revenue: "Doanh thu & xu hướng",
 	hours: "Giờ & ngày trong tuần",
 	menu: "Thực đơn",
+	payments: "Thanh toán & tiền mặt",
 } as const;
 
 async function seededClock(): Promise<SeededClock> {
@@ -48,12 +49,12 @@ async function signIn(page: Page, clock: SeededClock) {
 	).toBeVisible();
 }
 
-test("the revenue, hours and menu themes render on the seeded stack through the SQL functions", async ({
+test("the four thematic reports render on the seeded stack through the SQL functions", async ({
 	page,
 }) => {
 	const clock = await seededClock();
 	await signIn(page, clock);
-	for (const kind of ["revenue", "hours", "menu"] as const) {
+	for (const kind of ["revenue", "hours", "menu", "payments"] as const) {
 		await page.goto(themeUrl(kind, "range=7d"));
 		await waitForSettledThemeCards(page);
 		await expect(
@@ -61,10 +62,12 @@ test("the revenue, hours and menu themes render on the seeded stack through the 
 		).toBeVisible();
 		await expect(page.getByRole("alert")).toHaveCount(0);
 		await expectEveryThemeCardSettled(page, kind);
+		if (kind === "menu") {
+			await expect(
+				themeCard(page, "menu", "margins").getByTestId("headline"),
+			).toHaveText(/\d/);
+		}
 	}
-	await expect(
-		themeCard(page, "menu", "margins").getByTestId("headline"),
-	).toHaveText(/\d/);
 	await page.goto(themeUrl("hours", "range=7d"));
 	await waitForSettledThemeCards(page);
 	await expect(

@@ -60,6 +60,16 @@ export const themeKeys = {
 	heat: {
 		legend: "theme.heat.legend",
 	},
+	laterPage: {
+		title: "theme.laterPage.title",
+		body: "theme.laterPage.body",
+	},
+	later: {
+		promotions: "theme.later.promotions",
+		shifts: "theme.later.shifts",
+		stores: "theme.later.stores",
+		quality: "theme.later.quality",
+	},
 } as const;
 
 export type WeekdayNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7;

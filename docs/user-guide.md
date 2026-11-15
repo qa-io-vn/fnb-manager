@@ -242,7 +242,7 @@ Use the browser's own print command (Ctrl+P or ⌘P on a computer, Share then Pr
 
 ## The thematic reports ("Chủ đề")
 
-"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. Four are built: **Doanh thu & xu hướng**, **Giờ & ngày trong tuần**, **Thực đơn** and **Thanh toán & tiền mặt**. The others (Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu) come later; the tabs above the range show only the ones that exist.
+"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. Four are built: **Doanh thu & xu hướng**, **Giờ & ngày trong tuần**, **Thực đơn** and **Thanh toán & tiền mặt**. The others (Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu) come in phase 10b: their tabs are already there and open a page that says so, and from it the other tabs lead back with the same range and stores.
 
 ![Doanh thu & xu hướng on a computer: the theme tabs, the range presets and dates, then the Doanh thu thuần, Xu hướng doanh thu and Số hóa đơn cards](user-guide/theme-doanh-thu.png)
 
@@ -253,6 +253,7 @@ Use the browser's own print command (Ctrl+P or ⌘P on a computer, Share then Pr
 - **Từ ngày and Đến ngày** pick any range from 1 January 2023, at most 400 days.
 - The line under the presets says what is shown and what it is compared with: "07/10/2026 – 03/11/2026 · 28 ngày · so với 4 tuần trước". Every card also compares with the same weeks last year ("so với cùng kỳ năm trước"), except 52 tuần and Năm nay, whose range before is already last year.
 - The app remembers the last preset on this device, and keeps the range and the stores when you switch between the thematic reports.
+- A range longer than 400 days is shortened to its last 400 days, and an end after the last complete day is moved back to it; a line above the cards says so while that range is shown.
 
 ![The range picker: the seven presets, the ‹ and › buttons, the range line and the two dates](user-guide/theme-range-picker.png)
 

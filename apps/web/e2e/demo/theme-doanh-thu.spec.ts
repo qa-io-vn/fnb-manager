@@ -7,6 +7,7 @@ import {
 	expectCsvTablesWithBom,
 	expectDecimalCommas,
 	expectEveryThemeCardSettled,
+	expectRangeRoundTrip,
 	expectSemicolonCsvTables,
 	expectThemeInEnglish,
 	expectThemePrintLayout,
@@ -62,22 +63,10 @@ test("a longer preset adds the months card and a short one drops it", async ({
 	).toContainText("so với 7 ngày trước");
 });
 
-test("a custom range survives a reload and steps by its own length", async ({
+test("a custom range survives a reload, steps by its own length and comes back", async ({
 	page,
 }) => {
-	await openTheme(page, "revenue", "from=2026-10-08&to=2026-10-21");
-	expect(themeSearch(page).get("from")).toBe("2026-10-08");
-	await expect(page.getByTestId("range-label")).toContainText("14 ngày");
-	await page.reload();
-	await waitForSettledThemeCards(page);
-	expect(themeSearch(page).get("to")).toBe("2026-10-21");
-	await page.getByRole("button", { name: "Khoảng trước" }).click();
-	await waitForSettledThemeCards(page);
-	expect(themeSearch(page).get("from")).toBe("2026-09-24");
-	expect(themeSearch(page).get("to")).toBe("2026-10-07");
-	await page.goBack();
-	await waitForSettledThemeCards(page);
-	expect(themeSearch(page).get("from")).toBe("2026-10-08");
+	await expectRangeRoundTrip(page, "revenue");
 });
 
 test("the young store has no last year and a single store shows period rows", async ({

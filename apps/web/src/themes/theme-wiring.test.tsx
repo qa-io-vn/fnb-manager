@@ -1,12 +1,22 @@
-import { type ThemeDefinition, themeDefinitions } from "@fnb/reports";
+import {
+	rangeOfPreset,
+	type ThemeDefinition,
+	themeDefinitions,
+} from "@fnb/reports";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, renderHook, screen } from "@testing-library/react";
+import {
+	act,
+	render,
+	renderHook,
+	screen,
+	waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useNavigationType } from "react-router-dom";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../i18n";
 import type { CatchUpStatus } from "../settings/source";
-import { PreferencesProvider } from "../state/preferences";
+import { PREFERENCES_KEY, PreferencesProvider } from "../state/preferences";
 import { ThemePage } from "./theme-page";
 import { useThemeContext } from "./use-theme-context";
 
@@ -140,5 +150,126 @@ describe("the catch-up on a theme page", () => {
 				.compareDocumentPosition(screen.getByTestId("report-cards")) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+});
+
+function wrapperAt(entry: string) {
+	return ({ children }: { children: ReactNode }) => (
+		<MemoryRouter initialEntries={[entry]}>
+			<I18nProvider language="vi" onLanguageChange={() => undefined}>
+				<QueryClientProvider client={new QueryClient()}>
+					<PreferencesProvider>{children}</PreferencesProvider>
+				</QueryClientProvider>
+			</I18nProvider>
+		</MemoryRouter>
+	);
+}
+
+function storedPreset(): unknown {
+	const stored = window.localStorage.getItem(PREFERENCES_KEY);
+	return stored === null ? null : JSON.parse(stored).themePreset;
+}
+
+describe("the device's last theme preset", () => {
+	beforeAll(() => {
+		Element.prototype.scrollIntoView = () => undefined;
+	});
+
+	beforeEach(() => {
+		current.status = undefined;
+		current.pendingDays = 0;
+		window.localStorage.clear();
+	});
+
+	it("remembers a preset read from the address, but not two custom dates", () => {
+		renderHook(() => useThemeContext(paymentsTheme()), {
+			wrapper: wrapperAt("/chu-de/thanh-toan?range=91d"),
+		});
+		expect(storedPreset()).toBe("91d");
+		window.localStorage.clear();
+		renderHook(() => useThemeContext(paymentsTheme()), {
+			wrapper: wrapperAt("/chu-de/thanh-toan?from=2026-10-08&to=2026-10-21"),
+		});
+		expect(storedPreset() ?? null).toBeNull();
+	});
+
+	it("opens the remembered preset when the address names no range", () => {
+		window.localStorage.setItem(
+			PREFERENCES_KEY,
+			JSON.stringify({ themePreset: "7d" }),
+		);
+		const { result } = renderHook(() => useThemeContext(paymentsTheme()), {
+			wrapper: wrapperAt("/chu-de/thanh-toan"),
+		});
+		expect(result.current.context.range.preset).toBe("7d");
+	});
+});
+
+describe("the range notices", () => {
+	beforeAll(() => {
+		Element.prototype.scrollIntoView = () => undefined;
+	});
+
+	beforeEach(() => {
+		current.status = undefined;
+		current.pendingDays = 0;
+		window.localStorage.clear();
+	});
+
+	it("keep saying the range was shortened after the address is rewritten, until another range is chosen", async () => {
+		const { result } = renderHook(() => useThemeContext(paymentsTheme()), {
+			wrapper: wrapperAt("/chu-de/thanh-toan?from=2023-06-01&to=2099-12-31"),
+		});
+		await waitFor(() =>
+			expect(result.current.context.range.preset).toBe("custom"),
+		);
+		await waitFor(() =>
+			expect(result.current.context.range.days).toBe(
+				paymentsTheme().maxRangeDays,
+			),
+		);
+		expect(result.current.rangeClamped).toBe(true);
+		expect(result.current.todayClamped).toBe(true);
+		act(() =>
+			result.current.goTo(
+				rangeOfPreset("7d", result.current.context.range.asOf),
+			),
+		);
+		await waitFor(() => expect(result.current.context.range.preset).toBe("7d"));
+		expect(result.current.rangeClamped).toBe(false);
+		expect(result.current.todayClamped).toBe(false);
+	});
+});
+
+describe("the theme address in the history", () => {
+	beforeAll(() => {
+		Element.prototype.scrollIntoView = () => undefined;
+	});
+
+	beforeEach(() => {
+		current.status = undefined;
+		current.pendingDays = 0;
+		window.localStorage.clear();
+	});
+
+	it("replaces the entry when it writes the address in full, and pushes one for the user's step", async () => {
+		const { result } = renderHook(
+			() => ({
+				location: useThemeContext(paymentsTheme()),
+				navigation: useNavigationType(),
+			}),
+			{ wrapper: wrapperAt("/chu-de/thanh-toan") },
+		);
+		await waitFor(() => expect(result.current.navigation).toBe("REPLACE"));
+		expect(result.current.location.context.range.preset).toBe("28d");
+		act(() =>
+			result.current.location.goTo(
+				rangeOfPreset("91d", result.current.location.context.range.asOf),
+			),
+		);
+		await waitFor(() =>
+			expect(result.current.location.context.range.preset).toBe("91d"),
+		);
+		expect(result.current.navigation).toBe("PUSH");
 	});
 });

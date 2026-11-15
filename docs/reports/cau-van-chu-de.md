@@ -1,6 +1,6 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt) and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo, Phân loại and the catch-up banner). It lists every Vietnamese template these pages use (503 entries, 162 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt) and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo, Phân loại and the catch-up banner). It lists every Vietnamese template these pages use (509 entries, 163 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
 The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
@@ -72,7 +72,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{payment}` | 1 | `theme.payments.mix.otherMover` |
 | `{peak}` | 2 | `theme.hours.peakDead.main` |
 | `{peakShare}` | 2 | `theme.hours.peakDead.main` |
-| `{phase}` | 2 | `settings.placeholder.body` |
+| `{phase}` | 3 | `theme.laterPage.body` |
 | `{points}` | 10 | `theme.revenue.trend.caption` |
 | `{quantity}` | 1 | `theme.menu.movers.newItem` |
 | `{quiet}` | 1 | `theme.hours.heatmap.main` |
@@ -94,6 +94,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{stores}` | 1 | `theme.print.summary` |
 | `{sugar}` | 2 | `theme.menu.preferences.main` |
 | `{sugarShare}` | 2 | `theme.menu.preferences.main` |
+| `{theme}` | 1 | `theme.laterPage.body` |
 | `{time}` | 2 | `settings.audit.when` |
 | `{to}` | 5 | `theme.range.span` |
 | `{total}` | 1 | `theme.menu.movers.captionLikeForLike` |
@@ -114,7 +115,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 - "tạm tính" in the menu matrix while costs are missing (`theme.menu.matrix.provisionalCell`).
 - "Thiết bị này" for the per-device CSV format, and the wording of its two choices (`settings.thresholds.device.*`).
 
-## Dùng chung cho các chủ đề · Shared by the thematic reports (`themes.vi.json`, 39 mục)
+## Dùng chung cho các chủ đề · Shared by the thematic reports (`themes.vi.json`, 45 mục)
 
 ### Thẻ chọn chủ đề · theme tabs (`theme.tabs.*`)
 
@@ -194,6 +195,22 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `theme.weekday.short.5` | T6 | Fri | — |
 | `theme.weekday.short.6` | T7 | Sat | — |
 | `theme.weekday.short.7` | CN | Sun | — |
+
+### Tên chủ đề chưa có · names of topics not built yet (`theme.later.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.later.promotions` | Khuyến mãi & giảm giá | Promotions and discounts | — |
+| `theme.later.quality` | Chất lượng dữ liệu | Data quality | — |
+| `theme.later.shifts` | Ca & két tiền | Shifts and cash drawer | — |
+| `theme.later.stores` | So sánh cửa hàng | Store comparison | — |
+
+### Trang chủ đề chưa có · page of a topic not built yet (`theme.laterPage.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.laterPage.body` | Chủ đề {theme} có ở giai đoạn {phase} của lộ trình. Các chủ đề đã có nằm ở các thẻ phía trên. | The {theme} topic comes in phase {phase} of the roadmap. The topics already built are in the tabs above. | `{theme}` `{phase}` |
+| `theme.laterPage.title` | Chủ đề này đang được xây dựng | This topic is being built | — |
 
 ## Doanh thu & xu hướng · Revenue and trend (`theme-revenue.vi.json`, 73 mục)
 

@@ -54,6 +54,7 @@ Both run after every `build` and can be run alone on an existing `dist`.
 | `demo/` | The demo `RowSource` and the demo `AnalyticsSource` (both dynamically imported, sharing one cache of generated days) |
 | `reports/` | The periodic report page: routes and deep links, tabs, period navigator, loading (`use-report.ts`), the card adapter from `CardModel` to `ReportCard` props and typed-value formatting |
 | `pages/reports/` | One lazily loaded page per report (`day`, `week`, `month`, `year`) |
+| `themes/`, `pages/themes/` | The thematic reports: `ThemePage`, the eight tabs (`theme-tabs.tsx`), the range picker, the address (`theme-route.ts`: `range` or `from` and `to`, and `store`) and the context (`use-theme-context.ts`); one lazily loaded page per built theme and `later/later-page.tsx` for the themes of 10b. Loading is phase 9's, generalised in `reports/use-cards-load.ts` |
 | `metrics/` | The one metrics module for Hôm nay (`today.ts`), sentence templates selection, verification and the registry |
 | `components/report-card/` | `ReportCard` and its parts; ECharts is lazy-loaded from `echarts-view.tsx`; `table-scroller.tsx` keeps wide tables scrolling inside their card |
 | `shell/`, `auth/`, `pages/`, `state/` | Layout, sign-in screens, routes and preferences |

@@ -5,9 +5,7 @@ import {
 	youngStoreOpenedOn,
 } from "@fnb/demo-analytics";
 import {
-	type CardModel,
 	type IsoDate,
-	isLabelKey,
 	periodContaining,
 	REPORT_KINDS,
 	type ReportContext,
@@ -15,12 +13,12 @@ import {
 	type ReportPeriod,
 	reportDefinitions,
 	runReport,
-	type SentencePart,
 	stepPeriod,
 } from "@fnb/reports";
 import { describe, expect, it } from "vitest";
 import { isWebMetricId } from "../metrics/registry";
 import { toReportCardProps } from "../reports/card-adapter";
+import { modelKeys } from "../test/card-keys";
 import { vndFormatters } from "../test/render";
 import { isMessageKey, messages, translate } from "./index";
 
@@ -68,74 +66,6 @@ function periodsOf(kind: ReportKind): ReportPeriod[] {
 		current,
 		...(previous === null ? [] : [previous]),
 		periodContaining(kind, youngStart, asOf),
-	];
-}
-
-function partKeys(part: SentencePart | null): string[] {
-	if (part === null) return [];
-	return [
-		part.key,
-		...Object.values(part.values).flatMap((value) =>
-			value.kind === "message"
-				? [value.value]
-				: value.kind === "part"
-					? partKeys(value.value)
-					: [],
-		),
-	];
-}
-
-function modelKeys(card: CardModel): string[] {
-	return [
-		card.titleKey,
-		...partKeys(card.subtitle),
-		...partKeys(card.headline.caption),
-		...partKeys(card.notice?.part ?? null),
-		...card.narrative.flatMap(partKeys),
-		...card.comparisons.flatMap((comparison) => [
-			...partKeys(comparison.label),
-			...(comparison.unavailable === null
-				? []
-				: [`report.unavailable.${comparison.unavailable}.${comparison.kind}`]),
-		]),
-		...(card.decomposition === null
-			? []
-			: [
-					card.decomposition.metric === "net_revenue"
-						? "report.decomposition.net"
-						: "report.decomposition.ticket",
-				]),
-		...card.tables.flatMap((table) => [
-			table.captionKey,
-			...table.columns.map((column) => column.labelKey),
-			...table.columns
-				.filter((column) => column.kind === "message")
-				.flatMap((column) =>
-					table.rows.flatMap((row) => {
-						const cell = row.cells[column.key];
-						return typeof cell === "string" ? [cell] : [];
-					}),
-				),
-			...table.columns
-				.filter((column) => column.kind === "label")
-				.flatMap((column) =>
-					table.rows.flatMap((row) => {
-						const cell = row.cells[column.key];
-						return isLabelKey(cell) ? [cell] : [];
-					}),
-				),
-		]),
-		...(card.chart === null
-			? []
-			: [
-					card.chart.labelKey,
-					...card.chart.series.flatMap((series) => partKeys(series.label)),
-					...card.chart.markLines.flatMap((line) => partKeys(line.label)),
-					...card.chart.markAreas.flatMap((area) => partKeys(area.label)),
-					...card.chart.categories.flatMap((category) =>
-						category.kind === "message" ? [category.value] : [],
-					),
-				]),
 	];
 }
 

@@ -23,6 +23,7 @@ import {
 } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 import { useAnalyticsSourceState } from "../data/analytics-source-context";
+import { ANALYTICS_QUERY_ROOT } from "../data/invalidate-analytics";
 
 export type CardState =
 	| { readonly id: string; readonly status: "loading" }
@@ -101,7 +102,13 @@ export function analyticsQueryKey(
 	tenantId: string,
 	call: { readonly name: string; readonly args: object },
 ) {
-	return ["analytics", sourceKind, tenantId, call.name, call.args] as const;
+	return [
+		ANALYTICS_QUERY_ROOT,
+		sourceKind,
+		tenantId,
+		call.name,
+		call.args,
+	] as const;
 }
 
 export interface LoadContext {

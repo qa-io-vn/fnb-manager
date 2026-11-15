@@ -10,6 +10,7 @@ import {
 	expectCsvTablesWithBom,
 	expectDecimalCommas,
 	expectEveryThemeCardSettled,
+	expectRangeRoundTrip,
 	expectSemicolonCsvTables,
 	expectThemeInEnglish,
 	expectThemePrintLayout,
@@ -52,18 +53,10 @@ test("Thanh toán opens on the last four weeks with both cards settled", async (
 	);
 });
 
-test("a custom range survives a reload and steps by its own length", async ({
+test("a custom range survives a reload, steps by its own length and comes back", async ({
 	page,
 }) => {
-	await openTheme(page, "payments", "from=2026-10-08&to=2026-10-21");
-	await expect(page.getByTestId("range-label")).toContainText("14 ngày");
-	await page.reload();
-	await waitForSettledThemeCards(page);
-	expect(themeSearch(page).get("to")).toBe("2026-10-21");
-	await page.getByRole("button", { name: "Khoảng trước" }).click();
-	await waitForSettledThemeCards(page);
-	expect(themeSearch(page).get("from")).toBe("2026-09-24");
-	expect(themeSearch(page).get("to")).toBe("2026-10-07");
+	await expectRangeRoundTrip(page, "payments");
 });
 
 test("the young store has no last year to compare the cash share with", async ({

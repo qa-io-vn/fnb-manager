@@ -7,7 +7,7 @@ import type {
 	ThemeSlug,
 } from "@fnb/reports";
 import { moveRangeToLimit } from "@fnb/reports";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { StoreRow } from "../data/row-source";
 import { parseStoreParam, STORE_PARAM } from "../reports/report-route";
@@ -19,6 +19,13 @@ import { canonicalParams, parseThemeSearch, themeHref } from "./theme-route";
 
 const ALL_STORES = "*";
 const NO_STORE_PARAM = "absent";
+
+interface RangeNotice {
+	readonly rangeKey: string;
+	readonly rangeClamped: boolean;
+	readonly todayClamped: boolean;
+	readonly invalid: boolean;
+}
 
 export interface ThemeLocation {
 	readonly context: ThemeContext;
@@ -101,6 +108,24 @@ export function useThemeContext(definition: ThemeDefinition): ThemeLocation {
 	const { selectStores } = scope;
 	const range = parsed.resolved.range;
 	const params = parsed.params;
+	const flags = parsed.resolved;
+	const [keptNotice, setKeptNotice] = useState<RangeNotice | null>(null);
+	useEffect(() => {
+		if (flags.rangeClamped || flags.todayClamped || flags.invalid) {
+			setKeptNotice({
+				rangeKey: range.key,
+				rangeClamped: flags.rangeClamped,
+				todayClamped: flags.todayClamped,
+				invalid: flags.invalid,
+			});
+		} else {
+			setKeptNotice((kept) => (kept?.rangeKey === range.key ? kept : null));
+		}
+	}, [flags.rangeClamped, flags.todayClamped, flags.invalid, range.key]);
+	const notice =
+		keptNotice !== null && keptNotice.rangeKey === range.key
+			? keptNotice
+			: null;
 
 	useEffect(() => {
 		const urlChanged = seenUrlKey.current !== urlKey;
@@ -206,9 +231,9 @@ export function useThemeContext(definition: ThemeDefinition): ThemeLocation {
 	return {
 		context,
 		asOf,
-		rangeClamped: parsed.resolved.rangeClamped,
-		todayClamped: parsed.resolved.todayClamped,
-		invalid: parsed.resolved.invalid,
+		rangeClamped: flags.rangeClamped || (notice?.rangeClamped ?? false),
+		todayClamped: flags.todayClamped || (notice?.todayClamped ?? false),
+		invalid: flags.invalid || (notice?.invalid ?? false),
 		hrefFor,
 		goTo,
 	};

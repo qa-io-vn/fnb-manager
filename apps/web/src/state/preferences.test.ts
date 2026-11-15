@@ -51,6 +51,16 @@ describe("stored preferences", () => {
 		expect(loadPreferences(morning).csvDialect).toBe("comma");
 	});
 
+	it("keeps the last theme preset and drops one it does not know", () => {
+		expect(loadPreferences(morning).themePreset).toBeNull();
+		store({ themePreset: "91d" });
+		expect(loadPreferences(morning).themePreset).toBe("91d");
+		store({ themePreset: "custom" });
+		expect(loadPreferences(morning).themePreset).toBeNull();
+		store({ themePreset: 28 });
+		expect(loadPreferences(morning).themePreset).toBeNull();
+	});
+
 	it("falls back to the defaults when storage holds something else", () => {
 		window.localStorage.setItem(PREFERENCES_KEY, "not json");
 		expect(loadPreferences(morning).period).toEqual(

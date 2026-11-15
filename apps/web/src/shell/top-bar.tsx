@@ -16,7 +16,7 @@ import { SignOutButton } from "./sign-out-button";
 import { StoreSelect, storeSelectionLabel } from "./store-select";
 import { TenantSelect } from "./tenant-select";
 
-const sectionsWithFixedPeriod = new Set(["", "bao-cao", "chu-de"]);
+const sectionsWithFixedPeriod = new Set(["", "bao-cao", "chu-de", "cai-dat"]);
 
 function ScopeControls() {
 	const scope = useTenantScope();

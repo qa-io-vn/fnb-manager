@@ -23,6 +23,7 @@ test("Cài đặt opens Cửa hàng with the sub-navigation and the demo note", 
 		"chỉ giữ trong phiên này",
 	);
 	await expect(page.getByTestId("settings-placeholder")).toContainText("10b");
+	await expect(page.getByTestId("period-picker")).toHaveCount(0);
 	expectNoConsoleErrors(page);
 });
 
