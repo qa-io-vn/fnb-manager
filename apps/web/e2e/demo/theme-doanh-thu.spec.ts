@@ -5,8 +5,9 @@ import {
 	choosePreset,
 	chooseSemicolonCsv,
 	expectCsvTablesWithBom,
+	expectDecimalCommas,
 	expectEveryThemeCardSettled,
-	expectSemicolonCsv,
+	expectSemicolonCsvTables,
 	expectThemeInEnglish,
 	expectThemePrintLayout,
 	openTheme,
@@ -144,10 +145,16 @@ test("the theme tabs keep the range when moving to Giờ & ngày", async ({
 	expect(themeSearch(page).get("range")).toBe("91d");
 });
 
-test("Doanh thu downloads semicolon-separated with decimal commas on a device set to that format", async ({
+test("Doanh thu downloads every table semicolon-separated with its exact headers and decimal commas on a device set to that format", async ({
 	page,
 }) => {
 	await chooseSemicolonCsv(page);
-	await openTheme(page, "revenue");
-	await expectSemicolonCsv(page, themeCard(page, "revenue", "store_share"));
+	await openTheme(page, "revenue", "range=91d");
+	const texts: string[] = [];
+	for (const id of [...themeCardIds.revenue, "by_month"]) {
+		texts.push(
+			...(await expectSemicolonCsvTables(page, themeCard(page, "revenue", id))),
+		);
+	}
+	expectDecimalCommas(texts);
 });

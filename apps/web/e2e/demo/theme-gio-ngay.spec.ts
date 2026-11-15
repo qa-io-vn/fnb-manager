@@ -9,8 +9,9 @@ import {
 	choosePreset,
 	chooseSemicolonCsv,
 	expectCsvTablesWithBom,
+	expectDecimalCommas,
 	expectEveryThemeCardSettled,
-	expectSemicolonCsv,
+	expectSemicolonCsvTables,
 	expectThemeInEnglish,
 	expectThemePrintLayout,
 	openTheme,
@@ -120,10 +121,16 @@ test("Giờ & ngày prints without controls, passes axe, fits 360 px and reads i
 	await expectThemeInEnglish(page, "Hours and weekdays");
 });
 
-test("Giờ & ngày downloads semicolon-separated with decimal commas on a device set to that format", async ({
+test("Giờ & ngày downloads every table semicolon-separated with its exact headers and decimal commas on a device set to that format", async ({
 	page,
 }) => {
 	await chooseSemicolonCsv(page);
 	await openTheme(page, "hours");
-	await expectSemicolonCsv(page, themeCard(page, "hours", "productivity"));
+	const texts: string[] = [];
+	for (const id of themeCardIds.hours) {
+		texts.push(
+			...(await expectSemicolonCsvTables(page, themeCard(page, "hours", id))),
+		);
+	}
+	expectDecimalCommas(texts);
 });

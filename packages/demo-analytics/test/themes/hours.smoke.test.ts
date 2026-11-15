@@ -1,9 +1,4 @@
-import {
-	hoursKeys,
-	hoursTheme,
-	type NamedPreset,
-	runTheme,
-} from "@fnb/reports";
+import { hoursKeys, hoursTheme, NAMED_PRESETS, runTheme } from "@fnb/reports";
 import { describe, expect, it } from "vitest";
 import { STORE_SELECTIONS } from "../reports/report-keys.js";
 import {
@@ -22,7 +17,7 @@ const catalogs = {
 	en: themeCatalog("theme-hours", "en"),
 };
 
-const PRESETS: readonly NamedPreset[] = ["7d", "28d", "91d", "this_month"];
+const PRESETS = NAMED_PRESETS;
 
 describe("the Giờ & ngày message file", () => {
 	it("holds exactly the keys of the Giờ & ngày model in both languages", () => {
@@ -121,6 +116,29 @@ describe("Giờ & ngày on the demo engine", () => {
 		const missing = young.find((card) => card.id === "productivity");
 		expect(missing?.headline.value).toBeNull();
 		expect(missing?.notice?.action).toBe("settings_store");
+		expect(JSON.stringify(seats)).toContain(hoursKeys.productivity.revpash);
+		expect(JSON.stringify(missing)).not.toContain(
+			hoursKeys.productivity.revpash,
+		);
+		const youngRows = missing?.tables.flatMap((table) => table.rows) ?? [];
+		expect(youngRows.every((row) => (row.cells.revpash ?? null) === null)).toBe(
+			true,
+		);
+		const both = await runTheme(
+			hoursTheme,
+			themeSmokeContext(["MOCK-S1", "MOCK-S2"], "28d"),
+			source,
+		);
+		const storeRows =
+			both
+				.find((card) => card.id === "productivity")
+				?.tables.flatMap((table) => table.rows) ?? [];
+		const withSeats = storeRows.find((row) => row.id === "MOCK-S1");
+		const withoutSeats = storeRows.find((row) => row.id === "MOCK-S2");
+		expect(Number(withSeats?.cells.revpash ?? 0)).toBeGreaterThan(0);
+		expect(withSeats?.cells.state ?? null).toBeNull();
+		expect(withoutSeats?.cells.revpash ?? null).toBeNull();
+		expect(withoutSeats?.cells.state).toBe(hoursKeys.productivity.noSeats);
 	}, 60_000);
 
 	it("asks for two weeks before suggesting shift windows", async () => {

@@ -3,8 +3,10 @@ import {
 	addDays,
 	type DateRange,
 	daysBetween,
+	minDate,
 	NAMED_PRESETS,
 	rangeOfPreset,
+	SERIES_ROW_LIMIT,
 } from "@fnb/reports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { DemoReportSource } from "../../src/index.js";
@@ -17,6 +19,7 @@ import {
 	seededRanges,
 } from "./datasets.js";
 import {
+	callSql,
 	type OpenParityDatabase,
 	openParityDatabase,
 	type SeededDataset,
@@ -28,12 +31,68 @@ import {
 	SETTINGS_VARIANTS,
 	seedSeats,
 	themeEngine,
+	themeSql,
 } from "./theme-harness.js";
 
 const clock = parityClock();
 const datasets = parityDatasets(clock);
 const RANDOM_RANGES = 10;
 const HOUR_PROFILE_MAX_DAYS = 400;
+const MONEY_EPSILON = 0.005;
+
+interface Totals {
+	readonly net: number;
+	readonly invoices: number;
+}
+
+function totalsOfRange(rows: readonly Record<string, unknown>[]): Totals {
+	const row = rows.find(
+		(candidate) =>
+			Number(candidate.range_index) === 1 && candidate.store_id === null,
+	);
+	if (row === undefined) throw new Error("range_totals returned no total row");
+	return {
+		net: Number(row?.net_amount ?? 0),
+		invoices: Number(row?.invoices ?? 0),
+	};
+}
+
+function totalsOfSeries(rows: readonly Record<string, unknown>[]): Totals {
+	return rows
+		.filter((row) => row.store_id === null || row.store_id === undefined)
+		.reduce<Totals>(
+			(sum, row) => ({
+				net: sum.net + Number(row.net_amount ?? 0),
+				invoices: sum.invoices + Number(row.invoices ?? 0),
+			}),
+			{ net: 0, invoices: 0 },
+		);
+}
+
+function addTotals(left: Totals, right: Totals): Totals {
+	return {
+		net: left.net + right.net,
+		invoices: left.invoices + right.invoices,
+	};
+}
+
+function seriesChunks(range: DateRange, storeCount: number): DateRange[] {
+	const days = Math.floor(SERIES_ROW_LIMIT / (storeCount + 1));
+	const chunks: DateRange[] = [];
+	for (let from = range.from; from <= range.to; ) {
+		const to = minDate(addDays(from, days - 1), range.to);
+		chunks.push({ from, to });
+		from = addDays(to, 1);
+	}
+	return chunks;
+}
+
+function sameTotals(left: Totals, right: Totals): boolean {
+	return (
+		Math.abs(left.net - right.net) < MONEY_EPSILON &&
+		left.invoices === right.invoices
+	);
+}
 
 interface NamedRange extends DateRange {
 	readonly name: string;
@@ -197,6 +256,92 @@ describe("the revenue and hours theme functions in the engine equal the SQL", ()
 		}
 		expect(report.differences).toEqual([]);
 		expect(report.mismatches).toBe(0);
+	}, 600_000);
+
+	it("totals equal the day buckets of period_series for the same stores and range, in SQL and in the port", async () => {
+		const context = active();
+		const failures: string[] = [];
+		let compared = 0;
+		let withSales = 0;
+		for (const seeded of context.datasets) {
+			const engine = engineOf(seeded);
+			for (const range of rangesOf(seeded)) {
+				for (const stores of STORE_SETS) {
+					const storeIds = [...stores];
+					const totalsArgs = {
+						store_ids: storeIds,
+						from_dates: [range.from],
+						to_dates: [range.to],
+					};
+					const totalsStatement = themeSql(seeded, "range_totals", totalsArgs);
+					let sqlSeries: Totals = { net: 0, invoices: 0 };
+					let portSeries: Totals = { net: 0, invoices: 0 };
+					for (const chunk of seriesChunks(range, storeIds.length)) {
+						const seriesArgs = {
+							store_ids: storeIds,
+							grain: "day" as const,
+							from_date: chunk.from,
+							to_date: chunk.to,
+						};
+						const seriesStatement = callSql(
+							seeded,
+							"period_series",
+							seriesArgs,
+						);
+						sqlSeries = addTotals(
+							sqlSeries,
+							totalsOfSeries(
+								await context.connection.rows(
+									seriesStatement.text,
+									seriesStatement.params,
+								),
+							),
+						);
+						portSeries = addTotals(
+							portSeries,
+							totalsOfSeries(
+								(await engine.call(
+									"period_series",
+									seriesArgs,
+								)) as unknown as Record<string, unknown>[],
+							),
+						);
+					}
+					const sides: Record<string, readonly [Totals, Totals]> = {
+						sql: [
+							totalsOfRange(
+								await context.connection.rows(
+									totalsStatement.text,
+									totalsStatement.params,
+								),
+							),
+							sqlSeries,
+						],
+						port: [
+							totalsOfRange(
+								(await engine.callTheme(
+									"range_totals",
+									totalsArgs,
+								)) as unknown as Record<string, unknown>[],
+							),
+							portSeries,
+						],
+					};
+					for (const [side, [totals, series]] of Object.entries(sides)) {
+						compared += 1;
+						if (totals.invoices > 0) withSales += 1;
+						if (!sameTotals(totals, series)) {
+							failures.push(
+								`${seeded.dataset.id} ${side} ${range.name} ${storeIds.join("+")}`,
+							);
+						}
+					}
+				}
+			}
+		}
+		expect(compared).toBeGreaterThan(0);
+		expect(withSales).toBeGreaterThan(compared / 2);
+		expect(failures).toEqual([]);
 	}, 600_000);
 
 	it("matches hour_profile and report_settings_of with the default and a tenant's thresholds", async () => {

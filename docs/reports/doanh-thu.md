@@ -45,8 +45,8 @@ CSV files are named `doanh-thu-<card>-<from>_<to>.csv`, UTF-8 with a BOM.
 
 ## Tests
 
-- Unit: `packages/reports/test/unit/themes/` (ranges, planning, comparisons, the RPC source, the settings defaults).
-- Demo engine: `packages/demo-analytics/test/themes/revenue.smoke.test.ts` builds every visible card for three store selections and four presets and checks every message key and placeholder in both languages.
-- Parity: `range_totals` against the SQL in `theme-revenue-hours.parity.test.ts`.
+- Unit: `packages/reports/test/unit/themes/` (ranges, planning, comparisons, the RPC source, the settings defaults) and `packages/reports/test/unit/themes/revenue/`: each card from fixtures with all-stores and per-store rows, partial and no coverage and a real zero; the store driver or the decomposition clause; the tables and charts; the moving average, the day-to-week switch at 92 days and the Tết note; the calls planned for each preset.
+- Demo engine: `packages/demo-analytics/test/themes/revenue.smoke.test.ts` builds every visible card for three store selections and every preset and checks every message key and placeholder in both languages; the young store has no last year, and both stores compare with last year like for like while one of them is too young.
+- Parity: `range_totals` against the SQL in `theme-revenue-hours.parity.test.ts`, and the range's totals equal the day buckets of `period_series` for the same stores and range, in SQL and in the port (FR-THM-01).
 - pgTAP: `33_theme_functions.sql` and `34_theme_access.sql`.
-- Playwright: `e2e/demo/theme-doanh-thu.spec.ts` (cards settle, presets, a custom range across a reload and a step, the young store, CSV with BOM, print, axe at 360 and 1280 px, no request outside the origin, English) and `e2e/live/themes.spec.ts` on the seeded stack.
+- Playwright: `e2e/demo/theme-doanh-thu.spec.ts` (cards settle, presets, a custom range across a reload and a step, the young store, the CSV of every table with the BOM and headers equal to the table's column labels, in the comma and the semicolon dialect, print, axe at 360 and 1280 px, no request outside the origin, English) and `e2e/live/themes.spec.ts` on the seeded stack.

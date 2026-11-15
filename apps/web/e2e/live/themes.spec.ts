@@ -6,6 +6,7 @@ import {
 	newestSeededDate,
 	type SeededClock,
 	seededLogin,
+	shiftDate,
 	signedInClient,
 	visibleStores,
 } from "../support/local-stack";
@@ -70,4 +71,35 @@ test("the revenue, hours and menu themes render on the seeded stack through the 
 		themeCard(page, "hours", "heatmap").getByTestId("headline"),
 	).toHaveText(/\d/);
 	await checkPage(page);
+});
+
+test("Giờ & ngày opens each seeded store from a dated deep link and shows its RevPASH with the store's seats", async ({
+	page,
+}) => {
+	const client = await signedInClient();
+	const { data, error } = await client
+		.from("stores")
+		.select("id,seat_count")
+		.order("name");
+	if (error) throw error;
+	const stores = data as { id: string; seat_count: number | null }[];
+	expect(stores.length).toBeGreaterThan(1);
+	const clock = await seededClock();
+	await signIn(page, clock);
+	const to = shiftDate(clock.yesterday, -3);
+	const from = shiftDate(to, -19);
+	for (const store of stores) {
+		expect(store.seat_count).not.toBeNull();
+		await page.goto(
+			themeUrl("hours", `from=${from}&to=${to}&store=${store.id}`),
+		);
+		await waitForSettledThemeCards(page);
+		await expect(page).toHaveURL(new RegExp(`from=${from}`));
+		await expect(page).toHaveURL(new RegExp(`to=${to}`));
+		await expect(page).toHaveURL(new RegExp(`store=${store.id}`));
+		const productivity = themeCard(page, "hours", "productivity");
+		await expect(productivity.getByTestId("card-notice")).toHaveCount(0);
+		await expect(productivity).toContainText("(RevPASH)");
+		await expect(productivity).toContainText(`${store.seat_count} ghế`);
+	}
 });

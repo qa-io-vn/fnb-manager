@@ -20,7 +20,7 @@ Every level, mean per day and share comes from `hour_profile` (`docs/schema.md`)
 
 | Card | Headline | Chips | Sentence | Table and chart |
 |---|---|---|---|---|
-| Bản đồ nhiệt giờ × thứ (`heatmap`) | the best cell's mean net per day, with its weekday and hour | — | the best and the quietest cell with sales | two heat tables, mean net and mean invoices per day: hours from the first to the last with sales, from the first store's day start, columns T2 to CN and an average column; five shades, values in every cell. A weekday with fewer than 2 days of data adds a notice |
+| Bản đồ nhiệt giờ × thứ (`heatmap`) | the best cell's mean net per day, with its weekday and hour | — | the best and the quietest cell with sales | two heat tables, mean net and mean invoices per day: one row for every hour from the first to the last with sales, quiet hours in between included, counted from the first store's day start, columns T2 to CN and an average column; five shades, values in every cell. A weekday with fewer than 2 days of data adds a notice |
 | Giờ cao điểm và thấp điểm (`peak_dead`) | the peak hours' share of revenue | the share against the range before, in points | the peak hours and their share, the quiet windows and theirs | hour, mean net per day, share, level; bars per hour by level |
 | Theo thứ trong tuần (`weekday`) | the best weekday's mean net per day | — | the best and weakest weekday and the gap; the weekday that changed most on the range before | weekday, mean net and invoices per day, share, the previous mean, change; bars |
 | Doanh thu mỗi giờ mở cửa và mỗi ghế (`productivity`) | net per opening hour | the range before | vs the range before, and RevPASH with the seat count when seats exist | several stores: open hours, net and invoices per hour, seats, RevPASH, and "chưa có số ghế" for a store without seats; one store: this range and the range before |
@@ -36,8 +36,10 @@ CSV files are named `gio-ngay-<card>-<from>_<to>.csv`, UTF-8 with a BOM.
 
 ## Tests
 
-- Demo engine: `packages/demo-analytics/test/themes/hours.smoke.test.ts` (three store selections, four presets, the heat table's columns, three peak hours, RevPASH for the store with seats and the settings link for the young store, the short-range notice).
+- Unit: `packages/reports/test/unit/themes/hours/` builds each card from fixtures (all-stores and per-store rows, partial and no coverage, the missing-hours notice, the provisional marker, "chưa có số ghế" beside RevPASH, a measured zero), merges shift windows (ties, a flat day, two peaks, past midnight) and lays out the heat tables (every hour from the first to the last with sales from the day start, T2 to CN, the average column outside the shades, the thin-weekday notice).
+- Demo engine: `packages/demo-analytics/test/themes/hours.smoke.test.ts` (three store selections, every preset, the heat table's columns, three peak hours, RevPASH for the store with seats and "chưa có số ghế" for the one without, the settings link for the young store without opening hours, the short-range notice).
 - Parity: `hour_weekday_heatmap`, `hour_profile` (default and tenant thresholds, explicit arguments, the 400-day limit), `opening_productivity` and `report_settings_of` in `theme-revenue-hours.parity.test.ts`.
 - pgTAP: `33_theme_functions.sql` (hand-computed levels and shares, ties, a 05:00 day start, split and overnight opening hours) and `34_theme_access.sql`.
-- Playwright: `e2e/demo/theme-gio-ngay.spec.ts` (cards settle, the heat table's columns and its last column at 360 px, the young store's settings link, the short range, CSV, print, axe, English) and `e2e/live/themes.spec.ts`.
-- Open: the comparison with the private reference window (OC-03) and the read-only live check that prints `matches` for it (#86).
+- Playwright: `e2e/demo/theme-gio-ngay.spec.ts` (cards settle, the heat table's columns and its last column at 360 px, the young store's settings link, the short range, the CSV of every table with the BOM and headers equal to the table's column labels, in the comma and the semicolon dialect, print, axe, English) and `e2e/live/themes.spec.ts` (every card settles on the seeded stack; each seeded store opens from a `from`, `to` and `store` deep link and shows RevPASH with its own seat count).
+- Live check: `packages/reports/test/live/theme-live-check.test.ts` with `LIVE_REFERENCE_SHEET` prints `matches: true` for every hour and weekday of the private reference window (#86).
+- Open: the owner's reading of the page beside the private sheet (OC-03, #189).

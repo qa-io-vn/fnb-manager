@@ -1,4 +1,5 @@
 import {
+	NAMED_PRESETS,
 	type NamedPreset,
 	revenueKeys,
 	revenueTheme,
@@ -22,12 +23,7 @@ const catalogs = {
 	en: themeCatalog("theme-revenue", "en"),
 };
 
-const PRESETS: readonly NamedPreset[] = [
-	"7d",
-	"28d",
-	"this_year",
-	"last_month",
-];
+const PRESETS: readonly NamedPreset[] = NAMED_PRESETS;
 
 describe("the Doanh thu message file", () => {
 	it("holds exactly the keys of the Doanh thu model in both languages", () => {
@@ -116,5 +112,32 @@ describe("Doanh thu on the demo engine", () => {
 		expect(
 			net?.comparisons.find((entry) => entry.kind === "last_year")?.unavailable,
 		).toBe("store_too_young");
+	}, 60_000);
+
+	it("compares both stores with last year like for like while one is too young", async () => {
+		const cards = await runTheme(
+			revenueTheme,
+			themeSmokeContext(["MOCK-S1", "MOCK-S2"], "28d"),
+			source,
+		);
+		const lastYear = cards
+			.find((card) => card.id === "net_revenue")
+			?.comparisons.find((entry) => entry.kind === "last_year");
+		const establishedOnly = await runTheme(
+			revenueTheme,
+			themeSmokeContext(["MOCK-S1"], "28d"),
+			source,
+		);
+		const establishedNet = establishedOnly.find(
+			(card) => card.id === "net_revenue",
+		)?.headline.value;
+		expect(lastYear?.basis).toBe("like_for_like");
+		expect(lastYear?.coveredStores).toBe(1);
+		expect(lastYear?.totalStores).toBe(2);
+		expect(JSON.stringify(lastYear?.label)).toContain("likeForLike");
+		expect(lastYear?.unavailable ?? null).toBeNull();
+		expect(lastYear?.reference ?? 0).toBeGreaterThan(0);
+		expect(establishedNet ?? 0).toBeGreaterThan(0);
+		expect(lastYear?.current).toBe(establishedNet);
 	}, 60_000);
 });

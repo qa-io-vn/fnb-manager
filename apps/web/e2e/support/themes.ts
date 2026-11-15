@@ -122,35 +122,127 @@ export async function choosePreset(page: Page, name: string): Promise<void> {
 	await waitForSettledThemeCards(page);
 }
 
+const BOM = [0xef, 0xbb, 0xbf];
+const SORT_ARROWS = /[↑↓↕]\s*$/;
+const PERCENT_HEADER_SUFFIX = " (%)";
+const PREFERENCES_STORAGE_KEY = "fnb.preferences.v1";
+const SEMICOLON_NUMBER_WITH_DECIMALS = /(^|;)-?\d+,\d+(?=;|$)/m;
+const POINT_DECIMAL_NUMBER = /(^|;)-?\d+\.\d+(?=;|$)/m;
+
+type CsvDialect = "comma" | "semicolon";
+
+const THEME_CSV_FILE_NAME =
+	/^[a-z-]+-[a-z_]+-\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}(-2)?\.csv$/;
+
+interface CsvDownload {
+	readonly header: string;
+	readonly text: string;
+}
+
+function headerCells(line: string, separator: string): string[] {
+	const cells: string[] = [];
+	let current = "";
+	let quoted = false;
+	for (let index = 0; index < line.length; index += 1) {
+		const character = line[index];
+		if (quoted) {
+			if (character === '"' && line[index + 1] === '"') {
+				current += '"';
+				index += 1;
+			} else if (character === '"') {
+				quoted = false;
+			} else {
+				current += character;
+			}
+		} else if (character === '"') {
+			quoted = true;
+		} else if (character === separator) {
+			cells.push(current);
+			current = "";
+		} else {
+			current += character;
+		}
+	}
+	cells.push(current);
+	return cells;
+}
+
+async function columnLabelsOf(button: Locator): Promise<string[]> {
+	const table = button
+		.locator("xpath=ancestor::div[.//table][1]")
+		.locator("table")
+		.first();
+	const texts = await table.locator("thead th").allTextContents();
+	return texts.map((text) => text.replace(SORT_ARROWS, "").trim());
+}
+
+async function downloadCardTables(
+	page: Page,
+	card: Locator,
+	dialect: CsvDialect,
+	fileName: RegExp | null,
+): Promise<CsvDownload[]> {
+	const separator = dialect === "semicolon" ? ";" : ",";
+	const buttons = card.getByRole("button", { name: /Tải CSV|Download CSV/ });
+	const count = await buttons.count();
+	const downloads: CsvDownload[] = [];
+	for (let index = 0; index < count; index += 1) {
+		const button = buttons.nth(index);
+		const labels = await columnLabelsOf(button);
+		const downloading = page.waitForEvent("download");
+		await button.click();
+		const download = await downloading;
+		const bytes = await readFile(await download.path());
+		expect([...bytes.subarray(0, 3)]).toEqual(BOM);
+		const text = new TextDecoder("utf-8", { fatal: true }).decode(
+			bytes.subarray(3),
+		);
+		const lines = text.split("\r\n");
+		expect(lines.at(-1)).toBe("");
+		expect(text).not.toMatch(/^sep=/m);
+		const header = lines[0] ?? "";
+		const cells = headerCells(header, separator);
+		expect(cells.length).toBeGreaterThan(1);
+		expect(cells).toEqual(
+			labels.map((label, column) =>
+				cells[column] === `${label}${PERCENT_HEADER_SUFFIX}`
+					? `${label}${PERCENT_HEADER_SUFFIX}`
+					: label,
+			),
+		);
+		if (dialect === "semicolon") {
+			expect(text).not.toMatch(POINT_DECIMAL_NUMBER);
+		}
+		if (fileName !== null) {
+			expect(download.suggestedFilename()).toMatch(fileName);
+		}
+		downloads.push({ header, text });
+	}
+	return downloads;
+}
+
 export async function expectCsvTablesWithBom(
 	page: Page,
 	card: Locator,
 ): Promise<string[]> {
-	const buttons = card.getByRole("button", { name: /Tải CSV|Download CSV/ });
-	const count = await buttons.count();
-	const headers: string[] = [];
-	for (let index = 0; index < count; index += 1) {
-		const downloading = page.waitForEvent("download");
-		await buttons.nth(index).click();
-		const download = await downloading;
-		const bytes = await readFile(await download.path());
-		expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
-		const header =
-			new TextDecoder("utf-8", { fatal: true })
-				.decode(bytes.subarray(3))
-				.split("\r\n")[0] ?? "";
-		expect(header.split(",").length).toBeGreaterThan(1);
-		expect(download.suggestedFilename()).toMatch(
-			/^[a-z-]+-[a-z_]+-\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}(-2)?\.csv$/,
-		);
-		headers.push(header);
-	}
-	return headers;
+	return (
+		await downloadCardTables(page, card, "comma", THEME_CSV_FILE_NAME)
+	).map((download) => download.header);
 }
 
-const PREFERENCES_STORAGE_KEY = "fnb.preferences.v1";
-const SEMICOLON_NUMBER_WITH_DECIMALS = /(^|;)-?\d+,\d+(?=;|$)/m;
-const POINT_DECIMAL_NUMBER = /(^|;)-?\d+\.\d+(?=;|$)/m;
+export async function expectSemicolonCsvTables(
+	page: Page,
+	card: Locator,
+): Promise<string[]> {
+	return (
+		await downloadCardTables(page, card, "semicolon", THEME_CSV_FILE_NAME)
+	).map((download) => download.text);
+}
+
+export function expectDecimalCommas(texts: readonly string[]): void {
+	expect(texts.length).toBeGreaterThan(0);
+	expect(texts.join("\r\n")).toMatch(SEMICOLON_NUMBER_WITH_DECIMALS);
+}
 
 export async function chooseSemicolonCsv(page: Page): Promise<void> {
 	await page.addInitScript((key) => {
@@ -166,23 +258,9 @@ export async function expectSemicolonCsv(
 	page: Page,
 	card: Locator,
 ): Promise<string> {
-	const downloading = page.waitForEvent("download");
-	await card
-		.getByRole("button", { name: /Tải CSV|Download CSV/ })
-		.first()
-		.click();
-	const download = await downloading;
-	const bytes = await readFile(await download.path());
-	expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
-	const text = new TextDecoder("utf-8", { fatal: true }).decode(
-		bytes.subarray(3),
-	);
-	const lines = text.split("\r\n");
-	expect(lines.at(-1)).toBe("");
-	expect(lines[0]?.split(";").length ?? 0).toBeGreaterThan(1);
+	const [first] = await downloadCardTables(page, card, "semicolon", null);
+	const text = first?.text ?? "";
 	expect(text).toMatch(SEMICOLON_NUMBER_WITH_DECIMALS);
-	expect(text).not.toMatch(POINT_DECIMAL_NUMBER);
-	expect(text).not.toMatch(/^sep=/m);
 	return text;
 }
 

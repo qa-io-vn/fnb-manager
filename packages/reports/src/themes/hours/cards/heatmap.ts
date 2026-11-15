@@ -34,14 +34,15 @@ function hourOrder(input: ThemeCardInput, rows: readonly HeatRow[]): number[] {
 	const startHour = Math.floor(
 		(input.context.stores[0]?.businessDayStartMinutes ?? 0) / 60,
 	);
-	const hours = [
-		...new Set(
-			rows.filter((row) => row.net_amount > 0).map((row) => row.hour_local),
-		),
-	];
-	return hours.sort(
-		(left, right) =>
-			((left - startHour + 24) % 24) - ((right - startHour + 24) % 24),
+	const positions = rows
+		.filter((row) => row.net_amount > 0)
+		.map((row) => (row.hour_local - startHour + 24) % 24);
+	if (positions.length === 0) return [];
+	const first = Math.min(...positions);
+	const last = Math.max(...positions);
+	return Array.from(
+		{ length: last - first + 1 },
+		(_, offset) => (startHour + first + offset) % 24,
 	);
 }
 

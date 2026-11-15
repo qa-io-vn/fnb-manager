@@ -702,7 +702,7 @@ function sqlArgument(value: unknown): unknown {
 	return value;
 }
 
-function callSql<N extends AnalyticsFunctionName>(
+export function callSql<N extends AnalyticsFunctionName>(
 	seeded: SeededDataset,
 	name: N,
 	args: AnalyticsArgs<N>,
