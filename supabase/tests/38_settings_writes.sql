@@ -581,7 +581,7 @@ select lives_ok(
 );
 
 select is(
-  (select array[d.status::text, (d.created_by = f.owner_id)::text, (d.updated_by = f.owner_id)::text] from public.legal_documents d, fixture f where d.version = 'privacy-2026-01'),
+  (select array[d.status::text, (d.created_by = f.owner_id)::text, (d.updated_by = f.owner_id)::text] from public.legal_documents d, fixture f where d.tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and d.version = 'privacy-2026-01'),
   array['draft', 'true', 'true'],
   'the draft names its author as creator and editor, whatever the request names'
 );
@@ -611,21 +611,21 @@ select throws_ok(
 );
 
 select throws_ok(
-  $$ update public.legal_documents set status = 'published' where version = 'privacy-2026-01' $$,
+  $$ update public.legal_documents set status = 'published' where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-01' $$,
   '42501',
   null,
   'a member cannot set the status directly'
 );
 
 select throws_ok(
-  $$ update public.legal_documents set published_at = now() where version = 'privacy-2026-01' $$,
+  $$ update public.legal_documents set published_at = now() where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-01' $$,
   '42501',
   null,
   'a member cannot set the publication date directly'
 );
 
 select lives_ok(
-  $$ update public.legal_documents set title = 'Thông báo xử lý dữ liệu cá nhân' where version = 'privacy-2026-01' $$,
+  $$ update public.legal_documents set title = 'Thông báo xử lý dữ liệu cá nhân' where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-01' $$,
   'an owner edits a draft'
 );
 
@@ -640,7 +640,7 @@ select throws_ok(
 );
 
 select throws_ok(
-  format('select public.publish_legal_document(%L)', (select id from public.legal_documents where version = 'privacy-2026-01')),
+  format('select public.publish_legal_document(%L)', (select id from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-01')),
   '42501',
   null,
   'a manager may not publish a legal text'
@@ -649,7 +649,7 @@ select throws_ok(
 set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000003803", "role": "authenticated"}';
 
 select throws_ok(
-  format('select public.publish_legal_document(%L)', (select id from public.legal_documents where version = 'privacy-2026-01')),
+  format('select public.publish_legal_document(%L)', (select id from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-01')),
   '42501',
   null,
   'a store-limited owner may not publish a legal text'
@@ -657,7 +657,7 @@ select throws_ok(
 
 reset role;
 
-create temp table draft as select id from public.legal_documents where version = 'privacy-2026-01';
+create temp table draft as select id from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-01';
 grant select on draft to authenticated;
 
 set local role authenticated;
@@ -693,7 +693,7 @@ select is(
 );
 
 select throws_ok(
-  $$ update public.legal_documents set title = 'Changed' where version = 'privacy-2026-01' $$,
+  $$ update public.legal_documents set title = 'Changed' where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-01' $$,
   '55000',
   'a published legal document is frozen',
   'a published text never changes'
@@ -716,15 +716,15 @@ insert into public.legal_documents (tenant_id, kind, language, version, title, b
 values ((select tenant_id from fixture), 'privacy_notice', 'vi', 'privacy-2026-02', 'Thông báo mới', '# Thông báo mới');
 
 select throws_ok(
-  format('select public.retire_legal_document(%L)', (select id from public.legal_documents where version = 'privacy-2026-02')),
+  format('select public.retire_legal_document(%L)', (select id from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-02')),
   '22023',
   null,
   'a draft cannot be retired'
 );
 
 select is(
-  public.publish_legal_document((select id from public.legal_documents where version = 'privacy-2026-02')),
-  (select id from public.legal_documents where version = 'privacy-2026-02'),
+  public.publish_legal_document((select id from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-02')),
+  (select id from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-02'),
   'publishing a second version of the same kind and language succeeds'
 );
 
@@ -742,8 +742,8 @@ insert into public.legal_documents (tenant_id, kind, language, version, title, b
 values ((select tenant_id from fixture), 'privacy_notice', 'en', 'privacy-2026-02', 'Privacy notice', '# Privacy');
 
 select is(
-  public.publish_legal_document((select id from public.legal_documents where version = 'privacy-2026-02' and language = 'en')),
-  (select id from public.legal_documents where version = 'privacy-2026-02' and language = 'en'),
+  public.publish_legal_document((select id from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-02' and language = 'en')),
+  (select id from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-02' and language = 'en'),
   'a version in the other language is published beside it'
 );
 
@@ -754,13 +754,13 @@ select is(
 );
 
 select is(
-  public.retire_legal_document((select id from public.legal_documents where version = 'privacy-2026-02' and language = 'vi')),
-  (select id from public.legal_documents where version = 'privacy-2026-02' and language = 'vi'),
+  public.retire_legal_document((select id from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-02' and language = 'vi')),
+  (select id from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-02' and language = 'vi'),
   'an owner retires the published version'
 );
 
 select throws_ok(
-  format('select public.retire_legal_document(%L)', (select id from public.legal_documents where version = 'privacy-2026-02' and language = 'vi')),
+  format('select public.retire_legal_document(%L)', (select id from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-02' and language = 'vi')),
   '22023',
   null,
   'a retired text cannot be retired again'
@@ -770,7 +770,7 @@ insert into public.legal_documents (tenant_id, kind, language, version, title, b
 values ((select tenant_id from fixture), 'staff_notice', 'vi', 'staff-2026-01', 'Thông báo nhân viên', '# Nhân viên');
 
 select is(
-  pg_temp.affected_rows($q$ delete from public.legal_documents where version = 'staff-2026-01' $q$),
+  pg_temp.affected_rows($q$ delete from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'staff-2026-01' $q$),
   1,
   'a draft can be deleted'
 );
@@ -778,14 +778,14 @@ select is(
 reset role;
 
 select throws_ok(
-  $$ update public.legal_documents set status = 'published', retired_at = null where version = 'privacy-2026-01' $$,
+  $$ update public.legal_documents set status = 'published', retired_at = null where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-01' $$,
   '55000',
   null,
   'not even the service writes a retired text back to published'
 );
 
 select throws_ok(
-  $$ update public.legal_documents set published_at = published_at - interval '1 day' where version = 'privacy-2026-02' and language = 'en' $$,
+  $$ update public.legal_documents set published_at = published_at - interval '1 day' where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-02' and language = 'en' $$,
   '55000',
   'a legal document keeps its publication date',
   'a published text keeps its publication date'
@@ -795,7 +795,7 @@ insert into public.legal_documents (tenant_id, kind, language, version, title, b
 values ((select tenant_id from fixture), 'mini_app_terms', 'vi', 'terms-2026-01', 'Điều khoản', '# Điều khoản');
 
 select throws_ok(
-  $$ update public.legal_documents set status = 'retired', published_at = now(), retired_at = now() where version = 'terms-2026-01' $$,
+  $$ update public.legal_documents set status = 'retired', published_at = now(), retired_at = now() where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'terms-2026-01' $$,
   '55000',
   'a legal document moves only from draft to published to retired',
   'a draft cannot skip publication'
@@ -803,7 +803,7 @@ select throws_ok(
 
 select throws_ok(
   $$ insert into public.legal_documents (tenant_id, kind, language, version, title, body_markdown, status, published_at)
-     select tenant_id, 'privacy_notice', 'en', 'privacy-2026-03', 'T', 'B', 'published', now() from public.legal_documents where version = 'privacy-2026-02' and language = 'en' $$,
+     select tenant_id, 'privacy_notice', 'en', 'privacy-2026-03', 'T', 'B', 'published', now() from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-02' and language = 'en' $$,
   '23505',
   null,
   'two published versions of one kind and language cannot coexist even when written by the service'
@@ -953,7 +953,7 @@ select is(
 reset role;
 
 create temp table english_doc as
-select id from public.legal_documents where version = 'privacy-2026-02' and language = 'en';
+select id from public.legal_documents where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'privacy-2026-02' and language = 'en';
 
 grant select on english_doc to authenticated;
 
@@ -984,7 +984,7 @@ select is(
 set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000003801", "role": "authenticated"}';
 
 select is(
-  (select array[d.status::text, (d.retired_at = now())::text] from public.legal_documents d where d.version = 'privacy-2026-02' and d.language = 'en'),
+  (select array[d.status::text, (d.retired_at = now())::text] from public.legal_documents d where d.tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and d.version = 'privacy-2026-02' and d.language = 'en'),
   array['retired', 'true'],
   'a retired text carries the database''s clock'
 );
@@ -1059,12 +1059,12 @@ set local role authenticated;
 
 set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000003801", "role": "authenticated"}';
 
-update public.legal_documents set title = 'Staff notice, revised' where version = 'staff-2026-02';
+update public.legal_documents set title = 'Staff notice, revised' where tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and version = 'staff-2026-02';
 
 reset role;
 
 select is(
-  (select array[coalesce(d.created_by::text, '-'), (d.updated_by = f.owner_id)::text] from public.legal_documents d, fixture f where d.version = 'staff-2026-02'),
+  (select array[coalesce(d.created_by::text, '-'), (d.updated_by = f.owner_id)::text] from public.legal_documents d, fixture f where d.tenant_id = 'dddddddd-dddd-4ddd-8ddd-000000003801' and d.version = 'staff-2026-02'),
   array['-', 'true'],
   'an owner editing a draft the service wrote becomes its last editor and never its creator'
 );
