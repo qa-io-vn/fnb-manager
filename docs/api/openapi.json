@@ -1682,6 +1682,11 @@
 					"format": "timestamp with time zone",
 					"type": "string"
 				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
 				"holiday_date": {
 					"format": "date",
 					"type": "string"
@@ -1705,6 +1710,16 @@
 					"description": "null applies the holiday to every tenant of the country\n\nNote:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
 					"format": "uuid",
 					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
 				}
 			},
 			"required": [
@@ -1713,7 +1728,8 @@
 				"holiday_date",
 				"name",
 				"kind",
-				"created_at"
+				"created_at",
+				"updated_at"
 			],
 			"type": "object"
 		},
@@ -2608,6 +2624,99 @@
 			],
 			"type": "object"
 		},
+		"legal_documents": {
+			"description": "versioned legal texts of a tenant; a published or retired version never changes",
+			"properties": {
+				"body_markdown": {
+					"format": "text",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"kind": {
+					"enum": [
+						"privacy_notice",
+						"data_protection_rules",
+						"mini_app_terms",
+						"staff_notice",
+						"loyalty_consent_text",
+						"marketing_consent_text"
+					],
+					"format": "public.legal_document_kind",
+					"type": "string"
+				},
+				"language": {
+					"default": "vi",
+					"format": "text",
+					"type": "string"
+				},
+				"published_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"retired_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"status": {
+					"default": "draft",
+					"enum": ["draft", "published", "retired"],
+					"format": "public.legal_document_status",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"title": {
+					"format": "text",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"version": {
+					"description": "the label consent records store as policy_version",
+					"format": "text",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"kind",
+				"language",
+				"version",
+				"title",
+				"body_markdown",
+				"status",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"notification_channels": {
 			"description": "destinations: one row per place a message can go, the member it belongs to (deleted with the member), the provider and the name of the secret holding its credential; written only by service-side code and security definer functions, and address, secret_name and config are not selectable by authenticated",
 			"properties": {
@@ -3077,6 +3186,72 @@
 			],
 			"type": "object"
 		},
+		"payment_kind_overrides": {
+			"description": "a tenant's payment kind for a POS payment method; payment_methods.kind follows it and pos_kind keeps the POS value",
+			"properties": {
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"kind": {
+					"enum": [
+						"cash",
+						"card",
+						"bank_transfer",
+						"ewallet",
+						"voucher",
+						"other"
+					],
+					"format": "public.payment_kind",
+					"type": "string"
+				},
+				"payment_method_external_id": {
+					"format": "text",
+					"type": "string"
+				},
+				"pos_account_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"pos_account_id",
+				"payment_method_external_id",
+				"kind",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"payment_methods": {
 			"properties": {
 				"active": {
@@ -3125,6 +3300,20 @@
 					"format": "uuid",
 					"type": "string"
 				},
+				"pos_kind": {
+					"default": "other",
+					"description": "the kind the sync classified; kind holds the effective kind after an override",
+					"enum": [
+						"cash",
+						"card",
+						"bank_transfer",
+						"ewallet",
+						"voucher",
+						"other"
+					],
+					"format": "public.payment_kind",
+					"type": "string"
+				},
 				"raw": {
 					"format": "jsonb"
 				},
@@ -3143,7 +3332,8 @@
 				"kind",
 				"active",
 				"first_seen_at",
-				"last_seen_at"
+				"last_seen_at",
+				"pos_kind"
 			],
 			"type": "object"
 		},
@@ -3626,6 +3816,13 @@
 					"format": "timestamp with time zone",
 					"type": "string"
 				},
+				"member_capture_status": {
+					"default": "unknown",
+					"description": "whether the POS member feature is switched on, entered by the owner",
+					"enum": ["unknown", "enabled", "disabled"],
+					"format": "public.pos_feature_status",
+					"type": "string"
+				},
 				"name": {
 					"format": "text",
 					"type": "string"
@@ -3639,6 +3836,15 @@
 					"format": "jsonb"
 				},
 				"pos_account_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"profile_updated_at": {
+					"description": "when a member last changed a profile column; the sync never stamps it",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"profile_updated_by": {
 					"format": "uuid",
 					"type": "string"
 				},
@@ -3688,7 +3894,8 @@
 				"settings",
 				"active",
 				"first_seen_at",
-				"last_seen_at"
+				"last_seen_at",
+				"member_capture_status"
 			],
 			"type": "object"
 		},
@@ -4053,6 +4260,12 @@
 					"format": "text",
 					"type": "string"
 				},
+				"default_language": {
+					"default": "vi",
+					"description": "the web app's first language for a member without a stored preference",
+					"format": "text",
+					"type": "string"
+				},
 				"id": {
 					"default": "gen_random_uuid()",
 					"description": "Note:\nThis is a Primary Key.<pk/>",
@@ -4075,6 +4288,14 @@
 					"format": "text",
 					"type": "string"
 				},
+				"profile_updated_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"profile_updated_by": {
+					"format": "uuid",
+					"type": "string"
+				},
 				"slug": {
 					"format": "text",
 					"type": "string"
@@ -4094,7 +4315,8 @@
 				"timezone",
 				"legal_form",
 				"created_at",
-				"analytics_inputs_version"
+				"analytics_inputs_version",
+				"default_language"
 			],
 			"type": "object"
 		},
@@ -4577,6 +4799,15 @@
 				"$ref": "#/definitions/items"
 			}
 		},
+		"body.legal_documents": {
+			"description": "legal_documents",
+			"in": "body",
+			"name": "legal_documents",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/legal_documents"
+			}
+		},
 		"body.notification_channels": {
 			"description": "notification_channels",
 			"in": "body",
@@ -4611,6 +4842,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/payment_fee_rates"
+			}
+		},
+		"body.payment_kind_overrides": {
+			"description": "payment_kind_overrides",
+			"in": "body",
+			"name": "payment_kind_overrides",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/payment_kind_overrides"
 			}
 		},
 		"body.payment_methods": {
@@ -6521,6 +6761,12 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.holidays.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.holidays.holiday_date": {
 			"in": "query",
 			"name": "holiday_date",
@@ -6549,6 +6795,18 @@
 			"description": "null applies the holiday to every tenant of the country",
 			"in": "query",
 			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.holidays.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.holidays.updated_by": {
+			"in": "query",
+			"name": "updated_by",
 			"required": false,
 			"type": "string"
 		},
@@ -7522,6 +7780,91 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.legal_documents.body_markdown": {
+			"in": "query",
+			"name": "body_markdown",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.kind": {
+			"in": "query",
+			"name": "kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.language": {
+			"in": "query",
+			"name": "language",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.published_at": {
+			"in": "query",
+			"name": "published_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.retired_at": {
+			"in": "query",
+			"name": "retired_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.title": {
+			"in": "query",
+			"name": "title",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.legal_documents.version": {
+			"description": "the label consent records store as policy_version",
+			"in": "query",
+			"name": "version",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.notification_channels.address": {
 			"description": "the Zalo Bot or Telegram chat id, learnt only from the member's own message to the bot; null for e-mail, which sends to the member's login address, and for a webhook, whose URL is config.url",
 			"in": "query",
@@ -8043,6 +8386,60 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.payment_kind_overrides.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_kind_overrides.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_kind_overrides.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_kind_overrides.kind": {
+			"in": "query",
+			"name": "kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_kind_overrides.payment_method_external_id": {
+			"in": "query",
+			"name": "payment_method_external_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_kind_overrides.pos_account_id": {
+			"in": "query",
+			"name": "pos_account_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_kind_overrides.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_kind_overrides.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_kind_overrides.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.payment_methods.active": {
 			"in": "query",
 			"name": "active",
@@ -8088,6 +8485,13 @@
 		"rowFilter.payment_methods.pos_account_id": {
 			"in": "query",
 			"name": "pos_account_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_methods.pos_kind": {
+			"description": "the kind the sync classified; kind holds the effective kind after an override",
+			"in": "query",
+			"name": "pos_kind",
 			"required": false,
 			"type": "string"
 		},
@@ -8603,6 +9007,13 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.stores.member_capture_status": {
+			"description": "whether the POS member feature is switched on, entered by the owner",
+			"in": "query",
+			"name": "member_capture_status",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.stores.name": {
 			"in": "query",
 			"name": "name",
@@ -8625,6 +9036,19 @@
 		"rowFilter.stores.pos_account_id": {
 			"in": "query",
 			"name": "pos_account_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stores.profile_updated_at": {
+			"description": "when a member last changed a profile column; the sync never stamps it",
+			"in": "query",
+			"name": "profile_updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stores.profile_updated_by": {
+			"in": "query",
+			"name": "profile_updated_by",
 			"required": false,
 			"type": "string"
 		},
@@ -9032,6 +9456,13 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.tenants.default_language": {
+			"description": "the web app's first language for a member without a stored preference",
+			"in": "query",
+			"name": "default_language",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.tenants.id": {
 			"in": "query",
 			"name": "id",
@@ -9047,6 +9478,18 @@
 		"rowFilter.tenants.name": {
 			"in": "query",
 			"name": "name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.tenants.profile_updated_at": {
+			"in": "query",
+			"name": "profile_updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.tenants.profile_updated_by": {
+			"in": "query",
+			"name": "profile_updated_by",
 			"required": false,
 			"type": "string"
 		},
@@ -13775,6 +14218,15 @@
 						"$ref": "#/parameters/rowFilter.holidays.created_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.holidays.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.holidays.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.holidays.updated_at"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -13807,6 +14259,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.holidays.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.holidays.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.holidays.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.holidays.updated_at"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -13868,6 +14329,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.holidays.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.holidays.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.holidays.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.holidays.updated_at"
 					},
 					{
 						"$ref": "#/parameters/body.holidays"
@@ -16243,6 +16713,226 @@
 				"tags": ["items"]
 			}
 		},
+		"/legal_documents": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.language"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.body_markdown"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.published_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.retired_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "versioned legal texts of a tenant; a published or retired version never changes",
+				"tags": ["legal_documents"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.language"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.body_markdown"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.published_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.retired_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/legal_documents"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "versioned legal texts of a tenant; a published or retired version never changes",
+				"tags": ["legal_documents"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.language"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.body_markdown"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.published_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.retired_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.legal_documents.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.legal_documents"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "versioned legal texts of a tenant; a published or retired version never changes",
+				"tags": ["legal_documents"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.legal_documents"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "versioned legal texts of a tenant; a published or retired version never changes",
+				"tags": ["legal_documents"]
+			}
+		},
 		"/notification_channels": {
 			"delete": {
 				"parameters": [
@@ -17367,6 +18057,181 @@
 				"tags": ["payment_fee_rates"]
 			}
 		},
+		"/payment_kind_overrides": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.pos_account_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.payment_method_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a tenant's payment kind for a POS payment method; payment_methods.kind follows it and pos_kind keeps the POS value",
+				"tags": ["payment_kind_overrides"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.pos_account_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.payment_method_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/payment_kind_overrides"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "a tenant's payment kind for a POS payment method; payment_methods.kind follows it and pos_kind keeps the POS value",
+				"tags": ["payment_kind_overrides"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.pos_account_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.payment_method_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_kind_overrides.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.payment_kind_overrides"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a tenant's payment kind for a POS payment method; payment_methods.kind follows it and pos_kind keeps the POS value",
+				"tags": ["payment_kind_overrides"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.payment_kind_overrides"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "a tenant's payment kind for a POS payment method; payment_methods.kind follows it and pos_kind keeps the POS value",
+				"tags": ["payment_kind_overrides"]
+			}
+		},
 		"/payment_methods": {
 			"delete": {
 				"parameters": [
@@ -17399,6 +18264,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.payment_methods.last_seen_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_methods.pos_kind"
 					},
 					{
 						"$ref": "#/parameters/preferReturn"
@@ -17442,6 +18310,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.payment_methods.last_seen_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_methods.pos_kind"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -17512,6 +18383,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.payment_methods.last_seen_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_methods.pos_kind"
 					},
 					{
 						"$ref": "#/parameters/body.payment_methods"
@@ -20453,6 +21327,41 @@
 				"tags": ["(rpc) promotion_summary"]
 			}
 		},
+		"/rpc/publish_legal_document": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"p_document_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_document_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) publish_legal_document"]
+			}
+		},
 		"/rpc/range_totals": {
 			"get": {
 				"parameters": [
@@ -20642,6 +21551,41 @@
 					}
 				},
 				"tags": ["(rpc) report_settings_of"]
+			}
+		},
+		"/rpc/retire_legal_document": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"p_document_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_document_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) retire_legal_document"]
 			}
 		},
 		"/rpc/same_weekday_baseline": {
@@ -21834,6 +22778,15 @@
 						"$ref": "#/parameters/rowFilter.stores.sync_resumed_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.stores.member_capture_status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stores.profile_updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stores.profile_updated_by"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -21905,6 +22858,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.stores.sync_resumed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stores.member_capture_status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stores.profile_updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stores.profile_updated_by"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -22005,6 +22967,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.stores.sync_resumed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stores.member_capture_status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stores.profile_updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stores.profile_updated_by"
 					},
 					{
 						"$ref": "#/parameters/body.stores"
@@ -22998,6 +23969,15 @@
 						"$ref": "#/parameters/rowFilter.tenants.analytics_pending_to"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.tenants.default_language"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.profile_updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.profile_updated_by"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -23045,6 +24025,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.tenants.analytics_pending_to"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.default_language"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.profile_updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.profile_updated_by"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -23121,6 +24110,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.tenants.analytics_pending_to"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.default_language"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.profile_updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.profile_updated_by"
 					},
 					{
 						"$ref": "#/parameters/body.tenants"

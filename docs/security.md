@@ -200,6 +200,12 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Call the 16 report functions | rows in scope | rows in scope | rows in scope | rows in scope | empty rows and null totals |
 | Write item costs, targets and payment fee rates | scope | scope | no | no | no |
 | Write item-type roles and tenant holidays | unlimited | unlimited | no | no | no |
+| Write report settings | unlimited | no | no | no | no |
+| Write item category and payment-kind overrides | unlimited | unlimited | no | no | no |
+| Write a store's profile (code, seats, opening date, e-invoicing, receipt numbering, member feature; column grant) | scope | scope | no | no | no |
+| Write a store's opening hours | scope | no | no | no | no |
+| Write the tenant profile (legal form, default language; column grant) | unlimited | no | no | no | no |
+| Write legal text drafts, publish and retire them (`publish_legal_document`, `retire_legal_document`) | unlimited | no | no | no | no |
 | Refresh analytics (`refresh_my_analytics`, at most 92 days) | yes | yes | no | no | no |
 | Read plans (`strategy_reports`) | scope | scope | scope | scope | scope |
 | Insert plans, with `created_by` set to the caller | scope | scope | no | no | scope |
@@ -214,7 +220,7 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Read alert episodes | scope | scope | no | no | no |
 | Read digests | when every store of the digest is in scope | when every store of the digest is in scope | no | no | no |
 | Read outbound messages | all with unlimited scope, else their stores; plus own | all with unlimited scope, else their stores; plus own | own | own | own |
-| Write destinations, the outbox, episodes, digests, facts, the catalogue or stores | no | no | no | no | no |
+| Write destinations, the outbox, episodes, digests, facts, the catalogue, store names, addresses, time zones or day starts | no | no | no | no | no |
 | Read the POS token cache, the payload documents or anything in `app` | no | no | no | no | no |
 
 Destinations are created, linked and withdrawn through `security definer` functions and the CLI, not by direct writes.

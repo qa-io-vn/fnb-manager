@@ -317,6 +317,8 @@ select is(
 
 reset role;
 
+set local request.jwt.claims to '{}';
+
 update public.stores s set opening_hours = null from fixture f where s.id = f.tea_store_id;
 
 select is(

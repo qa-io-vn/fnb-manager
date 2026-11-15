@@ -14,8 +14,8 @@ Two schemas exist:
 - Identifiers assigned by a POS are kept verbatim in `external_id` columns (`text`). Foreign relations to POS entities are expressed by external id, never by our uuid, so a re-synced catalogue never breaks facts.
 - Timestamps are `timestamptz`. Calendar days are `date`. Money is `numeric(14,2)` in the tenant's currency. Quantities are `numeric(12,3)`. Percentages (`_pct` columns) are `numeric(6,3)` where `1.100` means 1.1 %. Rates and shares in the aggregate tables and query functions are fractions where `0.250` means 25 %.
 - Master-data tables carry `active`, `first_seen_at` and `last_seen_at`, maintained by the sync: a row disappearing from the POS catalogue is marked inactive, never deleted.
-- Manual-input tables carry `created_by` (defaults to `auth.uid()`, frozen by a trigger on update), `created_at` and `updated_at` (set by a trigger).
-- No table is ever written by the browser except the manual-input tables, `strategy_reports`, the two legal ledgers `consent_records` and `data_subject_requests` (a `notifications` consent excepted), and the notification settings `alert_rules` and `channel_policies` (owners with an unlimited scope only); every other write comes from the sync jobs and the messaging jobs running as `service_role`. The aggregate tables (`agg_*`) are written only by `app.refresh_analytics()`, which the sync jobs call and which an owner or manager may trigger through `refresh_my_analytics()`.
+- Manual-input tables carry `created_by` (defaults to `auth.uid()`, frozen by a trigger on update), `created_at` and `updated_at` (set by a trigger). The trigger `app.keep_created_by()` lets only the foreign key's own action set `created_by` to null, so removing a login keeps the rows it wrote and drops its name from them (migration `settings_writes_hardening`).
+- No table is ever written by the browser except the manual-input tables, `strategy_reports`, the two legal ledgers `consent_records` and `data_subject_requests` (a `notifications` consent excepted), the notification settings `alert_rules` and `channel_policies` (owners with an unlimited scope only), the settings of phase 10 (`report_settings`, `item_category_overrides`, `payment_kind_overrides`, `legal_documents`) and, through column grants, the profile columns of `stores` and `tenants` ("Who can write what"); every other write comes from the sync jobs and the messaging jobs running as `service_role`. The aggregate tables (`agg_*`) are written only by `app.refresh_analytics()`, which the sync jobs call and which an owner or manager may trigger through `refresh_my_analytics()`.
 
 ## Enums
 
@@ -23,7 +23,7 @@ Two schemas exist:
 | --- | --- | --- |
 | `tenant_role` | `owner`, `manager`, `staff`, `viewer`, `publisher` | `tenant_members.role` |
 | `pos_account_status` | `active`, `paused`, `error`, `auth_failed` | `pos_accounts.status` |
-| `payment_kind` | `cash`, `card`, `bank_transfer`, `ewallet`, `voucher`, `other` | `payment_methods.kind` |
+| `payment_kind` | `cash`, `card`, `bank_transfer`, `ewallet`, `voucher`, `other` | `payment_methods.kind`, `payment_methods.pos_kind`, `payment_kind_overrides.kind` |
 | `line_kind` | `item`, `modifier`, `service`, `package`, `other` | `invoice_lines.line_kind` |
 | `invoice_status` | `completed`, `edited`, `voided` | `invoices.status` |
 | `invoice_event_kind` | `voided`, `edited`, `line_removed`, `reissued` | `invoice_events.kind` |
@@ -36,6 +36,9 @@ Two schemas exist:
 | `legal_form` | `household_business`, `micro_enterprise`, `small_enterprise`, `enterprise`, `unknown` | `tenants.legal_form` |
 | `e_invoice_status` | `unknown`, `not_configured`, `configured`, `disabled` | `stores.e_invoice_status` |
 | `tran_no_reset_period` | `daily`, `yearly`, `never`, `unknown` | `stores.tran_no_reset_period` |
+| `pos_feature_status` | `unknown`, `enabled`, `disabled` | `stores.member_capture_status` |
+| `legal_document_kind` | `privacy_notice`, `data_protection_rules`, `mini_app_terms`, `staff_notice`, `loyalty_consent_text`, `marketing_consent_text` | `legal_documents.kind` |
+| `legal_document_status` | `draft`, `published`, `retired` | `legal_documents.status` |
 | `consent_subject` | `customer`, `staff` | `consent_records.subject_type`, `data_subject_requests.subject_type`, `outbound_messages.subject_type` |
 | `consent_purpose` | `loyalty`, `marketing`, `staff_ops`, `notifications` | `consent_records.purpose`, `outbound_messages.purpose`, `channel_policies.consent_purpose` |
 | `channel_kind` | `zalo_bot`, `email`, `telegram`, `webhook`, `zalo_oa`, `zalo_gmf`, `zalo_zbs`, `mini_app`, `sms` | `notification_channels.kind`, `channel_policies.channel_kind`, `app.bot_poll_state.kind` |
@@ -64,7 +67,9 @@ One row per owner organisation. Everything else hangs off it.
 | `country_code` | text | no | ISO 3166-1 alpha-2, default `VN`; selects the global holiday rows |
 | `currency_code` | text | no | ISO 4217, default `VND`; the unit of every money column of the tenant |
 | `timezone` | text | no | IANA zone, default `Asia/Ho_Chi_Minh`; default for new stores |
-| `legal_form` | legal_form | no | Entity type of the owner, default `unknown`; drives the cross-border dossier decision |
+| `legal_form` | legal_form | no | Entity type of the owner, default `unknown`; drives the cross-border dossier decision; written by an owner with an unlimited scope |
+| `default_language` | text | no | `vi` (default) or `en`: the web app's first language for a member without a stored preference; written by an owner with an unlimited scope |
+| `profile_updated_at`, `profile_updated_by` | timestamptz, uuid | yes | When and by whom `legal_form` or `default_language` last changed (`tenants_stamp_profile`); the catch-up columns never stamp them |
 | `created_at` | timestamptz | no | Row creation |
 | `analytics_inputs_version` | bigint | no | Default 0; moved by every write to a table that refresh-time aggregates read (`item_type_roles`, `item_category_overrides`, `payment_fee_rates`); never written by the browser (phase 10) |
 | `analytics_inputs_changed_at` | timestamptz | yes | When the version last moved |
@@ -133,6 +138,8 @@ Short-lived session token cache. Service role only: no policy, no grant to `auth
 | `opened_on` | date | yes | First trading day; aligns since-opening comparisons |
 | `e_invoice_status` | e_invoice_status | no | Whether the POS issues cash-register e-invoices, default `unknown` |
 | `tran_no_reset_period` | tran_no_reset_period | no | How often the POS restarts receipt numbering, default `unknown` |
+| `member_capture_status` | pos_feature_status | no | Whether the POS member feature is switched on, default `unknown`; entered by an owner or manager |
+| `profile_updated_at`, `profile_updated_by` | timestamptz, uuid | yes | When and by whom a member last changed a profile column (`stores_stamp_profile`); the sync never stamps them |
 | `settings` | jsonb | no | Free-form store settings, default `{}`; `{"incremental_sync": false}` keeps the store out of the incremental schedule (the seeded demo stores carry it, their accounts have no credentials) |
 | `active` | boolean | no | False once the POS no longer lists the store |
 | `sync_resumed_at` | timestamptz | yes | When the incremental sync last started watching the store again: set by trigger when an update makes it active and opted in again, or when its account leaves `paused`; the dead-man's switch counts no opening time before it |
@@ -160,7 +167,7 @@ The check constraint `stores_opening_hours_valid` (`app.opening_hours_valid`) re
 | `packages` | `list_price` numeric(14,2) null | Combos sold as one line |
 | `customizations` | — | Modifier options such as sugar or ice level |
 | `sources` | — | Order channels such as dine-in or takeaway |
-| `payment_methods` | `kind` payment_kind not null default `other` | Tenders; `kind` is the canonical classification used by shift cash and payment-mix reports |
+| `payment_methods` | `kind` payment_kind not null default `other`; `pos_kind` payment_kind not null default `other` | Tenders; `kind` is the effective classification used by shift cash and payment-mix reports: the tenant's `payment_kind_overrides` row when one exists, else `pos_kind`, the kind the sync classified (`payment_methods_apply_kind_override`) |
 | `promotions` | `starts_at`, `ends_at` timestamptz null | Promotion catalogue with validity window |
 | `devices` | `code`, `name`, `store_external_id` text null; `store_id` uuid null | POS terminals; `store_id` is resolved by the sync and set to null if the store disappears |
 
@@ -552,7 +559,8 @@ Calendar of non-trading-pattern days. Global rows (`tenant_id` null) are maintai
 | `holiday_date` | date | no | Calendar day |
 | `name` | text | no | Label |
 | `kind` | holiday_kind | no | `public` for statutory holidays, `tet` for every day of the Lunar New Year window, `custom` for tenant rows |
-| `created_at` | timestamptz | no | Row creation |
+| `created_by`, `updated_by` | uuid | yes | Author (must be the caller on insert, frozen afterwards) and last writer (set by trigger); null on the global rows |
+| `created_at`, `updated_at` | timestamptz | no | Row creation and last change (set by trigger) |
 
 Migration `vn_public_holidays` ships the Vietnamese statutory calendar for 2024–2028 as 61 global rows: 1 January, 30 April, 1 May, 2 September with the adjacent day granted by law, the Hùng Kings' Commemoration (10th day of the 3rd lunar month) and the Tết window from the last day of the old lunar year (both the 29th and 30th when the month has 30 days) through the 5th day of the new year. It inserts a row only when no global row with the same country, date and name exists, so a database that already holds the calendar is unchanged; the seed no longer inserts holidays. `VIETNAM_HOLIDAYS` in `packages/core` holds the same rows for the demo, and its unit test parses the migration to keep the two equal. Lunar dates from 2029 on are not shipped yet.
 
@@ -633,14 +641,60 @@ An item moved to another POS item type of the same account, for reports only; th
 
 | Name | On | Behaviour |
 | --- | --- | --- |
-| `<table>_set_updated_by` → `app.set_updated_by()` | before insert or update on `item_costs`, `payment_fee_rates`, `item_type_roles`, `targets`, `report_settings`, `item_category_overrides` | Sets `updated_by` to `auth.uid()`, whatever the request carries |
-| `<table>_touch_analytics_inputs` → `app.touch_analytics_inputs()` | after insert, update or delete, per row, on `item_type_roles`, `item_category_overrides`, `payment_fee_rates` | Moves the tenant's `analytics_inputs_version`, stamps `analytics_inputs_changed_at` and marks 2023-01-01 to `current_date + 1` pending; `security definer`, executable by no API role |
+| `<table>_set_updated_by` → `app.set_updated_by()` | before insert or update on `item_costs`, `payment_fee_rates`, `item_type_roles`, `targets`, `report_settings`, `item_category_overrides`, `payment_kind_overrides`, `legal_documents`, `holidays` | Sets `updated_by` to `auth.uid()`, whatever the request carries |
+| `<table>_touch_analytics_inputs` → `app.touch_analytics_inputs()` | after insert, update or delete, per row, on `item_type_roles`, `item_category_overrides`, `payment_fee_rates`, `payment_kind_overrides` | Moves the tenant's `analytics_inputs_version`, stamps `analytics_inputs_changed_at` and marks 2023-01-01 to `current_date + 1` pending; `security definer`, executable by no API role |
 | `app.opening_hours_present(jsonb)` | function | The body of phase 7's private `app.opening_hours_known`, executable by `authenticated` and `service_role` |
 | `app.store_report_settings(store_ids)` | function | One row per visible store in `store_ids` order: the tenant's settings or the defaults, and `z_threshold` 2 |
 | `app.item_category_map(store_ids)` | function | The overrides of the visible stores' POS accounts with the target type's name |
 | `app.effective_item_types(store_ids, from_date, to_date)` | function | Per item key sold at the visible stores in the range: the account of the first store that sold it, the effective type and name, `category_source` (`override`, `pos`, `none`) and the role, from that account first (migration `theme_menu_functions`) |
 | `app.shrink_analytics_pending(p_tenant, p_from, p_to, p_version)` | function | `security definer`, executable by no API role, called at the end of every refresh: with the tenant's earliest `agg_daily_sales` date as the history start, it updates the tenant row only while `analytics_inputs_version` still equals `p_version`, emptying the pending range when the refreshed dates cover it, when the tenant has no history yet or when the range ends before the history starts, moving its start or end inward when they cover one end, and changing nothing for a refresh strictly inside it (migration `refresh_overrides_and_catch_up`) |
 | `app.item_cost_periods(store_ids)` | function | Per visible store, item and scope (store or tenant-wide): each `item_costs` row with the date it stops applying, the start of the next row of the same scope (migration `theme_menu_functions`) |
+
+Migration `settings_writes_and_legal` (10b) opens the settings pages' writes: the profile columns of `stores` and `tenants` through column grants, `payment_kind_overrides`, versioned `legal_documents` with two publishing functions, and the authors of tenant `holidays`. Its trigger functions all pin an empty `search_path` and are executable by no API role.
+
+| Name | On | Behaviour |
+| --- | --- | --- |
+| `payment_methods_apply_kind_override` → `app.apply_payment_kind_override()` | before insert, or update of `kind`, on `payment_methods` | On insert, copies `kind` into `pos_kind` (an override cannot exist before its method row). On an update that sets `kind`, such as the sync's upsert, copies the incoming kind into `pos_kind` and sets `kind` to the override's kind when one exists, else to `pos_kind`. An update that leaves `kind` out, such as the sync's deactivation, does not fire it. `security definer` |
+| `payment_kind_overrides_apply` → `app.apply_payment_kind_overrides_row()` | after insert, update or delete on `payment_kind_overrides` | Rewrites `kind` of the method the row names from its `pos_kind` while the transaction setting `app.payment_kind_override_write` is `on`, so the first trigger applies or removes the override without touching `pos_kind`; deleting the override restores the POS kind. `security definer` |
+| `stores_stamp_profile` → `app.stamp_store_profile()` | before update on `stores` | Only for a member's write (`auth.uid()` set; the sync's upserts pass untouched): a change of `opening_hours` by anyone who is not an owner of that store raises `42501`; a `code` that, trimmed and upper-cased, equals another store's code in the tenant raises `23505` naming `stores_code_unique_in_tenant` (there is no unique index, because two POS accounts may use one code; the check runs under a transaction lock per tenant, so two members cannot give two stores one code at the same moment); a change of any profile column stamps `profile_updated_at` and `profile_updated_by`. `security definer`, so it sees every store of the tenant |
+| `tenants_stamp_profile` → `app.stamp_tenant_profile()` | before update on `tenants` | Stamps `profile_updated_at` and `profile_updated_by` when `legal_form` or `default_language` changes, never for the catch-up columns |
+| `legal_documents_freeze` → `app.freeze_legal_document()` | before update on `legal_documents` | A published or retired text never changes (`55000`); the status moves only from `draft` to `published` and from `published` to `retired` (`55000`); a published text keeps its publication date and a retired one its retirement date |
+| `set_updated_at`, `keep_created_by` | before update on `payment_kind_overrides`, `legal_documents`, `holidays` | As on the manual-input tables |
+
+`public.publish_legal_document(p_document_id)` and `public.retire_legal_document(p_document_id)` (`security definer`, empty `search_path`, executable by `authenticated` only) check first that the caller is an owner with an unlimited scope of the document's tenant (`42501` otherwise, and for an id the caller cannot see, before any lock), then take a transaction lock per tenant, kind and language and lock the document, raise `22023` for a wrong status and take their dates from `now()`. Publishing retires the published version and publishes the draft in one call, and two publications of one kind and language wait for each other instead of deadlocking, so a kind and language never has two published versions; the partial unique index `legal_documents_one_published_key` holds the same rule for the service role.
+
+### `payment_kind_overrides`
+
+A tenant's payment kind for a POS payment method (10b); `payment_methods.kind` follows it and `pos_kind` keeps the POS value. Unique on (`pos_account_id`, `payment_method_external_id`); the method is a foreign key to `payment_methods` of the same account, so a tender without a catalogue row cannot be overridden.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | Primary key |
+| `tenant_id`, `pos_account_id` | uuid | no | Tenant and POS account (composite key to `pos_accounts`) |
+| `payment_method_external_id` | text | no | The method's `external_id` |
+| `kind` | payment_kind | no | The kind reports use for it |
+| `created_by`, `updated_by` | uuid | yes | Author (frozen) and last writer (set by trigger) |
+| `created_at`, `updated_at` | timestamptz | no | Audit timestamps |
+
+Recomputing the expected cash of past shifts after a kind changes is not automatic: the owner re-syncs those months with `fnb sync window`.
+
+### `legal_documents`
+
+Versioned legal texts of a tenant (10b): a privacy notice, data-protection rules, Mini App terms, a staff notice and the loyalty and marketing consent texts, each per language. Unique on (`tenant_id`, `kind`, `language`, `version`), and at most one published row per tenant, kind and language.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | Primary key |
+| `tenant_id` | uuid | no | Tenant |
+| `kind` | legal_document_kind | no | Which text |
+| `language` | text | no | `vi` (default) or `en` |
+| `version` | text | no | Lower-case letters, digits, dots and hyphens, at most 40 characters, for example `privacy-2026-12`; the label consent records will store as `policy_version` from phase 14 |
+| `title` | text | no | 1 to 200 characters |
+| `body_markdown` | text | no | The text in Markdown, 1 to 100,000 characters |
+| `status` | legal_document_status | no | `draft` (default), `published` or `retired` |
+| `published_at`, `retired_at` | timestamptz | yes | Set by the two functions; check `legal_documents_status_dates` keeps them consistent with the status |
+| `created_by`, `updated_by` | uuid | yes | Author (frozen) and last writer (set by trigger) |
+| `created_at`, `updated_at` | timestamptz | no | Audit timestamps |
 
 `public.analytics_catch_up_status(p_tenant_id)` reads the pending range for a data member of the tenant: `pending_from` starts at the tenant's first aggregate date, `pending_days` is 0 when nothing is pending, and `can_refresh` follows `refresh_my_analytics`. Each refresh shrinks the range through `app.shrink_analytics_pending` (see "Refresh"): refreshing the newest 92 days and then the remaining days from the history start empties it, a refresh strictly inside it leaves it, and a refresh that raced a later mapping write changes nothing. It reads no refresh history, so the scheduler's pruning of `analytics_refreshes` cannot make old dates pending again. A tenant without any aggregate has nothing stale: since migration `refresh_overrides_and_catch_up` the status reports no pending day for it and its first refresh empties the range.
 
@@ -1208,7 +1262,11 @@ Policies call the array-returning helpers as `(select app.helper())` so Postgres
 | `item_type_roles` | `can_manage_store_scope(tenant_id, null)` and `created_by = auth.uid()`: owner or manager with an unlimited store scope | Same |
 | `item_category_overrides` | `can_manage_store_scope(tenant_id, null)` and `created_by = auth.uid()` | Same |
 | `report_settings` | `has_store_scope(tenant_id, null, owner)` and `created_by = auth.uid()`: owners with an unlimited scope, because the thresholds govern the managers too | Same rule |
-| `holidays` | `tenant_id` not null and `can_manage_store_scope(tenant_id, null)`; global rows are service-role only | Same |
+| `holidays` | `tenant_id` not null and `can_manage_store_scope(tenant_id, null)` and `created_by = auth.uid()`; global rows are service-role only | Same, without the `created_by` condition |
+| `stores` (profile columns) | — | Update only, of `code`, `opening_hours`, `seat_count`, `opened_on`, `e_invoice_status`, `tran_no_reset_period` and `member_capture_status` (column grant): `can_manage_store_scope(tenant_id, id)`; `opening_hours` additionally needs an owner of that store and `code` must stay unique in the tenant (`stores_stamp_profile`); name, address, time zone and day start stay with the POS |
+| `tenants` (profile columns) | — | Update only, of `legal_form` and `default_language` (column grant): `has_store_scope(id, null, owner)` |
+| `payment_kind_overrides` | `can_manage_store_scope(tenant_id, null)` and `created_by = auth.uid()` | Same |
+| `legal_documents` | `has_store_scope(tenant_id, null, owner)` and `created_by = auth.uid()`, as a draft without dates | Update of `title`, `body_markdown` and `version` only (column grant), same rule, frozen once published; delete of drafts only; publication and retirement through the two functions |
 | `strategy_reports` | `can_publish_store_scope(tenant_id, store_id)` and `created_by = auth.uid()` | `can_manage_store_scope(tenant_id, store_id)` |
 | `consent_records` | `has_tenant_role(tenant_id, owner or manager)`: any owner or manager of the tenant, store-limited or not, because consent is captured at the till | Update only, same rule; the `keep_consent_grant` trigger lets the update set `revoked_at` once and nothing else; no delete |
 | `data_subject_requests` | `can_manage_store_scope(tenant_id, null)`: owner or manager with an unlimited store scope | Update only, same rule; no delete |
@@ -1291,5 +1349,6 @@ The database therefore refuses a row that names tenant A together with a store o
 | `33_theme_functions.sql` | Thematic report functions: catalogue checks; `range_totals` against `app.period_totals` and against `period_compare_by_store` for a month anchor, six ranges and the limits; `opening_productivity` with split and overnight hours, seats and RevPASH, against `metric_value`, null without hours, a range without sales; `hour_profile` hand-computed (empty hours inside the span, peak and dead shares, busy and quiet weekday groups, weekday shares), against the heatmap by hour and by weekday, a 05:00 day start, a tie, explicit and tenant thresholds, the limits and the row order; `menu_engineering` equal to `menu_matrix` with the defaults, its classes, a tenant settings row and explicit arguments, an override moving an item to another role, costs by business date with a store row winning over a newer tenant-wide row, a provisional role, its unit cost equal to `item_margins`; `item_margins` over two stores with mid-range store and tenant-wide costs, the latest cost in store order, an item without cost and partial coverage; the limits; on the demo seed `item_attach` against `agg_attach_daily` and `metric_value`, two POS accounts that map different roles, a role nobody maps, drinks only, an override that makes an item a drink; modifier lines named and typed like an item counted by none of the four functions and joining no pair; `modifier_summary` hand-computed with its compare columns and against the aggregate; `basket_pairs` against `agg_basket_pairs_28d` for both seed stores with names, window and item counts against a direct count, confidences, `min_pair_invoices`, `max_pairs`, byte-order orientation and the limits; the null threshold defaults of the cash functions |
 | `34_theme_access.sql` | Access to the phase 10 functions: two-tenant isolation, a store-limited member, a viewer, the publisher's defaults and empty rows, `anon` refused, for the revenue and hours functions, for `menu_engineering`, `item_margins` and `item_attach` with their helpers, and for `basket_pairs` (another tenant's invoices, a store-limited member, a viewer, the publisher) and `modifier_summary`; `app.shrink_analytics_pending` executable by no API role; `app.opening_hours_present` executable by the API roles, `app.opening_hours_known` and `app.touch_analytics_inputs` by none |
 | `35_mappings_and_catch_up.sql` | `report_settings` and `item_category_overrides`: the write matrix (unlimited owner, unlimited manager, store-limited owner and manager, staff, viewer, publisher, another tenant), an owner's upsert of one threshold that keeps the other columns, the delete that restores the defaults (an unlimited owner removes the row and the tenant reads the column defaults again; a store-limited owner removes nothing), `created_by` refused in another member's name, `updated_by` set by trigger on insert and update, the checks; the defaults of `app.store_report_settings`; `app.item_category_map`; the catch-up version and pending range moved by roles, overrides and fee rates, `analytics_catch_up_status`; the rebuilt `item_summary` equal to its phase 9 body (copied into the test) without overrides; an override shown by the next statement in `item_summary`, `menu_engineering` and `item_margins`, read from the first requested store that sold the item for one row per item and applied to its own account's sales by `menu_engineering`; `shift_review` and `cash_variance_flags` against their phase 9 bodies without a settings row, following a row, explicit thresholds winning together or one at a time, and the first visible store's tenant setting them for a member of two tenants; the rebuilt refresh against its previous body without overrides on every aggregate, an override in `agg_category_daily` and in the attach counts and lines of its own account only (against a direct per-invoice count) with `agg_item_daily` on the POS type, the pending range shrunk in two refreshes, kept by a refresh inside it and by a stale version, emptied for a tenant without history or a range before the history, the status of a tenant without history, and the range still empty after the refresh log is pruned |
+| `38_settings_writes.sql` | The 10b settings writes: the column grants of `stores`, `tenants` and `legal_documents` and nothing to `anon`; the trigger functions' `search_path` and privileges and the two legal functions' signatures; the write matrix of store profiles, the tenant profile, payment-kind overrides, legal documents (insert, edit, delete, publish and retire) and tenant holidays for an unlimited owner and manager, a store-limited owner and manager, staff, a viewer, the publisher, another tenant's owner and `anon`; the POS columns (name, address, time zone, day start) refused with `42501`, a manager's opening hours refused, a duplicate code refused for a member (trimmed, upper-cased) and accepted without one, the profile stamps; the sync's store upsert keeping every profile column; an override applied, kept by the sync's upsert and deactivation, changed and deleted with the catch-up version moving; legal drafts, refused direct status and date writes, the version label, publication and retirement with the database clock, one published version per kind and language, frozen texts and dates, drafts-only deletion; `created_by` and `updated_by` of overrides, legal texts and holidays, an owner's edit of a draft the service wrote; and removing the logins of two authors, which keeps their rows and nulls their names |
 
 The notification tests (26 to 32) build their own fixture tenants (`notify-it-pgtap-…`), the phase 10 tests (33 onwards) theirs (`theme-pgtap-…`), and destinations on `_IT` secret names and pass a tenant filter to every scanning function. The analytics tests scope every count to the demo tenant, and the report tests to their own fixture tenants (and the demo tenant where they compare with the seed), so further tenants in the database do not change their outcome. The seed is synthetic and the tests create their own fixture users and tenants inside a rolled-back transaction.

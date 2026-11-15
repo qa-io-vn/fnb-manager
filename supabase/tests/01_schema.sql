@@ -1,5 +1,5 @@
 begin;
-select plan(170);
+select plan(193);
 
 select has_schema('app', 'app schema exists');
 select has_function('app', 'current_user_tenant_ids', 'app.current_user_tenant_ids exists');
@@ -63,6 +63,12 @@ select has_enum('public', 'dsr_type', 'dsr_type enum exists');
 select enum_has_labels('public', 'dsr_type', array['access', 'correction', 'deletion', 'export', 'objection', 'withdraw_consent'], 'dsr_type labels');
 select has_enum('public', 'dsr_status', 'dsr_status enum exists');
 select enum_has_labels('public', 'dsr_status', array['received', 'in_progress', 'completed', 'rejected'], 'dsr_status labels');
+select has_enum('public', 'pos_feature_status', 'pos_feature_status enum exists');
+select enum_has_labels('public', 'pos_feature_status', array['unknown', 'enabled', 'disabled'], 'pos_feature_status labels');
+select has_enum('public', 'legal_document_kind', 'legal_document_kind enum exists');
+select enum_has_labels('public', 'legal_document_kind', array['privacy_notice', 'data_protection_rules', 'mini_app_terms', 'staff_notice', 'loyalty_consent_text', 'marketing_consent_text'], 'legal_document_kind labels');
+select has_enum('public', 'legal_document_status', 'legal_document_status enum exists');
+select enum_has_labels('public', 'legal_document_status', array['draft', 'published', 'retired'], 'legal_document_status labels');
 
 select has_table('public', 'tenants', 'tenants table exists');
 select has_table('public', 'tenant_members', 'tenant_members table exists');
@@ -99,6 +105,8 @@ select has_table('public', 'data_subject_requests', 'data_subject_requests table
 select has_table('public', 'outbound_messages', 'outbound_messages table exists');
 select has_table('public', 'report_settings', 'report_settings table exists');
 select has_table('public', 'item_category_overrides', 'item_category_overrides table exists');
+select has_table('public', 'payment_kind_overrides', 'payment_kind_overrides table exists');
+select has_table('public', 'legal_documents', 'legal_documents table exists');
 
 select col_type_is('public', 'tenant_members', 'store_ids', 'uuid[]', 'tenant_members.store_ids is uuid[]');
 select col_type_is('public', 'payment_methods', 'kind', 'payment_kind', 'payment_methods.kind uses the enum');
@@ -175,6 +183,21 @@ select has_trigger('public', 'item_type_roles', 'item_type_roles_touch_analytics
 select has_trigger('public', 'item_category_overrides', 'item_category_overrides_touch_analytics_inputs', 'item_category_overrides moves the analytics catch-up');
 select has_trigger('public', 'payment_fee_rates', 'payment_fee_rates_touch_analytics_inputs', 'payment_fee_rates moves the analytics catch-up');
 select has_trigger('public', 'report_settings', 'report_settings_set_updated_by', 'report_settings sets updated_by');
+select col_type_is('public', 'stores', 'member_capture_status', 'pos_feature_status', 'stores.member_capture_status uses the enum');
+select col_default_is('public', 'stores', 'member_capture_status', 'unknown', 'stores.member_capture_status starts unknown');
+select has_column('public', 'stores', 'profile_updated_by', 'stores.profile_updated_by exists');
+select col_default_is('public', 'tenants', 'default_language', 'vi', 'tenants.default_language defaults to vi');
+select has_column('public', 'tenants', 'profile_updated_by', 'tenants.profile_updated_by exists');
+select col_type_is('public', 'payment_methods', 'pos_kind', 'payment_kind', 'payment_methods.pos_kind uses the enum');
+select col_default_is('public', 'holidays', 'updated_by', 'auth.uid()', 'holidays.updated_by defaults to auth.uid()');
+select col_default_is('public', 'legal_documents', 'status', 'draft', 'legal_documents.status starts as a draft');
+select has_trigger('public', 'payment_methods', 'payment_methods_apply_kind_override', 'payment_methods applies the kind override');
+select has_trigger('public', 'payment_kind_overrides', 'payment_kind_overrides_apply', 'payment_kind_overrides rewrites the method kind');
+select has_trigger('public', 'payment_kind_overrides', 'payment_kind_overrides_touch_analytics_inputs', 'payment_kind_overrides moves the analytics catch-up');
+select has_trigger('public', 'stores', 'stores_stamp_profile', 'stores guards and stamps member profile writes');
+select has_trigger('public', 'tenants', 'tenants_stamp_profile', 'tenants stamps profile writes');
+select has_trigger('public', 'legal_documents', 'legal_documents_freeze', 'legal_documents freezes published texts');
+select has_trigger('public', 'holidays', 'holidays_set_updated_by', 'holidays sets updated_by');
 
 select * from finish();
 rollback;
