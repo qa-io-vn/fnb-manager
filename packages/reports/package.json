@@ -21,7 +21,7 @@
 		"build": "tsc -p tsconfig.build.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
 		"test": "vitest run",
-		"test:live": "LIVE=1 vitest run test/live"
+		"test:live": "LIVE=1 vitest run test/live --reporter=default --no-file-parallelism"
 	},
 	"dependencies": {
 		"@fnb/core": "workspace:^",

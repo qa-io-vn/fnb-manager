@@ -1,31 +1,12 @@
 import type postgres from "postgres";
 import {
 	argumentNames,
+	argumentSqlType,
 	isAnalyticsFunctionName,
+	isThemeFunctionName,
 	type RpcClient,
+	themeArgumentNames,
 } from "../../src/index.js";
-
-export const ARGUMENT_TYPES: Readonly<Record<string, string>> = {
-	store_ids: "uuid[]",
-	grain: "text",
-	anchor: "date",
-	from_date: "date",
-	to_date: "date",
-	compare_from: "date",
-	compare_to: "date",
-	metric_ids: "text[]",
-	target_date: "date",
-	weeks: "integer",
-	as_of_date: "date",
-	as_of: "date",
-	month_start: "date",
-	days: "integer",
-	abs_threshold: "numeric",
-	rel_threshold: "numeric",
-	period_kind: "public.period_kind",
-	period_start: "date",
-	include_stores: "boolean",
-};
 
 const rawText = (value: string) => value;
 
@@ -62,28 +43,33 @@ function arrayLiteral(values: readonly unknown[]): string {
 		.join(",")}}`;
 }
 
+function knownArguments(fn: string): readonly string[] {
+	if (isAnalyticsFunctionName(fn)) return argumentNames(fn);
+	if (isThemeFunctionName(fn)) return themeArgumentNames(fn);
+	throw new Error(`${fn} is not a report function`);
+}
+
 export function statementFor(
 	fn: string,
 	args: Readonly<Record<string, unknown>>,
 ): { text: string; params: unknown[] } {
-	if (!isAnalyticsFunctionName(fn)) {
-		throw new Error(`${fn} is not an analytics function`);
-	}
-	const known = new Set(argumentNames(fn));
+	const known = new Set(knownArguments(fn));
 	const params: unknown[] = [];
 	const parts: string[] = [];
 	for (const [name, value] of Object.entries(args)) {
 		if (value === undefined) continue;
-		const type = ARGUMENT_TYPES[name];
+		const type = argumentSqlType(name);
 		if (!known.has(name) || type === undefined) {
 			throw new Error(`${fn} takes no argument named ${name}`);
 		}
 		params.push(
-			Array.isArray(value)
-				? arrayLiteral(value)
-				: typeof value === "number"
-					? String(value)
-					: value,
+			value === null
+				? null
+				: Array.isArray(value)
+					? arrayLiteral(value)
+					: typeof value === "number"
+						? String(value)
+						: value,
 		);
 		parts.push(`${name} => $${params.length}::${type}`);
 	}
@@ -147,6 +133,18 @@ export function createPostgresRpcClient(
 					},
 				};
 			}
+		},
+	};
+}
+
+export function serialRpcClient(client: PostgresRpcClient): PostgresRpcClient {
+	let queue: Promise<unknown> = Promise.resolve();
+	return {
+		calls: client.calls,
+		rpc(fn, args) {
+			const next = queue.then(() => client.rpc(fn, args));
+			queue = next.catch(() => undefined);
+			return next;
 		},
 	};
 }

@@ -26,11 +26,21 @@ The package is marked `sideEffects: false`, so the web bundler can split it. Run
 ```sh
 pnpm --filter @fnb/reports run test --maxWorkers=2
 DATABASE_URL=<local database URL> pnpm --filter @fnb/reports test:live
+DATABASE_URL=<local database URL> LIVE_REFERENCE_SHEET=<private sheet> pnpm --filter @fnb/reports test:live
 pnpm --filter @fnb/reports typecheck
 ```
 
 - The unit tests build every card from fixtures in `test/unit/reports/<day|week|month|year>/`, test the theme ranges, planning, comparisons and RPC source in `test/unit/themes/`, and test periods, the as-of day, coverage and comparisons, the decomposition and narrative, numerics, totals, definitions and the RPC source.
 - `test:live` (the script sets `LIVE=1`) is a read-only check on the local tenant (`LIVE_TENANT`, default `live-local`; `LIVE_SEED`, default 20261108): the report headlines against the POS control totals, `metric_value` and `period_series`. `LIVE_ACCEPTANCE` can name a private file for the owner's sheet check; it never comes from the repository.
+- The same command runs the theme live check (`test/live/theme-live-check.test.ts`) one file after the other, so each call is timed alone, and with the default reporter, so the printed lines show in every terminal. Every call runs as the tenant's owner in a read-only transaction, one at a time:
+  - the four theme pages at their default range against the per-function and page budgets of [test-plan §2.9](../../docs/test-plan.md#29-live-data-checks), and at 400 days against the 1.5 s limit;
+  - the reference window when `LIVE_REFERENCE_SHEET` names the owner's private sheet (a path from the repository root, or absolute; the sheet stays in `docs/private/`). `test/live/reference-sheet.ts` reads it and `test/live/reference-facts.ts` builds the compared values from `hour_profile`, `hour_weekday_heatmap`, `range_totals` and `payment_summary`. The payment mix is compared as shares of invoices, because the sheet counts invoices per payment method. Unset, the check prints `owner check pending` and passes;
+  - modifiers never counted or returned as items, over the window and the last 365 days. A modifier is a catalogue item flagged as one, or a key sold on modifier lines. `item_attach` and `basket_pairs` stop at 92 days, so the year is read in 91-day chunks;
+  - the cash thresholds (the defaults while the tenant has no settings row) leaving `shift_review` and `cash_variance_flags` unchanged;
+  - `report_settings_of` and `analytics_catch_up_status`;
+  - the tenant's row counts before and after.
+
+  It prints only booleans, counts and durations (`row <n> column <k>: matches: true|false`), never a figure, a name or a label from the sheet. Its parser is unit-tested in `test/unit/themes/reference-sheet.test.ts` on a synthetic sheet with made-up stores and figures.
 - The demo smoke tests and the parity suite in `@fnb/demo-analytics` run these reports on the TypeScript port.
 
 ## Read more
