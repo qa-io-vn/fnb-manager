@@ -145,7 +145,6 @@ test("placeholder pages say what is coming and in which phase", async ({
 	await signIn(page);
 	const pages = [
 		{ hash: "#/ke-hoach", title: "Kế hoạch", phase: "11b" },
-		{ hash: "#/cai-dat/cua-hang", title: "Cài đặt", phase: "10b, 12" },
 		{ hash: "#/xuat-du-lieu", title: "Xuất dữ liệu", phase: "11a" },
 	];
 	for (const placeholder of pages) {
@@ -159,6 +158,20 @@ test("placeholder pages say what is coming and in which phase", async ({
 		await expect(page.getByTestId("period-picker")).toBeVisible();
 		await checkPage(page);
 	}
+});
+
+test("Cài đặt opens its layout on the seeded stack with the phase of each placeholder", async ({
+	page,
+}) => {
+	await signIn(page);
+	await page.goto("/#/cai-dat");
+	await expect(page).toHaveURL(/#\/cai-dat\/cua-hang$/);
+	await expect(
+		page.getByRole("heading", { level: 1, name: "Cài đặt" }),
+	).toBeVisible();
+	await expect(page.getByTestId("settings-placeholder")).toContainText("10b");
+	await expect(page.getByTestId("settings-demo-note")).toHaveCount(0);
+	await checkPage(page);
 });
 
 test("signing out returns to the login page", async ({ page }) => {

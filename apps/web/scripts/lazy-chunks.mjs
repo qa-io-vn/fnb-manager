@@ -5,6 +5,9 @@ export const lazySources = [
 	/src\/pages\/reports\/(day|week|month|year)\/[a-z]+-page\.tsx$/,
 	/src\/pages\/themes\/[a-z-]+\/[a-z-]+-page\.tsx$/,
 	/src\/data\/supabase-analytics-source\.ts$/,
+	/src\/pages\/settings\/settings-route\.tsx$/,
+	/src\/settings\/supabase-settings-source\.ts$/,
+	/src\/settings\/demo-settings-source\.ts$/,
 ];
 
 export const eagerSources = [];

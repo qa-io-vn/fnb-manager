@@ -136,6 +136,7 @@ test("the theme tabs keep the range when moving to Giờ & ngày", async ({
 		.getByTestId("theme-tabs")
 		.getByRole("link", { name: "Giờ & ngày trong tuần" })
 		.click();
+	await expect(page).toHaveURL(/#\/chu-de\/gio-ngay\?/);
 	await waitForSettledThemeCards(page);
 	expect(new URL(page.url()).hash).toContain("/chu-de/gio-ngay");
 	expect(themeSearch(page).get("range")).toBe("91d");

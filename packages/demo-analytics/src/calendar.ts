@@ -291,7 +291,7 @@ export function demoDayPlan(
 export interface DemoRole {
 	readonly posAccountId: string;
 	readonly itemTypeExternalId: string;
-	readonly role: "drink" | "topping" | "snack" | "other";
+	readonly role: "drink" | "topping" | "food" | "snack" | "other";
 }
 
 const ROLE_BY_TYPE: Readonly<Record<string, DemoRole["role"]>> = {

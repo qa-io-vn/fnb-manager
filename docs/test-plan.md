@@ -798,7 +798,7 @@ Coverage says whether tests exist. Whether they passed is the status column's jo
 
 ### 9.2 Coverage summary
 
-Coverage of the 376 requirements on 2026-11-14, by area.
+Coverage of the 376 requirements on 2026-11-15, by area.
 
 | Area | covered | partial | planned | owner check | Total |
 |---|---:|---:|---:|---:|---:|
@@ -809,7 +809,7 @@ Coverage of the 376 requirements on 2026-11-14, by area.
 | FR-ANA | 15 | – | 1 | 1 | 17 |
 | FR-REP | 17 | 2 | – | 2 | 21 |
 | FR-THM | 2 | 4 | 3 | – | 9 |
-| FR-SET | 1 | 7 | 3 | – | 11 |
+| FR-SET | 1 | 8 | 2 | – | 11 |
 | FR-EXP | – | 2 | 8 | – | 10 |
 | FR-STR | 1 | – | 9 | – | 10 |
 | FR-NOT | 26 | 4 | 12 | – | 42 |
@@ -818,7 +818,7 @@ Coverage of the 376 requirements on 2026-11-14, by area.
 | FR-STF | – | – | 23 | – | 23 |
 | FR-LOY | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | 7 | – | 12 |
-| **FR total** | **135** | **30** | **117** | **14** | **296** |
+| **FR total** | **135** | **31** | **116** | **14** | **296** |
 | NFR-SEC | 6 | 6 | 2 | 1 | 15 |
 | NFR-PRV | 5 | 1 | 1 | – | 7 |
 | NFR-PERF | 4 | 4 | 1 | – | 9 |
@@ -831,18 +831,18 @@ Coverage of the 376 requirements on 2026-11-14, by area.
 | NFR-OBS | 3 | 1 | – | – | 4 |
 | NFR-HYG | 4 | 1 | 1 | – | 6 |
 | **NFR total** | **47** | **22** | **9** | **2** | **80** |
-| **All** | **182** | **52** | **126** | **16** | **376** |
+| **All** | **182** | **53** | **125** | **16** | **376** |
 
 ```mermaid
 pie showData
-    title Coverage of the requirements on 2026-11-14
+    title Coverage of the requirements on 2026-11-15
     "covered" : 182
-    "partial" : 52
-    "planned" : 126
+    "partial" : 53
+    "planned" : 125
     "owner check" : 16
 ```
 
-Of the 239 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 40 partial, 1 planned and 16 owner checks. Of the 137 that are designed or planned, 125 have no test yet and 12 are partly held by tests of the database rules they rest on.
+Of the 240 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 41 partial, 1 planned and 16 owner checks. Of the 136 that are designed or planned, 124 have no test yet and 12 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -1017,7 +1017,7 @@ Of the 239 requirements that are verified locally, built, in build or waiting fo
 | FR-SET-08 | Tenant holidays | Should | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:22_report_functions`; screen planned | partial |
 | FR-SET-09 | Default language | Could | designed | planned | planned |
 | FR-SET-10 | Legal texts | Must | designed | `pgtap:12_consent_and_legal` (tables); screen planned | partial |
-| FR-SET-11 | Settings writes tested from the browser | Must | designed | planned (database rules verified: `pgtap:05_write_policies`) | planned |
+| FR-SET-11 | Settings writes tested from the browser | Must | in build | the read-only interface (#78): `web:settings/access` (every role and scope), `web:settings/read-only-notice`, `web:settings/use-settings-mutation`, `web:settings/supabase-settings-source`, `web:settings/demo-settings-source`; the layout: `e2e:demo/settings-layout`, `e2e:live/today`; a read-only page in the browser waits for the 10b fixture logins (#103); database rules: `pgtap:05_write_policies`; the browser write matrix with five logins planned (10b) | partial |
 
 #### FR-EXP — Exports and AI data pack
 

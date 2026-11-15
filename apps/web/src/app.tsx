@@ -121,8 +121,18 @@ export const routes: RouteObject[] = [
 					},
 					{ path: "ke-hoach/*", element: <PlaceholderPage section="plans" /> },
 					{
-						path: "cai-dat/*",
-						element: <PlaceholderPage section="settings" />,
+						path: "cai-dat",
+						hydrateFallbackElement: <ReportRouteLoading />,
+						children: [
+							{ index: true, element: <Navigate to="cua-hang" replace /> },
+							{
+								path: ":slug",
+								lazy: () =>
+									import("./pages/settings/settings-route").then((module) => ({
+										Component: module.SettingsRoute,
+									})),
+							},
+						],
 					},
 					{
 						path: "xuat-du-lieu",

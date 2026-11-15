@@ -4,7 +4,7 @@ This document states what FNB Manager must do and how well, for the whole progra
 
 Last updated 2026-11-12
 
-376 requirements: 296 functional in 16 areas and 80 non-functional in 11 categories. By status: 177 verified locally, 27 built, 18 in build, 39 designed, 98 planned, 17 waits for owner.
+376 requirements: 296 functional in 16 areas and 80 non-functional in 11 categories. By status: 177 verified locally, 27 built, 19 in build, 38 designed, 98 planned, 17 waits for owner.
 
 ## 1. Introduction
 
@@ -394,7 +394,7 @@ Phase 10b. The manual-input tables and their write policies exist since phase 2 
 | FR-SET-08 | **Tenant holidays.** The system shall let owners and managers with an unlimited scope add the tenant's custom holidays, which baselines and forecasts then exclude. | P10b | A custom holiday is excluded from the baseline. | Should | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:22_report_functions`; screen planned |
 | FR-SET-09 | **Default language.** The system shall let the tenant choose its default interface language. | P10b | A new session opens in the tenant's language. | Could | designed | planned |
 | FR-SET-10 | **Legal texts.** The system shall hold the tenant's legal texts (privacy notice, information-protection rules, consent wording) in Settings, each with the version label that consent records refer to. | P10b · ADR-021 | Owners and managers edit and publish the texts; staff and viewers cannot. | Must | designed | `pgtap:12_consent_and_legal` (tables); screen planned |
-| FR-SET-11 | **Settings writes tested from the browser.** The system shall prove from the browser that a viewer cannot save any setting and that an owner can. | P10b acceptance | Browser write tests for every settings form pass on the local stack. | Must | designed | planned (database rules verified: `pgtap:05_write_policies`) |
+| FR-SET-11 | **Settings writes tested from the browser.** The system shall prove from the browser that a viewer cannot save any setting and that an owner can. | P10b acceptance | Browser write tests for every settings form pass on the local stack. | Must | in build | the read-only interface (#78): `web:settings/access`, `e2e:demo/settings-layout`; database rules verified: `pgtap:05_write_policies`; the write matrix planned (10b) |
 
 ### 3.9 EXP — Exports and AI data pack
 
@@ -981,11 +981,11 @@ A possible legal change after the deep dive: Decree 239/2026/NĐ-CP of 26 June 2
 
 ```mermaid
 pie showData
-    title Requirements by status on 2026-11-12
-    "verified locally" : 175
-    "built" : 26
-    "in build" : 16
-    "designed" : 44
+    title Requirements by status on 2026-11-15
+    "verified locally" : 177
+    "built" : 27
+    "in build" : 19
+    "designed" : 38
     "planned" : 98
     "waits for owner" : 17
 ```
@@ -1000,8 +1000,8 @@ Functional requirements:
 | FR-DQ | 10 | – | – | 1 | 1 | 1 | 13 |
 | FR-ANA | 16 | – | – | – | 1 | – | 17 |
 | FR-REP | 18 | 1 | – | – | – | 2 | 21 |
-| FR-THM | – | – | – | 9 | – | – | 9 |
-| FR-SET | 1 | – | – | 10 | – | – | 11 |
+| FR-THM | 2 | 1 | 2 | 4 | – | – | 9 |
+| FR-SET | 1 | – | 1 | 9 | – | – | 11 |
 | FR-EXP | – | – | – | 10 | – | – | 10 |
 | FR-STR | 1 | – | – | 9 | – | – | 10 |
 | FR-NOT | 16 | – | 13 | 1 | 12 | – | 42 |
@@ -1010,7 +1010,7 @@ Functional requirements:
 | FR-STF | – | – | – | – | 23 | – | 23 |
 | FR-LOY | – | – | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | – | – | 7 | – | 12 |
-| **FR total** | **128** | **8** | **13** | **43** | **90** | **14** | **296** |
+| **FR total** | **130** | **9** | **16** | **37** | **90** | **14** | **296** |
 
 Non-functional requirements:
 
@@ -1033,9 +1033,9 @@ Non-functional requirements:
 
 | Priority | verified locally | built | in build | designed | planned | waits for owner | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Must | 159 | 13 | 14 | 26 | 65 | 15 | 292 |
-| Should | 16 | 13 | 2 | 15 | 30 | 2 | 78 |
-| Could | – | – | – | 3 | 3 | – | 6 |
+| Must | 159 | 13 | 15 | 25 | 65 | 15 | 292 |
+| Should | 17 | 14 | 4 | 11 | 30 | 2 | 78 |
+| Could | 1 | – | – | 2 | 3 | – | 6 |
 
 ### 8.3 Roadmap phases to requirements
 

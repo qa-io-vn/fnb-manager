@@ -29,7 +29,7 @@ Last updated 2026-11-12
 | Năm · Báo cáo năm | Year · Yearly report | route `#/bao-cao/nam?year=YYYY`; report id `year` | a calendar year; verified locally (phase 9) |
 | Chủ đề · Báo cáo chủ đề | Topics · Thematic reports | route `#/chu-de/*`; `nav.topics` | a placeholder today; designed (phase 10) |
 | Kế hoạch | Plans | route `#/ke-hoach/*`; `nav.plans` | saved strategy plans, KPI follow-up and the paste box; designed (phase 11b) |
-| Cài đặt | Settings | route `#/cai-dat/*`; `nav.settings` | designed (phases 10b and 12) |
+| Cài đặt | Settings | route `#/cai-dat/*` (`#/cai-dat` opens Cửa hàng); `nav.settings` | in build: the layout and settings source (10a, #78); the pages in 10a, 10b and 12 |
 | Xuất dữ liệu | Exports | route `#/xuat-du-lieu` | CSV exports and the aggregate data pack; no navigation item; designed (phase 11a) |
 | Đăng nhập | Sign in | route `#/dang-nhap`; `auth.login.title` | |
 | Quên mật khẩu? · Đặt lại mật khẩu | Forgot your password? · Reset password | route `#/quen-mat-khau`; `auth.forgot`, `auth.reset.title` | the reset e-mail links back to `#/mat-khau-moi` |
@@ -69,7 +69,8 @@ Names from `reportNames`; routes from [`web-app.md`](web-app.md).
 |---|---|---|---|
 | Hồ sơ cửa hàng | Store profile | `#/cai-dat/cua-hang` | 10b |
 | Dữ liệu nhập tay (giá vốn, mục tiêu, phí thanh toán) | Manual data (costs, targets, fee rates) | `#/cai-dat/du-lieu-nhap-tay` | 10b |
-| Phân loại món | Item roles and category mapping | `#/cai-dat/phan-loai` | 10b |
+| Phân loại món | Item roles and category mapping | `#/cai-dat/phan-loai` | roles 10a (#89), category mapping 10b |
+| Ngưỡng báo cáo | Report thresholds | `#/cai-dat/bao-cao` | 10a (#90) |
 | Ngày lễ | Holidays | `#/cai-dat/ngay-le` | 10b |
 | Cảnh báo | Alerts: destinations, rules and a test button | `#/cai-dat/canh-bao` | after step 12c |
 | Pháp lý | Legal texts (the consent view comes in phase 17a) | `#/cai-dat/phap-ly` | 10b |

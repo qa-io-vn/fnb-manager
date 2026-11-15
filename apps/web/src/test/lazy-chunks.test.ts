@@ -18,6 +18,9 @@ const manifestKeys = [
 	"src/pages/themes/doanh-thu/doanh-thu-page.tsx",
 	"src/pages/themes/gio-ngay/gio-ngay-page.tsx",
 	"src/data/supabase-analytics-source.ts",
+	"src/pages/settings/settings-route.tsx",
+	"src/settings/supabase-settings-source.ts",
+	"src/settings/demo-settings-source.ts",
 ];
 
 describe("the size check's lazy chunks", () => {
@@ -47,5 +50,8 @@ describe("the size check's lazy chunks", () => {
 			true,
 		);
 		expect(isLazySource("src/themes/theme-page.tsx")).toBe(false);
+		expect(isLazySource("src/pages/settings/settings-route.tsx")).toBe(true);
+		expect(isLazySource("src/settings/supabase-settings-source.ts")).toBe(true);
+		expect(isLazySource("src/settings/access.ts")).toBe(false);
 	});
 });

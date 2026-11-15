@@ -12,6 +12,8 @@ import reportYearEn from "./messages/report-year.en.json";
 import reportYearVi from "./messages/report-year.vi.json";
 import reportsEn from "./messages/reports.en.json";
 import reportsVi from "./messages/reports.vi.json";
+import settingsEn from "./messages/settings.en.json";
+import settingsVi from "./messages/settings.vi.json";
 import themeHoursEn from "./messages/theme-hours.en.json";
 import themeHoursVi from "./messages/theme-hours.vi.json";
 import themeMenuEn from "./messages/theme-menu.en.json";
@@ -31,6 +33,7 @@ export type MessageKey =
 	| keyof typeof reportWeekVi
 	| keyof typeof reportMonthVi
 	| keyof typeof reportYearVi
+	| keyof typeof settingsVi
 	| keyof typeof themesVi
 	| keyof typeof themeRevenueVi
 	| keyof typeof themeHoursVi;
@@ -61,7 +64,7 @@ export const messageFiles: readonly MessageFile[] = [
 	{
 		name: "core",
 		prefix: null,
-		excludedPrefixes: ["metric.", "report.", "theme."],
+		excludedPrefixes: ["metric.", "report.", "theme.", "settings."],
 		vi: coreVi,
 		en: coreEn,
 	},
@@ -127,6 +130,13 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: themeHoursVi,
 		en: themeHoursEn,
+	},
+	{
+		name: "settings",
+		prefix: "settings.",
+		excludedPrefixes: [],
+		vi: settingsVi,
+		en: settingsEn,
 	},
 	{
 		name: "theme-menu",
