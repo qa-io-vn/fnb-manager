@@ -35,6 +35,7 @@ export const SIZE_METRIC = "size_l_share";
 export const LARGE_SIZE_LABEL = "L";
 export const SIZE_CHART_DRINKS = 10;
 export const MIN_DRIVER_QUANTITY = 10;
+const SIZE_PREVIEW_ROWS = 10;
 
 export interface SizeGroup {
 	readonly drink: string;
@@ -180,6 +181,7 @@ export function buildSizeMixCard(input: CardInput): CardModel {
 					},
 				})),
 				initialSort: { key: "sizedQuantity", direction: "descending" },
+				previewRows: SIZE_PREVIEW_ROWS,
 			}),
 		],
 		chart:

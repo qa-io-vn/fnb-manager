@@ -61,8 +61,10 @@ export function ComparisonChips({
 							<span>{chip.label}</span>
 						) : (
 							<>
-								<span aria-hidden="true">{arrowFor(change)}</span>
-								<span className="tabular-nums">
+								<span aria-hidden="true" className="shrink-0">
+									{arrowFor(change)}
+								</span>
+								<span className="shrink-0 whitespace-nowrap tabular-nums">
 									{chipValue(chip, formatters, (value) =>
 										t("report.value.points", { value }),
 									)}

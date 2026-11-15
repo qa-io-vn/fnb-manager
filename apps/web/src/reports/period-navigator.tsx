@@ -165,7 +165,7 @@ export function PeriodNavigator({
 				‹
 			</StepButton>
 			<div
-				className="min-w-0 flex-1"
+				className="order-first w-full min-w-0 sm:order-none sm:w-auto sm:flex-1"
 				role="status"
 				aria-live="polite"
 				aria-atomic="true"

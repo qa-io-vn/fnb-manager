@@ -34,6 +34,8 @@ import {
 	yearValue,
 } from "../support.js";
 
+const LIFECYCLE_PREVIEW_ROWS = 20;
+
 export interface ClassifiedItem {
 	readonly row: LifecycleRow;
 	readonly status: LifecycleStatus;
@@ -167,6 +169,7 @@ function lifecycleTable(view: LifecycleView): TableModel {
 				netYtd: row.net_ytd,
 			},
 		})),
+		previewRows: LIFECYCLE_PREVIEW_ROWS,
 	});
 }
 

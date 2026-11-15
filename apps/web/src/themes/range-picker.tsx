@@ -113,7 +113,7 @@ function DateField({
 		onCommit(date);
 	};
 	return (
-		<div className="flex flex-col">
+		<div className="flex min-w-0 flex-col">
 			<label htmlFor={id} className="text-xs text-ink-muted">
 				{label}
 			</label>
@@ -134,7 +134,7 @@ function DateField({
 				onKeyDown={(event) => {
 					if (event.key === "Enter") commit(event.currentTarget.value);
 				}}
-				className={fieldVariants()}
+				className={`${fieldVariants()} w-full min-w-0 md:w-auto`}
 				data-testid={testId}
 			/>
 		</div>
@@ -177,7 +177,7 @@ export function RangePicker({
 					‹
 				</StepButton>
 				<div
-					className="order-first w-full min-w-0 sm:order-none sm:w-auto sm:flex-1"
+					className="order-first w-full min-w-0 md:order-none md:w-auto md:flex-1"
 					role="status"
 					aria-live="polite"
 					aria-atomic="true"
@@ -202,28 +202,30 @@ export function RangePicker({
 				>
 					›
 				</StepButton>
-				<DateField
-					label={t(themeKeys.range.from)}
-					value={range.from}
-					min={FIRST_CALENDAR_DATE}
-					max={range.to}
-					testId="range-from"
-					onCommit={(from) => {
-						const next = fitted(from, range.to);
-						if (next !== null) onChange(next);
-					}}
-				/>
-				<DateField
-					label={t(themeKeys.range.to)}
-					value={range.to}
-					min={range.from}
-					max={range.asOf}
-					testId="range-to"
-					onCommit={(to) => {
-						const next = fitted(range.from, to);
-						if (next !== null) onChange(next);
-					}}
-				/>
+				<div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto">
+					<DateField
+						label={t(themeKeys.range.from)}
+						value={range.from}
+						min={FIRST_CALENDAR_DATE}
+						max={range.to}
+						testId="range-from"
+						onCommit={(from) => {
+							const next = fitted(from, range.to);
+							if (next !== null) onChange(next);
+						}}
+					/>
+					<DateField
+						label={t(themeKeys.range.to)}
+						value={range.to}
+						min={range.from}
+						max={range.asOf}
+						testId="range-to"
+						onCommit={(to) => {
+							const next = fitted(range.from, to);
+							if (next !== null) onChange(next);
+						}}
+					/>
+				</div>
 			</div>
 		</section>
 	);

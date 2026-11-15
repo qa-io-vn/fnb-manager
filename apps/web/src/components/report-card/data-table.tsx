@@ -179,11 +179,31 @@ function textWrapping(isFirst: boolean, wide: boolean): string {
 	return isFirst ? "md:whitespace-nowrap" : "whitespace-nowrap";
 }
 
+const LONG_TEXT_CHARACTERS = 24;
+
+function longTextColumns(
+	columns: readonly TableColumn[],
+	rows: readonly TableRow[],
+): ReadonlySet<string> {
+	return new Set(
+		columns
+			.filter(isTextual)
+			.filter((column) =>
+				rows.some(
+					(row) =>
+						String(row.cells[column.key] ?? "").length > LONG_TEXT_CHARACTERS,
+				),
+			)
+			.map((column) => column.key),
+	);
+}
+
 function cellClass(
 	column: TableColumn,
 	isFirst: boolean,
 	compact = false,
 	wide = false,
+	longText = false,
 ): string {
 	const alignment = isTextual(column)
 		? `text-left ${textWrapping(isFirst, wide)}`
@@ -191,9 +211,13 @@ function cellClass(
 	const width = isFirst
 		? compact
 			? "min-w-12 print:min-w-0"
-			: "min-w-[6.5rem] print:min-w-0"
+			: isTextual(column)
+				? "min-w-[8.5rem] print:min-w-0"
+				: "min-w-[6.5rem] print:min-w-0"
 		: column.kind === "text"
-			? "min-w-24 print:min-w-0"
+			? longText
+				? "min-w-36 sm:min-w-64 print:min-w-0"
+				: "min-w-24 print:min-w-0"
 			: "";
 	return `snap-start border-b border-line ${alignment} ${width} ${isFirst ? stickyColumnClass : ""}`;
 }
@@ -288,6 +312,10 @@ export function DataTable({
 		[table.heatColumns],
 	);
 	const isHeatTable = heatKeys.size > 0;
+	const longText = useMemo(
+		() => longTextColumns(table.columns, table.rows),
+		[table.columns, table.rows],
+	);
 	const previewRows =
 		table.previewRows !== undefined && table.rows.length > table.previewRows
 			? table.previewRows
@@ -350,7 +378,7 @@ export function DataTable({
 										return (
 											<td
 												key={column.key}
-												className={`py-1.5 ${isHeatTable ? "px-1.5 print:px-0.5" : "px-2 print:px-1"} ${cellClass(column, index === 0, isHeatTable, wide)} ${level === undefined ? "" : "heat-cell"}`}
+												className={`py-1.5 ${isHeatTable ? "px-1.5 print:px-0.5" : "px-2 print:px-1"} ${cellClass(column, index === 0, isHeatTable, wide, longText.has(column.key))} ${level === undefined ? "" : "heat-cell"}`}
 												{...(level === undefined
 													? {}
 													: { "data-heat": String(level) })}

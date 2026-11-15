@@ -220,6 +220,38 @@ describe("ReportCard", () => {
 		expect(second?.className.split(" ")).toContain("whitespace-nowrap");
 	});
 
+	it("gives a column of long text more room than a column of short words", () => {
+		const reasons: TableSpec = {
+			...table,
+			columns: [
+				...table.columns,
+				{ key: "kind", label: "Loại", kind: "text" },
+				{ key: "reasons", label: "Lý do", kind: "text" },
+			],
+			rows: [
+				{
+					id: "a",
+					cells: {
+						store: "Quán Một",
+						kind: "Tiền mặt",
+						reasons: "vượt ngưỡng tương đối và bất thường so với các ca trước",
+					},
+				},
+			],
+		};
+		renderWithLanguage(<ReportCard {...props({ table: reasons })} />);
+		const cells = within(
+			screen.getByRole("table", { name: "Doanh thu thuần" }),
+		).getAllByRole("cell");
+		const classOf = (text: string) =>
+			cells.find((cell) => cell.textContent === text)?.className.split(" ") ??
+			[];
+		expect(
+			classOf("vượt ngưỡng tương đối và bất thường so với các ca trước"),
+		).toContain("sm:min-w-64");
+		expect(classOf("Tiền mặt")).toContain("min-w-24");
+	});
+
 	it("shows change columns with their sign", () => {
 		renderWithLanguage(<ReportCard {...props()} />);
 		const dataTable = screen.getByRole("table", { name: "Doanh thu thuần" });

@@ -32,6 +32,8 @@ import {
 	monthValue,
 } from "../support.js";
 
+const PARETO_PREVIEW_ROWS = 20;
+
 export const PARETO_THRESHOLD = 0.8;
 export const PARETO_CHART_ITEMS = 20;
 
@@ -273,8 +275,8 @@ export function buildParetoCard(input: CardInput): CardModel {
 			tableModel({
 				captionKey: monthKeys.pareto.table,
 				columns: [
-					column("rank", monthKeys.table.rank, "count"),
 					column("item", reportKeys.table.item, "text"),
+					column("rank", monthKeys.table.rank, "count"),
 					column("net", reportKeys.table.netAmount, "money"),
 					column("share", reportKeys.table.share, "percent"),
 					column("cumulative", monthKeys.table.cumulativeShare, "percent"),
@@ -293,6 +295,7 @@ export function buildParetoCard(input: CardInput): CardModel {
 						previous: entry.row.compare_net_amount,
 					},
 				})),
+				previewRows: PARETO_PREVIEW_ROWS,
 			}),
 		],
 		chart: entries.length === 0 ? null : paretoChart(entries),
