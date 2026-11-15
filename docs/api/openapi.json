@@ -19820,6 +19820,88 @@
 				"tags": ["(rpc) item_attach"]
 			}
 		},
+		"/rpc/item_discount_days": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "calendar_year",
+						"required": true,
+						"type": "integer"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "as_of_date",
+						"required": false,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) item_discount_days"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"as_of_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"calendar_year": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": ["store_ids", "calendar_year"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) item_discount_days"]
+			}
+		},
 		"/rpc/item_lifecycle": {
 			"get": {
 				"parameters": [
@@ -21245,6 +21327,407 @@
 				"tags": ["(rpc) period_summary"]
 			}
 		},
+		"/rpc/promotion_catalogue": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "as_of_date",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) promotion_catalogue"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"as_of_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": ["store_ids", "as_of_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) promotion_catalogue"]
+			}
+		},
+		"/rpc/promotion_compliance": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "numeric",
+						"in": "query",
+						"name": "cap_rate",
+						"required": false,
+						"type": "number"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) promotion_compliance"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"cap_rate": {
+									"format": "numeric",
+									"type": "number"
+								},
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["store_ids", "from_date", "to_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) promotion_compliance"]
+			}
+		},
+		"/rpc/promotion_days": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "text",
+						"in": "query",
+						"name": "kind_filter",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"format": "text",
+						"in": "query",
+						"name": "key_filter",
+						"required": false,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) promotion_days"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"key_filter": {
+									"format": "text",
+									"type": "string"
+								},
+								"kind_filter": {
+									"format": "text",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["store_ids", "from_date", "to_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) promotion_days"]
+			}
+		},
+		"/rpc/promotion_lift": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "text",
+						"in": "query",
+						"name": "promotion_kind",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "text",
+						"in": "query",
+						"name": "promotion_key",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "text",
+						"in": "query",
+						"name": "comparator",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "pre_weeks",
+						"required": false,
+						"type": "integer"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) promotion_lift"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"comparator": {
+									"format": "text",
+									"type": "string"
+								},
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"pre_weeks": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"promotion_key": {
+									"format": "text",
+									"type": "string"
+								},
+								"promotion_kind": {
+									"format": "text",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": [
+								"store_ids",
+								"promotion_kind",
+								"promotion_key",
+								"from_date",
+								"to_date",
+								"comparator"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) promotion_lift"]
+			}
+		},
 		"/rpc/promotion_summary": {
 			"get": {
 				"parameters": [
@@ -21750,6 +22233,99 @@
 					}
 				},
 				"tags": ["(rpc) seasonal_naive_forecast"]
+			}
+		},
+		"/rpc/shift_adjustments": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "numeric",
+						"in": "query",
+						"name": "z_threshold",
+						"required": false,
+						"type": "number"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) shift_adjustments"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"properties": {
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"z_threshold": {
+									"format": "numeric",
+									"type": "number"
+								}
+							},
+							"required": ["store_ids", "from_date", "to_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"tags": ["(rpc) shift_adjustments"]
 			}
 		},
 		"/rpc/shift_review": {

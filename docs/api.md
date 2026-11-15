@@ -157,7 +157,7 @@ A login holds one role per tenant in `tenant_members`, with an optional store sc
 
 ## 3. Functions in `public`
 
-The schema `public` holds 37 functions. `authenticated` may execute all of them and `service_role` every one but the two legal-text functions, which act only for a signed-in owner; `anon` may execute none. 34 are `security invoker` and `stable`; `refresh_my_analytics`, `publish_legal_document` and `retire_legal_document` are `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
+The schema `public` holds 43 functions. `authenticated` may execute all of them and `service_role` every one but the two legal-text functions, which act only for a signed-in owner; `anon` may execute none. 40 are `security invoker` and `stable`; `refresh_my_analytics`, `publish_legal_document` and `retire_legal_document` are `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
 
 Each entry gives the signature exactly as Postgres prints it (`pg_get_function_arguments` and `pg_get_function_result`), then what calls it today, its status and notes. Column meanings and computation rules are in [`schema.md`](schema.md), sections "Query functions" and "Report functions (phase 9)"; report rules are in [`metrics.md`](metrics.md#report-conventions).
 
@@ -209,6 +209,12 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`item_attach`](#publicitem_attach) | themes | invoker, stable | 1 row, then rows per drink | Thực đơn (attach rates, last 92 days and the 92 before) | verified locally (phase 10a) |
 | [`basket_pairs`](#publicbasket_pairs) | themes | invoker, stable | up to 900 pairs | Thực đơn (items sold together, last 92 days, 3 invoices, top 50) | verified locally (phase 10a) |
 | [`modifier_summary`](#publicmodifier_summary) | themes | invoker, stable | rows per modifier name | Thực đơn (sugar and ice, with the previous range) | verified locally (phase 10a) |
+| [`promotion_days`](#publicpromotion_days) | themes | invoker, stable | rows per store, date and promotion | no caller yet (Khuyến mãi, #191) | built (phase 10b) |
+| [`promotion_catalogue`](#publicpromotion_catalogue) | themes | invoker, stable | rows per promotion | no caller yet (Khuyến mãi, #153) | built (phase 10b) |
+| [`promotion_lift`](#publicpromotion_lift) | themes | invoker, stable | a row per day, then a summary | no caller yet (Khuyến mãi, #191) | built (phase 10b) |
+| [`promotion_compliance`](#publicpromotion_compliance) | themes | invoker, stable | rows per promotion, then the invoice total | no caller yet (Khuyến mãi, #153) | built (phase 10b) |
+| [`item_discount_days`](#publicitem_discount_days) | themes | invoker, stable | rows per item | no caller yet (Khuyến mãi, #153) | built (phase 10b) |
+| [`shift_adjustments`](#publicshift_adjustments) | themes | invoker, stable | rows per shift | no caller yet (Ca & két tiền, #155) | built (phase 10b) |
 
 ### 3.1 Analytics
 
@@ -506,7 +512,7 @@ returns TABLE(
 ```
 
 - **Called by:** web reports (Ngày discounts, Tuần promotions, Tháng discount cost), digest.
-- **Notes:** one row per promotion; `promotion_kind` is `item`, `bill` or `voucher`, and `lines` is null for bills and vouchers. At most 92 days.
+- **Notes:** one row per promotion; `promotion_kind` is `item`, `bill` or `voucher`, and `lines` is null for bills and vouchers. At most 400 days (92 until migration `promotion_and_shift_functions` of phase 10b).
 
 #### `public.shift_review`
 
@@ -878,6 +884,121 @@ returns TABLE(modifier_name text, lines bigint, share numeric, compare_lines big
 - **Called by:** Thực đơn's sugar and ice card; the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/basket-modifiers`.
 - **Notes:** per modifier name of `agg_modifier_prefs_daily`, the lines and their share of all modifier lines in the range (6 digits), for names seen in either range. The compare columns are null without a compare range and 0 for a name the compare range lacks; `compare_from` and `compare_to` go together. Each range at most 400 days. Ordered by lines, then name. The sugar and ice families are a classification of the names in TypeScript.
 
+
+#### `public.promotion_days`
+
+```sql
+public.promotion_days(
+  store_ids uuid[], from_date date, to_date date,
+  kind_filter text DEFAULT NULL::text, key_filter text DEFAULT NULL::text
+)
+returns TABLE(
+  store_id uuid, business_date date, promotion_kind text, promotion_key text,
+  promotion_name text, invoices bigint, lines bigint, discount_amount numeric
+)
+```
+
+- **Called by:** nothing yet; Khuyến mãi's lift card (#191) and the demo port (#190).
+- **Status:** built (phase 10b; pgTAP `36_promotion_functions.sql`).
+- **Notes:** per store, date and promotion, optionally one kind or one kind and key (a key without a kind gives `22023`). `promotion_name` is the POS name, else the key; `lines` is null for bills and vouchers. Summed over dates and stores it equals `promotion_summary`. At most 400 days and 900 rows; ordered by date, store position, kind and key.
+
+#### `public.promotion_catalogue`
+
+```sql
+public.promotion_catalogue(store_ids uuid[], as_of_date date)
+returns TABLE(
+  promotion_kind text, promotion_key text, promotion_name text,
+  in_catalogue boolean, catalogue_active boolean,
+  starts_at timestamp with time zone, ends_at timestamp with time zone,
+  first_used_on date, last_used_on date, days_used_365 integer,
+  invoices_365 bigint, discount_365 numeric
+)
+```
+
+- **Called by:** nothing yet; Khuyến mãi's catalogue card (#153).
+- **Status:** built (phase 10b; pgTAP `36_promotion_functions.sql`).
+- **Notes:** the `promotions` rows of the stores' POS accounts (kind `item`) together with every key used at the stores up to the as-of day, of any kind. First and last use are all-time; the `_365` columns cover the 365 days ending on the as-of day and are 0 for a promotion not used in them. Ordered by last use, newest first, the never-used last. At most 900 rows.
+
+#### `public.promotion_lift`
+
+```sql
+public.promotion_lift(
+  store_ids uuid[], promotion_kind text, promotion_key text,
+  from_date date, to_date date, comparator text,
+  pre_weeks integer DEFAULT NULL::integer
+)
+returns TABLE(
+  business_date date, promo_day boolean, control_day boolean,
+  test_gross_amount numeric, test_net_amount numeric, test_invoices bigint,
+  discount_amount numeric, reference_gross_amount numeric, reference_days integer,
+  counterfactual_gross_amount numeric, gross_lift_amount numeric,
+  test_store_count integer, control_store_count integer, promo_days integer,
+  measured_days integer, control_days integer, trend_adjustment_amount numeric,
+  net_lift_amount numeric, lift_rate numeric, flags text[]
+)
+```
+
+- **Called by:** nothing yet; Khuyến mãi's lift card (#191).
+- **Status:** built (phase 10b; pgTAP `36_promotion_functions.sql`).
+- **Notes:** difference-in-differences on gross revenue for one promotion over at most 92 days, against `baseline` (the median of the same weekday in the 8 weeks before, at least 3 dates), `prior_weeks` (the mean of the weekday in the `pre_weeks` before the first promotion day, the tenant's 4 when null) or `sister_store` (the requested stores that did not run it). Baseline and prior weeks subtract the mean trend of at least 7 control days. One row per day of the window, then a summary row (`business_date` null) with the counts, `gross_lift_amount`, the discount and `net_lift_amount` of the measured days, `lift_rate` and the `flags` (`no_test_store`, `few_promo_days`, `few_control_days`, `few_reference_days`, `unmeasured_days`, `no_control_store`, `control_differs_in_size`, `excluded_days_in_window`, `other_promotions`). A wrong kind, comparator or `pre_weeks` outside 2 to 8 gives `22023`. Definitions in [`schema.md`](schema.md), "Thematic report functions (phase 10)".
+
+#### `public.promotion_compliance`
+
+```sql
+public.promotion_compliance(
+  store_ids uuid[], from_date date, to_date date, cap_rate numeric DEFAULT 0.5
+)
+returns TABLE(
+  promotion_kind text, promotion_key text, promotion_name text,
+  checked_rows bigint, max_partial_rate numeric, over_cap_rows bigint,
+  over_cap_discount_amount numeric, first_over_cap_on date, last_over_cap_on date,
+  full_discount_rows bigint, full_discount_amount numeric,
+  first_full_discount_on date, last_full_discount_on date
+)
+```
+
+- **Called by:** nothing yet; Khuyến mãi's cap card (#153), with the cap of `@fnb/core`'s promotion rules.
+- **Status:** built (phase 10b; pgTAP `36_promotion_functions.sql`).
+- **Notes:** per promotion, the discounted lines (items) or invoices (bills, vouchers): a row whose discount covers its whole base is full (a gift, a free invoice) and never over the cap; a partial row is over the cap when its rate exceeds `cap_rate` (above 0, at most 1). The last row, kind `invoice_total`, checks each invoice's partial discounts over its base without its free lines. Ordered by rows over the cap, then kind and key. At most 400 days.
+
+#### `public.item_discount_days`
+
+```sql
+public.item_discount_days(
+  store_ids uuid[], calendar_year integer, as_of_date date DEFAULT NULL::date
+)
+returns TABLE(
+  item_external_id text, item_name text, price_discount_days integer,
+  line_price_discount_days integer, bill_discount_days integer,
+  gift_days integer, voucher_days integer,
+  first_price_discount_on date, last_price_discount_on date
+)
+```
+
+- **Called by:** nothing yet; Khuyến mãi's discount-days card (#153).
+- **Status:** built (phase 10b; pgTAP `36_promotion_functions.sql`).
+- **Notes:** per item discounted in the calendar year up to the as-of day (the stores' as-of day when null): the days its price was discounted on the line or by a partial bill discount, those two apart, and the gift and voucher days apart, counted over the stores together. `calendar_year` from 2023 to the current year. At most 900 rows.
+
+#### `public.shift_adjustments`
+
+```sql
+public.shift_adjustments(
+  store_ids uuid[], from_date date, to_date date, z_threshold numeric DEFAULT NULL::numeric
+)
+returns TABLE(
+  store_id uuid, shift_id uuid, shift_external_id text, shift_name text,
+  business_date date, cashier_name text, opened_at timestamp with time zone,
+  closed_at timestamp with time zone, orders bigint, item_lines bigint,
+  voids integer, void_amount numeric, edits integer, removed_lines integer,
+  removed_amount numeric, edits_after_close integer, changed_after_close boolean,
+  void_rate numeric, removed_line_rate numeric, trailing_shifts integer,
+  void_z_score numeric, removed_z_score numeric, flagged boolean, reasons text[]
+)
+```
+
+- **Called by:** nothing yet; Ca & két tiền (#155).
+- **Status:** built (phase 10b; pgTAP `37_shift_and_quality_functions.sql`).
+- **Notes:** per shift of `agg_shift_cash` in the range: its orders and item lines, its voids, edits and removed lines (an event goes to the shift of its invoice, else to the shift whose window holds its time), edits after the shift closed, and the void and removed-line rates scored one-sided against the store's shifts of the 56 days before (at least 3). `flagged` when a score is above the threshold (the tenant's 2 when null) or an edit came after the close; `reasons` lists `voids`, `removed_lines`, `after_close`. At most 92 days.
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.

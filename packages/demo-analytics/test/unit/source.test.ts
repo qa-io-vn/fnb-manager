@@ -84,7 +84,7 @@ describe("createDemoAnalyticsSource", () => {
 		await expect(
 			source().call("promotion_summary", {
 				store_ids: ["MOCK-S1"],
-				from_date: "2026-08-01",
+				from_date: "2025-09-29",
 				to_date: "2026-11-03",
 			}),
 		).rejects.toMatchObject({

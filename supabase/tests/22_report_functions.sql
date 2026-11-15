@@ -1061,10 +1061,10 @@ select is(
   'a voided invoice adds neither its bill discount, its voucher nor its line discount'
 );
 select throws_ok(
-  $$ select * from public.promotion_summary(array['44444444-4444-4444-8444-000000000021']::uuid[], '2026-01-01', '2026-04-03') $$,
+  $$ select * from public.promotion_summary(array['44444444-4444-4444-8444-000000000021']::uuid[], '2025-01-01', '2026-02-05') $$,
   '22023',
   null,
-  'promotion_summary refuses a range of 93 days'
+  'promotion_summary refuses a range of 401 days'
 );
 
 create temp table quarter_shifts as

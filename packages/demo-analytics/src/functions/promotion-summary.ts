@@ -11,7 +11,7 @@ import {
 
 type Row = AnalyticsRow<"promotion_summary">;
 
-export const PROMOTION_SUMMARY_MAX_DAYS = 92;
+export const PROMOTION_SUMMARY_MAX_DAYS = 400;
 
 interface PromotionTotals {
 	kind: PromotionKind;
