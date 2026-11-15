@@ -157,7 +157,7 @@ A login holds one role per tenant in `tenant_members`, with an optional store sc
 
 ## 3. Functions in `public`
 
-The schema `public` holds 43 functions. `authenticated` may execute all of them and `service_role` every one but the two legal-text functions, which act only for a signed-in owner; `anon` may execute none. 40 are `security invoker` and `stable`; `refresh_my_analytics`, `publish_legal_document` and `retire_legal_document` are `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
+The schema `public` holds 46 functions. `authenticated` may execute all of them and `service_role` every one but the two legal-text functions, which act only for a signed-in owner; `anon` may execute none. 43 are `security invoker` and `stable`; `refresh_my_analytics`, `publish_legal_document` and `retire_legal_document` are `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
 
 Each entry gives the signature exactly as Postgres prints it (`pg_get_function_arguments` and `pg_get_function_result`), then what calls it today, its status and notes. Column meanings and computation rules are in [`schema.md`](schema.md), sections "Query functions" and "Report functions (phase 9)"; report rules are in [`metrics.md`](metrics.md#report-conventions).
 
@@ -215,6 +215,9 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`promotion_compliance`](#publicpromotion_compliance) | themes | invoker, stable | rows per promotion, then the invoice total | no caller yet (Khuyến mãi, #153) | built (phase 10b) |
 | [`item_discount_days`](#publicitem_discount_days) | themes | invoker, stable | rows per item | no caller yet (Khuyến mãi, #153) | built (phase 10b) |
 | [`shift_adjustments`](#publicshift_adjustments) | themes | invoker, stable | rows per shift | no caller yet (Ca & két tiền, #155) | built (phase 10b) |
+| [`data_quality_items`](#publicdata_quality_items) | themes | invoker, stable | rows per item | no caller yet (Chất lượng dữ liệu, #157, #158) | built (phase 10b) |
+| [`data_quality_summary`](#publicdata_quality_summary) | themes | invoker, stable | a row for all stores, then one per store | no caller yet (Chất lượng dữ liệu, #157, #158) | built (phase 10b) |
+| [`data_quality_payments`](#publicdata_quality_payments) | themes | invoker, stable | rows per payment method | no caller yet (Chất lượng dữ liệu, #157, #158) | built (phase 10b) |
 
 ### 3.1 Analytics
 
@@ -999,6 +1002,58 @@ returns TABLE(
 - **Called by:** nothing yet; Ca & két tiền (#155).
 - **Status:** built (phase 10b; pgTAP `37_shift_and_quality_functions.sql`).
 - **Notes:** per shift of `agg_shift_cash` in the range: its orders and item lines, its voids, edits and removed lines (an event goes to the shift of its invoice, else to the shift whose window holds its time), edits after the shift closed, and the void and removed-line rates scored one-sided against the store's shifts of the 56 days before (at least 3). `flagged` when a score is above the threshold (the tenant's 2 when null) or an edit came after the close; `reasons` lists `voids`, `removed_lines`, `after_close`. At most 92 days.
+
+#### `public.data_quality_items`
+
+```sql
+public.data_quality_items(store_ids uuid[], from_date date, to_date date)
+returns TABLE(
+  item_external_id text, item_name text, pos_account_id uuid,
+  pos_type_external_id text, pos_type_name text, override_type_external_id text,
+  item_type_external_id text, item_type_name text, type_known boolean,
+  role item_type_role, cost_known boolean, catalogue_modifier boolean,
+  quantity numeric, net_amount numeric, net_share numeric
+)
+```
+
+- **Called by:** nothing yet; Chất lượng dữ liệu (#157, #158).
+- **Status:** built (phase 10b; pgTAP `37_shift_and_quality_functions.sql`, `39_theme_access_b.sql`).
+- **Notes:** per item key sold in the range (`agg_item_daily`): the POS type, the override, the effective type and whether it exists in the account's catalogue, the role (null when unmapped), whether a cost is in force on the last day, whether the catalogue marks the item as a modifier although it sold as an item line, and its share of net sales. Ordered by net sales. At most 400 days and 900 rows.
+
+#### `public.data_quality_summary`
+
+```sql
+public.data_quality_summary(store_ids uuid[], from_date date, to_date date)
+returns TABLE(
+  store_id uuid, invoices bigint, item_lines bigint, modifier_lines bigint,
+  modifier_line_share numeric, catalogue_modifier_lines bigint,
+  identified_invoices bigint, capture_rate numeric, identified_customers bigint,
+  loyalty_consents bigint, marketing_consents bigint, consent_coverage numeric,
+  unattributed_events bigint, e_invoice_status e_invoice_status,
+  tran_no_reset_period tran_no_reset_period, member_capture_status pos_feature_status,
+  opening_hours_known boolean, seat_count integer, opened_on date,
+  receipt_days integer, receipt_restarts_daily boolean
+)
+```
+
+- **Called by:** nothing yet; Chất lượng dữ liệu (#157, #158).
+- **Status:** built (phase 10b; pgTAP `37_shift_and_quality_functions.sql`, `39_theme_access_b.sql`).
+- **Notes:** a row for all stores (`store_id` null, the store columns null), then one per visible store in the order asked. Lines of the non-voided invoices (items, modifiers, items the catalogue calls modifiers), identified invoices and the capture rate, identified customers with their active loyalty and marketing consents, adjustment events no shift claims, the store's e-invoicing, receipt numbering, member feature, opening hours, seats and opening date, and over the 120 days up to the last day the days with numeric receipts and whether 90 % of them start at 3 or below (null with fewer than 20 such days). At most 400 days.
+
+#### `public.data_quality_payments`
+
+```sql
+public.data_quality_payments(store_ids uuid[], from_date date, to_date date)
+returns TABLE(
+  pos_account_id uuid, payment_method_external_id text, payment_method_name text,
+  kind payment_kind, pos_kind payment_kind, override_kind payment_kind,
+  in_catalogue boolean, invoices bigint, amount numeric
+)
+```
+
+- **Called by:** nothing yet; Chất lượng dữ liệu (#157, #158).
+- **Status:** built (phase 10b; pgTAP `37_shift_and_quality_functions.sql`, `39_theme_access_b.sql`).
+- **Notes:** every payment method of the stores' POS accounts and every method id paid in the range (`agg_payment_daily`, `unknown` included): the effective kind, the POS kind, the tenant's override, whether the catalogue knows the id, and the invoices and amount paid (null for a method not paid). Ordered by amount, unpaid last. At most 400 days.
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.

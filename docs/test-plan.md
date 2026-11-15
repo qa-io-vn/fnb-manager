@@ -699,7 +699,7 @@ From the run of 2026-11-16 at phase 10a's verification (#102), every package wit
 
 ### 8.2 pgTAP files
 
-Planned tests per file, read from each file's `select plan(…)` on 2026-11-16 after migration `settings_writes_and_legal` (#104). Files 33 to 35 are phase 10a's, files 36 to 38 phase 10b's.
+Planned tests per file, read from each file's `select plan(…)` on 2026-11-16 after migration `settings_writes_and_legal` (#104). Files 33 to 35 are phase 10a's, files 36 to 39 phase 10b's.
 
 | File | Plan | File | Plan |
 |---|---:|---|---:|
@@ -721,13 +721,14 @@ Planned tests per file, read from each file's `select plan(…)` on 2026-11-16 a
 | `16_analytics_menu_and_cash.sql` | 27 | `34_theme_access.sql` | 46 |
 | `17_analytics_access.sql` | 39 | `35_mappings_and_catch_up.sql` | 63 |
 | | | `36_promotion_functions.sql` | 57 |
-| | | `37_shift_and_quality_functions.sql` | 17 |
+| | | `37_shift_and_quality_functions.sql` | 31 |
 | | | `38_settings_writes.sql` | 106 |
-| | | **37 files** | **2,053** |
+| | | `39_theme_access_b.sql` | 16 |
+| | | **38 files** | **2,083** |
 
-By phase (files grouped by the phase that created them; 01, 03 and 12 were extended in 12a, 01 and 03 again in 10a and 10b): phase 2, 409; phase 7, 153; phase 8, 291; phase 9, 143; phase 10a, 183; phase 10b, 180; phase 12, 694.
+By phase (files grouped by the phase that created them; 01, 03 and 12 were extended in 12a, 01 and 03 again in 10a and 10b): phase 2, 409; phase 7, 153; phase 8, 291; phase 9, 143; phase 10a, 183; phase 10b, 210; phase 12, 694.
 
-Full run on 2026-11-16 after migration `promotion_and_shift_functions`: 2,053 of 2,053 in 37 files. Earlier: 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`. Earlier full runs: 1,849 of 1,849 at phase 10a's verification; 1,845 of 1,845 on 2026-11-14; 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
+Full run on 2026-11-16 after migration `data_quality_functions`: 2,083 of 2,083 in 38 files. Earlier: 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`. Earlier full runs: 1,849 of 1,849 at phase 10a's verification; 1,845 of 1,845 on 2026-11-14; 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
 
 ### 8.3 Playwright specs
 
@@ -792,7 +793,7 @@ At phase 10a's verification all 126 passed with one worker and no retries; the p
 | Check | Result | Date and source |
 |---|---|---|
 | Unit tests | 2,375 passed, 39 skipped (gated), 232 files, 13 packages | 2026-11-16, phase 10a's verification (#102) |
-| pgTAP | 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`; 1,849 of 1,849 in 34 files at phase 10a's verification; `20_incremental_schedule.sql` unedited | 2026-11-16, #104 and #102 |
+| pgTAP | 2,083 of 2,083 in 38 files after migration `data_quality_functions`; 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`; 1,849 of 1,849 in 34 files at phase 10a's verification; `20_incremental_schedule.sql` unedited | 2026-11-16, #104 and #102 |
 | Parity in Postgres | every parity file green in CI's `database` job on `b8779ab` | 2026-11-16, #102 |
 | Integration suites on the local stack | sync 100 of 100; jobs 64, 6 gated; notification CLI 6 of 6; notification digests and alerts 9 of 10, the failure a defect of the test's own helper, not of the product, fixed by the step 12c stream | 2026-11-16, #102 |
 | Live checks on the real tenant | reports live check 8 of 8; theme live check 6 of 6, with `LIVE_REFERENCE_SHEET` every compared value `matches: true` and no call over budget | 2026-11-16, #102 |
@@ -832,7 +833,7 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | FR-TEN | 14 | – | 1 | 2 | 17 |
 | FR-CON | 14 | 2 | 1 | – | 17 |
 | FR-SYNC | 25 | 2 | – | 1 | 28 |
-| FR-DQ | 10 | – | 2 | 1 | 13 |
+| FR-DQ | 10 | 1 | 1 | 1 | 13 |
 | FR-ANA | 15 | – | 1 | 1 | 17 |
 | FR-REP | 17 | 2 | – | 2 | 21 |
 | FR-THM | 2 | 6 | 1 | – | 9 |
@@ -845,7 +846,7 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | FR-STF | – | – | 23 | – | 23 |
 | FR-LOY | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | 7 | – | 12 |
-| **FR total** | **135** | **37** | **110** | **14** | **296** |
+| **FR total** | **135** | **38** | **109** | **14** | **296** |
 | NFR-SEC | 6 | 6 | 2 | 1 | 15 |
 | NFR-PRV | 5 | 1 | 1 | – | 7 |
 | NFR-PERF | 4 | 4 | 1 | – | 9 |
@@ -858,18 +859,18 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | NFR-OBS | 3 | 1 | – | – | 4 |
 | NFR-HYG | 4 | 1 | 1 | – | 6 |
 | **NFR total** | **47** | **22** | **9** | **2** | **80** |
-| **All** | **182** | **59** | **119** | **16** | **376** |
+| **All** | **182** | **60** | **118** | **16** | **376** |
 
 ```mermaid
 pie showData
     title Coverage of the requirements on 2026-11-16
     "covered" : 182
-    "partial" : 59
-    "planned" : 119
+    "partial" : 60
+    "planned" : 118
     "owner check" : 16
 ```
 
-Of the 250 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 51 partial, 1 planned and 16 owner checks. Of the 126 that are designed or planned, 118 have no test yet and 8 are partly held by tests of the database rules they rest on.
+Of the 251 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 52 partial, 1 planned and 16 owner checks. Of the 125 that are designed or planned, 117 have no test yet and 8 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -879,10 +880,10 @@ Of the 250 requirements that are verified locally, built, in build or waiting fo
 |---|---|---|---|---|---|
 | FR-TEN-01 | Tenant on every row | Must | verified locally | `pgtap:02_unique_keys` | covered |
 | FR-TEN-02 | Membership roles and store scope | Must | verified locally | `pgtap:01_schema`, `pgtap:07_write_scope_and_attribution`, `e2e:live/settings-fixture` (five roles of one tenant, a store-limited manager reading one store) | covered |
-| FR-TEN-03 | Two-tenant isolation | Must | verified locally | `pgtap:04_tenant_isolation`, `pgtap:17_analytics_access`, `pgtap:23_report_access`, `pgtap:31_notify_access` | covered |
-| FR-TEN-04 | Store scope on reads and writes | Must | verified locally | `pgtap:07_write_scope_and_attribution`, `pgtap:17_analytics_access`, `pgtap:21_sync_freshness`, `pgtap:38_settings_writes` | covered |
-| FR-TEN-05 | Nothing for callers without a session | Must | verified locally | `pgtap:03_rls_enabled`, `pgtap:06_anon_and_tokens`, `e2e:live/auth` | covered |
-| FR-TEN-06 | Publisher reads no sales | Must | verified locally | `pgtap:08_publisher_role`, `pgtap:17_analytics_access`, `pgtap:23_report_access` | covered |
+| FR-TEN-03 | Two-tenant isolation | Must | verified locally | `pgtap:04_tenant_isolation`, `pgtap:17_analytics_access`, `pgtap:23_report_access`, `pgtap:31_notify_access`, `pgtap:39_theme_access_b` (another tenant's owner reads only their own store in every 10b function) | covered |
+| FR-TEN-04 | Store scope on reads and writes | Must | verified locally | `pgtap:07_write_scope_and_attribution`, `pgtap:17_analytics_access`, `pgtap:21_sync_freshness`, `pgtap:38_settings_writes`, `pgtap:39_theme_access_b` (a store-limited manager in every 10b function) | covered |
+| FR-TEN-05 | Nothing for callers without a session | Must | verified locally | `pgtap:03_rls_enabled`, `pgtap:06_anon_and_tokens`, `e2e:live/auth`, `pgtap:39_theme_access_b` (anon runs no 10b function) | covered |
+| FR-TEN-06 | Publisher reads no sales | Must | verified locally | `pgtap:08_publisher_role`, `pgtap:17_analytics_access`, `pgtap:23_report_access`, `pgtap:39_theme_access_b` (the publisher gets no 10b row and empty data-quality counts) | covered |
 | FR-TEN-07 | Staff and viewer are read-only | Must | verified locally | `pgtap:05_write_policies`, `pgtap:31_notify_access`, `pgtap:38_settings_writes` | covered |
 | FR-TEN-08 | Who writes manual data | Must | verified locally | `pgtap:05_write_policies`, `pgtap:07_write_scope_and_attribution`, `pgtap:10_payment_fee_rates`, `pgtap:11_item_type_roles_and_holidays`, `web:pages/settings/phan-loai-page` (staff and a store-limited manager read the roles), `pgtap:38_settings_writes` | covered |
 | FR-TEN-09 | Frozen attribution | Must | verified locally | `pgtap:07_write_scope_and_attribution`, `pgtap:26_notify_schema`, `pgtap:38_settings_writes` | covered |
@@ -965,7 +966,7 @@ Of the 250 requirements that are verified locally, built, in build or waiting fo
 | FR-DQ-09 | Report numbers equal the POS | Must | verified locally | `reports:live/live-check` (opt-in) | covered |
 | FR-DQ-10 | Lagging aggregates marked | Should | verified locally | `pgtap:22_report_functions`, `reports:unit/coverage-and-comparison`, `pgtap:35_mappings_and_catch_up`, `web:settings/catch-up/catch-up-banner`, `web:settings/catch-up/use-analytics-catch-up`, `web:themes/theme-wiring` (the pending range reaches the cards and the theme page shows the banner), `web:settings/queries` (the status is read again while days are pending) | covered |
 | FR-DQ-11 | Unmeasured is null | Must | verified locally | `pgtap:18_metric_value`, `pgtap:36_promotion_functions` (an unmeasured lift day stays null) | covered |
-| FR-DQ-12 | Data-quality page | Should | designed | planned | planned |
+| FR-DQ-12 | Data-quality page | Should | in build | `pgtap:37_shift_and_quality_functions` (`data_quality_items`, `data_quality_summary`, `data_quality_payments`), `pgtap:39_theme_access_b` (#156); the ports and page planned (#157, #158) | partial |
 | FR-DQ-13 | Parallel verification before v1.0 | Must | planned | planned | planned |
 
 #### FR-ANA — Analytics and metric registry
@@ -983,7 +984,7 @@ Of the 250 requirements that are verified locally, built, in build or waiting fo
 | FR-ANA-09 | Benchmark forecasts with tracked error | Must | verified locally | `pgtap:15_analytics_queries`, `demo-analytics:parity/forecasts` | covered |
 | FR-ANA-10 | Exact ticket decomposition | Must | verified locally | `reports:unit/decomposition-and-narrative` | covered |
 | FR-ANA-11 | Query functions | Must | verified locally | `pgtap:15_analytics_queries`, `pgtap:16_analytics_menu_and_cash`, `demo-analytics:parity/item-velocity`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`, `e2e:demo/settings-bao-cao` | covered |
-| FR-ANA-12 | Report functions with limits | Must | verified locally | `pgtap:13_analytics_schema`, `pgtap:22_report_functions`, `pgtap:23_report_access`, `reports:unit/rpc-source`, `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `pgtap:36_promotion_functions`, `pgtap:37_shift_and_quality_functions` (the 10b limits) | covered |
+| FR-ANA-12 | Report functions with limits | Must | verified locally | `pgtap:13_analytics_schema`, `pgtap:22_report_functions`, `pgtap:23_report_access`, `reports:unit/rpc-source`, `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `pgtap:36_promotion_functions`, `pgtap:37_shift_and_quality_functions` (the 10b limits), `pgtap:39_theme_access_b` (every 10b function's scope) | covered |
 | FR-ANA-13 | Parity of the browser port | Must | verified locally | `demo-analytics:parity/*` (7 files), CI `database` job, `demo-analytics:parity/overrides` (with fee rates and a custom holiday), `demo-analytics:parity/menu`, `demo-analytics:parity/basket-modifiers` | covered |
 | FR-ANA-14 | Benchmark context kept apart | Should | verified locally | `metrics:consistency/document` | covered |
 | FR-ANA-15 | Refresh on demand | Should | verified locally | `pgtap:17_analytics_access`, `pgtap:35_mappings_and_catch_up`, `web:settings/supabase-settings-source` (the newest 92 pending days per call), `web:settings/catch-up/use-analytics-catch-up`, `web:settings/queries` | covered |
@@ -1028,7 +1029,7 @@ Of the 250 requirements that are verified locally, built, in build or waiting fo
 | FR-THM-06 | Khuyến mãi & giảm giá | Should | in build | `reports:unit/themes/contract`, `reports:unit/themes/promotions/params`, `web:themes/theme-wiring` (the contracts and the `promo` and `cmp` parameters, #149); `pgtap:36_promotion_functions` (#150); ports and page planned | partial |
 | FR-THM-07 | Ca & két tiền | Should | in build | `pgtap:37_shift_and_quality_functions` (`shift_adjustments`: attribution by the invoice's shift and by time, rates, one-sided z-scores on unrounded rates) (#150); the port and page planned (#154, #155) | partial |
 | FR-THM-08 | So sánh cửa hàng | Should | designed | planned | planned |
-| FR-THM-09 | Sections a POS cannot feed | Should | built | `pgtap:33_theme_functions` (provisional menu roles, null attach rates), `reports:unit/themes/menu/margins`, `reports:unit/themes/menu/attach`, `reports:unit/themes/hours/productivity`, `reports:unit/themes/payments/fees`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-thanh-toan`, phase 10a's verification (#102) (each missing-input state on the real tenant) | partial |
+| FR-THM-09 | Sections a POS cannot feed | Should | built | `pgtap:33_theme_functions` (provisional menu roles, null attach rates), `reports:unit/themes/menu/margins`, `reports:unit/themes/menu/attach`, `reports:unit/themes/hours/productivity`, `reports:unit/themes/payments/fees`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-thanh-toan`, phase 10a's verification (#102) (each missing-input state on the real tenant), `pgtap:37_shift_and_quality_functions` (the inputs a store lacks: costs, seats, opening hours, identified customers) | partial |
 
 #### FR-SET — Settings and manual data
 
@@ -1040,7 +1041,7 @@ Of the 250 requirements that are verified locally, built, in build or waiting fo
 | FR-SET-04 | Targets | Must | designed | `pgtap:05_write_policies` (table); screen planned | partial |
 | FR-SET-05 | Payment fee rates | Should | designed | `pgtap:10_payment_fee_rates` (table); screen planned | partial |
 | FR-SET-06 | Payment-kind mapping | Should | in build | `core:unit/payment-kind` (override rule), `pgtap:38_settings_writes`; tab planned (#160) | partial |
-| FR-SET-07 | Item-type roles and categories | Must | in build | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`; the roles screen built (#89), the category and payment-kind tabs planned (10b), `demo-analytics:parity/overrides`, `demo-analytics:parity/menu`, `web:settings/catch-up/use-analytics-catch-up`, `web:settings/use-settings-mutation` (a mapping save starts the catch-up), `web:data/invalidate-analytics` (a mounted analytics query of the tenant refetches at once, another tenant's does not), `web:settings/roles/roles`, `web:settings/roles/roles-form`, `web:pages/settings/phan-loai-page`, `web:settings/supabase-settings-source` (one upsert, a cleared role deleted), `core:unit/item-role` (`suggestRole`), `e2e:demo/settings-phan-loai` (Tháng's attach round trip) | partial |
+| FR-SET-07 | Item-type roles and categories | Must | in build | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`; the roles screen built (#89), the category and payment-kind tabs planned (10b), `demo-analytics:parity/overrides`, `demo-analytics:parity/menu`, `web:settings/catch-up/use-analytics-catch-up`, `web:settings/use-settings-mutation` (a mapping save starts the catch-up), `web:data/invalidate-analytics` (a mounted analytics query of the tenant refetches at once, another tenant's does not), `web:settings/roles/roles`, `web:settings/roles/roles-form`, `web:pages/settings/phan-loai-page`, `web:settings/supabase-settings-source` (one upsert, a cleared role deleted), `core:unit/item-role` (`suggestRole`), `e2e:demo/settings-phan-loai` (Tháng's attach round trip), `pgtap:37_shift_and_quality_functions` (an overridden item and an item without a type in `data_quality_items`) | partial |
 | FR-SET-08 | Tenant holidays | Should | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:22_report_functions`, `pgtap:38_settings_writes`; screen planned | partial |
 | FR-SET-09 | Default language | Could | in build | `pgtap:38_settings_writes`; page planned (#159) | partial |
 | FR-SET-10 | Legal texts | Must | in build | `pgtap:12_consent_and_legal` (tables), `pgtap:38_settings_writes`; page planned (#164) | partial |
@@ -1158,7 +1159,7 @@ Of the 250 requirements that are verified locally, built, in build or waiting fo
 | FR-CMP-07 | Anti-spam floor for advertising | Must | verified locally | `pgtap:26_notify_schema` | covered |
 | FR-CMP-08 | Operational messages kept apart | Must | verified locally | `pgtap:26_notify_schema`, `pgtap:27_notify_policy` | covered |
 | FR-CMP-09 | Legal form and cross-border decision | Must | waits for owner | `pgtap:01_schema` (column); owner decision, `pgtap:38_settings_writes` | owner check |
-| FR-CMP-10 | E-invoice status flagged | Must | designed | `pgtap:01_schema` (columns); page planned, `pgtap:38_settings_writes` | partial |
+| FR-CMP-10 | E-invoice status flagged | Must | designed | `pgtap:01_schema` (columns); page planned, `pgtap:38_settings_writes`, `pgtap:37_shift_and_quality_functions` (`data_quality_summary` returns each store's e-invoice status) | partial |
 | FR-CMP-11 | Redemptions on the e-invoice | Must | planned | planned | planned |
 | FR-CMP-12 | Discount caps | Must | in build | `core:unit/promotion-rules`, `reports:unit/themes/rules` | partial |
 | FR-CMP-13 | No cash-like rewards | Must | planned | planned | planned |
@@ -1263,7 +1264,7 @@ Of the 250 requirements that are verified locally, built, in build or waiting fo
 | NFR-SEC-06 | Redaction | Must | verified locally | `sync:unit/helpers`, `sync:unit/run-bookkeeping`, `runner:unit/notifier` | covered |
 | NFR-SEC-07 | Masking on GitHub Actions | Must | in build | `jobs:unit/config`, `jobs:unit/cli` (the POS entries, `IPOS_APP_KEY`, the secret key and the database URL, verified locally since phase 5); `jobs:unit/digest-and-alerts` (the `NOTIFY_*` credentials and the fallback targets, step 12b, in build) | covered |
 | NFR-SEC-08 | Secrets only on the steps that need them | Must | built | review of the two workflow files | partial |
-| NFR-SEC-09 | Hardened database functions | Must | built | `pgtap:06_anon_and_tokens`, `pgtap:23_report_access`, `pgtap:31_notify_access` (grants); `pgtap:13_analytics_schema`, `pgtap:18_metric_value`, `pgtap:19_sale_payloads`, `pgtap:22_report_functions` (definer and `search_path` of their own functions); a read-only catalogue query and `supabase db advisors` on 2026-11-12; no pgTAP audit covers every function yet (request R-T01), `pgtap:34_theme_access`, `pgtap:38_settings_writes` | partial |
+| NFR-SEC-09 | Hardened database functions | Must | built | `pgtap:06_anon_and_tokens`, `pgtap:23_report_access`, `pgtap:31_notify_access` (grants); `pgtap:13_analytics_schema`, `pgtap:18_metric_value`, `pgtap:19_sale_payloads`, `pgtap:22_report_functions` (definer and `search_path` of their own functions); a read-only catalogue query and `supabase db advisors` on 2026-11-12; no pgTAP audit covers every function yet (request R-T01), `pgtap:34_theme_access`, `pgtap:38_settings_writes`, `pgtap:37_shift_and_quality_functions` (the data-quality functions' signatures and settings) | partial |
 | NFR-SEC-10 | No reliance on HTTP security headers | Should | built | ADR-023, `apps/web/scripts/check-bundle.mjs` | partial |
 | NFR-SEC-11 | SMTP and SSL on the cloud project | Must | waits for owner | owner check | owner check |
 | NFR-SEC-12 | Key rotation | Must | planned | planned | planned |
@@ -1280,7 +1281,7 @@ Of the 250 requirements that are verified locally, built, in build or waiting fo
 | NFR-PRV-03 | Message content retention | Must | verified locally | `pgtap:28_notify_outbox` | covered |
 | NFR-PRV-04 | Former members redacted | Must | verified locally | `pgtap:28_notify_outbox` | covered |
 | NFR-PRV-05 | No third-party tracking | Must | verified locally | `e2e:demo/report-day`, `e2e:demo/report-year`, `apps/web/index.html` | partial |
-| NFR-PRV-06 | Customer data for data roles only | Must | verified locally | `pgtap:04_tenant_isolation`, `pgtap:06_anon_and_tokens`, `pgtap:08_publisher_role` | covered |
+| NFR-PRV-06 | Customer data for data roles only | Must | verified locally | `pgtap:04_tenant_isolation`, `pgtap:06_anon_and_tokens`, `pgtap:08_publisher_role`, `pgtap:39_theme_access_b` (customer and consent counts of `data_quality_summary` for data roles only) | covered |
 | NFR-PRV-07 | Minimal Zalo-derived data | Must | planned | planned | planned |
 
 #### NFR-PERF — Performance
@@ -1290,7 +1291,7 @@ Of the 250 requirements that are verified locally, built, in build or waiting fo
 | NFR-PERF-01 | Initial bundle | Must | verified locally | `apps/web/scripts/check-size.mjs`, `web:test/lazy-chunks` | covered |
 | NFR-PERF-02 | Lighthouse performance | Must | verified locally | Lighthouse recipe in `apps/web/README.md` | partial |
 | NFR-PERF-03 | Largest contentful paint recorded | Should | built | Lighthouse recipe in `apps/web/README.md` | partial |
-| NFR-PERF-04 | Report query time | Must | verified locally | phase 8 and 9 measurements (`docs/schema.md`); `reports:live/theme-live-check` check 1 (theme budgets); the 10b promotion and shift functions timed warm on the local tenant within their budgets (#150) | covered |
+| NFR-PERF-04 | Report query time | Must | verified locally | phase 8 and 9 measurements (`docs/schema.md`); `reports:live/theme-live-check` check 1 (theme budgets); the 10b promotion and shift functions timed warm on the local tenant within their budgets (#150); the data-quality functions within their budgets (#156) | covered |
 | NFR-PERF-05 | Refresh time on production | Must | waits for owner | `pgtap:14_analytics_refresh` (local timing); cloud measurement | partial |
 | NFR-PERF-06 | Slow phones | Should | verified locally | `e2e:pages/report-year-performance` | covered |
 | NFR-PERF-07 | Incremental run within the Free plan | Must | verified locally | `sync:unit/run-guard`, `runner:unit/budget` | partial |
@@ -1390,7 +1391,7 @@ Of the 250 requirements that are verified locally, built, in build or waiting fo
 
 Each requirement below has no test yet. They are grouped by the phase that builds them; the planned test is the test design this plan commits to. Phases 10 and 11 follow their roadmap acceptance lines, because their detailed design is pending; Tracks B, C and D are at roadmap level.
 
-119 requirements in 7 groups.
+118 requirements in 7 groups.
 
 #### Open items of phases 1 to 9 (5)
 
@@ -1402,11 +1403,10 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | NFR-MNT-07 | Canonical column-name lint | P2, P4 | A lint that fails when a POS field name appears outside `raw` in the canonical schema; owner decision D4 (request R-F03). |
 | NFR-HYG-06 | Preflight log lint | P1 | A preflight check that fails a job printing a structured secret; masking at job start covers the risk today (request R-F03). |
 
-#### Phase 10: thematic reports, settings, manual data (2)
+#### Phase 10: thematic reports, settings, manual data (1)
 
 | ID | Requirement | Phase | Planned test |
 |---|---|---|---|
-| FR-DQ-12 | Data-quality page | P10b | A live Playwright spec on the seeded stack: the page flags the coffee store, whose seeded e-invoice status is `not_configured`; unit tests for each flag; axe and 360 px as on every page. |
 | FR-THM-08 | So sánh cửa hàng | P10b | A page test that per-store figures add up to the all-stores figure; `pgtap:22_report_functions` already holds the per-store sums of `period_compare_by_store`. |
 
 #### Phase 11: exports, data pack, strategy plans (18)
@@ -1548,7 +1548,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 
 ### 9.6 Partial coverage
 
-59 requirements are partly covered. Each row says what the tests do not show yet and which test closes the gap.
+60 requirements are partly covered. Each row says what the tests do not show yet and which test closes the gap.
 
 | ID | Requirement | Status | What is missing | Planned test |
 |---|---|---|---|---|
@@ -1561,6 +1561,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-THM-03 | Thực đơn | in build | pgTAP, the parity suite and the demo and live specs hold the menu functions and the eight cards; the engine smoke test and the demo spec hold that no modifier name appears in an item table (the sugar and ice card lists them on purpose) and that the uncategorised item shows with its action; the demo spec of Ngưỡng báo cáo holds that a saved minimum of items per role reaches the matrix, and the page downloads once in the semicolon dialect. | A spec that costs entered for five items show the margin of those five only, once the costs page exists (#161). |
 | FR-THM-06 | Khuyến mãi & giảm giá | in build | The functions, their ports and the page: so far only the contracts of its five functions (rows parsed, unknown kinds and comparators refused) and the `promo` and `cmp` parameters (replaced when unreadable, one history entry per change, shown inside the lift card) are tested. | Unit or pgTAP tests that the lift equals a hand calculation on a synthetic promotion for each of the three comparators (#150), the parity of the ports (#190, #152, #153) and the page's specs (#191). |
 | FR-THM-07 | Ca & két tiền | in build | The port and the page: pgTAP holds `shift_adjustments` (attribution, rates, one-sided scores). | A unit or live test that the flagged shifts equal those of `shift_review` and `cash_variance_flags` (#154, #155). |
+| FR-DQ-12 | Data-quality page | in build | The ports and the page: pgTAP holds the three data-quality functions and their access. | A live Playwright spec on the seeded stack: the page flags the coffee store without e-invoicing (#158). |
 | FR-THM-09 | Sections a POS cannot feed | built | pgTAP shows the provisional menu roles without costs and the null attach rates without a role; unit tests hold the margin card asking for costs, the attach card's dash and roles action while a role is unmapped, RevPASH only with seats and the fee card's dash without a rate; phase 10a's verification (#102) saw each of these states on the real tenant. | Sections that follow a connector's declared capabilities (no costs, no customer identity), with a connector that declares no costs and no manual costs entered (10b). |
 | FR-THM-04 | Thanh toán & tiền mặt | verified locally | pgTAP shows `shift_review` and `cash_variance_flags` following the tenant's cash thresholds; the parity suite holds the demo's `shift_review` to them; the unit, engine smoke and demo specs hold the payment mix (kind shares summing to 1 and matching the methods), the cash trend, the drawer card (thresholds line, no e-mail-like text) and the fee card (the dash and the fees link without a rate); the demo spec of Ngưỡng báo cáo holds the round trip from a saved cash threshold to the drawer card's thresholds line and back to the default, and the page downloads once in the semicolon dialect. | The owner's reading of Thanh toán beside the private sheet (OC-03, #189); `reports:live/theme-live-check` prints `matches: true` for the payment mix of the reference window, compared as shares of invoices (2026-11-15, again at phase 10a's verification on 2026-11-16). |
 | FR-REP-14 | Card loading and errors | built | Settling is tested on the demo, the size refusal is classified in `reports:unit/rpc-source`, and `web:reports/use-cards-load` drives a failing card and its retry in the loader; no test shows the error card or the size message in the browser. | A web test that makes one card's call fail and expects the error card with its retry, and one that answers SQLSTATE 22023 and expects the request for fewer stores or a shorter period. |
