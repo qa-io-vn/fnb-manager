@@ -74,6 +74,26 @@ describe("parseNumberText", () => {
 		expect(parseNumberText("50₫000", "vi-VN", { affixes: ["₫"] })).toBeNull();
 	});
 
+	it("reads either mark as thousands grouping where only whole numbers make sense", () => {
+		const whole = { whole: true } as const;
+		expect(parseNumberText("80,000", "vi-VN", whole)).toBe(80_000);
+		expect(parseNumberText("80.000", "vi-VN", whole)).toBe(80_000);
+		expect(parseNumberText("1,250,000", "vi-VN", whole)).toBe(1_250_000);
+		expect(parseNumberText("80 000", "vi-VN", whole)).toBe(80_000);
+		expect(parseNumberText("80000", "vi-VN", whole)).toBe(80_000);
+		expect(parseNumberText("80,000", "vi-VN")).toBe(80);
+	});
+
+	it("still reads a real fraction in a whole-number field, so it can be refused by name", () => {
+		const whole = { whole: true } as const;
+		expect(parseNumberText("80,5", "vi-VN", whole)).toBe(80.5);
+		expect(parseNumberText("50.000,5", "vi-VN", whole)).toBe(50_000.5);
+		expect(parseNumberText("0,500", "vi-VN", whole)).toBe(0.5);
+		expect(parseNumberText("1.250,000", "vi-VN", whole)).toBe(1250);
+		expect(parseNumberText("1,250.000", "vi-VN", whole)).toBeNull();
+		expect(parseNumberText("12,50,000", "vi-VN", whole)).toBeNull();
+	});
+
 	it("refuses text that is not one number", () => {
 		for (const text of ["", "abc", "1.2.3,4,5", "12,5,5", "5k", "1..0", "-"]) {
 			expect(parseNumberText(text, "vi-VN"), text).toBeNull();

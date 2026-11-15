@@ -4,6 +4,7 @@ import { currencySymbol, type Formatters } from "../../lib/format";
 import {
 	formatNumberText,
 	type NumberDraft,
+	type NumberTextOptions,
 	readNumberDraft,
 	reformatNumberText,
 } from "../number-text";
@@ -23,6 +24,16 @@ export function moneyAffixes(
 	];
 	if (currencyCode.toUpperCase() === "VND") affixes.push(...DONG_SPELLINGS);
 	return affixes;
+}
+
+function moneyTextOptions(
+	formatters: Formatters,
+	currencyCode: string,
+): NumberTextOptions {
+	return {
+		affixes: moneyAffixes(formatters, currencyCode),
+		whole: formatters.moneyFractionDigits === 0,
+	};
 }
 
 export function formatMoneyText(value: number, formatters: Formatters): string {
@@ -46,7 +57,7 @@ export function readMoneyDraft(
 ): NumberDraft {
 	return readNumberDraft(text, formatters.locale, schema, {
 		required,
-		affixes: moneyAffixes(formatters, currencyCode),
+		...moneyTextOptions(formatters, currencyCode),
 	});
 }
 
@@ -74,7 +85,7 @@ export function MoneyField({
 					text,
 					formatters.locale,
 					formatters.moneyFractionDigits,
-					{ affixes: moneyAffixes(formatters, currencyCode) },
+					moneyTextOptions(formatters, currencyCode),
 				)
 			}
 		/>

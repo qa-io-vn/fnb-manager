@@ -118,6 +118,12 @@ describe("IntegerField", () => {
 		expect(readIntegerDraft("7,5", "vi-VN", schema).issue).toEqual({
 			key: "integer",
 		});
+		const seats = integerInRange(0, 5000);
+		expect(readIntegerDraft("1,000", "vi-VN", seats)).toEqual({
+			value: 1000,
+			issue: null,
+		});
+		expect(readIntegerDraft("1.000", "vi-VN", seats).value).toBe(1000);
 	});
 });
 

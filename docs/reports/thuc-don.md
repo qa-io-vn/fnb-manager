@@ -11,7 +11,7 @@ Thực đơn shows which items carry the menu: each item classed as star, plowho
 | Key | Call |
 |---|---|
 | `coverage` | `store_coverage(S, R.from, R.to)` |
-| `menu.<storeId>` | `menu_engineering([store], R.to)` for each selected store, because the method is per store; window, popularity factor and low-sample minimum from the tenant's settings (28 days, 0.7 and 10 by default) |
+| `menu.<storeId>` | `menu_engineering([store], R.to)` for each selected store, because the method is per store; window, popularity factor and low-sample minimum from the tenant's settings (28 days, 0.7 and 10 by default); the matrix subtitle writes the factor exactly as saved (`decimalExact`: 0,65, not 0,7) |
 | `items` | `item_summary(S, R, R.prev)` |
 | `margins` | `item_margins(S, R.from, R.to)` |
 | `attach`, `attachPrevious` | `item_attach(S, W92)` and the same number of days just before |

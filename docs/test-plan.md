@@ -955,7 +955,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | FR-ANA-08 | Median same-weekday baseline | Must | verified locally | `pgtap:15_analytics_queries`, `demo-analytics:parity/core-functions`, `web:metrics/today` | covered |
 | FR-ANA-09 | Benchmark forecasts with tracked error | Must | verified locally | `pgtap:15_analytics_queries`, `demo-analytics:parity/forecasts` | covered |
 | FR-ANA-10 | Exact ticket decomposition | Must | verified locally | `reports:unit/decomposition-and-narrative` | covered |
-| FR-ANA-11 | Query functions | Must | verified locally | `pgtap:15_analytics_queries`, `pgtap:16_analytics_menu_and_cash`, `demo-analytics:parity/item-velocity`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up` | covered |
+| FR-ANA-11 | Query functions | Must | verified locally | `pgtap:15_analytics_queries`, `pgtap:16_analytics_menu_and_cash`, `demo-analytics:parity/item-velocity`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`, `e2e:demo/settings-bao-cao` | covered |
 | FR-ANA-12 | Report functions with limits | Must | verified locally | `pgtap:13_analytics_schema`, `pgtap:22_report_functions`, `pgtap:23_report_access`, `reports:unit/rpc-source`, `pgtap:33_theme_functions`, `pgtap:34_theme_access` | covered |
 | FR-ANA-13 | Parity of the browser port | Must | verified locally | `demo-analytics:parity/*` (7 files), CI `database` job, `demo-analytics:parity/overrides`, `demo-analytics:parity/menu`, `demo-analytics:parity/basket-modifiers` | covered |
 | FR-ANA-14 | Benchmark context kept apart | Should | verified locally | `metrics:consistency/document` | covered |
@@ -978,7 +978,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | FR-REP-09 | Coverage and young stores | Must | verified locally | `reports:unit/coverage-and-comparison`, `e2e:live/reports`, `e2e:demo/report-year` | covered |
 | FR-REP-10 | Sentences from templates | Must | verified locally | `reports:unit/decomposition-and-narrative`, `web:metrics/sentences` | covered |
 | FR-REP-11 | Report card | Must | verified locally | `web:components/report-card/report-card`, `web:components/report-card/report-card-extensions` | covered |
-| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan` | partial |
+| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan`, `web:settings/thresholds/thresholds-form`, `e2e:demo/settings-bao-cao` | partial |
 | FR-REP-13 | Print layout | Should | verified locally | `e2e:demo/demo`, `e2e:demo/report-day` | covered |
 | FR-REP-14 | Card loading and errors | Should | built | `e2e:demo/report-day` (cards settle); no named test for the error path | partial |
 | FR-REP-15 | Store and period selection | Must | verified locally | `web:shell/period-picker`, `web:state/preferences`, `pgtap:22_report_functions` | covered |
@@ -995,8 +995,8 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 |---|---|---|---|---|---|
 | FR-THM-01 | Doanh thu & xu hướng | Should | verified locally | `pgtap:33_theme_functions`, `demo-analytics:parity/theme-revenue-hours`, `demo-analytics:themes/revenue.smoke`, `reports:unit/themes/definition`, `e2e:demo/theme-doanh-thu`, `e2e:live/themes` | covered |
 | FR-THM-02 | Giờ & ngày trong tuần | Should | built | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `demo-analytics:parity/theme-revenue-hours`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-gio-ngay`, `e2e:live/themes` | partial |
-| FR-THM-03 | Thực đơn | Should | in build | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `pgtap:35_mappings_and_catch_up` (the menu functions); `demo-analytics:parity/menu`, `demo-analytics:parity/basket-modifiers`, `demo-analytics:themes/menu.smoke`, `e2e:demo/theme-thuc-don`, `e2e:live/themes` | partial |
-| FR-THM-04 | Thanh toán & tiền mặt | Should | in build | `pgtap:35_mappings_and_catch_up` (cash thresholds from the settings); `demo-analytics:parity/shift-review`, `demo-analytics:themes/payments.smoke`, `e2e:demo/theme-thanh-toan` (the four cards) | partial |
+| FR-THM-03 | Thực đơn | Should | in build | `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `pgtap:35_mappings_and_catch_up` (the menu functions); `demo-analytics:parity/menu`, `demo-analytics:parity/basket-modifiers`, `demo-analytics:themes/menu.smoke`, `e2e:demo/theme-thuc-don`, `e2e:live/themes`, `e2e:demo/settings-bao-cao` (a saved minimum reaches the matrix) | partial |
+| FR-THM-04 | Thanh toán & tiền mặt | Should | in build | `pgtap:35_mappings_and_catch_up` (cash thresholds from the settings); `demo-analytics:parity/shift-review`, `demo-analytics:themes/payments.smoke`, `e2e:demo/theme-thanh-toan` (the four cards), `e2e:demo/settings-bao-cao` (a saved cash threshold reaches the drawer card) | partial |
 | FR-THM-05 | Range presets | Could | verified locally | `reports:unit/themes/range`, `e2e:demo/theme-doanh-thu` | covered |
 | FR-THM-06 | Khuyến mãi & giảm giá | Should | designed | planned | planned |
 | FR-THM-07 | Ca & két tiền | Should | designed | planned | planned |
@@ -1017,7 +1017,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | FR-SET-08 | Tenant holidays | Should | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:22_report_functions`; screen planned | partial |
 | FR-SET-09 | Default language | Could | designed | planned | planned |
 | FR-SET-10 | Legal texts | Must | designed | `pgtap:12_consent_and_legal` (tables); screen planned | partial |
-| FR-SET-11 | Settings writes tested from the browser | Must | in build | the read-only interface (#78): `web:settings/access` (every role and scope), `web:settings/read-only-notice`, `web:settings/use-settings-mutation`, `web:settings/supabase-settings-source`, `web:settings/demo-settings-source`; the layout: `e2e:demo/settings-layout`, `e2e:live/today`; a read-only page in the browser waits for the 10b fixture logins (#103); database rules: `pgtap:05_write_policies`; the browser write matrix with five logins planned (10b) | partial |
+| FR-SET-11 | Settings writes tested from the browser | Must | in build | the read-only interface (#78): `web:settings/access` (every role and scope), `web:settings/read-only-notice`, `web:settings/use-settings-mutation`, `web:settings/supabase-settings-source`, `web:settings/demo-settings-source`; the layout: `e2e:demo/settings-layout`, `e2e:live/today`; the thresholds page (#90): `web:settings/thresholds/thresholds-form`, `web:pages/settings/bao-cao-page` (an owner saves and restores, every other role and scope reads with the reason and no save control), `e2e:demo/settings-bao-cao`, `e2e:live/today` (the seeded owner reads the page through row-level security, with the audit line, without writing), `pgtap:35_mappings_and_catch_up` (the write matrix of `report_settings`, the one-column upsert that keeps the others and the delete that restores the defaults); a read-only page in the browser as a real viewer waits for the 10b fixture logins (#103); database rules: `pgtap:05_write_policies`; the browser write matrix with five logins planned (10b) | partial |
 
 #### FR-EXP — Exports and AI data pack
 
@@ -1209,7 +1209,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| FR-POR-01 | Configuration over code | Must | verified locally | `scripts/check-public-safe.mjs`, `e2e:demo/demo`, `pgtap:35_mappings_and_catch_up` | covered |
+| FR-POR-01 | Configuration over code | Must | verified locally | `scripts/check-public-safe.mjs`, `e2e:demo/demo`, `pgtap:35_mappings_and_catch_up`, `web:settings/thresholds/fields`, `e2e:demo/settings-bao-cao` | covered |
 | FR-POR-02 | Another store or account | Must | verified locally | `jobs:integration/local-stack`, `sync:unit/master-data` | covered |
 | FR-POR-03 | Another POS | Must | built | conformance suite (`@fnb/connector-core/conformance`) | partial |
 | FR-POR-04 | Onboarding wizard | Should | planned | planned | planned |
@@ -1294,7 +1294,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day` | covered |
+| NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao` | covered |
 | NFR-A11Y-02 | Lighthouse accessibility | Must | verified locally | Lighthouse recipe in `apps/web/README.md` | covered |
 | NFR-A11Y-03 | Contrast | Must | verified locally | `apps/web/e2e/support/checks.ts`, `design-tokens:tokens` | covered |
 | NFR-A11Y-04 | Charts have tables | Must | verified locally | `web:components/report-card/report-card` | covered |
@@ -1315,7 +1315,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar` | covered |
+| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao` | covered |
 | NFR-UX-02 | Layout on phones and desktops | Should | built | `e2e:demo/demo` (360 px) | partial |
 | NFR-UX-03 | Installable | Should | verified locally | `e2e:demo/demo`, `e2e:pages/install`, `web:shell/install-assets` | covered |
 | NFR-UX-04 | New version prompt | Should | built | no automated test | partial |
@@ -1538,9 +1538,9 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-SYNC-21 | Backfill | verified locally | The local-stack integration test backfills a week of mock data; the one-month timing (under 5 minutes) and the full history were measured once, at the phase 7 verification. | Re-measure the month timing during the go-live backfill and record it in `docs/status.md`. |
 | FR-REP-12 | CSV download | verified locally | The BOM and the rows are tested on every report; opening a file in Excel is the owner's check (OC-04). | Owner check OC-04, repeated for the thematic tables (10a) and the exports (11a). |
 | FR-THM-02 | Giờ & ngày trong tuần | built | pgTAP, parity, the demo and live specs hold the functions and the page; the comparison of the heatmap and the hour shares with the private reference window is the owner's (OC-03), and the phase 10 live check that prints `matches` for it is not written yet. | The live check of the build spec (9.7, 2) with `LIVE_REFERENCE_SHEET`, then OC-03. |
-| FR-THM-03 | Thực đơn | in build | pgTAP, the parity suite and the demo and live specs hold the menu functions and the eight cards; the engine smoke test and the demo spec hold that no modifier name appears in an item table (the sugar and ice card lists them on purpose) and that the uncategorised item shows with its action. | A spec that costs entered for five items show the margin of those five only, once the costs page exists (#161); the semicolon CSV dialect with #83. |
+| FR-THM-03 | Thực đơn | in build | pgTAP, the parity suite and the demo and live specs hold the menu functions and the eight cards; the engine smoke test and the demo spec hold that no modifier name appears in an item table (the sugar and ice card lists them on purpose) and that the uncategorised item shows with its action; the demo spec of Ngưỡng báo cáo holds that a saved minimum of items per role reaches the matrix, and the page downloads once in the semicolon dialect. | A spec that costs entered for five items show the margin of those five only, once the costs page exists (#161). |
 | FR-THM-09 | Sections a POS cannot feed | designed | pgTAP shows the provisional menu roles without costs and the null attach rates without a role; no card shows them yet. | Unit and Playwright tests with a connector that declares no costs and no manual costs: the margin sections are hidden or marked provisional. |
-| FR-THM-04 | Thanh toán & tiền mặt | in build | pgTAP shows `shift_review` and `cash_variance_flags` following the tenant's cash thresholds; the parity suite holds the demo's `shift_review` to them; the unit, engine smoke and demo specs hold the payment mix (kind shares summing to 1 and matching the methods), the cash trend, the drawer card (thresholds line, no e-mail-like text) and the fee card (the dash and the fees link without a rate). | The thresholds round trip with Settings → Ngưỡng báo cáo once that page exists (#90), the semicolon CSV dialect (#83), and the owner's comparison of the payment mix with the private reference window (OC-03). |
+| FR-THM-04 | Thanh toán & tiền mặt | in build | pgTAP shows `shift_review` and `cash_variance_flags` following the tenant's cash thresholds; the parity suite holds the demo's `shift_review` to them; the unit, engine smoke and demo specs hold the payment mix (kind shares summing to 1 and matching the methods), the cash trend, the drawer card (thresholds line, no e-mail-like text) and the fee card (the dash and the fees link without a rate); the demo spec of Ngưỡng báo cáo holds the round trip from a saved cash threshold to the drawer card's thresholds line and back to the default, and the page downloads once in the semicolon dialect. | The owner's comparison of the payment mix with the private reference window (OC-03). |
 | FR-REP-14 | Card loading and errors | built | Settling is tested on the demo and the size refusal is classified in `reports:unit/rpc-source`; no test drives a failing card or the size message in the browser. | A web test that makes one card's call fail and expects the error card with its retry, and one that answers SQLSTATE 22023 and expects the request for fewer stores or a shorter period. |
 | FR-SET-03 | Item costs | designed | The write policies of `item_costs` are tested; the screen and the CSV import do not exist. | A live Playwright test that an imported CSV equals the stored rows and that the costs move the margin axis of the menu matrix (10b). |
 | FR-SET-04 | Targets | designed | The write policies of `targets` are tested; the screen does not exist. | A live Playwright test that a saved monthly target shows progress and pace on Tháng (10b). |

@@ -52,8 +52,9 @@ export function SaveBar({
 	return (
 		<section
 			aria-label={t("settings.saveBar.label")}
-			className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 -mx-1 flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-surface-raised p-2 shadow-sm lg:bottom-2 print:hidden"
+			className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-surface-raised p-2 shadow-sm lg:bottom-2 print:hidden"
 			data-testid="settings-save-bar"
+			data-sticky-save-bar=""
 			data-pending={pendingCount}
 		>
 			<div className="min-w-0 flex-1 basis-40 text-sm">
@@ -96,7 +97,7 @@ export function SaveBar({
 
 export function RestoreDefaultsButton({
 	onClick,
-	disabled,
+	disabled = false,
 }: {
 	readonly onClick: () => void;
 	readonly disabled?: boolean;
@@ -106,8 +107,9 @@ export function RestoreDefaultsButton({
 		<Button
 			tone="secondary"
 			size="compact"
-			disabled={disabled}
-			onClick={onClick}
+			aria-disabled={disabled || undefined}
+			onClick={disabled ? undefined : onClick}
+			className={UNAVAILABLE_CLASS}
 			data-testid="settings-restore-defaults"
 		>
 			{t("settings.restoreDefaults")}

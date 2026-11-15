@@ -20,10 +20,12 @@ export interface Formatters {
 	moneyExact: (value: number) => string;
 	count: (value: number) => string;
 	decimal: (value: number) => string;
+	decimalExact: (value: number) => string;
 	ratio: (value: number) => string;
 	points: (fraction: number) => string;
 	pointMagnitude: (points: number) => string;
 	percent: (fraction: number) => string;
+	percentExact: (fraction: number) => string;
 	signedPercent: (fraction: number) => string;
 	date: (isoDate: IsoDate) => string;
 	weekday: (isoDate: IsoDate) => string;
@@ -56,6 +58,8 @@ const MILLION = 1_000_000;
 const BILLION = 1_000_000_000;
 const POINTS_PER_FRACTION = 100;
 const POINT_DIGITS = 1;
+const EXACT_DECIMAL_DIGITS = 3;
+const EXACT_PERCENT_DIGITS = 2;
 
 export function currencySymbol(locale: string, currencyCode: string): string {
 	const parts = new Intl.NumberFormat(locale, {
@@ -92,6 +96,10 @@ export function createFormatters(options: FormatterOptions): Formatters {
 		minimumFractionDigits: 0,
 		maximumFractionDigits: 1,
 	});
+	const exactDecimal = new Intl.NumberFormat(locale, {
+		minimumFractionDigits: 0,
+		maximumFractionDigits: EXACT_DECIMAL_DIGITS,
+	});
 	const headlineDecimal = new Intl.NumberFormat(locale, {
 		minimumFractionDigits: 1,
 		maximumFractionDigits: 1,
@@ -109,6 +117,11 @@ export function createFormatters(options: FormatterOptions): Formatters {
 		style: "percent",
 		minimumFractionDigits: 1,
 		maximumFractionDigits: 1,
+	});
+	const exactPercentFormat = new Intl.NumberFormat(locale, {
+		style: "percent",
+		minimumFractionDigits: 0,
+		maximumFractionDigits: EXACT_PERCENT_DIGITS,
 	});
 	const signedPercentFormat = new Intl.NumberFormat(locale, {
 		style: "percent",
@@ -152,6 +165,7 @@ export function createFormatters(options: FormatterOptions): Formatters {
 		moneyExact: (value) => exactMoney.format(value),
 		count: (value) => integer.format(value),
 		decimal: (value) => oneDecimal.format(value),
+		decimalExact: (value) => exactDecimal.format(value),
 		ratio: (value) => twoDecimals.format(value),
 		points: (fraction) =>
 			signedPoints.format(
@@ -159,6 +173,7 @@ export function createFormatters(options: FormatterOptions): Formatters {
 			),
 		pointMagnitude: (points) => headlineDecimal.format(Math.abs(points)),
 		percent: (fraction) => percentFormat.format(fraction),
+		percentExact: (fraction) => exactPercentFormat.format(fraction),
 		signedPercent: (fraction) => signedPercentFormat.format(fraction),
 		date: datePartsFormatter(locale),
 		weekday: (isoDate) => weekdayFormat.format(dateFromIso(isoDate)),

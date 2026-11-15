@@ -29,7 +29,7 @@ Last updated 2026-11-12
 | Năm · Báo cáo năm | Year · Yearly report | route `#/bao-cao/nam?year=YYYY`; report id `year` | a calendar year; verified locally (phase 9) |
 | Chủ đề · Báo cáo chủ đề | Topics · Thematic reports | route `#/chu-de/*`; `nav.topics` | a placeholder today; designed (phase 10) |
 | Kế hoạch | Plans | route `#/ke-hoach/*`; `nav.plans` | saved strategy plans, KPI follow-up and the paste box; designed (phase 11b) |
-| Cài đặt | Settings | route `#/cai-dat/*` (`#/cai-dat` opens Cửa hàng); `nav.settings` | in build: the layout and settings source (10a, #78); the pages in 10a, 10b and 12 |
+| Cài đặt | Settings | route `#/cai-dat/*` (`#/cai-dat` opens Cửa hàng); `nav.settings` | in build: the layout, the settings source and Ngưỡng báo cáo are built (10a); the other pages in 10a, 10b and 12 |
 | Xuất dữ liệu | Exports | route `#/xuat-du-lieu` | CSV exports and the aggregate data pack; no navigation item; designed (phase 11a) |
 | Đăng nhập | Sign in | route `#/dang-nhap`; `auth.login.title` | |
 | Quên mật khẩu? · Đặt lại mật khẩu | Forgot your password? · Reset password | route `#/quen-mat-khau`; `auth.forgot`, `auth.reset.title` | the reset e-mail links back to `#/mat-khau-moi` |
@@ -41,7 +41,8 @@ Last updated 2026-11-12
 | Kỳ · Tùy chọn | Period · Custom | `period.label`, `period.custom` | the period picker |
 | Kỳ báo cáo · Kỳ trước · Kỳ sau | Report period · Previous period · Next period | `report.navigator.*` | the period navigator of a report |
 | Giải thích chỉ số | About these numbers | `reportCard.explain` | a card's panel with Công thức (formula), Mức chi tiết (grain) and Quy ước (convention) |
-| Tải CSV | Download CSV | `reportCard.downloadCsv` | UTF-8 with a byte-order mark, so Excel shows the diacritics |
+| Tải CSV | Download CSV | `reportCard.downloadCsv` | UTF-8 with a byte-order mark, so Excel shows the diacritics; comma-separated, or semicolon-separated with a decimal comma on a device set to that format |
+| Thiết bị này | This device | `preferences.csvDialect`; `settings.thresholds.device.*` | a choice kept in the browser of one phone or computer: comma (the default) or semicolon CSV downloads |
 | Sắp có | Coming soon | `placeholder.coming` | a screen of a later phase |
 | Có phiên bản mới — tải lại | A new version is available — reload | `shell.newVersion` | |
 
@@ -70,7 +71,7 @@ Names from `reportNames`; routes from [`web-app.md`](web-app.md).
 | Hồ sơ cửa hàng | Store profile | `#/cai-dat/cua-hang` | 10b |
 | Dữ liệu nhập tay (giá vốn, mục tiêu, phí thanh toán) | Manual data (costs, targets, fee rates) | `#/cai-dat/du-lieu-nhap-tay` | 10b |
 | Phân loại món | Item roles and category mapping | `#/cai-dat/phan-loai` | roles 10a (#89), category mapping 10b |
-| Ngưỡng báo cáo | Report thresholds | `#/cai-dat/bao-cao` | 10a (#90) |
+| Ngưỡng báo cáo | Report thresholds | `#/cai-dat/bao-cao`; `settings.thresholds.*` | built (10a): the menu, cash and hour thresholds of `report_settings`, and "Thiết bị này", the device's CSV format |
 | Ngày lễ | Holidays | `#/cai-dat/ngay-le` | 10b |
 | Cảnh báo | Alerts: destinations, rules and a test button | `#/cai-dat/canh-bao` | after step 12c |
 | Pháp lý | Legal texts (the consent view comes in phase 17a) | `#/cai-dat/phap-ly` | 10b |

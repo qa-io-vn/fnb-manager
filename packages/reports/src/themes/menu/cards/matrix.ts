@@ -270,7 +270,7 @@ export function buildMatrixCard(input: ThemeCardInput): CardModel {
 				? null
 				: part(menuKeys.matrix.subtitle, {
 						days,
-						factor: numberValue("decimal", factor),
+						factor: numberValue("decimalExact", factor),
 					}),
 		metricId: "menu_class",
 		relatedMetricIds: [],

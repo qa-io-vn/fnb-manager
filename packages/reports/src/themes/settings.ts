@@ -26,9 +26,7 @@ export const DEFAULT_REPORT_SETTINGS: ReportSettings = {
 	promoPreWeeks: 4,
 };
 
-export const REPORT_SETTINGS_COLUMNS: Readonly<
-	Record<keyof ReportSettings, string>
-> = {
+export const REPORT_SETTINGS_COLUMNS = {
 	menuWindowDays: "menu_window_days",
 	menuPopularityFactor: "menu_popularity_factor",
 	menuLowSampleItems: "menu_low_sample_items",
@@ -38,7 +36,10 @@ export const REPORT_SETTINGS_COLUMNS: Readonly<
 	deadHourRatio: "dead_hour_ratio",
 	busyHourRatio: "busy_hour_ratio",
 	promoPreWeeks: "promo_pre_weeks",
-};
+} as const satisfies Readonly<Record<keyof ReportSettings, string>>;
+
+export type ReportSettingsColumn =
+	(typeof REPORT_SETTINGS_COLUMNS)[keyof ReportSettings];
 
 export interface ReportSettingLimit {
 	readonly min: number;
@@ -86,6 +87,12 @@ export function withinReportSettingLimit(
 		value <= limit.max &&
 		hasAtMostFractionDigits(value, limit.fractionDigits)
 	);
+}
+
+export function isDefaultReportSettings(settings: ReportSettings): boolean {
+	return (
+		Object.keys(DEFAULT_REPORT_SETTINGS) as (keyof ReportSettings)[]
+	).every((key) => settings[key] === DEFAULT_REPORT_SETTINGS[key]);
 }
 
 export interface StoreSettingsState {

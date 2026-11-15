@@ -22,10 +22,16 @@ export function separatorsOf(locale: string): NumberSeparators {
 export interface NumberTextOptions {
 	readonly affixes?: readonly string[];
 	readonly grouping?: boolean;
+	readonly whole?: boolean;
 }
 
 const BLANK = "[\\s\\u00a0\\u202f]";
 const LOOSE_DECIMAL = /^-?\d+(?:[.,]\d+)?$/;
+const WHOLE_PLAIN = /^-?\d+$/;
+const WHOLE_GROUPED = new RegExp(
+	`^-?[1-9]\\d{0,2}([.,]|${BLANK})\\d{3}(?:\\1\\d{3})*$`,
+);
+const WHOLE_MARKS = new RegExp(`[.,]|${BLANK}`, "g");
 
 function escaped(text: string): string {
 	return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -59,13 +65,22 @@ function finiteOrNull(normalized: string): number | null {
 	return Number.isFinite(parsed) ? parsed : null;
 }
 
+function wholeNumberOf(value: string): number | null {
+	if (WHOLE_PLAIN.test(value)) return finiteOrNull(value);
+	return WHOLE_GROUPED.test(value)
+		? finiteOrNull(value.replace(WHOLE_MARKS, ""))
+		: null;
+}
+
 export function parseNumberText(
 	text: string,
 	locale: string,
-	{ affixes = [], grouping = true }: NumberTextOptions = {},
+	{ affixes = [], grouping = true, whole = false }: NumberTextOptions = {},
 ): number | null {
 	const value = withoutAffixes(text, affixes);
 	if (value === "") return null;
+	const asWhole = whole ? wholeNumberOf(value) : null;
+	if (asWhole !== null) return asWhole;
 	if (!grouping) {
 		return LOOSE_DECIMAL.test(value)
 			? finiteOrNull(value.replace(",", "."))

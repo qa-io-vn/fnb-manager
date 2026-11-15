@@ -46,6 +46,17 @@ describe("formatters for a VND tenant", () => {
 		expect(plain(vnd.signedPercent(-0.071))).toBe("-7,1%");
 	});
 
+	it("writes a threshold exactly, without rounding it to the report's one decimal", () => {
+		expect(vnd.decimalExact(0.7)).toBe("0,7");
+		expect(vnd.decimalExact(0.65)).toBe("0,65");
+		expect(vnd.decimalExact(0.655)).toBe("0,655");
+		expect(vnd.decimal(0.65)).toBe("0,7");
+		expect(plain(vnd.percentExact(0.005))).toBe("0,5%");
+		expect(plain(vnd.percentExact(0.0025))).toBe("0,25%");
+		expect(plain(vnd.percentExact(0.1))).toBe("10%");
+		expect(plain(vnd.percent(0.0025))).toBe("0,3%");
+	});
+
 	it("writes dates as dd/MM/yyyy", () => {
 		expect(vnd.date("2026-11-08")).toBe("08/11/2026");
 		expect(vnd.date("2026-01-05")).toBe("05/01/2026");

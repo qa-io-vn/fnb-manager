@@ -146,4 +146,15 @@ describe("SaveBar", () => {
 		);
 		expect(onClick).toHaveBeenCalledOnce();
 	});
+
+	it("keeps the restore action focusable and inert when there is nothing to restore", async () => {
+		const user = userEvent.setup();
+		const onClick = vi.fn();
+		renderWithLanguage(<RestoreDefaultsButton onClick={onClick} disabled />);
+		const button = screen.getByRole("button", { name: "Khôi phục mặc định" });
+		expect(button).toHaveAttribute("aria-disabled", "true");
+		expect(button).toBeEnabled();
+		await user.click(button);
+		expect(onClick).not.toHaveBeenCalled();
+	});
 });

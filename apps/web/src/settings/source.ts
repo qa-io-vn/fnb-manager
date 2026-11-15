@@ -31,9 +31,38 @@ export interface RoleChange {
 	readonly role: ItemTypeRole;
 }
 
+export type AuditAuthor =
+	| { readonly kind: "you" }
+	| { readonly kind: "member"; readonly role: TenantRole }
+	| { readonly kind: "unknown" };
+
+export interface AuditEntry {
+	readonly changedAt: string;
+	readonly author: AuditAuthor;
+}
+
+export interface MemberRoleRow {
+	readonly userId: string;
+	readonly role: TenantRole;
+}
+
+export function auditAuthorOf(
+	updatedBy: string | null,
+	currentUserId: string | null,
+	members: readonly MemberRoleRow[],
+): AuditAuthor {
+	if (updatedBy === null) return { kind: "unknown" };
+	if (updatedBy === currentUserId) return { kind: "you" };
+	const member = members.find((row) => row.userId === updatedBy);
+	return member === undefined
+		? { kind: "unknown" }
+		: { kind: "member", role: member.role };
+}
+
 export interface ReportSettingsState {
 	readonly settings: ReportSettings;
 	readonly hasRow: boolean;
+	readonly audit: AuditEntry | null;
 }
 
 export interface CatchUpStatus {
@@ -49,7 +78,10 @@ export interface SettingsSource {
 	itemTypes(tenantId: string): Promise<ItemTypeEntry[]>;
 	saveRoles(tenantId: string, changes: readonly RoleChange[]): Promise<void>;
 	reportSettings(tenantId: string): Promise<ReportSettingsState>;
-	saveReportSettings(tenantId: string, settings: ReportSettings): Promise<void>;
+	saveReportSettings(
+		tenantId: string,
+		changes: Partial<ReportSettings>,
+	): Promise<void>;
 	catchUpStatus(tenantId: string): Promise<CatchUpStatus>;
 	refreshChunk(tenantId: string): Promise<CatchUpStatus>;
 }

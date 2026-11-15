@@ -199,6 +199,20 @@ test("the Thanh toán payment mix and cash trend", async ({ page }) => {
 	);
 });
 
+test("Cài đặt: Ngưỡng báo cáo and the choice kept on this device", async ({
+	page,
+}) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await page.goto("/#/cai-dat/bao-cao");
+	await expect(page.getByTestId("thresholds-form")).toBeVisible();
+	await shootElement(page.getByTestId("settings-layout"), "settings-bao-cao");
+	await page.setViewportSize(PHONE);
+	await shootElement(
+		page.getByTestId("device-csv-choice"),
+		"settings-thiet-bi-phone",
+	);
+});
+
 test("the printed report", async ({ page }) => {
 	await page.setViewportSize({ width: A4_WIDTH_PX, height: 1123 });
 	await openReportPage(page, "day");

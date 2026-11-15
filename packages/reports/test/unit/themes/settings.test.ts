@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
 	DEFAULT_REPORT_SETTINGS,
 	hasAtMostFractionDigits,
+	isDefaultReportSettings,
 	REPORT_SETTING_LIMITS,
 	REPORT_SETTINGS_COLUMNS,
 	type ReportSettingLimit,
@@ -118,6 +119,23 @@ describe("REPORT_SETTING_LIMITS", () => {
 		expect(
 			withinReportSettingLimit(Number.NaN, REPORT_SETTING_LIMITS.peakHours),
 		).toBe(false);
+	});
+});
+
+describe("isDefaultReportSettings", () => {
+	it("is true only when every setting equals its default", () => {
+		expect(isDefaultReportSettings({ ...DEFAULT_REPORT_SETTINGS })).toBe(true);
+		for (const key of Object.keys(DEFAULT_REPORT_SETTINGS)) {
+			expect(
+				isDefaultReportSettings({
+					...DEFAULT_REPORT_SETTINGS,
+					[key]:
+						REPORT_SETTING_LIMITS[key as keyof typeof REPORT_SETTING_LIMITS]
+							.max,
+				}),
+				key,
+			).toBe(false);
+		}
 	});
 });
 

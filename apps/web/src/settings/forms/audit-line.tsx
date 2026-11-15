@@ -1,22 +1,7 @@
 import { type MessageKey, useT } from "../../i18n";
 import { todayIn } from "../../lib/business-dates";
 import type { Formatters } from "../../lib/format";
-import type { TenantRole } from "../source";
-
-export type AuditAuthor =
-	| { readonly kind: "you" }
-	| { readonly kind: "member"; readonly role: TenantRole }
-	| { readonly kind: "unknown" };
-
-export interface AuditEntry {
-	readonly changedAt: string;
-	readonly author: AuditAuthor;
-}
-
-export interface MemberRoleRow {
-	readonly userId: string;
-	readonly role: TenantRole;
-}
+import type { AuditEntry, TenantRole } from "../source";
 
 export const ROLE_KEYS: Readonly<Record<TenantRole, MessageKey>> = {
 	owner: "settings.role.owner",
@@ -25,19 +10,6 @@ export const ROLE_KEYS: Readonly<Record<TenantRole, MessageKey>> = {
 	viewer: "settings.role.viewer",
 	publisher: "settings.role.publisher",
 };
-
-export function auditAuthorOf(
-	updatedBy: string | null,
-	currentUserId: string | null,
-	members: readonly MemberRoleRow[],
-): AuditAuthor {
-	if (updatedBy === null) return { kind: "unknown" };
-	if (updatedBy === currentUserId) return { kind: "you" };
-	const member = members.find((row) => row.userId === updatedBy);
-	return member === undefined
-		? { kind: "unknown" }
-		: { kind: "member", role: member.role };
-}
 
 export interface AuditLineProps {
 	readonly entry: AuditEntry | null;

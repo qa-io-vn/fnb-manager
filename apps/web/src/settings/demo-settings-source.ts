@@ -4,6 +4,7 @@ import {
 	type DemoRole,
 	type DemoSettingsStore,
 } from "@fnb/demo-analytics";
+import { isDefaultReportSettings } from "@fnb/reports";
 import {
 	type CatchUpStatus,
 	type ItemTypeEntry,
@@ -18,6 +19,8 @@ import {
 export const DEMO_POS_ACCOUNT_NAME = "Tài khoản POS mẫu";
 
 const DEMO_MEMBERSHIP: Membership = { role: "owner", storeIds: null };
+
+const thresholdsSavedAt = new WeakMap<DemoSettingsStore, string>();
 
 function roleKey(posAccountId: string, itemTypeExternalId: string): string {
 	return `${posAccountId}|${itemTypeExternalId}`;
@@ -71,15 +74,23 @@ export function createDemoSettingsSource(
 		},
 
 		async reportSettings(): Promise<ReportSettingsState> {
+			const hasRow = store.hasReportSettingsRow();
+			const savedAt = thresholdsSavedAt.get(store);
 			return {
 				settings: store.reportSettings(),
-				hasRow: store.hasReportSettingsRow(),
+				hasRow,
+				audit:
+					hasRow && savedAt !== undefined
+						? { changedAt: savedAt, author: { kind: "you" } }
+						: null,
 			};
 		},
 
-		async saveReportSettings(_tenantId, settings) {
+		async saveReportSettings(_tenantId, changes) {
+			const next = { ...store.reportSettings(), ...changes };
+			const backToDefaults = isDefaultReportSettings(next);
 			try {
-				store.saveReportSettings(settings);
+				store.saveReportSettings(backToDefaults ? null : next);
 			} catch (error) {
 				if (error instanceof RangeError) {
 					throw new SettingsWriteError(
@@ -89,6 +100,8 @@ export function createDemoSettingsSource(
 				}
 				throw error;
 			}
+			if (backToDefaults) thresholdsSavedAt.delete(store);
+			else thresholdsSavedAt.set(store, new Date().toISOString());
 		},
 
 		async catchUpStatus(): Promise<CatchUpStatus> {

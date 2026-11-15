@@ -83,6 +83,19 @@ describe("MoneyField", () => {
 		}
 	});
 
+	it("reads a comma typed as a thousands mark as đồng, not as a fraction of 80", async () => {
+		const user = userEvent.setup();
+		renderWithLanguage(
+			<MoneyHarness initial="" formatters={vndFormatters()} />,
+		);
+		const input = screen.getByTestId("money");
+		await user.type(input, "80,000");
+		expect(screen.getByTestId("value")).toHaveTextContent("80000");
+		await user.tab();
+		expect(input).toHaveValue("80.000");
+		expect(screen.queryByTestId("settings-field-error")).toBeNull();
+	});
+
 	it("refuses a fraction of a đồng without rounding it away", async () => {
 		const user = userEvent.setup();
 		renderWithLanguage(

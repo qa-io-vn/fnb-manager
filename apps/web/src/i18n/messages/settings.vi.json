@@ -46,6 +46,7 @@
 	"settings.role.staff": "nhân viên",
 	"settings.role.viewer": "người xem",
 	"settings.save": "Lưu",
+	"settings.saveBar.invalid": "Sửa các ô đang báo lỗi rồi lưu.",
 	"settings.saveBar.label": "Lưu thay đổi",
 	"settings.saveBar.none": "Chưa có thay đổi.",
 	"settings.saveBar.pendingMany": "{count} thay đổi chưa lưu",

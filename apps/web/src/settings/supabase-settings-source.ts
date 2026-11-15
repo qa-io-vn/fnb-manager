@@ -1,16 +1,23 @@
 import {
 	addDays,
 	DEFAULT_REPORT_SETTINGS,
+	isDefaultReportSettings,
 	minDate,
+	REPORT_SETTINGS_COLUMNS,
 	type ReportSettings,
+	type ReportSettingsColumn,
 } from "@fnb/reports";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { fetchAllPages, fetchOnce } from "../data/paginate";
 import {
+	type AuditAuthor,
+	type AuditEntry,
+	auditAuthorOf,
 	type CatchUpStatus,
 	ITEM_TYPE_ROLES,
 	type ItemTypeEntry,
+	type MemberRoleRow,
 	type Membership,
 	NO_CATCH_UP,
 	type ReportSettingsState,
@@ -23,10 +30,14 @@ export const REFRESH_CHUNK_DAYS = 92;
 
 const numeric = z.union([z.number(), z.string()]).transform(Number);
 
+const tenantRole = z.enum(["owner", "manager", "staff", "viewer", "publisher"]);
+
 const membershipRow = z.object({
-	role: z.enum(["owner", "manager", "staff", "viewer", "publisher"]),
+	role: tenantRole,
 	store_ids: z.array(z.string()).nullable(),
 });
+
+const memberRoleRow = z.object({ user_id: z.string(), role: tenantRole });
 
 const itemTypeRow = z.object({
 	pos_account_id: z.string(),
@@ -51,7 +62,12 @@ const settingsRow = z.object({
 	dead_hour_ratio: numeric,
 	busy_hour_ratio: numeric,
 	promo_pre_weeks: numeric,
+	updated_at: z.string(),
+	updated_by: z.string().nullable(),
 });
+
+const SETTINGS_SELECT =
+	"menu_window_days,menu_popularity_factor,menu_low_sample_items,cash_abs_threshold,cash_rel_threshold,peak_hours,dead_hour_ratio,busy_hour_ratio,promo_pre_weeks,updated_at,updated_by";
 
 const catchUpRow = z.object({
 	pending_from: z.string().nullable(),
@@ -104,34 +120,51 @@ async function written(
 	if (result.error !== null) throw writeErrorOf(result.error);
 }
 
-export interface ReportSettingsColumns {
-	readonly tenant_id: string;
-	readonly menu_window_days: number;
-	readonly menu_popularity_factor: number;
-	readonly menu_low_sample_items: number;
-	readonly cash_abs_threshold: number;
-	readonly cash_rel_threshold: number;
-	readonly peak_hours: number;
-	readonly dead_hour_ratio: number;
-	readonly busy_hour_ratio: number;
-	readonly promo_pre_weeks: number;
+async function writtenRows<Row>(
+	schema: z.ZodType<Row>,
+	request: PromiseLike<{ data: unknown; error: PostgrestFailure | null }>,
+): Promise<Row[]> {
+	let result: { data: unknown; error: PostgrestFailure | null };
+	try {
+		result = await request;
+	} catch {
+		throw new SettingsWriteError("network");
+	}
+	if (result.error !== null) throw writeErrorOf(result.error);
+	return z.array(schema).parse(result.data ?? []);
 }
+
+export type ReportSettingsColumns = { readonly tenant_id: string } & Readonly<
+	Partial<Record<ReportSettingsColumn, number>>
+>;
+
+const SETTING_KEYS = Object.keys(
+	REPORT_SETTINGS_COLUMNS,
+) as (keyof ReportSettings)[];
 
 export function settingsColumnsOf(
 	tenantId: string,
-	settings: ReportSettings,
+	changes: Partial<ReportSettings>,
 ): ReportSettingsColumns {
+	const columns: Partial<Record<ReportSettingsColumn, number>> = {};
+	for (const key of SETTING_KEYS) {
+		const value = changes[key];
+		if (value !== undefined) columns[REPORT_SETTINGS_COLUMNS[key]] = value;
+	}
+	return { tenant_id: tenantId, ...columns };
+}
+
+function thresholdsOf(row: z.output<typeof settingsRow>): ReportSettings {
 	return {
-		tenant_id: tenantId,
-		menu_window_days: settings.menuWindowDays,
-		menu_popularity_factor: settings.menuPopularityFactor,
-		menu_low_sample_items: settings.menuLowSampleItems,
-		cash_abs_threshold: settings.cashAbsThreshold,
-		cash_rel_threshold: settings.cashRelThreshold,
-		peak_hours: settings.peakHours,
-		dead_hour_ratio: settings.deadHourRatio,
-		busy_hour_ratio: settings.busyHourRatio,
-		promo_pre_weeks: settings.promoPreWeeks,
+		menuWindowDays: row.menu_window_days,
+		menuPopularityFactor: row.menu_popularity_factor,
+		menuLowSampleItems: row.menu_low_sample_items,
+		cashAbsThreshold: row.cash_abs_threshold,
+		cashRelThreshold: row.cash_rel_threshold,
+		peakHours: row.peak_hours,
+		deadHourRatio: row.dead_hour_ratio,
+		busyHourRatio: row.busy_hour_ratio,
+		promoPreWeeks: row.promo_pre_weeks,
 	};
 }
 
@@ -178,6 +211,41 @@ export function createSupabaseSettingsSource(
 				client.rpc("analytics_catch_up_status", { p_tenant_id: tenantId }),
 			),
 		);
+
+	const memberRoles = async (tenantId: string): Promise<MemberRoleRow[]> => {
+		const rows = await fetchAllPages(memberRoleRow, (from, to) =>
+			client
+				.from("tenant_members")
+				.select("user_id,role")
+				.eq("tenant_id", tenantId)
+				.order("user_id")
+				.range(from, to),
+		);
+		return rows.map((row) => ({ userId: row.user_id, role: row.role }));
+	};
+
+	const authorOf = async (
+		tenantId: string,
+		updatedBy: string,
+	): Promise<AuditAuthor> => {
+		const userId = await currentUserId();
+		const members = updatedBy === userId ? [] : await memberRoles(tenantId);
+		return auditAuthorOf(updatedBy, userId, members);
+	};
+
+	const auditOf = async (
+		tenantId: string,
+		changedAt: string,
+		updatedBy: string | null,
+	): Promise<AuditEntry> => ({
+		changedAt,
+		author:
+			updatedBy === null
+				? { kind: "unknown" }
+				: await authorOf(tenantId, updatedBy).catch(
+						(): AuditAuthor => ({ kind: "unknown" }),
+					),
+	});
 
 	return {
 		kind: "supabase",
@@ -257,39 +325,47 @@ export function createSupabaseSettingsSource(
 				settingsRow,
 				client
 					.from("report_settings")
-					.select(
-						"menu_window_days,menu_popularity_factor,menu_low_sample_items,cash_abs_threshold,cash_rel_threshold,peak_hours,dead_hour_ratio,busy_hour_ratio,promo_pre_weeks",
-					)
+					.select(SETTINGS_SELECT)
 					.eq("tenant_id", tenantId),
 			);
 			const row = rows[0];
 			if (row === undefined) {
-				return { settings: DEFAULT_REPORT_SETTINGS, hasRow: false };
+				return {
+					settings: DEFAULT_REPORT_SETTINGS,
+					hasRow: false,
+					audit: null,
+				};
 			}
 			return {
 				hasRow: true,
-				settings: {
-					menuWindowDays: row.menu_window_days,
-					menuPopularityFactor: row.menu_popularity_factor,
-					menuLowSampleItems: row.menu_low_sample_items,
-					cashAbsThreshold: row.cash_abs_threshold,
-					cashRelThreshold: row.cash_rel_threshold,
-					peakHours: row.peak_hours,
-					deadHourRatio: row.dead_hour_ratio,
-					busyHourRatio: row.busy_hour_ratio,
-					promoPreWeeks: row.promo_pre_weeks,
-				},
+				audit: await auditOf(tenantId, row.updated_at, row.updated_by),
+				settings: thresholdsOf(row),
 			};
 		},
 
-		async saveReportSettings(tenantId, settings) {
-			await written(
+		async saveReportSettings(tenantId, changes) {
+			const rows = await writtenRows(
+				settingsRow,
 				client
 					.from("report_settings")
-					.upsert(settingsColumnsOf(tenantId, settings), {
+					.upsert(settingsColumnsOf(tenantId, changes), {
 						onConflict: "tenant_id",
-					}),
+					})
+					.select(SETTINGS_SELECT),
 			);
+			const saved = rows[0];
+			if (
+				saved === undefined ||
+				!isDefaultReportSettings(thresholdsOf(saved))
+			) {
+				return;
+			}
+			const defaultRowOnly = SETTING_KEYS.reduce(
+				(query, key) =>
+					query.eq(REPORT_SETTINGS_COLUMNS[key], DEFAULT_REPORT_SETTINGS[key]),
+				client.from("report_settings").delete().eq("tenant_id", tenantId),
+			);
+			await written(defaultRowOnly).catch(() => undefined);
 		},
 
 		catchUpStatus,

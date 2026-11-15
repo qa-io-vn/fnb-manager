@@ -1,5 +1,5 @@
 begin;
-select plan(59);
+select plan(63);
 
 create temp table fixture as
 select
@@ -1460,6 +1460,42 @@ select is(
   (select (c.pending_days, c.pending_from) from public.analytics_catch_up_status((select tenant_id from refresh_window)) c),
   (0, null::date),
   'after the refresh log is pruned the catch-up status still reports no pending day'
+);
+
+set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000000401", "role": "authenticated"}';
+
+insert into public.report_settings (tenant_id, peak_hours)
+select tenant_id, 6 from fixture
+on conflict (tenant_id) do update set peak_hours = excluded.peak_hours;
+
+select is(
+  (select array[peak_hours::numeric, cash_abs_threshold, cash_rel_threshold] from public.report_settings where tenant_id = (select tenant_id from fixture)),
+  array[6, 10000000, 0.1]::numeric[],
+  'an owner''s upsert of one threshold changes that column and keeps the others'
+);
+
+set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000000403", "role": "authenticated"}';
+
+with removed as (delete from public.report_settings where tenant_id = (select tenant_id from fixture) returning 1)
+select is(
+  (select count(*)::int from removed),
+  0,
+  'an owner limited to one store deletes no report settings'
+);
+
+set local request.jwt.claims to '{"sub": "eeeeeeee-eeee-4eee-8eee-000000000401", "role": "authenticated"}';
+
+with removed as (delete from public.report_settings where tenant_id = (select tenant_id from fixture) returning 1)
+select is(
+  (select count(*)::int from removed),
+  1,
+  'an owner with an unlimited scope deletes the report settings to restore the defaults'
+);
+
+select is(
+  (select array[s.peak_hours::numeric, s.cash_abs_threshold, s.cash_rel_threshold, s.menu_window_days::numeric] from app.store_report_settings((select array[store_a] from fixture)) s),
+  array[3, 50000, 0.005, 28]::numeric[],
+  'without its row the tenant reads the column defaults again'
 );
 
 reset role;

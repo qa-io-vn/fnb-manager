@@ -43,10 +43,14 @@ export function formatTypedValue(
 			return signed(formatters.count(value.value), value.value);
 		case "decimal":
 			return formatters.decimal(value.value);
+		case "decimalExact":
+			return formatters.decimalExact(value.value);
 		case "ratio":
 			return formatters.ratio(value.value);
 		case "percent":
 			return formatters.percent(value.value);
+		case "percentExact":
+			return formatters.percentExact(value.value);
 		case "signedPercent":
 			return formatters.signedPercent(value.value);
 		case "percentPoints":

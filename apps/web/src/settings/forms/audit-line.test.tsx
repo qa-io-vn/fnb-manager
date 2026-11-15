@@ -1,7 +1,8 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { renderWithLanguage, vndFormatters } from "../../test/render";
-import { AuditLine, auditAuthorOf, type MemberRoleRow } from "./audit-line";
+import { auditAuthorOf, type MemberRoleRow } from "../source";
+import { AuditLine } from "./audit-line";
 
 const MEMBERS: readonly MemberRoleRow[] = [
 	{ userId: "u-owner", role: "owner" },

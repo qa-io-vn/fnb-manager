@@ -46,6 +46,7 @@
 	"settings.role.staff": "a staff member",
 	"settings.role.viewer": "a viewer",
 	"settings.save": "Save",
+	"settings.saveBar.invalid": "Fix the fields marked with an error, then save.",
 	"settings.saveBar.label": "Save changes",
 	"settings.saveBar.none": "No changes.",
 	"settings.saveBar.pendingMany": "{count} unsaved changes",

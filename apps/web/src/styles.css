@@ -9,6 +9,16 @@ html {
 	scroll-padding-top: var(--top-bar-height, 0px);
 }
 
+html:has([data-sticky-save-bar]) {
+	scroll-padding-bottom: calc(11rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 64rem) {
+	html:has([data-sticky-save-bar]) {
+		scroll-padding-bottom: 6rem;
+	}
+}
+
 html,
 body {
 	margin: 0;

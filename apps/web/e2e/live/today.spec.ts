@@ -174,6 +174,38 @@ test("Cài đặt opens its layout on the seeded stack with the phase of each pl
 	await checkPage(page);
 });
 
+test("Ngưỡng báo cáo reads the seeded thresholds through the database's own rules, without writing", async ({
+	page,
+}) => {
+	await signIn(page);
+	await page.goto("/#/cai-dat/bao-cao");
+	const form = page.getByTestId("thresholds-form");
+	await expect(form).toBeVisible();
+	const shown: [string, string][] = [
+		["Số ngày xét thực đơn", "28"],
+		["Ngưỡng bán chạy", "70"],
+		["Số món tối thiểu mỗi vai trò", "10"],
+		["Chênh lệch két theo số tiền", "50.000"],
+		["Chênh lệch két theo tỷ lệ", "0,5"],
+		["Số giờ cao điểm", "3"],
+		["Ngưỡng giờ thấp điểm", "50"],
+		["Ngưỡng giờ đông", "125"],
+	];
+	for (const [label, value] of shown) {
+		await expect(form.getByLabel(label, { exact: true })).toHaveValue(value);
+		await expect(form.getByLabel(label, { exact: true })).toBeEditable();
+	}
+	await expect(page.getByTestId("settings-audit-line")).toHaveText(
+		/^Sửa lần cuối \d{2}\/\d{2}\/\d{4} lúc \d{2}:\d{2}\.$/,
+	);
+	await expect(page.getByTestId("settings-read-only")).toHaveCount(0);
+	await expect(page.getByTestId("settings-save-bar-pending")).toHaveText(
+		"Chưa có thay đổi.",
+	);
+	await expect(page.getByTestId("settings-demo-note")).toHaveCount(0);
+	await checkPage(page);
+});
+
 test("signing out returns to the login page", async ({ page }) => {
 	await signIn(page);
 	await page.getByRole("button", { name: "Đăng xuất" }).click();

@@ -1,10 +1,10 @@
 # User guide
 
-Purpose and audience: what the FNB Manager app shows and how to read it, for the owner and the store managers. The app speaks Vietnamese by default; this guide is in English and quotes the Vietnamese labels exactly as the app shows them, with the app's own English label in brackets where it helps. It describes the app as built and verified on 2026-11-14; parts that are designed or planned say so.
+Purpose and audience: what the FNB Manager app shows and how to read it, for the owner and the store managers. The app speaks Vietnamese by default; this guide is in English and quotes the Vietnamese labels exactly as the app shows them, with the app's own English label in brackets where it helps. It describes the app as built and verified on 2026-11-15; parts that are designed or planned say so.
 
 The screenshots come from the demo, so they show the sample stores "Cửa hàng mẫu 1" and "Cửa hàng mẫu 2" and generated numbers, never a real shop. They are taken on 4 November 2026 at 12:30 in Vietnam, in Vietnamese unless a caption says otherwise, and are retaken whenever a screen changes (`pnpm --filter @fnb/web docs:screenshots`).
 
-Last updated 2026-11-14
+Last updated 2026-11-15
 
 ## What the app is for
 
@@ -49,13 +49,13 @@ flowchart LR
 
 The navigation sits at the bottom on a phone and on the left on a wide screen.
 
-| Label | English | Opens | State on 2026-11-14 |
+| Label | English | Opens | State on 2026-11-15 |
 |---|---|---|---|
 | Hôm nay | Today | today and yesterday | verified locally |
 | Báo cáo | Reports | Ngày, Tuần, Tháng, Năm | verified locally |
-| Chủ đề | Topics | thematic reports: Doanh thu & xu hướng, Giờ & ngày trong tuần | verified locally |
+| Chủ đề | Topics | thematic reports: Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt | verified locally |
 | Kế hoạch | Plans | saved strategy plans | "Sắp có" |
-| Cài đặt | Settings | settings and manual data | "Sắp có" |
+| Cài đặt | Settings | Ngưỡng báo cáo: the report thresholds and this device's CSV format; the other settings pages say which phase brings them | Ngưỡng báo cáo verified locally; the other pages planned |
 
 - A page that is not built yet says "Sắp có" and names the roadmap phase that brings it ("Dự kiến ở giai đoạn … của lộ trình.").
 - The top bar holds the language switch (**VI** / **EN**), "Đăng xuất", the store choice and the freshness badge. On a phone the store choice folds into one summary button; tap it to open.
@@ -238,7 +238,7 @@ Use the browser's own print command (Ctrl+P or ⌘P on a computer, Share then Pr
 
 ### CSV downloads
 
-"Tải CSV" under a table downloads exactly the rows shown, in UTF-8 with a byte-order mark so that Excel shows the Vietnamese letters correctly. Values are separated by commas and decimals use a point; amounts are plain numbers without thousands separators, and percentage columns are marked "(%)". An Excel set to Vietnamese regional settings may put such a row in one column, because it expects semicolons and a decimal comma (`12,5`). The app can write that format too, as a choice each device keeps for itself; the switch for it comes with the Ngưỡng báo cáo page of Cài đặt, which is not open yet. A card with two tables offers "Tải CSV: {table}" for each. Report files are named `<report>-<card>-<period>.csv`, for example `ngay-net-revenue-2026-11-07.csv`.
+"Tải CSV" under a table downloads exactly the rows shown, in UTF-8 with a byte-order mark so that Excel shows the Vietnamese letters correctly. Values are separated by commas and decimals use a point; amounts are plain numbers without thousands separators, and percentage columns are marked "(%)". An Excel set to Vietnamese regional settings may put such a row in one column, because it expects semicolons and a decimal comma (`12,5`). If that happens, switch this device to the semicolon format on Cài đặt → Ngưỡng báo cáo, under "Thiết bị này" ([below](#thiết-bị-này-this-device)); each phone or computer keeps its own choice. A card with two tables offers "Tải CSV: {table}" for each. Report files are named `<report>-<card>-<period>.csv`, for example `ngay-net-revenue-2026-11-07.csv`.
 
 ## The thematic reports ("Chủ đề")
 
@@ -345,6 +345,44 @@ More detail: [reports/thanh-toan.md](reports/thanh-toan.md).
 
 The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08&to=2026-11-06`) and, when not every store is selected, the stores. Printing and "Tải CSV" work as on the reports; theme files are named `<theme>-<card>-<from>_<to>.csv`, for example `doanh-thu-net_revenue-2026-10-07_2026-11-03.csv`.
 
+## Cài đặt (Settings)
+
+"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. One page is open today, **Ngưỡng báo cáo**; Cửa hàng, Dữ liệu nhập tay, Phân loại, Ngày lễ and Pháp lý each say which roadmap phase brings them.
+
+### Ngưỡng báo cáo (Report thresholds)
+
+![Cài đặt on a computer: the page names on the left, then the Thực đơn, Tiền mặt and Giờ thresholds with their defaults, the save bar and the choice kept on this device](user-guide/settings-bao-cao.png)
+
+The reports decide what to flag from eight thresholds. They belong to the whole business, not to one store, and every report reads the same values: saving here changes Ngày, Tháng, the thematic reports and the daily digest together, and the page says so.
+
+| Group | Threshold | What it changes | Default | Allowed |
+|---|---|---|---|---|
+| Thực đơn | Số ngày xét thực đơn | how many of the latest days the menu matrix classes items over | 28 ngày | 7 to 91 |
+| Thực đơn | Ngưỡng bán chạy | an item is popular when its share of the quantity sold reaches this much of an even split among the items of its role | 70 % | 10 to 100 % |
+| Thực đơn | Số món tối thiểu mỗi vai trò | a role with fewer items is classed for reference only | 10 món | 2 to 50 |
+| Tiền mặt | Chênh lệch két theo số tiền | a shift is flagged when its drawer variance exceeds this amount | 50.000 ₫ | 0 ₫ or more, whole đồng |
+| Tiền mặt | Chênh lệch két theo tỷ lệ | a shift is flagged when its drawer variance exceeds this share of the shift's cash sales | 0,5 % | 0 to 10 % |
+| Giờ | Số giờ cao điểm | how many of the best-selling hours count as peak hours | 3 giờ | 1 to 6 |
+| Giờ | Ngưỡng giờ thấp điểm | an hour selling below this share of the average hour is a quiet hour | 50 % | 10 to 90 % |
+| Giờ | Ngưỡng giờ đông | an hour with invoices at or above this share of the average hour is busy; busy hours in a row form the suggested shift windows | 125 % | 105 to 300 % |
+
+- A shift is flagged when it passes any of three rules. The third, the z-score of the variance, is fixed at 2 and shown for reference. If most shifts are flagged for small differences, raise the two cash thresholds; lower them to watch the drawer more closely.
+- Each field shows its default under it. A value outside its range is refused as soon as you leave the field, with the allowed range in words, and "Lưu" stays unavailable until it is corrected. An amount may be typed as `80000`, `80.000` or `80,000`: all three are 80.000 ₫, since đồng have no fraction. A percentage takes a comma or a point as its decimal mark.
+- Changes wait in the bar at the foot of the page, which counts them: **Lưu** saves only what you changed, so a value someone else saved meanwhile is kept, and **Hủy thay đổi** goes back to the saved values. After a save the line under the fields says when the thresholds last changed and who changed them: "Bạn" for yourself, otherwise the role (chủ, quản lý), never a name.
+- **Khôi phục mặc định** fills every field with its default; press Lưu to apply it. When a save leaves every threshold at its default, the business has no thresholds of its own any more, and the line reads "Đang dùng giá trị mặc định."
+- Only an owner who sees every store can change the thresholds, because they also decide which of a manager's shifts are flagged. Everyone else sees the values with a note saying why they cannot be changed, and no save bar.
+- In the demo a change lasts until the page is reloaded.
+
+#### Thiết bị này (This device)
+
+| | |
+|---|---|
+| ![The Thiết bị này box on a phone, with the two CSV formats](user-guide/settings-thiet-bi-phone.png) | The box under the thresholds holds a choice that belongs to the phone or computer in your hand, and any member may make it: the format of the files that "Tải CSV" writes. |
+
+- **Dấu phẩy (mặc định)**: commas between values and a decimal point. Google Sheets, Numbers, LibreOffice and an Excel set to English read it.
+- **Dấu chấm phẩy cho Excel cài đặt vùng Việt Nam**: semicolons and a decimal comma (`12,5`). Choose it when Excel puts a whole row in one column.
+- The choice takes effect at once, for every table of the reports and the thematic reports, and stays on this device after a reload. Both formats keep the byte-order mark, so Vietnamese letters show correctly.
+
 ## Data freshness and the verified badge
 
 - **The freshness badge** in the top bar shows when the last sync for your business succeeded: "cập nhật lúc {time}" today, "cập nhật lúc {time} ngày {date}" on an earlier day, "chưa đồng bộ" if no sync has succeeded yet, and "chưa rõ lúc cập nhật" if the app could not read it. It checks again every 5 minutes. A sale rung up after that time appears after the next sync.
@@ -379,8 +417,8 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 ![The Kế hoạch page saying Sắp có and naming the roadmap phase that brings it](user-guide/coming-soon.png)
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
-- **More thematic reports** ("Chủ đề", phase 10): the drawer and fee cards of Thanh toán & tiền mặt next, then Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu. Doanh thu, Giờ & ngày, Thực đơn and Thanh toán are already there (see above).
-- **Settings and manual data** ("Cài đặt", phase 10, designed at roadmap level): the store profile, opening hours, seat counts, item costs, monthly targets, payment fees, item roles and categories, holidays and legal texts. Two of today's cards wait for them: the attach rates need item roles and target progress needs a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until they exist the links open "Sắp có".
+- **More thematic reports** ("Chủ đề", phase 10): Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu. Doanh thu, Giờ & ngày, Thực đơn and Thanh toán are already there (see above).
+- **More settings and manual data** ("Cài đặt", phase 10): Ngưỡng báo cáo is open (see above). Item roles and categories (Phân loại) come next, then the store profile, opening hours, seat counts, item costs, monthly targets, payment fees, holidays and legal texts. Two of today's cards wait for them: the attach rates need item roles and target progress needs a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
 - **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).
 
@@ -409,3 +447,6 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 | Lưu, Hủy thay đổi | Save, Discard changes | the bar at the foot of a settings page: save the pending changes, or go back to the saved values |
 | Khôi phục mặc định | Restore defaults | put a settings page back to the platform's default values; nothing changes until you press Lưu |
 | Nghỉ cả ngày | Closed all day | a weekday without opening hours |
+| Ngưỡng báo cáo | Report thresholds | the settings page for what the reports flag |
+| Mặc định | Default | the platform's value, used until the business saves its own |
+| Thiết bị này | This device | a choice kept on this phone or computer only |

@@ -6,6 +6,7 @@ export const lazySources = [
 	/src\/pages\/themes\/[a-z-]+\/[a-z-]+-page\.tsx$/,
 	/src\/data\/supabase-analytics-source\.ts$/,
 	/src\/pages\/settings\/settings-route\.tsx$/,
+	/src\/pages\/settings\/[a-z-]+-page\.tsx$/,
 	/src\/settings\/supabase-settings-source\.ts$/,
 	/src\/settings\/demo-settings-source\.ts$/,
 ];

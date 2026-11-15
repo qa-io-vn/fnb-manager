@@ -70,8 +70,8 @@ function settingsOf(input: ThemeCardInput): SettingsRow | null {
 function thresholdsPart(settings: SettingsRow | null): SentencePart | null {
 	if (settings === null) return null;
 	return part(paymentsKeys.drawer.thresholds, {
-		abs: numberValue("money", settings.cash_abs_threshold),
-		rel: numberValue("percent", settings.cash_rel_threshold),
+		abs: numberValue("moneyExact", settings.cash_abs_threshold),
+		rel: numberValue("percentExact", settings.cash_rel_threshold),
 		z: numberValue("decimal", settings.z_threshold),
 	});
 }

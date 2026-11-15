@@ -55,8 +55,8 @@ export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
 		slug: "bao-cao",
 		titleKey: "settings.page.thresholds",
 		phase: "10a",
-		status: "planned",
-		load: null,
+		status: "built",
+		load: () => import("../pages/settings/bao-cao-page"),
 	},
 	{
 		id: "legal",

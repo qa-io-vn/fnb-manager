@@ -144,7 +144,7 @@ describe("the Thực đơn matrix card", () => {
 			values: { days: { kind: "count", value: 21 } },
 		});
 		expect(card.subtitle?.values.factor).toEqual({
-			kind: "decimal",
+			kind: "decimalExact",
 			value: 0.75,
 		});
 	});

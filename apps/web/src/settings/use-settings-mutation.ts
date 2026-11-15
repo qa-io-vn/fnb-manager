@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { invalidateAnalytics } from "../data/invalidate-analytics";
+import type { MessageKey } from "../i18n";
 import { useReadyTenantScope } from "../state/tenant-scope";
 import { invalidateSettings } from "./queries";
 import { useSettingsSourceState } from "./settings-source-context";
@@ -20,13 +21,14 @@ export function writeCodeOf(error: unknown): SettingsWriteCode {
 	return error instanceof SettingsWriteError ? error.code : "network";
 }
 
-export const WRITE_ERROR_KEYS: Readonly<Record<SettingsWriteCode, string>> = {
-	forbidden: "settings.error.forbidden",
-	duplicate: "settings.error.duplicate",
-	invalid: "settings.error.invalid",
-	frozen: "settings.error.frozen",
-	network: "settings.error.network",
-};
+export const WRITE_ERROR_KEYS: Readonly<Record<SettingsWriteCode, MessageKey>> =
+	{
+		forbidden: "settings.error.forbidden",
+		duplicate: "settings.error.duplicate",
+		invalid: "settings.error.invalid",
+		frozen: "settings.error.frozen",
+		network: "settings.error.network",
+	};
 
 export function useSettingsMutation<Args>(write: SettingsWrite<Args>) {
 	const queryClient = useQueryClient();

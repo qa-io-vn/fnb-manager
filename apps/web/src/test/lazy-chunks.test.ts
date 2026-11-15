@@ -19,6 +19,7 @@ const manifestKeys = [
 	"src/pages/themes/gio-ngay/gio-ngay-page.tsx",
 	"src/data/supabase-analytics-source.ts",
 	"src/pages/settings/settings-route.tsx",
+	"src/pages/settings/bao-cao-page.tsx",
 	"src/settings/supabase-settings-source.ts",
 	"src/settings/demo-settings-source.ts",
 ];
@@ -53,5 +54,9 @@ describe("the size check's lazy chunks", () => {
 		expect(isLazySource("src/pages/settings/settings-route.tsx")).toBe(true);
 		expect(isLazySource("src/settings/supabase-settings-source.ts")).toBe(true);
 		expect(isLazySource("src/settings/access.ts")).toBe(false);
+		expect(isLazySource("src/pages/settings/bao-cao-page.tsx")).toBe(true);
+		expect(isLazySource("src/settings/thresholds/thresholds-form.tsx")).toBe(
+			false,
+		);
 	});
 });

@@ -66,8 +66,8 @@ describe("the Thanh toán drawer card", () => {
 		expect(label?.key).toBe(paymentsKeys.drawer.shiftOn);
 		expect(label?.values.date).toEqual({ kind: "date", value: "2026-10-20" });
 		expect(card.narrative[1]?.values).toEqual({
-			abs: { kind: "money", value: 80_000 },
-			rel: { kind: "percent", value: 0.008 },
+			abs: { kind: "moneyExact", value: 80_000 },
+			rel: { kind: "percentExact", value: 0.008 },
 			z: { kind: "decimal", value: 2 },
 		});
 		expect(
