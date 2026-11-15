@@ -12,6 +12,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import type { StoreRow } from "../data/row-source";
 import { parseStoreParam, STORE_PARAM } from "../reports/report-route";
 import { useAsOf } from "../reports/use-as-of";
+import { useCatchUpStatus } from "../settings/queries";
 import { usePreferences } from "../state/preferences";
 import { selectedStoresOf, useReadyTenantScope } from "../state/tenant-scope";
 import { canonicalParams, parseThemeSearch, themeHref } from "./theme-route";
@@ -137,6 +138,10 @@ export function useThemeContext(definition: ThemeDefinition): ThemeLocation {
 		update({ themePreset: range.preset });
 	}, [range.preset, preferredPreset, update]);
 
+	const catchUpStatus = useCatchUpStatus().data;
+	const pendingFrom = catchUpStatus?.pendingFrom ?? null;
+	const pendingTo = catchUpStatus?.pendingTo ?? null;
+
 	const context = useMemo<ThemeContext>(
 		() => ({
 			tenantId: scope.tenant.id,
@@ -145,7 +150,10 @@ export function useThemeContext(definition: ThemeDefinition): ThemeLocation {
 			range,
 			sample: scope.source.kind === "demo",
 			params,
-			catchUpPending: null,
+			catchUpPending:
+				pendingFrom === null || pendingTo === null
+					? null
+					: { from: pendingFrom, to: pendingTo },
 		}),
 		[
 			scope.tenant.id,
@@ -154,6 +162,8 @@ export function useThemeContext(definition: ThemeDefinition): ThemeLocation {
 			selected,
 			range,
 			params,
+			pendingFrom,
+			pendingTo,
 		],
 	);
 

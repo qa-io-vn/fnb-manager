@@ -936,7 +936,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | FR-DQ-07 | Data-quality flags in the run summary | Must | verified locally | `sync:unit/mapping`, `sync:unit/window-robustness`, `sync:unit/business-date` | covered |
 | FR-DQ-08 | Hôm nay equals the POS | Must | verified locally | `e2e:live/today`, phase 6 verification | covered |
 | FR-DQ-09 | Report numbers equal the POS | Must | verified locally | `reports:live/live-check` (opt-in) | covered |
-| FR-DQ-10 | Lagging aggregates marked | Should | verified locally | `pgtap:22_report_functions`, `reports:unit/coverage-and-comparison`, `pgtap:35_mappings_and_catch_up` | covered |
+| FR-DQ-10 | Lagging aggregates marked | Should | verified locally | `pgtap:22_report_functions`, `reports:unit/coverage-and-comparison`, `pgtap:35_mappings_and_catch_up`, `web:settings/catch-up/catch-up-banner`, `web:settings/catch-up/use-analytics-catch-up`, `web:themes/theme-wiring` (the pending range reaches the cards and the theme page shows the banner), `web:settings/queries` (the status is read again while days are pending) | covered |
 | FR-DQ-11 | Unmeasured is null | Must | verified locally | `pgtap:18_metric_value` | covered |
 | FR-DQ-12 | Data-quality page | Should | designed | planned | planned |
 | FR-DQ-13 | Parallel verification before v1.0 | Must | planned | planned | planned |
@@ -959,7 +959,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | FR-ANA-12 | Report functions with limits | Must | verified locally | `pgtap:13_analytics_schema`, `pgtap:22_report_functions`, `pgtap:23_report_access`, `reports:unit/rpc-source`, `pgtap:33_theme_functions`, `pgtap:34_theme_access` | covered |
 | FR-ANA-13 | Parity of the browser port | Must | verified locally | `demo-analytics:parity/*` (7 files), CI `database` job, `demo-analytics:parity/overrides`, `demo-analytics:parity/menu`, `demo-analytics:parity/basket-modifiers` | covered |
 | FR-ANA-14 | Benchmark context kept apart | Should | verified locally | `metrics:consistency/document` | covered |
-| FR-ANA-15 | Refresh on demand | Should | verified locally | `pgtap:17_analytics_access`, `pgtap:35_mappings_and_catch_up` | covered |
+| FR-ANA-15 | Refresh on demand | Should | verified locally | `pgtap:17_analytics_access`, `pgtap:35_mappings_and_catch_up`, `web:settings/supabase-settings-source` (the newest 92 pending days per call), `web:settings/catch-up/use-analytics-catch-up`, `web:settings/queries` | covered |
 | FR-ANA-16 | Reference-window figures | Must | verified locally | phase 8 verification (private sheet) | owner check |
 | FR-ANA-17 | Customer metrics | Should | planned | planned | planned |
 
@@ -1013,7 +1013,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | FR-SET-04 | Targets | Must | designed | `pgtap:05_write_policies` (table); screen planned | partial |
 | FR-SET-05 | Payment fee rates | Should | designed | `pgtap:10_payment_fee_rates` (table); screen planned | partial |
 | FR-SET-06 | Payment-kind mapping | Should | designed | `core:unit/payment-kind` (override rule); screen planned | partial |
-| FR-SET-07 | Item-type roles and categories | Must | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`; screen planned, `demo-analytics:parity/overrides`, `demo-analytics:parity/menu` | partial |
+| FR-SET-07 | Item-type roles and categories | Must | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`; screen planned, `demo-analytics:parity/overrides`, `demo-analytics:parity/menu`, `web:settings/catch-up/use-analytics-catch-up`, `web:settings/use-settings-mutation` (a mapping save starts the catch-up) | partial |
 | FR-SET-08 | Tenant holidays | Should | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:22_report_functions`; screen planned | partial |
 | FR-SET-09 | Default language | Could | designed | planned | planned |
 | FR-SET-10 | Legal texts | Must | designed | `pgtap:12_consent_and_legal` (tables); screen planned | partial |
@@ -1320,7 +1320,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | NFR-UX-03 | Installable | Should | verified locally | `e2e:demo/demo`, `e2e:pages/install`, `web:shell/install-assets` | covered |
 | NFR-UX-04 | New version prompt | Should | built | no automated test | partial |
 | NFR-UX-05 | Demo always labelled | Must | verified locally | `e2e:demo/demo` | covered |
-| NFR-UX-06 | Plain states instead of zeros | Must | verified locally | `e2e:demo/report-day`, `e2e:demo/report-month` | covered |
+| NFR-UX-06 | Plain states instead of zeros | Must | verified locally | `e2e:demo/report-day`, `e2e:demo/report-month`, `web:settings/catch-up/catch-up-banner`, `web:pages/settings/settings-layout` | covered |
 | NFR-UX-07 | Mini App design rules | Must | planned | planned | planned |
 
 #### NFR-MNT — Maintainability

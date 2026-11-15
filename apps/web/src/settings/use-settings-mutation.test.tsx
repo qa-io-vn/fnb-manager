@@ -2,18 +2,27 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SettingsWriteError } from "./source";
-import {
-	useSettingsMutation,
-	WRITE_ERROR_KEYS,
-	writeCodeOf,
-} from "./use-settings-mutation";
+import { SettingsWriteError, writeCodeOf } from "./source";
+import { useSettingsMutation, WRITE_ERROR_KEYS } from "./use-settings-mutation";
 
 const TENANT = "33333333-3333-4333-8333-333333333333";
 const OTHER = "99999999-9999-4999-8999-999999999999";
 
 vi.mock("../state/tenant-scope", () => ({
 	useReadyTenantScope: () => ({ tenant: { id: TENANT } }),
+}));
+
+const catchUp = vi.hoisted(() => ({ start: vi.fn() }));
+
+vi.mock("./catch-up/catch-up-context", () => ({
+	useCatchUpRunner: () => ({
+		running: false,
+		problem: null,
+		completed: false,
+		start: catchUp.start,
+		abort: () => undefined,
+		dismiss: () => undefined,
+	}),
 }));
 
 vi.mock("./settings-source-context", () => ({
@@ -45,6 +54,43 @@ function wrapper({ children }: { children: ReactNode }) {
 describe("useSettingsMutation", () => {
 	beforeEach(() => {
 		seed();
+		catchUp.start.mockClear();
+	});
+
+	it("starts the catch-up after a successful save that touches a mapping, and after no other save", async () => {
+		const saved = vi.fn(async () => undefined);
+		const mapping = renderHook(
+			() => useSettingsMutation(saved, { touchesMappings: true }),
+			{ wrapper },
+		);
+		await act(async () => {
+			await mapping.result.current.save({ value: 1 });
+		});
+		expect(catchUp.start).toHaveBeenCalledExactlyOnceWith({ kind: "demo" });
+
+		catchUp.start.mockClear();
+		const thresholds = renderHook(() => useSettingsMutation(saved), {
+			wrapper,
+		});
+		await act(async () => {
+			await thresholds.result.current.save({ value: 1 });
+		});
+		expect(catchUp.start).not.toHaveBeenCalled();
+
+		const refused = renderHook(
+			() =>
+				useSettingsMutation(
+					async () => {
+						throw new SettingsWriteError("forbidden");
+					},
+					{ touchesMappings: true },
+				),
+			{ wrapper },
+		);
+		await act(async () => {
+			await refused.result.current.save({ value: 1 });
+		});
+		expect(catchUp.start).not.toHaveBeenCalled();
 	});
 
 	it("invalidates the tenant's settings and analytics only after a successful write", async () => {

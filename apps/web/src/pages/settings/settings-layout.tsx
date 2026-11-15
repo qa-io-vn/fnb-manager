@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { useAppMode } from "../../app-mode/app-mode";
 import { useT } from "../../i18n";
 import { translateKey } from "../../reports/typed-values";
+import { TenantCatchUpBanner } from "../../settings/catch-up/catch-up-banner";
 import {
 	DEFAULT_SETTINGS_SLUG,
 	SETTINGS_PAGES,
@@ -98,6 +99,7 @@ export function SettingsLayout() {
 					{t("settings.demoNote")}
 				</p>
 			) : null}
+			<TenantCatchUpBanner />
 			<div className="space-y-4 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-6 lg:space-y-0">
 				<SettingsNav current={page} />
 				<section

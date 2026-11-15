@@ -68,6 +68,7 @@ test("Ngưỡng báo cáo shows every threshold with its default and refuses a v
 	await expect(page.getByTestId("settings-save-bar-pending")).toHaveText(
 		"Chưa có thay đổi.",
 	);
+	await expect(page.getByTestId("catch-up-banner")).toHaveCount(0);
 	await field(page, WINDOW_DAYS).fill("5");
 	await field(page, WINDOW_DAYS).blur();
 	await expect(

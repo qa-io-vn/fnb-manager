@@ -2,7 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { useReadyTenantScope } from "../state/tenant-scope";
 import { useSettingsSourceState } from "./settings-source-context";
-import type { SettingsSource } from "./source";
+import type { CatchUpStatus, SettingsSource } from "./source";
 
 export const SETTINGS_QUERY_ROOT = "settings";
 
@@ -39,6 +39,8 @@ export async function invalidateSettings(
 function useSettingsRead<T>(
 	read: SettingsRead,
 	load: (source: SettingsSource, tenantId: string) => Promise<T>,
+	pollEvery: (data: T | undefined, failed: boolean) => number | false = () =>
+		false,
 ) {
 	const state = useSettingsSourceState();
 	const { tenant } = useReadyTenantScope();
@@ -50,6 +52,8 @@ function useSettingsRead<T>(
 			return load(source, tenant.id);
 		},
 		enabled: source !== null,
+		refetchInterval: (query) =>
+			pollEvery(query.state.data, query.state.status === "error"),
 	});
 }
 
@@ -71,8 +75,26 @@ export function useReportSettings() {
 	);
 }
 
+export const CATCH_UP_POLL_MS = 60_000;
+
+export function catchUpPollMs(
+	status: CatchUpStatus | undefined,
+	failed: boolean,
+	now: Date,
+): number | false {
+	if (failed) return CATCH_UP_POLL_MS;
+	const today = now.toISOString().slice(0, 10);
+	return status !== undefined &&
+		status.pendingFrom !== null &&
+		status.pendingFrom <= today
+		? CATCH_UP_POLL_MS
+		: false;
+}
+
 export function useCatchUpStatus() {
-	return useSettingsRead("catchUp", (source, tenantId) =>
-		source.catchUpStatus(tenantId),
+	return useSettingsRead(
+		"catchUp",
+		(source, tenantId) => source.catchUpStatus(tenantId),
+		(status, failed) => catchUpPollMs(status, failed, new Date()),
 	);
 }

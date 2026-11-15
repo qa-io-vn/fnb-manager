@@ -2,7 +2,7 @@ import {
 	addDays,
 	DEFAULT_REPORT_SETTINGS,
 	isDefaultReportSettings,
-	minDate,
+	maxDate,
 	REPORT_SETTINGS_COLUMNS,
 	type ReportSettings,
 	type ReportSettingsColumn,
@@ -70,6 +70,7 @@ const SETTINGS_SELECT =
 	"menu_window_days,menu_popularity_factor,menu_low_sample_items,cash_abs_threshold,cash_rel_threshold,peak_hours,dead_hour_ratio,busy_hour_ratio,promo_pre_weeks,updated_at,updated_by";
 
 const catchUpRow = z.object({
+	inputs_changed_at: z.string().nullable(),
 	pending_from: z.string().nullable(),
 	pending_to: z.string().nullable(),
 	pending_days: numeric,
@@ -174,6 +175,7 @@ function catchUpOf(
 	const row = rows[0];
 	if (row === undefined) return NO_CATCH_UP;
 	return {
+		inputsChangedAt: row.inputs_changed_at,
 		pendingFrom: row.pending_from,
 		pendingTo: row.pending_to,
 		pendingDays: row.pending_days,
@@ -185,10 +187,10 @@ export function refreshWindow(
 	status: CatchUpStatus,
 ): { from: string; to: string } | null {
 	if (status.pendingFrom === null || status.pendingTo === null) return null;
-	const end = addDays(status.pendingFrom, REFRESH_CHUNK_DAYS - 1);
+	const newestStart = addDays(status.pendingTo, 1 - REFRESH_CHUNK_DAYS);
 	return {
-		from: status.pendingFrom,
-		to: minDate(end, status.pendingTo),
+		from: maxDate(newestStart, status.pendingFrom),
+		to: status.pendingTo,
 	};
 }
 

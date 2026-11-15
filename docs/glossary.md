@@ -42,6 +42,7 @@ Last updated 2026-11-12
 | Kỳ báo cáo · Kỳ trước · Kỳ sau | Report period · Previous period · Next period | `report.navigator.*` | the period navigator of a report |
 | Giải thích chỉ số | About these numbers | `reportCard.explain` | a card's panel with Công thức (formula), Mức chi tiết (grain) and Quy ước (convention) |
 | Tải CSV | Download CSV | `reportCard.downloadCsv` | UTF-8 with a byte-order mark, so Excel shows the diacritics; comma-separated, or semicolon-separated with a decimal comma on a device set to that format |
+| Cập nhật ngay | Refresh now | `settings.catchUp.start`; banner `settings.catchUp.*` | the action on the catch-up line of a theme or settings page: recalculate the days still pending after a mapping change (owners and managers) |
 | Thiết bị này | This device | `preferences.csvDialect`; `settings.thresholds.device.*` | a choice kept in the browser of one phone or computer: comma (the default) or semicolon CSV downloads |
 | Sắp có | Coming soon | `placeholder.coming` | a screen of a later phase |
 | Có phiên bản mới — tải lại | A new version is available — reload | `shell.newVersion` | |

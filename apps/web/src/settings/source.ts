@@ -66,6 +66,7 @@ export interface ReportSettingsState {
 }
 
 export interface CatchUpStatus {
+	readonly inputsChangedAt: string | null;
 	readonly pendingFrom: IsoDate | null;
 	readonly pendingTo: IsoDate | null;
 	readonly pendingDays: number;
@@ -93,6 +94,10 @@ export type SettingsWriteCode =
 	| "frozen"
 	| "network";
 
+export function writeCodeOf(error: unknown): SettingsWriteCode {
+	return error instanceof SettingsWriteError ? error.code : "network";
+}
+
 export class SettingsWriteError extends Error {
 	readonly code: SettingsWriteCode;
 	readonly constraint: string | null;
@@ -106,6 +111,7 @@ export class SettingsWriteError extends Error {
 }
 
 export const NO_CATCH_UP: CatchUpStatus = {
+	inputsChangedAt: null,
 	pendingFrom: null,
 	pendingTo: null,
 	pendingDays: 0,

@@ -1,5 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { useT } from "../i18n";
+import { CatchUpProvider } from "../settings/catch-up/catch-up-context";
+import { SettingsSourceProvider } from "../settings/settings-source-context";
 import { TenantScopeProvider } from "../state/tenant-scope";
 import { BottomNavigation, SideRail } from "./navigation";
 import { ScopeGate } from "./scope-status";
@@ -25,7 +27,11 @@ export function AppShell() {
 					className="mx-auto max-w-6xl px-4 pt-4 pb-24 outline-none lg:pb-10 print:max-w-none print:px-0 print:pb-0"
 				>
 					<ScopeGate>
-						<Outlet />
+						<SettingsSourceProvider>
+							<CatchUpProvider>
+								<Outlet />
+							</CatchUpProvider>
+						</SettingsSourceProvider>
 					</ScopeGate>
 				</main>
 				<BottomNavigation />

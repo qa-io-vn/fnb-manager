@@ -33,6 +33,7 @@ test("Thanh toán opens on the last four weeks with both cards settled", async (
 		themeCardIds.payments.length,
 	);
 	await expectEveryThemeCardSettled(page, "payments");
+	await expect(page.getByTestId("catch-up-banner")).toHaveCount(0);
 	const mix = themeCard(page, "payments", "payment_mix");
 	await expect(mix.getByTestId("comparison-chip")).toHaveCount(2);
 	await expect(mix.getByTestId("comparison-chip").first()).toContainText(

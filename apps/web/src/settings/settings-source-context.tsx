@@ -6,6 +6,7 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import { useAppMode } from "../app-mode/app-mode";
@@ -20,11 +21,13 @@ export type SettingsSourceState =
 interface SettingsSourceHandle {
 	readonly state: SettingsSourceState;
 	readonly request: () => void;
+	readonly retry: () => void;
 }
 
 const SettingsSourceContext = createContext<SettingsSourceHandle>({
 	state: { status: "loading" },
 	request: () => undefined,
+	retry: () => undefined,
 });
 
 export async function loadDemoSettingsSource(): Promise<SettingsSource> {
@@ -44,38 +47,43 @@ export async function loadSupabaseSettingsSource(
 
 function useLoadedSettingsSource(
 	load: (() => Promise<SettingsSource>) | null,
-): SettingsSourceState {
+): readonly [SettingsSourceState, () => void] {
 	const [state, setState] = useState<SettingsSourceState>({
 		status: "loading",
 	});
-	useEffect(() => {
+	const latestRun = useRef(0);
+	const start = useCallback(() => {
 		if (!load) return;
-		let active = true;
+		latestRun.current += 1;
+		const run = latestRun.current;
 		setState({ status: "loading" });
 		load().then(
-			(source) => active && setState({ status: "ready", source }),
-			() => active && setState({ status: "failed" }),
+			(source) =>
+				latestRun.current === run && setState({ status: "ready", source }),
+			() => latestRun.current === run && setState({ status: "failed" }),
 		);
-		return () => {
-			active = false;
-		};
 	}, [load]);
-	return state;
+	useEffect(() => {
+		start();
+		return () => {
+			latestRun.current += 1;
+		};
+	}, [start]);
+	return [state, start];
 }
 
 export function SettingsSourceProvider({ children }: { children: ReactNode }) {
 	const { mode } = useAppMode();
 	const { client, clientFailed } = useSession();
 	const [requested, setRequested] = useState(false);
-	const request = useCallback(() => setRequested(true), []);
-	const demoState = useLoadedSettingsSource(
+	const [demoState, reloadDemo] = useLoadedSettingsSource(
 		requested && mode === "demo" ? loadDemoSettingsSource : null,
 	);
 	const loadLive = useMemo(
 		() => (client ? () => loadSupabaseSettingsSource(client) : null),
 		[client],
 	);
-	const liveState = useLoadedSettingsSource(
+	const [liveState, reloadLive] = useLoadedSettingsSource(
 		requested && mode !== "demo" ? loadLive : null,
 	);
 	const failed = mode !== "demo" && clientFailed;
@@ -84,7 +92,22 @@ export function SettingsSourceProvider({ children }: { children: ReactNode }) {
 			mode === "demo" ? demoState : failed ? { status: "failed" } : liveState,
 		[mode, demoState, failed, liveState],
 	);
-	const handle = useMemo(() => ({ state, request }), [state, request]);
+	const retry = mode === "demo" ? reloadDemo : reloadLive;
+	const failedBefore = useRef(false);
+	useEffect(() => {
+		failedBefore.current = state.status === "failed";
+	}, [state.status]);
+	const request = useCallback(() => {
+		setRequested(true);
+		if (failedBefore.current) {
+			failedBefore.current = false;
+			retry();
+		}
+	}, [retry]);
+	const handle = useMemo(
+		() => ({ state, request, retry }),
+		[state, request, retry],
+	);
 	return (
 		<SettingsSourceContext.Provider value={handle}>
 			{children}
@@ -98,4 +121,8 @@ export function useSettingsSourceState(): SettingsSourceState {
 		request();
 	}, [request]);
 	return state;
+}
+
+export function useRetrySettingsSource(): () => void {
+	return useContext(SettingsSourceContext).retry;
 }

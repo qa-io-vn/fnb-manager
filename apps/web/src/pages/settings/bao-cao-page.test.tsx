@@ -34,6 +34,7 @@ const current = vi.hoisted(() => ({
 		| { status: "failed" }
 		| { status: "ready"; source: unknown },
 	tenant: null as unknown,
+	retry: () => undefined,
 }));
 
 vi.mock("../../state/tenant-scope", () => ({
@@ -42,6 +43,7 @@ vi.mock("../../state/tenant-scope", () => ({
 
 vi.mock("../../settings/settings-source-context", () => ({
 	useSettingsSourceState: () => current.state,
+	useRetrySettingsSource: () => current.retry,
 }));
 
 function sourceFor(
@@ -320,11 +322,16 @@ describe("the Ngưỡng báo cáo page", () => {
 		).toBeEmptyDOMElement();
 	});
 
-	it("says when the thresholds cannot be read, and still offers the device choice", () => {
+	it("says when the settings could not be loaded, offers to try again, and still offers the device choice", async () => {
+		const user = userEvent.setup();
+		const retry = vi.fn();
+		current.retry = retry;
 		renderPage("failed");
 		expect(screen.getByTestId("thresholds-load-failed")).toHaveTextContent(
 			"Không tải được dữ liệu",
 		);
+		await user.click(screen.getByRole("button", { name: "Thử lại" }));
+		expect(retry).toHaveBeenCalledOnce();
 		expect(screen.getByTestId("device-csv-choice")).toBeInTheDocument();
 	});
 });

@@ -5,7 +5,10 @@ import { Button } from "../../components/ui/button";
 import { useT } from "../../i18n";
 import { settingsQueryKey, useReportSettings } from "../../settings/queries";
 import { ReadOnlyNotice } from "../../settings/read-only-notice";
-import { useSettingsSourceState } from "../../settings/settings-source-context";
+import {
+	useRetrySettingsSource,
+	useSettingsSourceState,
+} from "../../settings/settings-source-context";
 import type {
 	ReportSettingsState,
 	SettingsSource,
@@ -27,6 +30,7 @@ function ThresholdsSection() {
 	const formatters = useFormatters(tenant);
 	const access = useSettingsAccess("thresholds");
 	const sourceState = useSettingsSourceState();
+	const retrySource = useRetrySettingsSource();
 	const settings = useReportSettings();
 	const queryClient = useQueryClient();
 	const writeThresholds = useCallback(
@@ -58,15 +62,17 @@ function ThresholdsSection() {
 				data-testid="thresholds-load-failed"
 			>
 				<p>{t("app.error")}</p>
-				{sourceState.status === "failed" ? null : (
-					<Button
-						tone="secondary"
-						size="compact"
-						onClick={() => void settings.refetch()}
-					>
-						{t("app.retry")}
-					</Button>
-				)}
+				<Button
+					tone="secondary"
+					size="compact"
+					onClick={
+						sourceState.status === "failed"
+							? retrySource
+							: () => void settings.refetch()
+					}
+				>
+					{t("app.retry")}
+				</Button>
 			</div>
 		);
 	}

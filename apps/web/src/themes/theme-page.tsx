@@ -3,6 +3,7 @@ import { Button } from "../components/ui/button";
 import { useT } from "../i18n";
 import { ReportCardView } from "../reports/report-card-view";
 import { translateKey } from "../reports/typed-values";
+import { CatchUpBanner } from "../settings/catch-up/catch-up-banner";
 import { PageHeading } from "../shell/page-heading";
 import { StatusMessage } from "../shell/scope-status";
 import { storeSelectionLabel } from "../shell/store-select";
@@ -126,6 +127,7 @@ export function ThemePage({ definition }: { definition: ThemeDefinition }) {
 			{location.invalid ? (
 				<Notice testId="range-invalid">{t(themeKeys.page.invalidRange)}</Notice>
 			) : null}
+			<CatchUpBanner formatters={formatters} timeZone={scope.tenant.timeZone} />
 			{context.stores.length === 0 ? (
 				<StatusMessage>
 					<p>{t(themeKeys.page.noStores)}</p>

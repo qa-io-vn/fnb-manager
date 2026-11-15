@@ -39,6 +39,19 @@ function storedRow(overrides: Record<string, unknown> = {}) {
 	};
 }
 
+function statusRow(from: string | null, to: string | null, days: number) {
+	return {
+		tenant_id: TENANT,
+		inputs_changed_at: CHANGED_AT,
+		history_from: "2026-01-01",
+		history_to: "2026-11-15",
+		pending_from: from,
+		pending_to: to,
+		pending_days: days,
+		can_refresh: true,
+	};
+}
+
 function fakeClient(answer: (recorded: Recorded) => Result, signedIn = true) {
 	const log: Recorded[] = [];
 	const builder = (table: string) => {
@@ -404,31 +417,122 @@ describe("the Supabase settings source", () => {
 		expect(error.constraint).toBe(constraint);
 	});
 
-	it("refreshes the pending range in chunks of at most 92 days", () => {
-		expect(
-			refreshWindow({
-				pendingFrom: "2026-01-01",
-				pendingTo: "2026-11-14",
-				pendingDays: 318,
-				canRefresh: true,
-			}),
-		).toEqual({ from: "2026-01-01", to: "2026-04-02" });
+	it("refreshes the newest pending days first, at most 92 days at a time", () => {
+		const pending = (from: string | null, to: string | null, days: number) => ({
+			inputsChangedAt: null,
+			pendingFrom: from,
+			pendingTo: to,
+			pendingDays: days,
+			canRefresh: true,
+		});
+		expect(refreshWindow(pending("2026-01-01", "2026-11-14", 318))).toEqual({
+			from: "2026-08-15",
+			to: "2026-11-14",
+		});
 		expect(REFRESH_CHUNK_DAYS).toBe(92);
+		expect(refreshWindow(pending("2026-11-01", "2026-11-14", 14))).toEqual({
+			from: "2026-11-01",
+			to: "2026-11-14",
+		});
+		expect(refreshWindow(pending(null, null, 0))).toBeNull();
+	});
+
+	it("reads the catch-up status with when the mappings last changed", async () => {
+		const { client, log } = fakeClient(() => ({
+			data: [statusRow("2026-01-01", "2026-11-16", 320)],
+			error: null,
+		}));
 		expect(
-			refreshWindow({
-				pendingFrom: "2026-11-01",
-				pendingTo: "2026-11-14",
-				pendingDays: 14,
-				canRefresh: true,
-			}),
-		).toEqual({ from: "2026-11-01", to: "2026-11-14" });
+			await createSupabaseSettingsSource(client).catchUpStatus(TENANT),
+		).toEqual({
+			inputsChangedAt: CHANGED_AT,
+			pendingFrom: "2026-01-01",
+			pendingTo: "2026-11-16",
+			pendingDays: 320,
+			canRefresh: true,
+		});
+		expect(log[0]?.table).toBe("rpc:analytics_catch_up_status");
+		expect(log[0]?.calls).toContainEqual(["rpc", [{ p_tenant_id: TENANT }]]);
+	});
+
+	it("reports nothing pending for a member who is not in the tenant", async () => {
+		const { client } = fakeClient(() => ({ data: [], error: null }));
 		expect(
-			refreshWindow({
-				pendingFrom: null,
-				pendingTo: null,
-				pendingDays: 0,
-				canRefresh: true,
-			}),
-		).toBeNull();
+			await createSupabaseSettingsSource(client).catchUpStatus(TENANT),
+		).toEqual({
+			inputsChangedAt: null,
+			pendingFrom: null,
+			pendingTo: null,
+			pendingDays: 0,
+			canRefresh: false,
+		});
+	});
+
+	it("refreshes the newest chunk of the status it has just read, then reads the status again", async () => {
+		const statuses = [
+			statusRow("2026-01-01", "2026-11-16", 320),
+			statusRow("2026-01-01", "2026-08-16", 228),
+		];
+		let reads = 0;
+		const { client, log } = fakeClient((recorded) => {
+			if (recorded.table !== "rpc:analytics_catch_up_status") {
+				return { data: 12, error: null };
+			}
+			const row = statuses[Math.min(reads, statuses.length - 1)];
+			reads += 1;
+			return { data: [row], error: null };
+		});
+		const after =
+			await createSupabaseSettingsSource(client).refreshChunk(TENANT);
+		expect(log.map((entry) => entry.table)).toEqual([
+			"rpc:analytics_catch_up_status",
+			"rpc:refresh_my_analytics",
+			"rpc:analytics_catch_up_status",
+		]);
+		expect(log[1]?.calls).toContainEqual([
+			"rpc",
+			[{ p_from: "2026-08-17", p_to: "2026-11-16", p_tenant: TENANT }],
+		]);
+		expect(after.pendingTo).toBe("2026-08-16");
+		expect(after.pendingDays).toBe(228);
+	});
+
+	it("calls no refresh when nothing is pending or the member may not refresh", async () => {
+		const caughtUp = fakeClient(() => ({
+			data: [statusRow(null, null, 0)],
+			error: null,
+		}));
+		await createSupabaseSettingsSource(caughtUp.client).refreshChunk(TENANT);
+		expect(caughtUp.log.map((entry) => entry.table)).toEqual([
+			"rpc:analytics_catch_up_status",
+		]);
+
+		const viewer = fakeClient(() => ({
+			data: [
+				{ ...statusRow("2026-01-01", "2026-11-16", 320), can_refresh: false },
+			],
+			error: null,
+		}));
+		const status = await createSupabaseSettingsSource(
+			viewer.client,
+		).refreshChunk(TENANT);
+		expect(viewer.log.map((entry) => entry.table)).toEqual([
+			"rpc:analytics_catch_up_status",
+		]);
+		expect(status.canRefresh).toBe(false);
+	});
+
+	it("turns a refused refresh into a settings error", async () => {
+		const { client } = fakeClient((recorded) =>
+			recorded.table === "rpc:analytics_catch_up_status"
+				? { data: [statusRow("2026-01-01", "2026-11-16", 320)], error: null }
+				: {
+						data: null,
+						error: { code: "42501", message: "limited to owners and managers" },
+					},
+		);
+		await expect(
+			createSupabaseSettingsSource(client).refreshChunk(TENANT),
+		).rejects.toEqual(new SettingsWriteError("forbidden"));
 	});
 });

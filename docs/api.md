@@ -196,8 +196,8 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`item_lifecycle`](#publicitem_lifecycle) | reports | invoker, stable | rows per item | web reports | verified locally (phase 9) |
 | [`metric_value`](#publicmetric_value) | metric_value | invoker, stable | `numeric` | SQL: `metric_compare`; `fnb digest --check-ngay` | verified locally (phase 8) |
 | [`metric_compare`](#publicmetric_compare) | metric_value | invoker, stable | rows per metric and period | web reports, digest | verified locally (phase 9) |
-| [`refresh_my_analytics`](#publicrefresh_my_analytics) | settings and writes | definer, volatile | `bigint` | the web settings source (`refreshChunk`, 92 days at a time; the catch-up banner arrives with #88) | verified locally (phase 8) |
-| [`analytics_catch_up_status`](#publicanalytics_catch_up_status) | settings and writes | invoker, stable | 0 or 1 row | the web settings source (`catchUpStatus`; the catch-up banner arrives with #88) | verified locally (phase 10a) |
+| [`refresh_my_analytics`](#publicrefresh_my_analytics) | settings and writes | definer, volatile | `bigint` | the web catch-up runner through the settings source (`refreshChunk`, the newest 92 pending days at a time) | verified locally (phase 8) |
+| [`analytics_catch_up_status`](#publicanalytics_catch_up_status) | settings and writes | invoker, stable | 0 or 1 row | the web catch-up banner and runner through the settings source (`catchUpStatus`), on every theme and settings page | verified locally (phase 10a) |
 | [`report_settings_of`](#publicreport_settings_of) | themes | invoker, stable | rows per store | web themes Giờ & ngày, Thực đơn and Thanh toán | verified locally (phase 10a) |
 | [`range_totals`](#publicrange_totals) | themes | invoker, stable | rows per range and store | web themes Doanh thu and Thanh toán | verified locally (phase 10a) |
 | [`opening_productivity`](#publicopening_productivity) | themes | invoker, stable | rows per store | web theme Giờ & ngày | verified locally (phase 10a) |
@@ -638,7 +638,7 @@ returns bigint
 ```
 
 - **Who may call:** an owner or manager of the tenant, whatever its store scope. Anyone else gets `42501`.
-- **Called by:** the web settings source's `refreshChunk` (`apps/web/src/settings/supabase-settings-source.ts`), one call per 92-day chunk of the pending catch-up; the sync jobs refresh through `app.refresh_analytics` as `postgres`.
+- **Called by:** the web settings source's `refreshChunk` (`apps/web/src/settings/supabase-settings-source.ts`), one call per chunk of the pending catch-up, newest days first (`[max(pending_from, pending_to − 91), pending_to]`), driven by the catch-up runner (`apps/web/src/settings/catch-up/`); the sync jobs refresh through `app.refresh_analytics` as `postgres`.
 - **Status:** verified locally (phase 8; pgTAP `17_analytics_access.sql`).
 - **Notes:** rebuilds the aggregate tables of the tenant for at most 92 days and returns the number of rows written. With `p_tenant` null it refreshes every tenant where the caller is an owner or manager, in tenant id order. Refreshes of one tenant queue behind each other.
 
@@ -654,7 +654,7 @@ returns TABLE(
 ```
 
 - **Who may call:** any data member of the tenant; anyone else, the publisher included, gets no row.
-- **Called by:** the web settings source's `catchUpStatus` (`apps/web/src/settings/supabase-settings-source.ts`); the Settings banner that runs the catch-up arrives with #88.
+- **Called by:** the web settings source's `catchUpStatus` (`apps/web/src/settings/supabase-settings-source.ts`), for the catch-up banner and runner on every theme and settings page: when the page mounts, after each settings save and once a minute while a day up to today is pending.
 - **Status:** verified locally (phase 10a; pgTAP `34_theme_access.sql`, `35_mappings_and_catch_up.sql`).
 - **Notes:** the days whose refresh-time aggregates may still use mappings or fee rates from before the last change. Every write to `item_type_roles`, `item_category_overrides` or `payment_fee_rates` moves `tenants.analytics_inputs_version` and marks the whole history pending; `pending_from` starts at the tenant's first aggregate date. `pending_days` is 0 and both ends are null when nothing is pending, and also for a tenant without any aggregate yet, whose first refresh empties the range. Every refresh shrinks the range by the days it covers (`app.shrink_analytics_pending`, [`schema.md`](schema.md), "Refresh"). `can_refresh` follows the rule of `refresh_my_analytics`. It reads no refresh history.
 

@@ -3,12 +3,14 @@ import { useCallback } from "react";
 import { invalidateAnalytics } from "../data/invalidate-analytics";
 import type { MessageKey } from "../i18n";
 import { useReadyTenantScope } from "../state/tenant-scope";
+import { useCatchUpRunner } from "./catch-up/catch-up-context";
 import { invalidateSettings } from "./queries";
 import { useSettingsSourceState } from "./settings-source-context";
 import {
 	type SettingsSource,
 	type SettingsWriteCode,
 	SettingsWriteError,
+	writeCodeOf,
 } from "./source";
 
 export type SettingsWrite<Args> = (
@@ -16,10 +18,6 @@ export type SettingsWrite<Args> = (
 	tenantId: string,
 	args: Args,
 ) => Promise<void>;
-
-export function writeCodeOf(error: unknown): SettingsWriteCode {
-	return error instanceof SettingsWriteError ? error.code : "network";
-}
 
 export const WRITE_ERROR_KEYS: Readonly<Record<SettingsWriteCode, MessageKey>> =
 	{
@@ -30,10 +28,18 @@ export const WRITE_ERROR_KEYS: Readonly<Record<SettingsWriteCode, MessageKey>> =
 		network: "settings.error.network",
 	};
 
-export function useSettingsMutation<Args>(write: SettingsWrite<Args>) {
+export interface SettingsMutationOptions {
+	readonly touchesMappings?: boolean;
+}
+
+export function useSettingsMutation<Args>(
+	write: SettingsWrite<Args>,
+	{ touchesMappings = false }: SettingsMutationOptions = {},
+) {
 	const queryClient = useQueryClient();
 	const state = useSettingsSourceState();
 	const { tenant } = useReadyTenantScope();
+	const { start: startCatchUp } = useCatchUpRunner();
 	const mutation = useMutation<void, unknown, Args>({
 		mutationFn: async (args) => {
 			if (state.status !== "ready") throw new SettingsWriteError("network");
@@ -44,6 +50,9 @@ export function useSettingsMutation<Args>(write: SettingsWrite<Args>) {
 				invalidateSettings(queryClient, tenant.id),
 				invalidateAnalytics(queryClient, tenant.id),
 			]);
+			if (touchesMappings && state.status === "ready") {
+				startCatchUp(state.source);
+			}
 		},
 	});
 	const save = useCallback(
