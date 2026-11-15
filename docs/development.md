@@ -186,9 +186,12 @@ These suites skip unless their variables are set. They read the shell environmen
 | Notifications (`packages/notify/test/integration`, `apps/jobs/test/integration/notify-cli.test.ts`) | `NOTIFY_INTEGRATION=1` and `DATABASE_URL`; fixture tenants `notify-it-…` and synthetic `_IT` secrets | `pnpm --filter @fnb/notify test:integration` |
 | Reports live check, read-only | `DATABASE_URL`; `LIVE_TENANT` (default `live-local`), `LIVE_SEED` (default 20261108) | `pnpm --filter @fnb/reports test:live` (the script sets `LIVE=1`) |
 | Digest equals Ngày, live | `DATABASE_URL` | `pnpm --filter @fnb/notify test:live` (the script sets `LIVE=1`) |
+| Live settings specs (`apps/web/e2e/live/settings-*.spec.ts`) | `apps/web/.env.local`; `E2E_DATABASE_URL` optional (the local stack when unset, loopback only) | `pnpm --filter @fnb/web test:e2e -- --project=live` |
 | iPOS live | `POS_ACCOUNTS_JSON` with an application key, from `.env` | `pnpm --filter @fnb/connector-ipos test:live`; prints counts and timings only |
 
 The sync and CLI integration tests create their own tenants (slugs starting `it-`) and delete them at the end.
+
+The live settings specs of phase 10b do the same through `createSettingsFixture()` in `apps/web/e2e/support/settings-fixture.ts`: in `beforeAll` it connects with postgres-js to `E2E_DATABASE_URL` (the local stack's URL when unset, and never a host other than this machine), removes `e2e-settings-` tenants and fixture-shaped `e2e-<role>-<hex>@example.com` logins older than an hour that an interrupted run left (never a login that belongs to another tenant), and builds a tenant `e2e-settings-<hex>` with two stores, items, payment methods, five weeks of generated sales refreshed into the aggregates and five logins (owner, manager, store-limited manager, staff, viewer) with a synthetic password. A spec signs in through `fixture.signIn(page, role)` or calls the API as a role through `fixture.clientAs(role)`, takes its dates from `fixture.sales`, and its `afterAll` calls `fixture.teardown()`, which deletes the tenant and the five logins and may be called twice. The fixture never reads or writes another tenant; `e2e:live/settings-fixture` checks that.
 
 ### Before you hand work over
 

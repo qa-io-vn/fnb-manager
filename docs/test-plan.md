@@ -426,6 +426,7 @@ The pgTAP analytics files, the live end-to-end specs and the local CLI demonstra
 | `it-sync-…` | `jobs:integration/local-stack` | at the end of the test | The CLI on the local stack |
 | `notify-it-…` | `createFixtureTenant` in `@fnb/notify/testing` (two stores on a mock account, 70 days synced, an owner and a store-limited manager, destinations linked on `_IT` secret names) | after the suite; any such tenant older than an hour is deleted when a suite starts | The notification integration and CLI tests |
 | `notify-it-pgtap-…` | pgTAP files 26 to 31 | rolled back | Notification database tests |
+| `e2e-settings-…` | `createSettingsFixture` in `apps/web/e2e/support/settings-fixture.ts` (two stores on a mock account, two item types and six items of which one has no type, a cash and an `other` payment method, 35 days of generated sales per store ending yesterday (`fixture.sales`) refreshed into the aggregates, five logins `e2e-<role>-<hex>@example.com`: owner, manager, store-limited manager, staff, viewer) | by the spec's `afterAll` teardown; a run first removes `e2e-settings-` tenants and fixture-shaped logins older than an hour that belong to no other tenant | The live settings specs of 10b (#159 to #165) and the fixture's self-check `e2e:live/settings-fixture` |
 | `parity-…` | the parity harness | with its database | Postgres parity datasets |
 | other pgTAP fixtures | pgTAP files | rolled back | Two-tenant and role tests |
 
@@ -434,6 +435,7 @@ Guards that keep fixture work away from real tenants:
 1. With `NOTIFY_INTEGRATION=1`, a provider base-URL override or a simulated clock (`--at`), the notification repository refuses any scanning call without a tenant filter, and the CLI sends only for a tenant whose slug starts with `notify-it-`.
 2. The integration helpers run the CLI with `loadEnvFile: false` and a synthetic environment; a helper test fails when that environment holds any key outside the synthetic list.
 3. Fixture destinations name `_IT` secrets (`NOTIFY_ZALO_BOT_TOKEN_IT` and the like) with synthetic values, so a claim filtered by the secrets present can only select fixture messages.
+4. The settings fixture connects only to a loopback database (`E2E_DATABASE_URL`, else the local stack's URL): it checks the hosts postgres-js resolves, so a `?host=` parameter, a `#` in the URL or `PGHOST` cannot reach another machine. Its writes and teardown name its own tenant and logins; its sweep of older leftovers deletes only `e2e-settings-` tenants and logins of the exact fixture shape that belong to no other tenant. Its self-check confirms that every table with a `tenant_id` holds the same rows for every other tenant, and the same logins, after teardown.
 
 ### 4.4 The real tenant, read-only
 
@@ -519,6 +521,7 @@ Run from the repository root. `<db>` stands for the local database URL, `postgre
 | `PARITY_DATABASE=postgres` with `DATABASE_URL` | the Postgres parity mode | Set by `test:parity:postgres`; refuses real tenants |
 | `apps/web/.env.local` filled | the `live` Playwright project | Written from `pnpm db:status` locally, from `supabase status -o env` in CI |
 | `E2E_PORT_OFFSET` | separate ports and folders per Playwright run | |
+| `E2E_DATABASE_URL` | the database the live settings fixture writes its tenant to | The local stack's URL when unset; any host postgres-js would reach other than this machine is refused before connecting |
 
 A gated suite that skips is not a pass. The verdict of a step names each gated suite the step depends on and shows it ran.
 
@@ -873,7 +876,7 @@ Of the 249 requirements that are verified locally, built, in build or waiting fo
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
 | FR-TEN-01 | Tenant on every row | Must | verified locally | `pgtap:02_unique_keys` | covered |
-| FR-TEN-02 | Membership roles and store scope | Must | verified locally | `pgtap:01_schema`, `pgtap:07_write_scope_and_attribution` | covered |
+| FR-TEN-02 | Membership roles and store scope | Must | verified locally | `pgtap:01_schema`, `pgtap:07_write_scope_and_attribution`, `e2e:live/settings-fixture` (five roles of one tenant, a store-limited manager reading one store) | covered |
 | FR-TEN-03 | Two-tenant isolation | Must | verified locally | `pgtap:04_tenant_isolation`, `pgtap:17_analytics_access`, `pgtap:23_report_access`, `pgtap:31_notify_access` | covered |
 | FR-TEN-04 | Store scope on reads and writes | Must | verified locally | `pgtap:07_write_scope_and_attribution`, `pgtap:17_analytics_access`, `pgtap:21_sync_freshness`, `pgtap:38_settings_writes` | covered |
 | FR-TEN-05 | Nothing for callers without a session | Must | verified locally | `pgtap:03_rls_enabled`, `pgtap:06_anon_and_tokens`, `e2e:live/auth` | covered |
@@ -1039,7 +1042,7 @@ Of the 249 requirements that are verified locally, built, in build or waiting fo
 | FR-SET-08 | Tenant holidays | Should | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:22_report_functions`, `pgtap:38_settings_writes`; screen planned | partial |
 | FR-SET-09 | Default language | Could | in build | `pgtap:38_settings_writes`; page planned (#159) | partial |
 | FR-SET-10 | Legal texts | Must | in build | `pgtap:12_consent_and_legal` (tables), `pgtap:38_settings_writes`; page planned (#164) | partial |
-| FR-SET-11 | Settings writes tested from the browser | Must | in build | the read-only interface (#78): `web:settings/access` (every role and scope), `web:settings/read-only-notice`, `web:settings/use-settings-mutation`, `web:settings/supabase-settings-source`, `web:settings/demo-settings-source`; the layout: `e2e:demo/settings-layout`, `e2e:live/today`; the thresholds page (#90): `web:settings/thresholds/thresholds-form`, `web:pages/settings/bao-cao-page` (an owner saves and restores, every other role and scope reads with the reason and no save control), `e2e:demo/settings-bao-cao`, `e2e:live/today` (the seeded owner reads the page through row-level security, with the audit line, without writing), `pgtap:35_mappings_and_catch_up` (the write matrix of `report_settings`, the one-column upsert that keeps the others and the delete that restores the defaults); a read-only page in the browser as a real viewer waits for the 10b fixture logins (#103); database rules: `pgtap:05_write_policies`; the browser write matrix with five logins planned (10b), `pgtap:38_settings_writes` | partial |
+| FR-SET-11 | Settings writes tested from the browser | Must | in build | the read-only interface (#78): `web:settings/access` (every role and scope), `web:settings/read-only-notice`, `web:settings/use-settings-mutation`, `web:settings/supabase-settings-source`, `web:settings/demo-settings-source`; the layout: `e2e:demo/settings-layout`, `e2e:live/today`; the thresholds page (#90): `web:settings/thresholds/thresholds-form`, `web:pages/settings/bao-cao-page` (an owner saves and restores, every other role and scope reads with the reason and no save control), `e2e:demo/settings-bao-cao`, `e2e:live/today` (the seeded owner reads the page through row-level security, with the audit line, without writing), `pgtap:35_mappings_and_catch_up` (the write matrix of `report_settings`, the one-column upsert that keeps the others and the delete that restores the defaults); a read-only page in the browser as a real viewer waits for the 10b fixture logins (#103); database rules: `pgtap:05_write_policies`; the browser write matrix with five logins planned (10b), `pgtap:38_settings_writes`, `e2e:live/settings-fixture` (#103) | partial |
 
 #### FR-EXP — Exports and AI data pack
 
@@ -1351,7 +1354,7 @@ Of the 249 requirements that are verified locally, built, in build or waiting fo
 |---|---|---|---|---|---|
 | NFR-MNT-01 | Typed code | Must | verified locally | CI `code` job, `reports:unit/themes/contract` | covered |
 | NFR-MNT-02 | Lint and format | Must | verified locally | CI `code` job | covered |
-| NFR-MNT-03 | Tests at every layer | Must | verified locally | `pnpm test`, `pnpm exec supabase test db`, `pnpm --filter @fnb/web test:e2e` | covered |
+| NFR-MNT-03 | Tests at every layer | Must | verified locally | `pnpm test`, `pnpm exec supabase test db`, `pnpm --filter @fnb/web test:e2e`, `e2e:live/settings-fixture` builds and removes its own tenant (#103) | covered |
 | NFR-MNT-04 | Consistency checks | Must | verified locally | `metrics:consistency/document`, `metrics:consistency/metric-value`, `web:i18n/report-keys`, `web:test/lazy-chunks`, `node scripts/function-imports.mjs --check`, `demo-analytics:parity/*`, `design-tokens:generated`, `web:test/no-raw-colours`, `pnpm docs:check-openapi`, `reports:unit/themes/contract` (argument types), `demo-analytics:unit/report-source` (a handler for every function) | covered |
 | NFR-MNT-05 | No code comments | Should | built | review | partial |
 | NFR-MNT-06 | Schema drift checks | Should | planned | planned (request R-F03) | planned |
@@ -1374,10 +1377,10 @@ Of the 249 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-HYG-01 | No identifiers in the repository | Must | verified locally | `scripts/check-public-safe.mjs`, CI `secrets` job | covered |
+| NFR-HYG-01 | No identifiers in the repository | Must | verified locally | `scripts/check-public-safe.mjs`, CI `secrets` job, the settings fixture's synthetic tenant, `example.com` logins and clean scan (`e2e:live/settings-fixture`, #103) | covered |
 | NFR-HYG-02 | Secret scan over the history | Must | built | CI `secrets` job (`.gitleaks.toml`) | partial |
 | NFR-HYG-03 | Private material ignored | Must | verified locally | `.gitignore` | covered |
-| NFR-HYG-04 | Synthetic fixtures only | Must | verified locally | `scripts/check-public-safe.mjs`, `reports:unit/themes/reference-sheet` (a synthetic reference sheet) | covered |
+| NFR-HYG-04 | Synthetic fixtures only | Must | verified locally | `scripts/check-public-safe.mjs`, `reports:unit/themes/reference-sheet` (a synthetic reference sheet), the settings fixture's tenant, items and logins are synthetic (`example.com`, #103) | covered |
 | NFR-HYG-05 | Neutral keys and numbered output | Must | verified locally | `jobs:unit/account-numbers`, `jobs:unit/cli` | covered |
 | NFR-HYG-06 | Preflight log lint | Could | planned | planned (masking covers the risk today, NFR-SEC-07; request R-F03) | planned |
 
