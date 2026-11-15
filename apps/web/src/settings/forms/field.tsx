@@ -69,4 +69,4 @@ export function Field({
 }
 
 export const controlClass =
-	"min-h-11 w-full min-w-0 rounded-lg border border-line bg-surface-raised px-3 text-base read-only:bg-surface-sunken read-only:text-ink-muted aria-invalid:border-negative disabled:bg-surface-sunken disabled:text-ink-muted";
+	"min-h-11 w-full min-w-0 rounded-lg border border-line bg-surface-raised px-3 text-base [&:is(input,textarea):read-only]:bg-surface-sunken [&:is(input,textarea):read-only]:text-ink-muted aria-invalid:border-negative disabled:bg-surface-sunken disabled:text-ink-muted";

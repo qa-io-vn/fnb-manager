@@ -1,4 +1,11 @@
-import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
+import {
+	type ComponentType,
+	type LazyExoticComponent,
+	lazy,
+	Suspense,
+	useEffect,
+	useRef,
+} from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useAppMode } from "../../app-mode/app-mode";
 import { useT } from "../../i18n";
@@ -63,15 +70,28 @@ function SettingsPlaceholder({ page }: { page: SettingsPageEntry }) {
 	);
 }
 
+const loadedPages = new Map<string, LazyExoticComponent<ComponentType>>();
+
+export function loadedPageOf(
+	page: SettingsPageEntry,
+): LazyExoticComponent<ComponentType> | null {
+	if (page.load === null) return null;
+	const known = loadedPages.get(page.slug);
+	if (known !== undefined) return known;
+	const loaded = lazy(page.load);
+	loadedPages.set(page.slug, loaded);
+	return loaded;
+}
+
 function SettingsPageBody({ page }: { page: SettingsPageEntry }) {
 	const t = useT();
-	const Loaded = useMemo(
-		() => (page.load === null ? null : lazy(page.load)),
-		[page],
-	);
+	const Loaded = loadedPageOf(page);
 	if (Loaded === null) return <SettingsPlaceholder page={page} />;
 	return (
-		<Suspense fallback={<p role="status">{t("app.loading")}</p>}>
+		<Suspense
+			key={page.slug}
+			fallback={<p role="status">{t("app.loading")}</p>}
+		>
 			<Loaded />
 		</Suspense>
 	);

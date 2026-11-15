@@ -28,7 +28,7 @@ export interface ItemTypeEntry {
 export interface RoleChange {
 	readonly posAccountId: string;
 	readonly itemTypeExternalId: string;
-	readonly role: ItemTypeRole;
+	readonly role: ItemTypeRole | null;
 }
 
 export type AuditAuthor =

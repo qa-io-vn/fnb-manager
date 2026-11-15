@@ -57,6 +57,28 @@ describe("useSettingsMutation", () => {
 		catchUp.start.mockClear();
 	});
 
+	it("refreshes the settings and the analytics after a mapping save that failed part way, without starting the catch-up", async () => {
+		const failing = renderHook(
+			() =>
+				useSettingsMutation(
+					async () => {
+						throw new SettingsWriteError("network");
+					},
+					{ touchesMappings: true },
+				),
+			{ wrapper },
+		);
+		await act(async () => {
+			await failing.result.current.save({ value: 1 });
+		});
+		await waitFor(() =>
+			expect(stale(["settings", "demo", TENANT, "reportSettings"])).toBe(true),
+		);
+		expect(stale(["analytics", "demo", TENANT, "item_summary", {}])).toBe(true);
+		expect(stale(["analytics", "demo", OTHER, "item_summary", {}])).toBe(false);
+		expect(catchUp.start).not.toHaveBeenCalled();
+	});
+
 	it("starts the catch-up after a successful save that touches a mapping, and after no other save", async () => {
 		const saved = vi.fn(async () => undefined);
 		const mapping = renderHook(

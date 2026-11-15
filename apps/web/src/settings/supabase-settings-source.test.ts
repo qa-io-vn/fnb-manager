@@ -381,6 +381,104 @@ describe("the Supabase settings source", () => {
 		expect(log).toHaveLength(2);
 	});
 
+	it("deletes a cleared role per POS account, after one upsert of the assigned ones", async () => {
+		const { client, log } = fakeClient((recorded) =>
+			recorded.calls.some(([method]) => method === "delete")
+				? {
+						data: [{ item_type_external_id: "T2" }],
+						error: null,
+					}
+				: { data: null, error: null },
+		);
+		await createSupabaseSettingsSource(client).saveRoles(TENANT, [
+			{ posAccountId: ACCOUNT, itemTypeExternalId: "T1", role: "drink" },
+			{ posAccountId: ACCOUNT, itemTypeExternalId: "T2", role: null },
+		]);
+		expect(log).toHaveLength(2);
+		expect(log[0]?.calls[0]).toEqual([
+			"upsert",
+			[
+				[
+					{
+						tenant_id: TENANT,
+						pos_account_id: ACCOUNT,
+						item_type_external_id: "T1",
+						role: "drink",
+					},
+				],
+				{ onConflict: "pos_account_id,item_type_external_id" },
+			],
+		]);
+		expect(log[1]?.calls).toEqual([
+			["delete", []],
+			["eq", ["tenant_id", TENANT]],
+			["eq", ["pos_account_id", ACCOUNT]],
+			["in", ["item_type_external_id", ["T2"]]],
+			["select", ["item_type_external_id"]],
+		]);
+	});
+
+	it("deletes the cleared roles of each POS account under its own account", async () => {
+		const OTHER_ACCOUNT = "77777777-7777-4777-8777-777777777777";
+		const { client, log } = fakeClient((recorded) => {
+			const ids = recorded.calls.find(([method]) => method === "in")?.[1][1];
+			return {
+				data: (ids as string[]).map((id) => ({ item_type_external_id: id })),
+				error: null,
+			};
+		});
+		await createSupabaseSettingsSource(client).saveRoles(TENANT, [
+			{ posAccountId: ACCOUNT, itemTypeExternalId: "T1", role: null },
+			{ posAccountId: OTHER_ACCOUNT, itemTypeExternalId: "T1", role: null },
+			{ posAccountId: ACCOUNT, itemTypeExternalId: "T3", role: null },
+		]);
+		const deletes = log.map((entry) => [
+			entry.calls.find(
+				([method, args]) => method === "eq" && args[0] === "pos_account_id",
+			)?.[1][1],
+			entry.calls.find(([method]) => method === "in")?.[1][1],
+		]);
+		expect(deletes).toEqual([
+			[ACCOUNT, ["T1", "T3"]],
+			[OTHER_ACCOUNT, ["T1"]],
+		]);
+	});
+
+	it("sends nothing for no change and no upsert when roles are only cleared", async () => {
+		const none = fakeClient(() => ({ data: [], error: null }));
+		await createSupabaseSettingsSource(none.client).saveRoles(TENANT, []);
+		expect(none.log).toHaveLength(0);
+		const cleared = fakeClient(() => ({
+			data: [{ item_type_external_id: "T2" }],
+			error: null,
+		}));
+		await createSupabaseSettingsSource(cleared.client).saveRoles(TENANT, [
+			{ posAccountId: ACCOUNT, itemTypeExternalId: "T2", role: null },
+		]);
+		expect(cleared.log.map((entry) => entry.calls[0]?.[0])).toEqual(["delete"]);
+	});
+
+	it("reports a cleared role that row-level security kept, and accepts one that was already gone", async () => {
+		const isDelete = (recorded: Recorded) =>
+			recorded.calls.some(([method]) => method === "delete");
+		const kept = fakeClient((recorded) =>
+			isDelete(recorded)
+				? { data: [], error: null }
+				: { data: [{ item_type_external_id: "T2" }], error: null },
+		);
+		await expect(
+			createSupabaseSettingsSource(kept.client).saveRoles(TENANT, [
+				{ posAccountId: ACCOUNT, itemTypeExternalId: "T2", role: null },
+			]),
+		).rejects.toEqual(new SettingsWriteError("forbidden"));
+		const gone = fakeClient(() => ({ data: [], error: null }));
+		await expect(
+			createSupabaseSettingsSource(gone.client).saveRoles(TENANT, [
+				{ posAccountId: ACCOUNT, itemTypeExternalId: "T2", role: null },
+			]),
+		).resolves.toBeUndefined();
+	});
+
 	it("turns a refused write into a settings error", async () => {
 		const { client } = fakeClient(() => ({
 			data: null,

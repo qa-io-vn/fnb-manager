@@ -220,7 +220,7 @@ Every rule in this area is enforced in the database by row-level security (RLS),
 | FR-TEN-05 | **Nothing for callers without a session.** The system shall give the `anon` role no privilege on any table or view and no right to execute any `public` or `app` function, so a caller without a session reads zero rows everywhere. | P2, P5, P6 · ADR-001 | `anon` reads nothing; a client holding only the publishable key reads zero invoices. | Must | verified locally | `pgtap:03_rls_enabled`, `pgtap:06_anon_and_tokens`, `e2e:live/auth` |
 | FR-TEN-06 | **Publisher reads no sales.** The system shall let a `publisher` member read only its tenant, the stores in its scope, plans, holidays, the calendar, and the global alert-rule catalogue and channel-policy defaults (no tenant data), and insert plans; it shall read no sale, aggregate, refresh log or live view. | P2, P11 · ADR-013 (requests R-F04, R-AS08) | A publisher reads zero invoices and zero aggregate rows, gets empty report results and can insert a plan. | Must | verified locally | `pgtap:08_publisher_role`, `pgtap:17_analytics_access`, `pgtap:23_report_access` |
 | FR-TEN-07 | **Staff and viewer are read-only.** The system shall let `staff` and `viewer` members read the data of their store scope and write nothing. | P2 | Every write by a staff or viewer member is refused. | Must | verified locally | `pgtap:05_write_policies`, `pgtap:31_notify_access` |
-| FR-TEN-08 | **Who writes manual data.** The system shall accept writes to `item_costs`, `targets` and `payment_fee_rates` only from owners and managers within store scope, and to `item_type_roles` and tenant `holidays` only from owners and managers with an unlimited scope; global holiday rows stay service-role only. | P2, P10b | The write-policy matrix passes for every role and scope. | Must | verified locally | `pgtap:05_write_policies`, `pgtap:07_write_scope_and_attribution`, `pgtap:10_payment_fee_rates`, `pgtap:11_item_type_roles_and_holidays` |
+| FR-TEN-08 | **Who writes manual data.** The system shall accept writes to `item_costs`, `targets` and `payment_fee_rates` only from owners and managers within store scope, and to `item_type_roles` and tenant `holidays` only from owners and managers with an unlimited scope; global holiday rows stay service-role only. | P2, P10b | The write-policy matrix passes for every role and scope. | Must | verified locally | `pgtap:05_write_policies`, `pgtap:07_write_scope_and_attribution`, `pgtap:10_payment_fee_rates`, `pgtap:11_item_type_roles_and_holidays`, `web:pages/settings/phan-loai-page` (staff and a store-limited manager read the roles) |
 | FR-TEN-09 | **Frozen attribution.** The system shall set `created_by` to the writer on insert and freeze it on update on `item_costs`, `payment_fee_rates`, `item_type_roles`, `targets`, `strategy_reports` and the notification settings tables. | P2, P10b (audit columns) | An insert naming another user is refused and an update cannot change `created_by`. | Must | verified locally | `pgtap:07_write_scope_and_attribution`, `pgtap:26_notify_schema` |
 | FR-TEN-10 | **Create a tenant.** The system shall create a tenant with `fnb tenant create` (name, slug, currency, locale, timezone, legal form) idempotently and refuse an existing slug with different settings. | P5 | A second identical run changes nothing; a conflicting run is refused and overwrites nothing. | Must | verified locally | `jobs:integration/local-stack` |
 | FR-TEN-11 | **Add a member.** The system shall give a login a role in a tenant with `fnb tenant add-member`, creating the login through the Auth admin API when it is missing (password from `--password` or `FNB_MEMBER_PASSWORD`, or an invitation with `--invite`). | P5 | A missing login is created once; a re-run with another role changes only the role. | Must | verified locally | `jobs:integration/local-stack` |
@@ -390,7 +390,7 @@ Phase 10b. The manual-input tables and their write policies exist since phase 2 
 | FR-SET-04 | **Targets.** The system shall let owners and managers enter monthly and weekly net revenue targets per store. | P10b | A saved monthly target shows progress and pace on Tháng (FR-REP-16). | Must | designed | `pgtap:05_write_policies` (table); screen planned |
 | FR-SET-05 | **Payment fee rates.** The system shall let owners and managers enter a fee percentage and a fixed fee per payment method, per store or tenant-wide, with an effective date. | P10b | The fee estimate uses the rate in force on each day. | Should | designed | `pgtap:10_payment_fee_rates` (table); screen planned |
 | FR-SET-06 | **Payment-kind mapping.** The system shall let owners correct the payment kind (cash, card, bank transfer, e-wallet, voucher, other) of a POS payment method, overriding the Vietnamese defaults. | P10b, P4 | A re-mapped method moves in the payment mix and in the expected cash at once. | Should | designed | `core:unit/payment-kind` (override rule); screen planned |
-| FR-SET-07 | **Item-type roles and categories.** The system shall let owners and managers with an unlimited scope map each POS item type to a role (drink, topping, food, snack, other) and re-map uncategorised items. | P10a, P10b | Re-mapping an uncategorised item moves it at once; attach rates stay null until a role is mapped. | Must | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:35_mappings_and_catch_up` (overrides read at query time and applied by the refresh), `pgtap:33_theme_functions`; screen planned, `demo-analytics:parity/overrides`, `demo-analytics:unit/ingest`, `demo-analytics:parity/menu`, `web:settings/catch-up/use-analytics-catch-up`, `web:settings/use-settings-mutation` (a mapping save starts the catch-up) |
+| FR-SET-07 | **Item-type roles and categories.** The system shall let owners and managers with an unlimited scope map each POS item type to a role (drink, topping, food, snack, other) and re-map uncategorised items. | P10a, P10b | Re-mapping an uncategorised item moves it at once; attach rates stay null until a role is mapped. | Must | in build | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:35_mappings_and_catch_up` (overrides read at query time and applied by the refresh), `pgtap:33_theme_functions`; the roles screen built (#89), the category and payment-kind tabs planned (10b), `demo-analytics:parity/overrides`, `demo-analytics:unit/ingest`, `demo-analytics:parity/menu`, `web:settings/catch-up/use-analytics-catch-up`, `web:settings/use-settings-mutation` (a mapping save starts the catch-up), `web:settings/roles/roles`, `web:settings/roles/roles-form`, `web:pages/settings/phan-loai-page`, `web:settings/supabase-settings-source` (one upsert, a cleared role deleted), `core:unit/item-role` (`suggestRole`), `e2e:demo/settings-phan-loai` (Tháng's attach round trip) |
 | FR-SET-08 | **Tenant holidays.** The system shall let owners and managers with an unlimited scope add the tenant's custom holidays, which baselines and forecasts then exclude. | P10b | A custom holiday is excluded from the baseline. | Should | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:22_report_functions`; screen planned |
 | FR-SET-09 | **Default language.** The system shall let the tenant choose its default interface language. | P10b | A new session opens in the tenant's language. | Could | designed | planned |
 | FR-SET-10 | **Legal texts.** The system shall hold the tenant's legal texts (privacy notice, information-protection rules, consent wording) in Settings, each with the version label that consent records refer to. | P10b · ADR-021 | Owners and managers edit and publish the texts; staff and viewers cannot. | Must | designed | `pgtap:12_consent_and_legal` (tables); screen planned |
@@ -602,7 +602,7 @@ Another shop, store, owner or POS by configuration (principle 1, roadmap section
 
 | ID | Requirement | Source | Acceptance criterion | Priority | Status | Verified by |
 |---|---|---|---|---|---|---|
-| FR-POR-01 | **Configuration over code.** The system shall keep tenants, POS accounts, stores, timezones, day starts, currency, roles, payment kinds, fee rates, thresholds, channels and legal texts as rows or secrets, so the repository builds, tests and deploys without knowing any shop. | principle 1 · ADR-005 | The public-safety scan passes and the demo build runs without any shop data. | Must | verified locally | `scripts/check-public-safe.mjs`, `e2e:demo/demo`, `pgtap:35_mappings_and_catch_up` (thresholds read from the settings row), `web:settings/thresholds/fields`, `e2e:demo/settings-bao-cao` |
+| FR-POR-01 | **Configuration over code.** The system shall keep tenants, POS accounts, stores, timezones, day starts, currency, roles, payment kinds, fee rates, thresholds, channels and legal texts as rows or secrets, so the repository builds, tests and deploys without knowing any shop. | principle 1 · ADR-005 | The public-safety scan passes and the demo build runs without any shop data. | Must | verified locally | `scripts/check-public-safe.mjs`, `e2e:demo/demo`, `pgtap:35_mappings_and_catch_up` (thresholds read from the settings row), `web:settings/thresholds/fields`, `e2e:demo/settings-bao-cao`, `web:settings/roles/roles` (roles are rows per POS item type) |
 | FR-POR-02 | **Another store or account.** The system shall add a store of an onboarded account, or another account of a supported POS, with `fnb onboard` and a backfill and no code change. | roadmap section 8 | Onboarding another account discovers its stores and syncs them. | Must | verified locally | `jobs:integration/local-stack`, `sync:unit/master-data` |
 | FR-POR-03 | **Another POS.** The system shall take another POS as one new connector package that passes the conformance suite and is registered in the runner's registry, with no schema or report change. | roadmap section 8 · ADR-004, ADR-012 | The CSV connector (FR-CON-17) is added this way. | Must | built | conformance suite (`@fnb/connector-core/conformance`) |
 | FR-POR-04 | **Onboarding wizard.** The system shall offer an interactive `fnb onboard` wizard (connector picker including mock and CSV, credentials, discovery, store settings, manager invite, exact secret snippets) and an `onboard.yml` wrapper for deployers who use only the GitHub web interface. | P20a | A deployer onboards a store through the wizard and through the workflow. | Should | planned | planned |
@@ -699,7 +699,7 @@ WCAG 2.2 AA is the project standard (ADR-034, from 2026-11-14; WCAG 2.1 AA in ph
 
 | ID | Requirement | Source | Acceptance criterion | Priority | Status | Verified by |
 |---|---|---|---|---|---|---|
-| NFR-A11Y-01 | **No serious axe violations.** Every page shall have no serious or critical axe violation (WCAG 2.0, 2.1 and 2.2 A and AA plus best practice) at 1280 px and at 360 px, and in the dark colour scheme at 360 px. | P6, P9, P20b · ADR-034 | The Playwright page check passes on every demo page and report. | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao` |
+| NFR-A11Y-01 | **No serious axe violations.** Every page shall have no serious or critical axe violation (WCAG 2.0, 2.1 and 2.2 A and AA plus best practice) at 1280 px and at 360 px, and in the dark colour scheme at 360 px. | P6, P9, P20b · ADR-034 | The Playwright page check passes on every demo page and report. | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai` |
 | NFR-A11Y-02 | **Lighthouse accessibility.** The web app shall score at least 90 for accessibility in Lighthouse mobile. | P6 | 100 on the demo build. | Must | verified locally | Lighthouse recipe in `apps/web/README.md` |
 | NFR-A11Y-03 | **Contrast.** Text and controls shall meet WCAG 2.2 AA contrast in the light and dark colour schemes. | P6 · ADR-034 | The axe contrast rule passes in light at both widths and in dark at 360 px; every text pair of the design tokens reaches 4.5:1 and the focus colour 3:1 in the light, dark and print themes. | Must | verified locally | `apps/web/e2e/support/checks.ts`, `design-tokens:tokens` |
 | NFR-A11Y-04 | **Charts have tables.** Every chart shall have an accessible table of its data. | P6 | The card renders the table with the chart. | Must | verified locally | `web:components/report-card/report-card` |
@@ -724,7 +724,7 @@ Phone first: 360 px wide phones and 1280 px desktops are the tested sizes.
 
 | ID | Requirement | Source | Acceptance criterion | Priority | Status | Verified by |
 |---|---|---|---|---|---|---|
-| NFR-UX-01 | **Phone first.** Every page shall fit a 360 px wide phone without sideways page scroll; a wide table scrolls inside its card with the first column pinned, comes to rest with a whole column right after the pinned one (so no control rests half under it), and reaches its last column. | P6, P9 · ADR-034 | The 360 px checks pass on every demo page and report, before and after printing. | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao` |
+| NFR-UX-01 | **Phone first.** Every page shall fit a 360 px wide phone without sideways page scroll; a wide table scrolls inside its card with the first column pinned, comes to rest with a whole column right after the pinned one (so no control rests half under it), and reaches its last column. | P6, P9 · ADR-034 | The 360 px checks pass on every demo page and report, before and after printing. | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai` |
 | NFR-UX-02 | **Layout on phones and desktops.** The web app shall use a bottom navigation on phones and a side rail on wide screens, fold the store and period controls into one summary button below 1024 px, and keep 16 px side gutters. | P6 | Checked at 360 and 1280 px. | Should | built | `e2e:demo/demo` (360 px) |
 | NFR-UX-03 | **Installable.** The web app shall be installable, with a manifest and icons that resolve under any base path and no service worker. | P6 | Favicon, touch icon, manifest and manifest icons resolve at `/` and under `/fnb-manager/`. | Should | verified locally | `e2e:demo/demo`, `e2e:pages/install`, `web:shell/install-assets` |
 | NFR-UX-04 | **New version prompt.** The web app shall compare its build's `version.json` on window focus and offer "Có phiên bản mới — tải lại", because Pages caches `index.html` for ten minutes. | P6 · ADR-023 | A new deploy is offered on the next focus. | Should | built | no automated test |
@@ -984,8 +984,8 @@ pie showData
     title Requirements by status on 2026-11-15
     "verified locally" : 177
     "built" : 27
-    "in build" : 19
-    "designed" : 38
+    "in build" : 20
+    "designed" : 37
     "planned" : 98
     "waits for owner" : 17
 ```
@@ -1001,7 +1001,7 @@ Functional requirements:
 | FR-ANA | 16 | – | – | – | 1 | – | 17 |
 | FR-REP | 18 | 1 | – | – | – | 2 | 21 |
 | FR-THM | 2 | 1 | 2 | 4 | – | – | 9 |
-| FR-SET | 1 | – | 1 | 9 | – | – | 11 |
+| FR-SET | 1 | – | 2 | 8 | – | – | 11 |
 | FR-EXP | – | – | – | 10 | – | – | 10 |
 | FR-STR | 1 | – | – | 9 | – | – | 10 |
 | FR-NOT | 16 | – | 13 | 1 | 12 | – | 42 |
@@ -1010,7 +1010,7 @@ Functional requirements:
 | FR-STF | – | – | – | – | 23 | – | 23 |
 | FR-LOY | – | – | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | – | – | 7 | – | 12 |
-| **FR total** | **130** | **9** | **16** | **37** | **90** | **14** | **296** |
+| **FR total** | **130** | **9** | **17** | **36** | **90** | **14** | **296** |
 
 Non-functional requirements:
 
@@ -1033,7 +1033,7 @@ Non-functional requirements:
 
 | Priority | verified locally | built | in build | designed | planned | waits for owner | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Must | 159 | 13 | 15 | 25 | 65 | 15 | 292 |
+| Must | 159 | 13 | 16 | 24 | 65 | 15 | 292 |
 | Should | 17 | 14 | 4 | 11 | 30 | 2 | 78 |
 | Could | 1 | – | – | 2 | 3 | – | 6 |
 

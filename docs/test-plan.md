@@ -842,7 +842,7 @@ pie showData
     "owner check" : 16
 ```
 
-Of the 240 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 41 partial, 1 planned and 16 owner checks. Of the 136 that are designed or planned, 124 have no test yet and 12 are partly held by tests of the database rules they rest on.
+Of the 241 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 42 partial, 1 planned and 16 owner checks. Of the 135 that are designed or planned, 124 have no test yet and 11 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -857,7 +857,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | FR-TEN-05 | Nothing for callers without a session | Must | verified locally | `pgtap:03_rls_enabled`, `pgtap:06_anon_and_tokens`, `e2e:live/auth` | covered |
 | FR-TEN-06 | Publisher reads no sales | Must | verified locally | `pgtap:08_publisher_role`, `pgtap:17_analytics_access`, `pgtap:23_report_access` | covered |
 | FR-TEN-07 | Staff and viewer are read-only | Must | verified locally | `pgtap:05_write_policies`, `pgtap:31_notify_access` | covered |
-| FR-TEN-08 | Who writes manual data | Must | verified locally | `pgtap:05_write_policies`, `pgtap:07_write_scope_and_attribution`, `pgtap:10_payment_fee_rates`, `pgtap:11_item_type_roles_and_holidays` | covered |
+| FR-TEN-08 | Who writes manual data | Must | verified locally | `pgtap:05_write_policies`, `pgtap:07_write_scope_and_attribution`, `pgtap:10_payment_fee_rates`, `pgtap:11_item_type_roles_and_holidays`, `web:pages/settings/phan-loai-page` (staff and a store-limited manager read the roles) | covered |
 | FR-TEN-09 | Frozen attribution | Must | verified locally | `pgtap:07_write_scope_and_attribution`, `pgtap:26_notify_schema` | covered |
 | FR-TEN-10 | Create a tenant | Must | verified locally | `jobs:integration/local-stack` | covered |
 | FR-TEN-11 | Add a member | Must | verified locally | `jobs:integration/local-stack` | covered |
@@ -1013,7 +1013,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | FR-SET-04 | Targets | Must | designed | `pgtap:05_write_policies` (table); screen planned | partial |
 | FR-SET-05 | Payment fee rates | Should | designed | `pgtap:10_payment_fee_rates` (table); screen planned | partial |
 | FR-SET-06 | Payment-kind mapping | Should | designed | `core:unit/payment-kind` (override rule); screen planned | partial |
-| FR-SET-07 | Item-type roles and categories | Must | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`; screen planned, `demo-analytics:parity/overrides`, `demo-analytics:parity/menu`, `web:settings/catch-up/use-analytics-catch-up`, `web:settings/use-settings-mutation` (a mapping save starts the catch-up) | partial |
+| FR-SET-07 | Item-type roles and categories | Must | in build | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`; the roles screen built (#89), the category and payment-kind tabs planned (10b), `demo-analytics:parity/overrides`, `demo-analytics:parity/menu`, `web:settings/catch-up/use-analytics-catch-up`, `web:settings/use-settings-mutation` (a mapping save starts the catch-up), `web:settings/roles/roles`, `web:settings/roles/roles-form`, `web:pages/settings/phan-loai-page`, `web:settings/supabase-settings-source` (one upsert, a cleared role deleted), `core:unit/item-role` (`suggestRole`), `e2e:demo/settings-phan-loai` (Tháng's attach round trip) | partial |
 | FR-SET-08 | Tenant holidays | Should | designed | `pgtap:11_item_type_roles_and_holidays`, `pgtap:22_report_functions`; screen planned | partial |
 | FR-SET-09 | Default language | Could | designed | planned | planned |
 | FR-SET-10 | Legal texts | Must | designed | `pgtap:12_consent_and_legal` (tables); screen planned | partial |
@@ -1209,7 +1209,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| FR-POR-01 | Configuration over code | Must | verified locally | `scripts/check-public-safe.mjs`, `e2e:demo/demo`, `pgtap:35_mappings_and_catch_up`, `web:settings/thresholds/fields`, `e2e:demo/settings-bao-cao` | covered |
+| FR-POR-01 | Configuration over code | Must | verified locally | `scripts/check-public-safe.mjs`, `e2e:demo/demo`, `pgtap:35_mappings_and_catch_up`, `web:settings/thresholds/fields`, `e2e:demo/settings-bao-cao`, `web:settings/roles/roles` (roles are rows per POS item type) | covered |
 | FR-POR-02 | Another store or account | Must | verified locally | `jobs:integration/local-stack`, `sync:unit/master-data` | covered |
 | FR-POR-03 | Another POS | Must | built | conformance suite (`@fnb/connector-core/conformance`) | partial |
 | FR-POR-04 | Onboarding wizard | Should | planned | planned | planned |
@@ -1294,7 +1294,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao` | covered |
+| NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai` | covered |
 | NFR-A11Y-02 | Lighthouse accessibility | Must | verified locally | Lighthouse recipe in `apps/web/README.md` | covered |
 | NFR-A11Y-03 | Contrast | Must | verified locally | `apps/web/e2e/support/checks.ts`, `design-tokens:tokens` | covered |
 | NFR-A11Y-04 | Charts have tables | Must | verified locally | `web:components/report-card/report-card` | covered |
@@ -1315,7 +1315,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao` | covered |
+| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai` | covered |
 | NFR-UX-02 | Layout on phones and desktops | Should | built | `e2e:demo/demo` (360 px) | partial |
 | NFR-UX-03 | Installable | Should | verified locally | `e2e:demo/demo`, `e2e:pages/install`, `web:shell/install-assets` | covered |
 | NFR-UX-04 | New version prompt | Should | built | no automated test | partial |
@@ -1546,7 +1546,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-SET-04 | Targets | designed | The write policies of `targets` are tested; the screen does not exist. | A live Playwright test that a saved monthly target shows progress and pace on Tháng (10b). |
 | FR-SET-05 | Payment fee rates | designed | The fee-rate table and its policies are tested; the screen does not exist. | A test that the fee estimate uses the rate in force on each day, and a screen test (10b). |
 | FR-SET-06 | Payment-kind mapping | designed | The override rule is unit-tested; the screen does not exist. | A live Playwright test that a re-mapped method moves in the payment mix and in the expected cash at once (10b). |
-| FR-SET-07 | Item-type roles and categories | designed | The roles table, the null attach rate without a role and an override read by the next statement in `item_summary`, `menu_engineering` and `item_margins` are tested; the screen does not exist. | A live Playwright test that re-mapping an uncategorised item moves it at once (10b). |
+| FR-SET-07 | Item-type roles and categories | in build | The roles table, the null attach rate without a role and an override read by the next statement in `item_summary`, `menu_engineering` and `item_margins` are tested; the roles screen saves only changed rows, deletes a cleared role and starts the catch-up (unit tests with fakes and the demo store), and the demo spec round-trips Tháng's attach card through the app's own links. | Roles saved through the real tables from the browser on the fixture tenant (#160); the category and payment-kind tabs, with a live test that re-mapping an uncategorised item moves it at once (10b). |
 | FR-SET-08 | Tenant holidays | designed | Holidays and their exclusion from baselines are tested in SQL; the screen does not exist. | A live Playwright test that a custom holiday saved in Settings drops out of the baseline (10b). |
 | FR-SET-10 | Legal texts | designed | The consent tables are tested; the legal-text screens do not exist. | A live Playwright test that owners and managers publish a text with its version label and that staff and viewers cannot (10b). |
 | FR-EXP-02 | Paged, split exports | designed | Keyset paging is tested for Hôm nay only. | A unit test of the export reader under a re-sync between pages (no row lost or repeated) and of the egress estimate (11a). |

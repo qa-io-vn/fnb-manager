@@ -14,6 +14,8 @@ import reportsEn from "./messages/reports.en.json";
 import reportsVi from "./messages/reports.vi.json";
 import settingsEn from "./messages/settings.en.json";
 import settingsVi from "./messages/settings.vi.json";
+import settingsMappingEn from "./messages/settings-mapping.en.json";
+import settingsMappingVi from "./messages/settings-mapping.vi.json";
 import settingsThresholdsEn from "./messages/settings-thresholds.en.json";
 import settingsThresholdsVi from "./messages/settings-thresholds.vi.json";
 import themeHoursEn from "./messages/theme-hours.en.json";
@@ -37,6 +39,7 @@ export type MessageKey =
 	| keyof typeof reportYearVi
 	| keyof typeof settingsVi
 	| keyof typeof settingsThresholdsVi
+	| keyof typeof settingsMappingVi
 	| keyof typeof themesVi
 	| keyof typeof themeRevenueVi
 	| keyof typeof themeHoursVi;
@@ -56,7 +59,10 @@ const themeFilePrefixes = [
 	"theme.payments.",
 ] as const;
 
-const settingsFilePrefixes = ["settings.thresholds."] as const;
+const settingsFilePrefixes = [
+	"settings.thresholds.",
+	"settings.mapping.",
+] as const;
 
 const reportFilePrefixes = [
 	"report.day.",
@@ -142,6 +148,13 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: settingsFilePrefixes,
 		vi: settingsVi,
 		en: settingsEn,
+	},
+	{
+		name: "settings-mapping",
+		prefix: "settings.mapping.",
+		excludedPrefixes: [],
+		vi: settingsMappingVi,
+		en: settingsMappingEn,
 	},
 	{
 		name: "settings-thresholds",

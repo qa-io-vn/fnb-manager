@@ -54,6 +54,13 @@ export function useSettingsMutation<Args>(
 				startCatchUp(state.source);
 			}
 		},
+		onError: async () => {
+			if (!touchesMappings) return;
+			await Promise.all([
+				invalidateSettings(queryClient, tenant.id),
+				invalidateAnalytics(queryClient, tenant.id),
+			]);
+		},
 	});
 	const save = useCallback(
 		(args: Args) =>

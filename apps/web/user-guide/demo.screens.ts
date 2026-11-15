@@ -213,6 +213,22 @@ test("Cài đặt: Ngưỡng báo cáo and the choice kept on this device", asyn
 	);
 });
 
+test("Cài đặt: Phân loại with a suggestion for an unassigned item type", async ({
+	page,
+}) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await page.goto("/#/cai-dat/phan-loai");
+	const form = page.getByTestId("roles-form");
+	await expect(form).toBeVisible();
+	await expect(form.getByText(/món đã bán/).first()).toBeVisible();
+	await form
+		.locator('[data-testid="role-row"][data-type="TYPE-007"]')
+		.getByTestId("role-select")
+		.selectOption("");
+	await expect(page.getByTestId("roles-apply-suggestions")).toBeVisible();
+	await shootElement(page.getByTestId("mapping-page"), "settings-phan-loai");
+});
+
 test("the printed report", async ({ page }) => {
 	await page.setViewportSize({ width: A4_WIDTH_PX, height: 1123 });
 	await openReportPage(page, "day");

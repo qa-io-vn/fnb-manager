@@ -37,7 +37,10 @@ test("the sub-navigation opens each page on a phone and as a side column on a co
 	await expect(page.getByTestId("thresholds-form")).toBeVisible();
 	await settingsNav(page).getByRole("link", { name: "Phân loại" }).click();
 	await expectCurrentSettingsPage(page, "Phân loại");
-	await expect(page.getByTestId("settings-placeholder")).toContainText("10a");
+	await expect(page.getByTestId("roles-form")).toBeVisible();
+	await settingsNav(page).getByRole("link", { name: "Ngày lễ" }).click();
+	await expectCurrentSettingsPage(page, "Ngày lễ");
+	await expect(page.getByTestId("settings-placeholder")).toContainText("10b");
 	await page.setViewportSize({ width: 1280, height: 800 });
 	const nav = await settingsNav(page).boundingBox();
 	const heading = await page.getByRole("heading", { level: 2 }).boundingBox();

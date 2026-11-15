@@ -39,8 +39,8 @@ export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
 		slug: "phan-loai",
 		titleKey: "settings.page.classification",
 		phase: "10a",
-		status: "planned",
-		load: null,
+		status: "built",
+		load: () => import("../pages/settings/phan-loai-page"),
 	},
 	{
 		id: "holidays",

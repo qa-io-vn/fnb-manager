@@ -64,7 +64,12 @@ export function createDemoSettingsSource(
 					]),
 			);
 			for (const change of changes) {
-				next.set(roleKey(change.posAccountId, change.itemTypeExternalId), {
+				const key = roleKey(change.posAccountId, change.itemTypeExternalId);
+				if (change.role === null) {
+					next.delete(key);
+					continue;
+				}
+				next.set(key, {
 					posAccountId: change.posAccountId,
 					itemTypeExternalId: change.itemTypeExternalId,
 					role: change.role,

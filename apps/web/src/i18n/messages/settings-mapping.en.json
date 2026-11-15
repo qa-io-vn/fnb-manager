@@ -1,0 +1,17 @@
+{
+	"settings.mapping.roles.applied": "Suggestions filled in for the unassigned types; press Save to keep them.",
+	"settings.mapping.roles.applyMany": "Apply the suggestions to {count} unassigned types",
+	"settings.mapping.roles.applyOne": "Apply the suggestion to {count} unassigned type",
+	"settings.mapping.roles.empty": "No item types yet; they come from the POS after the first sync.",
+	"settings.mapping.roles.intro": "Each POS item type needs a role, so that the reports can measure the topping and snack attach rates and the menu matrix compares each item with the others of its role.",
+	"settings.mapping.roles.none": "Not assigned",
+	"settings.mapping.roles.suggestion": "Suggested: {role}",
+	"settings.mapping.roles.usage": "{items} items sold · {share} of item revenue over 28 days",
+	"settings.mapping.roles.usageNone": "Nothing sold over 28 days",
+	"settings.mapping.roles.usageUnavailable": "The 28-day sales could not be read.",
+	"settings.mapping.tab.categories": "Item categories",
+	"settings.mapping.tab.later": "This part comes in phase {phase} of the roadmap.",
+	"settings.mapping.tab.paymentKinds": "Payment kinds",
+	"settings.mapping.tab.roles": "Item-type roles",
+	"settings.mapping.tabs.label": "Parts of the Classification page"
+}

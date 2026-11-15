@@ -37,6 +37,22 @@ const membershipRow = z.object({
 	store_ids: z.array(z.string()).nullable(),
 });
 
+const roleTypeRow = z.object({ item_type_external_id: z.string() });
+
+function clearedByAccount(
+	changes: readonly RoleChange[],
+): Map<string, string[]> {
+	const byAccount = new Map<string, string[]>();
+	for (const change of changes) {
+		if (change.role !== null) continue;
+		byAccount.set(change.posAccountId, [
+			...(byAccount.get(change.posAccountId) ?? []),
+			change.itemTypeExternalId,
+		]);
+	}
+	return byAccount;
+}
+
 const memberRoleRow = z.object({ user_id: z.string(), role: tenantRole });
 
 const itemTypeRow = z.object({
@@ -308,18 +324,50 @@ export function createSupabaseSettingsSource(
 		},
 
 		async saveRoles(tenantId, changes: readonly RoleChange[]) {
-			if (changes.length === 0) return;
-			await written(
-				client.from("item_type_roles").upsert(
-					changes.map((change) => ({
-						tenant_id: tenantId,
-						pos_account_id: change.posAccountId,
-						item_type_external_id: change.itemTypeExternalId,
-						role: change.role,
-					})),
-					{ onConflict: "pos_account_id,item_type_external_id" },
-				),
+			const assigned = changes.flatMap((change) =>
+				change.role === null
+					? []
+					: [
+							{
+								tenant_id: tenantId,
+								pos_account_id: change.posAccountId,
+								item_type_external_id: change.itemTypeExternalId,
+								role: change.role,
+							},
+						],
 			);
+			if (assigned.length > 0) {
+				await written(
+					client.from("item_type_roles").upsert(assigned, {
+						onConflict: "pos_account_id,item_type_external_id",
+					}),
+				);
+			}
+			for (const [posAccountId, typeIds] of clearedByAccount(changes)) {
+				const removed = await writtenRows(
+					roleTypeRow,
+					client
+						.from("item_type_roles")
+						.delete()
+						.eq("tenant_id", tenantId)
+						.eq("pos_account_id", posAccountId)
+						.in("item_type_external_id", typeIds)
+						.select("item_type_external_id"),
+				);
+				if (removed.length === typeIds.length) continue;
+				const remaining = await fetchOnce(
+					roleTypeRow,
+					client
+						.from("item_type_roles")
+						.select("item_type_external_id")
+						.eq("tenant_id", tenantId)
+						.eq("pos_account_id", posAccountId)
+						.in("item_type_external_id", typeIds),
+				).catch(() => {
+					throw new SettingsWriteError("network");
+				});
+				if (remaining.length > 0) throw new SettingsWriteError("forbidden");
+			}
 		},
 
 		async reportSettings(tenantId): Promise<ReportSettingsState> {

@@ -43,6 +43,25 @@ describe("the demo settings source", () => {
 		);
 	});
 
+	it("clears a role when it is saved as not assigned, and gives it back", async () => {
+		const store = new DemoSettingsStore();
+		const source = createDemoSettingsSource(store);
+		const topping = (await source.itemTypes(TENANT)).find(
+			(entry) => entry.role === "topping",
+		);
+		if (topping === undefined) throw new Error("the demo has no topping type");
+		await source.saveRoles(TENANT, [{ ...topping, role: null }]);
+		const cleared = (await source.itemTypes(TENANT)).find(
+			(entry) => entry.itemTypeExternalId === topping.itemTypeExternalId,
+		);
+		expect(cleared?.role).toBeNull();
+		await source.saveRoles(TENANT, [{ ...topping, role: "topping" }]);
+		const back = (await source.itemTypes(TENANT)).find(
+			(entry) => entry.itemTypeExternalId === topping.itemTypeExternalId,
+		);
+		expect(back?.role).toBe("topping");
+	});
+
 	it("reads the defaults until thresholds are saved, then the saved row", async () => {
 		const store = new DemoSettingsStore();
 		const source = createDemoSettingsSource(store);

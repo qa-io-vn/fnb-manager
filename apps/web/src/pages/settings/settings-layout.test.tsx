@@ -2,8 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n";
+import { settingsPageOf } from "../../settings/pages";
 import type { CatchUpStatus } from "../../settings/source";
-import { SettingsLayout } from "./settings-layout";
+import { loadedPageOf, SettingsLayout } from "./settings-layout";
 
 const PENDING: CatchUpStatus = {
 	inputsChangedAt: "2026-11-14T17:30:00Z",
@@ -76,6 +77,19 @@ describe("SettingsLayout", () => {
 		);
 		expect(screen.getByTestId("settings-placeholder")).toHaveTextContent("10b");
 		expect(screen.queryByTestId("catch-up-banner")).toBeNull();
+	});
+
+	it("makes each page's lazy component once, so a move between two built pages can finish", () => {
+		const thresholds = settingsPageOf("bao-cao");
+		const roles = settingsPageOf("phan-loai");
+		const holidays = settingsPageOf("ngay-le");
+		if (thresholds === null || roles === null || holidays === null) {
+			throw new Error("a settings page is missing");
+		}
+		expect(loadedPageOf(thresholds)).toBe(loadedPageOf(thresholds));
+		expect(loadedPageOf(roles)).toBe(loadedPageOf(roles));
+		expect(loadedPageOf(roles)).not.toBe(loadedPageOf(thresholds));
+		expect(loadedPageOf(holidays)).toBeNull();
 	});
 
 	it("shows the catch-up line on every settings page while days are pending, with no action for a member who may not refresh", () => {

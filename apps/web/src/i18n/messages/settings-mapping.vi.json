@@ -1,0 +1,17 @@
+{
+	"settings.mapping.roles.applied": "Đã điền gợi ý vào các nhóm chưa gán; bấm Lưu để giữ.",
+	"settings.mapping.roles.applyMany": "Áp dụng gợi ý cho {count} nhóm chưa gán",
+	"settings.mapping.roles.applyOne": "Áp dụng gợi ý cho {count} nhóm chưa gán",
+	"settings.mapping.roles.empty": "Chưa có nhóm món nào; nhóm món đến từ POS sau lần đồng bộ đầu tiên.",
+	"settings.mapping.roles.intro": "Mỗi nhóm món trên POS cần một vai trò, để báo cáo tính được tỷ lệ kèm topping và đồ ăn nhẹ, và để ma trận thực đơn so mỗi món với các món cùng vai trò.",
+	"settings.mapping.roles.none": "Chưa gán",
+	"settings.mapping.roles.suggestion": "Gợi ý: {role}",
+	"settings.mapping.roles.usage": "{items} món đã bán · {share} doanh thu món trong 28 ngày",
+	"settings.mapping.roles.usageNone": "Không bán món nào trong 28 ngày",
+	"settings.mapping.roles.usageUnavailable": "Chưa đọc được số bán 28 ngày.",
+	"settings.mapping.tab.categories": "Nhóm của món",
+	"settings.mapping.tab.later": "Phần này có ở giai đoạn {phase} của lộ trình.",
+	"settings.mapping.tab.paymentKinds": "Loại thanh toán",
+	"settings.mapping.tab.roles": "Vai trò nhóm món",
+	"settings.mapping.tabs.label": "Các phần của trang Phân loại"
+}

@@ -71,7 +71,7 @@ Names from `reportNames`; routes from [`web-app.md`](web-app.md).
 |---|---|---|---|
 | Hồ sơ cửa hàng | Store profile | `#/cai-dat/cua-hang` | 10b |
 | Dữ liệu nhập tay (giá vốn, mục tiêu, phí thanh toán) | Manual data (costs, targets, fee rates) | `#/cai-dat/du-lieu-nhap-tay` | 10b |
-| Phân loại món | Item roles and category mapping | `#/cai-dat/phan-loai` | roles 10a (#89), category mapping 10b |
+| Phân loại món | Item roles and category mapping | `#/cai-dat/phan-loai`; `settings.mapping.*` | the roles tab built (10a); category mapping and payment kinds 10b |
 | Ngưỡng báo cáo | Report thresholds | `#/cai-dat/bao-cao`; `settings.thresholds.*` | built (10a): the menu, cash and hour thresholds of `report_settings`, and "Thiết bị này", the device's CSV format |
 | Ngày lễ | Holidays | `#/cai-dat/ngay-le` | 10b |
 | Cảnh báo | Alerts: destinations, rules and a test button | `#/cai-dat/canh-bao` | after step 12c |
