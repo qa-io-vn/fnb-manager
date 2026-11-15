@@ -2,7 +2,7 @@
 
 This page explains the words that the app, the reports and the technical documents use: the Vietnamese terms of the interface with their English meaning and the code ids behind them, the domain terms of shop analytics, and the technical terms of the platform. It is for the owner, who reads the app in Vietnamese and these documents in English, for a developer taking the work over, for reviewers and testers, and for whoever runs the platform after go-live. The terms come from the i18n message files (`apps/web/src/i18n/messages/`), the metric registry ([`metrics.md`](metrics.md), `packages/metrics`), the report cards (`@fnb/reports`) and the code; where a document and the code differ, the code wins.
 
-Last updated 2026-11-12
+Last updated 2026-11-16
 
 **How to read the code ids.** A route is a hash URL of the web app (`#/bao-cao/ngay`). A key such as `nav.today` is an i18n key in `apps/web/src/i18n/messages/`. A report id (`day`) comes from `reportNames` in `packages/metrics/src/vocabulary.ts`. A card id (`top_items`) is the id of a report card in `@fnb/reports`. A metric id (`avg_ticket`) is a registry metric; a display series id (`cash_to_count`) is a series that only the web app names (`displaySeries` in `apps/web/src/metrics/registry.ts`). Status words are the six that [requirements.md, section 1.5](requirements.md#15-conventions) defines: verified locally, built, in build, designed, planned, waits for owner ([section 7](#status-words)).
 
@@ -27,9 +27,9 @@ Last updated 2026-11-12
 | Tuần · Báo cáo tuần | Week · Weekly report | route `#/bao-cao/tuan?week=YYYY-Www`; report id `week` | an ISO week, Monday to Sunday; verified locally (phase 9) |
 | Tháng · Báo cáo tháng | Month · Monthly report | route `#/bao-cao/thang?month=YYYY-MM`; report id `month` | a calendar month; verified locally (phase 9) |
 | Năm · Báo cáo năm | Year · Yearly report | route `#/bao-cao/nam?year=YYYY`; report id `year` | a calendar year; verified locally (phase 9) |
-| Chủ đề · Báo cáo chủ đề | Topics · Thematic reports | route `#/chu-de/*`; `nav.topics` | a placeholder today; designed (phase 10) |
+| Chủ đề · Báo cáo chủ đề | Topics · Thematic reports | route `#/chu-de/*`; `nav.topics`; links carry `range=<preset>` or `from=YYYY-MM-DD&to=YYYY-MM-DD`, and `store=<id>,<id>` | one subject over any range of days; four built (10a), four more in 10b ([below](#thematic-reports-phase-10)) |
 | Kế hoạch | Plans | route `#/ke-hoach/*`; `nav.plans` | saved strategy plans, KPI follow-up and the paste box; designed (phase 11b) |
-| Cài đặt | Settings | route `#/cai-dat/*` (`#/cai-dat` opens Cửa hàng); `nav.settings` | in build: the layout, the settings source and Ngưỡng báo cáo are built (10a); the other pages in 10a, 10b and 12 |
+| Cài đặt | Settings | route `#/cai-dat/*` (`#/cai-dat` opens Cửa hàng); `nav.settings` | in build: the layout, the settings source, Ngưỡng báo cáo, the roles tab of Phân loại and the catch-up line are built (10a); the other pages in 10b and 12 |
 | Xuất dữ liệu | Exports | route `#/xuat-du-lieu` | CSV exports and the aggregate data pack; no navigation item; designed (phase 11a) |
 | Đăng nhập | Sign in | route `#/dang-nhap`; `auth.login.title` | |
 | Quên mật khẩu? · Đặt lại mật khẩu | Forgot your password? · Reset password | route `#/quen-mat-khau`; `auth.forgot`, `auth.reset.title` | the reset e-mail links back to `#/mat-khau-moi` |
@@ -47,16 +47,16 @@ Last updated 2026-11-12
 | Sắp có | Coming soon | `placeholder.coming` | a screen of a later phase |
 | Có phiên bản mới — tải lại | A new version is available — reload | `shell.newVersion` | |
 
-### Thematic reports (designed, phase 10)
+### Thematic reports (phase 10)
 
 Names from `reportNames`; routes from [`web-app.md`](web-app.md).
 
-| Vietnamese | English | Report id | Planned route | Phase |
+| Vietnamese | English | Report id | Route | Phase |
 |---|---|---|---|---|
-| Doanh thu & xu hướng | Revenue and trends | `revenue` | `#/chu-de/doanh-thu` | 10a |
-| Giờ & ngày trong tuần | Hours and weekdays | `hours` | `#/chu-de/gio-ngay` | 10a |
-| Thực đơn | Menu | `menu` | `#/chu-de/thuc-don` | 10a |
-| Thanh toán & tiền mặt | Payments and cash | `payments` | `#/chu-de/thanh-toan` | 10a |
+| Doanh thu & xu hướng | Revenue and trends | `revenue` | `#/chu-de/doanh-thu` | 10a, built |
+| Giờ & ngày trong tuần | Hours and weekdays | `hours` | `#/chu-de/gio-ngay` | 10a, built |
+| Thực đơn | Menu | `menu` | `#/chu-de/thuc-don` | 10a, built |
+| Thanh toán & tiền mặt | Payments and cash | `payments` | `#/chu-de/thanh-toan` | 10a, built |
 | Khuyến mãi & giảm giá | Promotions and discounts | `promotions` | `#/chu-de/khuyen-mai` | 10b |
 | Ca & két tiền | Shifts and cash drawer | `shifts` | `#/chu-de/ca-ket-tien` | 10b |
 | So sánh cửa hàng | Store comparison | none | `#/chu-de/so-sanh` | 10b |
@@ -65,7 +65,7 @@ Names from `reportNames`; routes from [`web-app.md`](web-app.md).
 
 `reportNames` also holds `data_pack` (the aggregate data pack for the owner's own assistant, phase 11a) and `alerts` (digests and alerts, phase 12), which are not screens.
 
-### Settings screens (designed)
+### Settings screens (phase 10)
 
 | Vietnamese (from `placeholder.settings.body`) | English | Planned route | Phase |
 |---|---|---|---|
@@ -197,7 +197,7 @@ Each card has an id in `@fnb/reports` and a title key `report.<report>.<name>.ti
 | Tết · ngày lễ · ngày nghỉ riêng | Tết · public holiday · own day off | `holiday_kind`: `tet`, `public`, `custom` | days left out of baselines; see [Tết](#tết) |
 | vòng đời món: Mới · Tăng · Ổn định · Giảm · Ngừng bán | item lifecycle: new · growing · steady · declining · discontinued | card `item_lifecycle`; display series `item_lifecycle_count` | rules in [`metrics.md`](metrics.md#item-lifecycle-statuses-năm) |
 | từ ngày khai trương | since opening | card `since_opening`; display series `since_opening_net` | weekly averages of a young store since it opened |
-| giờ cao điểm · giờ thấp điểm | peak hour · dead hour | metrics `peak_share_20_21`, `dead_hour_share_17_18` | the share of daily net in local hours 20–21 and 17–18 |
+| giờ cao điểm · giờ thấp điểm · giờ đông · giờ vắng | peak hour · dead hour · busy hour · quiet hour | `theme.hours.level.*`; metrics `peak_share_top_hours`, `dead_hour_share`, and the fixed-window `peak_share_20_21` and `dead_hour_share_17_18` | Giờ & ngày finds them with the thresholds of Ngưỡng báo cáo (see [hour profile](#hour-profile)); Ngày's hourly card shows the share of daily net in the fixed local hours 20–21 (`peak_share_20_21`), and `dead_hour_share_17_18` keeps the fixed hours 17–18 |
 | chênh lệch · điểm % | difference, change · percentage points | `report.value.points` | a share or rate is compared in percentage points |
 | tr · tỷ | million · billion | `money.million`, `money.billion` | compact money; English shows M and B |
 
@@ -207,7 +207,8 @@ Each card has an id in `@fnb/reports` and a title key `report.<report>.<name>.ti
 |---|---|---|---|
 | đã đối soát · chưa đối soát | reconciled · not reconciled | `badge.verified`, `badge.unverified` | every selected store-day matches the POS [control totals](#control-totals) (`sync_checks.is_matched`), or not |
 | tạm tính | provisional | `reportCard.provisional` | an input is missing (costs, seats or customer identity), so the figure is incomplete |
-| đang cập nhật | updating | `report.marker.stale` | a recent day's item, payment or shift aggregates still lag its live totals (`store_coverage.stale_days`) |
+| Số liệu đang cập nhật theo thay đổi phân loại lúc … | The numbers are catching up with the mapping change of … | `settings.catchUp.*` | the [catch-up](#catch-up) line of the thematic reports and Settings: past days are still being recalculated after a role, category or fee-rate change (payment kinds join in 10b) |
+| đang cập nhật | updating | `report.marker.stale` | a recent day's item, payment or shift aggregates still lag its live totals (`store_coverage.stale_days`); on a thematic card, also while the range holds a day the [catch-up](#catch-up) has not redone yet |
 | dữ liệu mẫu | sample data | `badge.sample` | demo numbers |
 | chưa đồng bộ · cập nhật lúc | not synced yet · updated at | `badge.neverSynced`, `badge.updatedAt` | the freshness badge: the latest successful sync run |
 | chưa có dữ liệu năm trước · cửa hàng mới | no data from last year yet · new store | `report.unavailable.store_too_young.*` | the store opened after the reference period started |
@@ -226,7 +227,7 @@ Each card has an id in `@fnb/reports` and a title key `report.<report>.<name>.ti
 
 ## 4. Metric labels
 
-The 41 metrics of the registry, with the labels the app shows ([`metrics.md`](metrics.md) holds the formulas). "Status" says whether the data exists: `needs costs` waits for item costs, `needs seats` for seat counts, and `needs customer identity` for the loyalty phases.
+The 55 metrics of the registry, with the labels the app shows ([`metrics.md`](metrics.md) holds the formulas). "Status" says whether the data exists: `needs costs` waits for item costs, `needs seats` for seat counts, and `needs customer identity` for the loyalty phases.
 
 | Vietnamese | English | Metric id | Group | Status |
 |---|---|---|---|---|
@@ -249,17 +250,26 @@ The 41 metrics of the registry, with the labels the app shows ([`metrics.md`](me
 | Tỷ trọng giờ cao điểm 20–21h | Peak-hour share (20:00–21:59) | `peak_share_20_21` | time | available now |
 | Tỷ trọng giờ thấp điểm 17–18h | Dead-hour share (17:00–18:59) | `dead_hour_share_17_18` | time | available now |
 | Tỷ trọng theo ngày trong tuần | Weekday share (one value per ISO weekday 1–7) | `weekday_share` | time | available now |
+| Tỷ trọng giờ thấp điểm | Quiet-hour share | `dead_hour_share` | time | available now |
+| Tỷ trọng giờ cao điểm | Peak-hour share (top hours) | `peak_share_top_hours` | time | available now |
 | Mức nền cùng ngày trong tuần | Same-weekday baseline | `same_weekday_baseline` | baselines | available now |
 | Dự báo theo đặc trưng ngày trong tuần | Weekday-profile forecast | `forecast_weekday_profile` | baselines | available now |
 | Dự báo mùa vụ đơn giản | Seasonal-naïve forecast | `forecast_seasonal_naive` | baselines | available now |
 | Sai số dự báo tuyệt đối trung bình | Forecast mean absolute error | `forecast_mae` | baselines | available now |
 | Tốc độ bán món | Item velocity | `item_velocity` | menu | available now |
 | Phân loại thực đơn | Menu class (Kasavana–Smith) | `menu_class` | menu | needs costs |
+| Tỷ trọng doanh thu món có giá vốn | Costed share of item revenue | `cost_coverage` | menu | available now |
+| Biên lợi nhuận gộp món | Item gross margin rate | `gross_margin_rate` | menu | needs costs |
 | Chênh lệch tiền mặt | Cash variance | `cash_variance` | cash | available now |
 | Điểm z chênh lệch tiền mặt | Cash variance z-score | `cash_variance_zscore` | cash | available now |
 | Tỷ lệ hủy hóa đơn | Void rate | `void_rate` | cash | available now |
 | Tỷ lệ sửa hóa đơn | Edit rate | `edit_rate` | cash | available now |
 | Tỷ lệ dòng bị xóa | Removed-line rate | `removed_line_rate` | cash | available now |
+| Sửa sau khi đóng ca | Edits after close | `edits_after_close` | cash | available now |
+| Phí thanh toán ước tính | Estimated payment fees | `payment_fee_estimate` | cash | available now |
+| Điểm z tỷ lệ xóa món | Removed-line rate z-score | `removed_line_rate_zscore` | cash | available now |
+| Tỷ lệ hủy theo ca | Shift void rate | `shift_void_rate` | cash | available now |
+| Điểm z tỷ lệ hủy theo ca | Shift void rate z-score | `shift_void_rate_zscore` | cash | available now |
 | Tỷ lệ hóa đơn định danh khách | Customer capture rate | `customer_capture_rate` | customers | available now |
 | Tỷ lệ khách quay lại | Repeat rate | `repeat_rate` | customers | needs customer identity |
 | Tần suất ghé 30 ngày | Visit frequency, 30 days | `visit_frequency_30d` | customers | needs customer identity |
@@ -271,6 +281,11 @@ The 41 metrics of the registry, with the labels the app shows ([`metrics.md`](me
 | Tỷ lệ điểm hết hạn không dùng | Breakage rate | `breakage_rate` | customers | needs customer identity |
 | Tỷ lệ chi phí thưởng | Reward cost rate | `reward_cost_rate` | customers | needs customer identity |
 | Mức tăng tần suất của thành viên | Member frequency uplift | `member_frequency_uplift` | customers | needs customer identity |
+| Số ngày giảm giá bán trong năm | Discount days in the year | `discount_days` | promotions | available now |
+| Doanh thu gộp tăng thêm nhờ khuyến mãi | Promotion gross lift | `promo_lift` | promotions | available now |
+| Lãi ròng từ khuyến mãi | Promotion net lift | `promo_net_lift` | promotions | available now |
+| Tỷ lệ khách định danh có đồng ý tích điểm | Consent coverage of identified customers | `consent_coverage` | quality | needs customer identity |
+| Tỷ trọng dòng tùy chọn | Modifier line share | `modifier_line_share` | quality | available now |
 
 Display series that only the web app names (`displaySeries`):
 
@@ -326,6 +341,10 @@ The split of a revenue change into the parts due to invoices, items per ticket a
 
 A way to measure promotion lift: (test after − test before) − (control after − control before), with the same-weekday baseline, a sister store or earlier weeks without the promotion as the control. Designed for Khuyến mãi & giảm giá (phase 10b) ([`deep-dives/fnb-kpi-standards.md`](deep-dives/fnb-kpi-standards.md)).
 
+### Hour profile
+
+What `hour_profile` returns for a range: each hour's revenue and invoices in total and per day, its share, and its level, from the first to the last hour with sales counted from the business-day start. Over all days the levels are "cao điểm" (peak: the top hours, 3 by default) and "thấp điểm" (dead: below half the average hour); per day group they are "đông" (busy) and "vắng" (quiet). The thresholds come from Ngưỡng báo cáo. Giờ & ngày reads it, and the registry ids `peak_share_top_hours` and `dead_hour_share` take their values from it.
+
 ### Items per ticket
 
 Items sold ÷ invoices, counting lines of kind `item` only. Vietnamese: số món mỗi hóa đơn. Metric `items_per_ticket`.
@@ -336,7 +355,7 @@ A comparison over the same stores on both sides. A store counts for a reference 
 
 ### Menu engineering
 
-The Kasavana–Smith matrix: each item of a role is popular or not (its share of the role's quantity against 0.7 ÷ the number of items) and high or low margin (its contribution margin, or its price while costs are missing, against the role's quantity-weighted mean). Classes: star (popular, high), plowhorse (popular, low), puzzle (not popular, high), dog. Function `menu_matrix`, metric `menu_class`; designed for Thực đơn (phase 10a).
+The Kasavana–Smith matrix: each item of a role is popular or not (its share of the role's quantity against 0.7 ÷ the number of items) and high or low margin (its contribution margin, or its price while costs are missing, against the role's quantity-weighted mean). Classes: star (popular, high), plowhorse (popular, low), puzzle (not popular, high), dog. Phase 8's function `menu_matrix` holds the metric `menu_class`; Thực đơn (built, phase 10a) reads `menu_engineering`, which applies the tenant's window, popularity factor and low-sample rule from Ngưỡng báo cáo and costs each day with the cost in force on that day.
 
 ### Modifier
 
@@ -392,6 +411,10 @@ The last complete business day of the selected stores: the earliest store-local 
 
 A feature a [connector](#connector) declares, such as `shifts` or `controlTotals`; the sync uses only what is declared ([`connectors.md`](connectors.md)).
 
+### Catch-up
+
+The recalculation of past days after a mapping change. Labels such as an item's role follow a change at once, but numbers the refresh derived from it (attach rates, category and payment aggregates, fee estimates) follow only once those days are refreshed again. Every write to a role, a category override or a fee rate marks the tenant's whole history pending (payment-kind overrides join in 10b); `analytics_catch_up_status` reports what is left, and the app refreshes it 92 days at a time, newest first, while the thematic reports and Settings show the catch-up line (ADR-036).
+
 ### Conformance suite
 
 The shared tests every connector must pass (`@fnb/connector-core/conformance`); the mock and iPOS Fabi connectors pass it.
@@ -399,6 +422,10 @@ The shared tests every connector must pass (`@fnb/connector-core/conformance`); 
 ### Connector
 
 The adapter between one POS vendor and the canonical model (`PosConnector`). Today `ipos-fabi` and `mock`.
+
+### CSV format
+
+The two ways a table downloads: comma-separated with decimal points (the default), or semicolon-separated with decimal commas for an Excel set to Vietnamese. Both are UTF-8 with a byte-order mark; each phone or computer keeps its own choice ("Thiết bị này" on Ngưỡng báo cáo).
 
 ### Data pack
 

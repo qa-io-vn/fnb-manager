@@ -88,8 +88,8 @@ Benchmarks before anything fancier (Hyndman & Athanasopoulos, FPP3 §5.2): **sea
 
 - [ ] Registry entries above with vi/en labels, units, direction, source view (phase 7).
 - [ ] Same-weekday baseline and weekday-profile forecast views, holiday-excluded (phase 7).
-- [ ] Menu matrix with configurable 0.70 factor and provisional mode (phase 10).
-- [ ] Cash tolerances and shrinkage rates in settings and views (phases 10–11).
+- [x] Menu matrix with configurable 0.70 factor and provisional mode (done in phase 10a: `menu_engineering` reads the window, the popularity factor and the low-sample rule from Cài đặt → Ngưỡng báo cáo, and marks a role "tạm tính" while costs are missing).
+- [ ] Cash tolerances and shrinkage rates in settings and views (phases 10–11). Cash tolerances done in phase 10a: the absolute and relative thresholds are set on Cài đặt → Ngưỡng báo cáo and read by `shift_review` and `cash_variance_flags`; shrinkage rates remain.
 - [ ] Promotion lift with three comparators and net lift (phase 11).
 - [ ] Points valuation, breakage, reward cost rate, matched-cohort uplift (phases 17–19).
 - [ ] Download iPOS.vn report PDFs to `docs/private/` and re-check the benchmark figures.

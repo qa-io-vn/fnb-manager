@@ -12,7 +12,6 @@ export const themeKeys = {
 		span: "theme.range.span",
 		label: "theme.range.label",
 		summary: "theme.range.summary",
-		custom: "theme.range.custom",
 		from: "theme.range.from",
 		to: "theme.range.to",
 		previousStep: "theme.range.previousStep",
@@ -25,7 +24,6 @@ export const themeKeys = {
 			this_month: "theme.range.preset.this_month",
 			last_month: "theme.range.preset.last_month",
 			this_year: "theme.range.preset.this_year",
-			custom: "theme.range.preset.custom",
 		},
 	},
 	compare: {
@@ -61,10 +59,7 @@ export const themeKeys = {
 	},
 	heat: {
 		legend: "theme.heat.legend",
-		average: "theme.heat.average",
-		hour: "theme.heat.hour",
 	},
-	stale: "theme.stale",
 } as const;
 
 export type WeekdayNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7;

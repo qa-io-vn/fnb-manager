@@ -46,6 +46,8 @@ pnpm --filter @fnb/reports typecheck
 ## Read more
 
 - [docs/reports/ngay.md](../../docs/reports/ngay.md), [tuan.md](../../docs/reports/tuan.md), [thang.md](../../docs/reports/thang.md), [nam.md](../../docs/reports/nam.md): period, calls, cards, states and tests of each report.
-- [docs/reports/cau-van-bao-cao.md](../../docs/reports/cau-van-bao-cao.md): every Vietnamese report sentence for the owner's wording review.
-- [docs/web-app.md](../../docs/web-app.md#phase-9-decisions): how the web app loads and shows the reports.
+- [docs/reports/doanh-thu.md](../../docs/reports/doanh-thu.md), [gio-ngay.md](../../docs/reports/gio-ngay.md), [thuc-don.md](../../docs/reports/thuc-don.md), [thanh-toan.md](../../docs/reports/thanh-toan.md): range, calls, cards, states and tests of each thematic report.
+- [docs/reports/cau-van-bao-cao.md](../../docs/reports/cau-van-bao-cao.md) and [cau-van-chu-de.md](../../docs/reports/cau-van-chu-de.md): every Vietnamese sentence of the periodic and of the thematic reports and Settings, for the owner's wording review.
+- [docs/web-app.md](../../docs/web-app.md#phase-9-decisions): how the web app loads and shows the reports ([phase 10 decisions](../../docs/web-app.md#phase-10-decisions) for the thematic reports and Settings).
+- [docs/decisions.md](../../docs/decisions.md): ADR-029 (report numbers come from SQL), ADR-035 (thematic reports) and ADR-036 (thresholds, mappings and the catch-up).
 - [docs/development.md](../../docs/development.md#add-a-report-card): adding a report card.

@@ -1,6 +1,6 @@
 # Câu văn báo cáo — bảng duyệt câu chữ
 
-Owner review of the wording of the periodic reports Ngày, Tuần, Tháng and Năm (roadmap phase 9, open question Q9). It lists every Vietnamese template the four reports use (679 entries, 249 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures.
+Owner review of the wording of the periodic reports Ngày, Tuần, Tháng and Năm (roadmap phase 9, open question Q9). It lists every Vietnamese template the four reports use (689 entries, 251 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The shared file also holds the Settings links of `report.action.*` that the thematic cards use (or that later Settings pages will), so they are listed here with the rest of `reports.vi.json`; the thematic reports' own sentences are in [cau-van-chu-de.md](cau-van-chu-de.md).
 
 The source of truth is the message files in `apps/web/src/i18n/messages/`: `reports.vi.json` (shared by the four reports) and `report-day`, `report-week`, `report-month`, `report-year` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins. Metric names and explanations ("Giải thích chỉ số") live in `metrics.vi.json` and are reviewed with the metric registry, not here.
 
@@ -88,7 +88,7 @@ The common placeholders; every other one is named after what it holds, and the E
 - "đi ngược chiều" for a contribution against the trend.
 - "đang cập nhật" (`report.marker.stale`) for item, payment and shift figures whose aggregates are catching up.
 
-## Dùng chung cho cả bốn báo cáo · Shared by all four reports (`reports.vi.json`, 191 mục)
+## Dùng chung cho cả bốn báo cáo · Shared by all four reports (`reports.vi.json`, 205 mục)
 
 ### Thẻ chọn báo cáo · report tabs (`report.tabs.*`)
 
@@ -249,6 +249,14 @@ The common placeholders; every other one is named after what it holds, and the E
 | --- | --- | --- | --- |
 | `report.action.settings_roles` | Gán vai trò món | Assign item roles | — |
 | `report.action.settings_targets` | Đặt mục tiêu tháng | Set monthly targets | — |
+| `report.action.settings_costs` | Nhập giá vốn | Enter item costs | — |
+| `report.action.settings_fees` | Nhập phí thanh toán | Enter payment fees | — |
+| `report.action.settings_store` | Nhập giờ mở cửa và số ghế | Enter opening hours and seats | — |
+| `report.action.settings_categories` | Phân loại món | Assign item categories | — |
+| `report.action.settings_payment_kinds` | Phân loại thanh toán | Classify payment methods | — |
+| `report.action.settings_holidays` | Xem ngày lễ | Review holidays | — |
+| `report.action.settings_thresholds` | Đổi ngưỡng báo cáo | Change report thresholds | — |
+| `report.action.settings_legal` | Xem văn bản pháp lý | Review legal documents | — |
 | `report.action.today` | Xem Hôm nay | Open Today | — |
 
 ### Tên cột bảng · table columns (`report.table.*`)
@@ -408,7 +416,7 @@ The common placeholders; every other one is named after what it holds, and the E
 | `report.unavailable.building_baseline.forecast` | đang tích lũy dữ liệu dự báo | collecting data for the forecast | — |
 | `report.unavailable.building_baseline.target` | đang tích lũy dữ liệu | still collecting data | — |
 
-## Ngày · Daily report (`report-day.vi.json`, 88 mục)
+## Ngày · Daily report (`report-day.vi.json`, 84 mục)
 
 ### Tiêu đề và trạng thái trống · title and empty state (`report.day.*`)
 

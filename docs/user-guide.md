@@ -252,7 +252,7 @@ Use the browser's own print command (Ctrl+P or ⌘P on a computer, Share then Pr
 - **‹ and ›** move the range back or forward by its own length, or by a month or a year for the month and year presets. › stops at the last complete day.
 - **Từ ngày and Đến ngày** pick any range from 1 January 2023, at most 400 days.
 - The line under the presets says what is shown and what it is compared with: "07/10/2026 – 03/11/2026 · 28 ngày · so với 4 tuần trước". Every card also compares with the same weeks last year ("so với cùng kỳ năm trước"), except 52 tuần and Năm nay, whose range before is already last year.
-- The app remembers the last preset on this device, and keeps the range and the stores when you switch between Doanh thu and Giờ & ngày.
+- The app remembers the last preset on this device, and keeps the range and the stores when you switch between the thematic reports.
 
 ![The range picker: the seven presets, the ‹ and › buttons, the range line and the two dates](user-guide/theme-range-picker.png)
 
@@ -273,7 +273,7 @@ More detail: [reports/doanh-thu.md](reports/doanh-thu.md).
 
 | Card | What it shows |
 |---|---|
-| Bản đồ nhiệt giờ × thứ (Hour × weekday heat map) | two tables, revenue and invoices per day for every hour (rows) and weekday (columns T2 to CN), darker for higher; the best and the quietest cell |
+| Bản đồ nhiệt giờ × thứ (Hour × weekday heat map) | two tables, revenue and invoices per day for every hour from the first to the last with sales, quiet hours in between included (rows), and weekday (columns T2 to CN), darker for higher; the best and the quietest cell |
 | Giờ cao điểm và thấp điểm (Peak and quiet hours) | the hours that sell most (3 by default) and their share of revenue, and the quiet hours; compared with the range before in points |
 | Theo thứ trong tuần (By weekday) | revenue per day for each weekday, the best and weakest, and the weekday that changed most |
 | Doanh thu mỗi giờ mở cửa và mỗi ghế (Revenue per opening hour and per seat) | revenue and invoices per opening hour, and revenue per seat-hour (RevPASH) where the seat count is entered |
@@ -343,7 +343,7 @@ More detail: [reports/thanh-toan.md](reports/thanh-toan.md).
 
 ### Links, printing and CSV
 
-The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08&to=2026-11-06`) and, when not every store is selected, the stores. Printing and "Tải CSV" work as on the reports; theme files are named `<theme>-<card>-<from>_<to>.csv`, for example `doanh-thu-net_revenue-2026-10-07_2026-11-03.csv`.
+The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08&to=2026-11-06`) and, when not every store is selected, the stores (`&store=…`). Two dates that make up a preset open as that preset, so the address then reads `range=…`. Printing and "Tải CSV" work as on the reports; theme files are named `<theme>-<card>-<from>_<to>.csv`, for example `doanh-thu-net_revenue-2026-10-07_2026-11-03.csv`.
 
 ## Cài đặt (Settings)
 

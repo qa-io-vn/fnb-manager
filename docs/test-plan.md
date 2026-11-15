@@ -980,7 +980,7 @@ Of the 243 requirements that are verified locally, built, in build or waiting fo
 | FR-REP-07 | As-of rule | Must | verified locally | `reports:unit/as-of-and-bounds`, `web:reports/report-route`, `e2e:demo/report-day` | covered |
 | FR-REP-08 | Deep links | Must | verified locally | `web:reports/report-route`, `web:reports/period-navigator`, `e2e:demo/report-day` | covered |
 | FR-REP-09 | Coverage and young stores | Must | verified locally | `reports:unit/coverage-and-comparison`, `e2e:live/reports`, `e2e:demo/report-year` | covered |
-| FR-REP-10 | Sentences from templates | Must | verified locally | `reports:unit/decomposition-and-narrative`, `web:metrics/sentences` | covered |
+| FR-REP-10 | Sentences from templates | Must | verified locally | `reports:unit/decomposition-and-narrative`, `web:metrics/sentences`, `web:i18n/wording-sheets` | covered |
 | FR-REP-11 | Report card | Must | verified locally | `web:components/report-card/report-card`, `web:components/report-card/report-card-extensions` | covered |
 | FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan`, `web:settings/thresholds/thresholds-form`, `e2e:demo/settings-bao-cao` | partial |
 | FR-REP-13 | Print layout | Should | verified locally | `e2e:demo/demo`, `e2e:demo/report-day` | covered |
@@ -1308,7 +1308,7 @@ Of the 243 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-I18N-01 | Vietnamese first, English second | Must | verified locally | `web:i18n/i18n`, `web:i18n/report-keys`, `e2e:live/today`, `e2e:demo/demo` | covered |
+| NFR-I18N-01 | Vietnamese first, English second | Must | verified locally | `web:i18n/i18n`, `web:i18n/report-keys`, `web:i18n/wording-sheets`, `e2e:live/today`, `e2e:demo/demo` | covered |
 | NFR-I18N-02 | Formatting by locale and currency | Must | verified locally | `web:lib/format`, `notify:unit/render/format`, `web:settings/number-text`, `web:settings/forms/money-field`, `web:lib/csv` | covered |
 | NFR-I18N-03 | Registry spelling | Should | verified locally | `web:i18n/i18n` | covered |
 | NFR-I18N-04 | Notification language | Should | in build | `notify:unit/render/templates` | covered |
@@ -1340,7 +1340,7 @@ Of the 243 requirements that are verified locally, built, in build or waiting fo
 | NFR-MNT-07 | Canonical column-name lint | Should | planned | planned (request R-F03) | planned |
 | NFR-MNT-08 | Local stack | Must | verified locally | `supabase/seed.sql`, `docs/status.md` | covered |
 | NFR-MNT-09 | Pinned toolchain | Must | built | CI | covered |
-| NFR-MNT-10 | Documents follow the code | Should | built | review; `pnpm docs:check-api` (`scripts/check-api-docs.mjs`) compares `docs/api.md` with the functions in `public` that `authenticated` may execute (not in CI yet, request R-AP01) | partial |
+| NFR-MNT-10 | Documents follow the code | Should | built | review; `pnpm docs:check-api` (`scripts/check-api-docs.mjs`) compares `docs/api.md` with the functions in `public` that `authenticated` may execute (not in CI yet, request R-AP01); `web:i18n/wording-sheets` holds both wording sheets (`docs/reports/cau-van-bao-cao.md`, `cau-van-chu-de.md`) equal to the message files | partial |
 | NFR-MNT-11 | POS details stay in their package | Must | built | review of package dependencies | partial |
 
 #### NFR-OBS — Observability
@@ -1584,7 +1584,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | NFR-UX-02 | Layout on phones and desktops | built | The 360 px checks run on every page; the navigation placement and the summary button below 1024 px have no assertion. | Playwright assertions of the bottom bar at 360 px, the side rail at 1280 px and the folded controls below 1024 px. |
 | NFR-UX-04 | New version prompt | built | No automated test. | A web unit test that a changed `version.json` on window focus shows "Có phiên bản mới — tải lại". |
 | NFR-MNT-05 | No code comments | built | Review at each phase; builders and the verifier scan the added lines of changed files for comment markers. | An automated scan of changed files for comment markers in CI. |
-| NFR-MNT-10 | Documents follow the code | built | Only `docs/api.md` has an automated check (`pnpm docs:check-api`, not in CI); every other document relies on the documentation pass of each phase and the correction requests of 2026-11-12. | The final integration pass checks every document against the code (plan WP-FP); `pnpm docs:check-api` runs in CI once request R-AP01 is applied. |
+| NFR-MNT-10 | Documents follow the code | built | Only `docs/api.md` (`pnpm docs:check-api`, not in CI) and the two wording sheets (`web:i18n/wording-sheets`, in every unit run) have automated checks; every other document relies on the documentation pass of each phase and the correction requests of 2026-11-12. | The final integration pass checks every document against the code (plan WP-FP); `pnpm docs:check-api` runs in CI once request R-AP01 is applied. |
 | NFR-MNT-11 | POS details stay in their package | built | Review of package dependencies only. | An import-boundary check that fails when code outside the connector packages, the runner, the demo code and the notification test helpers imports a connector package. |
 | NFR-OBS-01 | Job summaries | built | The numbering is unit-tested; job summaries with real secrets appear only after go-live. | Read the first job summaries of "Sync" and "Notify" after go-live: counts and numbers only. |
 | NFR-HYG-02 | Secret scan over the history | built | The `secrets` job runs gitleaks over the history; no planted-secret run has been recorded. | Owner-run probe on a throwaway branch: a synthetic secret-shaped string makes the job fail, then the branch is deleted. |
@@ -1600,7 +1600,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-SYNC-20 | Nightly job | waits for owner | The skip without secrets runs on GitHub every night; the scheduled sync on the cloud project is dispatched and checked after go-live (OC-09). |
 | FR-DQ-04 | Monthly comparison with the POS report | waits for owner | Each month against the POS report A01, per store (OC-01). |
 | FR-ANA-16 | Reference-window figures | verified locally | Compared with the private sheet at the phase 8 verification; the result is kept privately (OC-03). The phase 10 theme live check compares the window's hours, weekdays and payment mix and prints only `matches: true` or `false`; on 2026-11-15 all 66 values and both menu checks matched. |
-| FR-REP-19 | Owner wording review | waits for owner | Wording review of `docs/reports/cau-van-bao-cao.md` (OC-11). |
+| FR-REP-19 | Owner wording review | waits for owner | Wording review of `docs/reports/cau-van-bao-cao.md` and `docs/reports/cau-van-chu-de.md` (OC-11); `web:i18n/wording-sheets` keeps both equal to the message files. |
 | FR-REP-20 | Owner comparison with POS reports | waits for owner | After the verifier's `reports:live/live-check`: three days and one month against A01 and B01, and Năm against the private sheet (OC-02). |
 | FR-OPS-02 | Migrations by workflow | waits for owner | The workflow skips with a note until `SUPABASE_PROJECT_ID` exists; the first `db push` runs after go-live (OC-09). |
 | FR-OPS-04 | Edge Function deploy | waits for owner | The import-map check runs in CI and before every deploy; the deploy itself needs the cloud secrets (OC-09). |
@@ -1841,7 +1841,7 @@ Every result is kept privately in `docs/private/`.
 | OC-08 | The digest on the owner's phone | FR-NOT-19, FR-OPS-12 | Three nights after go-live step 8 (written in step 12c) | Link the owner's Zalo Bot chat with `fnb notify link`, confirm with `fnb notify test`, then on three mornings compare the digest with Ngày for the same day; the verifier runs `fnb digest --check-ngay` against the cloud | waits for owner |
 | OC-09 | Cloud workflows and the go-live checklist | FR-OPS-02, FR-OPS-04, FR-OPS-05, FR-OPS-11, FR-SYNC-20 | Go-live | Follow [go-live.md](go-live.md): "Migrate database" applies the schema, "Deploy Edge Functions" deploys, "Sync" runs on schedule and by dispatch, "Backup database" writes its first encrypted archive and logs its size, `fnb status` shows incremental runs within 30 minutes | waits for owner |
 | OC-10 | Cloud measurements | NFR-PERF-02, NFR-PERF-05, NFR-PERF-07, FR-TEN-17, NFR-OBS-01 | After go-live, by the verifier with the owner's access | Lighthouse on the live app; a timed analytics refresh; the timings of the first incremental runs; the two-tenant run with throwaway users, removed afterwards; the first job summaries carry counts only | planned |
-| OC-11 | Wording review | FR-REP-19 | Any time | Read [reports/cau-van-bao-cao.md](reports/cau-van-bao-cao.md) (679 Vietnamese templates with their English meaning) and mark changes | open |
+| OC-11 | Wording review | FR-REP-19 | Any time | Read [reports/cau-van-bao-cao.md](reports/cau-van-bao-cao.md) (689 Vietnamese templates of the periodic reports) and [reports/cau-van-chu-de.md](reports/cau-van-chu-de.md) (503 templates of the thematic reports and Settings), each with its English meaning, and mark changes | open |
 | OC-12 | Phase 10 inputs | FR-SET-01, FR-SET-03, FR-SET-04, FR-THM-02, FR-THM-03 | Phase 10 | Enter item costs for the top items of one store, one monthly target, seat counts and opening hours; check that the margins, the pace and the per-hour figures look right | planned |
 | OC-13 | Strategy runs | FR-STR-02, FR-STR-09 | Phase 11b | Create the publisher login's local `.env`; run `/strategy` twice in the owner's own assistant; check that every initiative cites a number from the pack; decide the monthly routine (gate G5) | planned |
 | OC-14 | Legal and paperwork decisions | FR-CMP-09, FR-CMP-17, FR-CMP-20 | Track Z; before Track C goes public | Record the legal form and the dossier or exemption (gate G3); publish the privacy notice; record the data protection officer decision | waits for owner |
