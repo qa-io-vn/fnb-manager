@@ -13,6 +13,7 @@ const ENTRIES: readonly ItemTypeEntry[] = [
 		itemTypeExternalId: "T1",
 		name: "Trà sữa",
 		role: "drink",
+		audit: null,
 	},
 	{
 		posAccountId: "A",
@@ -20,6 +21,7 @@ const ENTRIES: readonly ItemTypeEntry[] = [
 		itemTypeExternalId: "T2",
 		name: "Topping",
 		role: "topping",
+		audit: null,
 	},
 	{
 		posAccountId: "A",
@@ -27,6 +29,7 @@ const ENTRIES: readonly ItemTypeEntry[] = [
 		itemTypeExternalId: "T3",
 		name: "Bánh ngọt",
 		role: null,
+		audit: null,
 	},
 	{
 		posAccountId: "A",
@@ -34,6 +37,7 @@ const ENTRIES: readonly ItemTypeEntry[] = [
 		itemTypeExternalId: "T4",
 		name: "Phụ thu",
 		role: null,
+		audit: null,
 	},
 ];
 

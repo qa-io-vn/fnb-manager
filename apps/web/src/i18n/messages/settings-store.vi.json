@@ -1,3 +1,6 @@
 {
-	"settings.store.title": "Cửa hàng"
+	"settings.store.title": "Cửa hàng",
+	"settings.store.code.duplicate": "Không lưu được: mã này đã dùng cho một cửa hàng khác của chuỗi.",
+	"settings.store.hours.invalid": "Không lưu được: giờ mở cửa không hợp lệ, hãy kiểm tra lại các khung giờ.",
+	"settings.store.hours.ownerOnly": "Không lưu được: chỉ chủ cửa hàng mới đổi được giờ mở cửa, vì giờ mở cửa quyết định cảnh báo và lịch đồng bộ."
 }

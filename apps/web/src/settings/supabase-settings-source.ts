@@ -1,11 +1,15 @@
+import { type PaymentKind, paymentKindSchema } from "@fnb/core";
 import {
 	addDays,
 	DEFAULT_REPORT_SETTINGS,
+	E_INVOICE_STATUSES,
 	isDefaultReportSettings,
 	maxDate,
+	POS_FEATURE_STATUSES,
 	REPORT_SETTINGS_COLUMNS,
 	type ReportSettings,
 	type ReportSettingsColumn,
+	TRAN_NO_RESET_PERIODS,
 } from "@fnb/reports";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -15,45 +19,50 @@ import {
 	type AuditEntry,
 	auditAuthorOf,
 	type CatchUpStatus,
+	type CategoryOverrideChange,
+	type FeeRateRow,
+	type HolidayRow,
 	ITEM_TYPE_ROLES,
+	type ItemEntry,
 	type ItemTypeEntry,
-	type MemberRoleRow,
+	type KindOverrideChange,
+	LEGAL_FORMS,
 	type Membership,
 	NO_CATCH_UP,
+	type PaymentMethodEntry,
 	type ReportSettingsState,
 	type RoleChange,
 	type SettingsSource,
 	SettingsWriteError,
+	type StoreProfile,
+	type StoreProfileChange,
+	type TenantProfile,
+	type TenantProfileChange,
+	yearBounds,
 } from "./source";
+import {
+	type AuditOf,
+	clearedByAccount,
+	createSupabaseAudits,
+	deleteCleared,
+	nullableNumeric,
+	numeric,
+	onlyRow,
+	rereadOrNetwork,
+	tenantRole,
+	written,
+	writtenRows,
+} from "./supabase-common";
+import type { OpeningHours } from "./validation";
+
+export { writeErrorOf } from "./supabase-common";
 
 export const REFRESH_CHUNK_DAYS = 92;
-
-const numeric = z.union([z.number(), z.string()]).transform(Number);
-
-const tenantRole = z.enum(["owner", "manager", "staff", "viewer", "publisher"]);
 
 const membershipRow = z.object({
 	role: tenantRole,
 	store_ids: z.array(z.string()).nullable(),
 });
-
-const roleTypeRow = z.object({ item_type_external_id: z.string() });
-
-function clearedByAccount(
-	changes: readonly RoleChange[],
-): Map<string, string[]> {
-	const byAccount = new Map<string, string[]>();
-	for (const change of changes) {
-		if (change.role !== null) continue;
-		byAccount.set(change.posAccountId, [
-			...(byAccount.get(change.posAccountId) ?? []),
-			change.itemTypeExternalId,
-		]);
-	}
-	return byAccount;
-}
-
-const memberRoleRow = z.object({ user_id: z.string(), role: tenantRole });
 
 const itemTypeRow = z.object({
 	pos_account_id: z.string(),
@@ -66,6 +75,8 @@ const roleRow = z.object({
 	pos_account_id: z.string(),
 	item_type_external_id: z.string(),
 	role: z.enum(ITEM_TYPE_ROLES as [string, ...string[]]),
+	updated_at: z.string(),
+	updated_by: z.string().nullable(),
 });
 
 const settingsRow = z.object({
@@ -93,62 +104,192 @@ const catchUpRow = z.object({
 	can_refresh: z.boolean(),
 });
 
-interface PostgrestFailure {
-	readonly code?: string;
-	readonly message?: string;
-	readonly details?: string | null;
+const language = z.enum(["vi", "en"]);
+const paymentKind = paymentKindSchema;
+
+const tenantRow = z.object({
+	legal_form: z.enum(LEGAL_FORMS),
+	default_language: language,
+	profile_updated_at: z.string().nullable(),
+	profile_updated_by: z.string().nullable(),
+});
+
+const TENANT_SELECT =
+	"legal_form,default_language,profile_updated_at,profile_updated_by";
+
+const openingSpan = z.tuple([z.string(), z.string()]);
+
+const storeRow = z.object({
+	id: z.string(),
+	pos_account_id: z.string(),
+	name: z.string(),
+	address: z.string().nullable(),
+	timezone: z.string(),
+	business_day_start_minutes: numeric,
+	code: z.string().nullable(),
+	opening_hours: z.record(z.string(), z.array(openingSpan)).nullable(),
+	seat_count: nullableNumeric,
+	opened_on: z.string().nullable(),
+	e_invoice_status: z.enum(E_INVOICE_STATUSES),
+	tran_no_reset_period: z.enum(TRAN_NO_RESET_PERIODS),
+	member_capture_status: z.enum(POS_FEATURE_STATUSES),
+	profile_updated_at: z.string().nullable(),
+	profile_updated_by: z.string().nullable(),
+});
+
+const STORE_SELECT =
+	"id,pos_account_id,name,address,timezone,business_day_start_minutes,code,opening_hours,seat_count,opened_on,e_invoice_status,tran_no_reset_period,member_capture_status,profile_updated_at,profile_updated_by";
+
+const STORE_COLUMNS = {
+	code: "code",
+	openingHours: "opening_hours",
+	seatCount: "seat_count",
+	openedOn: "opened_on",
+	eInvoiceStatus: "e_invoice_status",
+	tranNoResetPeriod: "tran_no_reset_period",
+	memberCaptureStatus: "member_capture_status",
+} as const satisfies Record<keyof StoreProfileChange, string>;
+
+const itemRow = z.object({
+	pos_account_id: z.string(),
+	external_id: z.string(),
+	name: z.string(),
+	size_label: z.string().nullable(),
+	list_price: nullableNumeric,
+	is_modifier: z.boolean(),
+	active: z.boolean(),
+	item_type_external_id: z.string().nullable(),
+});
+
+const categoryOverrideRow = z.object({
+	pos_account_id: z.string(),
+	item_external_id: z.string(),
+	item_type_external_id: z.string(),
+	updated_at: z.string(),
+	updated_by: z.string().nullable(),
+});
+
+const paymentMethodRow = z.object({
+	pos_account_id: z.string(),
+	external_id: z.string(),
+	name: z.string(),
+	kind: paymentKind,
+	pos_kind: paymentKind,
+	pos_accounts: z.object({ display_name: z.string() }),
+});
+
+const kindOverrideRow = z.object({
+	pos_account_id: z.string(),
+	payment_method_external_id: z.string(),
+	kind: paymentKind,
+	updated_at: z.string(),
+	updated_by: z.string().nullable(),
+});
+
+const feeRateRow = z.object({
+	id: z.string(),
+	store_id: z.string().nullable(),
+	payment_method_external_id: z.string(),
+	fee_pct: numeric,
+	fixed_fee_amount: numeric,
+	effective_from: z.string(),
+	updated_at: z.string(),
+	updated_by: z.string().nullable(),
+});
+
+const FEE_RATE_SELECT =
+	"id,store_id,payment_method_external_id,fee_pct,fixed_fee_amount,effective_from,updated_at,updated_by";
+
+const holidayRow = z.object({
+	id: z.string(),
+	tenant_id: z.string().nullable(),
+	country_code: z.string(),
+	holiday_date: z.string(),
+	name: z.string(),
+	kind: z.string(),
+	updated_at: z.string(),
+	updated_by: z.string().nullable(),
+});
+
+const HOLIDAY_SELECT =
+	"id,tenant_id,country_code,holiday_date,name,kind,updated_at,updated_by";
+
+const countryRow = z.object({ country_code: z.string() });
+const idRow = z.object({ id: z.string() });
+
+function tenantProfileOf(
+	row: z.output<typeof tenantRow>,
+	auditOf: AuditOf,
+): TenantProfile {
+	return {
+		legalForm: row.legal_form,
+		defaultLanguage: row.default_language,
+		audit: auditOf(row.profile_updated_at, row.profile_updated_by),
+	};
 }
 
-function constraintOf(error: PostgrestFailure): string | null {
-	const text = `${error.message ?? ""} ${error.details ?? ""}`;
-	return /constraint "([^"]+)"/.exec(text)?.[1] ?? null;
+export function storeProfileOf(
+	row: z.output<typeof storeRow>,
+	auditOf: AuditOf,
+): StoreProfile {
+	return {
+		storeId: row.id,
+		posAccountId: row.pos_account_id,
+		name: row.name,
+		address: row.address,
+		timeZone: row.timezone,
+		businessDayStartMinutes: row.business_day_start_minutes,
+		code: row.code,
+		openingHours: row.opening_hours as OpeningHours | null,
+		seatCount: row.seat_count,
+		openedOn: row.opened_on,
+		eInvoiceStatus: row.e_invoice_status,
+		tranNoResetPeriod: row.tran_no_reset_period,
+		memberCaptureStatus: row.member_capture_status,
+		audit: auditOf(row.profile_updated_at, row.profile_updated_by),
+	};
 }
 
-export function writeErrorOf(error: PostgrestFailure): SettingsWriteError {
-	switch (error.code) {
-		case "42501":
-			return new SettingsWriteError("forbidden");
-		case "23505":
-			return new SettingsWriteError("duplicate", constraintOf(error));
-		case "23514":
-		case "22023":
-			return new SettingsWriteError("invalid", constraintOf(error));
-		case "55000":
-			return new SettingsWriteError("frozen");
-		default:
-			if (error.code === undefined || error.code === "") {
-				return new SettingsWriteError("network");
-			}
-			return error.code.startsWith("PGRST3")
-				? new SettingsWriteError("forbidden")
-				: new SettingsWriteError("invalid");
+export function storeColumnsOf(
+	change: StoreProfileChange,
+): Record<string, unknown> {
+	const columns: Record<string, unknown> = {};
+	for (const [key, column] of Object.entries(STORE_COLUMNS)) {
+		const value = change[key as keyof StoreProfileChange];
+		if (value !== undefined) columns[column] = value;
 	}
+	return columns;
 }
 
-async function written(
-	request: PromiseLike<{ error: PostgrestFailure | null }>,
-): Promise<void> {
-	let result: { error: PostgrestFailure | null };
-	try {
-		result = await request;
-	} catch {
-		throw new SettingsWriteError("network");
-	}
-	if (result.error !== null) throw writeErrorOf(result.error);
+function feeRateOf(
+	row: z.output<typeof feeRateRow>,
+	auditOf: AuditOf,
+): FeeRateRow {
+	return {
+		id: row.id,
+		storeId: row.store_id,
+		paymentMethodExternalId: row.payment_method_external_id,
+		feePct: row.fee_pct,
+		fixedFeeAmount: row.fixed_fee_amount,
+		effectiveFrom: row.effective_from,
+		audit: auditOf(row.updated_at, row.updated_by),
+	};
 }
 
-async function writtenRows<Row>(
-	schema: z.ZodType<Row>,
-	request: PromiseLike<{ data: unknown; error: PostgrestFailure | null }>,
-): Promise<Row[]> {
-	let result: { data: unknown; error: PostgrestFailure | null };
-	try {
-		result = await request;
-	} catch {
-		throw new SettingsWriteError("network");
-	}
-	if (result.error !== null) throw writeErrorOf(result.error);
-	return z.array(schema).parse(result.data ?? []);
+function holidayOf(
+	row: z.output<typeof holidayRow>,
+	auditOf: AuditOf,
+): HolidayRow {
+	const custom = row.tenant_id !== null;
+	return {
+		id: row.id,
+		countryCode: row.country_code,
+		holidayDate: row.holiday_date,
+		name: row.name,
+		kind: row.kind,
+		custom,
+		audit: custom ? auditOf(row.updated_at, row.updated_by) : null,
+	};
 }
 
 export type ReportSettingsColumns = { readonly tenant_id: string } & Readonly<
@@ -210,17 +351,15 @@ export function refreshWindow(
 	};
 }
 
+function keyOf(...parts: readonly string[]): string {
+	return parts.join("\u0000");
+}
+
 export function createSupabaseSettingsSource(
 	client: SupabaseClient,
 ): SettingsSource {
-	const currentUserId = async (): Promise<string> => {
-		const { data, error } = await client.auth.getUser();
-		const userId = data.user?.id;
-		if (error || userId === undefined) {
-			throw new Error(error?.message ?? "not signed in");
-		}
-		return userId;
-	};
+	const audits = createSupabaseAudits(client);
+	const { currentUserId, memberRoles } = audits;
 
 	const catchUpStatus = async (tenantId: string): Promise<CatchUpStatus> =>
 		catchUpOf(
@@ -229,18 +368,6 @@ export function createSupabaseSettingsSource(
 				client.rpc("analytics_catch_up_status", { p_tenant_id: tenantId }),
 			),
 		);
-
-	const memberRoles = async (tenantId: string): Promise<MemberRoleRow[]> => {
-		const rows = await fetchAllPages(memberRoleRow, (from, to) =>
-			client
-				.from("tenant_members")
-				.select("user_id,role")
-				.eq("tenant_id", tenantId)
-				.order("user_id")
-				.range(from, to),
-		);
-		return rows.map((row) => ({ userId: row.user_id, role: row.role }));
-	};
 
 	const authorOf = async (
 		tenantId: string,
@@ -265,6 +392,40 @@ export function createSupabaseSettingsSource(
 					),
 	});
 
+	const storeRows = (tenantId: string, storeId?: string) =>
+		fetchAllPages(storeRow, (from, to) => {
+			const query = client
+				.from("stores")
+				.select(STORE_SELECT)
+				.eq("tenant_id", tenantId);
+			return (storeId === undefined ? query : query.eq("id", storeId))
+				.order("name")
+				.order("id")
+				.range(from, to);
+		});
+
+	const tenantCountry = async (tenantId: string): Promise<string> => {
+		const [row] = await rereadOrNetwork(
+			countryRow,
+			client.from("tenants").select("country_code").eq("id", tenantId),
+		);
+		if (row === undefined) throw new SettingsWriteError("forbidden");
+		return row.country_code;
+	};
+
+	const tenantProfile = async (tenantId: string): Promise<TenantProfile> => {
+		const [rows, auditsOf] = await Promise.all([
+			fetchOnce(
+				tenantRow,
+				client.from("tenants").select(TENANT_SELECT).eq("id", tenantId),
+			),
+			audits.auditsFor(tenantId),
+		]);
+		const row = rows[0];
+		if (row === undefined) throw new Error("the tenant is not visible");
+		return tenantProfileOf(row, auditsOf);
+	};
+
 	return {
 		kind: "supabase",
 
@@ -284,8 +445,73 @@ export function createSupabaseSettingsSource(
 				: { role: row.role, storeIds: row.store_ids };
 		},
 
+		tenantProfile,
+
+		async updateTenantProfile(
+			tenantId,
+			change: TenantProfileChange,
+		): Promise<TenantProfile> {
+			if (Object.values(change).every((value) => value === undefined)) {
+				return tenantProfile(tenantId);
+			}
+			const columns: Record<string, unknown> = {};
+			if (change.legalForm !== undefined) {
+				columns.legal_form = change.legalForm;
+			}
+			if (change.defaultLanguage !== undefined) {
+				columns.default_language = change.defaultLanguage;
+			}
+			const row = onlyRow(
+				await writtenRows(
+					tenantRow,
+					client
+						.from("tenants")
+						.update(columns)
+						.eq("id", tenantId)
+						.select(TENANT_SELECT),
+				),
+			);
+			return tenantProfileOf(row, await audits.auditsFor(tenantId));
+		},
+
+		async storeProfiles(tenantId): Promise<StoreProfile[]> {
+			const [rows, auditsOf] = await Promise.all([
+				storeRows(tenantId),
+				audits.auditsFor(tenantId),
+			]);
+			return rows.map((row) => storeProfileOf(row, auditsOf));
+		},
+
+		async updateStoreProfile(
+			tenantId,
+			storeId,
+			change: StoreProfileChange,
+		): Promise<StoreProfile> {
+			const columns = storeColumnsOf(change);
+			if (Object.keys(columns).length === 0) {
+				const [auditsOf, [current]] = await Promise.all([
+					audits.auditsFor(tenantId),
+					storeRows(tenantId, storeId),
+				]);
+				if (current === undefined) throw new SettingsWriteError("forbidden");
+				return storeProfileOf(current, auditsOf);
+			}
+			const row = onlyRow(
+				await writtenRows(
+					storeRow,
+					client
+						.from("stores")
+						.update(columns)
+						.eq("tenant_id", tenantId)
+						.eq("id", storeId)
+						.select(STORE_SELECT),
+				),
+			);
+			return storeProfileOf(row, await audits.auditsFor(tenantId));
+		},
+
 		async itemTypes(tenantId): Promise<ItemTypeEntry[]> {
-			const [types, roles] = await Promise.all([
+			const [types, roles, auditsOf] = await Promise.all([
 				fetchAllPages(itemTypeRow, (from, to) =>
 					client
 						.from("item_types")
@@ -301,26 +527,36 @@ export function createSupabaseSettingsSource(
 				fetchAllPages(roleRow, (from, to) =>
 					client
 						.from("item_type_roles")
-						.select("pos_account_id,item_type_external_id,role")
+						.select(
+							"pos_account_id,item_type_external_id,role,updated_at,updated_by",
+						)
 						.eq("tenant_id", tenantId)
 						.order("pos_account_id")
 						.order("item_type_external_id")
 						.range(from, to),
 				),
+				audits.auditsFor(tenantId),
 			]);
 			const roleOf = new Map(
 				roles.map((row) => [
 					`${row.pos_account_id}|${row.item_type_external_id}`,
-					row.role as ItemTypeEntry["role"],
+					row,
 				]),
 			);
-			return types.map((row) => ({
-				posAccountId: row.pos_account_id,
-				posAccountName: row.pos_accounts.display_name,
-				itemTypeExternalId: row.external_id,
-				name: row.name,
-				role: roleOf.get(`${row.pos_account_id}|${row.external_id}`) ?? null,
-			}));
+			return types.map((row) => {
+				const role = roleOf.get(`${row.pos_account_id}|${row.external_id}`);
+				return {
+					posAccountId: row.pos_account_id,
+					posAccountName: row.pos_accounts.display_name,
+					itemTypeExternalId: row.external_id,
+					name: row.name,
+					role: (role?.role ?? null) as ItemTypeEntry["role"],
+					audit:
+						role === undefined
+							? null
+							: auditsOf(role.updated_at, role.updated_by),
+				};
+			});
 		},
 
 		async saveRoles(tenantId, changes: readonly RoleChange[]) {
@@ -343,31 +579,338 @@ export function createSupabaseSettingsSource(
 					}),
 				);
 			}
-			for (const [posAccountId, typeIds] of clearedByAccount(changes)) {
-				const removed = await writtenRows(
-					roleTypeRow,
+			await deleteCleared(
+				client,
+				"item_type_roles",
+				"item_type_external_id",
+				tenantId,
+				clearedByAccount(
+					changes,
+					(change) => change.itemTypeExternalId,
+					(change) => change.role === null,
+				),
+			);
+		},
+
+		async items(tenantId): Promise<ItemEntry[]> {
+			const [items, overrides, auditsOf] = await Promise.all([
+				fetchAllPages(itemRow, (from, to) =>
 					client
-						.from("item_type_roles")
-						.delete()
+						.from("items")
+						.select(
+							"pos_account_id,external_id,name,size_label,list_price,is_modifier,active,item_type_external_id",
+						)
 						.eq("tenant_id", tenantId)
-						.eq("pos_account_id", posAccountId)
-						.in("item_type_external_id", typeIds)
-						.select("item_type_external_id"),
+						.order("pos_account_id")
+						.order("external_id")
+						.range(from, to),
+				),
+				fetchAllPages(categoryOverrideRow, (from, to) =>
+					client
+						.from("item_category_overrides")
+						.select(
+							"pos_account_id,item_external_id,item_type_external_id,updated_at,updated_by",
+						)
+						.eq("tenant_id", tenantId)
+						.order("pos_account_id")
+						.order("item_external_id")
+						.range(from, to),
+				),
+				audits.auditsFor(tenantId),
+			]);
+			const overrideOf = new Map(
+				overrides.map((row) => [
+					keyOf(row.pos_account_id, row.item_external_id),
+					row,
+				]),
+			);
+			const listed = items.map((row): ItemEntry => {
+				const key = keyOf(row.pos_account_id, row.external_id);
+				const override = overrideOf.get(key);
+				overrideOf.delete(key);
+				return {
+					posAccountId: row.pos_account_id,
+					itemExternalId: row.external_id,
+					name: row.name,
+					sizeLabel: row.size_label,
+					listPrice: row.list_price,
+					isModifier: row.is_modifier,
+					active: row.active,
+					inCatalogue: true,
+					posItemTypeExternalId: row.item_type_external_id,
+					overrideItemTypeExternalId: override?.item_type_external_id ?? null,
+					audit:
+						override === undefined
+							? null
+							: auditsOf(override.updated_at, override.updated_by),
+				};
+			});
+			const unlisted = [...overrideOf.values()].map(
+				(override): ItemEntry => ({
+					posAccountId: override.pos_account_id,
+					itemExternalId: override.item_external_id,
+					name: override.item_external_id,
+					sizeLabel: null,
+					listPrice: null,
+					isModifier: false,
+					active: false,
+					inCatalogue: false,
+					posItemTypeExternalId: null,
+					overrideItemTypeExternalId: override.item_type_external_id,
+					audit: auditsOf(override.updated_at, override.updated_by),
+				}),
+			);
+			return [...listed, ...unlisted];
+		},
+
+		async saveCategoryOverrides(
+			tenantId,
+			changes: readonly CategoryOverrideChange[],
+		) {
+			const assigned = changes.flatMap((change) =>
+				change.itemTypeExternalId === null
+					? []
+					: [
+							{
+								tenant_id: tenantId,
+								pos_account_id: change.posAccountId,
+								item_external_id: change.itemExternalId,
+								item_type_external_id: change.itemTypeExternalId,
+							},
+						],
+			);
+			if (assigned.length > 0) {
+				await written(
+					client.from("item_category_overrides").upsert(assigned, {
+						onConflict: "pos_account_id,item_external_id",
+					}),
 				);
-				if (removed.length === typeIds.length) continue;
-				const remaining = await fetchOnce(
-					roleTypeRow,
-					client
-						.from("item_type_roles")
-						.select("item_type_external_id")
-						.eq("tenant_id", tenantId)
-						.eq("pos_account_id", posAccountId)
-						.in("item_type_external_id", typeIds),
-				).catch(() => {
-					throw new SettingsWriteError("network");
-				});
-				if (remaining.length > 0) throw new SettingsWriteError("forbidden");
 			}
+			await deleteCleared(
+				client,
+				"item_category_overrides",
+				"item_external_id",
+				tenantId,
+				clearedByAccount(
+					changes,
+					(change) => change.itemExternalId,
+					(change) => change.itemTypeExternalId === null,
+				),
+			);
+		},
+
+		async paymentMethods(tenantId): Promise<PaymentMethodEntry[]> {
+			const [methods, overrides, auditsOf] = await Promise.all([
+				fetchAllPages(paymentMethodRow, (from, to) =>
+					client
+						.from("payment_methods")
+						.select(
+							"pos_account_id,external_id,name,kind,pos_kind,pos_accounts!inner(display_name)",
+						)
+						.eq("tenant_id", tenantId)
+						.order("pos_account_id")
+						.order("external_id")
+						.range(from, to),
+				),
+				fetchAllPages(kindOverrideRow, (from, to) =>
+					client
+						.from("payment_kind_overrides")
+						.select(
+							"pos_account_id,payment_method_external_id,kind,updated_at,updated_by",
+						)
+						.eq("tenant_id", tenantId)
+						.order("pos_account_id")
+						.order("payment_method_external_id")
+						.range(from, to),
+				),
+				audits.auditsFor(tenantId),
+			]);
+			const overrideOf = new Map(
+				overrides.map((row) => [
+					keyOf(row.pos_account_id, row.payment_method_external_id),
+					row,
+				]),
+			);
+			return methods.map((row) => {
+				const override = overrideOf.get(
+					keyOf(row.pos_account_id, row.external_id),
+				);
+				const overrideKind: PaymentKind | null = override?.kind ?? null;
+				return {
+					posAccountId: row.pos_account_id,
+					posAccountName: row.pos_accounts.display_name,
+					externalId: row.external_id,
+					name: row.name,
+					posKind: row.pos_kind,
+					overrideKind,
+					kind: overrideKind ?? row.kind,
+					audit:
+						override === undefined
+							? null
+							: auditsOf(override.updated_at, override.updated_by),
+				};
+			});
+		},
+
+		async saveKindOverrides(tenantId, changes: readonly KindOverrideChange[]) {
+			const assigned = changes.flatMap((change) =>
+				change.kind === null
+					? []
+					: [
+							{
+								tenant_id: tenantId,
+								pos_account_id: change.posAccountId,
+								payment_method_external_id: change.paymentMethodExternalId,
+								kind: change.kind,
+							},
+						],
+			);
+			if (assigned.length > 0) {
+				await written(
+					client.from("payment_kind_overrides").upsert(assigned, {
+						onConflict: "pos_account_id,payment_method_external_id",
+					}),
+				);
+			}
+			await deleteCleared(
+				client,
+				"payment_kind_overrides",
+				"payment_method_external_id",
+				tenantId,
+				clearedByAccount(
+					changes,
+					(change) => change.paymentMethodExternalId,
+					(change) => change.kind === null,
+				),
+			);
+		},
+
+		async feeRates(tenantId): Promise<FeeRateRow[]> {
+			const [rows, auditsOf] = await Promise.all([
+				fetchAllPages(feeRateRow, (from, to) =>
+					client
+						.from("payment_fee_rates")
+						.select(FEE_RATE_SELECT)
+						.eq("tenant_id", tenantId)
+						.order("payment_method_external_id")
+						.order("store_id", { nullsFirst: true })
+						.order("effective_from")
+						.order("id")
+						.range(from, to),
+				),
+				audits.auditsFor(tenantId),
+			]);
+			return rows.map((row) => feeRateOf(row, auditsOf));
+		},
+
+		async saveFeeRates(tenantId, rows): Promise<FeeRateRow[]> {
+			if (rows.length === 0) return [];
+			const saved = await writtenRows(
+				feeRateRow,
+				client
+					.from("payment_fee_rates")
+					.upsert(
+						rows.map((row) => ({
+							tenant_id: tenantId,
+							store_id: row.storeId,
+							payment_method_external_id: row.paymentMethodExternalId,
+							fee_pct: row.feePct,
+							fixed_fee_amount: row.fixedFeeAmount,
+							effective_from: row.effectiveFrom,
+						})),
+						{
+							onConflict:
+								"tenant_id,store_id,payment_method_external_id,effective_from",
+						},
+					)
+					.select(FEE_RATE_SELECT),
+			);
+			const auditsOf = await audits.auditsFor(tenantId);
+			return saved.map((row) => feeRateOf(row, auditsOf));
+		},
+
+		async holidays(tenantId, year): Promise<HolidayRow[]> {
+			const { from, to } = yearBounds(year);
+			const [country, auditsOf] = await Promise.all([
+				tenantCountry(tenantId),
+				audits.auditsFor(tenantId),
+			]);
+			const [global, custom] = await Promise.all([
+				fetchAllPages(holidayRow, (start, end) =>
+					client
+						.from("holidays")
+						.select(HOLIDAY_SELECT)
+						.is("tenant_id", null)
+						.eq("country_code", country)
+						.gte("holiday_date", from)
+						.lte("holiday_date", to)
+						.order("holiday_date")
+						.order("id")
+						.range(start, end),
+				),
+				fetchAllPages(holidayRow, (start, end) =>
+					client
+						.from("holidays")
+						.select(HOLIDAY_SELECT)
+						.eq("tenant_id", tenantId)
+						.eq("country_code", country)
+						.gte("holiday_date", from)
+						.lte("holiday_date", to)
+						.order("holiday_date")
+						.order("id")
+						.range(start, end),
+				),
+			]);
+			return [...global, ...custom]
+				.map((row) => holidayOf(row, auditsOf))
+				.sort(
+					(left, right) =>
+						left.holidayDate.localeCompare(right.holidayDate) ||
+						Number(left.custom) - Number(right.custom) ||
+						left.id.localeCompare(right.id),
+				);
+		},
+
+		async addHoliday(tenantId, change): Promise<HolidayRow> {
+			const country = await tenantCountry(tenantId);
+			const row = onlyRow(
+				await writtenRows(
+					holidayRow,
+					client
+						.from("holidays")
+						.insert({
+							tenant_id: tenantId,
+							country_code: country,
+							holiday_date: change.holidayDate,
+							name: change.name,
+							kind: "custom",
+						})
+						.select(HOLIDAY_SELECT),
+				),
+			);
+			return holidayOf(row, await audits.auditsFor(tenantId));
+		},
+
+		async deleteHoliday(tenantId, id) {
+			const removed = await writtenRows(
+				idRow,
+				client
+					.from("holidays")
+					.delete()
+					.eq("tenant_id", tenantId)
+					.eq("id", id)
+					.select("id"),
+			);
+			if (removed.length > 0) return;
+			const remaining = await rereadOrNetwork(
+				idRow,
+				client
+					.from("holidays")
+					.select("id")
+					.eq("tenant_id", tenantId)
+					.eq("id", id),
+			);
+			if (remaining.length > 0) throw new SettingsWriteError("forbidden");
 		},
 
 		async reportSettings(tenantId): Promise<ReportSettingsState> {

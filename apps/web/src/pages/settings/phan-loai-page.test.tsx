@@ -182,6 +182,7 @@ describe("the Phân loại page", () => {
 				itemTypeExternalId: "T1",
 				name: "Trà",
 				role: "drink",
+				audit: null,
 			},
 			{
 				posAccountId: "A",
@@ -189,6 +190,7 @@ describe("the Phân loại page", () => {
 				itemTypeExternalId: "T2",
 				name: "Topping",
 				role: "topping",
+				audit: null,
 			},
 		];
 		expect(

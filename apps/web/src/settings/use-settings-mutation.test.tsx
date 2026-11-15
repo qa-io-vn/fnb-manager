@@ -3,7 +3,11 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsWriteError, writeCodeOf } from "./source";
-import { useSettingsMutation, WRITE_ERROR_KEYS } from "./use-settings-mutation";
+import {
+	useSettingsMutation,
+	WRITE_ERROR_KEYS,
+	writeErrorKey,
+} from "./use-settings-mutation";
 
 const TENANT = "33333333-3333-4333-8333-333333333333";
 const OTHER = "99999999-9999-4999-8999-999999999999";
@@ -26,7 +30,11 @@ vi.mock("./catch-up/catch-up-context", () => ({
 }));
 
 vi.mock("./settings-source-context", () => ({
-	useSettingsSourceState: () => ({ status: "ready", source: { kind: "demo" } }),
+	useSettingsSourceState: () => ({
+		status: "ready",
+		source: { kind: "demo" },
+		manual: { kind: "demo", manual: true },
+	}),
 }));
 
 let client: QueryClient;
@@ -125,7 +133,12 @@ describe("useSettingsMutation", () => {
 			ok = await result.current.save({ value: 1 });
 		});
 		expect(ok).toBe(true);
-		expect(write).toHaveBeenCalledWith({ kind: "demo" }, TENANT, { value: 1 });
+		expect(write).toHaveBeenCalledWith(
+			{ kind: "demo" },
+			TENANT,
+			{ value: 1 },
+			{ kind: "demo", manual: true },
+		);
 		await waitFor(() => expect(result.current.saved).toBe(true));
 		expect(stale(["analytics", "demo", TENANT, "item_summary", {}])).toBe(true);
 		expect(stale(["settings", "demo", TENANT, "reportSettings"])).toBe(true);
@@ -168,5 +181,94 @@ describe("useSettingsMutation", () => {
 	] as const)("maps %s to %s with a message", (error, code) => {
 		expect(writeCodeOf(error)).toBe(code);
 		expect(WRITE_ERROR_KEYS[code]).toBe(`settings.error.${code}`);
+	});
+
+	it.each([
+		["forbidden", null, false, "settings.error.forbidden"],
+		["forbidden", null, true, "settings.store.hours.ownerOnly"],
+		[
+			"duplicate",
+			"stores_code_unique_in_tenant",
+			false,
+			"settings.store.code.duplicate",
+		],
+		[
+			"duplicate",
+			"item_costs_scope_item_effective_key",
+			false,
+			"settings.error.duplicate",
+		],
+		[
+			"invalid",
+			"stores_opening_hours_valid",
+			true,
+			"settings.store.hours.invalid",
+		],
+		["invalid", "toString", false, "settings.error.invalid"],
+		["invalid", null, false, "settings.error.invalid"],
+		["frozen", null, false, "settings.legal.frozen"],
+		["network", null, true, "settings.error.network"],
+	] as const)(
+		"words %s on %s (opening hours touched: %s) as %s",
+		(code, constraint, hours, key) => {
+			expect(writeErrorKey(code, constraint, hours)).toBe(key);
+		},
+	);
+
+	it("gives the owner-only hours message only when the refused change touched the opening hours", async () => {
+		const write = vi.fn(async (_source, _tenant, _args: { hours: boolean }) => {
+			throw new SettingsWriteError("forbidden");
+		});
+		const { result } = renderHook(
+			() =>
+				useSettingsMutation(write, {
+					touchesOpeningHours: (args) => args.hours,
+				}),
+			{ wrapper },
+		);
+		await act(async () => {
+			await result.current.save({ hours: true });
+		});
+		await waitFor(() =>
+			expect(result.current.errorKey).toBe("settings.store.hours.ownerOnly"),
+		);
+		expect(result.current.canRetry).toBe(false);
+		await act(async () => {
+			await result.current.save({ hours: false });
+		});
+		await waitFor(() =>
+			expect(result.current.errorKey).toBe("settings.error.forbidden"),
+		);
+	});
+
+	it("offers a retry after a network failure that sends the same change again", async () => {
+		let attempts = 0;
+		const write = vi.fn(async () => {
+			attempts += 1;
+			if (attempts === 1) throw new TypeError("Failed to fetch");
+		});
+		const { result } = renderHook(() => useSettingsMutation(write), {
+			wrapper,
+		});
+		await act(async () => {
+			await result.current.save({ value: 7 });
+		});
+		await waitFor(() => expect(result.current.canRetry).toBe(true));
+		expect(result.current.errorKey).toBe("settings.error.network");
+		expect(stale(["settings", "demo", TENANT, "reportSettings"])).toBe(false);
+		let retried = false;
+		await act(async () => {
+			retried = await result.current.retry();
+		});
+		expect(retried).toBe(true);
+		expect(write).toHaveBeenLastCalledWith(
+			{ kind: "demo" },
+			TENANT,
+			{ value: 7 },
+			{ kind: "demo", manual: true },
+		);
+		await waitFor(() => expect(result.current.saved).toBe(true));
+		expect(result.current.errorKey).toBeNull();
+		expect(stale(["settings", "demo", TENANT, "reportSettings"])).toBe(true);
 	});
 });

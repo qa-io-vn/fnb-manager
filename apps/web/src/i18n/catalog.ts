@@ -56,6 +56,8 @@ export type MessageKey =
 	| keyof typeof settingsVi
 	| keyof typeof settingsThresholdsVi
 	| keyof typeof settingsMappingVi
+	| keyof typeof settingsStoreVi
+	| keyof typeof settingsLegalVi
 	| keyof typeof themesVi
 	| keyof typeof themeRevenueVi
 	| keyof typeof themeHoursVi;

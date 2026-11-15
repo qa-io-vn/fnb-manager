@@ -1,3 +1,4 @@
 {
-	"settings.legal.title": "Legal"
+	"settings.legal.title": "Legal",
+	"settings.legal.frozen": "Not saved: a published or retired text cannot be edited or deleted; create a new version."
 }

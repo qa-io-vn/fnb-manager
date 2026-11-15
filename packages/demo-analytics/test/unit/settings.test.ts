@@ -811,6 +811,16 @@ describe("refused writes", () => {
 			refusal: "format",
 		},
 		{
+			name: "a store code another store uses, whatever its case and spaces",
+			write: (settings) =>
+				settings.saveStoreProfile({
+					...profileDefaults("MOCK-S2"),
+					code: " ch1 ",
+				}),
+			field: "code",
+			refusal: "duplicate",
+		},
+		{
 			name: "a profile of an unknown store",
 			write: (settings) =>
 				settings.saveStoreProfile({

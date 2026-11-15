@@ -9,6 +9,7 @@
 		"allowImportingTsExtensions": true,
 		"declaration": false,
 		"sourceMap": false,
+		"jsx": "react-jsx",
 		"types": ["node"]
 	},
 	"include": [

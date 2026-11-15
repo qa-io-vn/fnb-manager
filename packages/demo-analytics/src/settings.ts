@@ -974,6 +974,23 @@ export class DemoSettingsStore implements IngestMappings {
 
 	saveStoreProfile(profile: DemoStoreProfile): void {
 		const checked = checkStoreProfile(profile);
+		const previous = this.storeProfile(checked.storeId);
+		const code = checked.code?.trim().toUpperCase() ?? null;
+		if (
+			code !== null &&
+			checked.code !== (previous?.code ?? null) &&
+			this.snapshotValue.stores.some(
+				(other) =>
+					other.storeId !== checked.storeId &&
+					other.code?.trim().toUpperCase() === code,
+			)
+		) {
+			throw new DemoSettingsError(
+				"code",
+				"duplicate",
+				"be unique among the stores of the tenant",
+			);
+		}
 		const stores = [
 			...this.snapshotValue.stores.filter(
 				(known) => known.storeId !== checked.storeId,

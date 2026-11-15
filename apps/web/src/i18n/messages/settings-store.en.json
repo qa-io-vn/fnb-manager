@@ -1,3 +1,6 @@
 {
-	"settings.store.title": "Stores"
+	"settings.store.title": "Stores",
+	"settings.store.code.duplicate": "Not saved: another store of the business already uses this code.",
+	"settings.store.hours.invalid": "Not saved: the opening hours are not valid; check the time spans.",
+	"settings.store.hours.ownerOnly": "Not saved: only an owner of the store can change its opening hours, because they decide the alerts and the sync schedule."
 }

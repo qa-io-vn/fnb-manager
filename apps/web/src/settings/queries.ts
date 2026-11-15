@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { useReadyTenantScope } from "../state/tenant-scope";
+import type { ManualSettingsSource } from "./manual/source";
 import { useSettingsSourceState } from "./settings-source-context";
 import type { CatchUpStatus, SettingsSource } from "./source";
 
@@ -10,14 +11,24 @@ export type SettingsRead =
 	| "membership"
 	| "itemTypes"
 	| "reportSettings"
-	| "catchUp";
+	| "catchUp"
+	| "tenantProfile"
+	| "storeProfiles"
+	| "items"
+	| "paymentMethods"
+	| "feeRates"
+	| "holidays"
+	| "itemCosts"
+	| "targets"
+	| "legalDocuments";
 
 export function settingsQueryKey(
 	sourceKind: SettingsSource["kind"],
 	tenantId: string,
 	read: SettingsRead,
+	...parts: readonly (string | number)[]
 ) {
-	return [SETTINGS_QUERY_ROOT, sourceKind, tenantId, read] as const;
+	return [SETTINGS_QUERY_ROOT, sourceKind, tenantId, read, ...parts] as const;
 }
 
 export function isTenantSettingsKey(
@@ -36,22 +47,34 @@ export async function invalidateSettings(
 	});
 }
 
+type SettingsLoad<T> = (
+	source: SettingsSource,
+	tenantId: string,
+	manual: ManualSettingsSource,
+) => Promise<T>;
+
 function useSettingsRead<T>(
-	read: SettingsRead,
-	load: (source: SettingsSource, tenantId: string) => Promise<T>,
+	read: SettingsRead | readonly [SettingsRead, ...(string | number)[]],
+	load: SettingsLoad<T>,
 	pollEvery: (data: T | undefined, failed: boolean) => number | false = () =>
 		false,
 ) {
 	const state = useSettingsSourceState();
 	const { tenant } = useReadyTenantScope();
-	const source = state.status === "ready" ? state.source : null;
+	const ready = state.status === "ready" ? state : null;
+	const [name, ...parts] = typeof read === "string" ? [read] : read;
 	return useQuery({
-		queryKey: settingsQueryKey(source?.kind ?? "demo", tenant.id, read),
+		queryKey: settingsQueryKey(
+			ready?.source.kind ?? "demo",
+			tenant.id,
+			name,
+			...parts,
+		),
 		queryFn: () => {
-			if (source === null) throw new Error("settings source not ready");
-			return load(source, tenant.id);
+			if (ready === null) throw new Error("settings source not ready");
+			return load(ready.source, tenant.id, ready.manual);
 		},
-		enabled: source !== null,
+		enabled: ready !== null,
 		refetchInterval: (query) =>
 			pollEvery(query.state.data, query.state.status === "error"),
 	});
@@ -72,6 +95,58 @@ export function useItemTypes() {
 export function useReportSettings() {
 	return useSettingsRead("reportSettings", (source, tenantId) =>
 		source.reportSettings(tenantId),
+	);
+}
+
+export function useTenantProfile() {
+	return useSettingsRead("tenantProfile", (source, tenantId) =>
+		source.tenantProfile(tenantId),
+	);
+}
+
+export function useStoreProfiles() {
+	return useSettingsRead("storeProfiles", (source, tenantId) =>
+		source.storeProfiles(tenantId),
+	);
+}
+
+export function useItems() {
+	return useSettingsRead("items", (source, tenantId) => source.items(tenantId));
+}
+
+export function usePaymentMethods() {
+	return useSettingsRead("paymentMethods", (source, tenantId) =>
+		source.paymentMethods(tenantId),
+	);
+}
+
+export function useFeeRates() {
+	return useSettingsRead("feeRates", (source, tenantId) =>
+		source.feeRates(tenantId),
+	);
+}
+
+export function useHolidays(year: number) {
+	return useSettingsRead(["holidays", year], (source, tenantId) =>
+		source.holidays(tenantId, year),
+	);
+}
+
+export function useItemCosts() {
+	return useSettingsRead("itemCosts", (_source, tenantId, manual) =>
+		manual.itemCosts(tenantId),
+	);
+}
+
+export function useTargets() {
+	return useSettingsRead("targets", (_source, tenantId, manual) =>
+		manual.targets(tenantId),
+	);
+}
+
+export function useLegalDocuments() {
+	return useSettingsRead("legalDocuments", (_source, tenantId, manual) =>
+		manual.legalDocuments(tenantId),
 	);
 }
 

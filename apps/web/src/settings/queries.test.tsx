@@ -8,13 +8,21 @@ import {
 	isTenantSettingsKey,
 	settingsQueryKey,
 	useCatchUpStatus,
+	useHolidays,
+	useItemCosts,
+	useLegalDocuments,
+	useTargets,
+	useTenantProfile,
 } from "./queries";
 import { type CatchUpStatus, NO_CATCH_UP } from "./source";
 
 const NOW = new Date("2026-11-15T03:00:00Z");
 const TENANT = "33333333-3333-4333-8333-333333333333";
 
-const current = vi.hoisted(() => ({ source: null as unknown }));
+const current = vi.hoisted(() => ({
+	source: null as unknown,
+	manual: null as unknown,
+}));
 
 vi.mock("../state/tenant-scope", () => ({
 	useReadyTenantScope: () => ({
@@ -23,7 +31,11 @@ vi.mock("../state/tenant-scope", () => ({
 }));
 
 vi.mock("./settings-source-context", () => ({
-	useSettingsSourceState: () => ({ status: "ready", source: current.source }),
+	useSettingsSourceState: () => ({
+		status: "ready",
+		source: current.source,
+		manual: current.manual,
+	}),
 }));
 
 function pending(from: string, to: string): CatchUpStatus {
@@ -115,5 +127,78 @@ describe("settings query keys", () => {
 		expect(isTenantSettingsKey(["analytics", "demo", TENANT], TENANT)).toBe(
 			false,
 		);
+	});
+});
+
+describe("the 10b settings reads", () => {
+	it("read the settings areas from the settings source and the manual areas from the manual source, keyed per tenant, area and year", async () => {
+		const calls: string[] = [];
+		current.source = {
+			kind: "supabase",
+			tenantProfile: async (tenantId: string) => {
+				calls.push(`tenant:${tenantId}`);
+				return { legalForm: "unknown", defaultLanguage: "vi", audit: null };
+			},
+			holidays: async (tenantId: string, year: number) => {
+				calls.push(`holidays:${tenantId}:${year}`);
+				return [];
+			},
+		};
+		current.manual = {
+			kind: "supabase",
+			itemCosts: async () => {
+				calls.push("costs");
+				return [];
+			},
+			targets: async () => {
+				calls.push("targets");
+				return [];
+			},
+			legalDocuments: async () => {
+				calls.push("legal");
+				return [];
+			},
+		};
+		const client = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		const wrapper = ({ children }: { children: ReactNode }) => (
+			<QueryClientProvider client={client}>{children}</QueryClientProvider>
+		);
+		const reads = renderHook(
+			() => [
+				useTenantProfile(),
+				useHolidays(2026),
+				useHolidays(2027),
+				useItemCosts(),
+				useTargets(),
+				useLegalDocuments(),
+			],
+			{ wrapper },
+		);
+		await waitFor(() =>
+			expect(reads.result.current.every((read) => read.isSuccess)).toBe(true),
+		);
+		expect([...calls].sort()).toEqual(
+			[
+				`holidays:${TENANT}:2026`,
+				`holidays:${TENANT}:2027`,
+				"costs",
+				"legal",
+				`tenant:${TENANT}`,
+				"targets",
+			].sort(),
+		);
+		expect(
+			client.getQueryData(
+				settingsQueryKey("supabase", TENANT, "holidays", 2027),
+			),
+		).toEqual([]);
+		expect(
+			isTenantSettingsKey(
+				settingsQueryKey("supabase", TENANT, "holidays", 2027),
+				TENANT,
+			),
+		).toBe(true);
 	});
 });

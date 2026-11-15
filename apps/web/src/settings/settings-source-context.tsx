@@ -11,11 +11,17 @@ import {
 } from "react";
 import { useAppMode } from "../app-mode/app-mode";
 import { useSession } from "../auth/session";
+import type { ManualSettingsSource } from "./manual/source";
 import type { SettingsSource } from "./source";
+
+export interface SettingsSources {
+	readonly source: SettingsSource;
+	readonly manual: ManualSettingsSource;
+}
 
 export type SettingsSourceState =
 	| { status: "loading" }
-	| { status: "ready"; source: SettingsSource }
+	| ({ status: "ready" } & SettingsSources)
 	| { status: "failed" };
 
 interface SettingsSourceHandle {
@@ -30,23 +36,34 @@ const SettingsSourceContext = createContext<SettingsSourceHandle>({
 	retry: () => undefined,
 });
 
-export async function loadDemoSettingsSource(): Promise<SettingsSource> {
-	const [demo, store] = await Promise.all([
+export async function loadDemoSettingsSource(): Promise<SettingsSources> {
+	const [demo, manual, store] = await Promise.all([
 		import("./demo-settings-source"),
+		import("./manual/demo-manual-source"),
 		import("../demo/demo-settings"),
 	]);
-	return demo.createDemoSettingsSource(store.sharedDemoSettings());
+	const settings = store.sharedDemoSettings();
+	return {
+		source: demo.createDemoSettingsSource(settings),
+		manual: manual.createDemoManualSource(settings),
+	};
 }
 
 export async function loadSupabaseSettingsSource(
 	client: SupabaseClient,
-): Promise<SettingsSource> {
-	const live = await import("./supabase-settings-source");
-	return live.createSupabaseSettingsSource(client);
+): Promise<SettingsSources> {
+	const [live, manual] = await Promise.all([
+		import("./supabase-settings-source"),
+		import("./manual/supabase-manual-source"),
+	]);
+	return {
+		source: live.createSupabaseSettingsSource(client),
+		manual: manual.createSupabaseManualSource(client),
+	};
 }
 
 function useLoadedSettingsSource(
-	load: (() => Promise<SettingsSource>) | null,
+	load: (() => Promise<SettingsSources>) | null,
 ): readonly [SettingsSourceState, () => void] {
 	const [state, setState] = useState<SettingsSourceState>({
 		status: "loading",
@@ -58,8 +75,8 @@ function useLoadedSettingsSource(
 		const run = latestRun.current;
 		setState({ status: "loading" });
 		load().then(
-			(source) =>
-				latestRun.current === run && setState({ status: "ready", source }),
+			(sources) =>
+				latestRun.current === run && setState({ status: "ready", ...sources }),
 			() => latestRun.current === run && setState({ status: "failed" }),
 		);
 	}, [load]);

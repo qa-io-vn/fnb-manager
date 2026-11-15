@@ -1,3 +1,4 @@
 {
-	"settings.legal.title": "Pháp lý"
+	"settings.legal.title": "Pháp lý",
+	"settings.legal.frozen": "Không lưu được: văn bản đã công bố hoặc đã ngừng áp dụng thì không sửa hay xóa được; hãy tạo phiên bản mới."
 }

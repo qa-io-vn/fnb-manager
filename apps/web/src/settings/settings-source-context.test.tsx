@@ -32,12 +32,21 @@ vi.mock("./demo-settings-source", () => ({
 	},
 }));
 
+vi.mock("./manual/demo-manual-source", () => ({
+	createDemoManualSource: () => ({ kind: "demo", area: "manual" }),
+}));
+
 function Page({ name }: { name: string }) {
 	const state = useSettingsSourceState();
 	const retry = useRetrySettingsSource();
 	return (
 		<div>
 			<output data-testid={name}>{state.status}</output>
+			<output data-testid={`${name}-sources`}>
+				{state.status === "ready"
+					? `${state.source.kind}+${state.manual.kind}`
+					: ""}
+			</output>
 			<button type="button" onClick={retry}>
 				retry
 			</button>
@@ -67,6 +76,7 @@ describe("SettingsSourceProvider", () => {
 			expect(screen.getByTestId("first")).toHaveTextContent("ready"),
 		);
 		expect(loading.loads).toBe(1);
+		expect(screen.getByTestId("first-sources")).toHaveTextContent("demo+demo");
 	});
 
 	it("tries again when the next page asks after a failed load", async () => {

@@ -23,6 +23,7 @@ function entry(
 		itemTypeExternalId: type,
 		name,
 		role,
+		audit: null,
 	};
 }
 

@@ -1,7 +1,7 @@
 import { DEFAULT_REPORT_SETTINGS } from "@fnb/reports";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
-import { SettingsWriteError } from "./source";
+import { SettingsWriteError, writeCodeOf } from "./source";
 import {
 	createSupabaseSettingsSource,
 	REFRESH_CHUNK_DAYS,
@@ -68,6 +68,11 @@ function fakeClient(answer: (recorded: Recorded) => Result, signedIn = true) {
 			"upsert",
 			"in",
 			"delete",
+			"is",
+			"gte",
+			"lte",
+			"update",
+			"insert",
 		]) {
 			methods[method] = (...args: unknown[]) => {
 				recorded.calls.push([method, args]);
@@ -134,6 +139,8 @@ describe("the Supabase settings source", () => {
 								pos_account_id: ACCOUNT,
 								item_type_external_id: "T2",
 								role: "topping",
+								updated_at: CHANGED_AT,
+								updated_by: USER,
 							},
 						],
 						error: null,
@@ -141,9 +148,11 @@ describe("the Supabase settings source", () => {
 		);
 		const source = createSupabaseSettingsSource(client);
 		const types = await source.itemTypes(TENANT);
-		expect(types.map((type) => [type.itemTypeExternalId, type.role])).toEqual([
-			["T1", null],
-			["T2", "topping"],
+		expect(
+			types.map((type) => [type.itemTypeExternalId, type.role, type.audit]),
+		).toEqual([
+			["T1", null, null],
+			["T2", "topping", { changedAt: CHANGED_AT, author: { kind: "you" } }],
 		]);
 		const orders = (table: string) =>
 			log
@@ -632,5 +641,569 @@ describe("the Supabase settings source", () => {
 		await expect(
 			createSupabaseSettingsSource(client).refreshChunk(TENANT),
 		).rejects.toEqual(new SettingsWriteError("forbidden"));
+	});
+});
+
+const STORE = "77777777-7777-4777-8777-777777777777";
+const FEE_ID = "88888888-8888-4888-8888-888888888888";
+const HOLIDAY_ID = "99999999-9999-4999-8999-999999999990";
+
+function membersAnswer(recorded: Recorded): Result | null {
+	return recorded.table === "tenant_members"
+		? {
+				data: [
+					{ user_id: USER, role: "owner" },
+					{ user_id: OTHER_USER, role: "manager" },
+				],
+				error: null,
+			}
+		: null;
+}
+
+function called(recorded: Recorded | undefined, method: string): unknown[][] {
+	return (recorded?.calls ?? [])
+		.filter(([name]) => name === method)
+		.map(([, args]) => args);
+}
+
+function storeRowOf(overrides: Record<string, unknown> = {}) {
+	return {
+		id: STORE,
+		pos_account_id: ACCOUNT,
+		name: "Cửa hàng 1",
+		address: null,
+		timezone: "Asia/Ho_Chi_Minh",
+		business_day_start_minutes: 0,
+		code: "CH1",
+		opening_hours: { mon: [["07:00", "22:00"]] },
+		seat_count: 40,
+		opened_on: "2024-12-02",
+		e_invoice_status: "configured",
+		tran_no_reset_period: "daily",
+		member_capture_status: "enabled",
+		profile_updated_at: CHANGED_AT,
+		profile_updated_by: OTHER_USER,
+		...overrides,
+	};
+}
+
+describe("the Supabase settings source's 10b areas", () => {
+	it("reads and updates the tenant profile's two columns, with the audit columns", async () => {
+		const { client, log } = fakeClient(
+			(recorded) =>
+				membersAnswer(recorded) ?? {
+					data: [
+						{
+							legal_form: "household_business",
+							default_language: "vi",
+							profile_updated_at: CHANGED_AT,
+							profile_updated_by: USER,
+						},
+					],
+					error: null,
+				},
+		);
+		const source = createSupabaseSettingsSource(client);
+		expect(await source.tenantProfile(TENANT)).toEqual({
+			legalForm: "household_business",
+			defaultLanguage: "vi",
+			audit: { changedAt: CHANGED_AT, author: { kind: "you" } },
+		});
+		await source.updateTenantProfile(TENANT, { defaultLanguage: "en" });
+		const update = log.find((entry) => called(entry, "update").length > 0);
+		expect(update?.table).toBe("tenants");
+		expect(called(update, "update")).toEqual([[{ default_language: "en" }]]);
+		expect(called(update, "eq")).toEqual([["id", TENANT]]);
+	});
+
+	it("refuses an update that row-level security answered with no row", async () => {
+		const { client } = fakeClient(
+			(recorded) => membersAnswer(recorded) ?? { data: [], error: null },
+		);
+		const source = createSupabaseSettingsSource(client);
+		await expect(
+			source.updateTenantProfile(TENANT, { legalForm: "enterprise" }),
+		).rejects.toMatchObject({ code: "forbidden" });
+		await expect(
+			source.updateStoreProfile(TENANT, STORE, { seatCount: 12 }),
+		).rejects.toMatchObject({ code: "forbidden" });
+	});
+
+	it("pages the store profiles in a stable order and writes only the profile columns given", async () => {
+		const { client, log } = fakeClient(
+			(recorded) =>
+				membersAnswer(recorded) ?? { data: [storeRowOf()], error: null },
+		);
+		const source = createSupabaseSettingsSource(client);
+		const [store] = await source.storeProfiles(TENANT);
+		expect(store).toMatchObject({
+			storeId: STORE,
+			code: "CH1",
+			seatCount: 40,
+			openingHours: { mon: [["07:00", "22:00"]] },
+			eInvoiceStatus: "configured",
+			audit: {
+				changedAt: CHANGED_AT,
+				author: { kind: "member", role: "manager" },
+			},
+		});
+		const read = log.find((entry) => entry.table === "stores");
+		expect(called(read, "order").map(([column]) => column)).toEqual([
+			"name",
+			"id",
+		]);
+		expect(called(read, "range")).toEqual([[0, 999]]);
+		await source.updateStoreProfile(TENANT, STORE, {
+			code: "CH9",
+			openingHours: null,
+			memberCaptureStatus: "disabled",
+		});
+		const update = log.find((entry) => called(entry, "update").length > 0);
+		expect(called(update, "update")).toEqual([
+			[{ code: "CH9", opening_hours: null, member_capture_status: "disabled" }],
+		]);
+		expect(called(update, "eq")).toEqual([
+			["tenant_id", TENANT],
+			["id", STORE],
+		]);
+	});
+
+	it("maps the store trigger's refusals to their codes and constraint", async () => {
+		const failing = (error: Record<string, unknown>) =>
+			createSupabaseSettingsSource(
+				fakeClient(
+					(recorded) => membersAnswer(recorded) ?? { data: null, error },
+				).client,
+			);
+		await expect(
+			failing({
+				code: "23505",
+				message:
+					'duplicate key value violates unique constraint "stores_code_unique_in_tenant"',
+			}).updateStoreProfile(TENANT, STORE, { code: "CH2" }),
+		).rejects.toMatchObject({
+			code: "duplicate",
+			constraint: "stores_code_unique_in_tenant",
+		});
+		await expect(
+			failing({
+				code: "42501",
+				message: "opening hours are changed by an owner of the store",
+			}).updateStoreProfile(TENANT, STORE, { openingHours: null }),
+		).rejects.toMatchObject({ code: "forbidden" });
+		await expect(
+			failing({
+				code: "23514",
+				message:
+					'new row for relation "stores" violates check constraint "stores_opening_hours_valid"',
+			}).updateStoreProfile(TENANT, STORE, { openingHours: {} }),
+		).rejects.toMatchObject({
+			code: "invalid",
+			constraint: "stores_opening_hours_valid",
+		});
+	});
+
+	it("merges items with their category overrides and upserts or deletes overrides on their unique key", async () => {
+		const { client, log } = fakeClient((recorded) => {
+			if (recorded.table === "items") {
+				return {
+					data: [
+						{
+							pos_account_id: ACCOUNT,
+							external_id: "SN-001",
+							name: "Hạt bí",
+							size_label: null,
+							list_price: "15000.00",
+							is_modifier: false,
+							active: true,
+							item_type_external_id: null,
+						},
+					],
+					error: null,
+				};
+			}
+			if (
+				recorded.table === "item_category_overrides" &&
+				called(recorded, "delete").length > 0
+			) {
+				return { data: [{ item_external_id: "DR-001" }], error: null };
+			}
+			if (recorded.table === "item_category_overrides") {
+				return {
+					data: [
+						{
+							pos_account_id: ACCOUNT,
+							item_external_id: "SN-001",
+							item_type_external_id: "TYPE-009",
+							updated_at: CHANGED_AT,
+							updated_by: USER,
+						},
+					],
+					error: null,
+				};
+			}
+			return membersAnswer(recorded) ?? { data: null, error: null };
+		});
+		const source = createSupabaseSettingsSource(client);
+		expect(await source.items(TENANT)).toEqual([
+			{
+				posAccountId: ACCOUNT,
+				itemExternalId: "SN-001",
+				name: "Hạt bí",
+				sizeLabel: null,
+				listPrice: 15_000,
+				isModifier: false,
+				active: true,
+				inCatalogue: true,
+				posItemTypeExternalId: null,
+				overrideItemTypeExternalId: "TYPE-009",
+				audit: { changedAt: CHANGED_AT, author: { kind: "you" } },
+			},
+		]);
+		await source.saveCategoryOverrides(TENANT, [
+			{
+				posAccountId: ACCOUNT,
+				itemExternalId: "SN-001",
+				itemTypeExternalId: "TYPE-009",
+			},
+			{
+				posAccountId: ACCOUNT,
+				itemExternalId: "DR-001",
+				itemTypeExternalId: null,
+			},
+		]);
+		const upsert = log.find((entry) => called(entry, "upsert").length > 0);
+		expect(called(upsert, "upsert")).toEqual([
+			[
+				[
+					{
+						tenant_id: TENANT,
+						pos_account_id: ACCOUNT,
+						item_external_id: "SN-001",
+						item_type_external_id: "TYPE-009",
+					},
+				],
+				{ onConflict: "pos_account_id,item_external_id" },
+			],
+		]);
+		const removal = log.find((entry) => called(entry, "delete").length > 0);
+		expect(called(removal, "in")).toEqual([["item_external_id", ["DR-001"]]]);
+	});
+
+	it("shows each payment method's POS kind, override and effective kind, and writes overrides on their unique key", async () => {
+		const { client, log } = fakeClient((recorded) => {
+			if (recorded.table === "payment_methods") {
+				return {
+					data: [
+						{
+							pos_account_id: ACCOUNT,
+							external_id: "pm-04",
+							name: "Khác",
+							kind: "ewallet",
+							pos_kind: "other",
+							pos_accounts: { display_name: "POS 1" },
+						},
+						{
+							pos_account_id: ACCOUNT,
+							external_id: "pm-01",
+							name: "Tiền mặt",
+							kind: "cash",
+							pos_kind: "cash",
+							pos_accounts: { display_name: "POS 1" },
+						},
+					],
+					error: null,
+				};
+			}
+			if (recorded.table === "payment_kind_overrides") {
+				return {
+					data: [
+						{
+							pos_account_id: ACCOUNT,
+							payment_method_external_id: "pm-04",
+							kind: "ewallet",
+							updated_at: CHANGED_AT,
+							updated_by: OTHER_USER,
+						},
+					],
+					error: null,
+				};
+			}
+			return membersAnswer(recorded) ?? { data: null, error: null };
+		});
+		const source = createSupabaseSettingsSource(client);
+		expect(
+			(await source.paymentMethods(TENANT)).map((method) => [
+				method.externalId,
+				method.posKind,
+				method.overrideKind,
+				method.kind,
+				method.audit?.author,
+			]),
+		).toEqual([
+			[
+				"pm-04",
+				"other",
+				"ewallet",
+				"ewallet",
+				{ kind: "member", role: "manager" },
+			],
+			["pm-01", "cash", null, "cash", undefined],
+		]);
+		await source.saveKindOverrides(TENANT, [
+			{ posAccountId: ACCOUNT, paymentMethodExternalId: "pm-04", kind: "card" },
+		]);
+		const upsert = log.find((entry) => called(entry, "upsert").length > 0);
+		expect(upsert?.table).toBe("payment_kind_overrides");
+		expect(called(upsert, "upsert")[0]?.[1]).toEqual({
+			onConflict: "pos_account_id,payment_method_external_id",
+		});
+	});
+
+	it("reads fee rates tenant-wide first and saves a batch, null store included, in one upsert on the nulls-not-distinct key", async () => {
+		const rate = {
+			id: FEE_ID,
+			store_id: null,
+			payment_method_external_id: "PM-EWALLET",
+			fee_pct: "1.237",
+			fixed_fee_amount: "200.00",
+			effective_from: "2023-01-01",
+			updated_at: CHANGED_AT,
+			updated_by: USER,
+		};
+		const { client, log } = fakeClient(
+			(recorded) => membersAnswer(recorded) ?? { data: [rate], error: null },
+		);
+		const source = createSupabaseSettingsSource(client);
+		expect(await source.feeRates(TENANT)).toEqual([
+			{
+				id: FEE_ID,
+				storeId: null,
+				paymentMethodExternalId: "PM-EWALLET",
+				feePct: 1.237,
+				fixedFeeAmount: 200,
+				effectiveFrom: "2023-01-01",
+				audit: { changedAt: CHANGED_AT, author: { kind: "you" } },
+			},
+		]);
+		expect(called(log[0], "order")).toEqual([
+			["payment_method_external_id"],
+			["store_id", { nullsFirst: true }],
+			["effective_from"],
+			["id"],
+		]);
+		const saved = await source.saveFeeRates(TENANT, [
+			{
+				storeId: null,
+				paymentMethodExternalId: "PM-EWALLET",
+				feePct: 1.237,
+				fixedFeeAmount: 200,
+				effectiveFrom: "2023-01-01",
+			},
+			{
+				storeId: STORE,
+				paymentMethodExternalId: "PM-EWALLET",
+				feePct: 0.9,
+				fixedFeeAmount: 0,
+				effectiveFrom: "2026-11-01",
+			},
+		]);
+		expect(saved).toHaveLength(1);
+		const upserts = log.filter((entry) => called(entry, "upsert").length > 0);
+		expect(upserts).toHaveLength(1);
+		const [[payload, options]] = called(upserts[0], "upsert") as [
+			[Record<string, unknown>[], unknown],
+		];
+		expect(payload.map((row) => row.store_id)).toEqual([null, STORE]);
+		expect(options).toEqual({
+			onConflict:
+				"tenant_id,store_id,payment_method_external_id,effective_from",
+		});
+		expect(await source.saveFeeRates(TENANT, [])).toEqual([]);
+	});
+
+	it("reads a year of the country's holidays and the tenant's own days, adds a custom day and deletes only the tenant's", async () => {
+		const holiday = (tenant: string | null, date: string, name: string) => ({
+			id: tenant === null ? `g-${date}` : HOLIDAY_ID,
+			tenant_id: tenant,
+			country_code: "VN",
+			holiday_date: date,
+			name,
+			kind: tenant === null ? "public" : "custom",
+			updated_at: CHANGED_AT,
+			updated_by: tenant === null ? null : USER,
+		});
+		const { client, log } = fakeClient((recorded) => {
+			if (recorded.table === "tenants") {
+				return { data: [{ country_code: "VN" }], error: null };
+			}
+			if (recorded.table === "holidays" && called(recorded, "insert").length) {
+				return {
+					data: [holiday(TENANT, "2026-03-08", "Nghỉ riêng")],
+					error: null,
+				};
+			}
+			if (recorded.table === "holidays" && called(recorded, "delete").length) {
+				return { data: [], error: null };
+			}
+			if (recorded.table === "holidays" && called(recorded, "is").length) {
+				return {
+					data: [holiday(null, "2026-04-30", "Giải phóng")],
+					error: null,
+				};
+			}
+			if (recorded.table === "holidays") {
+				return {
+					data: [holiday(TENANT, "2026-03-08", "Nghỉ riêng")],
+					error: null,
+				};
+			}
+			return membersAnswer(recorded) ?? { data: null, error: null };
+		});
+		const source = createSupabaseSettingsSource(client);
+		const days = await source.holidays(TENANT, 2026);
+		expect(
+			days.map((day) => [day.holidayDate, day.custom, day.audit === null]),
+		).toEqual([
+			["2026-03-08", true, false],
+			["2026-04-30", false, true],
+		]);
+		const global = log.find(
+			(entry) => entry.table === "holidays" && called(entry, "is").length > 0,
+		);
+		expect(called(global, "is")).toEqual([["tenant_id", null]]);
+		expect(called(global, "gte")).toEqual([["holiday_date", "2026-01-01"]]);
+		expect(called(global, "lte")).toEqual([["holiday_date", "2026-12-31"]]);
+		const added = await source.addHoliday(TENANT, {
+			holidayDate: "2026-03-08",
+			name: "Nghỉ riêng",
+		});
+		expect(added).toMatchObject({ custom: true, kind: "custom" });
+		const insert = log.find((entry) => called(entry, "insert").length > 0);
+		expect(called(insert, "insert")).toEqual([
+			[
+				{
+					tenant_id: TENANT,
+					country_code: "VN",
+					holiday_date: "2026-03-08",
+					name: "Nghỉ riêng",
+					kind: "custom",
+				},
+			],
+		]);
+		await expect(
+			source.deleteHoliday(TENANT, HOLIDAY_ID),
+		).rejects.toMatchObject({
+			code: "forbidden",
+		});
+	});
+
+	it("turns a request that never reached the server into a network failure", async () => {
+		const { client } = fakeClient(() => {
+			throw new TypeError("Failed to fetch");
+		});
+		const failure = await createSupabaseSettingsSource(client)
+			.saveFeeRates(TENANT, [
+				{
+					storeId: null,
+					paymentMethodExternalId: "PM-CASH",
+					feePct: 0,
+					fixedFeeAmount: 0,
+					effectiveFrom: "2023-01-01",
+				},
+			])
+			.catch((error: unknown) => error);
+		expect(failure).toBeInstanceOf(SettingsWriteError);
+		expect(writeCodeOf(failure)).toBe("network");
+	});
+
+	it("lists an override whose item the catalogue lacks, so the page can clear it", async () => {
+		const { client } = fakeClient((recorded) => {
+			if (recorded.table === "items") return { data: [], error: null };
+			if (recorded.table === "item_category_overrides") {
+				return {
+					data: [
+						{
+							pos_account_id: ACCOUNT,
+							item_external_id: "Bánh mì cũ",
+							item_type_external_id: "TYPE-SNACK",
+							updated_at: CHANGED_AT,
+							updated_by: USER,
+						},
+					],
+					error: null,
+				};
+			}
+			return membersAnswer(recorded) ?? { data: null, error: null };
+		});
+		expect(
+			await createSupabaseSettingsSource(client).items(TENANT),
+		).toMatchObject([
+			{
+				itemExternalId: "Bánh mì cũ",
+				name: "Bánh mì cũ",
+				inCatalogue: false,
+				posItemTypeExternalId: null,
+				overrideItemTypeExternalId: "TYPE-SNACK",
+			},
+		]);
+	});
+
+	it("sends nothing for an empty profile change and answers the stored profile", async () => {
+		const { client, log } = fakeClient(
+			(recorded) =>
+				membersAnswer(recorded) ?? { data: [storeRowOf()], error: null },
+		);
+		const source = createSupabaseSettingsSource(client);
+		expect(await source.updateStoreProfile(TENANT, STORE, {})).toMatchObject({
+			storeId: STORE,
+			code: "CH1",
+		});
+		expect(log.some((entry) => called(entry, "update").length > 0)).toBe(false);
+		const read = log.find((entry) => entry.table === "stores");
+		expect(called(read, "eq")).toEqual([
+			["tenant_id", TENANT],
+			["id", STORE],
+		]);
+	});
+
+	it("reads only the tenant's own holidays of its country", async () => {
+		const { client, log } = fakeClient((recorded) =>
+			recorded.table === "tenants"
+				? { data: [{ country_code: "VN" }], error: null }
+				: (membersAnswer(recorded) ?? { data: [], error: null }),
+		);
+		await createSupabaseSettingsSource(client).holidays(TENANT, 2026);
+		const custom = log.find(
+			(entry) => entry.table === "holidays" && called(entry, "is").length === 0,
+		);
+		expect(called(custom, "eq")).toEqual([
+			["tenant_id", TENANT],
+			["country_code", "VN"],
+		]);
+	});
+
+	it("reports a batch that names one key twice as a duplicate", async () => {
+		const { client } = fakeClient(
+			(recorded) =>
+				membersAnswer(recorded) ?? {
+					data: null,
+					error: {
+						code: "21000",
+						message:
+							"ON CONFLICT DO UPDATE command cannot affect row a second time",
+					},
+				},
+		);
+		const rate = {
+			storeId: null,
+			paymentMethodExternalId: "PM-CASH",
+			feePct: 0,
+			fixedFeeAmount: 0,
+			effectiveFrom: "2023-01-01",
+		};
+		await expect(
+			createSupabaseSettingsSource(client).saveFeeRates(TENANT, [rate, rate]),
+		).rejects.toMatchObject({ code: "duplicate" });
 	});
 });
