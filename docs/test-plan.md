@@ -406,8 +406,9 @@ Phase 20b adds a staging project (the second free Supabase project), seeded with
 `supabase/seed.sql` is synthetic and is applied by every reset and on a new machine's first `pnpm db:start`:
 
 - the tenant `demo-fnb` ("Demo F&B", VND, Asia/Ho_Chi_Minh) with a development login as owner (its password is a constant at the top of the file; documents do not repeat it);
-- two stores, `TEA` and `COF`, each on its own synthetic POS account, with opening hours and seat counts; the tea store's e-invoice status is `configured` and the coffee store's `not_configured`; both opt out of the incremental schedule;
-- seven business days of sales before the reset date (25 invoices per store per day, three shifts, a voided, an edited and a line-removed invoice), sync runs, one check per store-day with one deliberately unmatched day at the coffee store, a promotion, a monthly target per store, item costs and payment fee rates.
+- two stores, `TEA` and `COF`, each on its own synthetic POS account, with opening hours and seat counts; the tea store's e-invoice status is `configured` and the coffee store's `not_configured`, its member feature `enabled` and the coffee store's `disabled`; both opt out of the incremental schedule;
+- seven business days of sales before the reset date (25 invoices per store per day, three shifts, a voided, an edited and a line-removed invoice), sync runs, one check per store-day with one deliberately unmatched day at the coffee store, a promotion, a monthly target per store, item costs and payment fee rates;
+- the settings of phase 10: a report-settings row with the defaults, an item moved to another category, a payment method the POS calls `other` (`pm-04`) that the tea account overrides to `ewallet`, a published privacy notice (`privacy-2026-01`) and its next version as a draft (placeholder texts, not legal ones), and Vietnamese as the default language. No live end-to-end spec depends on these rows; the settings specs use the fixture tenant of #103.
 
 The pgTAP analytics files, the live end-to-end specs and the local CLI demonstrations use it. The unmatched day, the coffee store's e-invoice status and the seeded costs and targets are ready-made cases for the planned tests of phases 10 and 11.
 

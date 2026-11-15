@@ -631,5 +631,35 @@ from seed_stores s
 cross join seed_constants c
 where s.code = 'TEA';
 
+insert into public.payment_methods (tenant_id, pos_account_id, external_id, name, kind, raw)
+select c.tenant_id, s.pos_account_id, 'pm-04', 'Demo Partner Wallet', 'other'::public.payment_kind, jsonb_build_object('payment_method_id', 'pm-04')
+from seed_stores s
+cross join seed_constants c;
+
+insert into public.payment_kind_overrides (tenant_id, pos_account_id, payment_method_external_id, kind, created_by)
+select c.tenant_id, s.pos_account_id, 'pm-04', 'ewallet'::public.payment_kind, c.dev_user_id
+from seed_stores s
+cross join seed_constants c
+where s.code = 'TEA';
+
+update public.stores s
+set member_capture_status = case st.code when 'TEA' then 'enabled'::public.pos_feature_status else 'disabled'::public.pos_feature_status end
+from seed_stores st
+where s.id = st.store_id;
+
+update public.tenants t
+set default_language = 'vi'
+from seed_constants c
+where t.id = c.tenant_id;
+
+insert into public.legal_documents (tenant_id, kind, language, version, title, body_markdown, status, published_at, created_by)
+select c.tenant_id, 'privacy_notice'::public.legal_document_kind, 'vi', d.version, d.title, d.body, d.status, d.published_at, c.dev_user_id
+from seed_constants c
+cross join (
+  values
+    ('privacy-2026-01', 'Demo privacy notice', E'# Demo privacy notice\n\nPlaceholder text for the demo tenant. It is not a legal text.', 'published'::public.legal_document_status, now() - interval '30 days'),
+    ('privacy-2026-02', 'Demo privacy notice, next version', E'# Demo privacy notice\n\nPlaceholder draft for the demo tenant. It is not a legal text.', 'draft'::public.legal_document_status, null::timestamptz)
+) as d (version, title, body, status, published_at);
+
 select app.refresh_analytics(c.tenant_id, current_date - 7, current_date)
 from seed_constants c;
