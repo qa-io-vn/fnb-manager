@@ -3,8 +3,10 @@ import { checkPage, waitForCharts } from "../support/checks";
 import { expectNoExternalRequests, REPORT_CLOCK } from "../support/reports";
 import {
 	choosePreset,
+	chooseSemicolonCsv,
 	expectCsvTablesWithBom,
 	expectEveryThemeCardSettled,
+	expectSemicolonCsv,
 	expectThemeInEnglish,
 	expectThemePrintLayout,
 	openTheme,
@@ -140,4 +142,12 @@ test("the theme tabs keep the range when moving to Giờ & ngày", async ({
 	await waitForSettledThemeCards(page);
 	expect(new URL(page.url()).hash).toContain("/chu-de/gio-ngay");
 	expect(themeSearch(page).get("range")).toBe("91d");
+});
+
+test("Doanh thu downloads semicolon-separated with decimal commas on a device set to that format", async ({
+	page,
+}) => {
+	await chooseSemicolonCsv(page);
+	await openTheme(page, "revenue");
+	await expectSemicolonCsv(page, themeCard(page, "revenue", "store_share"));
 });

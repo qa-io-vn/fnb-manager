@@ -1,8 +1,15 @@
 import { useId, useMemo, useState } from "react";
 import { uiLocaleOf, useLanguage, useT } from "../../i18n";
 import { addDays } from "../../lib/business-dates";
-import { buildCsv, type CsvCell, downloadTextFile } from "../../lib/csv";
+import {
+	buildCsv,
+	type CsvCell,
+	type CsvDialect,
+	DEFAULT_CSV_DIALECT,
+	downloadTextFile,
+} from "../../lib/csv";
 import type { Formatters } from "../../lib/format";
+import { useCsvDialect } from "../../state/csv-dialect";
 import { Button } from "../ui/button";
 import { formatValue, hourText } from "./headline";
 import { TableScroller } from "./table-scroller";
@@ -99,6 +106,7 @@ export function csvOfRows(
 	rows: readonly TableRow[],
 	percentHeader: (label: string) => string,
 	formatters?: Formatters,
+	dialect: CsvDialect = DEFAULT_CSV_DIALECT,
 ): string {
 	return buildCsv(
 		columns.map((column) => ({
@@ -115,6 +123,7 @@ export function csvOfRows(
 				]),
 			),
 		),
+		dialect,
 	);
 }
 
@@ -291,6 +300,7 @@ export function DataTable({
 	wide?: boolean;
 }) {
 	const t = useT();
+	const csvDialect = useCsvDialect();
 	const { language } = useLanguage();
 	const bodyId = useId();
 	const [sort, setSort] = useState<TableSort | null>(table.initialSort ?? null);
@@ -329,6 +339,7 @@ export function DataTable({
 				rows,
 				(label) => t("reportCard.csvPercentHeader", { label }),
 				formatters,
+				csvDialect,
 			),
 			"text/csv;charset=utf-8",
 		);

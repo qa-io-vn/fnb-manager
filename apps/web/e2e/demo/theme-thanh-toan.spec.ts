@@ -6,8 +6,10 @@ import {
 } from "../support/reports";
 import {
 	choosePreset,
+	chooseSemicolonCsv,
 	expectCsvTablesWithBom,
 	expectEveryThemeCardSettled,
+	expectSemicolonCsv,
 	expectThemeInEnglish,
 	expectThemePrintLayout,
 	openTheme,
@@ -133,4 +135,12 @@ test("Thanh toán prints without controls, passes axe, fits 360 px, stays local 
 	await expectThemePrintLayout(page);
 	await checkPage(page);
 	await expectThemeInEnglish(page, "Payments and cash");
+});
+
+test("Thanh toán downloads semicolon-separated with decimal commas on a device set to that format", async ({
+	page,
+}) => {
+	await chooseSemicolonCsv(page);
+	await openTheme(page, "payments");
+	await expectSemicolonCsv(page, themeCard(page, "payments", "payment_mix"));
 });

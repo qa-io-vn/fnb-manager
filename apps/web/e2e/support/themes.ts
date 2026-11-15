@@ -148,6 +148,44 @@ export async function expectCsvTablesWithBom(
 	return headers;
 }
 
+const PREFERENCES_STORAGE_KEY = "fnb.preferences.v1";
+const SEMICOLON_NUMBER_WITH_DECIMALS = /(^|;)-?\d+,\d+(?=;|$)/m;
+const POINT_DECIMAL_NUMBER = /(^|;)-?\d+\.\d+(?=;|$)/m;
+
+export async function chooseSemicolonCsv(page: Page): Promise<void> {
+	await page.addInitScript((key) => {
+		const stored = JSON.parse(window.localStorage.getItem(key) ?? "{}");
+		window.localStorage.setItem(
+			key,
+			JSON.stringify({ ...stored, csvDialect: "semicolon" }),
+		);
+	}, PREFERENCES_STORAGE_KEY);
+}
+
+export async function expectSemicolonCsv(
+	page: Page,
+	card: Locator,
+): Promise<string> {
+	const downloading = page.waitForEvent("download");
+	await card
+		.getByRole("button", { name: /Tải CSV|Download CSV/ })
+		.first()
+		.click();
+	const download = await downloading;
+	const bytes = await readFile(await download.path());
+	expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+	const text = new TextDecoder("utf-8", { fatal: true }).decode(
+		bytes.subarray(3),
+	);
+	const lines = text.split("\r\n");
+	expect(lines.at(-1)).toBe("");
+	expect(lines[0]?.split(";").length ?? 0).toBeGreaterThan(1);
+	expect(text).toMatch(SEMICOLON_NUMBER_WITH_DECIMALS);
+	expect(text).not.toMatch(POINT_DECIMAL_NUMBER);
+	expect(text).not.toMatch(/^sep=/m);
+	return text;
+}
+
 export async function expectThemePrintLayout(page: Page): Promise<void> {
 	const screenSize = page.viewportSize();
 	await page.setViewportSize({

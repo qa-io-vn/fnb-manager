@@ -3,8 +3,10 @@ import { checkPage, waitForCharts } from "../support/checks";
 import { expectNoExternalRequests } from "../support/reports";
 import {
 	choosePreset,
+	chooseSemicolonCsv,
 	expectCsvTablesWithBom,
 	expectEveryThemeCardSettled,
+	expectSemicolonCsv,
 	expectThemeInEnglish,
 	expectThemePrintLayout,
 	openTheme,
@@ -136,4 +138,12 @@ test("Thực đơn prints without controls, passes axe, fits 360 px, stays local
 	await expectThemePrintLayout(page);
 	await checkPage(page);
 	await expectThemeInEnglish(page, "Menu");
+});
+
+test("Thực đơn downloads semicolon-separated with decimal commas on a device set to that format", async ({
+	page,
+}) => {
+	await chooseSemicolonCsv(page);
+	await openTheme(page, "menu");
+	await expectSemicolonCsv(page, themeCard(page, "menu", "category_mix"));
 });

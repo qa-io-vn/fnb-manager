@@ -9,6 +9,7 @@ import {
 } from "react";
 import { isLanguage, type Language } from "../i18n";
 import { type IsoDate, isIsoDate, todayIn } from "../lib/business-dates";
+import { type CsvDialect, DEFAULT_CSV_DIALECT, isCsvDialect } from "../lib/csv";
 import { defaultPeriod, type Period, parsePeriod } from "../lib/period";
 import { readStoredJson, writeStoredJson } from "../lib/storage";
 
@@ -22,6 +23,7 @@ export interface Preferences {
 	period: Period;
 	periodSetOn: IsoDate;
 	themePreset: NamedPreset | null;
+	csvDialect: CsvDialect;
 }
 
 function localToday(now: Date): IsoDate {
@@ -37,6 +39,7 @@ export function defaultPreferences(now: Date = new Date()): Preferences {
 		period: defaultPeriod(today),
 		periodSetOn: today,
 		themePreset: null,
+		csvDialect: DEFAULT_CSV_DIALECT,
 	};
 }
 
@@ -66,6 +69,7 @@ export function parsePreferences(
 	) {
 		parsed.themePreset = stored.themePreset;
 	}
+	if (isCsvDialect(stored.csvDialect)) parsed.csvDialect = stored.csvDialect;
 	return parsed;
 }
 

@@ -7,8 +7,10 @@ import {
 } from "../support/checks";
 import {
 	choosePreset,
+	chooseSemicolonCsv,
 	expectCsvTablesWithBom,
 	expectEveryThemeCardSettled,
+	expectSemicolonCsv,
 	expectThemeInEnglish,
 	expectThemePrintLayout,
 	openTheme,
@@ -116,4 +118,12 @@ test("Giờ & ngày prints without controls, passes axe, fits 360 px and reads i
 	await expectThemePrintLayout(page);
 	await checkPage(page);
 	await expectThemeInEnglish(page, "Hours and weekdays");
+});
+
+test("Giờ & ngày downloads semicolon-separated with decimal commas on a device set to that format", async ({
+	page,
+}) => {
+	await chooseSemicolonCsv(page);
+	await openTheme(page, "hours");
+	await expectSemicolonCsv(page, themeCard(page, "hours", "productivity"));
 });

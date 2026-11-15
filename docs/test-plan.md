@@ -978,7 +978,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | FR-REP-09 | Coverage and young stores | Must | verified locally | `reports:unit/coverage-and-comparison`, `e2e:live/reports`, `e2e:demo/report-year` | covered |
 | FR-REP-10 | Sentences from templates | Must | verified locally | `reports:unit/decomposition-and-narrative`, `web:metrics/sentences` | covered |
 | FR-REP-11 | Report card | Must | verified locally | `web:components/report-card/report-card`, `web:components/report-card/report-card-extensions` | covered |
-| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay` | partial |
+| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan` | partial |
 | FR-REP-13 | Print layout | Should | verified locally | `e2e:demo/demo`, `e2e:demo/report-day` | covered |
 | FR-REP-14 | Card loading and errors | Should | built | `e2e:demo/report-day` (cards settle); no named test for the error path | partial |
 | FR-REP-15 | Store and period selection | Must | verified locally | `web:shell/period-picker`, `web:state/preferences`, `pgtap:22_report_functions` | covered |
@@ -1305,7 +1305,7 @@ Of the 240 requirements that are verified locally, built, in build or waiting fo
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
 | NFR-I18N-01 | Vietnamese first, English second | Must | verified locally | `web:i18n/i18n`, `web:i18n/report-keys`, `e2e:live/today`, `e2e:demo/demo` | covered |
-| NFR-I18N-02 | Formatting by locale and currency | Must | verified locally | `web:lib/format`, `notify:unit/render/format`, `web:settings/number-text`, `web:settings/forms/money-field` | covered |
+| NFR-I18N-02 | Formatting by locale and currency | Must | verified locally | `web:lib/format`, `notify:unit/render/format`, `web:settings/number-text`, `web:settings/forms/money-field`, `web:lib/csv` | covered |
 | NFR-I18N-03 | Registry spelling | Should | verified locally | `web:i18n/i18n` | covered |
 | NFR-I18N-04 | Notification language | Should | in build | `notify:unit/render/templates` | covered |
 | NFR-I18N-05 | Time zones and day starts | Must | verified locally | `core:unit/business-date`, `core:unit/wall-clock`, `sync:unit/incremental-window`, `pgtap:20_incremental_schedule`, `pgtap:27_notify_policy`, `pgtap:30_notify_digests` | covered |

@@ -238,7 +238,7 @@ Use the browser's own print command (Ctrl+P or ⌘P on a computer, Share then Pr
 
 ### CSV downloads
 
-"Tải CSV" under a table downloads exactly the rows shown, in UTF-8 with a byte-order mark so that Excel shows the Vietnamese letters correctly. Values are separated by commas; amounts are plain numbers without thousands separators, and percentage columns are marked "(%)". A card with two tables offers "Tải CSV: {table}" for each. Report files are named `<report>-<card>-<period>.csv`, for example `ngay-net-revenue-2026-11-07.csv`.
+"Tải CSV" under a table downloads exactly the rows shown, in UTF-8 with a byte-order mark so that Excel shows the Vietnamese letters correctly. Values are separated by commas and decimals use a point; amounts are plain numbers without thousands separators, and percentage columns are marked "(%)". An Excel set to Vietnamese regional settings may put such a row in one column, because it expects semicolons and a decimal comma (`12,5`). The app can write that format too, as a choice each device keeps for itself; the switch for it comes with the Ngưỡng báo cáo page of Cài đặt, which is not open yet. A card with two tables offers "Tải CSV: {table}" for each. Report files are named `<report>-<card>-<period>.csv`, for example `ngay-net-revenue-2026-11-07.csv`.
 
 ## The thematic reports ("Chủ đề")
 

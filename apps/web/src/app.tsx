@@ -25,6 +25,7 @@ import { PlaceholderPage } from "./pages/placeholder-page";
 import { TodayPage } from "./pages/today/today-page";
 import { ReportRouteLoading } from "./reports/route-loading";
 import { NewVersionPrompt } from "./shell/new-version-prompt";
+import { CsvDialectProvider } from "./state/csv-dialect";
 import { PreferencesProvider, usePreferences } from "./state/preferences";
 
 function RecoveryRedirect() {
@@ -177,7 +178,9 @@ function LocalisedApp() {
 					<SessionProvider loadClient={loadClient}>
 						<RowSourceProvider>
 							<AnalyticsSourceProvider>
-								<RouterProvider router={router} />
+								<CsvDialectProvider dialect={preferences.csvDialect}>
+									<RouterProvider router={router} />
+								</CsvDialectProvider>
 							</AnalyticsSourceProvider>
 						</RowSourceProvider>
 					</SessionProvider>

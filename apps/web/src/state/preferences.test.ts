@@ -43,6 +43,14 @@ describe("stored preferences", () => {
 		expect(loadPreferences(morning).period.anchor).toBe("2026-11-08");
 	});
 
+	it("keeps the device's CSV format and falls back to comma", () => {
+		expect(loadPreferences(morning).csvDialect).toBe("comma");
+		store({ csvDialect: "semicolon" });
+		expect(loadPreferences(morning).csvDialect).toBe("semicolon");
+		store({ csvDialect: "tab" });
+		expect(loadPreferences(morning).csvDialect).toBe("comma");
+	});
+
 	it("falls back to the defaults when storage holds something else", () => {
 		window.localStorage.setItem(PREFERENCES_KEY, "not json");
 		expect(loadPreferences(morning).period).toEqual(

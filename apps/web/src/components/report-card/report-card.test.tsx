@@ -1,6 +1,7 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { metricRegistry } from "../../metrics/registry";
+import { CsvDialectProvider } from "../../state/csv-dialect";
 import { renderWithLanguage, vndFormatters } from "../../test/render";
 import { csvOfRows } from "./data-table";
 import { ReportCard, type ReportCardProps } from "./report-card";
@@ -150,6 +151,38 @@ describe("ReportCard", () => {
 		expect(downloads).toHaveLength(1);
 		expect(downloads[0]?.content).toBe(
 			'﻿Cửa hàng,Doanh thu thuần,Chênh lệch (%)\r\nQuán Một,2500000,25\r\n"Quán, Hai",7400000,-10\r\n',
+		);
+	});
+
+	it("downloads in the device's semicolon format with decimal commas", () => {
+		renderWithLanguage(
+			<CsvDialectProvider dialect="semicolon">
+				<ReportCard
+					{...props({
+						table: {
+							...table,
+							rows: [
+								{
+									id: "a",
+									cells: {
+										store: "Quán Một",
+										value: 2_500_000.5,
+										change: 0.125,
+									},
+								},
+								{
+									id: "b",
+									cells: { store: "Quán; Hai", value: 7_400_000, change: -0.1 },
+								},
+							],
+						},
+					})}
+				/>
+			</CsvDialectProvider>,
+		);
+		fireEvent.click(screen.getByRole("button", { name: /^Tải CSV/ }));
+		expect(downloads[0]?.content).toBe(
+			'\ufeffCửa hàng;Doanh thu thuần;Chênh lệch (%)\r\n"Quán; Hai";7400000;-10\r\nQuán Một;2500000,5;12,5\r\n',
 		);
 	});
 
