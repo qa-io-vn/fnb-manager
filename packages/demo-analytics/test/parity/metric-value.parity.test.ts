@@ -1,5 +1,6 @@
 import { VIETNAM_HOLIDAYS } from "@fnb/core";
 import { metricValueIds } from "@fnb/metrics";
+import { DEFAULT_REPORT_SETTINGS } from "@fnb/reports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { METRIC_VALUE_IDS, metricValue } from "../../src/index.js";
 import { ParityReport } from "./compare.js";
@@ -72,7 +73,11 @@ describe("metric_value and metric_compare in the engine equal the SQL", () => {
 									from_date: range.from,
 									to_date: range.to,
 								},
-								{ now: clock.now, holidays: VIETNAM_HOLIDAYS },
+								{
+									now: clock.now,
+									holidays: VIETNAM_HOLIDAYS,
+									reportSettings: DEFAULT_REPORT_SETTINGS,
+								},
 							)[0]?.value ?? null,
 					}));
 					report.compareRows(

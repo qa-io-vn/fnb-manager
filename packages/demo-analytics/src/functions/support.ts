@@ -7,6 +7,7 @@ import {
 	daysBetween,
 	type IsoDate,
 	MAX_STORE_IDS,
+	type ReportSettings,
 } from "@fnb/reports";
 import type { z } from "zod";
 import type { AggregateStore } from "../aggregates.js";
@@ -28,6 +29,7 @@ export const MAX_REPORT_ROWS = 900;
 export interface HandlerContext {
 	readonly now: Date;
 	readonly holidays: readonly HolidayEntry[];
+	readonly reportSettings: ReportSettings;
 }
 
 export type HandlerArgs<N extends AnalyticsFunctionName> = z.output<

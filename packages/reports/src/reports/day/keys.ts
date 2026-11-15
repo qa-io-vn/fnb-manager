@@ -63,13 +63,13 @@ export const dayKeys = {
 	shifts: {
 		title: "report.day.shifts.title",
 		caption: "report.day.shifts.caption",
-		none: "report.day.shifts.none",
-		largest: "report.day.shifts.largest",
+		none: "report.shifts.none",
+		largest: "report.shifts.largest",
 		noData: "report.day.shifts.noData",
 		noShifts: "report.day.shifts.noShifts",
 		chart: "report.day.shifts.chart",
-		over: "report.day.shifts.over",
-		short: "report.day.shifts.short",
+		over: "report.shifts.over",
+		short: "report.shifts.short",
 		table: "report.day.shifts.table",
 	},
 	discounts: {

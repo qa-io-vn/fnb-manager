@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { checkPage, waitForCharts } from "../support/checks";
-import { expectNoExternalRequests } from "../support/reports";
+import {
+	expectNoExternalRequests,
+	expectShiftsLabelledByNumber,
+} from "../support/reports";
 import {
 	choosePreset,
 	expectCsvTablesWithBom,
@@ -82,9 +85,41 @@ test("every Thanh toán table downloads as UTF-8 CSV with a BOM", async ({
 		);
 	}
 	const text = headers.join(" ");
-	for (const label of ["Loại", "Phương thức", "Tỷ trọng tiền mặt"]) {
+	for (const label of [
+		"Loại",
+		"Phương thức",
+		"Tỷ trọng tiền mặt",
+		"Tiền mặt dự kiến",
+		"Phí POS ghi nhận",
+	]) {
 		expect(text).toContain(label);
 	}
+});
+
+test("the drawer card states the thresholds and labels shifts Ca n on screen, in CSV and in print", async ({
+	page,
+}) => {
+	await openTheme(page, "payments");
+	const drawer = themeCard(page, "payments", "drawer");
+	await expect(drawer.getByTestId("sentence")).toContainText("Ngưỡng:");
+	await expect(drawer.getByTestId("sentence")).toContainText("50.000");
+	await expectShiftsLabelledByNumber(
+		page,
+		"card-payments-drawer",
+		/Ca (sáng|chiều|tối)/,
+	);
+});
+
+test("the fee card shows a dash and the fees link while no fee rate is entered", async ({
+	page,
+}) => {
+	await openTheme(page, "payments");
+	const fees = themeCard(page, "payments", "fees");
+	await expect(fees.getByTestId("headline")).toHaveText("—");
+	await expect(fees.getByTestId("card-notice")).toBeVisible();
+	await expect(
+		fees.getByTestId("card-notice").getByRole("link"),
+	).toHaveAttribute("href", /cai-dat\/du-lieu-nhap-tay\?tab=phi/);
 });
 
 test("Thanh toán prints without controls, passes axe, fits 360 px, stays local and reads in English", async ({

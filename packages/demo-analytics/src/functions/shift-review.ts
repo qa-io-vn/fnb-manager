@@ -14,8 +14,6 @@ import {
 type Row = AnalyticsRow<"shift_review">;
 
 export const SHIFT_REVIEW_MAX_DAYS = 92;
-export const DEFAULT_ABS_THRESHOLD = 50_000;
-export const DEFAULT_REL_THRESHOLD = 0.005;
 export const TRAILING_DAYS = 56;
 export const MIN_TRAILING_SHIFTS = 3;
 export const Z_THRESHOLD = 2;
@@ -122,7 +120,7 @@ function minorValue(value: number | null): number | null {
 export function shiftReview(
 	store: AggregateStore,
 	args: HandlerArgs<"shift_review">,
-	_context: HandlerContext,
+	context: HandlerContext,
 ): Row[] {
 	requireStoreIds("shift_review", args.store_ids);
 	requireDateRange(
@@ -131,8 +129,10 @@ export function shiftReview(
 		args.to_date,
 		SHIFT_REVIEW_MAX_DAYS,
 	);
-	const absThreshold = args.abs_threshold ?? DEFAULT_ABS_THRESHOLD;
-	const relThreshold = args.rel_threshold ?? DEFAULT_REL_THRESHOLD;
+	const absThreshold =
+		args.abs_threshold ?? context.reportSettings.cashAbsThreshold;
+	const relThreshold =
+		args.rel_threshold ?? context.reportSettings.cashRelThreshold;
 	const rows = shiftsBetween(
 		store,
 		args.store_ids,

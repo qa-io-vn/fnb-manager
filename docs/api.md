@@ -188,7 +188,7 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`item_summary`](#publicitem_summary) | reports | invoker, stable | rows per item | web reports, digest | verified locally (phase 9) |
 | [`payment_summary`](#publicpayment_summary) | reports | invoker, stable | rows per payment method | web reports, digest, web theme Thanh toán | verified locally (phase 9) |
 | [`promotion_summary`](#publicpromotion_summary) | reports | invoker, stable | rows per promotion | web reports, digest | verified locally (phase 9) |
-| [`shift_review`](#publicshift_review) | reports | invoker, stable | rows per shift | web reports, digest | verified locally (phase 9) |
+| [`shift_review`](#publicshift_review) | reports | invoker, stable | rows per shift | web reports, digest, web theme Thanh toán | verified locally (phase 9) |
 | [`store_targets`](#publicstore_targets) | reports | invoker, stable | rows per store | web reports | verified locally (phase 9) |
 | [`item_velocity`](#publicitem_velocity) | reports | invoker, stable | rows per item | web reports | verified locally (phase 8) |
 | [`month_pace`](#publicmonth_pace) | reports | invoker, stable | 1 row | web reports | verified locally (phase 8) |
@@ -528,7 +528,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** web reports (Ngày shifts, Tháng shift statistics), digest.
+- **Called by:** web reports (Ngày shifts, Tháng shift statistics), digest, Thanh toán's drawer card (the last 92 days of the range, thresholds left to the tenant's settings). The demo port reads the same settings for thresholds a call leaves out, held by `demo-analytics:parity/shift-review` with the default and a tenant's thresholds.
 - **Notes:** every shift of `agg_shift_cash` in the range, with the cash columns, the trailing z-score, the three threshold flags, `flagged` and `reasons`. Null thresholds read the tenant's report settings of the first visible store (50,000 and 0.005 without a settings row), so Ngày, Tháng and the digest flag what the settings say without passing them; explicit thresholds win, each on its own. A call with stores of two tenants applies the first visible store's thresholds to all of them; the web app never mixes tenants. The flagged rows equal `cash_variance_flags`. At most 92 days.
 
 #### `public.store_targets`

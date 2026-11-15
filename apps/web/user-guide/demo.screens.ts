@@ -189,6 +189,14 @@ test("the Thanh toán payment mix and cash trend", async ({ page }) => {
 		themeCard(page, "payments", "cash_trend"),
 		"theme-thanh-toan-cash-trend",
 	);
+	await shootElement(
+		themeCard(page, "payments", "drawer"),
+		"theme-thanh-toan-drawer",
+	);
+	await shootElement(
+		themeCard(page, "payments", "fees"),
+		"theme-thanh-toan-fees",
+	);
 });
 
 test("the printed report", async ({ page }) => {

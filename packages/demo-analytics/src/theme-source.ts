@@ -195,8 +195,11 @@ export interface DemoReportSource extends ReportSource {
 export function createDemoReportSource(
 	options: DemoReportSourceOptions,
 ): DemoReportSource {
-	const analytics: DemoAnalyticsSource = createDemoAnalyticsSource(options);
 	const settings = options.settings ?? new DemoSettingsStore();
+	const analytics: DemoAnalyticsSource = createDemoAnalyticsSource({
+		...options,
+		reportSettings: () => settings.reportSettings(),
+	});
 	const { aggregates } = analytics;
 	aggregates.days.useMappings(settings);
 	return {
@@ -216,6 +219,7 @@ export function createDemoReportSource(
 			const context: ThemeHandlerContext = {
 				now: options.now(),
 				holidays: [],
+				reportSettings: settings.reportSettings(),
 				settings,
 			};
 			const handler = themeHandlers[name] as ThemeHandler<N>;

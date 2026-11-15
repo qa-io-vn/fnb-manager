@@ -331,6 +331,14 @@ Thanh toán shows how customers pay. **Cơ cấu thanh toán theo loại** gives
 
 ![The cash trend card: the last day's cash share against the first, with cash per day and its share](user-guide/theme-thanh-toan-cash-trend.png)
 
+**Tiền mặt dự kiến và đếm được theo ca** checks every shift of the last 92 days of the range at most: the cash expected in the drawer against the cash counted, and how many shifts went over your thresholds (an amount, a share of cash sales and an unusual size for the store). The thresholds are written under the sentence and come from Settings. Shifts read "Ca 1", "Ca 2"… in the order they opened that day; a cashier's e-mail address never shows. A cash payout made during a shift is not synced from the POS, so it reads as a shortage.
+
+![The drawer card: flagged shifts, the largest variance, the thresholds and the shifts with the largest variance first](user-guide/theme-thanh-toan-drawer.png)
+
+**Phí thanh toán ước tính** estimates what card and e-wallet payments cost in fees, at the rate you enter for each payment method, beside the fee the POS reported. Until a rate is entered the card shows "—" and links to Settings.
+
+![The fee card of the demo: no fee rate yet, with the link to enter one](user-guide/theme-thanh-toan-fees.png)
+
 More detail: [reports/thanh-toan.md](reports/thanh-toan.md).
 
 ### Links, printing and CSV

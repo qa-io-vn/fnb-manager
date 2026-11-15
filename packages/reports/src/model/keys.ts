@@ -212,6 +212,12 @@ export const reportKeys = {
 		bill: "report.promotionKind.bill",
 		voucher: "report.promotionKind.voucher",
 	},
+	shifts: {
+		none: "report.shifts.none",
+		largest: "report.shifts.largest",
+		over: "report.shifts.over",
+		short: "report.shifts.short",
+	},
 	shiftReasons: {
 		absolute: "report.shiftReasons.absolute",
 		relative: "report.shiftReasons.relative",

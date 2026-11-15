@@ -1,6 +1,7 @@
 import { VIETNAM_HOLIDAYS } from "@fnb/core";
 import {
 	addDays,
+	DEFAULT_REPORT_SETTINGS,
 	firstOfMonth,
 	type IsoDate,
 	maxDate,
@@ -163,7 +164,11 @@ describe("the engine ports of the report functions equal the SQL", () => {
 			const engineRows = sameWeekdayBaseline(
 				seeded.engine.aggregates,
 				{ store_ids: stores, target_date: anchor, weeks: 8 },
-				{ now: clock.now, holidays: VIETNAM_HOLIDAYS },
+				{
+					now: clock.now,
+					holidays: VIETNAM_HOLIDAYS,
+					reportSettings: DEFAULT_REPORT_SETTINGS,
+				},
 			);
 			report.compareRows(
 				`${seeded.dataset.id} same_weekday_baseline(${stores.join(",")}, ${anchor})`,

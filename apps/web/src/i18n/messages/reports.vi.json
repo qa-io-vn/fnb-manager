@@ -199,5 +199,9 @@
 	"report.unavailable.building_baseline.baseline": "đang tích lũy mức nền",
 	"report.unavailable.building_baseline.average_4_weeks": "đang tích lũy dữ liệu 4 tuần",
 	"report.unavailable.building_baseline.forecast": "đang tích lũy dữ liệu dự báo",
-	"report.unavailable.building_baseline.target": "đang tích lũy dữ liệu"
+	"report.unavailable.building_baseline.target": "đang tích lũy dữ liệu",
+	"report.shifts.none": "Không ca nào lệch két vượt ngưỡng trong {count} ca.",
+	"report.shifts.largest": "{count} ca lệch két vượt ngưỡng; lớn nhất là {shift} ({cashier}): {variance}, {reasons}.",
+	"report.shifts.over": "Thừa tiền",
+	"report.shifts.short": "Thiếu tiền"
 }

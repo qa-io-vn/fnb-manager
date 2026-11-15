@@ -8,6 +8,7 @@ import {
 	addDays,
 	analyticsFunctions,
 	BASELINE_WEEKS,
+	DEFAULT_REPORT_SETTINGS,
 	firstOfMonth,
 	INVALID_ARGUMENTS_CODE,
 	INVALID_ROWS_CODE,
@@ -15,6 +16,7 @@ import {
 	lastOfMonth,
 	minDate,
 	periodBounds,
+	type ReportSettings,
 } from "@fnb/reports";
 import { z } from "zod";
 import { AggregateStore, type StoreDayRange } from "./aggregates.js";
@@ -47,6 +49,7 @@ export interface DemoAnalyticsSourceOptions {
 	readonly volumeScale?: number;
 	readonly validateRows?: boolean;
 	readonly holidays?: readonly HolidayEntry[];
+	readonly reportSettings?: () => ReportSettings;
 }
 
 export interface DemoAnalyticsSource extends AnalyticsSource {
@@ -263,7 +266,11 @@ export function createDemoAnalyticsSource(
 				store: AggregateStore,
 			) => readonly StoreDayRange[];
 			await aggregates.ensureAll(read(parsed, aggregates));
-			const context: HandlerContext = { now: options.now(), holidays };
+			const context: HandlerContext = {
+				now: options.now(),
+				holidays,
+				reportSettings: options.reportSettings?.() ?? DEFAULT_REPORT_SETTINGS,
+			};
 			const handler = handlers[name] as Handler<N>;
 			const rows = handler(aggregates, parsed, context);
 			return options.validateRows === true ? validateRows(name, rows) : rows;

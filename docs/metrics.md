@@ -234,6 +234,8 @@ Its attach rates and pairs cover the last `min(range days, 92)` days of the rang
 
 Thanh toán's cash trend buckets the range by day up to 35 days and by week (from Monday) beyond. Its warning compares whole weeks, so the weekdays on both sides match: with day buckets the last k weeks against the k weeks before (k the largest whole number of weeks that fits twice, at least 2), with week buckets the later half of the full weeks against the earlier half (at least 2 a side; a week cut by the range's edge is left out). On each side the cash share is Σ cash ÷ Σ paid and the net revenue per day is Σ net ÷ calendar days, so a store that opens inside the range adds revenue rather than lowering the day's average. It fires when the cash share rose by at least 1 point and the net per day fell by at least 5 %, the signal of KPI deep dive §5. When a selected store's data starts after the first bucket, the card does not compare the first bucket with the last.
 
+Its drawer card reviews the shifts of the last `min(range days, 92)` days with the tenant's cash thresholds (the absolute amount, the share of cash sales and the z-score over 2), as Ngày and the digest do; its fee card adds each payment's estimated fee at the rate in force on its day and stays "—" until a fee rate exists.
+
 A share's change that would read 0.0 points (under 0.05 points) is "about the same" in every sentence, whatever its relative size.
 
 ### Ranges and references

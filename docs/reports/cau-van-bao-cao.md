@@ -500,13 +500,13 @@ The common placeholders; every other one is named after what it holds, and the E
 | --- | --- | --- | --- |
 | `report.day.shifts.title` | Ca và chênh lệch két | Shifts and drawer variance | — |
 | `report.day.shifts.caption` | trên {count} ca | of {count} shifts | `{count}` |
-| `report.day.shifts.none` | Không ca nào lệch két vượt ngưỡng trong {count} ca. | None of the {count} shifts had a drawer variance over the thresholds. | `{count}` |
-| `report.day.shifts.largest` | {count} ca lệch két vượt ngưỡng; lớn nhất là {shift} ({cashier}): {variance}, {reasons}. | {count} shifts were over the thresholds; the largest was {shift} ({cashier}): {variance}, {reasons}. | `{count}` `{shift}` `{cashier}` `{variance}` `{reasons}` |
+| `report.shifts.none` | Không ca nào lệch két vượt ngưỡng trong {count} ca. | None of the {count} shifts had a drawer variance over the thresholds. | `{count}` |
+| `report.shifts.largest` | {count} ca lệch két vượt ngưỡng; lớn nhất là {shift} ({cashier}): {variance}, {reasons}. | {count} shifts were over the thresholds; the largest was {shift} ({cashier}): {variance}, {reasons}. | `{count}` `{shift}` `{cashier}` `{variance}` `{reasons}` |
 | `report.day.shifts.noData` | Ngày {day} không có ca nào. | {day} has no shifts. | `{day}` |
 | `report.day.shifts.noShifts` | Chưa có ca nào trong ngày; kiểm tra thu ngân có mở và đóng ca trên POS không. | No shifts on this day; check that cashiers open and close shifts on the POS. | — |
 | `report.day.shifts.chart` | Chênh lệch két theo ca | Drawer variance by shift | — |
-| `report.day.shifts.over` | Thừa tiền | Over | — |
-| `report.day.shifts.short` | Thiếu tiền | Short | — |
+| `report.shifts.over` | Thừa tiền | Over | — |
+| `report.shifts.short` | Thiếu tiền | Short | — |
 | `report.day.shifts.table` | Các ca trong ngày | Shifts of the day | — |
 
 ### Thẻ «Giảm giá và voucher» (`report.day.discounts.*`)

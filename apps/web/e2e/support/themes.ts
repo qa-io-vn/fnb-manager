@@ -29,7 +29,7 @@ export const themeCardIds: Record<ThemeKind, readonly string[]> = {
 		"pairs",
 		"preferences",
 	],
-	payments: ["payment_mix", "cash_trend"],
+	payments: ["payment_mix", "cash_trend", "drawer", "fees"],
 };
 
 const RAW_KEY = /\b(report|metric|theme)\.[a-z]+[A-Za-z_]*\./;

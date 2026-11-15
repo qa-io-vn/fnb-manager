@@ -1,9 +1,12 @@
 import type { AnalyticsRow } from "../../contract/functions.js";
+import type { DateRange } from "../../contract/values.js";
 import { COVERAGE_CALL_KEY } from "../../definition.js";
 import { csvName } from "../../model/card.js";
 import type { CoverageModel } from "../../model/coverage.js";
 import type { ThemeContext } from "../context.js";
+import type { ThemeRow } from "../contract.js";
 import {
+	lastDaysWindow,
 	likeForLikeRangeCalls,
 	type RangeTotalsRow,
 	type ReportCallSpec,
@@ -18,6 +21,7 @@ import {
 
 export const PAYMENTS_SLUG = "thanh-toan";
 export const DAY_BUCKET_MAX_DAYS = 35;
+export const SHIFT_WINDOW_DAYS = 92;
 
 export const paymentsCalls = {
 	coverage: COVERAGE_CALL_KEY,
@@ -25,6 +29,7 @@ export const paymentsCalls = {
 	payments: "payments",
 	paymentsPrevious: "paymentsPrevious",
 	series: "series",
+	shifts: "shifts",
 	settings: "settings",
 } as const;
 
@@ -37,14 +42,33 @@ export const paymentsNeeds = {
 		paymentsCalls.payments,
 	],
 	trend: [paymentsCalls.coverage, paymentsCalls.series],
+	drawer: [
+		paymentsCalls.coverage,
+		paymentsCalls.shifts,
+		paymentsCalls.settings,
+	],
+	fees: [
+		paymentsCalls.coverage,
+		paymentsCalls.payments,
+		paymentsCalls.paymentsPrevious,
+		paymentsCalls.settings,
+	],
 } as const;
 
 export type PaymentRow = AnalyticsRow<"payment_summary">;
 export type SeriesRow = AnalyticsRow<"period_series">;
+export type ShiftRow = AnalyticsRow<"shift_review">;
+export type SettingsRow = ThemeRow<"report_settings_of">;
 export type BucketGrain = "day" | "week";
 
 export function bucketGrain(days: number): BucketGrain {
 	return days <= DAY_BUCKET_MAX_DAYS ? "day" : "week";
+}
+
+export function shiftWindow(
+	context: Pick<ThemeContext, "range">,
+): DateRange & { readonly days: number } {
+	return lastDaysWindow(context.range, SHIFT_WINDOW_DAYS);
 }
 
 export function paymentsPrimaryCalls(
@@ -73,6 +97,11 @@ export function paymentsPrimaryCalls(
 			from_date: range.from,
 			to_date: range.to,
 			include_stores: false,
+		}),
+		reportCall(paymentsCalls.shifts, "shift_review", {
+			store_ids: storeIds,
+			from_date: shiftWindow(context).from,
+			to_date: shiftWindow(context).to,
 		}),
 		reportCall(paymentsCalls.settings, "report_settings_of", {
 			store_ids: storeIds,

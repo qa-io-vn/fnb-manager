@@ -199,5 +199,9 @@
 	"report.unavailable.building_baseline.baseline": "building the baseline",
 	"report.unavailable.building_baseline.average_4_weeks": "collecting 4 weeks of data",
 	"report.unavailable.building_baseline.forecast": "collecting data for the forecast",
-	"report.unavailable.building_baseline.target": "still collecting data"
+	"report.unavailable.building_baseline.target": "still collecting data",
+	"report.shifts.none": "None of the {count} shifts had a drawer variance over the thresholds.",
+	"report.shifts.largest": "{count} shifts were over the thresholds; the largest was {shift} ({cashier}): {variance}, {reasons}.",
+	"report.shifts.over": "Over",
+	"report.shifts.short": "Short"
 }
