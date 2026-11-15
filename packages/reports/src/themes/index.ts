@@ -9,6 +9,7 @@ export * from "./payments/index.js";
 export * from "./range.js";
 export * from "./registry.js";
 export * from "./revenue/index.js";
+export * from "./rules.js";
 export * from "./settings.js";
 export * from "./source.js";
 export * from "./support.js";

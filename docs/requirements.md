@@ -520,9 +520,9 @@ Duties from Vietnamese law built into the schema, the apps and the campaign engi
 | FR-CMP-09 | **Legal form and cross-border decision.** The system shall record the tenant's legal form and hold Track C's public launch until the owner has filed the cross-border transfer dossier (within 60 days of the first transfer) or recorded the household or micro-enterprise exemption. | P2, P13, P19b · ADR-019 · G3 | The decision is recorded before the customer Mini App is published. | Must | waits for owner | `pgtap:01_schema` (column); owner decision |
 | FR-CMP-10 | **E-invoice status flagged.** The system shall record each store's e-invoice status and receipt-number reset period and flag a store without e-invoicing on the data-quality page. | P2, P10b · ADR-021 | The data-quality page flags a store whose status is not `configured`. | Must | designed | `pgtap:01_schema` (columns); page planned |
 | FR-CMP-11 | **Redemptions on the e-invoice.** The system shall map every reward to a POS discount or 0-price promotional line so the cash-register e-invoice shows it, and reconcile redemptions after each sync. | P16b, P18b · ADR-021 | A test redemption appears on the synced invoice as a discount or a 0-price line. | Must | planned | planned |
-| FR-CMP-12 | **Discount caps.** The system shall check price-reducing promotions and coupons against the 50 % cap and count the discount days of each item per year; the 120-day limit is reported repealed from 26 June 2026 (section 7), so the count is shown as information until the legal read confirms it. | P10b, P18b · ADR-021 | A coupon over 50 % cannot be saved; the discount-day count is shown per item. | Must | designed | planned |
+| FR-CMP-12 | **Discount caps.** The system shall check price-reducing promotions and coupons against the 50 % cap and count the discount days of each item per year; the 120-day limit is reported repealed from 26 June 2026 (section 7), so the count is shown as information until the legal read confirms it. | P10b, P18b · ADR-021 | A coupon over 50 % cannot be saved; the discount-day count is shown per item. | Must | in build | `core:unit/promotion-rules` (the 50 % cap under Decree 81/2018 Art. 7 up to 30 June 2025 and Circular 39/2025/TT-BCT Art. 4 from 1 July 2025, and the 120-day limit ending 25 June 2026, dated, with sources, the check date and notes in both languages), `reports:unit/themes/rules` (the rules in force on a date, a range split at the repeal, a full discount never over the cap); the cards and SQL checks come with #150 and #153 |
 | FR-CMP-13 | **No cash-like rewards.** The system shall refuse cash payouts and stored-value wallets as rewards. | P18b · ADR-021 | The coupon editor offers no cash-like reward type. | Must | planned | planned |
-| FR-CMP-14 | **Lucky-draw warning.** The system shall warn in the promotion checks that a lucky draw needs registration. | P10b | The warning shows on Khuyến mãi & giảm giá. | Should | designed | planned |
+| FR-CMP-14 | **Lucky-draw warning.** The system shall warn in the promotion checks that a lucky draw needs registration. | P10b | The warning shows on Khuyến mãi & giảm giá. | Should | in build | `core:unit/promotion-rules` (the registration rule and its keywords), `reports:unit/themes/rules` (keywords match in any case, Unicode form and word separator, as whole words; a name without tone marks is a possible match); the warning on Khuyến mãi & giảm giá comes with #153 |
 | FR-CMP-15 | **Loyalty programme notification check.** The system shall keep a loyalty programme record (name, period, reward budget) and hold the launch until the owner's decision on a Sở Công Thương notification is recorded with it (notification at least 3 working days before launch unless the total gift value stays under 100 M₫; reported removed for purchase-based loyalty programmes in 2026, section 7). | P16a, P19b · ADR-021 | Launch is blocked until the decision is stored with the programme. | Must | planned | planned |
 | FR-CMP-16 | **Marketing consent and opt-out.** The system shall capture marketing consent as a separate toggle that is never pre-ticked, honour "Dừng nhận tin" within one sync interval, and send no promotional message without it. | P18a, P19a · ADR-021 | A customer who stops receives no further promotional message. | Must | planned | planned |
 | FR-CMP-17 | **Privacy notice.** The system shall show the tenant's Vietnamese privacy notice and information-protection rules (purpose, scope, retention, measures, third parties including Supabase, GitHub and Zalo, foreign hosting, rights, contact) inside each Mini App, published before any staff data is processed. | Track Z week 6, P14a, P18a · ADR-022 | The notice is published and shown before the first staff record is created. | Must | waits for owner | owner action; app screens planned |
@@ -602,7 +602,7 @@ Another shop, store, owner or POS by configuration (principle 1, roadmap section
 
 | ID | Requirement | Source | Acceptance criterion | Priority | Status | Verified by |
 |---|---|---|---|---|---|---|
-| FR-POR-01 | **Configuration over code.** The system shall keep tenants, POS accounts, stores, timezones, day starts, currency, roles, payment kinds, fee rates, thresholds, channels and legal texts as rows or secrets, so the repository builds, tests and deploys without knowing any shop. | principle 1 · ADR-005 | The public-safety scan passes and the demo build runs without any shop data. | Must | verified locally | `scripts/check-public-safe.mjs`, `e2e:demo/demo`, `pgtap:35_mappings_and_catch_up` (thresholds read from the settings row), `web:settings/thresholds/fields`, `e2e:demo/settings-bao-cao`, `web:settings/roles/roles` (roles are rows per POS item type) |
+| FR-POR-01 | **Configuration over code.** The system shall keep tenants, POS accounts, stores, timezones, day starts, currency, roles, payment kinds, fee rates, thresholds, channels and legal texts as rows or secrets, so the repository builds, tests and deploys without knowing any shop. | principle 1 · ADR-005 | The public-safety scan passes and the demo build runs without any shop data. | Must | verified locally | `scripts/check-public-safe.mjs`, `e2e:demo/demo`, `pgtap:35_mappings_and_catch_up` (thresholds read from the settings row), `web:settings/thresholds/fields`, `e2e:demo/settings-bao-cao`, `web:settings/roles/roles` (roles are rows per POS item type), `core:unit/promotion-rules` (the promotion rules are dated constants per country, changed in one place) |
 | FR-POR-02 | **Another store or account.** The system shall add a store of an onboarded account, or another account of a supported POS, with `fnb onboard` and a backfill and no code change. | roadmap section 8 | Onboarding another account discovers its stores and syncs them. | Must | verified locally | `jobs:integration/local-stack`, `sync:unit/master-data` |
 | FR-POR-03 | **Another POS.** The system shall take another POS as one new connector package that passes the conformance suite and is registered in the runner's registry, with no schema or report change. | roadmap section 8 · ADR-004, ADR-012 | The CSV connector (FR-CON-17) is added this way. | Must | built | conformance suite (`@fnb/connector-core/conformance`) |
 | FR-POR-04 | **Onboarding wizard.** The system shall offer an interactive `fnb onboard` wizard (connector picker including mock and CSV, credentials, discovery, store settings, manager invite, exact secret snippets) and an `onboard.yml` wrapper for deployers who use only the GitHub web interface. | P20a | A deployer onboards a store through the wizard and through the workflow. | Should | planned | planned |
@@ -966,14 +966,14 @@ The rules below come from [deep-dives/vietnam-legal-requirements.md](deep-dives/
 | Outbound message log kept 12 months | Checklist item 10 (§ Checklist); ADR-021 | Outbox rows kept at least 366 days; bodies purged earlier | FR-CMP-06 | verified locally |
 | Loyalty programmes notified to the Sở Công Thương at least 3 working days before launch, unless the total gift value is under 100 M₫ | Decree 81/2018 Art. 14, 17; Decree 128/2024 (§2); reported changed by Decree 239/2026/NĐ-CP (see below) | Programme record with budget; launch held until the decision is recorded | FR-CMP-15 | planned |
 | Loyalty cards and apps show programme name, customer identity and purchase quantity or value | Decree 81/2018 Art. 14 (§2) | Member card content | FR-CMP-19 | planned |
-| Discounts at most 50 % and at most 120 discount days per item per year; vouchers and gifts capped at 50 % of the unit price | Decree 81/2018 Art. 8 to 11 (§2); reported changed by Decree 239/2026/NĐ-CP (see below) | Cap and counter in the promotion checks and the coupon editor | FR-CMP-12 | designed |
-| Lucky draws need registration | Decree 81/2018 Art. 13 (§2) | Warning in the promotion checks | FR-CMP-14 | designed |
+| Discounts at most 50 % and at most 120 discount days per item per year; vouchers and gifts capped at 50 % of the unit price | Decree 81/2018 Arts. 7 to 11 and, from 1 July 2025, Circular 39/2025/TT-BCT Art. 4 (§2); reported changed by Decree 239/2026/NĐ-CP (see below) | Cap and counter in the promotion checks and the coupon editor; the dated rules in `@fnb/core` `promotionRules` | FR-CMP-12 | in build |
+| Lucky draws need registration | Decree 81/2018 Art. 13 (§2) | Warning in the promotion checks; the keywords in `@fnb/core` `promotionRules` | FR-CMP-14 | in build |
 | No cash-like rewards | ADR-021 | The coupon editor offers no cash-like reward | FR-CMP-13 | planned |
 | Cash-register e-invoices for household businesses with F&B revenue of 1 bn VND or more; discounts and free promotional items shown on the invoice | Decree 70/2025; Decree 254/2026 with Circular 91/2026; Decree 123/2020 Art. 10 cl. 6(đ) (§3) | E-invoice status per store and a data-quality flag; every reward mapped to a POS discount or 0-price line | FR-CMP-10, FR-CMP-11 | designed; planned |
 | Analytics stay aggregate, without behavioural tracking or location (online activity history counts as sensitive under Decree 356) | Checklist item 5; Decree 356/2025 (§1) | No tracker in the web app; aggregate-only data pack; minimal Zalo-derived data | NFR-PRV-05, NFR-PRV-07, FR-EXP-05 | verified locally; planned |
 | Zalo rules: no outbound links, Terms and Privacy in the app, phone permission only at the step that needs it, no promotions in ZBS templates | Zalo platform policies (§4); ADR-022 | Acceptance criteria of the Mini Apps and templates | FR-STF-14, FR-LOY-17, FR-NOT-40 | planned |
 
-A possible legal change after the deep dive: Decree 239/2026/NĐ-CP of 26 June 2026 is reported to change the 120-day limit on discount days and the notification of loyalty programmes. The report is not confirmed; the legal read checks it against the decree's text (request R-Q07) before ADR-021, roadmap principle 7 and the deep dive are amended. Until then FR-CMP-12 shows the discount-day count as information and FR-CMP-15 keeps the owner's recorded decision.
+A possible legal change after the deep dive: Decree 239/2026/NĐ-CP of 26 June 2026 is reported to change the 120-day limit on discount days and the notification of loyalty programmes. The report is not confirmed; the legal read checks it against the decree's text (request R-Q07) before ADR-021, roadmap principle 7 and the deep dive are amended. Until then FR-CMP-12 shows the discount-day count as information and FR-CMP-15 keeps the owner's recorded decision. The rules are dated constants with their legal basis, sources and check date in `@fnb/core` (`promotionRules`, #101), so a confirmed reading changes only those constants.
 
 ## 8. Traceability summary
 
@@ -984,8 +984,8 @@ pie showData
     title Requirements by status on 2026-11-15
     "verified locally" : 177
     "built" : 27
-    "in build" : 20
-    "designed" : 37
+    "in build" : 22
+    "designed" : 35
     "planned" : 98
     "waits for owner" : 17
 ```
@@ -1006,11 +1006,11 @@ Functional requirements:
 | FR-STR | 1 | – | – | 9 | – | – | 10 |
 | FR-NOT | 16 | – | 13 | 1 | 12 | – | 42 |
 | FR-OPS | 2 | 3 | – | – | 8 | 4 | 17 |
-| FR-CMP | 6 | – | – | 3 | 8 | 3 | 20 |
+| FR-CMP | 6 | – | 2 | 1 | 8 | 3 | 20 |
 | FR-STF | – | – | – | – | 23 | – | 23 |
 | FR-LOY | – | – | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | – | – | 7 | – | 12 |
-| **FR total** | **130** | **9** | **17** | **36** | **90** | **14** | **296** |
+| **FR total** | **130** | **9** | **19** | **34** | **90** | **14** | **296** |
 
 Non-functional requirements:
 
@@ -1033,8 +1033,8 @@ Non-functional requirements:
 
 | Priority | verified locally | built | in build | designed | planned | waits for owner | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Must | 159 | 13 | 16 | 24 | 65 | 15 | 292 |
-| Should | 17 | 14 | 4 | 11 | 30 | 2 | 78 |
+| Must | 159 | 13 | 17 | 23 | 65 | 15 | 292 |
+| Should | 17 | 14 | 5 | 10 | 30 | 2 | 78 |
 | Could | 1 | – | – | 2 | 3 | – | 6 |
 
 ### 8.3 Roadmap phases to requirements

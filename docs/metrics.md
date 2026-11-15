@@ -238,6 +238,8 @@ Its drawer card reviews the shifts of the last `min(range days, 92)` days with t
 
 A share's change that would read 0.0 points (under 0.05 points) is "about the same" in every sentence, whatever its relative size.
 
+Promotion rules are dated constants with their legal basis, sources and the date the sources were last checked (`@fnb/core` `promotionRules`). The 10b checks will use the version of a rule in force on each day of the range: the 120-day discount limit applies to days up to 25 June 2026 and later days are counted as information only, while a 50 % cap applies on both sides of that date. A discount will count as over the cap only when it is above the cap and below the whole amount before it; free items and fully free invoices will be listed apart for the owner. Lucky draws are found by keywords in promotion names, matched as whole words in any case and Unicode form, with a name written without tone marks reported as a possible match. A sentence that shows a rule names the instrument and article, states the check date and says it is not legal advice.
+
 ### Ranges and references
 
 - A range is a preset (7, 28, 91 or 364 days; this month; last month; this year) or two dates, and ends at the as-of day. It covers at most 400 days (the limit of `store_coverage`); a longer request keeps its last 400 days.

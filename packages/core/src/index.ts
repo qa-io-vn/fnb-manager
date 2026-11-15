@@ -51,6 +51,25 @@ export {
 	type PaymentKindRule,
 } from "./rules/payment-kind.js";
 export {
+	type DiscountCapParameters,
+	type DiscountCapRule,
+	type DiscountDaysParameters,
+	type DiscountDaysRule,
+	formatLegalBasis,
+	type LegalBasis,
+	type LegalInstrumentKind,
+	type LegalLanguage,
+	type LegalSource,
+	LUCKY_DRAW_KEYWORDS,
+	type LuckyDrawParameters,
+	type LuckyDrawRule,
+	PROMOTION_RULES_CHECKED_ON,
+	type PromotionRule,
+	type PromotionRuleId,
+	promotionRules,
+	type RuleNote,
+} from "./rules/promotion-rules.js";
+export {
 	countsAsItem,
 	expectedNetFromComponents,
 	expectedNetFromLines,

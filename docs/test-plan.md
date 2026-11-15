@@ -818,11 +818,11 @@ Coverage of the 376 requirements on 2026-11-15, by area.
 | FR-STR | 1 | – | 9 | – | 10 |
 | FR-NOT | 26 | 4 | 12 | – | 42 |
 | FR-OPS | 1 | 4 | 8 | 4 | 17 |
-| FR-CMP | 6 | 1 | 10 | 3 | 20 |
+| FR-CMP | 6 | 3 | 8 | 3 | 20 |
 | FR-STF | – | – | 23 | – | 23 |
 | FR-LOY | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | 7 | – | 12 |
-| **FR total** | **135** | **31** | **116** | **14** | **296** |
+| **FR total** | **135** | **33** | **114** | **14** | **296** |
 | NFR-SEC | 6 | 6 | 2 | 1 | 15 |
 | NFR-PRV | 5 | 1 | 1 | – | 7 |
 | NFR-PERF | 4 | 4 | 1 | – | 9 |
@@ -835,18 +835,18 @@ Coverage of the 376 requirements on 2026-11-15, by area.
 | NFR-OBS | 3 | 1 | – | – | 4 |
 | NFR-HYG | 4 | 1 | 1 | – | 6 |
 | **NFR total** | **47** | **22** | **9** | **2** | **80** |
-| **All** | **182** | **53** | **125** | **16** | **376** |
+| **All** | **182** | **55** | **123** | **16** | **376** |
 
 ```mermaid
 pie showData
     title Coverage of the requirements on 2026-11-15
     "covered" : 182
-    "partial" : 53
-    "planned" : 125
+    "partial" : 55
+    "planned" : 123
     "owner check" : 16
 ```
 
-Of the 241 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 42 partial, 1 planned and 16 owner checks. Of the 135 that are designed or planned, 124 have no test yet and 11 are partly held by tests of the database rules they rest on.
+Of the 243 requirements that are verified locally, built, in build or waiting for the owner, 182 are covered, 44 partial, 1 planned and 16 owner checks. Of the 133 that are designed or planned, 122 have no test yet and 11 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -1137,9 +1137,9 @@ Of the 241 requirements that are verified locally, built, in build or waiting fo
 | FR-CMP-09 | Legal form and cross-border decision | Must | waits for owner | `pgtap:01_schema` (column); owner decision | owner check |
 | FR-CMP-10 | E-invoice status flagged | Must | designed | `pgtap:01_schema` (columns); page planned | partial |
 | FR-CMP-11 | Redemptions on the e-invoice | Must | planned | planned | planned |
-| FR-CMP-12 | Discount caps | Must | designed | planned | planned |
+| FR-CMP-12 | Discount caps | Must | in build | `core:unit/promotion-rules`, `reports:unit/themes/rules` | partial |
 | FR-CMP-13 | No cash-like rewards | Must | planned | planned | planned |
-| FR-CMP-14 | Lucky-draw warning | Should | designed | planned | planned |
+| FR-CMP-14 | Lucky-draw warning | Should | in build | `core:unit/promotion-rules`, `reports:unit/themes/rules` | partial |
 | FR-CMP-15 | Loyalty programme notification check | Must | planned | planned | planned |
 | FR-CMP-16 | Marketing consent and opt-out | Must | planned | planned | planned |
 | FR-CMP-17 | Privacy notice | Must | waits for owner | owner action; app screens planned | owner check |
@@ -1213,7 +1213,7 @@ Of the 241 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| FR-POR-01 | Configuration over code | Must | verified locally | `scripts/check-public-safe.mjs`, `e2e:demo/demo`, `pgtap:35_mappings_and_catch_up`, `web:settings/thresholds/fields`, `e2e:demo/settings-bao-cao`, `web:settings/roles/roles` (roles are rows per POS item type) | covered |
+| FR-POR-01 | Configuration over code | Must | verified locally | `scripts/check-public-safe.mjs`, `e2e:demo/demo`, `pgtap:35_mappings_and_catch_up`, `web:settings/thresholds/fields`, `e2e:demo/settings-bao-cao`, `web:settings/roles/roles` (roles are rows per POS item type), `core:unit/promotion-rules` | covered |
 | FR-POR-02 | Another store or account | Must | verified locally | `jobs:integration/local-stack`, `sync:unit/master-data` | covered |
 | FR-POR-03 | Another POS | Must | built | conformance suite (`@fnb/connector-core/conformance`) | partial |
 | FR-POR-04 | Onboarding wizard | Should | planned | planned | planned |
@@ -1367,7 +1367,7 @@ Of the 241 requirements that are verified locally, built, in build or waiting fo
 
 Each requirement below has no test yet. They are grouped by the phase that builds them; the planned test is the test design this plan commits to. Phases 10 and 11 follow their roadmap acceptance lines, because their detailed design is pending; Tracks B, C and D are at roadmap level.
 
-126 requirements in 7 groups.
+123 requirements in 7 groups.
 
 #### Open items of phases 1 to 9 (5)
 
@@ -1379,7 +1379,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | NFR-MNT-07 | Canonical column-name lint | P2, P4 | A lint that fails when a POS field name appears outside `raw` in the canonical schema; owner decision D4 (request R-F03). |
 | NFR-HYG-06 | Preflight log lint | P1 | A preflight check that fails a job printing a structured secret; masking at job start covers the risk today (request R-F03). |
 
-#### Phase 10: thematic reports, settings, manual data (9)
+#### Phase 10: thematic reports, settings, manual data (6)
 
 | ID | Requirement | Phase | Planned test |
 |---|---|---|---|
@@ -1389,9 +1389,6 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-THM-08 | So sánh cửa hàng | P10b | A page test that per-store figures add up to the all-stores figure; `pgtap:22_report_functions` already holds the per-store sums of `period_compare_by_store`. |
 | FR-SET-01 | Store profile | P10b | Live Playwright write tests: a viewer's save is refused, an owner's save changes the per-opening-hour figures; a sync test that `fnb sync master` keeps the edited profile fields; pgTAP for the new write grant on `stores`. |
 | FR-SET-09 | Default language | P10b | A Playwright test that a new session opens in the tenant's default language. |
-| FR-SET-11 | Settings writes tested from the browser | P10b acceptance | Live Playwright write tests for every settings form as owner, store-limited manager, staff and viewer on the seeded stack; the database rules are already held by `pgtap:05_write_policies` and `pgtap:07_write_scope_and_attribution`. |
-| FR-CMP-12 | Discount caps | P10b, P18b | pgTAP or unit tests: a promotion or coupon above 50 % cannot be saved, and the discount-day count per item equals a hand count. |
-| FR-CMP-14 | Lucky-draw warning | P10b | A Playwright test that the lucky-draw warning shows on Khuyến mãi & giảm giá. |
 
 #### Phase 11: exports, data pack, strategy plans (18)
 
@@ -1532,7 +1529,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 
 ### 9.6 Partial coverage
 
-52 requirements are partly covered. Each row says what the tests do not show yet and which test closes the gap.
+55 requirements are partly covered. Each row says what the tests do not show yet and which test closes the gap.
 
 | ID | Requirement | Status | What is missing | Planned test |
 |---|---|---|---|---|
@@ -1553,6 +1550,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-SET-07 | Item-type roles and categories | in build | The roles table, the null attach rate without a role and an override read by the next statement in `item_summary`, `menu_engineering` and `item_margins` are tested; the roles screen saves only changed rows, deletes a cleared role and starts the catch-up (unit tests with fakes and the demo store), and the demo spec round-trips Tháng's attach card through the app's own links. | Roles saved through the real tables from the browser on the fixture tenant (#160); the category and payment-kind tabs, with a live test that re-mapping an uncategorised item moves it at once (10b). |
 | FR-SET-08 | Tenant holidays | designed | Holidays and their exclusion from baselines are tested in SQL; the screen does not exist. | A live Playwright test that a custom holiday saved in Settings drops out of the baseline (10b). |
 | FR-SET-10 | Legal texts | designed | The consent tables are tested; the legal-text screens do not exist. | A live Playwright test that owners and managers publish a text with its version label and that staff and viewers cannot (10b). |
+| FR-SET-11 | Settings writes tested from the browser | in build | The settings source, the access rules and the thresholds page are held by unit, demo and live specs, and `pgtap:05_write_policies`, `pgtap:07_write_scope_and_attribution` and `pgtap:35_mappings_and_catch_up` hold the database rules; no spec yet writes as each role from the browser. | Live Playwright write tests for every settings form as owner, store-limited manager, staff and viewer on the seeded stack, with the 10b fixture logins (#103, #165). |
 | FR-EXP-02 | Paged, split exports | designed | Keyset paging is tested for Hôm nay only. | A unit test of the export reader under a re-sync between pages (no row lost or repeated) and of the egress estimate (11a). |
 | FR-EXP-09 | Built by a data role | designed | The database already gives the publisher no aggregate; the pack builder does not exist. | An integration test that a pack built from a publisher session is refused or empty (11a). |
 | FR-NOT-19 | Digest equals Ngày | in build | Acceptance A1 is shown locally (`--check-ngay`, the live check, the `three nights` scenario); the three real nights on the owner's phone wait for go-live. | Owner check OC-08 after go-live step 8. |
@@ -1564,6 +1562,8 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-OPS-09 | Scheduled workflows kept active | built | The workflow exists but failed on its first scheduled run on 2026-11-09 (request R-P01). | After the fix, dispatch it once and confirm it is green; then check it weekly (operations calendar). |
 | FR-OPS-10 | Cron delay probes | built | The probes run; `scripts/cron-delay-report.mjs` misattributes late runs (request R-P03), so the measured delays come from the GitHub API ([operations.md](operations.md) section 2.3). | Re-run the report after its fix and compare it with section 2.3 of operations.md. |
 | FR-CMP-10 | E-invoice status flagged | designed | The store columns are tested; the data-quality page does not exist. | FR-DQ-12's spec: the page flags the seeded coffee store (10b). |
+| FR-CMP-12 | Discount caps | in build | `core:unit/promotion-rules` and `reports:unit/themes/rules` hold the dated cap and day-limit rules and their helpers; nothing yet checks real promotion rows against them. | pgTAP or unit tests that a promotion or coupon above the cap cannot be saved and that the discount-day count per item equals a hand count (#150, #153, phase 18b). |
+| FR-CMP-14 | Lucky-draw warning | in build | `reports:unit/themes/rules` holds the keywords and their match; no page shows the warning yet. | A Playwright test that the lucky-draw warning shows on Khuyến mãi & giảm giá (#153). |
 | FR-POR-03 | Another POS | built | The conformance suite runs on the two built connectors; the third connector that proves the claim (CSV) does not exist. | FR-CON-17 and FR-POR-05 (20a). |
 | FR-POR-11 | Scheduler and host by choice | built | The same incremental run serves the Edge Function and the CLI; Actions as the incremental scheduler and Cloudflare Pages as the host are not exercised. | Exercise one alternative scheduler and host in the 20a portability proof. |
 | NFR-SEC-01 | RLS on every table | verified locally | `pgtap:03_rls_enabled` checks RLS on all 52 tables and the grants; no test asserts that no materialised view exists (none does on 2026-11-12, and `supabase db advisors` reports none). | An assertion in `03_rls_enabled.sql` that `pg_matviews` is empty in `public` and `app`, and `supabase db advisors --type security` in the verification (request R-T01). |
