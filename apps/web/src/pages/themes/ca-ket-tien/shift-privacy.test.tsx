@@ -4,6 +4,7 @@ import {
 	rangeOfPreset,
 	runTheme,
 	shiftsCalls,
+	shiftsKeys,
 	shiftsTheme,
 	type ThemeContext,
 	type ThemeRow,
@@ -11,7 +12,7 @@ import {
 import { describe, expect, it, vi } from "vitest";
 import { csvOfRows } from "../../../components/report-card/data-table";
 import { ReportCard } from "../../../components/report-card/report-card";
-import { translate } from "../../../i18n";
+import { type MessageKey, translate } from "../../../i18n";
 import { CSV_DIALECTS } from "../../../lib/csv";
 import { toReportCardProps } from "../../../reports/card-adapter";
 import { renderWithLanguage, vndFormatters } from "../../../test/render";
@@ -105,11 +106,21 @@ const context: ThemeContext = {
 	catchUpPending: null,
 };
 
-const answers: Readonly<Record<string, readonly unknown[]>> = {
+type Answers = Readonly<Record<string, readonly unknown[]>>;
+
+const loginShifts = [
+	reviewRow("late", "2026-10-20T08:00:00Z"),
+	reviewRow("early", "2026-10-20T01:00:00Z", { cashier_name: null }),
+];
+
+const answers: Answers = {
 	[shiftsCalls.coverage]: [],
 	[shiftsCalls.shifts]: [
-		reviewRow("late", "2026-10-20T08:00:00Z"),
-		reviewRow("early", "2026-10-20T01:00:00Z", { cashier_name: null }),
+		...loginShifts,
+		reviewRow("named", "2026-10-21T01:00:00Z", {
+			business_date: "2026-10-21",
+			cashier_name: "Lan",
+		}),
 	],
 	[shiftsCalls.adjustments]: [
 		adjustmentRow("late", "2026-10-20T08:00:00Z"),
@@ -118,14 +129,27 @@ const answers: Readonly<Record<string, readonly unknown[]>> = {
 	[shiftsCalls.settings]: [],
 };
 
-function fixtureSource(): ReportSource {
+const unnamedAnswers: Answers = {
+	...answers,
+	[shiftsCalls.shifts]: loginShifts,
+};
+
+const sharedLoginAnswers: Answers = {
+	...answers,
+	[shiftsCalls.shifts]: [
+		reviewRow("late", "2026-10-20T08:00:00Z"),
+		reviewRow("early", "2026-10-20T01:00:00Z", { cashier_name: ` ${LOGIN} ` }),
+	],
+};
+
+function fixtureSource(fixture: Answers = answers): ReportSource {
 	const keys = new Map(
 		shiftsTheme
 			.primaryCalls(context)
 			.map((call) => [JSON.stringify([call.name, call.args]), call.key]),
 	);
 	const answer = async (name: string, args: unknown) =>
-		answers[keys.get(JSON.stringify([name, args])) ?? ""] ?? [];
+		fixture[keys.get(JSON.stringify([name, args])) ?? ""] ?? [];
 	return {
 		kind: "supabase",
 		call: answer as ReportSource["call"],
@@ -140,6 +164,7 @@ describe("Ca & két tiền with e-mail-shaped shift and cashier names", () => {
 			"shift_sales",
 			"drawer",
 			"adjustments",
+			"cashiers",
 		]);
 		for (const language of ["vi", "en"] as const) {
 			const formatters = vndFormatters(language === "vi" ? "vi-VN" : "en-GB");
@@ -196,11 +221,50 @@ describe("Ca & két tiền with e-mail-shaped shift and cashier names", () => {
 				);
 				const markup = container.innerHTML;
 				expect(markup, `${card.id} ${language}`).toContain(
-					language === "vi" ? "Ca 1" : "Shift 1",
+					card.id === "cashiers"
+						? translate(language, "report.label.unknownCashier")
+						: translate(language, "report.label.shiftNumber", { number: 1 }),
 				);
 				expect(markup, `${card.id} ${language}`).not.toContain("@");
 				expect(markup, `${card.id} ${language}`).not.toContain("example.com");
 				expect(markup, `${card.id} ${language}`).not.toMatch(EMAIL_LIKE);
+				unmount();
+			}
+		}
+	});
+
+	it("asks for display names when the cashiers are an e-mail login and an empty value, and for individual logins when every shift carries one login, never ranking and never showing an address", async () => {
+		for (const [fixture, notice] of [
+			[unnamedAnswers, shiftsKeys.cashiers.displayNames],
+			[sharedLoginAnswers, shiftsKeys.cashiers.logins],
+		] as const) {
+			const cards = await runTheme(
+				shiftsTheme,
+				context,
+				fixtureSource(fixture),
+			);
+			const cashiers = cards.find((card) => card.id === "cashiers");
+			expect(cashiers?.notice?.part.key).toBe(notice);
+			expect(cashiers?.headline.value).toBeNull();
+			expect(cashiers?.tables[0]?.rows).toEqual([]);
+			for (const language of ["vi", "en"] as const) {
+				const formatters = vndFormatters(language === "vi" ? "vi-VN" : "en-GB");
+				const props = toReportCardProps(
+					cashiers as NonNullable<typeof cashiers>,
+					"shifts",
+					(key, params) => translate(language, key, params),
+					formatters,
+				);
+				const { container, unmount } = renderWithLanguage(
+					<ReportCard {...props} />,
+					language,
+				);
+				const markup = container.innerHTML;
+				expect(markup, `${notice} ${language}`).toContain(
+					translate(language, notice as MessageKey),
+				);
+				expect(markup, `${notice} ${language}`).not.toContain("@");
+				expect(markup, `${notice} ${language}`).not.toMatch(EMAIL_LIKE);
 				unmount();
 			}
 		}

@@ -244,6 +244,15 @@ test("the Ca & két tiền sales, drawer and adjustments cards", async ({
 	}
 });
 
+test("the Ca & két tiền cashier card", async ({ page }) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await openThemePage(page, "shifts", "range=91d&store=MOCK-S1");
+	await shootElement(
+		themeCard(page, "shifts", "cashiers"),
+		"theme-ca-ket-tien-cashiers",
+	);
+});
+
 test("the So sánh store figures, same-day shape and since-opening cards", async ({
 	page,
 }) => {

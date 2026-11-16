@@ -1,6 +1,6 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền and So sánh cửa hàng of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (709 entries, 234 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền and So sánh cửa hàng of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (722 entries, 242 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
 The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-promotions`, `theme-shifts`, `theme-stores`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
@@ -36,10 +36,10 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{bestHour}` | 1 | `theme.hours.heatmap.main` |
 | `{bestValue}` | 2 | `theme.hours.weekday.main` |
 | `{bucket}` | 7 | `theme.payments.trend.down` |
-| `{cashier}` | 1 | `theme.shifts.adjustments.main` |
+| `{cashier}` | 2 | `theme.shifts.adjustments.main` |
 | `{category}` | 2 | `theme.menu.categoryMix.caption` |
 | `{cost}` | 3 | `theme.promotions.lift.caption` |
-| `{count}` | 18 | `theme.menu.preferences.otherOnly` |
+| `{count}` | 24 | `theme.menu.preferences.otherOnly` |
 | `{covered}` | 2 | `theme.menu.movers.captionLikeForLike` |
 | `{date}` | 11 | `theme.page.todayClamped` |
 | `{day}` | 5 | `settings.hours.addSpanTo` |
@@ -55,6 +55,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{fallerChange}` | 2 | `theme.menu.movers.fallersOnly` |
 | `{fee}` | 1 | `theme.payments.fees.costliest` |
 | `{first}` | 4 | `theme.payments.trend.down` |
+| `{flagged}` | 2 | `theme.shifts.cashiers.main` |
 | `{from}` | 4 | `theme.range.span` |
 | `{gap}` | 3 | `theme.hours.weekday.main` |
 | `{gross}` | 3 | `theme.promotions.lift.caption` |
@@ -95,7 +96,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{quiet}` | 1 | `theme.hours.heatmap.main` |
 | `{quietDay}` | 1 | `theme.hours.heatmap.main` |
 | `{quietHour}` | 1 | `theme.hours.heatmap.main` |
-| `{range}` | 78 | `theme.print.summary` |
+| `{range}` | 82 | `theme.print.summary` |
 | `{rate}` | 4 | `theme.menu.margins.rate` |
 | `{reasons}` | 1 | `theme.shifts.adjustments.main` |
 | `{reference}` | 26 | `theme.range.summary` |
@@ -107,6 +108,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{seats}` | 1 | `theme.hours.productivity.revpash` |
 | `{share}` | 9 | `theme.revenue.storeShare.main` |
 | `{shift}` | 3 | `theme.payments.drawer.shiftOn` |
+| `{shifts}` | 1 | `theme.shifts.cashiers.main` |
 | `{shown}` | 1 | `settings.mapping.categories.search.more` |
 | `{size}` | 1 | `settings.mapping.categories.withSize` |
 | `{stars}` | 2 | `theme.menu.matrix.stars` |
@@ -142,6 +144,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 - "đáng xem lại" for the shifts Ca & két tiền flags, and the caution that a z-score compares a shift with earlier shifts and is no verdict on a person (`theme.shifts.adjustments.main`, `theme.shifts.adjustments.basis`).
 - The lift words "lãi ròng" and "lỗ ròng" for the net lift, "doanh thu gộp tăng thêm" for the gross lift, and "đối chứng" for what each comparator compares with (`theme.promotions.lift.*`); the headline always comes with the gross lift and the discount cost in its caption.
 - So sánh cửa hàng: the store-day index read as "bằng … lần mức trung bình của mình" (`theme.stores.sameDay.main`), the like-for-like all-stores row "Tất cả cửa hàng (so với kỳ trước: cùng cửa hàng)" (`theme.stores.kpis.allStoresLikeForLike`), and the sentence that skips the Tết weeks (`theme.stores.sinceOpening.tetSkipped`).
+- How the card "Theo thu ngân" speaks of people: it names a cashier only when one named cashier alone has the most shifts over the drawer thresholds, never the "chưa rõ thu ngân" row, always adds that figures per cashier are a prompt to look again and no conclusion about a person, asks for individual POS logins when a store's shifts all carry one login, and asks for display names when the logins differ but none has one (`theme.shifts.cashiers.main`, `.tied`, `.unnamed`, `.caution`, `.single`, `.singlePerStore`, `.logins`, `.unnamedAll`, `.displayNames`).
 
 ## Dùng chung cho các chủ đề · Shared by the thematic reports (`themes.vi.json`, 43 mục)
 
@@ -867,7 +870,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `theme.promotions.table.reference` | Mốc so sánh | Reference | — |
 | `theme.promotions.table.voucher` | Voucher | Voucher | — |
 
-## Ca & két tiền · Shifts and cash drawer (`theme-shifts.vi.json`, 43 mục)
+## Ca & két tiền · Shifts and cash drawer (`theme-shifts.vi.json`, 56 mục)
 
 ### Tiêu đề và thông báo chung · title and shared notices (`theme.shifts.title`, `theme.shifts.noData`, `theme.shifts.noShifts`)
 
@@ -915,6 +918,26 @@ The headline caption "trên {count} ca" and the shift labels "Ca n ngày …" ar
 | `theme.shifts.adjustments.unmeasured` | Chưa so được ca nào trong {count} ca với các ca trước nên chưa biết ca nào hủy hay xóa món nhiều hơn thường lệ; không ca nào bị sửa sau khi đóng ca. | None of the {count} shifts could be compared with earlier shifts yet, so it is not known whether any had more voids or removed lines than usual; none was edited after its close. | `{count}` |
 | `theme.shifts.adjustments.unscored` | Điểm z hiện dấu — khi ca chưa có đủ {count} ca trước đó của cửa hàng, hoặc khi các ca trước có cùng một tỷ lệ (chẳng hạn chưa từng xóa món) nên chưa có gì để so. | A z-score shows — when a shift has fewer than {count} earlier shifts of the store, or when the earlier shifts all have the same rate (for instance no removed line at all), so there is nothing to compare with. | `{count}` |
 
+### Thẻ «Theo thu ngân» (`theme.shifts.cashiers.*`)
+
+The table's column names are the shared ones of `theme.shifts.table.*` below and the report sheet's "Thu ngân" and "Doanh thu thuần"; a cashier entered as an e-mail address, or left empty, reads "chưa rõ thu ngân" (`report.label.unknownCashier`). "Ca lệch két vượt ngưỡng" (`theme.shifts.table.flagged`) heads the same column in this card and in the drawer card's table per cashier.
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.shifts.cashiers.caption` | ca lệch két vượt ngưỡng, nhiều nhất trong {count} thu ngân | shifts over the drawer thresholds, the most of {count} cashiers | `{count}` |
+| `theme.shifts.cashiers.caution` | Điểm z so một ca với các ca trước của cửa hàng; số liệu theo thu ngân là gợi ý để xem lại, không phải kết luận về một người. | A z-score compares a shift with the store's earlier shifts; figures per cashier are a prompt to look again, not a conclusion about a person. | — |
+| `theme.shifts.cashiers.displayNames` | Đặt tên hiển thị cho từng tài khoản thu ngân trong POS để xem số liệu theo từng người. | Give each cashier login a display name in the POS to see figures per cashier. | — |
+| `theme.shifts.cashiers.logins` | Muốn xem số liệu theo từng thu ngân, mỗi thu ngân cần đăng nhập POS bằng tài khoản riêng. | For figures per cashier, each cashier needs their own POS login. | — |
+| `theme.shifts.cashiers.main` | Thu ngân có nhiều ca lệch két vượt ngưỡng nhất là {cashier}: {flagged} trên {shifts} ca. | The cashier with the most shifts over the drawer thresholds is {cashier}: {flagged} of {shifts} shifts. | `{cashier}` `{flagged}` `{shifts}` |
+| `theme.shifts.cashiers.none` | Trong {range}, không ca nào của {count} thu ngân lệch két vượt ngưỡng. | In {range}, no shift of the {count} cashiers went over the drawer thresholds. | `{range}` `{count}` |
+| `theme.shifts.cashiers.single` | Trong {range}, cả {count} ca đều ghi cùng một tài khoản thu ngân nên chưa so được giữa các thu ngân. | In {range}, all {count} shifts carry the same cashier login, so cashiers cannot be compared. | `{range}` `{count}` |
+| `theme.shifts.cashiers.singlePerStore` | Trong {range}, mỗi cửa hàng ghi mọi ca dưới một tài khoản thu ngân duy nhất ({count} ca) nên chưa so được giữa các thu ngân. | In {range}, each store carries all its shifts under a single cashier login ({count} shifts), so cashiers cannot be compared. | `{range}` `{count}` |
+| `theme.shifts.cashiers.table` | Các thu ngân, nhiều ca lệch két vượt ngưỡng nhất trước | Cashiers, most shifts over the drawer thresholds first | — |
+| `theme.shifts.cashiers.tied` | Nhiều thu ngân cùng có nhiều ca lệch két vượt ngưỡng nhất, mỗi thu ngân {flagged} ca. | Several cashiers share the most shifts over the drawer thresholds, {flagged} each. | `{flagged}` |
+| `theme.shifts.cashiers.title` | Theo thu ngân | By cashier | — |
+| `theme.shifts.cashiers.unnamed` | {count} ca chưa rõ thu ngân nằm trong bảng nhưng không được xếp hạng. | {count} shifts with an unknown cashier are in the table but not ranked. | `{count}` |
+| `theme.shifts.cashiers.unnamedAll` | Trong {range}, thu ngân của cả {count} ca đều không có tên hiển thị (để trống hoặc là địa chỉ e-mail) nên chưa phân biệt được từng người. | In {range}, the cashiers of all {count} shifts have no display name (empty or an e-mail address), so they cannot be told apart. | `{range}` `{count}` |
+
 ### Lý do đánh dấu ca · reasons a shift is flagged (`theme.shifts.reasons.*`)
 
 | Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
@@ -933,7 +956,7 @@ The headline caption "trên {count} ca" and the shift labels "Ca n ngày …" ar
 | --- | --- | --- | --- |
 | `theme.shifts.table.edits` | Số lần sửa | Edits | — |
 | `theme.shifts.table.editsAfterClose` | Sửa sau khi đóng ca | Edits after close | — |
-| `theme.shifts.table.flagged` | Ca vượt ngưỡng | Over the thresholds | — |
+| `theme.shifts.table.flagged` | Ca lệch két vượt ngưỡng | Over the drawer thresholds | — |
 | `theme.shifts.table.largestOverage` | Thừa nhiều nhất | Largest overage | — |
 | `theme.shifts.table.largestShortage` | Thiếu nhiều nhất | Largest shortage | — |
 | `theme.shifts.table.meanVariance` | Lệch két TB mỗi ca (tuyệt đối) | Mean variance per shift (absolute) | — |

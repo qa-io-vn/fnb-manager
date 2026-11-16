@@ -16,8 +16,8 @@ import {
 } from "../support/reports";
 import {
 	expectEveryThemeCardSettled,
+	shiftNumberedCardIds,
 	themeCard,
-	themeCardIds,
 	themeUrl,
 	waitForSettledThemeCards,
 } from "../support/themes";
@@ -85,13 +85,16 @@ test("the seven thematic reports render on the seeded stack through the SQL func
 			).toHaveText(/\d/);
 		}
 		if (kind === "shifts") {
-			for (const id of themeCardIds.shifts) {
+			for (const id of shiftNumberedCardIds) {
 				await expectShiftsLabelledByNumber(
 					page,
 					`card-shifts-${id}`,
 					SEEDED_SHIFT_NAMES,
 				);
 			}
+			const cashiers = themeCard(page, "shifts", "cashiers");
+			await expect(cashiers).not.toContainText("@");
+			await expect(cashiers).not.toContainText(SEEDED_SHIFT_NAMES);
 		}
 		if (kind === "stores") {
 			const kpis = themeCard(page, "stores", "kpis");

@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { checkPage, waitForCharts } from "../support/checks";
+import {
+	checkPage,
+	expectNoSeriousAxeViolations,
+	waitForCharts,
+} from "../support/checks";
 import {
 	expectNoConsoleErrors,
 	expectNoExternalRequests,
@@ -17,6 +21,7 @@ import {
 	expectThemeInEnglish,
 	expectThemePrintLayout,
 	openTheme,
+	shiftNumberedCardIds,
 	themeCard,
 	themeCardIds,
 	themeCards,
@@ -29,7 +34,7 @@ const POS_SHIFT_NAMES = /Ca (sáng|chiều|tối)/;
 const EMAIL_PATTERN = /[^\s@]+@[^\s@]+\.[^\s@]+/;
 const SORT_ARROWS = /[↑↓↕]\s*$/;
 
-test("Ca & két tiền opens on the last four weeks with its three cards settled, and 13 weeks fit", async ({
+test("Ca & két tiền opens on the last four weeks with its four cards settled, and 13 weeks fit", async ({
 	page,
 }) => {
 	await openTheme(page, "shifts");
@@ -145,9 +150,13 @@ test("the drawer and adjustment cards state their thresholds and basis, and the 
 	const drawer = themeCard(page, "shifts", "drawer");
 	await expect(drawer.getByTestId("sentence")).toContainText("Ngưỡng:");
 	await expect(drawer.getByTestId("sentence")).toContainText("50.000");
-	await expect(
-		drawer.getByRole("table", { name: "Lệch két theo thu ngân" }),
-	).toBeVisible();
+	const perCashier = drawer.getByRole("table", {
+		name: "Lệch két theo thu ngân",
+	});
+	await expect(perCashier).toBeVisible();
+	await expect(perCashier.locator("thead")).toContainText(
+		"Ca lệch két vượt ngưỡng",
+	);
 	const adjustments = themeCard(page, "shifts", "adjustments");
 	await expect(adjustments.getByTestId("sentence")).toContainText(
 		"không phải kết luận về một người",
@@ -158,17 +167,98 @@ test("the drawer and adjustment cards state their thresholds and basis, and the 
 	expectNoConsoleErrors(page);
 });
 
-test("every card labels shifts Ca n on screen, in CSV and in print, never with a POS name or an e-mail address", async ({
+test("every card that lists shifts labels them Ca n on screen, in CSV and in print, and no card shows a POS name or an e-mail address", async ({
 	page,
 }) => {
 	await openTheme(page, "shifts");
-	for (const id of themeCardIds.shifts) {
+	for (const id of shiftNumberedCardIds) {
 		await expectShiftsLabelledByNumber(
 			page,
 			`card-shifts-${id}`,
 			POS_SHIFT_NAMES,
 		);
+	}
+	for (const id of themeCardIds.shifts) {
 		await expect(themeCard(page, "shifts", id)).not.toContainText("@");
+		await expect(themeCard(page, "shifts", id)).not.toContainText(
+			POS_SHIFT_NAMES,
+		);
+	}
+	const cashiers = themeCard(page, "shifts", "cashiers");
+	await page.emulateMedia({ media: "print" });
+	try {
+		await expect(cashiers.getByRole("table")).toBeAttached();
+		await expect(cashiers).not.toContainText("@");
+		await expect(cashiers).not.toContainText(EMAIL_PATTERN);
+		await expect(cashiers).not.toContainText(POS_SHIFT_NAMES);
+	} finally {
+		await page.emulateMedia({ media: "screen" });
+	}
+	expectNoConsoleErrors(page);
+});
+
+test("the cashier card ranks the cashiers by drawer shifts over the thresholds, with the caution and no e-mail address, and passes axe at 360 and 1280 px in light and dark", async ({
+	page,
+}) => {
+	await openTheme(page, "shifts", "range=28d&store=MOCK-S1");
+	await expectEveryThemeCardSettled(page, "shifts");
+	const card = themeCard(page, "shifts", "cashiers");
+	await card.scrollIntoViewIfNeeded();
+	await expect(
+		card.getByRole("heading", { level: 3, name: "Theo thu ngân" }),
+	).toBeVisible();
+	await expect(card.getByTestId("headline")).toHaveText(/\d/);
+	await expect(card.getByTestId("sentence")).toContainText(
+		"không phải kết luận về một người",
+	);
+	await expect(card.getByTestId("card-notice")).toHaveCount(0);
+	const table = card.getByRole("table", {
+		name: "Các thu ngân, nhiều ca lệch két vượt ngưỡng nhất trước",
+		exact: true,
+	});
+	const headers = (await table.locator("thead th").allTextContents()).map(
+		(text) => text.replace(SORT_ARROWS, "").trim(),
+	);
+	expect(headers).toEqual([
+		"Thu ngân",
+		"Số ca",
+		"Doanh thu thuần",
+		"Ca lệch két vượt ngưỡng",
+		"Tổng lệch két (tuyệt đối)",
+		"Số lần hủy",
+		"Món bị xóa",
+		"Sửa sau khi đóng ca",
+	]);
+	expect(await table.locator("tbody tr").count()).toBeGreaterThan(1);
+	const [csv, ...others] = await csvTablesWithBom(page, card);
+	expect(others).toHaveLength(0);
+	expect(csv).toContain("Ca lệch két vượt ngưỡng");
+	expect(csv).not.toContain("@");
+	expect(csv).not.toMatch(EMAIL_PATTERN);
+	await expect(card).not.toContainText("@");
+	await checkPage(page);
+	await page.emulateMedia({ colorScheme: "dark" });
+	try {
+		await expectNoSeriousAxeViolations(page);
+	} finally {
+		await page.emulateMedia({ colorScheme: "light" });
+	}
+	await page.getByRole("button", { name: "EN", exact: true }).click();
+	try {
+		await expect(
+			card.getByRole("heading", { level: 3, name: "By cashier" }),
+		).toBeVisible();
+		await expect(card.getByTestId("sentence")).toContainText(
+			"not a conclusion about a person",
+		);
+		await expect(
+			card.getByRole("table", {
+				name: "Cashiers, most shifts over the drawer thresholds first",
+				exact: true,
+			}),
+		).toBeVisible();
+	} finally {
+		await page.getByRole("button", { name: "VI", exact: true }).click();
 	}
 	expectNoConsoleErrors(page);
 });
@@ -183,7 +273,7 @@ test("every Ca & két tiền table downloads as UTF-8 CSV with a BOM, its header
 			...(await csvTablesWithBom(page, themeCard(page, "shifts", id))),
 		);
 	}
-	expect(texts).toHaveLength(4);
+	expect(texts).toHaveLength(5);
 	const all = texts.join("\r\n");
 	for (const label of [
 		"Mở ca",
@@ -192,6 +282,7 @@ test("every Ca & két tiền table downloads as UTF-8 CSV with a BOM, its header
 		"Tổng lệch két",
 		"Điểm z hủy",
 		"Sửa sau khi đóng ca",
+		"Ca lệch két vượt ngưỡng",
 	]) {
 		expect(all).toContain(label);
 	}

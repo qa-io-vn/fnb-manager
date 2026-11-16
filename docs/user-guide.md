@@ -378,13 +378,17 @@ Ca & két tiền looks at each shift of the range, at most the last 92 days: a l
 
 ![The sales per shift card: the average per shift, the strongest and weakest shift, the bars of the latest shifts and the newest shifts](user-guide/theme-ca-ket-tien-sales.png)
 
-**Chênh lệch két** is Thanh toán's drawer check over the whole range: the shifts over your cash thresholds, the largest variance and the thresholds in force, every shift's expected and counted cash, and a second table per cashier with the shifts, how many went over the thresholds, the total and average variance counted without its sign ("tuyệt đối") and the largest shortage and overage.
+**Chênh lệch két** is Thanh toán's drawer check over the whole range: the shifts over your cash thresholds, the largest variance and the thresholds in force, every shift's expected and counted cash, and a second table per cashier with the shifts, how many went over the drawer thresholds, the total and average variance counted without its sign ("tuyệt đối") and the largest shortage and overage.
 
 ![The drawer variance card: flagged shifts, the thresholds, the shifts with the largest variance first and the table per cashier](user-guide/theme-ca-ket-tien-drawer.png)
 
 **Hủy, xóa món và sửa sau khi đóng ca** compares each shift's voids and removed lines with the store's own shifts of the 56 days before, as z-scores, and marks a shift only when a rate is higher than usual or an invoice was changed after the shift closed; the bars show the shifts marked for a rate. The sentence names the shift most worth a look and why; the table ranks the shifts by their higher z-score, then by edits after the close. A z-score compares a shift with earlier shifts; it is not a judgement of the person on the shift. A z-score needs 3 earlier shifts of the store whose rates differ; without them (a new store, or a store that has never removed a line) the cell reads "—" and the card says why.
 
 ![The adjustments card: shifts worth a look, the reason, the z-scores against the threshold line and the ranked shifts](user-guide/theme-ca-ket-tien-adjustments.png)
+
+**Theo thu ngân** puts the same shifts side by side per cashier, to show where a pattern repeats across shifts: for each cashier the shifts, net revenue, shifts over your drawer thresholds, total drawer variance counted without its sign, voids, removed lines and edits after the close. The headline counts the shifts over the drawer thresholds of the cashier with the most, and the sentence names that cashier; when several share the most, the card names nobody. A cashier entered as an e-mail address, or not entered at all, reads "chưa rõ thu ngân": those shifts keep their row in the table, but that row is never named as the cashier with the most, and the sentence says how many shifts it holds. It is a prompt to look again, not a conclusion about a person, and the card says so. When every shift of a store carries the same cashier login, as when all cashiers share one POS login, the card shows no ranking and says that figures per cashier need each cashier's own POS login. When the logins differ but none has a display name (each is an e-mail address or empty), it shows no ranking either and asks you to give each cashier login a display name in the POS.
+
+![The cashier card: the shifts over the drawer thresholds of the cashier with the most, the sentence naming that cashier, the caution and the table per cashier](user-guide/theme-ca-ket-tien-cashiers.png)
 
 More detail: [reports/ca-ket-tien.md](reports/ca-ket-tien.md).
 

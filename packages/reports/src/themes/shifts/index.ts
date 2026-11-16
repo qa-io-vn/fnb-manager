@@ -1,4 +1,5 @@
 export { adjustmentsCard } from "./cards/adjustments.js";
+export { cashiersCard } from "./cards/cashiers.js";
 export { shiftDrawerCard } from "./cards/drawer.js";
 export { shiftSalesCard } from "./cards/shift-sales.js";
 export { shiftsCards, shiftsTheme } from "./definition.js";

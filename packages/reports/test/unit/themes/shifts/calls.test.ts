@@ -20,7 +20,7 @@ function callOf(
 }
 
 describe("the Ca & két tiền definition", () => {
-	it("opens on 28 days, allows at most 92 and lists its three cards", () => {
+	it("opens on 28 days, allows at most 92 and lists its four cards", () => {
 		expect(shiftsTheme.slug).toBe("ca-ket-tien");
 		expect(shiftsTheme.defaultPreset).toBe("28d");
 		expect(shiftsTheme.maxRangeDays).toBe(SHIFT_THEME_RANGE_DAYS);
@@ -30,6 +30,7 @@ describe("the Ca & két tiền definition", () => {
 			"shift_sales",
 			"drawer",
 			"adjustments",
+			"cashiers",
 		]);
 	});
 

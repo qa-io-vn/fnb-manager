@@ -30,6 +30,7 @@ export const shiftsNeeds = {
 		shiftsCalls.adjustments,
 		shiftsCalls.settings,
 	],
+	cashiers: [shiftsCalls.coverage, shiftsCalls.shifts, shiftsCalls.adjustments],
 } as const;
 
 export type ShiftRow = AnalyticsRow<"shift_review">;

@@ -41,9 +41,15 @@ export const themeCardIds: Record<ThemeKind, readonly string[]> = {
 	],
 	payments: ["payment_mix", "cash_trend", "drawer", "fees"],
 	promotions: ["discount_cost", "vouchers", "lift"],
-	shifts: ["shift_sales", "drawer", "adjustments"],
+	shifts: ["shift_sales", "drawer", "adjustments", "cashiers"],
 	stores: ["kpis", "same_day", "since_opening"],
 };
+
+export const shiftNumberedCardIds: readonly string[] = [
+	"shift_sales",
+	"drawer",
+	"adjustments",
+];
 
 const RAW_KEY = /\b(report|metric|theme)\.[a-z]+[A-Za-z_]*\./;
 const SETTLE_TIMEOUT = 60_000;

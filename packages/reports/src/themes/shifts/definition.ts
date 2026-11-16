@@ -1,6 +1,7 @@
 import type { ThemeCardDefinition, ThemeDefinition } from "../definition.js";
 import { SHIFT_THEME_RANGE_DAYS } from "../range.js";
 import { adjustmentsCard } from "./cards/adjustments.js";
+import { cashiersCard } from "./cards/cashiers.js";
 import { shiftDrawerCard } from "./cards/drawer.js";
 import { shiftSalesCard } from "./cards/shift-sales.js";
 import { shiftsKeys } from "./keys.js";
@@ -14,6 +15,7 @@ export const shiftsCards: readonly ThemeCardDefinition[] = [
 	shiftSalesCard,
 	shiftDrawerCard,
 	adjustmentsCard,
+	cashiersCard,
 ];
 
 export const shiftsTheme: ThemeDefinition = {

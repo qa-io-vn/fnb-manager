@@ -55,6 +55,7 @@ describe("Ca & két tiền on the demo engine", () => {
 					"shift_sales",
 					"drawer",
 					"adjustments",
+					"cashiers",
 				]);
 				expect(missingKeys(cards, catalogs)).toEqual([]);
 				expect(unfilledPlaceholders(cards, catalogs)).toEqual([]);
@@ -98,5 +99,40 @@ describe("Ca & két tiền on the demo engine", () => {
 			expect(sales.get(id), id).toBe(number);
 			expect(adjustments.get(id), id).toBe(number);
 		}
+	}, 60_000);
+
+	it("sums the cashier card's rows to the shift rows they group, with no cashier shown twice in a store", async () => {
+		const stores = ["MOCK-S1", "MOCK-S2"];
+		const context = themeSmokeContext(stores, "28d");
+		const cards = await runTheme(shiftsTheme, context, source);
+		const span = {
+			store_ids: stores,
+			from_date: context.range.from,
+			to_date: context.range.to,
+		};
+		const reviewed = await source.call("shift_review", span);
+		const adjusted = await source.callTheme("shift_adjustments", span);
+		const rows =
+			cards.find((card) => card.id === "cashiers")?.tables[0]?.rows ?? [];
+		expect(rows.length).toBeGreaterThan(1);
+		const total = (key: string) =>
+			rows.reduce((sum, row) => sum + Number(row.cells[key]), 0);
+		const cents = (value: number) => Math.round(value * 100);
+		expect(total("shifts")).toBe(reviewed.length);
+		expect(total("flagged")).toBe(reviewed.filter((row) => row.flagged).length);
+		expect(cents(total("net"))).toBe(
+			cents(reviewed.reduce((sum, row) => sum + row.sales_amount, 0)),
+		);
+		expect(total("voids")).toBe(
+			adjusted.reduce((sum, row) => sum + row.voids, 0),
+		);
+		expect(total("removedLines")).toBe(
+			adjusted.reduce((sum, row) => sum + row.removed_lines, 0),
+		);
+		expect(total("editsAfterClose")).toBe(
+			adjusted.reduce((sum, row) => sum + row.edits_after_close, 0),
+		);
+		const keys = rows.map((row) => `${row.cells.store}|${row.cells.cashier}`);
+		expect(new Set(keys).size).toBe(keys.length);
 	}, 60_000);
 });
