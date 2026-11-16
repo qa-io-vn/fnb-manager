@@ -26,6 +26,7 @@ import {
 	useItems,
 	useItemTypes,
 	useMembership,
+	useStoreProfiles,
 } from "../queries";
 import { ReadOnlyNotice } from "../read-only-notice";
 import {
@@ -38,9 +39,12 @@ import type {
 	Membership,
 	SettingsSource,
 	SettingsWriteCode,
+	StoreProfile,
 } from "../source";
 import { useSettingsAccess } from "../use-settings-access";
 import { useSettingsMutation } from "../use-settings-mutation";
+import { type CostImportContext, costImportContextOf } from "./cost-import";
+import { CostImportPanel } from "./cost-import-panel";
 import { CostRow, type CostRowContext } from "./cost-row";
 import {
 	COST_PAGE_SIZE,
@@ -67,8 +71,23 @@ const ALL_STORES = "all";
 interface ScopeStore {
 	readonly id: string;
 	readonly name: string;
+	readonly code: string | null;
 	readonly timeZone: string;
 	readonly posAccountId: string;
+}
+
+export function storeCodesOf(
+	stores: readonly ScopeStore[],
+	profiles: readonly StoreProfile[] | undefined,
+): ScopeStore[] {
+	if (profiles === undefined) return [...stores];
+	const codes = new Map(
+		profiles.map((profile) => [profile.storeId, profile.code]),
+	);
+	return stores.map((store) => ({
+		...store,
+		code: codes.has(store.id) ? (codes.get(store.id) ?? null) : store.code,
+	}));
 }
 
 export function defaultCostScope(
@@ -121,8 +140,17 @@ export function shownCostItems(
 	);
 }
 
+interface ImportSave {
+	readonly saving: boolean;
+	readonly outcome: SaveOutcome;
+	readonly onSave: (changes: readonly ItemCostChange[]) => Promise<boolean>;
+	readonly onReset: () => void;
+}
+
 interface CostsFormProps {
 	readonly storeId: CostScope;
+	readonly importContext: CostImportContext;
+	readonly importing: ImportSave;
 	readonly stores: readonly ScopeStore[];
 	readonly onScopeChange: (storeId: CostScope) => void;
 	readonly items: readonly CostItem[];
@@ -291,6 +319,8 @@ function DeleteStatus({
 
 function CostsForm({
 	storeId,
+	importContext,
+	importing,
 	stores,
 	onScopeChange,
 	items,
@@ -314,6 +344,7 @@ function CostsForm({
 	const t = useT();
 	const listId = useId();
 	const [draft, setDraft] = useState<CostDraft>({});
+	const [importOpen, setImportOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [limit, setLimit] = useState(COST_PAGE_SIZE);
 	const reading = readCostEdits(draft, {
@@ -330,7 +361,7 @@ function CostsForm({
 		rows,
 		today,
 		canWrite: access.canWrite,
-		busy: saving || deleting,
+		busy: saving || deleting || importing.saving,
 		formatters,
 		currencyCode,
 		timeZone,
@@ -357,7 +388,7 @@ function CostsForm({
 			<ScopeSelect
 				storeId={storeId}
 				stores={stores}
-				locked={reading.pendingCount > 0}
+				locked={reading.pendingCount > 0 || importOpen}
 				onChange={onScopeChange}
 			/>
 			<ReadOnlyNotice
@@ -368,6 +399,27 @@ function CostsForm({
 						? { scope: "settings.manual.costs.readOnly.scope" }
 						: {}),
 				}}
+			/>
+			<CostImportPanel
+				storeId={storeId}
+				storeCode={
+					stores.find((candidate) => candidate.id === storeId)?.code ?? null
+				}
+				items={items}
+				rows={rows}
+				today={today}
+				context={importContext}
+				canWrite={access.canWrite}
+				formatters={formatters}
+				storeName={(id) =>
+					stores.find((candidate) => candidate.id === id)?.name ?? id
+				}
+				saving={importing.saving}
+				busy={importing.saving || saving || deleting}
+				outcome={importing.outcome}
+				onSave={importing.onSave}
+				onReset={importing.onReset}
+				onOpenChange={setImportOpen}
 			/>
 			<SearchField value={query} onChange={setQuery} />
 			{sales.status === "loading" ? (
@@ -559,9 +611,14 @@ function useCostItems(
 }
 
 export function CostsTab() {
-	const { tenant, stores } = useReadyTenantScope();
+	const { tenant, stores: scopeStores } = useReadyTenantScope();
 	const formatters = useFormatters(tenant);
 	const membership = useMembership();
+	const profiles = useStoreProfiles();
+	const stores = useMemo(
+		() => storeCodesOf(scopeStores, profiles.data),
+		[scopeStores, profiles.data],
+	);
 	const costs = useItemCosts();
 	const entries = useItems();
 	const itemTypes = useItemTypes();
@@ -624,7 +681,31 @@ export function CostsTab() {
 		[queryClient],
 	);
 	const saving = useSettingsMutation(writeCosts);
+	const importing = useSettingsMutation(writeCosts);
 	const deleting = useSettingsMutation(removeCost);
+	const importContext = useMemo(
+		() =>
+			costImportContextOf({
+				scope: storeId,
+				stores,
+				membership: membership.data,
+				entries: entries.data ?? [],
+				sales: sales.sales,
+				rows: costs.data ?? [],
+				today,
+				fractionDigits: formatters.moneyFractionDigits,
+			}),
+		[
+			storeId,
+			stores,
+			membership.data,
+			entries.data,
+			sales.sales,
+			costs.data,
+			today,
+			formatters.moneyFractionDigits,
+		],
+	);
 	const [deleted, setDeleted] = useState<DeleteTarget | null>(null);
 	if (
 		!membershipKnown ||
@@ -649,10 +730,18 @@ export function CostsTab() {
 		<CostsForm
 			key={storeId ?? ALL_STORES}
 			storeId={storeId}
+			importContext={importContext}
+			importing={{
+				saving: importing.saving,
+				outcome: saveOutcomeOf(importing),
+				onSave: importing.save,
+				onReset: importing.reset,
+			}}
 			stores={stores}
 			onScopeChange={(next) => {
 				setChosen({ storeId: next });
 				saving.reset();
+				importing.reset();
 				deleting.reset();
 			}}
 			items={items}

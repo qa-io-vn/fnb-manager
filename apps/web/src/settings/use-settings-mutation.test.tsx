@@ -211,6 +211,12 @@ describe("useSettingsMutation", () => {
 			true,
 			"settings.store.hours.invalid",
 		],
+		[
+			"invalid",
+			"item_costs_amount_whole_dong",
+			false,
+			"settings.manual.costs.amountRefused",
+		],
 		["invalid", "toString", false, "settings.error.invalid"],
 		["invalid", null, false, "settings.error.invalid"],
 		["frozen", null, false, "settings.legal.frozen"],

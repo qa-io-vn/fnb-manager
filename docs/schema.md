@@ -509,7 +509,7 @@ Cost per item, tenant-wide or per store, with validity from a date. Unique on (`
 | `tenant_id` | uuid | no | Tenant |
 | `store_id` | uuid | yes | Null applies to every store of the tenant |
 | `item_external_id` | text | no | Item by external id |
-| `cost_amount` | numeric(14,2) | no | Cost per unit sold |
+| `cost_amount` | numeric(14,2) | no | Cost per unit sold, a whole number of đồng from 0 to 100,000,000 (check `item_costs_amount_whole_dong`, migration `item_costs_amount_whole_dong`) |
 | `effective_from` | date | no | First business date the cost applies to |
 | `created_by` | uuid | yes | Author, default `auth.uid()`, frozen on update |
 | `updated_by` | uuid | yes | Last writer, set to `auth.uid()` by trigger on every insert and update (null for service-role writes); backfilled from `created_by` (phase 10) |

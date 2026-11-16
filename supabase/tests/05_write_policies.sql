@@ -1,5 +1,5 @@
 begin;
-select plan(8);
+select plan(13);
 
 insert into auth.users (id, instance_id, aud, role, email)
 values
@@ -45,6 +45,43 @@ select throws_ok(
   '42501',
   null,
   'owner cannot insert an item cost for another tenant'
+);
+
+select lives_ok(
+  $$ insert into public.item_costs (tenant_id, store_id, item_external_id, cost_amount, effective_from)
+     values ('11111111-1111-4111-8111-111111111111', null, 'item-bounds', 0, current_date),
+            ('11111111-1111-4111-8111-111111111111', null, 'item-bounds', 100000000, current_date - 1) $$,
+  'an item cost of 0 and of 100,000,000 đồng is stored'
+);
+
+select throws_ok(
+  $$ insert into public.item_costs (tenant_id, store_id, item_external_id, cost_amount, effective_from)
+     values ('11111111-1111-4111-8111-111111111111', null, 'item-negative', -1, current_date) $$,
+  '23514',
+  null,
+  'a negative item cost is refused'
+);
+
+select throws_ok(
+  $$ insert into public.item_costs (tenant_id, store_id, item_external_id, cost_amount, effective_from)
+     values ('11111111-1111-4111-8111-111111111111', null, 'item-too-high', 100000001, current_date) $$,
+  '23514',
+  null,
+  'an item cost above 100,000,000 đồng is refused'
+);
+
+select throws_ok(
+  $$ insert into public.item_costs (tenant_id, store_id, item_external_id, cost_amount, effective_from)
+     values ('11111111-1111-4111-8111-111111111111', null, 'item-fraction', 8333.33, current_date) $$,
+  '23514',
+  null,
+  'an item cost with a fraction of a đồng is refused'
+);
+
+select is(
+  (select count(*)::integer from pg_constraint where conname = 'item_costs_amount_whole_dong' and conrelid = 'public.item_costs'::regclass),
+  1,
+  'item_costs holds the whole-đồng check'
 );
 
 select lives_ok(

@@ -452,6 +452,43 @@ test("Cài đặt: Pháp lý with the draft privacy notice, its editor on the sk
 	await shootElement(draft, "settings-phap-ly-confirm");
 });
 
+test("Cài đặt: Dữ liệu nhập tay, a cost CSV in the import preview with each row's outcome and the date-order choice", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: COMPUTER.width, height: 2400 });
+	await page.goto("/#/cai-dat/du-lieu-nhap-tay?tab=gia-von");
+	const costs = page.getByTestId("costs-form");
+	await expect(costs).toHaveAttribute("data-sales", "ready");
+	const rows = costs.getByTestId("cost-row");
+	const ids: string[] = [];
+	for (let index = 0; index < 5; index += 1) {
+		ids.push((await rows.nth(index).getAttribute("data-item")) ?? "");
+	}
+	await rows.first().getByLabel("Giá vốn mới").fill("18000");
+	await page.getByTestId("settings-save").click();
+	await expect(page.getByTestId("settings-save-bar-status")).toHaveText(
+		"Đã lưu.",
+	);
+	const file = [
+		"ma_mon,ten_mon,size,ma_cua_hang,gia_von,tu_ngay",
+		`${ids[0]},,,,18000,2023-01-01`,
+		`${ids[1]},,,,14.000,`,
+		`${ids[2]},,,CH1,16000,01/12/2026`,
+		`${ids[3]},,,,"8333,33",`,
+		`${ids[4]},,,,99000000,2024-01-01`,
+		"KHONG-CO,,,,12000,",
+	].join("\r\n");
+	const choosing = page.waitForEvent("filechooser");
+	await costs.getByRole("button", { name: "Nhập từ CSV" }).click();
+	await (await choosing).setFiles({
+		name: "gia-von-thang-11.csv",
+		mimeType: "text/csv",
+		buffer: Buffer.from(file),
+	});
+	await expect(costs.getByTestId("cost-import-row")).toHaveCount(5);
+	await shootElement(costs.getByTestId("costs-csv"), "settings-gia-von-import");
+});
+
 test("the printed report", async ({ page }) => {
 	await page.setViewportSize({ width: A4_WIDTH_PX, height: 1123 });
 	await openReportPage(page, "day");

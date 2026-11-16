@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { checkPage } from "../support/checks";
 import {
@@ -461,5 +462,214 @@ test("Giá vốn searches without Vietnamese marks, passes axe, fits 360 px and 
 	await expect(page.getByTestId("manual-tab-placeholder")).toContainText(
 		"Phần Mục tiêu có ở giai đoạn 10b",
 	);
+	expectNoConsoleErrors(page);
+});
+
+const UTF8_BOM_BYTES = [0xef, 0xbb, 0xbf];
+const TEMPLATE_HEADER = "ma_mon,ten_mon,size,ma_cua_hang,gia_von,tu_ngay";
+
+interface Template {
+	readonly name: string;
+	readonly bytes: Buffer;
+}
+
+async function downloadTemplate(page: Page): Promise<Template> {
+	const downloading = page.waitForEvent("download");
+	await page.getByRole("button", { name: "Tải mẫu" }).click();
+	const download = await downloading;
+	return {
+		name: download.suggestedFilename(),
+		bytes: await readFile(await download.path()),
+	};
+}
+
+function templateLines({ bytes }: Template): string[] {
+	expect([...bytes.subarray(0, 3)]).toEqual(UTF8_BOM_BYTES);
+	return new TextDecoder("utf-8", { fatal: true }).decode(bytes).split("\r\n");
+}
+
+function importPreview(page: Page): Locator {
+	return page.getByTestId("cost-import-preview");
+}
+
+async function importCsv(
+	page: Page,
+	name: string,
+	content: Buffer | string,
+): Promise<Locator> {
+	const choosing = page.waitForEvent("filechooser");
+	await page.getByRole("button", { name: "Nhập từ CSV" }).click();
+	await (await choosing).setFiles({
+		name,
+		mimeType: "text/csv",
+		buffer: typeof content === "string" ? Buffer.from(content) : content,
+	});
+	await expect(importPreview(page)).toBeVisible();
+	return importPreview(page);
+}
+
+function importRow(preview: Locator, line: number): Locator {
+	return preview.locator(
+		`[data-testid="cost-import-row"][data-line="${line}"]`,
+	);
+}
+
+test("the cost template downloads with a BOM and the saved costs, re-imports unchanged without saving anything, and an edited cost saves exactly that row", async ({
+	page,
+}) => {
+	await openCosts(page);
+	const first = costRows(page).nth(0);
+	const second = costRows(page).nth(1);
+	const firstId = await itemIdOf(first);
+	const secondId = await itemIdOf(second);
+	const firstName = (
+		(await first.getByTestId("cost-item").textContent()) ?? ""
+	).trim();
+	await enterCost(first, 20_000);
+	await enterCost(second, 30_000);
+	await saveSettings(saveBar(page));
+
+	const template = await downloadTemplate(page);
+	expect(template.name).toBe(`gia-von-tat-ca-cua-hang-${TODAY}.csv`);
+	const lines = templateLines(template);
+	expect(lines[0]).toBe(TEMPLATE_HEADER);
+	const firstLine = lines.find((line) => line.startsWith(`${firstId},`)) ?? "";
+	expect(firstLine).toMatch(/,,20000,2023-01-01$/);
+	expect(firstName.startsWith(firstLine.split(",")[1] ?? "?")).toBe(true);
+	expect(lines.find((line) => line.startsWith(`${secondId},`))).toMatch(
+		/,,30000,2023-01-01$/,
+	);
+	expect(lines.filter((line) => /,,,$/.test(line)).length).toBeGreaterThan(20);
+
+	const unchanged = await importCsv(page, template.name, template.bytes);
+	await expect(unchanged.getByTestId("cost-import-summary-save")).toHaveText(
+		"Sẽ lưu: 0 dòng",
+	);
+	await expect(
+		unchanged.getByTestId("cost-import-summary-unchanged"),
+	).toContainText(": 2 dòng");
+	await expect(unchanged.getByTestId("cost-import-row")).toHaveCount(0);
+	await expect(unchanged.getByTestId("cost-import-save")).toHaveAttribute(
+		"aria-disabled",
+		"true",
+	);
+	await expect(page.getByLabel("Áp dụng cho", { exact: true })).toBeDisabled();
+	await unchanged.getByRole("button", { name: "Hủy nhập" }).click();
+	await expect(importPreview(page)).toHaveCount(0);
+
+	const edited = new TextDecoder()
+		.decode(template.bytes)
+		.replace(firstLine, firstLine.replace(",20000,", ",25.000,"));
+	const preview = await importCsv(page, "gia-von-sua.csv", edited);
+	await expect(preview.getByTestId("cost-import-summary-save")).toHaveText(
+		"Sẽ lưu: 1 dòng",
+	);
+	const row = preview.getByTestId("cost-import-row");
+	await expect(row).toHaveCount(1);
+	await expect(row).toHaveAttribute("data-item", firstId);
+	await expect(row).toHaveAttribute("data-outcome", "ok");
+	await expect(row.getByTestId("cost-import-row-values")).toHaveText(
+		"Tất cả cửa hàng · 25.000 ₫ · từ 01/01/2023",
+	);
+	await preview.getByRole("button", { name: "Lưu 1 dòng" }).click();
+	await expect(page.getByTestId("cost-import-saved")).toHaveText(
+		"Đã lưu 1 giá vốn từ tệp gia-von-sua.csv.",
+	);
+	await expect(importPreview(page)).toHaveCount(0);
+	const saved = costRow(page, firstId);
+	await expect(saved.getByTestId("cost-current")).toContainText(money(25_000));
+	await expect(saved.getByTestId("cost-current")).toContainText(
+		"từ 01/01/2023",
+	);
+	await expect(saved.getByTestId("cost-history-toggle")).toHaveText(
+		"Lịch sử giá vốn (1)",
+	);
+	await expect(
+		costRow(page, secondId).getByTestId("cost-current"),
+	).toContainText(money(30_000));
+	expectNoConsoleErrors(page);
+});
+
+test("a semicolon file follows the device's dialect, shows a fractional cost, unknown codes and a cost above the price with their outcomes, re-reads its dates in the chosen order, passes axe and reads in English", async ({
+	page,
+}) => {
+	await openSettings(page, "bao-cao");
+	await page.getByTestId("csv-dialect-semicolon").check();
+	await openCosts(page);
+	const semicolonHeader = TEMPLATE_HEADER.replaceAll(",", ";");
+	expect(templateLines(await downloadTemplate(page))[0]).toBe(semicolonHeader);
+	const ids: string[] = [];
+	for (let index = 0; index < 4; index += 1) {
+		ids.push(await itemIdOf(costRows(page).nth(index)));
+	}
+	const [fraction, inStore, unknownStore, abovePrice] = ids;
+	const file = [
+		semicolonHeader,
+		`${fraction};Món một;;;8333,33;`,
+		`${inStore};Món hai;;ch1;25.000;03/04/2026`,
+		`${unknownStore};Món ba;;XX9;12000;`,
+		"KHONG-CO;Không có;;;12000;",
+		`${abovePrice};Món bốn;;;99.000.000;2024-01-01`,
+	].join("\n");
+	const preview = await importCsv(page, "gia-von-loi.csv", file);
+	await expect(
+		preview.getByRole("heading", { name: "Xem trước tệp gia-von-loi.csv" }),
+	).toBeVisible();
+	expect(
+		await preview
+			.getByTestId("cost-import-row")
+			.evaluateAll((rows) =>
+				rows.map((row) => row.getAttribute("data-outcome")),
+			),
+	).toEqual([
+		"invalid_cost",
+		"ok",
+		"unknown_store",
+		"unknown_item",
+		"cost_above_price",
+	]);
+	await expect(
+		importRow(preview, 2).getByTestId("cost-import-row-outcome"),
+	).toHaveText("Giá vốn tính bằng đồng, không có phần lẻ.");
+	await expect(
+		importRow(preview, 2).getByTestId("cost-import-row-values"),
+	).toContainText('giá vốn "8333,33"');
+	await expect(
+		importRow(preview, 4).getByTestId("cost-import-row-outcome"),
+	).toHaveText("Không có cửa hàng nào mã XX9.");
+	await expect(
+		importRow(preview, 5).getByTestId("cost-import-row-outcome"),
+	).toHaveText("Không có món nào mã KHONG-CO.");
+	await expect(
+		importRow(preview, 6).getByTestId("cost-import-row-outcome"),
+	).toContainText("Sẽ lưu; giá vốn cao hơn giá bán");
+	await expect(
+		importRow(preview, 6).getByTestId("cost-import-row-values"),
+	).toContainText("99.000.000 ₫");
+	const inStoreValues = importRow(preview, 3).getByTestId(
+		"cost-import-row-values",
+	);
+	const order = preview.getByRole("group", { name: "Thứ tự ngày" });
+	await expect(order.getByLabel("Ngày/Tháng/Năm")).toBeChecked();
+	await expect(inStoreValues).toHaveText(/ · 25\.000\s₫ · từ 03\/04\/2026$/);
+	await order.getByLabel("Tháng/Ngày/Năm").check();
+	await expect(inStoreValues).toHaveText(/ · 25\.000\s₫ · từ 04\/03\/2026$/);
+	await expect(
+		preview.getByRole("button", { name: "Lưu 2 dòng" }),
+	).toBeVisible();
+	await checkPage(page);
+	await page.getByRole("button", { name: "EN", exact: true }).click();
+	await expect(
+		preview.getByRole("heading", { name: "Preview of gia-von-loi.csv" }),
+	).toBeVisible();
+	await expect(
+		preview.getByRole("button", { name: "Save 2 rows" }),
+	).toBeVisible();
+	expect(RAW_KEY.test((await page.locator("main").textContent()) ?? "")).toBe(
+		false,
+	);
+	await page.getByRole("button", { name: "VI", exact: true }).click();
+	await preview.getByRole("button", { name: "Hủy nhập" }).click();
+	await expect(importPreview(page)).toHaveCount(0);
 	expectNoConsoleErrors(page);
 });

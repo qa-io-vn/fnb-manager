@@ -1,5 +1,7 @@
 import { DemoSettingsStore, demoSettings } from "@fnb/demo-analytics";
 import { describe, expect, it } from "vitest";
+import { SettingsWriteError } from "../source";
+import { writeErrorKey } from "../use-settings-mutation";
 import { createDemoManualSource } from "./demo-manual-source";
 
 const TENANT = "demo";
@@ -66,8 +68,59 @@ describe("the demo manual settings source", () => {
 					effectiveFrom: "2023-01-01",
 				},
 			]),
-		).rejects.toMatchObject({ code: "invalid", constraint: "costAmount" });
+		).rejects.toMatchObject({
+			code: "invalid",
+			constraint: "item_costs_amount_whole_dong",
+		});
 		expect(await source.itemCosts(TENANT)).toEqual([]);
+	});
+
+	it.each([
+		["a fraction of a đồng", 15_000.5],
+		["more than 100,000,000", 100_000_001],
+		["a negative cost", -1],
+	])(
+		"refuses %s like the database check, worded as the amount refusal",
+		async (_name, costAmount) => {
+			const { source } = fresh();
+			const refusal = await source
+				.saveItemCosts(TENANT, [
+					{
+						storeId: null,
+						itemExternalId: "DR-001-M",
+						costAmount,
+						effectiveFrom: "2023-01-01",
+					},
+				])
+				.catch((error: unknown) => error);
+			expect(refusal).toBeInstanceOf(SettingsWriteError);
+			const { code, constraint } = refusal as SettingsWriteError;
+			expect(writeErrorKey(code, constraint)).toBe(
+				"settings.manual.costs.amountRefused",
+			);
+			expect(await source.itemCosts(TENANT)).toEqual([]);
+		},
+	);
+
+	it("keeps a cost of exactly 100,000,000 and of 0", async () => {
+		const { source } = fresh();
+		await source.saveItemCosts(TENANT, [
+			{
+				storeId: null,
+				itemExternalId: "DR-001-M",
+				costAmount: 100_000_000,
+				effectiveFrom: "2023-01-01",
+			},
+			{
+				storeId: null,
+				itemExternalId: "DR-002-M",
+				costAmount: 0,
+				effectiveFrom: "2023-01-01",
+			},
+		]);
+		expect(
+			(await source.itemCosts(TENANT)).map((row) => row.costAmount),
+		).toEqual([100_000_000, 0]);
 	});
 
 	it("reads the demo's monthly targets and upserts one on its store, period and start", async () => {

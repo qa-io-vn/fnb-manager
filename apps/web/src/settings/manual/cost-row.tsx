@@ -67,7 +67,10 @@ export function dateHintText(
 		: t(keys.until, { date: formatters.date(hint.until) });
 }
 
-export function costItemLabel(t: Translate, item: CostItem): string {
+export function costItemLabel(
+	t: Translate,
+	item: Pick<CostItem, "name" | "sizeLabel">,
+): string {
 	const size = sizeShownOf(item);
 	return size === null
 		? item.name

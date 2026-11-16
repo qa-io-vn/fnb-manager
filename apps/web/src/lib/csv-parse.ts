@@ -10,6 +10,7 @@ export type ParsedCsv =
 			readonly ok: true;
 			readonly delimiter: CsvDelimiter;
 			readonly rows: readonly (readonly string[])[];
+			readonly lines: readonly number[];
 	  }
 	| {
 			readonly ok: false;
@@ -70,7 +71,9 @@ export function parseCsv(input: string): ParsedCsv {
 	const text = withoutBom(input);
 	const delimiter = detectDelimiter(text);
 	const rows: string[][] = [];
+	const lines: number[] = [];
 	let row: string[] = [];
+	let rowLine: number | null = null;
 	let field = "";
 	let fieldStarted = false;
 	let inQuotes = false;
@@ -87,11 +90,14 @@ export function parseCsv(input: string): ParsedCsv {
 		if (row.length === 0 && !fieldStarted) return;
 		endField();
 		rows.push(row);
+		lines.push(rowLine ?? line);
 		row = [];
+		rowLine = null;
 	};
 	for (let index = 0; index < text.length; index += 1) {
 		const char = text[index] ?? "";
 		const startsCrLf = char === "\r" && text[index + 1] === "\n";
+		if (rowLine === null && !isLineBreak(char)) rowLine = line;
 		if (inQuotes) {
 			if (char === QUOTE && text[index + 1] === QUOTE) {
 				field += QUOTE;
@@ -124,7 +130,7 @@ export function parseCsv(input: string): ParsedCsv {
 		return { ok: false, error: "unterminatedQuote", line: quoteLine };
 	}
 	endLine();
-	return { ok: true, delimiter, rows };
+	return { ok: true, delimiter, rows, lines };
 }
 
 const UNIT_AT_AN_END = /^(?:₫|vnđ|vnd|đ)|(?:₫|vnđ|vnd|đ)$/gi;

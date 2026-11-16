@@ -47,6 +47,7 @@ export function demoRowId(area: string, ...parts: readonly (string | null)[]) {
 const FIELD_CONSTRAINTS: Readonly<Record<string, string>> = {
 	"duplicate:code": "stores_code_unique_in_tenant",
 	"format:openingHours": "stores_opening_hours_valid",
+	"range:costAmount": "item_costs_amount_whole_dong",
 };
 
 export function demoWriteErrorOf(error: unknown): unknown {

@@ -16,6 +16,7 @@ import {
 	type IsoDate,
 	POS_FEATURE_STATUSES,
 	type PosFeatureStatus,
+	type ReportSettingLimit,
 	type ReportSettings,
 	TRAN_NO_RESET_PERIODS,
 	type TranNoResetPeriod,
@@ -167,6 +168,12 @@ export const DEMO_TENANT_PROFILE: DemoTenantProfile = {
 };
 
 type StoreDefaults = Omit<DemoStoreProfile, "openedOn">;
+
+const ITEM_COST_AMOUNT: ReportSettingLimit = {
+	min: 0,
+	max: 100_000_000,
+	fractionDigits: 0,
+};
 
 const DEMO_STORE_DEFAULTS: readonly StoreDefaults[] = [
 	{
@@ -531,7 +538,7 @@ function checkCosts(costs: readonly DemoItemCost[]): DemoItemCost[] {
 	const checked = costs.map((cost) => ({
 		storeId: checkStoreScope(cost.storeId),
 		itemExternalId: requireText("itemExternalId", cost.itemExternalId),
-		costAmount: requireNumber("costAmount", cost.costAmount, MONEY_AMOUNT),
+		costAmount: requireNumber("costAmount", cost.costAmount, ITEM_COST_AMOUNT),
 		effectiveFrom: requireDate("effectiveFrom", cost.effectiveFrom),
 	}));
 	requireUnique(checked, "effectiveFrom", "store, item and date", (cost) =>

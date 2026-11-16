@@ -29,6 +29,7 @@ describe("parseCsv", () => {
 						["Mã món", "Giá vốn", "Từ ngày"],
 						["CF01", "12500", "2026-11-01"],
 					],
+					lines: [1, 2],
 				});
 			}
 		}
@@ -51,6 +52,22 @@ describe("parseCsv", () => {
 				['Cỡ 12"', "Giá vốn", "Ngày"],
 				['Ly 16"', "2500", "2026-11-01"],
 			],
+			lines: [1, 2],
+		});
+	});
+
+	it("gives each record the physical line it starts on, past blank lines and line breaks inside quotes", () => {
+		const parsed = parseCsv('a,b\r\n\r\n"one\r\ntwo",c\n\n\nd,e\r,f\r\n');
+		expect(parsed).toEqual({
+			ok: true,
+			delimiter: ",",
+			rows: [
+				["a", "b"],
+				["one\r\ntwo", "c"],
+				["d", "e"],
+				["", "f"],
+			],
+			lines: [1, 3, 7, 8],
 		});
 	});
 

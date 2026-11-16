@@ -379,6 +379,71 @@ test.describe("Giá vốn in the browser", () => {
 		expect(rows[1]?.audit?.author).toEqual({ kind: "member", role: "manager" });
 		expectNoConsoleErrors(page);
 	});
+
+	test("a small CSV import goes through the real tables in one save, a lower-case store code and a blank first date included, and its refused rows write nothing", async ({
+		page,
+	}) => {
+		const { tenantId, storeIds } = created();
+		const owner = createSupabaseManualSource(await clientAs("owner"));
+		const before = await owner.itemCosts(tenantId);
+		watchConsoleErrors(page);
+		await created().signIn(page, "owner");
+		await openSettings(page, "du-lieu-nhap-tay", "tab=gia-von");
+		await expectCostsListed(page);
+		await expect(scopeField(page)).toHaveValue("all");
+		const file = [
+			"﻿ma_mon,ten_mon,size,ma_cua_hang,gia_von,tu_ngay",
+			"ITEM-5,Hạt hướng dương,,,6.000,2024-01-01",
+			"ITEM-2,Trà đào,, e2 ,15000,",
+			"NOPE-1,Không có,,,1000,",
+			'ITEM-6,Món chưa phân loại,,,"8333,33",',
+		].join("\r\n");
+		const choosing = page.waitForEvent("filechooser");
+		await page.getByRole("button", { name: "Nhập từ CSV" }).click();
+		await (await choosing).setFiles({
+			name: "gia-von-thu.csv",
+			mimeType: "text/csv",
+			buffer: Buffer.from(file),
+		});
+		const preview = page.getByTestId("cost-import-preview");
+		await expect(preview.getByTestId("cost-import-row")).toHaveCount(4);
+		expect(
+			await preview
+				.getByTestId("cost-import-row")
+				.evaluateAll((rows) =>
+					rows.map((row) => row.getAttribute("data-outcome")),
+				),
+		).toEqual(["ok", "ok", "unknown_item", "invalid_cost"]);
+		await expect(
+			preview.getByTestId("cost-import-row-values").nth(1),
+		).toHaveText(/^Cửa hàng thử 2 · 15\.000\s₫ · từ 01\/01\/2023$/);
+		await preview.getByRole("button", { name: "Lưu 2 dòng" }).click();
+		await expect(page.getByTestId("cost-import-saved")).toHaveText(
+			"Đã lưu 2 giá vốn từ tệp gia-von-thu.csv.",
+		);
+		const after = await owner.itemCosts(tenantId);
+		const added = after.filter(
+			(row) => !before.some((earlier) => earlier.id === row.id),
+		);
+		expect(
+			added
+				.map((row) => [
+					row.storeId,
+					row.itemExternalId,
+					row.costAmount,
+					row.effectiveFrom,
+				])
+				.sort(),
+		).toEqual(
+			[
+				[null, "ITEM-5", 6_000, "2024-01-01"],
+				[storeIds[1], "ITEM-2", 15_000, FIRST_DAY],
+			].sort(),
+		);
+		expect(after).toHaveLength(before.length + 2);
+		expect(added.every((row) => row.audit?.author.kind === "you")).toBe(true);
+		expectNoConsoleErrors(page);
+	});
 });
 
 test("a tenant-wide cost and a store cost of one item and date are two rows, and saving a scope again updates its row", async () => {

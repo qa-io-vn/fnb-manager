@@ -712,7 +712,7 @@ Planned tests per file, read from each file's `select plan(…)` on 2026-11-16 a
 | `02_unique_keys.sql` | 42 | `19_sale_payloads.sql` | 27 |
 | `03_rls_enabled.sql` | 10 | `20_incremental_schedule.sql` | 84 |
 | `04_tenant_isolation.sql` | 11 | `21_sync_freshness.sql` | 42 |
-| `05_write_policies.sql` | 8 | `22_report_functions.sql` | 99 |
+| `05_write_policies.sql` | 13 | `22_report_functions.sql` | 99 |
 | `06_anon_and_tokens.sql` | 7 | `23_report_access.sql` | 28 |
 | `07_write_scope_and_attribution.sql` | 16 | `24_vn_public_holidays.sql` | 9 |
 | `08_publisher_role.sql` | 16 | `25_live_half_lateral.sql` | 7 |
@@ -729,22 +729,22 @@ Planned tests per file, read from each file's `select plan(…)` on 2026-11-16 a
 | | | `37_shift_and_quality_functions.sql` | 33 |
 | | | `38_settings_writes.sql` | 106 |
 | | | `39_theme_access_b.sql` | 16 |
-| | | **38 files** | **2,085** |
+| | | **38 files** | **2,090** |
 
 By phase (files grouped by the phase that created them; 01, 03 and 12 were extended in 12a, 01 and 03 again in 10a and 10b): phase 2, 409; phase 7, 153; phase 8, 291; phase 9, 143; phase 10a, 183; phase 10b, 210; phase 12, 694.
 
-Full run on 2026-11-16 after migration `data_quality_payments_account_order`: 2,085 of 2,085 in 38 files. Earlier: 2,083 of 2,083 in 38 files after migration `data_quality_functions`; 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`. Earlier full runs: 1,849 of 1,849 at phase 10a's verification; 1,845 of 1,845 on 2026-11-14; 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
+Full run on 2026-11-16 after migration `item_costs_amount_whole_dong`: 2,090 of 2,090 in 38 files. Earlier: 2,085 of 2,085 in 38 files after migration `data_quality_payments_account_order`; 2,083 of 2,083 in 38 files after migration `data_quality_functions`; 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`. Earlier full runs: 1,849 of 1,849 at phase 10a's verification; 1,845 of 1,845 on 2026-11-14; 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
 
 ### 8.3 Playwright specs
 
-Listed with `playwright test --list` on 2026-11-16 after #164: 216 tests in 31 files.
+Listed with `playwright test --list` on 2026-11-16 after #162: 219 tests in 31 files.
 
 | Project | File | Tests |
 |---|---|---:|
 | `live` | `e2e/live/auth.spec.ts` | 6 |
 | `live` | `e2e/live/reports.spec.ts` | 4 |
 | `live` | `e2e/live/settings-fixture.spec.ts` | 9 |
-| `live` | `e2e/live/settings-manual.spec.ts` | 12 |
+| `live` | `e2e/live/settings-manual.spec.ts` | 13 |
 | `live` | `e2e/live/settings.spec.ts` | 5 |
 | `live` | `e2e/live/settings-phan-loai.spec.ts` | 4 |
 | `live` | `e2e/live/themes.spec.ts` | 3 |
@@ -759,7 +759,7 @@ Listed with `playwright test --list` on 2026-11-16 after #164: 216 tests in 31 f
 | `demo` | `e2e/demo/settings-phan-loai.spec.ts` | 7 |
 | `demo` | `e2e/demo/settings-cua-hang.spec.ts` | 5 |
 | `demo` | `e2e/demo/settings-ngay-le.spec.ts` | 4 |
-| `demo` | `e2e/demo/settings-gia-von.spec.ts` | 5 |
+| `demo` | `e2e/demo/settings-gia-von.spec.ts` | 7 |
 | `demo` | `e2e/demo/settings-phap-ly.spec.ts` | 3 |
 | `demo` | `e2e/demo/theme-doanh-thu.spec.ts` | 9 |
 | `demo` | `e2e/demo/theme-gio-ngay.spec.ts` | 8 |
@@ -772,7 +772,7 @@ Listed with `playwright test --list` on 2026-11-16 after #164: 216 tests in 31 f
 | `demo` | `e2e/demo/theme-navigation.spec.ts` | 4 |
 | `pages` | `e2e/pages/install.spec.ts` | 2 |
 | `pages` | `e2e/pages/report-year-performance.spec.ts` | 1 |
-| | **Total** | **216** (live 50, demo 163, pages 3) |
+| | **Total** | **219** (live 51, demo 165, pages 3) |
 
 At phase 10a's verification the list held 126 tests in 19 files and all 126 passed with one worker and no retries; the phase 9 verification had 63 and phase 6 had 20.
 
@@ -810,7 +810,7 @@ At phase 10a's verification the list held 126 tests in 19 files and all 126 pass
 | Check | Result | Date and source |
 |---|---|---|
 | Unit tests | 2,375 passed, 39 skipped (gated), 232 files, 13 packages | 2026-11-16, phase 10a's verification (#102) |
-| pgTAP | 2,085 of 2,085 in 38 files after migration `data_quality_payments_account_order`; 2,083 of 2,083 in 38 files after migration `data_quality_functions`; 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`; 1,849 of 1,849 in 34 files at phase 10a's verification; `20_incremental_schedule.sql` unedited | 2026-11-16, #104 and #102 |
+| pgTAP | 2,090 of 2,090 in 38 files after migration `item_costs_amount_whole_dong`; 2,085 of 2,085 in 38 files after migration `data_quality_payments_account_order`; 2,083 of 2,083 in 38 files after migration `data_quality_functions`; 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`; 1,849 of 1,849 in 34 files at phase 10a's verification; `20_incremental_schedule.sql` unedited | 2026-11-16, #104 and #102 |
 | Parity in Postgres | every parity file green in CI's `database` job on `b8779ab` | 2026-11-16, #102 |
 | Integration suites on the local stack | sync 100 of 100; jobs 64, 6 gated; notification CLI 6 of 6; notification digests and alerts 9 of 10, the failure a defect of the test's own helper, not of the product, fixed by the step 12c stream | 2026-11-16, #102 |
 | Live checks on the real tenant | reports live check 8 of 8; theme live check 6 of 6, with `LIVE_REFERENCE_SHEET` every compared value `matches: true` and no call over budget | 2026-11-16, #102 |
@@ -854,7 +854,7 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | FR-ANA | 15 | – | 1 | 1 | 17 |
 | FR-REP | 17 | 2 | – | 2 | 21 |
 | FR-THM | 6 | 3 | – | – | 9 |
-| FR-SET | 4 | 7 | – | – | 11 |
+| FR-SET | 5 | 6 | – | – | 11 |
 | FR-EXP | – | 2 | 8 | – | 10 |
 | FR-STR | 1 | – | 9 | – | 10 |
 | FR-NOT | 26 | 4 | 12 | – | 42 |
@@ -863,7 +863,7 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | FR-STF | – | – | 23 | – | 23 |
 | FR-LOY | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | 7 | – | 12 |
-| **FR total** | **145** | **29** | **108** | **14** | **296** |
+| **FR total** | **146** | **28** | **108** | **14** | **296** |
 | NFR-SEC | 6 | 6 | 2 | 1 | 15 |
 | NFR-PRV | 5 | 1 | 1 | – | 7 |
 | NFR-PERF | 4 | 4 | 1 | – | 9 |
@@ -876,18 +876,18 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | NFR-OBS | 3 | 1 | – | – | 4 |
 | NFR-HYG | 4 | 1 | 1 | – | 6 |
 | **NFR total** | **47** | **22** | **9** | **2** | **80** |
-| **All** | **192** | **51** | **117** | **16** | **376** |
+| **All** | **193** | **50** | **117** | **16** | **376** |
 
 ```mermaid
 pie showData
     title Coverage of the requirements on 2026-11-16
-    "covered" : 192
-    "partial" : 51
+    "covered" : 193
+    "partial" : 50
     "planned" : 117
     "owner check" : 16
 ```
 
-Of the 257 requirements that are verified locally, built, in build or waiting for the owner, 192 are covered, 48 partial, 1 planned and 16 owner checks. Of the 119 that are designed or planned, 116 have no test yet and 3 are partly held by tests of the database rules they rest on.
+Of the 257 requirements that are verified locally, built, in build or waiting for the owner, 193 are covered, 47 partial, 1 planned and 16 owner checks. Of the 119 that are designed or planned, 116 have no test yet and 3 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -902,7 +902,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | FR-TEN-05 | Nothing for callers without a session | Must | verified locally | `pgtap:03_rls_enabled`, `pgtap:06_anon_and_tokens`, `e2e:live/auth`, `pgtap:39_theme_access_b` (anon runs no 10b function) | covered |
 | FR-TEN-06 | Publisher reads no sales | Must | verified locally | `pgtap:08_publisher_role`, `pgtap:17_analytics_access`, `pgtap:23_report_access`, `pgtap:39_theme_access_b` (the publisher gets no 10b row and empty data-quality counts) | covered |
 | FR-TEN-07 | Staff and viewer are read-only | Must | verified locally | `pgtap:05_write_policies`, `pgtap:31_notify_access`, `pgtap:38_settings_writes` | covered |
-| FR-TEN-08 | Who writes manual data | Must | verified locally | `pgtap:05_write_policies`, `pgtap:07_write_scope_and_attribution`, `pgtap:10_payment_fee_rates`, `pgtap:11_item_type_roles_and_holidays`, `web:pages/settings/phan-loai-page` (staff and a store-limited manager read the roles), `pgtap:38_settings_writes`, `web:settings/access` (`manualData`), `web:settings/manual/costs-tab` and `e2e:live/settings-manual` (a store-limited manager writes their store's costs and reads the all-store costs without a control; #161) | covered |
+| FR-TEN-08 | Who writes manual data | Must | verified locally | `pgtap:05_write_policies`, `pgtap:07_write_scope_and_attribution`, `pgtap:10_payment_fee_rates`, `pgtap:11_item_type_roles_and_holidays`, `web:pages/settings/phan-loai-page` (staff and a store-limited manager read the roles), `pgtap:38_settings_writes`, `web:settings/access` (`manualData`), `web:settings/manual/costs-tab` and `e2e:live/settings-manual` (a store-limited manager writes their store's costs and reads the all-store costs without a control; #161), `web:settings/manual/costs-tab` and `e2e:live/settings-manual` (staff download only; rows for a store outside the scope refused; #162) | covered |
 | FR-TEN-09 | Frozen attribution | Must | verified locally | `pgtap:07_write_scope_and_attribution`, `pgtap:26_notify_schema`, `pgtap:38_settings_writes`, `e2e:live/settings-manual` (the cost, profile and override writes come back with the caller as author; #105), `e2e:live/settings` (a holiday's `created_by` and `updated_by` are the caller; an insert naming another member refused with `42501`; #106), `e2e:live/settings-manual` (the cost page's audit line, the manager's row read by the owner with its author role; #161) | covered |
 | FR-TEN-10 | Create a tenant | Must | verified locally | `jobs:integration/local-stack` | covered |
 | FR-TEN-11 | Add a member | Must | verified locally | `jobs:integration/local-stack` | covered |
@@ -1023,7 +1023,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | FR-REP-09 | Coverage and young stores | Must | verified locally | `reports:unit/coverage-and-comparison`, `e2e:live/reports`, `e2e:demo/report-year`, `reports:unit/themes/promotions/discount-cost` and `vouchers` (the young store's missing last year, like for like), `e2e:demo/theme-khuyen-mai` (#191), `reports:unit/themes/stores/kpis` and `calls` (the all-stores change like for like over the covered stores, labelled k/N; #193) | covered |
 | FR-REP-10 | Sentences from templates | Must | verified locally | `reports:unit/decomposition-and-narrative`, `web:metrics/sentences`, `web:i18n/wording-sheets`, the Ca & két tiền card tests and smoke test (#155), the Khuyến mãi card tests and `web:i18n/theme-keys` (#191), the Khuyến mãi rule cards in `web:i18n/theme-keys` (#153) | covered |
 | FR-REP-11 | Report card | Must | verified locally | `web:components/report-card/report-card`, `web:components/report-card/report-card-extensions`, `web:themes/theme-param-controls` (the controls slot), `web:components/report-card` and `web:reports/card-adapter` (a signed money headline; #191) | covered |
-| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan`, `web:settings/thresholds/thresholds-form`, `e2e:demo/settings-bao-cao`, phase 10a's verification (#102) (one CSV per theme from the real tenant: BOM, strict UTF-8, Vietnamese headers), `e2e:demo/theme-ca-ket-tien` (every table as UTF-8 CSV with a BOM, and semicolon-separated; #155), `e2e:demo/theme-khuyen-mai` (every table as UTF-8 CSV with a BOM, and semicolon-separated; #191), `e2e:demo/theme-ca-ket-tien` (the cashier card's CSV in both dialects with the BOM; #192), `e2e:demo/theme-khuyen-mai` (all eight tables as CSV in both dialects; #153) | partial |
+| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan`, `web:settings/thresholds/thresholds-form`, `e2e:demo/settings-bao-cao`, phase 10a's verification (#102) (one CSV per theme from the real tenant: BOM, strict UTF-8, Vietnamese headers), `e2e:demo/theme-ca-ket-tien` (every table as UTF-8 CSV with a BOM, and semicolon-separated; #155), `e2e:demo/theme-khuyen-mai` (every table as UTF-8 CSV with a BOM, and semicolon-separated; #191), `e2e:demo/theme-ca-ket-tien` (the cashier card's CSV in both dialects with the BOM; #192), `e2e:demo/theme-khuyen-mai` (all eight tables as CSV in both dialects; #153), `web:settings/manual/cost-import` and `e2e:demo/settings-gia-von` (the cost template with the BOM in the device's dialect; #162) | partial |
 | FR-REP-13 | Print layout | Should | verified locally | `e2e:demo/demo`, `e2e:demo/report-day`, the four theme specs (`expectThemePrintLayout`: the summary line, no buttons, no tabs or pickers), `e2e:demo/theme-ca-ket-tien` (print without controls, Ca n in print; #155), `e2e:demo/theme-khuyen-mai` (print without pickers; #191) | covered |
 | FR-REP-14 | Card loading and errors | Should | built | `e2e:demo/report-day` (cards settle); `web:reports/use-cards-load` (a failed card with its retry, a failed coverage call) | partial |
 | FR-REP-15 | Store and period selection | Must | verified locally | `web:shell/period-picker`, `web:state/preferences`, `pgtap:22_report_functions`, `reports:unit/themes/stores/calls` (one store asks only for coverage; the days call within 900 rows) and `e2e:demo/theme-so-sanh` (one store: every card asks for a second; #193) | covered |
@@ -1054,7 +1054,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 |---|---|---|---|---|---|
 | FR-SET-01 | Store profile | Must | built | `pgtap:38_settings_writes`; `web:pages/settings/cua-hang-page` (the POS facts without a control, every field saved and read back, the audit line, the read-only states), `web:settings/store/store-fields`, `e2e:demo/settings-cua-hang`, `e2e:live/settings` (a save under row-level security, the audit line with "Bạn" and "bởi chủ", one store for a store-limited manager; #159), `web:settings/supabase-settings-source` and `web:settings/demo-settings-source` (store profiles read with their audit columns and updated column by column; the code, hours and span refusals mapped), `e2e:live/settings-manual` (a duplicate code, the owner-only hours and an invalid span through PostgREST; #105) | partial |
 | FR-SET-02 | Opening-hours shape | Must | verified locally | `pgtap:20_incremental_schedule`, `web:settings/validation`, `web:settings/forms/opening-hours-editor`, `web:settings/store/store-fields` (the hours sent in the database's shape), `web:pages/settings/cua-hang-page` (an incomplete span blocked, the `23514` message), `e2e:demo/settings-cua-hang` (#159) | covered |
-| FR-SET-03 | Item costs | Must | in build | `pgtap:05_write_policies` (table); the Giá vốn page (#161), `web:settings/manual/supabase-manual-source` and `web:settings/manual/demo-manual-source` (costs read with history and saved as one upsert on scope, item and date), `e2e:live/settings-manual` (a tenant-wide and a store cost are two rows, a second save updates its row, a refused row writes nothing; #105), `web:settings/manual/costs` (scope precedence, default dates, a store's first cost after an all-store cost defaulting to today, hints that name a later row, whole đồng), `web:settings/manual/costs-tab` (unsaved rows kept visible, the scope locked while unsaved, delete messages with a retry, a store-limited manager never reading all stores first), `web:settings/manual/use-item-sales`, `web:pages/settings/du-lieu-nhap-tay-page`, `e2e:demo/settings-gia-von`, `e2e:live/settings-manual` (the page under row-level security; #161) | partial |
+| FR-SET-03 | Item costs | Must | built | `pgtap:05_write_policies` (table); the Giá vốn page (#161), `web:settings/manual/supabase-manual-source` and `web:settings/manual/demo-manual-source` (costs read with history and saved as one upsert on scope, item and date), `e2e:live/settings-manual` (a tenant-wide and a store cost are two rows, a second save updates its row, a refused row writes nothing; #105), `web:settings/manual/costs` (scope precedence, default dates, a store's first cost after an all-store cost defaulting to today, hints that name a later row, whole đồng), `web:settings/manual/costs-tab` (unsaved rows kept visible, the scope locked while unsaved, delete messages with a retry, a store-limited manager never reading all stores first), `web:settings/manual/use-item-sales`, `web:pages/settings/du-lieu-nhap-tay-page`, `e2e:demo/settings-gia-von`, `e2e:live/settings-manual` (the page under row-level security; #161), `web:settings/manual/cost-import` (both dialects with and without a BOM, every đồng form, ISO and slash dates with the order choice, only the items the tab offers, refused rows out of duplicate matching, row numbers by line, the 2,000-row and 2 MB limits, an unchanged template saving nothing), `web:settings/manual/costs-tab` (preview, one save, a refused save keeping the preview), `web:lib/csv-parse` (line numbers), `pgtap:05_write_policies` (the whole-đồng check from 0 to 100,000,000), `e2e:demo/settings-gia-von` (template round trip), `e2e:live/settings-manual` (an import through the real tables; #162) | covered |
 | FR-SET-04 | Targets | Must | in build | `pgtap:05_write_policies` (table); screen planned, `web:settings/manual/supabase-manual-source` and `web:settings/manual/demo-manual-source` (targets upserted on store, period kind and start; #105) | partial |
 | FR-SET-05 | Payment fee rates | Should | in build | `pgtap:10_payment_fee_rates` (table); screen planned, `web:settings/supabase-settings-source` and `web:settings/demo-settings-source` (fee rates upserted on scope, method and date, the null store included), `e2e:live/settings-manual` (the tenant-wide key resolved through supabase-js; #105) | partial |
 | FR-SET-06 | Payment-kind mapping | Should | built | `core:unit/payment-kind` (override rule), `pgtap:38_settings_writes`; `web:settings/payment-kinds/payment-kinds`, `web:settings/payment-kinds/payment-kinds-form`, `web:pages/settings/phan-loai-page` (the Loại thanh toán tab: the POS, override and effective kinds, "Theo POS" deleting the override, the read-only states), `e2e:demo/settings-phan-loai` (a re-mapped method moving in Thanh toán's payment mix and back), `e2e:live/settings-phan-loai` (the kind override moving the method in Thanh toán, the catch-up banner; #160), `web:settings/supabase-settings-source` and `web:settings/demo-settings-source` (POS, override and effective kinds; overrides upserted and cleared), `e2e:live/settings-manual` (#105) | covered |
@@ -1350,7 +1350,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
 | NFR-I18N-01 | Vietnamese first, English second | Must | verified locally | `web:i18n/i18n`, `web:i18n/report-keys`, `web:i18n/theme-keys`, `web:i18n/wording-sheets`, `e2e:live/today`, `e2e:demo/demo`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-chat-luong` (#158), `e2e:demo/settings-phap-ly` (#164) | covered |
-| NFR-I18N-02 | Formatting by locale and currency | Must | verified locally | `web:lib/format`, `notify:unit/render/format`, `web:settings/number-text`, `web:settings/forms/money-field`, `web:lib/csv`, `web:settings/manual/costs` and `costs-tab` (whole đồng, fractions refused and never rounded, `12.000 ₫`, `30,0%`, dd/MM/yyyy) and `e2e:demo/settings-gia-von` (the numeric keyboard and `50.000`; #161) | covered |
+| NFR-I18N-02 | Formatting by locale and currency | Must | verified locally | `web:lib/format`, `notify:unit/render/format`, `web:settings/number-text`, `web:settings/forms/money-field`, `web:lib/csv`, `web:settings/manual/costs` and `costs-tab` (whole đồng, fractions refused and never rounded, `12.000 ₫`, `30,0%`, dd/MM/yyyy) and `e2e:demo/settings-gia-von` (the numeric keyboard and `50.000`; #161), `web:settings/manual/cost-import` (whole đồng, fractions refused and never rounded, dd/MM/yyyy; #162) | covered |
 | NFR-I18N-03 | Registry spelling | Should | verified locally | `web:i18n/i18n` | covered |
 | NFR-I18N-04 | Notification language | Should | in build | `notify:unit/render/templates` | covered |
 | NFR-I18N-05 | Time zones and day starts | Must | verified locally | `core:unit/business-date`, `core:unit/wall-clock`, `sync:unit/incremental-window`, `pgtap:20_incremental_schedule`, `pgtap:27_notify_policy`, `pgtap:30_notify_digests` | covered |
@@ -1573,7 +1573,6 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-THM-09 | Sections a POS cannot feed | built | pgTAP shows the provisional menu roles without costs and the null attach rates without a role; unit tests hold the margin card asking for costs, the attach card's dash and roles action while a role is unmapped, RevPASH only with seats and the fee card's dash without a rate; phase 10a's verification (#102) saw each of these states on the real tenant. | Sections that follow a connector's declared capabilities (no costs, no customer identity), with a connector that declares no costs and no manual costs entered (10b). |
 | FR-THM-04 | Thanh toán & tiền mặt | verified locally | pgTAP shows `shift_review` and `cash_variance_flags` following the tenant's cash thresholds; the parity suite holds the demo's `shift_review` to them; the unit, engine smoke and demo specs hold the payment mix (kind shares summing to 1 and matching the methods), the cash trend, the drawer card (thresholds line, no e-mail-like text) and the fee card (the dash and the fees link without a rate); the demo spec of Ngưỡng báo cáo holds the round trip from a saved cash threshold to the drawer card's thresholds line and back to the default, and the page downloads once in the semicolon dialect. | The owner's reading of Thanh toán beside the private sheet (OC-03, #189); `reports:live/theme-live-check` prints `matches: true` for the payment mix of the reference window, compared as shares of invoices (2026-11-15, again at phase 10a's verification on 2026-11-16). |
 | FR-REP-14 | Card loading and errors | built | Settling is tested on the demo, the size refusal is classified in `reports:unit/rpc-source`, and `web:reports/use-cards-load` drives a failing card and its retry in the loader; no test shows the error card or the size message in the browser. | A web test that makes one card's call fail and expects the error card with its retry, and one that answers SQLSTATE 22023 and expects the request for fewer stores or a shorter period. |
-| FR-SET-03 | Item costs | in build | The write policies of `item_costs` are tested; the Giá vốn page is built (#161: `web:settings/manual/costs`, `costs-tab`, `e2e:demo/settings-gia-von`, `e2e:live/settings-manual`); the CSV import does not exist. The sources of #105 are tested by `web:settings/manual/supabase-manual-source` and `web:settings/manual/demo-manual-source` (costs read with history and saved as one upsert on scope, item and date), `e2e:live/settings-manual` (a tenant-wide and a store cost are two rows, a second save updates its row, a refused row writes nothing; #105). | A live Playwright test that an imported CSV equals the stored rows (#162). |
 | FR-SET-04 | Targets | in build | The write policies of `targets` are tested; the screen does not exist. The sources of #105 are tested by `web:settings/manual/supabase-manual-source` and `web:settings/manual/demo-manual-source` (targets upserted on store, period kind and start; #105). | A live Playwright test that a saved monthly target shows progress and pace on Tháng (10b). |
 | FR-SET-05 | Payment fee rates | in build | The fee-rate table and its policies are tested; the screen does not exist. The sources of #105 are tested by `web:settings/supabase-settings-source` and `web:settings/demo-settings-source` (fee rates upserted on scope, method and date, the null store included), `e2e:live/settings-manual` (the tenant-wide key resolved through supabase-js; #105). | A test that the fee estimate uses the rate in force on each day, and a screen test (10b). |
 | FR-SET-01 | Store profile | built | The page (#159): pgTAP holds the seven profile columns written within scope, the POS columns refused, owner-only opening hours, the unique code and the sync's upsert keeping every edited column; `web:pages/settings/cua-hang-page` (the POS facts without a control, every field saved and read back, the audit line, the read-only states), `web:settings/store/store-fields`, `e2e:demo/settings-cua-hang`, `e2e:live/settings` (a save under row-level security, the audit line with "Bạn" and "bởi chủ", one store for a store-limited manager; #159); the sources of #105 by `web:settings/supabase-settings-source`, `web:settings/demo-settings-source` and `e2e:live/settings-manual`. | A live Playwright test that a viewer's save is refused and that an owner's save changes RevPASH on the live stack (#165). |
