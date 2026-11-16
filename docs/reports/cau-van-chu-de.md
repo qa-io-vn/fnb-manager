@@ -17,7 +17,7 @@ The thematic cards are built like the periodic ones (see the report sheet): a he
 
 - **Ranges instead of periods.** A card speaks of the chosen range (`{range}`, its first and last day) and compares it with the range of equal length just before ("so với {weeks} tuần trước", `theme.compare.previousWeeks`) and with the same weekdays a year earlier (`theme.compare.lastYear`); calendar presets reuse the period labels of the report sheet.
 - **Heat tables.** Giờ & ngày shows hours down and weekdays across, headed "T2" to "CN" (`theme.weekday.short.*`), with an average column kept outside the five shades; the legend is `theme.heat.legend`.
-- **Updating.** While the numbers catch up with a classification change, every theme and settings page shows the catch-up line (`settings.catchUp.*`), and a card whose range holds a pending day carries "đang cập nhật" (`report.marker.stale` of the report sheet).
+- **Updating.** While the numbers catch up with a settings change (a mapping or a fee rate), every theme and settings page shows the catch-up line (`settings.catchUp.*`), and a card whose range holds a pending day carries "đang cập nhật" (`report.marker.stale` of the report sheet).
 - **Settings pages.** Every threshold explains itself in a hint and shows its default (`settings.thresholds.default`); a value outside its limits is refused with a message of `settings.validation.*`; a save bar counts the unsaved changes; and a page a member may not change says why (`settings.readOnly.*`).
 
 ## Placeholders
@@ -1514,20 +1514,20 @@ The two pages phase 12 fills: their name in the settings menu and the line their
 | `settings.hours.remove` | Xóa | Remove | — |
 | `settings.hours.removeSpan` | Xóa khung {n} của {day} | Remove span {n} of {day} | `{n}` `{day}` |
 
-### Cập nhật số liệu sau khi đổi phân loại · catch-up banner (`settings.catchUp.*`)
+### Cập nhật số liệu sau khi đổi cài đặt · catch-up banner (`settings.catchUp.*`)
 
 | Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
 | --- | --- | --- | --- |
 | `settings.catchUp.dismiss` | Đóng | Close | — |
-| `settings.catchUp.done` | Đã cập nhật xong số liệu theo thay đổi phân loại. | The numbers have caught up with the mapping change. | — |
+| `settings.catchUp.done` | Đã cập nhật xong số liệu theo thay đổi cài đặt. | The numbers have caught up with the settings change. | — |
 | `settings.catchUp.failed.forbidden` | Chưa cập nhật xong: tài khoản của bạn không có quyền cập nhật số liệu. | The refresh stopped: your account may not refresh the numbers. | — |
 | `settings.catchUp.failed.network` | Chưa cập nhật xong vì mất kết nối; kiểm tra mạng rồi thử lại. | The refresh stopped because the connection was lost; check the network and try again. | — |
 | `settings.catchUp.failed.other` | Chưa cập nhật xong vì có lỗi; thử lại sau ít phút. | The refresh stopped on an error; try again in a few minutes. | — |
 | `settings.catchUp.failed.stalled` | Chưa cập nhật xong: số ngày còn lại không giảm; thử lại sau ít phút. | The refresh stopped: the days left did not go down; try again in a few minutes. | — |
-| `settings.catchUp.finishing` | Số liệu đang cập nhật theo thay đổi phân loại. | The numbers are catching up with a mapping change. | — |
-| `settings.catchUp.label` | Cập nhật số liệu theo thay đổi phân loại | Catching up with a mapping change | — |
-| `settings.catchUp.pending` | Số liệu đang cập nhật theo thay đổi phân loại: còn {days} ngày. | The numbers are catching up with a mapping change. Days left: {days}. | `{days}` |
-| `settings.catchUp.pendingSince` | Số liệu đang cập nhật theo thay đổi phân loại lúc {time} ngày {date}: còn {days} ngày. | The numbers are catching up with the mapping change of {date} at {time}. Days left: {days}. | `{time}` `{date}` `{days}` |
+| `settings.catchUp.finishing` | Số liệu đang cập nhật theo thay đổi cài đặt. | The numbers are catching up with a settings change. | — |
+| `settings.catchUp.label` | Cập nhật số liệu theo thay đổi cài đặt | Catching up with a settings change | — |
+| `settings.catchUp.pending` | Số liệu đang cập nhật theo thay đổi cài đặt: còn {days} ngày. | The numbers are catching up with a settings change. Days left: {days}. | `{days}` |
+| `settings.catchUp.pendingSince` | Số liệu đang cập nhật theo thay đổi cài đặt lúc {time} ngày {date}: còn {days} ngày. | The numbers are catching up with the settings change of {date} at {time}. Days left: {days}. | `{time}` `{date}` `{days}` |
 | `settings.catchUp.retry` | Thử lại | Try again | — |
 | `settings.catchUp.running` | Đang cập nhật… | Refreshing… | — |
 | `settings.catchUp.start` | Cập nhật ngay | Refresh now | — |

@@ -6,7 +6,6 @@ import {
 	DEMO_POS_ACCOUNT_ID,
 	DEMO_PRIVACY_NOTICE_TITLE,
 	DEMO_TENANT_PROFILE,
-	DemoDayCache,
 	type DemoFeeRate,
 	type DemoHoliday,
 	type DemoItemCost,
@@ -182,7 +181,7 @@ describe("the demo settings store's defaults", () => {
 		}
 	});
 
-	it("holds the established store's monthly targets up to the as-of month, as the reports read them", () => {
+	it("holds the established store's sample monthly targets up to the as-of month, the rows the reports read", () => {
 		const settings = fresh();
 		const [established] = demoStores(AS_OF);
 		if (established === undefined) throw new Error("missing demo store");
@@ -193,15 +192,12 @@ describe("the demo settings store's defaults", () => {
 		expect(new Set(targets.map((target) => target.storeId))).toEqual(
 			new Set(["MOCK-S1"]),
 		);
-		const days = new DemoDayCache({ now: () => NOW });
 		for (const target of targets) {
 			expect(target.periodKind).toBe("month");
 			expect(target.netTargetAmount).toBe(
 				demoTargets(established, target.periodStart),
 			);
-			expect(target.netTargetAmount).toBe(
-				days.target(established, "month", target.periodStart),
-			);
+			expect(Number.isInteger(target.netTargetAmount)).toBe(true);
 		}
 		expect(demoSettings("2026-11-30").targets.at(-1)?.periodStart).toBe(
 			"2026-12-01",
@@ -431,6 +427,41 @@ describe("refused writes", () => {
 			write: (settings) =>
 				settings.saveFeeRates([{ ...FEE_RATE, feePct: 1.2345 }]),
 			field: "feePct",
+			refusal: "range",
+		},
+		{
+			name: "a fee percentage above the 20 % of payment_fee_rates_within_limits",
+			write: (settings) =>
+				settings.saveFeeRates([{ ...FEE_RATE, feePct: 20.001 }]),
+			field: "payment_fee_rates_within_limits",
+			refusal: "range",
+		},
+		{
+			name: "a fixed fee above 100,000",
+			write: (settings) =>
+				settings.saveFeeRates([{ ...FEE_RATE, fixedFeeAmount: 100_001 }]),
+			field: "payment_fee_rates_within_limits",
+			refusal: "range",
+		},
+		{
+			name: "a fixed fee with a fraction of a đồng",
+			write: (settings) =>
+				settings.saveFeeRates([{ ...FEE_RATE, fixedFeeAmount: 150.5 }]),
+			field: "payment_fee_rates_within_limits",
+			refusal: "range",
+		},
+		{
+			name: "a target of zero",
+			write: (settings) =>
+				settings.saveTargets([{ ...TARGET, netTargetAmount: 0 }]),
+			field: "targets_amount_whole_dong",
+			refusal: "range",
+		},
+		{
+			name: "a target with a fraction of a đồng",
+			write: (settings) =>
+				settings.saveTargets([{ ...TARGET, netTargetAmount: 120_000_000.5 }]),
+			field: "targets_amount_whole_dong",
 			refusal: "range",
 		},
 		{
@@ -917,7 +948,18 @@ describe("refused writes", () => {
 		settings.saveCosts([COST, { ...COST, storeId: "MOCK-S1" }]);
 		settings.saveFeeRates([
 			FEE_RATE,
-			{ ...FEE_RATE, storeId: "MOCK-S2", feePct: 999.999, fixedFeeAmount: 0 },
+			{
+				...FEE_RATE,
+				storeId: "MOCK-S2",
+				feePct: 20,
+				fixedFeeAmount: 100_000,
+			},
+			{
+				...FEE_RATE,
+				storeId: "MOCK-S1",
+				feePct: 0,
+				fixedFeeAmount: 0,
+			},
 		]);
 		settings.saveStoreProfile({
 			...profileDefaults("MOCK-S2"),
@@ -929,6 +971,12 @@ describe("refused writes", () => {
 		settings.saveTargets([
 			TARGET,
 			{ ...TARGET, periodKind: "week", periodStart: "2026-11-02" },
+			{ ...TARGET, periodStart: "2026-12-01", netTargetAmount: 1 },
+			{
+				...TARGET,
+				periodStart: "2027-01-01",
+				netTargetAmount: 999_999_999_999,
+			},
 		]);
 		settings.saveLegalDocuments([
 			{ ...NOTICE, title: "a".repeat(200), body: "a".repeat(100_000) },

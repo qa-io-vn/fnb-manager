@@ -106,6 +106,12 @@ export interface DemoItemCost {
 
 export const DEMO_PERIOD_KINDS = ["month", "week"] as const;
 
+export const FEE_RATE_LIMITS_CONSTRAINT = "payment_fee_rates_within_limits";
+export const FEE_PERCENT_MAX = 20;
+export const FIXED_FEE_MAX = 100_000;
+export const TARGET_AMOUNT_CONSTRAINT = "targets_amount_whole_dong";
+export const TARGET_AMOUNT_MIN = 1;
+
 export interface DemoTarget {
 	readonly storeId: string;
 	readonly periodKind: (typeof DEMO_PERIOD_KINDS)[number];
@@ -547,21 +553,52 @@ function checkCosts(costs: readonly DemoItemCost[]): DemoItemCost[] {
 	return checked;
 }
 
+function requireFeeRateLimits(rate: DemoFeeRate): DemoFeeRate {
+	if (
+		rate.feePct > FEE_PERCENT_MAX ||
+		!Number.isInteger(rate.fixedFeeAmount) ||
+		rate.fixedFeeAmount > FIXED_FEE_MAX
+	) {
+		throw new DemoSettingsError(
+			FEE_RATE_LIMITS_CONSTRAINT,
+			"range",
+			`keep the fee between 0 and ${FEE_PERCENT_MAX} percent and the fixed fee a whole amount from 0 to ${FIXED_FEE_MAX}`,
+		);
+	}
+	return rate;
+}
+
+function requireTargetAmount(target: DemoTarget): DemoTarget {
+	if (
+		!Number.isInteger(target.netTargetAmount) ||
+		target.netTargetAmount < TARGET_AMOUNT_MIN
+	) {
+		throw new DemoSettingsError(
+			TARGET_AMOUNT_CONSTRAINT,
+			"range",
+			`be a whole amount of at least ${TARGET_AMOUNT_MIN}`,
+		);
+	}
+	return target;
+}
+
 function checkFeeRates(rates: readonly DemoFeeRate[]): DemoFeeRate[] {
-	const checked = rates.map((rate) => ({
-		storeId: checkStoreScope(rate.storeId),
-		paymentMethodExternalId: requireText(
-			"paymentMethodExternalId",
-			rate.paymentMethodExternalId,
-		),
-		feePct: requireNumber("feePct", rate.feePct, FEE_PERCENT),
-		fixedFeeAmount: requireNumber(
-			"fixedFeeAmount",
-			rate.fixedFeeAmount,
-			MONEY_AMOUNT,
-		),
-		effectiveFrom: requireDate("effectiveFrom", rate.effectiveFrom),
-	}));
+	const checked = rates
+		.map((rate) => ({
+			storeId: checkStoreScope(rate.storeId),
+			paymentMethodExternalId: requireText(
+				"paymentMethodExternalId",
+				rate.paymentMethodExternalId,
+			),
+			feePct: requireNumber("feePct", rate.feePct, FEE_PERCENT),
+			fixedFeeAmount: requireNumber(
+				"fixedFeeAmount",
+				rate.fixedFeeAmount,
+				MONEY_AMOUNT,
+			),
+			effectiveFrom: requireDate("effectiveFrom", rate.effectiveFrom),
+		}))
+		.map(requireFeeRateLimits);
 	requireUnique(
 		checked,
 		"effectiveFrom",
@@ -573,25 +610,27 @@ function checkFeeRates(rates: readonly DemoFeeRate[]): DemoFeeRate[] {
 }
 
 function checkTargets(targets: readonly DemoTarget[]): DemoTarget[] {
-	const checked = targets.map((target) => ({
-		storeId: requireOneOf(
-			"storeId",
-			requireText("storeId", target.storeId),
-			DEMO_STORES,
-			"a demo store",
-		),
-		periodKind: requireChoice(
-			"periodKind",
-			target.periodKind,
-			DEMO_PERIOD_KINDS,
-		),
-		periodStart: requireDate("periodStart", target.periodStart),
-		netTargetAmount: requireNumber(
-			"netTargetAmount",
-			target.netTargetAmount,
-			MONEY_AMOUNT,
-		),
-	}));
+	const checked = targets
+		.map((target) => ({
+			storeId: requireOneOf(
+				"storeId",
+				requireText("storeId", target.storeId),
+				DEMO_STORES,
+				"a demo store",
+			),
+			periodKind: requireChoice(
+				"periodKind",
+				target.periodKind,
+				DEMO_PERIOD_KINDS,
+			),
+			periodStart: requireDate("periodStart", target.periodStart),
+			netTargetAmount: requireNumber(
+				"netTargetAmount",
+				target.netTargetAmount,
+				MONEY_AMOUNT,
+			),
+		}))
+		.map(requireTargetAmount);
 	requireUnique(checked, "periodStart", "store, period kind and start", (row) =>
 		keyOf(row.storeId, row.periodKind, row.periodStart),
 	);

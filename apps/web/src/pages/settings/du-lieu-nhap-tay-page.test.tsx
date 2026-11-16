@@ -22,6 +22,14 @@ vi.mock("../../settings/manual/costs-tab", () => ({
 	CostsTab: () => <p data-testid="costs-tab-stub" />,
 }));
 
+vi.mock("../../settings/manual/targets-tab", () => ({
+	TargetsTab: () => <p data-testid="targets-tab-stub" />,
+}));
+
+vi.mock("../../settings/fees/fees-tab", () => ({
+	FeesTab: () => <p data-testid="fees-tab-stub" />,
+}));
+
 function renderPage(path: string) {
 	return render(
 		<MemoryRouter initialEntries={[path]}>
@@ -33,7 +41,7 @@ function renderPage(path: string) {
 }
 
 describe("the Dữ liệu nhập tay page", () => {
-	it("opens on Giá vốn and keeps a place for the targets and the fees", async () => {
+	it("opens on Giá vốn and switches to the targets and the fees", async () => {
 		const user = userEvent.setup();
 		renderPage("/cai-dat/du-lieu-nhap-tay");
 		expect(screen.getByTestId("costs-tab-stub")).toBeInTheDocument();
@@ -42,14 +50,11 @@ describe("the Dữ liệu nhập tay page", () => {
 			"page",
 		);
 		await user.click(screen.getByRole("link", { name: "Mục tiêu" }));
-		expect(screen.getByTestId("manual-tab-placeholder")).toHaveTextContent(
-			"Phần Mục tiêu có ở giai đoạn 10b của lộ trình.",
-		);
+		expect(screen.getByTestId("targets-tab-stub")).toBeInTheDocument();
 		expect(screen.queryByTestId("costs-tab-stub")).toBeNull();
 		await user.click(screen.getByRole("link", { name: "Phí thanh toán" }));
-		expect(screen.getByTestId("manual-tab-placeholder")).toHaveTextContent(
-			"Phần Phí thanh toán có ở giai đoạn 10b của lộ trình.",
-		);
+		expect(screen.getByTestId("fees-tab-stub")).toBeInTheDocument();
+		expect(screen.queryByTestId("targets-tab-stub")).toBeNull();
 		expect(
 			screen.getByRole("link", { name: "Phí thanh toán" }),
 		).toHaveAttribute("aria-current", "page");
@@ -57,7 +62,7 @@ describe("the Dữ liệu nhập tay page", () => {
 
 	it("lands the reports' links on their tab and an unknown tab on Giá vốn", () => {
 		renderPage("/cai-dat/du-lieu-nhap-tay?tab=phi");
-		expect(screen.getByTestId("manual-tab-placeholder")).toBeInTheDocument();
+		expect(screen.getByTestId("fees-tab-stub")).toBeInTheDocument();
 		expect(manualTabOf("gia-von").slug).toBe("gia-von");
 		expect(manualTabOf("muc-tieu").slug).toBe("muc-tieu");
 		expect(manualTabOf("khong-co").slug).toBe("gia-von");

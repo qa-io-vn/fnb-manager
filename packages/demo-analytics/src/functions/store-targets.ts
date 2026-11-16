@@ -1,5 +1,6 @@
-import type { AnalyticsRow } from "@fnb/reports";
+import type { AnalyticsRow, IsoDate } from "@fnb/reports";
 import type { AggregateStore } from "../aggregates.js";
+import type { DemoSettingsStore } from "../settings.js";
 import {
 	type HandlerArgs,
 	type HandlerContext,
@@ -8,15 +9,34 @@ import {
 
 type Row = AnalyticsRow<"store_targets">;
 
+export function savedTarget(
+	settings: DemoSettingsStore,
+	storeId: string,
+	periodKind: string,
+	periodStart: IsoDate,
+): number | null {
+	return (
+		settings
+			.targets()
+			.find(
+				(target) =>
+					target.storeId === storeId &&
+					target.periodKind === periodKind &&
+					target.periodStart === periodStart,
+			)?.netTargetAmount ?? null
+	);
+}
+
 export function storeTargets(
 	store: AggregateStore,
 	args: HandlerArgs<"store_targets">,
-	_context: HandlerContext,
+	context: HandlerContext,
 ): Row[] {
 	requireStoreIds("store_targets", args.store_ids);
 	return store.visibleStores(args.store_ids).flatMap((visible) => {
-		const target = store.days.target(
-			visible,
+		const target = savedTarget(
+			context.settings,
+			visible.id,
 			args.period_kind,
 			args.period_start,
 		);

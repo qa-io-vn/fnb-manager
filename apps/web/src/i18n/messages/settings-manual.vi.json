@@ -113,8 +113,6 @@
 	"settings.manual.import.tooMany": "Tệp có {count} dòng cần lưu. Mỗi lần nhập tối đa {max} dòng; hãy chia tệp.",
 	"settings.manual.import.wholeDong": "Giá vốn tính bằng đồng, không có phần lẻ.",
 	"settings.manual.readOnly.role": "Chỉ chủ và quản lý mới nhập được dữ liệu này; bạn đang xem ở chế độ chỉ đọc.",
-	"settings.manual.tab.comingBody": "Phần {tab} có ở giai đoạn 10b của lộ trình.",
-	"settings.manual.tab.comingTitle": "Phần này đang được xây dựng",
 	"settings.manual.tab.costs": "Giá vốn",
 	"settings.manual.tab.fees": "Phí thanh toán",
 	"settings.manual.tab.targets": "Mục tiêu",

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { MENU } from "@fnb/connector-mock";
 import { isExcludedDay, VIETNAM_HOLIDAYS } from "@fnb/core";
-import { addDays, daysBetween, type IsoDate } from "@fnb/reports";
+import { addDays, daysBetween, firstOfMonth, type IsoDate } from "@fnb/reports";
 import {
 	type CategoryOverride,
 	DEMO_UNCATEGORISED_ITEM,
@@ -10,6 +10,7 @@ import {
 	type DemoItemCost,
 	type DemoReportSource,
 	type DemoRole,
+	type DemoTarget,
 	demoRoles,
 	type PaymentKindOverride,
 } from "../../src/index.js";
@@ -46,6 +47,8 @@ const SECOND_ACCOUNT_TYPES: readonly (readonly [string, DemoRole["role"]])[] = [
 export const FEE_RATE_METHOD = "PM-EWALLET";
 export const KIND_OVERRIDE_METHOD = "PM-BANK";
 export const CUSTOM_HOLIDAY_NAME = "Ngày nghỉ riêng của chuỗi";
+export const SAVED_TARGET_STORE = "MOCK-S2";
+export const SAVED_TARGET_AMOUNT = 123_456_789;
 const CUSTOM_HOLIDAY_DAYS_BEFORE_TODAY = 8;
 
 export interface MenuVariant {
@@ -54,6 +57,7 @@ export interface MenuVariant {
 	readonly costs: readonly DemoItemCost[];
 	readonly feeRates: readonly DemoFeeRate[];
 	readonly holidays: readonly DemoHoliday[];
+	readonly targets: readonly DemoTarget[];
 }
 
 function typeName(externalId: string): string | null {
@@ -113,6 +117,14 @@ export function menuVariant(
 				holidayDate: customHolidayDate(seeded),
 				name: CUSTOM_HOLIDAY_NAME,
 				kind: "custom",
+			},
+		],
+		targets: [
+			{
+				storeId: SAVED_TARGET_STORE,
+				periodKind: "month",
+				periodStart: firstOfMonth(customHolidayDate(seeded)),
+				netTargetAmount: SAVED_TARGET_AMOUNT,
 			},
 		],
 		overrides: [
@@ -253,6 +265,23 @@ export async function applyMenuVariant(
 			})),
 		),
 		...insertStatements(
+			"public.targets",
+			[
+				"tenant_id",
+				"store_id",
+				"period_kind",
+				"period_start",
+				"net_target_amount",
+			],
+			variant.targets.map((target) => ({
+				tenant_id: seeded.tenantId,
+				store_id: seeded.uuidOf(target.storeId as "MOCK-S1" | "MOCK-S2"),
+				period_kind: target.periodKind,
+				period_start: target.periodStart,
+				net_target_amount: target.netTargetAmount,
+			})),
+		),
+		...insertStatements(
 			"public.holidays",
 			["tenant_id", "country_code", "holiday_date", "name", "kind"],
 			variant.holidays.map((holiday) => ({
@@ -276,6 +305,10 @@ export async function applyMenuVariant(
 	engine.settings.saveCosts(variant.costs);
 	engine.settings.saveFeeRates(variant.feeRates);
 	engine.settings.saveHolidays(variant.holidays);
+	engine.settings.saveTargets([
+		...engine.settings.targets(),
+		...variant.targets,
+	]);
 	seeded.days.useMappings(engine.settings);
 	return variant;
 }

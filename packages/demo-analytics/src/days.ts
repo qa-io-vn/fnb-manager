@@ -4,9 +4,7 @@ import {
 	asOfDate,
 	type DateRange,
 	daysBetween,
-	firstOfMonth,
 	type IsoDate,
-	lastOfMonth,
 	storeBusinessDate,
 } from "@fnb/reports";
 import {
@@ -19,7 +17,6 @@ import {
 	demoDayPlan,
 	demoStores,
 	demoSyncCheck,
-	demoTargets,
 } from "./calendar.js";
 import { dressFreshDemoDay } from "./dressing.js";
 import { aggregateStoreDay, type StoreDayAggregates } from "./ingest.js";
@@ -320,19 +317,6 @@ export class DemoDayCache {
 	syncCheck(store: DemoStoreDefinition, date: IsoDate): DemoSyncCheck | null {
 		if (!this.inRange(store, date)) return null;
 		return demoSyncCheck(store, date, this.asOf());
-	}
-
-	target(
-		store: DemoStoreDefinition,
-		periodKind: "month" | "week",
-		periodStart: IsoDate,
-	): number | null {
-		if (periodKind !== "month") return null;
-		const range = this.storeRange(store);
-		if (range === null) return null;
-		if (lastOfMonth(periodStart) < range.from) return null;
-		if (periodStart > firstOfMonth(range.to)) return null;
-		return demoTargets(store, periodStart, { volumeScale: this.volumeScale });
 	}
 }
 

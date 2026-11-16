@@ -37,6 +37,8 @@ export const CONSTRAINT_MESSAGE_KEYS: Readonly<Record<string, MessageKey>> = {
 	stores_code_unique_in_tenant: "settings.store.code.duplicate",
 	stores_opening_hours_valid: "settings.store.hours.invalid",
 	item_costs_amount_whole_dong: "settings.manual.costs.amountRefused",
+	payment_fee_rates_within_limits: "settings.fees.refused",
+	targets_amount_whole_dong: "settings.targets.refused",
 };
 
 export function writeErrorKey(

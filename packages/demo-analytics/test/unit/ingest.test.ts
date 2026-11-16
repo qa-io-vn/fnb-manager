@@ -529,7 +529,7 @@ describe("fee estimates", () => {
 				storeId: null,
 				paymentMethodExternalId: "PM-BANK",
 				feePct: 1.237,
-				fixedFeeAmount: 150.5,
+				fixedFeeAmount: 150,
 				effectiveFrom: "2026-11-01",
 			},
 			{
@@ -578,7 +578,7 @@ describe("fee estimates", () => {
 			]),
 		).toEqual([
 			["PM-CASH", 10_800_000, 54_400 + 32_000],
-			["PM-BANK", 4_300_000, 68_241],
+			["PM-BANK", 4_300_000, 68_191],
 		]);
 	});
 });

@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(18);
 
 create temp table fixture as
 select
@@ -48,6 +48,36 @@ select lives_ok(
   $$ insert into public.payment_fee_rates (tenant_id, store_id, payment_method_external_id, fee_pct, effective_from)
      values ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-000000000001', 'pm-02', 1.5, current_date) $$,
   'owner inserts a store fee rate for the own tenant'
+);
+
+select lives_ok(
+  $$ insert into public.payment_fee_rates (tenant_id, store_id, payment_method_external_id, fee_pct, fixed_fee_amount, effective_from)
+     values ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-000000000001', 'pm-limits', 20, 100000, current_date) $$,
+  'a fee of 20 per cent with a fixed fee of 100,000 đồng is stored'
+);
+
+select throws_ok(
+  $$ insert into public.payment_fee_rates (tenant_id, store_id, payment_method_external_id, fee_pct, effective_from)
+     values ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-000000000001', 'pm-limits', 20.001, current_date - 1) $$,
+  '23514',
+  null,
+  'a fee above 20 per cent is refused'
+);
+
+select throws_ok(
+  $$ insert into public.payment_fee_rates (tenant_id, store_id, payment_method_external_id, fee_pct, effective_from)
+     values ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-000000000001', 'pm-limits', -0.5, current_date - 2) $$,
+  '23514',
+  null,
+  'a negative fee is refused'
+);
+
+select throws_ok(
+  $$ insert into public.payment_fee_rates (tenant_id, store_id, payment_method_external_id, fee_pct, fixed_fee_amount, effective_from)
+     values ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-000000000001', 'pm-limits', 1, 150.5, current_date - 3) $$,
+  '23514',
+  null,
+  'a fixed fee with a fraction of a đồng is refused'
 );
 
 select throws_ok(

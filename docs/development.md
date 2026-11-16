@@ -56,6 +56,24 @@ Ports come from `supabase/config.toml` (`project_id = "FNB_Managment"`) and the 
 
 Local auth has sign-up turned off (`enable_signup = false`) and e-mail confirmations off. Logins are created with `fnb tenant add-member`, or by the seed.
 
+### Move to another machine
+
+Git carries the code, the migrations, the synthetic seed and every document except the private ones. Three things never go through the repository and have to be carried by hand, over a private channel (a USB drive or the owner's own encrypted storage):
+
+| What | Where | Why it is not in git |
+|---|---|---|
+| Secrets | `.env` and `apps/web/.env.local` | credentials of the POS, Supabase and providers |
+| Private documents | the whole `docs/private/` folder | build specs, local logins, the private identifier list the public-safety scan reads, the forbidden-terms list, the private reference figures |
+| The real tenant's data | the local database | real sales and member logins |
+
+On the new machine:
+
+1. Follow "First run" above, then copy `.env`, `apps/web/.env.local` and `docs/private/` into the checkout. Check that `node scripts/check-public-safe.mjs` reports the private-identifier rule as active (it reads `docs/private/identifiers.txt`).
+2. Bring the real data back one of two ways:
+   - Preferred: load it again from the POS with the CLI, as [sync.md](sync.md#cli-reference) describes (`fnb tenant create`, `fnb onboard`, then `fnb sync window … --kind backfill` over the history), with the credentials in `.env`.
+   - Or copy the database: on the old machine `docker exec supabase_db_FNB_Managment pg_dump -U postgres -Fc -d postgres > fnb-local.dump`; on the new machine, after `pnpm db:start` has applied every migration, `docker exec -i supabase_db_FNB_Managment pg_restore -U postgres -d postgres --data-only --disable-triggers < fnb-local.dump`, then `pnpm exec supabase test db` and the reports live check. The dump holds real customer and sales data: keep it on the private channel and delete it once restored.
+3. Work in progress lives on `wip/*` branches on the remote (`git branch -r --list 'origin/wip/*'`); [status.md](status.md) says what each holds and what it still needs before it can merge.
+
 ### Rules on a machine that holds real data
 
 The build machine's local stack holds a real tenant loaded with `fnb`. On such a machine:

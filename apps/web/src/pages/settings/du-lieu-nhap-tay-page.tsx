@@ -1,7 +1,9 @@
 import type { ComponentType } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { type MessageKey, useT } from "../../i18n";
+import { FeesTab } from "../../settings/fees/fees-tab";
 import { CostsTab } from "../../settings/manual/costs-tab";
+import { TargetsTab } from "../../settings/manual/targets-tab";
 import { useReadyTenantScope } from "../../state/tenant-scope";
 
 export const MANUAL_TABS = [
@@ -42,29 +44,6 @@ function ManualTabs({ current }: { readonly current: ManualTab }) {
 			</ul>
 		</nav>
 	);
-}
-
-function ComingTab({ titleKey }: { readonly titleKey: MessageKey }) {
-	const t = useT();
-	return (
-		<div
-			className="rounded-xl border border-dashed border-line bg-surface-raised p-5"
-			data-testid="manual-tab-placeholder"
-		>
-			<p className="mb-2 font-medium">{t("settings.manual.tab.comingTitle")}</p>
-			<p className="text-ink-muted">
-				{t("settings.manual.tab.comingBody", { tab: t(titleKey) })}
-			</p>
-		</div>
-	);
-}
-
-function TargetsTab() {
-	return <ComingTab titleKey="settings.manual.tab.targets" />;
-}
-
-function FeesTab() {
-	return <ComingTab titleKey="settings.manual.tab.fees" />;
 }
 
 const TAB_SECTIONS: Readonly<Record<ManualSlug, ComponentType>> = {

@@ -113,8 +113,6 @@
 	"settings.manual.import.tooMany": "The file has {count} rows to save. One import takes at most {max} rows; split the file.",
 	"settings.manual.import.wholeDong": "Item costs are in whole đồng, without a fraction.",
 	"settings.manual.readOnly.role": "Only owners and managers can enter this data; you are viewing it read-only.",
-	"settings.manual.tab.comingBody": "{tab} comes in phase 10b of the roadmap.",
-	"settings.manual.tab.comingTitle": "This part is being built",
 	"settings.manual.tab.costs": "Item costs",
 	"settings.manual.tab.fees": "Payment fees",
 	"settings.manual.tab.targets": "Targets",

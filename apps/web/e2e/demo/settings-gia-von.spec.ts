@@ -451,16 +451,14 @@ test("Giá vốn searches without Vietnamese marks, passes axe, fits 360 px and 
 		.getByRole("link", { name: "Payment fees" })
 		.click();
 	await expect(page).toHaveURL(/tab=phi/);
-	await expect(page.getByTestId("manual-tab-placeholder")).toContainText(
-		"Payment fees comes in phase 10b",
-	);
+	await expect(page.getByTestId("fees-form")).toContainText("New fee rate");
 	await page.getByRole("button", { name: "VI", exact: true }).click();
 	await page
 		.getByTestId("manual-tabs")
 		.getByRole("link", { name: "Mục tiêu" })
 		.click();
-	await expect(page.getByTestId("manual-tab-placeholder")).toContainText(
-		"Phần Mục tiêu có ở giai đoạn 10b",
+	await expect(page.getByTestId("targets-form")).toContainText(
+		"Mục tiêu doanh thu thuần",
 	);
 	expectNoConsoleErrors(page);
 });

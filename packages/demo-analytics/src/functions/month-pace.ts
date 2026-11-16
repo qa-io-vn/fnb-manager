@@ -12,12 +12,14 @@ import {
 } from "@fnb/reports";
 import type { AggregateStore } from "../aggregates.js";
 import { money, PgDecimal } from "../pg-numeric.js";
+import type { DemoSettingsStore } from "../settings.js";
 import {
 	profileEntryFor,
 	profileForecast,
 	seasonalNaiveSeries,
 	weekdayProfile,
 } from "./forecast-series-helpers.js";
+import { savedTarget } from "./store-targets.js";
 import {
 	dailySales,
 	type HandlerArgs,
@@ -54,12 +56,13 @@ export function analyticsAsOf(
 
 function monthTarget(
 	store: AggregateStore,
+	settings: DemoSettingsStore,
 	storeIds: readonly string[],
 	periodStart: IsoDate,
 ): number | null {
 	let minor: number | null = null;
 	for (const visible of store.visibleStores(storeIds)) {
-		const target = store.days.target(visible, "month", periodStart);
+		const target = savedTarget(settings, visible.id, "month", periodStart);
 		if (target === null) continue;
 		minor = (minor ?? 0) + Math.round(target * MINOR_UNITS);
 	}
@@ -124,7 +127,12 @@ export function monthPace(
 				naiveDays.days === remainingDays
 					? monthToDate.add(naiveDays.total).toNumber()
 					: null,
-			target_net_amount: monthTarget(store, args.store_ids, periodStart),
+			target_net_amount: monthTarget(
+				store,
+				context.settings,
+				args.store_ids,
+				periodStart,
+			),
 		},
 	];
 }

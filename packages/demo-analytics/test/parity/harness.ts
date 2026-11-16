@@ -16,11 +16,8 @@ import {
 	type AnalyticsArgs,
 	type AnalyticsFunctionName,
 	addDays,
-	addMonths,
 	argumentNames,
 	type DateRange,
-	firstOfMonth,
-	type IsoDate,
 	minDate,
 } from "@fnb/reports";
 import { adjustmentEvents, mapSale, mapShift } from "@fnb/sync";
@@ -37,6 +34,7 @@ import {
 	demoPromotionCatalogue,
 	demoRoles,
 	demoStoreProfiles,
+	demoTargetRows,
 	dressDemoCatalogItem,
 	minorUnits,
 } from "../../src/index.js";
@@ -476,18 +474,6 @@ const CHECK_COLUMNS = [
 	"is_matched",
 ];
 
-function monthsOf(window: DateRange): IsoDate[] {
-	const months: IsoDate[] = [];
-	for (
-		let month = firstOfMonth(window.from);
-		month <= window.to;
-		month = addMonths(month, 1)
-	) {
-		months.push(month);
-	}
-	return months;
-}
-
 function datasetWindow(dataset: ParityDataset, clock: ParityClock): DateRange {
 	return { from: dataset.from, to: minDate(dataset.to, clock.today) };
 }
@@ -707,21 +693,13 @@ async function seedDataset(
 			})),
 		),
 	];
-	const targets: Record<string, unknown>[] = [];
-	for (const { definition, uuid } of Object.values(stores)) {
-		for (const month of monthsOf(window)) {
-			const target = days.target(definition, "month", month);
-			if (target !== null) {
-				targets.push({
-					tenant_id: tenantId,
-					store_id: uuid,
-					period_kind: "month",
-					period_start: month,
-					net_target_amount: target,
-				});
-			}
-		}
-	}
+	const targets = demoTargetRows(clock.asOf).map((target) => ({
+		tenant_id: tenantId,
+		store_id: stores[target.storeId as DemoStoreId].uuid,
+		period_kind: target.periodKind,
+		period_start: target.periodStart,
+		net_target_amount: target.netTargetAmount,
+	}));
 	statements.push(
 		...insertStatements(
 			"public.targets",

@@ -2,8 +2,8 @@ import { addDays, type IsoDate } from "../../lib/business-dates";
 import type { Formatters } from "../../lib/format";
 import { searchTextOf } from "../categories/categories";
 import { readDateDraft } from "../forms/date-field";
-import { moneyAffixes, readMoneyDraft } from "../forms/money-field";
-import { type NumberDraft, withoutAffixes } from "../number-text";
+import { readMoneyText } from "../forms/money-text";
+import type { NumberDraft } from "../number-text";
 import type { ItemEntry, ItemTypeEntry } from "../source";
 import {
 	FIRST_BUSINESS_DATE,
@@ -78,7 +78,6 @@ export interface CostReading {
 }
 
 const NAME_ORDER = new Intl.Collator("vi", { sensitivity: "base" });
-const LOOSE_FRACTION = /^-?\d+[.,]\d+$/;
 
 function typeNameOf(
 	entry: ItemEntry,
@@ -317,20 +316,12 @@ export function readCostText(
 	formatters: Formatters,
 	currencyCode: string,
 ): NumberDraft {
-	const draft = readMoneyDraft(text, formatters, currencyCode, {
-		schema: itemCost(formatters.moneyFractionDigits),
-		required: false,
-	});
-	if (
-		draft.issue?.key === "number" &&
-		formatters.moneyFractionDigits === 0 &&
-		LOOSE_FRACTION.test(
-			withoutAffixes(text, moneyAffixes(formatters, currencyCode)),
-		)
-	) {
-		return { value: null, issue: { key: "wholeMoney" } };
-	}
-	return draft;
+	return readMoneyText(
+		text,
+		formatters,
+		currencyCode,
+		itemCost(formatters.moneyFractionDigits),
+	);
 }
 
 export interface CostDraftContext {

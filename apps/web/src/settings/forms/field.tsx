@@ -10,7 +10,7 @@ export interface FieldControlProps {
 
 export interface FieldProps {
 	readonly id: string;
-	readonly label: string;
+	readonly label: ReactNode;
 	readonly hint?: string | null;
 	readonly error?: string | null;
 	readonly readOnly?: boolean;

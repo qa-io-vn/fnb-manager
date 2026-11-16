@@ -5,8 +5,17 @@ import { createFormatters } from "../../src/lib/format";
 import { createSupabaseManualSource } from "../../src/settings/manual/supabase-manual-source";
 import { writeCodeOf } from "../../src/settings/source";
 import { createSupabaseSettingsSource } from "../../src/settings/supabase-settings-source";
-import { isLocalStackConfigured } from "../support/local-stack";
-import { expectNoConsoleErrors, watchConsoleErrors } from "../support/reports";
+import {
+	clockAfterSeed,
+	isLocalStackConfigured,
+	shiftDate,
+} from "../support/local-stack";
+import {
+	expectNoConsoleErrors,
+	reportUrl,
+	waitForSettledCards,
+	watchConsoleErrors,
+} from "../support/reports";
 import { openSettings, saveSettings, settingsNav } from "../support/settings";
 import {
 	createSettingsFixture,
@@ -899,4 +908,215 @@ test("a manager reads the legal texts with the reason and no write control", asy
 	await expect(page.getByTestId("legal-retire")).toHaveCount(0);
 	await expect(published.getByRole("button")).toHaveCount(1);
 	expectNoConsoleErrors(page);
+});
+
+const CATCH_UP_DONE = "Đã cập nhật xong số liệu theo thay đổi cài đặt.";
+const PARTNER_WALLET = "Ví đối tác";
+const MONTH_TARGET = 9_000_000;
+const STORE_TIME_ZONE = "Asia/Ho_Chi_Minh";
+
+function monthOfDate(isoDate: string): string {
+	return `${isoDate.slice(0, 7)}-01`;
+}
+
+function daysLeftFrom(today: string): number {
+	const [year, month, day] = today.split("-").map(Number) as [
+		number,
+		number,
+		number,
+	];
+	return new Date(Date.UTC(year, month, 0)).getUTCDate() - day + 1;
+}
+
+function targetMonthRow(page: Page, monthStart: string): Locator {
+	return page.locator(
+		`[data-testid="target-month"][data-month="${monthStart}"]`,
+	);
+}
+
+function feeRow(page: Page, methodId: string): Locator {
+	return page.locator(`[data-testid="fee-row"][data-method="${methodId}"]`);
+}
+
+async function openThemeThroughTheApp(page: Page, tab: string): Promise<void> {
+	await mainNav(page).getByRole("link", { name: "Chủ đề" }).click();
+	await page.getByTestId("theme-tabs").getByRole("link", { name: tab }).click();
+	await waitForSettledThemeCards(page);
+}
+
+test.describe("Mục tiêu and Phí thanh toán in the browser", () => {
+	test.beforeAll(async () => {
+		const { tenantId } = created();
+		await inFixtureDatabase(async (sql) => {
+			await sql`update public.tenants set default_language = 'vi' where id = ${tenantId}`;
+			await sql`delete from public.payment_fee_rates where tenant_id = ${tenantId}`;
+			await sql`delete from public.targets where tenant_id = ${tenantId}`;
+			await sql`
+				insert into public.invoice_payments (
+					tenant_id, store_id, invoice_id, business_date,
+					payment_method_external_id, payment_method_name, amount
+				)
+				select
+					i.tenant_id, i.store_id, i.id, i.business_date,
+					i.primary_payment_method_external_id, i.primary_payment_method_name, i.paid_amount
+				from public.invoices i
+				where i.tenant_id = ${tenantId}
+			`;
+			await sql`select app.refresh_analytics(${tenantId}::uuid, ${FIRST_DAY}::date, current_date + 1)`;
+		});
+	});
+
+	test.afterAll(async () => {
+		const { tenantId, sales } = created();
+		await inFixtureDatabase(async (sql) => {
+			await sql`delete from public.targets where tenant_id = ${tenantId}`;
+			await sql`delete from public.payment_fee_rates where tenant_id = ${tenantId}`;
+			await sql`delete from public.invoice_payments where tenant_id = ${tenantId}`;
+			await sql`select app.refresh_analytics(${tenantId}::uuid, ${sales.from}::date, ${sales.to}::date)`;
+		});
+	});
+
+	test("with Tháng open for store 1, a monthly target saved on Mục tiêu and its link back show the target progress, the amount still needed each day and both forecasts against the target", async ({
+		page,
+	}) => {
+		const { tenantId, storeIds } = created();
+		const realToday = storeToday();
+		const pinned = realToday.endsWith("-01")
+			? shiftDate(realToday, -1)
+			: realToday;
+		const clock = clockAfterSeed(shiftDate(pinned, -1), STORE_TIME_ZONE);
+		const today = clock.today;
+		const monthStart = monthOfDate(today);
+		const monthKey = today.slice(0, 7);
+		watchConsoleErrors(page);
+		await page.clock.setFixedTime(clock.now);
+		await created().signIn(page, "owner");
+		await page.goto(reportUrl("month", `store=${storeIds[0]}`));
+		await waitForSettledCards(page);
+		await markThisDocument(page);
+		const before = page.getByTestId("card-month-target_progress");
+		await expect(before.getByTestId("headline")).toHaveText("—");
+		const notice = before.getByTestId("card-notice");
+		await expect(notice).toContainText(FIRST_STORE_NAME);
+		await notice.getByRole("link", { name: "Đặt mục tiêu tháng" }).click();
+		await expect(page).toHaveURL(/#\/cai-dat\/du-lieu-nhap-tay\?tab=muc-tieu/);
+		await expect(page.getByLabel("Cửa hàng", { exact: true })).toHaveValue(
+			storeIds[0],
+		);
+		const current = targetMonthRow(page, monthStart);
+		await expect(current).toHaveAttribute("data-current", "true");
+		await expect(current.getByTestId("target-saved")).toHaveText(
+			"Chưa đặt mục tiêu.",
+		);
+		await expect(current.getByTestId("target-pace")).toHaveAttribute(
+			"data-status",
+			"ready",
+		);
+		await current
+			.getByLabel(/^Mục tiêu doanh thu thuần cho tháng /)
+			.fill(String(MONTH_TARGET));
+		await saveSettings(page.getByTestId("settings-save-bar"));
+		await expect(current.getByTestId("target-saved")).toHaveText(
+			exactly(new RegExp(`Mục tiêu: ${money(MONTH_TARGET).source}`)),
+		);
+		await expect(
+			current.getByTestId("settings-audit-line").first(),
+		).toContainText("Bạn sửa lần cuối");
+		await expect(current.getByTestId("target-pace-net")).toContainText(
+			"mục tiêu",
+		);
+		await current
+			.getByRole("link", { name: "Xem tiến độ trong Báo cáo tháng" })
+			.click();
+		await expect(page).toHaveURL(
+			new RegExp(`#/bao-cao/thang\\?month=${monthKey}&store=${storeIds[0]}$`),
+		);
+		await waitForSettledCards(page);
+		const progress = page.getByTestId("card-month-target_progress");
+		await expect(progress.getByTestId("card-notice")).toHaveCount(0);
+		await expect(progress.getByTestId("headline")).toHaveText(/\d.*%/);
+		await expect(progress.getByTestId("sentence")).toContainText("cần thêm");
+		await expect(progress.getByTestId("sentence")).toContainText(
+			`mỗi ngày trong ${daysLeftFrom(today)} ngày còn lại`,
+		);
+		const chips = progress.getByTestId("comparison-chip");
+		await expect(chips).toHaveCount(2);
+		await expect(chips.filter({ hasText: "so với mục tiêu" })).toHaveCount(2);
+		await expectSameDocument(page);
+		const owner = createSupabaseManualSource(await clientAs("owner"));
+		expect(
+			(await owner.targets(tenantId)).map((row) => [
+				row.storeId,
+				row.periodKind,
+				row.periodStart,
+				row.netTargetAmount,
+			]),
+		).toEqual([[storeIds[0], "month", monthStart, MONTH_TARGET]]);
+		expectNoConsoleErrors(page);
+	});
+
+	test("a 21 % fee is refused, and a fee rate saved on Phí thanh toán starts the catch-up and, once it has finished, brings the fee estimate to Thanh toán", async ({
+		page,
+	}) => {
+		const { tenantId } = created();
+		watchConsoleErrors(page);
+		await created().signIn(page, "owner");
+		await markThisDocument(page);
+		await openThemeThroughTheApp(page, "Thanh toán & tiền mặt");
+		const fees = themeCard(page, "payments", "fees");
+		await expect(fees.getByTestId("headline")).toHaveText("—");
+		await fees.getByTestId("card-notice").getByRole("link").click();
+		await expect(page).toHaveURL(/#\/cai-dat\/du-lieu-nhap-tay\?tab=phi/);
+		await expect(scopeField(page)).toHaveValue("all");
+		const wallet = feeRow(page, "WALLET");
+		const percent = wallet.getByLabel(`Tỷ lệ phí mới cho ${PARTNER_WALLET}`, {
+			exact: true,
+		});
+		const feeDate = wallet.getByLabel(`Áp dụng từ ngày cho ${PARTNER_WALLET}`, {
+			exact: true,
+		});
+		await expect(wallet.getByTestId("fee-method")).toHaveText(PARTNER_WALLET);
+		await expect(feeDate).toHaveValue(FIRST_DAY);
+		await expect(feeDate).toHaveAccessibleDescription(WHOLE_HISTORY);
+		await percent.fill("21");
+		await expect(wallet.getByTestId("settings-field-error")).toHaveText(
+			"Nhập giá trị từ 0% đến 20%.",
+		);
+		await percent.fill("2");
+		await saveSettings(page.getByTestId("settings-save-bar"));
+		await expect(page.getByTestId("fees-catch-up-note")).toBeVisible();
+		await expect(wallet.getByTestId("fee-current")).toHaveText(
+			"Phí hôm nay: 2%, từ 01/01/2023",
+		);
+		const banner = page.getByTestId("catch-up-banner");
+		await expect(banner).toBeVisible();
+		await expect(banner.getByTestId("catch-up-status")).toHaveText(
+			CATCH_UP_DONE,
+		);
+		await expect(banner).toHaveAttribute("data-pending-days", "0");
+		await banner.getByTestId("catch-up-action").click();
+		await expect(banner).toHaveCount(0);
+		await openThemeThroughTheApp(page, "Thanh toán & tiền mặt");
+		const after = themeCard(page, "payments", "fees");
+		await expect(after.getByTestId("card-notice")).toHaveCount(0);
+		await expect(after.getByTestId("headline")).toHaveText(/\d.*₫/);
+		await expect(
+			after
+				.getByRole("table", { name: "Phí theo phương thức thanh toán" })
+				.locator("tbody tr")
+				.filter({ hasText: PARTNER_WALLET }),
+		).toContainText("2,0%");
+		await expectSameDocument(page);
+		const owner = createSupabaseSettingsSource(await clientAs("owner"));
+		expect(
+			(await owner.feeRates(tenantId)).map((row) => [
+				row.storeId,
+				row.paymentMethodExternalId,
+				row.feePct,
+				row.fixedFeeAmount,
+				row.effectiveFrom,
+			]),
+		).toEqual([[null, "WALLET", 2, 0, FIRST_DAY]]);
+		expectNoConsoleErrors(page);
+	});
 });

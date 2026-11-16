@@ -489,6 +489,46 @@ test("Cài đặt: Dữ liệu nhập tay, a cost CSV in the import preview with
 	await shootElement(costs.getByTestId("costs-csv"), "settings-gia-von-import");
 });
 
+test("Cài đặt: Dữ liệu nhập tay, a monthly target with this month's pace, and the payment fees by kind", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: COMPUTER.width, height: 2400 });
+	await page.goto("/#/cai-dat/du-lieu-nhap-tay?tab=muc-tieu");
+	const targets = page.getByTestId("targets-form");
+	await expect(targets).toBeVisible();
+	await targets.getByLabel("Cửa hàng", { exact: true }).selectOption("MOCK-S2");
+	const november = targets.locator(
+		'[data-testid="target-month"][data-current="true"]',
+	);
+	await november.getByLabel("Mục tiêu doanh thu thuần").fill("210000000");
+	await page.getByTestId("settings-save").click();
+	await expect(page.getByTestId("settings-save-bar-status")).toHaveText(
+		"Đã lưu.",
+	);
+	await expect(november.getByTestId("target-pace")).toHaveAttribute(
+		"data-status",
+		"ready",
+	);
+	await shootElement(page.getByTestId("manual-page"), "settings-muc-tieu");
+	await page
+		.getByTestId("manual-tabs")
+		.getByRole("link", { name: "Phí thanh toán" })
+		.click();
+	const fees = page.getByTestId("fees-form");
+	await expect(fees).toBeVisible();
+	const wallet = fees.locator(
+		'[data-testid="fee-row"][data-method="PM-EWALLET"]',
+	);
+	await wallet.getByLabel("Tỷ lệ phí mới").fill("1,1");
+	await page.getByTestId("settings-save").click();
+	await expect(page.getByTestId("fees-catch-up-note")).toBeVisible();
+	await fees
+		.locator('[data-testid="fee-row"][data-method="PM-BANK"]')
+		.getByLabel("Tỷ lệ phí mới")
+		.fill("0,2");
+	await shootElement(page.getByTestId("manual-page"), "settings-phi");
+});
+
 test("the printed report", async ({ page }) => {
 	await page.setViewportSize({ width: A4_WIDTH_PX, height: 1123 });
 	await openReportPage(page, "day");

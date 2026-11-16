@@ -64,7 +64,7 @@ describe("CatchUpBanner", () => {
 		const user = userEvent.setup();
 		const { catchUp } = renderBanner();
 		expect(screen.getByTestId("catch-up-banner")).toHaveTextContent(
-			"Số liệu đang cập nhật theo thay đổi phân loại lúc 00:30 ngày 15/11/2026: còn 198 ngày.",
+			"Số liệu đang cập nhật theo thay đổi cài đặt lúc 00:30 ngày 15/11/2026: còn 198 ngày.",
 		);
 		expect(screen.getByRole("status")).toBeEmptyDOMElement();
 		await user.click(screen.getByRole("button", { name: "Cập nhật ngay" }));
@@ -93,7 +93,7 @@ describe("CatchUpBanner", () => {
 	it("keeps saying it is refreshing while only days no report shows are left", () => {
 		renderBanner({ running: true, pendingDays: 0 });
 		expect(screen.getByTestId("catch-up-banner")).toHaveTextContent(
-			"Số liệu đang cập nhật theo thay đổi phân loại.",
+			"Số liệu đang cập nhật theo thay đổi cài đặt.",
 		);
 		expect(screen.getByRole("status")).toHaveTextContent("Đang cập nhật…");
 	});
@@ -139,7 +139,7 @@ describe("CatchUpBanner", () => {
 			</I18nProvider>,
 		);
 		expect(screen.getByRole("status")).toHaveTextContent(
-			"Đã cập nhật xong số liệu theo thay đổi phân loại.",
+			"Đã cập nhật xong số liệu theo thay đổi cài đặt.",
 		);
 		const close = screen.getByRole("button", { name: "Đóng" });
 		expect(close).toHaveFocus();
@@ -152,7 +152,7 @@ describe("CatchUpBanner", () => {
 	it("leaves the time out when the change was never stamped, and reads in English", () => {
 		renderBanner({ status: { ...PENDING, inputsChangedAt: null } }, "en");
 		expect(screen.getByTestId("catch-up-banner")).toHaveTextContent(
-			"The numbers are catching up with a mapping change. Days left: 198.",
+			"The numbers are catching up with a settings change. Days left: 198.",
 		);
 		expect(
 			screen.getByRole("button", { name: "Refresh now" }),

@@ -1,5 +1,5 @@
 begin;
-select plan(13);
+select plan(15);
 
 insert into auth.users (id, instance_id, aud, role, email)
 values
@@ -88,6 +88,22 @@ select lives_ok(
   $$ insert into public.targets (tenant_id, store_id, period_kind, period_start, net_target_amount)
      values ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-000000000001', 'week', date_trunc('week', current_date)::date, 60000000) $$,
   'owner inserts a weekly target for the own tenant'
+);
+
+select throws_ok(
+  $$ insert into public.targets (tenant_id, store_id, period_kind, period_start, net_target_amount)
+     values ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-000000000001', 'month', date_trunc('month', current_date)::date, 0) $$,
+  '23514',
+  null,
+  'a target of 0 đồng is refused'
+);
+
+select throws_ok(
+  $$ insert into public.targets (tenant_id, store_id, period_kind, period_start, net_target_amount)
+     values ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-000000000001', 'month', (date_trunc('month', current_date) - interval '1 month')::date, 1500000.5) $$,
+  '23514',
+  null,
+  'a target with a fraction of a đồng is refused'
 );
 
 select lives_ok(

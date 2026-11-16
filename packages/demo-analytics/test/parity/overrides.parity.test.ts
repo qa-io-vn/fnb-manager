@@ -38,6 +38,8 @@ import {
 	CUSTOM_HOLIDAY_NAME,
 	KIND_OVERRIDE_METHOD,
 	type MenuVariant,
+	SAVED_TARGET_AMOUNT,
+	SAVED_TARGET_STORE,
 } from "./settings-fixture.js";
 import { compareThemeCall, seedSeats, themeEngine } from "./theme-harness.js";
 
@@ -262,6 +264,49 @@ describe("aggregates and settings follow category overrides, costs, fee rates an
 		expect(report.differences).toEqual([]);
 		expect(report.mismatches).toBe(0);
 	}, 600_000);
+
+	it("reads a saved monthly target in store_targets and month_pace alike", async () => {
+		for (const seeded of active().datasets) {
+			const { engine, variant } = variantOf(seeded);
+			const target = variant.targets[0];
+			const holiday = variant.holidays[0];
+			if (target === undefined || holiday === undefined) {
+				throw new Error("the variant has no target or no holiday");
+			}
+			for (const stores of STORE_SETS) {
+				await compareCall(
+					report,
+					active(),
+					seeded,
+					"store_targets",
+					{
+						store_ids: [...stores],
+						period_kind: "month",
+						period_start: target.periodStart,
+					},
+					{ key: ["store_id"] },
+					engine,
+					" with a saved target",
+				);
+			}
+			const pace = await compareCall(
+				report,
+				active(),
+				seeded,
+				"month_pace",
+				{
+					store_ids: [SAVED_TARGET_STORE],
+					month_start: target.periodStart,
+					as_of: holiday.holidayDate,
+				},
+				{ key: ["period_start"] },
+				engine,
+				" with a saved target",
+			);
+			expect(pace.rows?.[0]?.target_net_amount).toBe(SAVED_TARGET_AMOUNT);
+		}
+		expect(report.mismatches, report.summary()).toBe(0);
+	});
 
 	it("excludes the custom holiday wherever the SQL reads the tenant's holidays", async () => {
 		for (const seeded of active().datasets) {

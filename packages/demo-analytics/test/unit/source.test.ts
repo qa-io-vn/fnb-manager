@@ -4,7 +4,14 @@ import {
 	analyticsFunctions,
 } from "@fnb/reports";
 import { describe, expect, it } from "vitest";
-import { createDemoAnalyticsSource, DemoDayCache } from "../../src/index.js";
+import {
+	createDemoAnalyticsSource,
+	DemoDayCache,
+	DemoSettingsStore,
+	demoSettings,
+	demoStores,
+	demoTargets,
+} from "../../src/index.js";
 
 const NOW = new Date("2026-11-04T05:30:00.000Z");
 
@@ -78,6 +85,58 @@ describe("createDemoAnalyticsSource", () => {
 		});
 		expect(rows.map((row) => row.store_id)).toEqual(["MOCK-S1"]);
 		expect(rows[0]?.net_target_amount).toBeGreaterThan(0);
+	});
+
+	it("reads the targets from the settings store, the sample targets by default and a saved target once it is saved", async () => {
+		const settings = new DemoSettingsStore(demoSettings("2026-11-03"));
+		const demo = createDemoAnalyticsSource({
+			now: () => NOW,
+			settings,
+			validateRows: true,
+		});
+		const established = demoStores("2026-11-03")[0];
+		if (established === undefined) throw new Error("missing demo store");
+		const sample = demoTargets(established, "2026-11-01");
+		const month = {
+			store_ids: ["MOCK-S1", "MOCK-S2"],
+			period_kind: "month" as const,
+			period_start: "2026-11-01",
+		};
+		const pace = {
+			store_ids: ["MOCK-S1", "MOCK-S2"],
+			month_start: "2026-11-01",
+			as_of: "2026-11-03",
+		};
+		expect(await demo.call("store_targets", month)).toEqual([
+			{ store_id: "MOCK-S1", net_target_amount: sample },
+		]);
+		expect((await demo.call("month_pace", pace))[0]?.target_net_amount).toBe(
+			sample,
+		);
+		settings.saveTargets([
+			...settings.targets(),
+			{
+				storeId: "MOCK-S2",
+				periodKind: "month",
+				periodStart: "2026-11-01",
+				netTargetAmount: 90_000_000,
+			},
+		]);
+		expect(await demo.call("store_targets", month)).toEqual([
+			{ store_id: "MOCK-S1", net_target_amount: sample },
+			{ store_id: "MOCK-S2", net_target_amount: 90_000_000 },
+		]);
+		expect((await demo.call("month_pace", pace))[0]?.target_net_amount).toBe(
+			(sample ?? 0) + 90_000_000,
+		);
+		expect(
+			(
+				await demo.call("month_pace", {
+					...pace,
+					store_ids: ["MOCK-S2"],
+				})
+			)[0]?.target_net_amount,
+		).toBe(90_000_000);
 	});
 
 	it("raises the SQL argument errors", async () => {

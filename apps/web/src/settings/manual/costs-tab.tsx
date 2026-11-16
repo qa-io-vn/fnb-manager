@@ -29,10 +29,7 @@ import {
 	useStoreProfiles,
 } from "../queries";
 import { ReadOnlyNotice } from "../read-only-notice";
-import {
-	useRetrySettingsSource,
-	useSettingsSourceState,
-} from "../settings-source-context";
+import { SectionLoadState, useSectionLoad } from "../section-load";
 import type {
 	ItemEntry,
 	ItemTypeEntry,
@@ -547,46 +544,6 @@ function CostsForm({
 	);
 }
 
-function LoadState({
-	failed,
-	onRetry,
-}: {
-	readonly failed: boolean;
-	readonly onRetry: () => void;
-}) {
-	const t = useT();
-	if (!failed) return <p role="status">{t("app.loading")}</p>;
-	return (
-		<div role="alert" className="space-y-2" data-testid="costs-load-failed">
-			<p>{t("app.error")}</p>
-			<Button tone="secondary" size="compact" onClick={onRetry}>
-				{t("app.retry")}
-			</Button>
-		</div>
-	);
-}
-
-interface Read {
-	readonly status: "pending" | "error" | "success";
-	readonly refetch: () => Promise<unknown>;
-}
-
-function useLoadState(reads: readonly Read[]) {
-	const sourceState = useSettingsSourceState();
-	const retrySource = useRetrySettingsSource();
-	const sourceFailed = sourceState.status === "failed";
-	return {
-		failed: sourceFailed || reads.some((read) => read.status === "error"),
-		retry: sourceFailed
-			? retrySource
-			: () => {
-					for (const read of reads) {
-						if (read.status === "error") void read.refetch();
-					}
-				},
-	};
-}
-
 function useCostItems(
 	entries: readonly ItemEntry[] | undefined,
 	itemTypes: readonly ItemTypeEntry[] | undefined,
@@ -622,7 +579,7 @@ export function CostsTab() {
 	const costs = useItemCosts();
 	const entries = useItems();
 	const itemTypes = useItemTypes();
-	const load = useLoadState([costs, entries, itemTypes]);
+	const load = useSectionLoad([costs, entries, itemTypes]);
 	const [chosen, setChosen] = useState<{ storeId: CostScope } | null>(null);
 	const storeId =
 		chosen === null
@@ -713,7 +670,7 @@ export function CostsTab() {
 		entries.data === undefined ||
 		itemTypes.data === undefined
 	) {
-		return <LoadState failed={load.failed} onRetry={load.retry} />;
+		return <SectionLoadState load={load} failedTestId="costs-load-failed" />;
 	}
 	const outcome = saveOutcomeOf(saving);
 	const deleteOutcome: DeleteOutcome =

@@ -161,6 +161,20 @@ export function itemCost(fractionDigits: number) {
 	return money(fractionDigits, { min: 0, max: ITEM_COST_MAX });
 }
 
+export const FEE_FIXED_MAX = 100_000;
+
+export function feeFixedAmount(fractionDigits: number) {
+	return money(fractionDigits, { min: 0, max: FEE_FIXED_MAX });
+}
+
+export const TARGET_MIN = 1;
+
+export const TARGET_MAX = WHOLE_MONEY_MAX;
+
+export function targetAmount(fractionDigits: number) {
+	return money(fractionDigits, { min: TARGET_MIN, max: TARGET_MAX });
+}
+
 export function dateBounds(today: IsoDate): { min: IsoDate; max: IsoDate } {
 	const nextYear = Number(today.slice(0, 4)) + 1;
 	return { min: FIRST_BUSINESS_DATE, max: `${nextYear}-12-31` };

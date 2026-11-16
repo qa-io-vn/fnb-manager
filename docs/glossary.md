@@ -211,7 +211,7 @@ Each card has an id in `@fnb/reports` and a title key `report.<report>.<name>.ti
 |---|---|---|---|
 | đã đối soát · chưa đối soát | reconciled · not reconciled | `badge.verified`, `badge.unverified` | every selected store-day matches the POS [control totals](#control-totals) (`sync_checks.is_matched`), or not |
 | tạm tính | provisional | `reportCard.provisional` | an input is missing (costs, seats or customer identity), so the figure is incomplete |
-| Số liệu đang cập nhật theo thay đổi phân loại lúc … | The numbers are catching up with the mapping change of … | `settings.catchUp.*` | the [catch-up](#catch-up) line of the thematic reports and Settings: past days are still being recalculated after a role, category or fee-rate change (payment kinds join in 10b) |
+| Số liệu đang cập nhật theo thay đổi cài đặt lúc … | The numbers are catching up with the settings change of … | `settings.catchUp.*` | the [catch-up](#catch-up) line of the thematic reports and Settings: past days are still being recalculated after a role, category or fee-rate change (payment kinds join in 10b) |
 | đang cập nhật | updating | `report.marker.stale` | a recent day's item, payment or shift aggregates still lag its live totals (`store_coverage.stale_days`); on a thematic card, also while the range holds a day the [catch-up](#catch-up) has not redone yet |
 | dữ liệu mẫu | sample data | `badge.sample` | demo numbers |
 | chưa đồng bộ · cập nhật lúc | not synced yet · updated at | `badge.neverSynced`, `badge.updatedAt` | the freshness badge: the latest successful sync run |

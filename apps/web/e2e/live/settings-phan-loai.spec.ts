@@ -22,7 +22,7 @@ const UNCATEGORISED = "Chưa phân loại";
 const PARTNER_WALLET = "Ví đối tác";
 const OTHER_KIND = "Khác";
 const WALLET_KIND = "Ví điện tử";
-const CATCH_UP_DONE = "Đã cập nhật xong số liệu theo thay đổi phân loại.";
+const CATCH_UP_DONE = "Đã cập nhật xong số liệu theo thay đổi cài đặt.";
 const NO_RELOAD_MARKER = "phanLoaiSameDocument";
 
 let fixture: SettingsFixture | undefined;

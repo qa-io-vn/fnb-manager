@@ -14,6 +14,8 @@ import reportsEn from "./messages/reports.en.json";
 import reportsVi from "./messages/reports.vi.json";
 import settingsEn from "./messages/settings.en.json";
 import settingsVi from "./messages/settings.vi.json";
+import settingsFeesEn from "./messages/settings-fees.en.json";
+import settingsFeesVi from "./messages/settings-fees.vi.json";
 import settingsHolidaysEn from "./messages/settings-holidays.en.json";
 import settingsHolidaysVi from "./messages/settings-holidays.vi.json";
 import settingsLegalEn from "./messages/settings-legal.en.json";
@@ -24,6 +26,8 @@ import settingsMappingEn from "./messages/settings-mapping.en.json";
 import settingsMappingVi from "./messages/settings-mapping.vi.json";
 import settingsStoreEn from "./messages/settings-store.en.json";
 import settingsStoreVi from "./messages/settings-store.vi.json";
+import settingsTargetsEn from "./messages/settings-targets.en.json";
+import settingsTargetsVi from "./messages/settings-targets.vi.json";
 import settingsThresholdsEn from "./messages/settings-thresholds.en.json";
 import settingsThresholdsVi from "./messages/settings-thresholds.vi.json";
 import themeHoursEn from "./messages/theme-hours.en.json";
@@ -60,6 +64,8 @@ export type MessageKey =
 	| keyof typeof settingsHolidaysVi
 	| keyof typeof settingsManualVi
 	| keyof typeof settingsLegalVi
+	| keyof typeof settingsTargetsVi
+	| keyof typeof settingsFeesVi
 	| keyof typeof themesVi
 	| keyof typeof themeRevenueVi
 	| keyof typeof themeHoursVi;
@@ -90,6 +96,8 @@ const settingsFilePrefixes = [
 	"settings.holidays.",
 	"settings.manual.",
 	"settings.legal.",
+	"settings.targets.",
+	"settings.fees.",
 ] as const;
 
 const reportFilePrefixes = [
@@ -260,6 +268,20 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: settingsLegalVi,
 		en: settingsLegalEn,
+	},
+	{
+		name: "settings-targets",
+		prefix: "settings.targets.",
+		excludedPrefixes: [],
+		vi: settingsTargetsVi,
+		en: settingsTargetsEn,
+	},
+	{
+		name: "settings-fees",
+		prefix: "settings.fees.",
+		excludedPrefixes: [],
+		vi: settingsFeesVi,
+		en: settingsFeesEn,
 	},
 ];
 
