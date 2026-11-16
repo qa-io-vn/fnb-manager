@@ -43,8 +43,39 @@ const LAST_SECOND_OF_HOUR = MILLISECONDS_PER_HOUR - 1000;
 const MAX_CACHED_HOURS = 100_000;
 const YEAR_100_START_MS = new Date(0).setUTCFullYear(100, 0, 1);
 const LAST_REPRESENTABLE_MS = 8.64e15;
+const MAX_CACHED_DAYS = 20_000;
 const hourOffsets = new Map<string, Map<number, number | null>>();
+const dayOffsets = new Map<string, Map<number, number | null>>();
 let cachedHourCount = 0;
+let cachedDayCount = 0;
+
+function dayOffsetsOf(timezone: string): Map<number, number | null> {
+	let offsets = dayOffsets.get(timezone);
+	if (offsets === undefined) {
+		offsets = new Map();
+		dayOffsets.set(timezone, offsets);
+	}
+	return offsets;
+}
+
+function steadyDayOffset(day: number, timezone: string): number | null {
+	const cached = dayOffsetsOf(timezone).get(day);
+	if (cached !== undefined) return cached;
+	const start = day * MILLISECONDS_PER_DAY;
+	const atStart = formattedOffset(start, timezone);
+	const atEnd = formattedOffset(start + MILLISECONDS_PER_DAY - 1000, timezone);
+	const offset =
+		atStart === atEnd && Math.abs(atStart) < MILLISECONDS_PER_DAY
+			? atStart
+			: null;
+	if (cachedDayCount >= MAX_CACHED_DAYS) {
+		dayOffsets.clear();
+		cachedDayCount = 0;
+	}
+	dayOffsetsOf(timezone).set(day, offset);
+	cachedDayCount += 1;
+	return offset;
+}
 
 function hourOffsetsOf(timezone: string): Map<number, number | null> {
 	let offsets = hourOffsets.get(timezone);
@@ -70,6 +101,8 @@ function formattedOffset(time: number, timezone: string): number {
 }
 
 function steadyHourOffset(hour: number, timezone: string): number | null {
+	const wholeDay = steadyDayOffset(Math.floor(hour / 24), timezone);
+	if (wholeDay !== null) return wholeDay;
 	const cached = hourOffsetsOf(timezone).get(hour);
 	if (cached !== undefined) return cached;
 	const start = hour * MILLISECONDS_PER_HOUR;
@@ -126,18 +159,23 @@ export function formattedWallClock(instant: Date, timezone: string): WallClock {
 	};
 }
 
-let lastParsedDate: string | null = null;
-let lastParsedYear = 0;
-let lastParsedMonth = 0;
-let lastParsedDay = 0;
+interface CalendarDate {
+	readonly year: number;
+	readonly month: number;
+	readonly day: number;
+}
+
+const MAX_PARSED_DATES = 4096;
+const parsedDates = new Map<string, CalendarDate>();
 
 export function parseIsoDate(value: string): {
 	year: number;
 	month: number;
 	day: number;
 } {
-	if (value === lastParsedDate) {
-		return { year: lastParsedYear, month: lastParsedMonth, day: lastParsedDay };
+	const parsed = parsedDates.get(value);
+	if (parsed !== undefined) {
+		return { year: parsed.year, month: parsed.month, day: parsed.day };
 	}
 	if (!ISO_DATE_PATTERN.test(value)) {
 		throw new RangeError(
@@ -157,10 +195,8 @@ export function parseIsoDate(value: string): {
 	if (!isReal) {
 		throw new RangeError(`"${value}" is not a valid calendar date`);
 	}
-	lastParsedDate = value;
-	lastParsedYear = year;
-	lastParsedMonth = month;
-	lastParsedDay = day;
+	if (parsedDates.size >= MAX_PARSED_DATES) parsedDates.clear();
+	parsedDates.set(value, { year, month, day });
 	return { year, month, day };
 }
 

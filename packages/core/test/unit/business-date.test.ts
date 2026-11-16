@@ -1,10 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	businessDate,
 	businessDayEnd,
 	businessDayStart,
+	formattedWallClock,
 	instantOnBusinessDate,
 	isoDatesBetween,
+	parseIsoDate,
 	shiftIsoDate,
 	wallClockIn,
 	zonedInstant,
@@ -149,5 +151,61 @@ describe("ISO date helpers", () => {
 	it("rejects malformed dates", () => {
 		expect(() => shiftIsoDate("2026-02-30", 0)).toThrow(RangeError);
 		expect(() => shiftIsoDate("07/11/2026", 0)).toThrow(RangeError);
+	});
+});
+
+const MINUTE_MS = 60_000;
+
+function minutesOfUtcDay(year: number, month: number, day: number): Date[] {
+	const start = Date.UTC(year, month - 1, day);
+	return Array.from(
+		{ length: 24 * 60 },
+		(_, minute) => new Date(start + minute * MINUTE_MS),
+	);
+}
+
+describe("wall clocks from a day's offset", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("reads every minute of a day without a transition with two Intl lookups", () => {
+		const lookups = vi.spyOn(Intl.DateTimeFormat.prototype, "formatToParts");
+		const minutes = minutesOfUtcDay(2027, 2, 3);
+		const clocks = minutes.map((instant) =>
+			wallClockIn(instant, "Asia/Kathmandu"),
+		);
+		expect(lookups).toHaveBeenCalledTimes(2);
+		lookups.mockRestore();
+		minutes.forEach((instant, index) => {
+			expect(clocks[index]).toEqual(
+				formattedWallClock(instant, "Asia/Kathmandu"),
+			);
+		});
+	});
+
+	it("stays exact on both daylight-saving days of a year, minute by minute", () => {
+		for (const [month, day] of [
+			[3, 8],
+			[11, 1],
+		] as const) {
+			for (const instant of minutesOfUtcDay(2026, month, day)) {
+				expect(wallClockIn(instant, NEW_YORK)).toEqual(
+					formattedWallClock(instant, NEW_YORK),
+				);
+			}
+		}
+	});
+});
+
+describe("parseIsoDate", () => {
+	it("hands out a fresh object for a date it has seen before", () => {
+		const first = parseIsoDate("2026-02-28");
+		first.day = 1;
+		expect(parseIsoDate("2026-02-28")).toEqual({
+			year: 2026,
+			month: 2,
+			day: 28,
+		});
 	});
 });

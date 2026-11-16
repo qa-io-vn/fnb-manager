@@ -6,6 +6,7 @@ import {
 	type CanonicalSale,
 	type PaymentKind,
 	roundMoney,
+	wallClockIn,
 } from "@fnb/core";
 import type { IsoDate, PromotionKind } from "@fnb/reports";
 import { adjustmentEvents, toDbLineKind } from "@fnb/sync";
@@ -395,50 +396,8 @@ function adjustmentEventsOf(
 	});
 }
 
-const hourOffsets = new Map<string, Map<number, number>>();
-const hourFormatters = new Map<string, Intl.DateTimeFormat>();
-
-function hourOffsetsIn(timeZone: string): Map<number, number> {
-	let offsets = hourOffsets.get(timeZone);
-	if (offsets === undefined) {
-		offsets = new Map();
-		hourOffsets.set(timeZone, offsets);
-	}
-	return offsets;
-}
-
-function hourFormatter(timeZone: string): Intl.DateTimeFormat {
-	let formatter = hourFormatters.get(timeZone);
-	if (formatter === undefined) {
-		formatter = new Intl.DateTimeFormat("en-GB", {
-			timeZone,
-			hourCycle: "h23",
-			hour: "2-digit",
-			minute: "2-digit",
-		});
-		hourFormatters.set(timeZone, formatter);
-	}
-	return formatter;
-}
-
 export function localHour(instant: Date, timeZone: string): number {
-	const time = instant.getTime();
-	const offsets = hourOffsetsIn(timeZone);
-	const hourKey = Math.floor(time / 3_600_000);
-	let offset = offsets.get(hourKey);
-	if (offset === undefined) {
-		const parts = hourFormatter(timeZone).formatToParts(instant);
-		const hour = Number(parts.find((part) => part.type === "hour")?.value);
-		const minute = Number(parts.find((part) => part.type === "minute")?.value);
-		offset =
-			(hour * 60 +
-				minute -
-				(instant.getUTCHours() * 60 + instant.getUTCMinutes()) +
-				2880) %
-			1440;
-		offsets.set(hourKey, offset);
-	}
-	return new Date(time + offset * 60_000).getUTCHours();
+	return wallClockIn(instant, timeZone).hour;
 }
 
 function isItemLine(line: CanonicalLine): boolean {
