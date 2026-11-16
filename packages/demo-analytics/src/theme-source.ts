@@ -31,6 +31,7 @@ import {
 	dataQualitySummary,
 	RECEIPT_LOOKBACK_DAYS,
 } from "./functions/data-quality-summary.js";
+import { holidayCalendar } from "./functions/holiday-calendar.js";
 import { hourProfile } from "./functions/hour-profile.js";
 import { hourWeekdayHeatmap } from "./functions/hour-weekday-heatmap.js";
 import { ITEM_ATTACH_MAX_DAYS, itemAttach } from "./functions/item-attach.js";
@@ -41,10 +42,15 @@ import {
 } from "./functions/item-margins.js";
 import { menuEngineering } from "./functions/menu-engineering.js";
 import {
+	METRIC_WINDOWS_MAX_DAYS,
+	metricWindows,
+} from "./functions/metric-windows.js";
+import {
 	MODIFIER_SUMMARY_MAX_DAYS,
 	modifierSummary,
 } from "./functions/modifier-summary.js";
 import { openingProductivity } from "./functions/opening-productivity.js";
+import { planKpiReview } from "./functions/plan-kpi-review.js";
 import { promotionCatalogue } from "./functions/promotion-catalogue.js";
 import {
 	PROMOTION_COMPLIANCE_MAX_DAYS,
@@ -66,6 +72,7 @@ import {
 	SHIFT_ADJUSTMENTS_TRAILING_DAYS,
 	shiftAdjustments,
 } from "./functions/shift-adjustments.js";
+import { storeProfiles } from "./functions/store-profiles.js";
 import type {
 	ThemeHandler,
 	ThemeHandlerArgs,
@@ -117,6 +124,10 @@ export const themeHandlers: ThemeHandlers = {
 	data_quality_items: dataQualityItems,
 	data_quality_summary: dataQualitySummary,
 	data_quality_payments: dataQualityPayments,
+	store_profiles: storeProfiles,
+	metric_windows: metricWindows,
+	holiday_calendar: holidayCalendar,
+	plan_kpi_review: planKpiReview,
 };
 
 function span(
@@ -274,6 +285,25 @@ export const themeReads: ThemeReads = {
 			args.to_date,
 			DATA_QUALITY_PAYMENTS_MAX_DAYS,
 		),
+	store_profiles: () => [],
+	metric_windows: (args) => {
+		const ranges = args.from_dates.map((from, index) => ({
+			from,
+			to: args.to_dates[index] ?? from,
+		}));
+		const valid = ranges.every(
+			(range) =>
+				range.from <= range.to &&
+				daysBetween(range.from, range.to) < METRIC_WINDOWS_MAX_DAYS,
+		);
+		return valid && args.from_dates.length === args.to_dates.length
+			? ranges.map((range) =>
+					span(args.store_ids, addDays(range.from, -1), range.to),
+				)
+			: [];
+	},
+	holiday_calendar: () => [],
+	plan_kpi_review: () => [],
 };
 
 function issues(error: z.ZodError): string {

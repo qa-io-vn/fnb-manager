@@ -92,6 +92,8 @@ select * from public.hourly_profile('{11111111-1111-4111-8111-111111111111}', '2
 
 Inside that transaction `auth.uid()` returns the member, and every policy applies as it does in the browser.
 
+To call report functions in such a transaction, `@fnb/reports` exports `createJsonRpcClient(queryable)` (`packages/reports/src/source/json-rpc-client.ts`), an `rpc(fn, args)` client for any object with an `unsafe(query, params)` method, such as a postgres.js transaction. It accepts every function of `analyticsFunctions` and `themeFunctions`, binds each argument by name with its type from `ARGUMENT_SQL_TYPES` (arrays as quoted array literals), and runs one statement that returns the rows as JSON produced by Postgres, in the function's order: `select coalesce(jsonb_agg(to_jsonb(r) - 'ordinality' order by r.ordinality), '[]'::jsonb) as rows from public.<fn>(<arg> => $1::<type>, …) with ordinality as r`. An unknown function or argument answers `invalid_call` without touching the database; a database error keeps its SQLSTATE, and its message only for `22023`. `createRpcReportSource(createJsonRpcClient(transaction), "postgres")` then gives the same `ReportSource` the browser uses, which is how the data pack command reads in one snapshot (phase 11). Phase 12's digest keeps its own client for the report registry.
+
 ### The 1,000-row cap
 
 `supabase/config.toml` sets `max_rows = 1000` under `[api]`. PostgREST then returns at most 1,000 rows for one request to a table, a view or a function that returns rows, and it cuts without an error. The cloud project has its own "Max rows" setting; keep it at 1,000, because the guard below assumes at least 900.
@@ -157,7 +159,7 @@ A login holds one role per tenant in `tenant_members`, with an optional store sc
 
 ## 3. Functions in `public`
 
-The schema `public` holds 46 functions. `authenticated` may execute all of them and `service_role` every one but the two legal-text functions, which act only for a signed-in owner; `anon` may execute none. 43 are `security invoker` and `stable`; `refresh_my_analytics`, `publish_legal_document` and `retire_legal_document` are `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
+The schema `public` holds 51 functions. `authenticated` may execute all of them and `service_role` every one but the two legal-text functions, which act only for a signed-in owner; `anon` may execute none. 48 are `security invoker` and `stable`; `refresh_my_analytics`, `publish_legal_document` and `retire_legal_document` are `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
 
 Each entry gives the signature exactly as Postgres prints it (`pg_get_function_arguments` and `pg_get_function_result`), then what calls it today, its status and notes. Column meanings and computation rules are in [`schema.md`](schema.md), sections "Query functions" and "Report functions (phase 9)"; report rules are in [`metrics.md`](metrics.md#report-conventions).
 
@@ -218,6 +220,11 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`data_quality_items`](#publicdata_quality_items) | themes | invoker, stable | rows per item | web theme Chất lượng dữ liệu (#158), Cài đặt → Phân loại → Nhóm của món (#160) | built (phase 10b) |
 | [`data_quality_summary`](#publicdata_quality_summary) | themes | invoker, stable | a row for all stores, then one per store | web theme Chất lượng dữ liệu (#158), Cài đặt → Cửa hàng's receipt suggestion (#159) | built (phase 10b) |
 | [`data_quality_payments`](#publicdata_quality_payments) | themes | invoker, stable | rows per payment method | web theme Chất lượng dữ liệu (#158) | built (phase 10b) |
+| [`store_profiles`](#publicstore_profiles) | data pack | invoker, stable | rows per store | no caller yet (the data pack builder, #130, #134) | built (phase 11a) |
+| [`metric_windows`](#publicmetric_windows) | data pack | invoker, stable | up to 300 rows | no caller yet (the data pack's KPI table, #134) | built (phase 11a) |
+| [`holiday_calendar`](#publicholiday_calendar) | data pack | invoker, stable | rows per date and name | no caller yet (the data pack's calendar, #134) | built (phase 11a) |
+| [`pack_fence`](#publicpack_fence) | data pack | invoker, stable | `text` | no caller yet (the browser pack build, #142) | built (phase 11a) |
+| [`export_control_totals`](#publicexport_control_totals) | exports | invoker, stable | rows per store | no caller yet (the export proof, #139) | built (phase 11a) |
 
 ### 3.1 Analytics
 
@@ -1054,6 +1061,76 @@ returns TABLE(
 - **Called by:** nothing yet; Chất lượng dữ liệu (#157, #158).
 - **Status:** built (phase 10b; pgTAP `37_shift_and_quality_functions.sql`, `39_theme_access_b.sql`).
 - **Notes:** every payment method of the stores' POS accounts and every method id paid in the range (`agg_payment_daily`, `unknown` included): the effective kind, the POS kind, the tenant's override, whether the catalogue knows the id, and the invoices and amount paid (null for a method not paid). Ordered by amount, unpaid last. At most 400 days.
+
+### 3.9 Data pack and exports (phase 11)
+
+Migration `pack_and_export_functions` adds the functions behind the AI data pack and the proof of an export. The first three join the theme registry of `@fnb/reports` (`themeFunctions`) and have demo ports; `pack_fence` and `export_control_totals` are called with `supabase.rpc()` directly. Tests: pgTAP `40_pack_functions.sql` and `41_export_totals.sql`, and the parity suite (`store-profiles`, `metric-windows` and `holiday-calendar.parity.test.ts`).
+
+#### `public.store_profiles`
+
+```sql
+public.store_profiles(store_ids uuid[])
+returns TABLE(
+  store_id uuid, tenant_id uuid, label text, name text, timezone text,
+  business_day_start_minutes integer, opened_on date, opening_hours jsonb,
+  seat_count integer, e_invoice_status e_invoice_status, currency_code text,
+  country_code text
+)
+```
+
+- **Called by:** no caller yet; the data pack builder (stage 1: labels and the default as-of day).
+- **Status:** built (phase 11a; pgTAP `40_pack_functions.sql`; parity `store-profiles.parity.test.ts`).
+- **Notes:** one row per visible store in the order asked. `label` is `S<n>`, the store's rank among the tenant's stores the caller can see, by `first_seen_at` then `id`; an inactive store keeps its place, so for an owner a label means the same store in every pack. No address, store code or POS id. A publisher reads the profiles, as it reads `stores`.
+
+#### `public.metric_windows`
+
+```sql
+public.metric_windows(store_ids uuid[], metric_ids text[], from_dates date[], to_dates date[])
+returns TABLE(range_index smallint, from_date date, to_date date, metric_id text, value numeric)
+```
+
+- **Called by:** no caller yet; the data pack's KPI table, and the KPI follow-up of plans (phase 11b).
+- **Status:** built (phase 11a; pgTAP `40_pack_functions.sql`; parity `metric-windows.parity.test.ts`).
+- **Notes:** `metric_value` of the stores together for 1 to 25 ids over 1 to 12 ranges of at most 400 days each, ordered by range (1-based `range_index`), then id in the order asked. `22023` names the limit for too many ids or ranges, lists of different lengths, a reversed or too long range; an id that `metric_value` does not compute raises its own `22023`. An empty store list returns no row, before any id is checked.
+
+#### `public.holiday_calendar`
+
+```sql
+public.holiday_calendar(store_ids uuid[], from_date date, to_date date)
+returns TABLE(holiday_date date, name text, kind holiday_kind)
+```
+
+- **Called by:** no caller yet; the data pack's calendar of the horizon.
+- **Status:** built (phase 11a; pgTAP `40_pack_functions.sql`; parity `holiday-calendar.parity.test.ts`).
+- **Notes:** the global holidays of the visible stores' tenant countries and those tenants' own holidays of the same country, once per date, name and kind, ordered by date, then name in byte order (`collate "C"`), then kind. At most 400 days. Nothing for stores the caller cannot see.
+
+#### `public.pack_fence`
+
+```sql
+public.pack_fence(store_ids uuid[])
+returns text
+```
+
+- **Called by:** no caller yet; the browser builds a pack between two equal fences and rebuilds when they differ.
+- **Status:** built (phase 11a; pgTAP `40_pack_functions.sql`).
+- **Notes:** a lowercase hex SHA-256 over what moves the pack's numbers for the visible stores: the refresh log, `synced_at` of invoices of the last live days, sync checks, the tenants' analytics-input version and stamp, item costs, targets, tenant holidays, report settings and the store profiles. It is not part of the pack.
+
+#### `public.export_control_totals`
+
+```sql
+public.export_control_totals(store_ids uuid[], from_date date, to_date date)
+returns TABLE(
+  store_id uuid, invoices bigint, voided_invoices bigint, sales_net_amount numeric,
+  invoice_fingerprint text, lines bigint, line_net_amount numeric, line_fingerprint text,
+  payments bigint, payment_amount numeric, payment_fingerprint text, shifts bigint,
+  shift_sales_amount numeric, shift_fingerprint text
+)
+```
+
+- **Called by:** no caller yet; the browser export proves each file against it.
+- **Status:** built (phase 11a; pgTAP `41_export_totals.sql`).
+- **Notes:** per visible store over at most 92 days: counts, sums and SHA-256 fingerprints of invoices, lines (by their invoice's business date), payments (by their own business date) and shifts (by the business date of `opened_at` in the store's zone after the day start). [`schema.md`](schema.md#data-pack-and-export-functions-phase-11) gives the canonical lines. A publisher gets zero counts, zero sums and the fingerprint of the empty text.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.

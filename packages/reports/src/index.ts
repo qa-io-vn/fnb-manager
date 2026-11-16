@@ -313,6 +313,14 @@ export {
 	yearReport,
 } from "./reports/index.js";
 export {
+	createJsonRpcClient,
+	INVALID_CALL_CODE,
+	ReportJsonCallError,
+	type ReportJsonStatement,
+	reportJsonStatement,
+	type UnsafeQueryable,
+} from "./source/json-rpc-client.js";
+export {
 	createRpcAnalyticsSource,
 	parseAnalyticsArgs,
 	parseAnalyticsRows,

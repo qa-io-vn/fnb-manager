@@ -2,6 +2,7 @@ import { z } from "zod";
 import { periodTotalsShape } from "../contract/rows.js";
 import {
 	countValue,
+	holidayKinds,
 	isoDateArgument,
 	isoDateValue,
 	itemTypeRoles,
@@ -484,6 +485,75 @@ export const dataQualityPaymentsRow = z.object({
 	amount: numericValue,
 });
 
+export const METRIC_WINDOW_LIMITS = {
+	metricIds: 25,
+	ranges: 12,
+	days: 400,
+} as const;
+export const HOLIDAY_CALENDAR_MAX_DAYS = 400;
+
+export const storeProfilesArgs = z.object({ store_ids: storeIdsArgument });
+
+export const storeProfilesRow = z.object({
+	store_id: textValue,
+	tenant_id: textValue,
+	label: z.string().regex(/^S\d+$/),
+	name: textValue,
+	timezone: textValue,
+	business_day_start_minutes: countValue,
+	opened_on: optionalIsoDateValue,
+	opening_hours: z
+		.record(z.string(), z.array(z.tuple([z.string(), z.string()])))
+		.nullable(),
+	seat_count: optionalCountValue,
+	e_invoice_status: z.enum(E_INVOICE_STATUSES),
+	currency_code: textValue,
+	country_code: textValue,
+});
+
+export const metricWindowsArgs = z.object({
+	store_ids: storeIdsArgument,
+	metric_ids: z
+		.array(z.string().min(1))
+		.min(1)
+		.max(METRIC_WINDOW_LIMITS.metricIds),
+	from_dates: z.array(isoDateArgument).min(1).max(METRIC_WINDOW_LIMITS.ranges),
+	to_dates: z.array(isoDateArgument).min(1).max(METRIC_WINDOW_LIMITS.ranges),
+});
+
+export const metricWindowsRow = z.object({
+	range_index: countValue,
+	from_date: isoDateValue,
+	to_date: isoDateValue,
+	metric_id: textValue,
+	value: numericValue,
+});
+
+export const holidayCalendarArgs = z.object(storeRange);
+
+export const holidayCalendarRow = z.object({
+	holiday_date: isoDateValue,
+	name: textValue,
+	kind: z.enum(holidayKinds),
+});
+
+export const planKpiReviewArgs = z.object({
+	store_ids: storeIdsArgument,
+	as_of_date: isoDateArgument,
+});
+
+export const planKpiReviewRow = z.object({
+	plan_rank: countValue,
+	plan_as_of: isoDateValue,
+	horizon: textValue,
+	metric_id: textValue,
+	scope: textValue,
+	baseline: numericValue,
+	target: numericValue,
+	due_on: optionalIsoDateValue,
+	current_value: numericValue,
+});
+
 export const themeFunctions = {
 	report_settings_of: { args: reportSettingsOfArgs, row: reportSettingsOfRow },
 	range_totals: { args: rangeTotalsArgs, row: rangeTotalsRow },
@@ -531,6 +601,10 @@ export const themeFunctions = {
 		args: dataQualityPaymentsArgs,
 		row: dataQualityPaymentsRow,
 	},
+	store_profiles: { args: storeProfilesArgs, row: storeProfilesRow },
+	metric_windows: { args: metricWindowsArgs, row: metricWindowsRow },
+	holiday_calendar: { args: holidayCalendarArgs, row: holidayCalendarRow },
+	plan_kpi_review: { args: planKpiReviewArgs, row: planKpiReviewRow },
 } as const;
 
 export type ThemeFunctionName = keyof typeof themeFunctions;

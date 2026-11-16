@@ -1,0 +1,339 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "urn:fnb:datapack:1",
+	"type": "object",
+	"properties": {
+		"budget": {
+			"type": "object",
+			"properties": {
+				"estimated_tokens": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 9007199254740991
+				},
+				"limit": {
+					"type": "integer",
+					"exclusiveMinimum": 0,
+					"maximum": 9007199254740991
+				},
+				"trimmed": { "type": "array", "items": { "type": "string" } }
+			},
+			"required": ["estimated_tokens", "limit", "trimmed"],
+			"additionalProperties": false
+		},
+		"builder_version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+		},
+		"calendar": {
+			"type": "object",
+			"properties": {
+				"band": {
+					"type": "object",
+					"properties": {
+						"from": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+						"to": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+					},
+					"required": ["from", "to"],
+					"additionalProperties": false
+				},
+				"horizon": {
+					"type": "object",
+					"properties": {
+						"from": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+						"to": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+					},
+					"required": ["from", "to"],
+					"additionalProperties": false
+				},
+				"ly28": {
+					"type": "object",
+					"properties": {
+						"from": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+						"to": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+					},
+					"required": ["from", "to"],
+					"additionalProperties": false
+				},
+				"month_to_date": {
+					"type": "object",
+					"properties": {
+						"from": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+						"to": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+					},
+					"required": ["from", "to"],
+					"additionalProperties": false
+				},
+				"months": {
+					"type": "object",
+					"properties": {
+						"from": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+						"to": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+					},
+					"required": ["from", "to"],
+					"additionalProperties": false
+				},
+				"p28": {
+					"type": "object",
+					"properties": {
+						"from": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+						"to": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+					},
+					"required": ["from", "to"],
+					"additionalProperties": false
+				},
+				"w28": {
+					"type": "object",
+					"properties": {
+						"from": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+						"to": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+					},
+					"required": ["from", "to"],
+					"additionalProperties": false
+				},
+				"w84": {
+					"type": "object",
+					"properties": {
+						"from": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+						"to": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+					},
+					"required": ["from", "to"],
+					"additionalProperties": false
+				},
+				"weeks": {
+					"type": "object",
+					"properties": {
+						"from": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+						"to": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+					},
+					"required": ["from", "to"],
+					"additionalProperties": false
+				}
+			},
+			"required": [
+				"band",
+				"horizon",
+				"ly28",
+				"month_to_date",
+				"months",
+				"p28",
+				"w28",
+				"w84",
+				"weeks"
+			],
+			"additionalProperties": false
+		},
+		"context": {
+			"type": "object",
+			"properties": {
+				"benchmarks": {
+					"type": "array",
+					"items": {
+						"type": "array",
+						"prefixItems": [
+							{ "type": "string" },
+							{ "type": "string" },
+							{ "type": "string" },
+							{ "type": "string" }
+						],
+						"items": false,
+						"minItems": 4,
+						"maxItems": 4
+					}
+				},
+				"note": { "type": "string" },
+				"rules": {
+					"type": "array",
+					"items": {
+						"type": "array",
+						"prefixItems": [
+							{ "type": "string" },
+							{ "type": "string" },
+							{ "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+							{ "type": "string" }
+						],
+						"items": false,
+						"minItems": 4,
+						"maxItems": 4
+					}
+				}
+			},
+			"required": ["benchmarks", "note", "rules"],
+			"additionalProperties": false
+		},
+		"format": { "type": "string", "const": "fnb-datapack" },
+		"generated_at": {
+			"type": "string",
+			"pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+		},
+		"pack_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"prompt": {
+			"type": "object",
+			"properties": {
+				"id": { "type": "string", "const": "fnb-strategy" },
+				"language": { "type": "string", "enum": ["vi", "en"] },
+				"text": { "type": "string" },
+				"version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+			},
+			"required": ["id", "language", "text", "version"],
+			"additionalProperties": false
+		},
+		"request": {
+			"type": "object",
+			"properties": {
+				"as_of": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+				"currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+				"focus": { "type": ["string", "null"] },
+				"horizon": { "type": "string", "enum": ["30d", "90d", "180d", "12m"] },
+				"language": { "type": "string", "enum": ["vi", "en"] },
+				"owner_note": { "type": ["string", "null"] },
+				"stores": {
+					"minItems": 1,
+					"maxItems": 10,
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"pattern": "^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|MOCK-S[0-9]{1,2})$"
+							},
+							"label": { "type": "string", "pattern": "^S[0-9]{1,2}$" }
+						},
+						"required": ["id", "label"],
+						"additionalProperties": false
+					}
+				}
+			},
+			"required": [
+				"as_of",
+				"currency",
+				"focus",
+				"horizon",
+				"language",
+				"owner_note",
+				"stores"
+			],
+			"additionalProperties": false
+		},
+		"sample": { "type": "boolean" },
+		"schema_version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+		},
+		"tables": {
+			"type": "object",
+			"propertyNames": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+			"additionalProperties": {
+				"type": "object",
+				"properties": {
+					"title": { "type": "string" },
+					"grain": {
+						"type": "string",
+						"enum": [
+							"store",
+							"store-period",
+							"metric-window",
+							"store-week",
+							"store-month",
+							"store-weekday",
+							"weekday-hour",
+							"item-period",
+							"category-period",
+							"size-period",
+							"pair-period",
+							"modifier-period",
+							"method-period",
+							"promotion-period",
+							"store-band",
+							"date",
+							"gap",
+							"metric",
+							"plan-kpi"
+						]
+					},
+					"window": {
+						"anyOf": [
+							{
+								"type": "string",
+								"enum": [
+									"band",
+									"horizon",
+									"ly28",
+									"month_to_date",
+									"months",
+									"p28",
+									"w28",
+									"w84",
+									"weeks"
+								]
+							},
+							{ "type": "null" }
+						]
+					},
+					"notes": { "type": "string" },
+					"columns": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+								"unit": {
+									"type": "string",
+									"enum": [
+										"text",
+										"date",
+										"flag",
+										"money",
+										"money_thousands",
+										"count",
+										"quantity",
+										"fraction",
+										"rel_change",
+										"pp_change",
+										"metric",
+										"metric_change",
+										"days",
+										"hours",
+										"ratio",
+										"class"
+									]
+								}
+							},
+							"required": ["name", "unit"],
+							"additionalProperties": false
+						}
+					},
+					"rows": {
+						"type": "object",
+						"propertyNames": {
+							"type": "string",
+							"pattern": "^(?=[A-Za-z0-9_./-]*[A-Za-z])[A-Za-z0-9_./-]+$"
+						},
+						"additionalProperties": {
+							"type": "array",
+							"items": { "type": ["number", "string", "boolean", "null"] }
+						}
+					}
+				},
+				"required": ["title", "grain", "window", "notes", "columns", "rows"],
+				"additionalProperties": false
+			}
+		}
+	},
+	"required": [
+		"budget",
+		"builder_version",
+		"calendar",
+		"context",
+		"format",
+		"generated_at",
+		"pack_id",
+		"prompt",
+		"request",
+		"sample",
+		"schema_version",
+		"tables"
+	],
+	"additionalProperties": false
+}

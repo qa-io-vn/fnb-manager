@@ -19623,6 +19623,91 @@
 				"tags": ["(rpc) data_quality_summary"]
 			}
 		},
+		"/rpc/export_control_totals": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "per visible store over at most 92 days: counts, sums and SHA-256 fingerprints over canonical lines of invoices, invoice lines (by the invoice's business date), payments (by their own business date) and shifts (by the business date of opened_at in the store's zone after the day start), so an export proves it equals the tables",
+				"tags": ["(rpc) export_control_totals"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "per visible store over at most 92 days: counts, sums and SHA-256 fingerprints over canonical lines of invoices, invoice lines (by the invoice's business date), payments (by their own business date) and shifts (by the business date of opened_at in the store's zone after the day start), so an export proves it equals the tables",
+							"properties": {
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["store_ids", "from_date", "to_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "per visible store over at most 92 days: counts, sums and SHA-256 fingerprints over canonical lines of invoices, invoice lines (by the invoice's business date), payments (by their own business date) and shifts (by the business date of opened_at in the store's zone after the day start), so an export proves it equals the tables",
+				"tags": ["(rpc) export_control_totals"]
+			}
+		},
 		"/rpc/forecast_accuracy": {
 			"get": {
 				"parameters": [
@@ -19703,6 +19788,91 @@
 					}
 				},
 				"tags": ["(rpc) forecast_accuracy"]
+			}
+		},
+		"/rpc/holiday_calendar": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the global holidays of the visible stores' tenant countries and the tenants' own holidays between two dates (at most 400 days), one row per date, name and kind, ordered by date then name (collate \"C\")",
+				"tags": ["(rpc) holiday_calendar"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the global holidays of the visible stores' tenant countries and the tenants' own holidays between two dates (at most 400 days), one row per date, name and kind, ordered by date then name (collate \"C\")",
+							"properties": {
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["store_ids", "from_date", "to_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the global holidays of the visible stores' tenant countries and the tenants' own holidays between two dates (at most 400 days), one row per date, name and kind, ordered by date then name (collate \"C\")",
+				"tags": ["(rpc) holiday_calendar"]
 			}
 		},
 		"/rpc/hour_profile": {
@@ -20851,6 +21021,111 @@
 				"tags": ["(rpc) metric_value"]
 			}
 		},
+		"/rpc/metric_windows": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "text[]",
+						"in": "query",
+						"name": "metric_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date[]",
+						"in": "query",
+						"name": "from_dates",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date[]",
+						"in": "query",
+						"name": "to_dates",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "metric_value for 1 to 25 metric ids over 1 to 12 ranges of at most 400 days, the stores together, ordered by range then id; no rows for an empty store list; an id metric_value does not compute raises its 22023",
+				"tags": ["(rpc) metric_windows"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "metric_value for 1 to 25 metric ids over 1 to 12 ranges of at most 400 days, the stores together, ordered by range then id; no rows for an empty store list; an id metric_value does not compute raises its 22023",
+							"properties": {
+								"from_dates": {
+									"format": "date[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"metric_ids": {
+									"format": "text[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_dates": {
+									"format": "date[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": ["store_ids", "metric_ids", "from_dates", "to_dates"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "metric_value for 1 to 25 metric ids over 1 to 12 ranges of at most 400 days, the stores together, ordered by range then id; no rows for an empty store list; an id metric_value does not compute raises its 22023",
+				"tags": ["(rpc) metric_windows"]
+			}
+		},
 		"/rpc/modifier_summary": {
 			"get": {
 				"parameters": [
@@ -21117,6 +21392,69 @@
 					}
 				},
 				"tags": ["(rpc) opening_productivity"]
+			}
+		},
+		"/rpc/pack_fence": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "a SHA-256 over the signals that move the data pack's numbers for the visible stores (refreshes, recent synced invoices, sync checks, analytics inputs, costs, targets, tenant holidays, report settings, store profiles); the browser builds a pack between two equal fences",
+				"tags": ["(rpc) pack_fence"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "a SHA-256 over the signals that move the data pack's numbers for the visible stores (refreshes, recent synced invoices, sync checks, analytics inputs, costs, targets, tenant holidays, report settings, store profiles); the browser builds a pack between two equal fences",
+							"properties": {
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": ["store_ids"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "a SHA-256 over the signals that move the data pack's numbers for the visible stores (refreshes, recent synced invoices, sync checks, analytics inputs, costs, targets, tenant holidays, report settings, store profiles); the browser builds a pack between two equal fences",
+				"tags": ["(rpc) pack_fence"]
 			}
 		},
 		"/rpc/payment_summary": {
@@ -22758,6 +23096,69 @@
 					}
 				},
 				"tags": ["(rpc) store_coverage"]
+			}
+		},
+		"/rpc/store_profiles": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "one row per visible store in the order asked: the stable label S<n> (rank among the tenant's stores the caller can see, by first_seen_at then id, inactive stores keeping their place), zone, business-day start, opening date and hours, seats, e-invoicing, and the tenant's currency and country; no address, code or POS id",
+				"tags": ["(rpc) store_profiles"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "one row per visible store in the order asked: the stable label S<n> (rank among the tenant's stores the caller can see, by first_seen_at then id, inactive stores keeping their place), zone, business-day start, opening date and hours, seats, e-invoicing, and the tenant's currency and country; no address, code or POS id",
+							"properties": {
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": ["store_ids"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "one row per visible store in the order asked: the stable label S<n> (rank among the tenant's stores the caller can see, by first_seen_at then id, inactive stores keeping their place), zone, business-day start, opening date and hours, seats, e-invoicing, and the tenant's currency and country; no address, code or POS id",
+				"tags": ["(rpc) store_profiles"]
 			}
 		},
 		"/rpc/store_targets": {

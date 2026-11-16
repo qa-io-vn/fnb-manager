@@ -1,0 +1,38 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "urn:fnb:plan:1",
+	"type": "object",
+	"properties": {
+		"format": { "type": "string", "const": "fnb-plan/1" },
+		"pack": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"title": { "type": "string", "minLength": 1, "maxLength": 120 },
+		"horizon": { "type": "string", "enum": ["30d", "90d", "180d", "12m"] },
+		"language": { "type": "string", "enum": ["vi", "en"] },
+		"kpis": {
+			"type": "object",
+			"propertyNames": {
+				"type": "string",
+				"pattern": "^[a-z][a-z0-9_]{1,63}$"
+			},
+			"additionalProperties": {
+				"type": "object",
+				"properties": {
+					"scope": {
+						"default": "ALL",
+						"type": "string",
+						"pattern": "^(ALL|S\\d{1,2})$"
+					},
+					"target": { "type": "number" },
+					"baseline": { "type": "number" },
+					"initiatives": {
+						"minItems": 1,
+						"type": "array",
+						"items": { "type": "integer", "minimum": 1, "maximum": 7 }
+					}
+				},
+				"required": ["target", "initiatives"]
+			}
+		}
+	},
+	"required": ["format", "pack", "title", "horizon", "language", "kpis"]
+}

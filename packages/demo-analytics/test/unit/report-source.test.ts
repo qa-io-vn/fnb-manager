@@ -105,7 +105,24 @@ const minimalArgs: { [N in ThemeFunctionName]: ThemeArgs<N> } = {
 		from_date: "2026-10-28",
 		to_date: AS_OF,
 	},
+	store_profiles: { store_ids: STORES },
+	metric_windows: {
+		store_ids: STORES,
+		metric_ids: ["net_revenue", "avg_ticket"],
+		from_dates: ["2026-10-07", "2026-09-09"],
+		to_dates: [AS_OF, "2026-10-06"],
+	},
+	holiday_calendar: {
+		store_ids: STORES,
+		from_date: "2026-01-01",
+		to_date: "2026-12-31",
+	},
+	plan_kpi_review: { store_ids: STORES, as_of_date: AS_OF },
 };
+
+const NO_ROWS_IN_THE_DEMO: ReadonlySet<ThemeFunctionName> = new Set([
+	"plan_kpi_review",
+]);
 
 describe("createDemoReportSource", () => {
 	it("has a handler and a read plan for every thematic function of the contract, and keeps phase 9's handlers", async () => {
@@ -154,7 +171,11 @@ describe("createDemoReportSource", () => {
 			});
 			const rows = await source.callTheme(name, minimalArgs[name] as never);
 			expect(Array.isArray(rows), name).toBe(true);
-			expect(rows.length, name).toBeGreaterThan(0);
+			if (NO_ROWS_IN_THE_DEMO.has(name)) {
+				expect(rows, name).toEqual([]);
+			} else {
+				expect(rows.length, name).toBeGreaterThan(0);
+			}
 			expect(source.aggregates.misses(), name).toBe(0);
 		}
 	});
