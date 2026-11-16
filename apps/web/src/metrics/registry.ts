@@ -55,6 +55,8 @@ export const registryMetricIds = [
 	"removed_line_rate_zscore",
 	"edits_after_close",
 	"edit_rate",
+	"modifier_line_share",
+	"consent_coverage",
 ] as const satisfies readonly RegistryMetricId[];
 
 export const displaySeries = {
@@ -83,6 +85,10 @@ export const displaySeries = {
 	shift_net: { unit: "money", direction: "neutral" },
 	store_day_index: { unit: "decimal", direction: "neutral" },
 	store_day_gap: { unit: "decimal", direction: "neutral" },
+	uncategorised_items: { unit: "count", direction: "lower" },
+	unverified_days: { unit: "count", direction: "lower" },
+	unclassified_payment_methods: { unit: "count", direction: "lower" },
+	store_findings: { unit: "count", direction: "lower" },
 } as const satisfies Record<
 	string,
 	{ unit: MetricUnit; direction: MetricDirection }

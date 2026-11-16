@@ -179,10 +179,10 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`hour_weekday_heatmap`](#publichour_weekday_heatmap) | analytics | invoker, stable | up to 168 rows | web theme Giờ & ngày | verified locally (phase 8) |
 | [`menu_matrix`](#publicmenu_matrix) | analytics | invoker, stable | rows per item | no caller yet (designed for 10a) | verified locally (phase 8) |
 | [`cash_variance_flags`](#publiccash_variance_flags) | analytics | invoker, stable | flagged shifts | no caller yet (designed for 10a, 10b) | verified locally (phase 8) |
-| [`store_coverage`](#publicstore_coverage) | reports | invoker, stable | rows per store | web reports, digest | verified locally (phase 9) |
+| [`store_coverage`](#publicstore_coverage) | reports | invoker, stable | rows per store | web reports and themes, digest | verified locally (phase 9) |
 | [`period_compare`](#publicperiod_compare) | reports | invoker, stable | 3 or 4 rows | web reports, digest | verified locally (phase 8) |
 | [`period_compare_by_store`](#publicperiod_compare_by_store) | reports | invoker, stable | rows per store and period | web reports, digest | verified locally (phase 9) |
-| [`period_series`](#publicperiod_series) | reports | invoker, stable | rows per bucket | web reports, digest, web themes Doanh thu, Thanh toán and Khuyến mãi | verified locally (phase 9) |
+| [`period_series`](#publicperiod_series) | reports | invoker, stable | rows per bucket | web reports, digest, web themes Doanh thu, Thanh toán, Khuyến mãi and Chất lượng dữ liệu | verified locally (phase 9) |
 | [`daily_baselines`](#publicdaily_baselines) | reports | invoker, stable | rows per date | web reports | verified locally (phase 9) |
 | [`hourly_profile`](#publichourly_profile) | reports | invoker, stable | 24 rows | web reports, digest | verified locally (phase 9) |
 | [`item_summary`](#publicitem_summary) | reports | invoker, stable | rows per item | web reports, digest | verified locally (phase 9) |
@@ -205,7 +205,7 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`opening_productivity`](#publicopening_productivity) | themes | invoker, stable | rows per store | web theme Giờ & ngày | verified locally (phase 10a) |
 | [`hour_profile`](#publichour_profile) | themes | invoker, stable | up to 82 rows | web theme Giờ & ngày | verified locally (phase 10a) |
 | [`menu_engineering`](#publicmenu_engineering) | themes | invoker, stable | rows per item | web theme Thực đơn | verified locally (phase 10a) |
-| [`item_margins`](#publicitem_margins) | themes | invoker, stable | rows per item | web theme Thực đơn | verified locally (phase 10a) |
+| [`item_margins`](#publicitem_margins) | themes | invoker, stable | rows per item | web themes Thực đơn and Chất lượng dữ liệu | verified locally (phase 10a) |
 | [`item_attach`](#publicitem_attach) | themes | invoker, stable | 1 row, then rows per drink | Thực đơn (attach rates, last 92 days and the 92 before) | verified locally (phase 10a) |
 | [`basket_pairs`](#publicbasket_pairs) | themes | invoker, stable | up to 900 pairs | Thực đơn (items sold together, last 92 days, 3 invoices, top 50) | verified locally (phase 10a) |
 | [`modifier_summary`](#publicmodifier_summary) | themes | invoker, stable | rows per modifier name | Thực đơn (sugar and ice, with the previous range) | verified locally (phase 10a) |
@@ -215,9 +215,9 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`promotion_compliance`](#publicpromotion_compliance) | themes | invoker, stable | rows per promotion, then the invoice total | no caller yet (Khuyến mãi, #153) | built (phase 10b) |
 | [`item_discount_days`](#publicitem_discount_days) | themes | invoker, stable | rows per item | no caller yet (Khuyến mãi, #153) | built (phase 10b) |
 | [`shift_adjustments`](#publicshift_adjustments) | themes | invoker, stable | rows per shift | web theme Ca & két tiền | built (phase 10b) |
-| [`data_quality_items`](#publicdata_quality_items) | themes | invoker, stable | rows per item | no caller yet (Chất lượng dữ liệu, #157, #158) | built (phase 10b) |
-| [`data_quality_summary`](#publicdata_quality_summary) | themes | invoker, stable | a row for all stores, then one per store | no caller yet (Chất lượng dữ liệu, #157, #158) | built (phase 10b) |
-| [`data_quality_payments`](#publicdata_quality_payments) | themes | invoker, stable | rows per payment method | no caller yet (Chất lượng dữ liệu, #157, #158) | built (phase 10b) |
+| [`data_quality_items`](#publicdata_quality_items) | themes | invoker, stable | rows per item | web theme Chất lượng dữ liệu (#158), Cài đặt → Phân loại → Nhóm của món (#160) | built (phase 10b) |
+| [`data_quality_summary`](#publicdata_quality_summary) | themes | invoker, stable | a row for all stores, then one per store | web theme Chất lượng dữ liệu (#158), Cài đặt → Cửa hàng's receipt suggestion (#159) | built (phase 10b) |
+| [`data_quality_payments`](#publicdata_quality_payments) | themes | invoker, stable | rows per payment method | web theme Chất lượng dữ liệu (#158) | built (phase 10b) |
 
 ### 3.1 Analytics
 

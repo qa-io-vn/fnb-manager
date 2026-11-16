@@ -149,6 +149,8 @@ export type NoticeAction =
 	| "settings_costs"
 	| "settings_fees"
 	| "settings_store"
+	| "settings_e_invoice"
+	| "settings_store_profile"
 	| "settings_categories"
 	| "settings_payment_kinds"
 	| "settings_holidays"
@@ -159,6 +161,7 @@ export interface NoticeModel {
 	readonly tone: "info" | "warning";
 	readonly part: SentencePart;
 	readonly action: NoticeAction | null;
+	readonly secondaryAction?: NoticeAction;
 }
 
 export type VerificationMarker = "verified" | "unverified" | "sample";

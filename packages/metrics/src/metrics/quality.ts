@@ -16,7 +16,6 @@ export const qualityMetrics = [
 		source: "`data_quality_summary()`",
 		reports: ["data_quality"],
 		status: "available now",
-		statusNote: "the function comes with phase 10b",
 	},
 	{
 		id: "consent_coverage",
@@ -33,6 +32,7 @@ export const qualityMetrics = [
 		source: "`data_quality_summary()`",
 		reports: ["data_quality"],
 		status: "needs customer identity",
-		statusNote: "the function comes with phase 10b",
+		statusNote:
+			"counts the customers of the customer list (`customer_id`); invoices with a phone number only link to none, so it stays empty until Zalo identity (phases 16–19)",
 	},
 ] as const satisfies readonly MetricDefinition[];

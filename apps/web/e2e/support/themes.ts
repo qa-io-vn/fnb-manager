@@ -14,7 +14,8 @@ export type ThemeKind =
 	| "payments"
 	| "promotions"
 	| "shifts"
-	| "stores";
+	| "stores"
+	| "quality";
 
 export const themeSlugs: Record<ThemeKind, string> = {
 	revenue: "doanh-thu",
@@ -24,6 +25,7 @@ export const themeSlugs: Record<ThemeKind, string> = {
 	promotions: "khuyen-mai",
 	shifts: "ca-ket-tien",
 	stores: "so-sanh",
+	quality: "chat-luong",
 };
 
 export const themeCardIds: Record<ThemeKind, readonly string[]> = {
@@ -43,6 +45,15 @@ export const themeCardIds: Record<ThemeKind, readonly string[]> = {
 	promotions: ["discount_cost", "vouchers", "lift"],
 	shifts: ["shift_sales", "drawer", "adjustments", "cashiers"],
 	stores: ["kpis", "same_day", "since_opening"],
+	quality: [
+		"compliance",
+		"uncategorised",
+		"costs",
+		"verification",
+		"payments",
+		"modifiers",
+		"customers",
+	],
 };
 
 export const shiftNumberedCardIds: readonly string[] = [

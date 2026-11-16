@@ -1,5 +1,4 @@
 import { expect, type Page, test } from "@playwright/test";
-import { checkPage } from "../support/checks";
 import {
 	expectNoConsoleErrors,
 	REPORT_CLOCK,
@@ -69,32 +68,23 @@ test("the tabs list the eight themes in roadmap order and keep the range and the
 	expectNoConsoleErrors(page);
 });
 
-test("a theme of phase 10b says when it comes and its tabs lead back with the range and the stores", async ({
+test("the last tab opens Chất lượng dữ liệu with its range picker and the tabs carry the range and the stores on", async ({
 	page,
 }) => {
 	await openTheme(page, "revenue", "range=91d&store=MOCK-S2");
-	const later = tabs(page).locator('a[data-built="false"]').first();
-	await expect(later).toBeVisible();
-	const title = ((await later.textContent()) ?? "").trim();
-	expect(TAB_TITLES).toContain(title);
-	await later.click();
-	await expect(page).toHaveURL(/#\/chu-de\/[a-z-]+\?/);
+	const last = TAB_TITLES[TAB_TITLES.length - 1] ?? "";
+	await tabs(page).getByRole("link", { name: last, exact: true }).click();
+	await expect(page).toHaveURL(/#\/chu-de\/chat-luong\?/);
+	await waitForSettledThemeCards(page);
 	expect(themeSearch(page).get("range")).toBe("91d");
 	expect(themeSearch(page).get("store")).toBe("MOCK-S2");
 	await expect(
-		page.getByRole("heading", { level: 1, name: title }),
+		page.getByRole("heading", { level: 1, name: last }),
 	).toBeVisible();
-	await expect(page.getByTestId("theme-later")).toContainText(
-		"Chủ đề này đang được xây dựng",
-	);
-	await expect(page.getByTestId("theme-later-phase")).toContainText(
-		"giai đoạn 10b",
-	);
+	await expect(page.getByTestId("range-picker")).toBeVisible();
 	await expect(
-		tabs(page).getByRole("link", { name: title, exact: true }),
+		tabs(page).getByRole("link", { name: last, exact: true }),
 	).toHaveAttribute("aria-current", "page");
-	await expect(page.getByTestId("range-picker")).toHaveCount(0);
-	await checkPage(page);
 	await tabs(page).getByRole("link", { name: "Thực đơn" }).click();
 	await expect(page).toHaveURL(/#\/chu-de\/thuc-don\?/);
 	await waitForSettledThemeCards(page);

@@ -18,6 +18,7 @@ import { signed } from "../components/report-card/headline";
 import type {
 	CardDecomposition,
 	CardNotice,
+	CardNoticeAction,
 	ReportCardProps,
 } from "../components/report-card/report-card";
 import type {
@@ -49,6 +50,8 @@ export const noticeRoutes: Readonly<Record<NoticeAction, string>> = {
 	settings_costs: "/cai-dat/du-lieu-nhap-tay?tab=gia-von",
 	settings_fees: "/cai-dat/du-lieu-nhap-tay?tab=phi",
 	settings_store: "/cai-dat/cua-hang",
+	settings_e_invoice: "/cai-dat/cua-hang",
+	settings_store_profile: "/cai-dat/cua-hang",
 	settings_categories: "/cai-dat/phan-loai?tab=nhom-mon",
 	settings_payment_kinds: "/cai-dat/phan-loai?tab=thanh-toan",
 	settings_holidays: "/cai-dat/ngay-le",
@@ -63,6 +66,8 @@ const actionKeys: Readonly<Record<NoticeAction, string>> = {
 	settings_costs: "report.action.settings_costs",
 	settings_fees: "report.action.settings_fees",
 	settings_store: "report.action.settings_store",
+	settings_e_invoice: "report.action.settings_e_invoice",
+	settings_store_profile: "report.action.settings_store_profile",
 	settings_categories: "report.action.settings_categories",
 	settings_payment_kinds: "report.action.settings_payment_kinds",
 	settings_holidays: "report.action.settings_holidays",
@@ -229,6 +234,13 @@ export function decompositionOf(
 	};
 }
 
+function noticeLink(action: NoticeAction, t: Translate): CardNoticeAction {
+	return {
+		label: translateKey(t, actionKeys[action]),
+		to: noticeRoutes[action],
+	};
+}
+
 export function noticeOf(
 	model: CardModel,
 	t: Translate,
@@ -239,14 +251,10 @@ export function noticeOf(
 	return {
 		tone: notice.tone,
 		text: formatPart(notice.part, t, formatters),
-		...(notice.action === null
+		...(notice.action === null ? {} : { action: noticeLink(notice.action, t) }),
+		...(notice.secondaryAction === undefined
 			? {}
-			: {
-					action: {
-						label: translateKey(t, actionKeys[notice.action]),
-						to: noticeRoutes[notice.action],
-					},
-				}),
+			: { secondaryAction: noticeLink(notice.secondaryAction, t) }),
 	};
 }
 

@@ -131,6 +131,8 @@ export const reportKeys = {
 		settings_costs: "report.action.settings_costs",
 		settings_fees: "report.action.settings_fees",
 		settings_store: "report.action.settings_store",
+		settings_e_invoice: "report.action.settings_e_invoice",
+		settings_store_profile: "report.action.settings_store_profile",
 		settings_categories: "report.action.settings_categories",
 		settings_payment_kinds: "report.action.settings_payment_kinds",
 		settings_holidays: "report.action.settings_holidays",

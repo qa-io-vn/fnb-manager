@@ -1,8 +1,8 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền and So sánh cửa hàng of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (722 entries, 242 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (847 entries, 264 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
-The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-promotions`, `theme-shifts`, `theme-stores`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
+The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-promotions`, `theme-shifts`, `theme-stores`, `theme-quality`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
 ## How to review
 
@@ -39,8 +39,10 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{cashier}` | 2 | `theme.shifts.adjustments.main` |
 | `{category}` | 2 | `theme.menu.categoryMix.caption` |
 | `{cost}` | 3 | `theme.promotions.lift.caption` |
-| `{count}` | 24 | `theme.menu.preferences.otherOnly` |
+| `{count}` | 34 | `theme.menu.preferences.otherOnly` |
+| `{coverage}` | 2 | `theme.quality.costs.coverage` |
 | `{covered}` | 2 | `theme.menu.movers.captionLikeForLike` |
+| `{customers}` | 1 | `theme.quality.customers.coverage` |
 | `{date}` | 11 | `theme.page.todayClamped` |
 | `{day}` | 5 | `settings.hours.addSpanTo` |
 | `{days}` | 26 | `theme.range.summary` |
@@ -83,12 +85,14 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{n}` | 3 | `settings.hours.close` |
 | `{name}` | 2 | `theme.promotions.lift.option` |
 | `{net}` | 2 | `theme.promotions.lift.gain` |
+| `{notChecked}` | 1 | `theme.quality.verification.main` |
+| `{notMatched}` | 1 | `theme.quality.verification.main` |
 | `{other}` | 1 | `theme.stores.sinceOpening.main` |
 | `{page}` | 1 | `settings.placeholder.body` |
 | `{payment}` | 1 | `theme.payments.mix.otherMover` |
 | `{peak}` | 2 | `theme.hours.peakDead.main` |
 | `{peakShare}` | 2 | `theme.hours.peakDead.main` |
-| `{phase}` | 2 | `theme.laterPage.body` |
+| `{phase}` | 1 | `settings.placeholder.body` |
 | `{points}` | 12 | `theme.revenue.trend.caption` |
 | `{pos}` | 1 | `settings.mapping.kinds.state` |
 | `{promotion}` | 5 | `theme.promotions.discountCost.largest` |
@@ -96,8 +100,8 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{quiet}` | 1 | `theme.hours.heatmap.main` |
 | `{quietDay}` | 1 | `theme.hours.heatmap.main` |
 | `{quietHour}` | 1 | `theme.hours.heatmap.main` |
-| `{range}` | 82 | `theme.print.summary` |
-| `{rate}` | 4 | `theme.menu.margins.rate` |
+| `{range}` | 97 | `theme.print.summary` |
+| `{rate}` | 5 | `theme.menu.margins.rate` |
 | `{reasons}` | 1 | `theme.shifts.adjustments.main` |
 | `{reference}` | 26 | `theme.range.summary` |
 | `{rel}` | 1 | `theme.payments.drawer.thresholds` |
@@ -106,7 +110,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{riserChange}` | 2 | `theme.menu.movers.main` |
 | `{role}` | 2 | `settings.audit.byRole` |
 | `{seats}` | 1 | `theme.hours.productivity.revpash` |
-| `{share}` | 9 | `theme.revenue.storeShare.main` |
+| `{share}` | 14 | `theme.revenue.storeShare.main` |
 | `{shift}` | 3 | `theme.payments.drawer.shiftOn` |
 | `{shifts}` | 1 | `theme.shifts.cashiers.main` |
 | `{shown}` | 1 | `settings.mapping.categories.search.more` |
@@ -116,10 +120,9 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{stores}` | 2 | `theme.print.summary` |
 | `{sugar}` | 2 | `theme.menu.preferences.main` |
 | `{sugarShare}` | 2 | `theme.menu.preferences.main` |
-| `{theme}` | 1 | `theme.laterPage.body` |
 | `{time}` | 2 | `settings.audit.when` |
 | `{to}` | 5 | `theme.range.span` |
-| `{total}` | 2 | `theme.menu.movers.captionLikeForLike` |
+| `{total}` | 3 | `theme.menu.movers.captionLikeForLike` |
 | `{type}` | 3 | `settings.mapping.categories.onPos` |
 | `{value}` | 53 | `theme.revenue.net.down` |
 | `{voucher}` | 1 | `theme.promotions.vouchers.top` |
@@ -145,8 +148,9 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 - The lift words "lãi ròng" and "lỗ ròng" for the net lift, "doanh thu gộp tăng thêm" for the gross lift, and "đối chứng" for what each comparator compares with (`theme.promotions.lift.*`); the headline always comes with the gross lift and the discount cost in its caption.
 - So sánh cửa hàng: the store-day index read as "bằng … lần mức trung bình của mình" (`theme.stores.sameDay.main`), the like-for-like all-stores row "Tất cả cửa hàng (so với kỳ trước: cùng cửa hàng)" (`theme.stores.kpis.allStoresLikeForLike`), and the sentence that skips the Tết weeks (`theme.stores.sinceOpening.tetSkipped`).
 - How the card "Theo thu ngân" speaks of people: it names a cashier only when one named cashier alone has the most shifts over the drawer thresholds, never the "chưa rõ thu ngân" row, always adds that figures per cashier are a prompt to look again and no conclusion about a person, asks for individual POS logins when a store's shifts all carry one login, and asks for display names when the logins differ but none has one (`theme.shifts.cashiers.main`, `.tied`, `.unnamed`, `.caution`, `.single`, `.singlePerStore`, `.logins`, `.unnamedAll`, `.displayNames`).
+- On Chất lượng dữ liệu, the "Sửa trong POS: …" hints (`theme.quality.fix.pos.*`), the legal line of the e-invoice notice (`theme.quality.compliance.eInvoiceNotice`), "Chưa rõ" for an e-invoice status not yet recorded (the word Cài đặt → Cửa hàng uses), and "danh sách khách hàng" for the customers an invoice is linked to, as against an invoice that only carries a phone number (`theme.quality.customers.*`).
 
-## Dùng chung cho các chủ đề · Shared by the thematic reports (`themes.vi.json`, 43 mục)
+## Dùng chung cho các chủ đề · Shared by the thematic reports (`themes.vi.json`, 39 mục)
 
 ### Thẻ chọn chủ đề · theme tabs (`theme.tabs.*`)
 
@@ -226,20 +230,6 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `theme.weekday.short.5` | T6 | Fri | — |
 | `theme.weekday.short.6` | T7 | Sat | — |
 | `theme.weekday.short.7` | CN | Sun | — |
-
-### Tên chủ đề chưa có · names of topics not built yet (`theme.later.*`)
-
-| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
-| --- | --- | --- | --- |
-| `theme.later.quality` | Chất lượng dữ liệu | Data quality | — |
-| `theme.later.stores` | So sánh cửa hàng | Store comparison | — |
-
-### Trang chủ đề chưa có · page of a topic not built yet (`theme.laterPage.*`)
-
-| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
-| --- | --- | --- | --- |
-| `theme.laterPage.body` | Chủ đề {theme} có ở giai đoạn {phase} của lộ trình. Các chủ đề đã có nằm ở các thẻ phía trên. | The {theme} topic comes in phase {phase} of the roadmap. The topics already built are in the tabs above. | `{theme}` `{phase}` |
-| `theme.laterPage.title` | Chủ đề này đang được xây dựng | This topic is being built | — |
 
 ## Doanh thu & xu hướng · Revenue and trend (`theme-revenue.vi.json`, 73 mục)
 
@@ -1053,6 +1043,217 @@ The table's column names are the shared ones of `theme.shifts.table.*` below and
 | `theme.stores.table.voucherShare` | Hóa đơn dùng voucher | Invoices with a voucher | — |
 | `theme.stores.table.week` | Tuần thứ | Week | — |
 | `theme.stores.table.weekFrom` | Tuần từ | Week from | — |
+
+## Chất lượng dữ liệu · Data quality (`theme-quality.vi.json`, 129 mục)
+
+### Tiêu đề · title (`theme.quality.title`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.title` | Chất lượng dữ liệu | Data quality | — |
+
+### Thẻ «Hóa đơn điện tử, đánh số hóa đơn và hồ sơ cửa hàng» (`theme.quality.compliance.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.compliance.eInvoice` | Hóa đơn điện tử chưa ở trạng thái Đã đăng ký tại {count} cửa hàng. | E-invoices are not recorded as Registered at {count} stores. | `{count}` |
+| `theme.quality.compliance.eInvoiceNotice` | Sửa trong POS: đăng ký hóa đơn điện tử khởi tạo từ máy tính tiền (bắt buộc với hộ kinh doanh ăn uống có doanh thu từ 1 tỷ đồng mỗi năm), rồi ghi trạng thái trong ứng dụng. | Fix in the POS: register cash-register e-invoices (required for food and drink household businesses with revenue of 1 billion VND a year or more), then record the status in the app. | — |
+| `theme.quality.compliance.findingsTable` | Việc cần làm theo cửa hàng | To do by store | — |
+| `theme.quality.compliance.main` | {count} trên {total} cửa hàng còn việc cần làm về hóa đơn điện tử, đánh số hóa đơn hoặc hồ sơ cửa hàng. | {count} of {total} stores have something to do about e-invoices, receipt numbering or the store profile. | `{count}` `{total}` |
+| `theme.quality.compliance.memberNotice` | Sửa trong POS: bật tính năng thành viên ở cửa hàng đang tắt, rồi ghi lại trạng thái và các mục còn thiếu trong hồ sơ cửa hàng. | Fix in the POS: switch the member feature on where it is off, then record its status and anything else missing in the store profile. | — |
+| `theme.quality.compliance.none` | Mọi cửa hàng đã ghi đủ hóa đơn điện tử, đánh số hóa đơn và hồ sơ. | Every store has its e-invoices, receipt numbering and profile recorded. | — |
+| `theme.quality.compliance.storeNotice` | Ghi những mục còn thiếu trong hồ sơ cửa hàng. | Record what is missing in the store profile. | — |
+| `theme.quality.compliance.storesTable` | Hồ sơ cửa hàng | Store profile | — |
+| `theme.quality.compliance.title` | Hóa đơn điện tử, đánh số hóa đơn và hồ sơ cửa hàng | E-invoices, receipt numbering and store profile | — |
+
+### Thẻ «Món chưa có nhóm, nhóm chưa có vai trò» (`theme.quality.uncategorised.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.uncategorised.bothNotice` | Sửa trong POS: gán nhóm cho món, hoặc chọn nhóm ngay trong ứng dụng; rồi gán vai trò cho nhóm món chưa có. | Fix in the POS: give the items a category, or choose it here in the app; then give a role to the categories without one. | — |
+| `theme.quality.uncategorised.itemsNotice` | Sửa trong POS: gán nhóm cho món; hoặc chọn nhóm cho món ngay trong ứng dụng. | Fix in the POS: give the item a category; or choose its category here in the app. | — |
+| `theme.quality.uncategorised.itemsTable` | Món chưa có nhóm | Items without a category | — |
+| `theme.quality.uncategorised.main` | {count} món bán trong {range} chưa có nhóm, chiếm {share} doanh thu món. | {count} items sold in {range} have no category, {share} of item revenue. | `{count}` `{range}` `{share}` |
+| `theme.quality.uncategorised.noData` | Chưa có món nào được bán trong {range}. | No item was sold in {range}. | `{range}` |
+| `theme.quality.uncategorised.none` | Mọi món bán trong {range} đều đã có nhóm. | Every item sold in {range} has a category. | `{range}` |
+| `theme.quality.uncategorised.roles` | {count} nhóm món có bán chưa có vai trò, chiếm {share} doanh thu món. | {count} item categories with sales have no role, {share} of item revenue. | `{count}` `{share}` |
+| `theme.quality.uncategorised.rolesNone` | Mọi nhóm món có bán đều đã có vai trò. | Every item category with sales has a role. | — |
+| `theme.quality.uncategorised.rolesNotice` | Gán vai trò cho nhóm món để tính được tỷ lệ kèm topping và đồ ăn nhẹ. | Give the categories a role so that the topping and snack attach rates can be worked out. | — |
+| `theme.quality.uncategorised.title` | Món chưa có nhóm, nhóm chưa có vai trò | Items without a category, categories without a role | — |
+| `theme.quality.uncategorised.typesTable` | Nhóm món chưa có vai trò | Item categories without a role | — |
+
+### Thẻ «Món chưa có giá vốn» (`theme.quality.costs.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.costs.coverage` | Doanh thu món của các ngày đã có giá vốn chiếm {coverage} doanh thu món trong {range}. | Item revenue of the days that had a cost is {coverage} of item revenue in {range}. | `{coverage}` `{range}` |
+| `theme.quality.costs.main` | Đến ngày cuối kỳ, {count} món đã bán vẫn chưa có giá vốn, chiếm {share} doanh thu món. | On the last day of the range, {count} items sold still have no cost, {share} of item revenue. | `{count}` `{share}` |
+| `theme.quality.costs.noData` | Chưa có món nào được bán trong {range}. | No item was sold in {range}. | `{range}` |
+| `theme.quality.costs.none` | Đến ngày cuối kỳ, mọi món đã bán đều có giá vốn. | On the last day of the range, every item sold has a cost. | — |
+| `theme.quality.costs.notice` | Biên lợi nhuận chỉ tính trên doanh thu của các ngày đã có giá vốn; nhập giá vốn còn thiếu, kèm ngày bắt đầu áp dụng. | Margins count only the revenue of the days that had a cost; enter the missing costs with the date they apply from. | — |
+| `theme.quality.costs.table` | Các món doanh thu cao nhất chưa có giá vốn (tối đa 20) | Best-selling items without a cost (at most 20) | — |
+| `theme.quality.costs.title` | Món chưa có giá vốn | Items without a cost | — |
+
+### Thẻ «Ngày chưa đối soát» (`theme.quality.verification.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.verification.main` | Trong {range} còn {count} ngày bán chưa đối soát, tính riêng từng cửa hàng: {notMatched} ngày chưa khớp với POS, {notChecked} ngày chưa kiểm tra. | {range} has {count} store-days not verified yet: {notMatched} do not match the POS, {notChecked} are not checked. | `{range}` `{count}` `{notMatched}` `{notChecked}` |
+| `theme.quality.verification.noData` | Chưa có ngày bán nào trong {range}. | No day with sales in {range}. | `{range}` |
+| `theme.quality.verification.none` | Mọi ngày bán trong {range} đều đã đối soát. | Every day with sales in {range} is verified. | `{range}` |
+| `theme.quality.verification.notice` | Chạy lại đồng bộ cho từng ngày còn lại (fnb sync window, ngày bắt đầu và ngày kết thúc đều là ngày đó); ngày ấy sẽ được đối soát lại. | Run the sync again for each remaining day (fnb sync window, with that day as both start and end); the day is then verified again. | — |
+| `theme.quality.verification.table` | Ngày chưa đối soát theo cửa hàng | Unverified days by store | — |
+| `theme.quality.verification.title` | Ngày chưa đối soát | Days not verified | — |
+| `theme.quality.verification.updating` | Số liệu của {count} ngày đang cập nhật. | The figures of {count} days are being updated. | `{count}` |
+
+### Thẻ «Phương thức thanh toán chưa phân loại» (`theme.quality.payments.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.payments.main` | {count} phương thức dùng trong {range} đang tính là Khác, chiếm {share} số tiền thanh toán. | {count} methods used in {range} count as Other, {share} of the money paid. | `{count}` `{range}` `{share}` |
+| `theme.quality.payments.noData` | Chưa có thanh toán nào trong {range}. | No payment in {range}. | `{range}` |
+| `theme.quality.payments.none` | Mọi phương thức dùng trong {range} đều đã có loại. | Every method used in {range} has a kind. | `{range}` |
+| `theme.quality.payments.notInCatalogue` | {count} phương thức chưa có trong danh mục POS đã đồng bộ. | {count} methods are missing from the synced POS catalogue. | `{count}` |
+| `theme.quality.payments.notice` | Chọn loại cho các phương thức đang tính là Khác để Thanh toán & tiền mặt chia đúng. | Choose a kind for the methods counted as Other so that Payments and cash splits them correctly. | — |
+| `theme.quality.payments.table` | Phương thức cần phân loại hoặc đồng bộ lại | Methods to classify or sync again | — |
+| `theme.quality.payments.title` | Phương thức thanh toán chưa phân loại | Payment methods without a kind | — |
+
+### Thẻ «Dòng tùy chọn (đường, đá, topping miễn phí)» (`theme.quality.modifiers.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.modifiers.catalogue` | {count} dòng là tùy chọn trong danh mục nhưng được bán như món. | {count} lines are catalogue modifiers sold as items. | `{count}` |
+| `theme.quality.modifiers.catalogueNone` | Không có tùy chọn nào trong danh mục được bán như món. | No catalogue modifier was sold as an item. | — |
+| `theme.quality.modifiers.main` | Dòng tùy chọn chiếm {share} số dòng bán trong {range}; dòng tùy chọn không bao giờ được tính là món. | Modifier lines are {share} of the lines sold in {range}; a modifier line never counts as an item. | `{share}` `{range}` |
+| `theme.quality.modifiers.noData` | Chưa có dòng bán nào trong {range}. | No line was sold in {range}. | `{range}` |
+| `theme.quality.modifiers.table` | Dòng món và dòng tùy chọn theo cửa hàng | Item and modifier lines by store | — |
+| `theme.quality.modifiers.title` | Dòng tùy chọn (đường, đá, topping miễn phí) | Modifier lines (sugar, ice, free toppings) | — |
+
+### Thẻ «Định danh khách và đồng ý» (`theme.quality.customers.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.customers.coverage` | {coverage} trong {customers} khách của danh sách khách hàng mua trong kỳ đã đồng ý tích điểm. | {coverage} of the {customers} customers of the customer list who bought in the range agreed to loyalty. | `{coverage}` `{customers}` |
+| `theme.quality.customers.featureNotice` | Sửa trong POS: bật tính năng thành viên ở cửa hàng đang tắt, rồi nhắc thu ngân dùng bước Thêm khách hàng khi thanh toán. | Fix in the POS: switch the member feature on where it is off, then remind cashiers to use the Add customer step at payment. | — |
+| `theme.quality.customers.main` | {rate} hóa đơn trong {range} có số điện thoại hoặc mã khách. | {rate} of the invoices in {range} carry a phone number or a customer id. | `{rate}` `{range}` |
+| `theme.quality.customers.noData` | Chưa có hóa đơn nào trong {range}. | No invoice in {range}. | `{range}` |
+| `theme.quality.customers.noIdentified` | Chưa hóa đơn nào gắn với khách trong danh sách khách hàng (hóa đơn mới chỉ có số điện thoại), nên chưa tính được tỷ lệ đồng ý. | No invoice is linked to a customer of the customer list yet (the invoices carry phone numbers only), so consent coverage cannot be worked out. | — |
+| `theme.quality.customers.notice` | Sửa trong POS: nhắc thu ngân dùng bước Thêm khách hàng khi thanh toán. | Fix in the POS: remind cashiers to use the Add customer step at payment. | — |
+| `theme.quality.customers.table` | Định danh khách theo cửa hàng (chỉ có số đếm) | Customer identity by store (counts only) | — |
+| `theme.quality.customers.title` | Định danh khách và đồng ý | Customer identity and consent | — |
+
+### Cách sửa · how to fix (`theme.quality.fix.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.fix.pos.category` | Sửa trong POS: gán nhóm cho món, hoặc chọn nhóm ở Cài đặt → Phân loại | Fix in the POS: give the item a category, or choose one in Settings → Classification | — |
+| `theme.quality.fix.pos.eInvoice` | Sửa trong POS: đăng ký hóa đơn điện tử khởi tạo từ máy tính tiền, rồi ghi trạng thái ở Cài đặt → Cửa hàng | Fix in the POS: register cash-register e-invoices, then record the status in Settings → Stores | — |
+| `theme.quality.fix.pos.member` | Sửa trong POS: dùng Thêm khách hàng khi thanh toán | Fix in the POS: use Add customer at payment | — |
+| `theme.quality.fix.pos.memberFeature` | Sửa trong POS: bật tính năng thành viên | Fix in the POS: switch the member feature on | — |
+| `theme.quality.fix.pos.memberFeatureRecord` | Sửa trong POS: bật tính năng thành viên, rồi ghi lại ở Cài đặt → Cửa hàng | Fix in the POS: switch the member feature on, then record it in Settings → Stores | — |
+| `theme.quality.fix.pos.modifier` | Sửa trong POS: bán tùy chọn kèm món, không bán như một món riêng | Fix in the POS: sell the modifier with an item, not as an item of its own | — |
+| `theme.quality.fix.settings.cost` | Nhập giá vốn ở Cài đặt → Dữ liệu nhập tay → Giá vốn | Enter the cost in Settings → Manual data → Costs | — |
+| `theme.quality.fix.settings.eInvoice` | Kiểm tra trong POS, rồi ghi trạng thái ở Cài đặt → Cửa hàng | Check in the POS, then record the status in Settings → Stores | — |
+| `theme.quality.fix.settings.hours` | Nhập giờ mở cửa ở Cài đặt → Cửa hàng | Enter the opening hours in Settings → Stores | — |
+| `theme.quality.fix.settings.openedOn` | Nhập ngày khai trương ở Cài đặt → Cửa hàng | Enter the opening date in Settings → Stores | — |
+| `theme.quality.fix.settings.paymentKind` | Chọn loại ở Cài đặt → Phân loại → Loại thanh toán | Choose the kind in Settings → Classification → Payment kinds | — |
+| `theme.quality.fix.settings.receipts` | Ghi cách đánh số hóa đơn ở Cài đặt → Cửa hàng | Record the receipt numbering in Settings → Stores | — |
+| `theme.quality.fix.settings.role` | Gán vai trò ở Cài đặt → Phân loại → Vai trò nhóm món | Assign a role in Settings → Classification → Item-type roles | — |
+| `theme.quality.fix.settings.seats` | Nhập số ghế ở Cài đặt → Cửa hàng | Enter the seats in Settings → Stores | — |
+| `theme.quality.fix.syncDay` | Chạy lại đồng bộ cho ngày này (fnb sync window) | Run the sync again for this day (fnb sync window) | — |
+| `theme.quality.fix.syncDays` | Chạy lại đồng bộ cho các ngày này (fnb sync window) | Run the sync again for these days (fnb sync window) | — |
+| `theme.quality.fix.syncMaster` | Chạy lại đồng bộ danh mục POS (fnb sync master) | Run the POS catalogue sync again (fnb sync master) | — |
+| `theme.quality.fix.waitRefresh` | Chờ lần làm mới số liệu tiếp theo | Wait for the next refresh of the figures | — |
+
+### Việc cần làm của cửa hàng · store findings (`theme.quality.finding.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.finding.eInvoice.disabled` | Hóa đơn điện tử đã tắt | E-invoices turned off | — |
+| `theme.quality.finding.eInvoice.not_configured` | Chưa đăng ký hóa đơn điện tử | E-invoices not registered | — |
+| `theme.quality.finding.eInvoice.unknown` | Chưa ghi trạng thái hóa đơn điện tử | E-invoice status not recorded | — |
+| `theme.quality.finding.hours` | Chưa có giờ mở cửa | No opening hours | — |
+| `theme.quality.finding.memberDisabled` | Tính năng thành viên trên POS đang tắt | Member feature on the POS is off | — |
+| `theme.quality.finding.openedOn` | Chưa có ngày khai trương | No opening date | — |
+| `theme.quality.finding.receipts.mismatch` | Cách đánh số hóa đơn đã ghi khác với dữ liệu | Recorded receipt numbering differs from the data | — |
+| `theme.quality.finding.receipts.unknown` | Chưa ghi cách đánh số hóa đơn | Receipt numbering not recorded | — |
+| `theme.quality.finding.seats` | Chưa có số ghế | No seat count | — |
+
+### Trạng thái ngày · day states (`theme.quality.state.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.state.notChecked` | Chưa kiểm tra | Not checked | — |
+| `theme.quality.state.notMatched` | Chưa khớp | Not matched | — |
+| `theme.quality.state.updating` | Đang cập nhật | Updating | — |
+
+### Hóa đơn điện tử · e-invoice status (`theme.quality.eInvoice.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.eInvoice.configured` | Đã đăng ký | Registered | — |
+| `theme.quality.eInvoice.disabled` | Đã tắt | Turned off | — |
+| `theme.quality.eInvoice.not_configured` | Chưa đăng ký | Not registered | — |
+| `theme.quality.eInvoice.unknown` | Chưa rõ | Not known | — |
+
+### Đánh số hóa đơn · receipt numbering (`theme.quality.receipts.*`, `theme.quality.receiptsData.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.receipts.daily` | Hằng ngày | Every day | — |
+| `theme.quality.receipts.never` | Không đánh lại | Never | — |
+| `theme.quality.receipts.unknown` | Chưa rõ | Not known | — |
+| `theme.quality.receipts.yearly` | Hằng năm | Every year | — |
+| `theme.quality.receiptsData.daily` | Bắt đầu lại mỗi ngày | Starts again every day | — |
+| `theme.quality.receiptsData.notDaily` | Không bắt đầu lại mỗi ngày | Does not start again every day | — |
+| `theme.quality.receiptsData.unknown` | Chưa đủ dữ liệu | Not enough data | — |
+
+### Tính năng thành viên · member feature (`theme.quality.member.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.member.disabled` | Đang tắt | Off | — |
+| `theme.quality.member.enabled` | Đang bật | On | — |
+| `theme.quality.member.unknown` | Chưa rõ | Not known | — |
+
+### Giá trị trong bảng · table values (`theme.quality.value.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.value.entered` | Đã nhập | Entered | — |
+| `theme.quality.value.missing` | Chưa nhập | Missing | — |
+| `theme.quality.value.no` | Không | No | — |
+| `theme.quality.value.yes` | Có | Yes | — |
+
+### Tên cột bảng · table columns (`theme.quality.table.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.quality.table.catalogueModifiers` | Tùy chọn bán như món | Catalogue modifiers sold as items | — |
+| `theme.quality.table.consentCoverage` | Tỷ lệ đồng ý tích điểm | Consent coverage | — |
+| `theme.quality.table.eInvoice` | Hóa đơn điện tử | E-invoices | — |
+| `theme.quality.table.finding` | Việc cần làm | To do | — |
+| `theme.quality.table.fix` | Cách sửa | How to fix | — |
+| `theme.quality.table.identifiedCustomers` | Khách trong danh sách khách hàng | Customers in the customer list | — |
+| `theme.quality.table.identifiedInvoices` | Hóa đơn có SĐT hoặc mã khách | Invoices with a phone or customer id | — |
+| `theme.quality.table.inCatalogue` | Có trong danh mục | In the catalogue | — |
+| `theme.quality.table.itemLines` | Dòng món | Item lines | — |
+| `theme.quality.table.itemShare` | Tỷ trọng doanh thu món | Share of item revenue | — |
+| `theme.quality.table.items` | Số món | Items | — |
+| `theme.quality.table.kind` | Đang tính là | Counted as | — |
+| `theme.quality.table.loyaltyConsents` | Đồng ý tích điểm | Loyalty consents | — |
+| `theme.quality.table.marketingConsents` | Đồng ý nhận tin | Marketing consents | — |
+| `theme.quality.table.member` | Tính năng thành viên | Member feature | — |
+| `theme.quality.table.modifierLines` | Dòng tùy chọn | Modifier lines | — |
+| `theme.quality.table.modifierShare` | Tỷ trọng dòng tùy chọn | Modifier line share | — |
+| `theme.quality.table.openedOn` | Ngày khai trương | Opening date | — |
+| `theme.quality.table.openingHours` | Giờ mở cửa | Opening hours | — |
+| `theme.quality.table.overrideKind` | Loại chọn trong Cài đặt | Kind set in Settings | — |
+| `theme.quality.table.posKind` | Loại trên POS | POS kind | — |
+| `theme.quality.table.posType` | Nhóm trên POS | POS category | — |
+| `theme.quality.table.receipts` | Đánh số hóa đơn đã ghi | Receipt numbering recorded | — |
+| `theme.quality.table.receiptsData` | Đánh số theo dữ liệu | Numbering in the data | — |
+| `theme.quality.table.seats` | Số ghế | Seats | — |
 
 ## Cài đặt: phần dùng chung · Settings, shared parts (`settings.vi.json`, 94 mục)
 

@@ -737,7 +737,7 @@ Full run on 2026-11-16 after migration `data_quality_payments_account_order`: 2,
 
 ### 8.3 Playwright specs
 
-Listed with `playwright test --list` on 2026-11-16 after #192: 191 tests in 28 files.
+Listed with `playwright test --list` on 2026-11-16 after #158: 202 tests in 29 files.
 
 | Project | File | Tests |
 |---|---|---:|
@@ -747,7 +747,7 @@ Listed with `playwright test --list` on 2026-11-16 after #192: 191 tests in 28 f
 | `live` | `e2e/live/settings-manual.spec.ts` | 7 |
 | `live` | `e2e/live/settings.spec.ts` | 5 |
 | `live` | `e2e/live/settings-phan-loai.spec.ts` | 4 |
-| `live` | `e2e/live/themes.spec.ts` | 2 |
+| `live` | `e2e/live/themes.spec.ts` | 3 |
 | `live` | `e2e/live/today.spec.ts` | 7 |
 | `demo` | `e2e/demo/demo.spec.ts` | 13 |
 | `demo` | `e2e/demo/report-day.spec.ts` | 12 |
@@ -765,11 +765,12 @@ Listed with `playwright test --list` on 2026-11-16 after #192: 191 tests in 28 f
 | `demo` | `e2e/demo/theme-thanh-toan.spec.ts` | 8 |
 | `demo` | `e2e/demo/theme-khuyen-mai.spec.ts` | 9 |
 | `demo` | `e2e/demo/theme-so-sanh.spec.ts` | 8 |
+| `demo` | `e2e/demo/theme-chat-luong.spec.ts` | 10 |
 | `demo` | `e2e/demo/theme-ca-ket-tien.spec.ts` | 11 |
 | `demo` | `e2e/demo/theme-navigation.spec.ts` | 4 |
 | `pages` | `e2e/pages/install.spec.ts` | 2 |
 | `pages` | `e2e/pages/report-year-performance.spec.ts` | 1 |
-| | **Total** | **191** (live 44, demo 144, pages 3) |
+| | **Total** | **202** (live 45, demo 154, pages 3) |
 
 At phase 10a's verification the list held 126 tests in 19 files and all 126 passed with one worker and no retries; the phase 9 verification had 63 and phase 6 had 20.
 
@@ -847,7 +848,7 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | FR-TEN | 14 | – | 1 | 2 | 17 |
 | FR-CON | 14 | 2 | 1 | – | 17 |
 | FR-SYNC | 25 | 2 | – | 1 | 28 |
-| FR-DQ | 10 | 1 | 1 | 1 | 13 |
+| FR-DQ | 11 | – | 1 | 1 | 13 |
 | FR-ANA | 15 | – | 1 | 1 | 17 |
 | FR-REP | 17 | 2 | – | 2 | 21 |
 | FR-THM | 4 | 5 | – | – | 9 |
@@ -856,11 +857,11 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | FR-STR | 1 | – | 9 | – | 10 |
 | FR-NOT | 26 | 4 | 12 | – | 42 |
 | FR-OPS | 1 | 4 | 8 | 4 | 17 |
-| FR-CMP | 6 | 3 | 8 | 3 | 20 |
+| FR-CMP | 7 | 2 | 8 | 3 | 20 |
 | FR-STF | – | – | 23 | – | 23 |
 | FR-LOY | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | 7 | – | 12 |
-| **FR total** | **140** | **34** | **108** | **14** | **296** |
+| **FR total** | **142** | **32** | **108** | **14** | **296** |
 | NFR-SEC | 6 | 6 | 2 | 1 | 15 |
 | NFR-PRV | 5 | 1 | 1 | – | 7 |
 | NFR-PERF | 4 | 4 | 1 | – | 9 |
@@ -873,18 +874,18 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | NFR-OBS | 3 | 1 | – | – | 4 |
 | NFR-HYG | 4 | 1 | 1 | – | 6 |
 | **NFR total** | **47** | **22** | **9** | **2** | **80** |
-| **All** | **187** | **56** | **117** | **16** | **376** |
+| **All** | **189** | **54** | **117** | **16** | **376** |
 
 ```mermaid
 pie showData
     title Coverage of the requirements on 2026-11-16
-    "covered" : 187
-    "partial" : 56
+    "covered" : 189
+    "partial" : 54
     "planned" : 117
     "owner check" : 16
 ```
 
-Of the 257 requirements that are verified locally, built, in build or waiting for the owner, 187 are covered, 53 partial, 1 planned and 16 owner checks. Of the 119 that are designed or planned, 116 have no test yet and 3 are partly held by tests of the database rules they rest on.
+Of the 257 requirements that are verified locally, built, in build or waiting for the owner, 189 are covered, 51 partial, 1 planned and 16 owner checks. Of the 119 that are designed or planned, 116 have no test yet and 3 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -973,14 +974,14 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | FR-DQ-02 | Unverified when unchecked | Must | verified locally | `sync:unit/window-changes` | covered |
 | FR-DQ-03 | Backfill reconciliation rate | Must | verified locally | phase 7 verification, `fnb status` | covered |
 | FR-DQ-04 | Monthly comparison with the POS report | Must | waits for owner | owner check | owner check |
-| FR-DQ-05 | Verified badge | Must | verified locally | `web:metrics/verification`, `e2e:live/today` | covered |
+| FR-DQ-05 | Verified badge | Must | verified locally | `web:metrics/verification`, `e2e:live/today`, `reports:unit/themes/quality/verification` (the headline counts unmatched and unchecked sales days by the badge's rule, a day without invoices left out, the days call within 900 rows up to 400 days; #158) | covered |
 | FR-DQ-06 | Freshness badge | Must | verified locally | `e2e:live/today`, `web:demo/demo-row-source` | covered |
 | FR-DQ-07 | Data-quality flags in the run summary | Must | verified locally | `sync:unit/mapping`, `sync:unit/window-robustness`, `sync:unit/business-date` | covered |
 | FR-DQ-08 | Hôm nay equals the POS | Must | verified locally | `e2e:live/today`, phase 6 verification | covered |
 | FR-DQ-09 | Report numbers equal the POS | Must | verified locally | `reports:live/live-check` (opt-in) | covered |
 | FR-DQ-10 | Lagging aggregates marked | Should | verified locally | `pgtap:22_report_functions`, `reports:unit/coverage-and-comparison`, `pgtap:35_mappings_and_catch_up`, `web:settings/catch-up/catch-up-banner`, `web:settings/catch-up/use-analytics-catch-up`, `web:themes/theme-wiring` (the pending range reaches the cards and the theme page shows the banner), `web:settings/queries` (the status is read again while days are pending), `reports:unit/themes/promotions/discount-cost` (stale aggregates and an overlapping catch-up marked; #191) | covered |
 | FR-DQ-11 | Unmeasured is null | Must | verified locally | `pgtap:18_metric_value`, `pgtap:36_promotion_functions` (an unmeasured lift day stays null) | covered |
-| FR-DQ-12 | Data-quality page | Should | in build | `pgtap:37_shift_and_quality_functions` (`data_quality_items`, `data_quality_summary`, `data_quality_payments`), `pgtap:39_theme_access_b` (#156), `pgtap:37_shift_and_quality_functions` (the payments of two accounts in the order of the stores asked; #157); `demo-analytics:parity/data-quality-items`, `demo-analytics:parity/data-quality-summary`, `demo-analytics:parity/data-quality-payments`, `demo-analytics:unit/data-quality-ports` (#157); `web:settings/categories/use-uncategorised-sales` and `e2e:live/settings-phan-loai` (Phân loại's Chưa phân loại list read from `data_quality_items`; #160); the page planned (#158) | partial |
+| FR-DQ-12 | Data-quality page | Should | built | `pgtap:37_shift_and_quality_functions` (`data_quality_items`, `data_quality_summary`, `data_quality_payments`), `pgtap:39_theme_access_b` (#156), `pgtap:37_shift_and_quality_functions` (the payments of two accounts in the order of the stores asked; #157); `demo-analytics:parity/data-quality-items`, `demo-analytics:parity/data-quality-summary`, `demo-analytics:parity/data-quality-payments`, `demo-analytics:unit/data-quality-ports` (#157); `web:settings/categories/use-uncategorised-sales` and `e2e:live/settings-phan-loai` (Phân loại's Chưa phân loại list read from `data_quality_items`; #160), `reports:unit/themes/quality/*` (eight files: compliance, uncategorised, costs, verification, payments, modifiers, customers, markers), `demo-analytics:themes/quality.smoke`, `e2e:demo/theme-chat-luong`, `e2e:live/themes` (the page on the seed; #158) | covered |
 | FR-DQ-13 | Parallel verification before v1.0 | Must | planned | planned | planned |
 
 #### FR-ANA — Analytics and metric registry
@@ -1043,7 +1044,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | FR-THM-06 | Khuyến mãi & giảm giá | Should | built | `reports:unit/themes/contract`, `reports:unit/themes/promotions/params`, `web:themes/theme-wiring` (the contracts and the `promo` and `cmp` parameters, #149); `pgtap:36_promotion_functions` (#150); `demo-analytics:parity/promotion-days`, `demo-analytics:parity/promotion-lift`, `demo-analytics:unit/promotion-ports` (#190); the other ports and the page planned, `demo-analytics:parity/promotion-catalogue`, `demo-analytics:parity/promotion-compliance`, `demo-analytics:parity/item-discount-days` (#152), `reports:unit/themes/promotions/discount-cost`, `reports:unit/themes/promotions/vouchers`, `reports:unit/themes/promotions/lift` (a measured gain, loss and sister-store lift, every flag's sentence), `reports:unit/themes/promotions/definition` (the lift asked with the tenant's pre-period weeks), `demo-analytics:themes/promotions.smoke` (a measured bill discount in the demo), `web:themes/theme-wiring` (the sister store disabled with its reason, kept while only the comparator changes), `web:themes/theme-param-controls`, `web:i18n/theme-keys` (a measured lift in both languages with every placeholder filled), `e2e:demo/theme-khuyen-mai`, `e2e:live/themes` (six themes on the seed) (#191) | partial |
 | FR-THM-07 | Ca & két tiền | Should | built | `pgtap:37_shift_and_quality_functions` (`shift_adjustments`: attribution by the invoice's shift and by time, rates, one-sided z-scores on unrounded rates) (#150); `demo-analytics:parity/shift-adjustments`, `demo-analytics:unit/shift-adjustments` (#154); `reports:unit/themes/shifts/calls`, `reports:unit/themes/shifts/shift-sales`, `reports:unit/themes/shifts/drawer` (the flagged shifts equal `shift_review`'s flagged rows), `reports:unit/themes/shifts/adjustments` (only what `shift_adjustments` flags, every missing z-score explained), `reports:unit/themes/shifts/labels`, `demo-analytics:themes/shifts.smoke` (a shift has the same Ca n in every card), `web:pages/themes/ca-ket-tien/shift-privacy` (no POS shift name or e-mail in CSV or rendered markup), `e2e:demo/theme-ca-ket-tien`, `e2e:live/themes` (the five thematic reports on the seed) (#155), `reports:unit/themes/shifts/cashiers` (per-cashier sums equal the shift rows; only named cashiers lead, tie or are counted; a shared login decided per store from the raw values over at least 2 shifts; the display-name notice when every login is an e-mail address), `demo-analytics:themes/shifts.smoke` (the cashier card's columns sum to `shift_review` and `shift_adjustments`; #192) | covered |
 | FR-THM-08 | So sánh cửa hàng | Should | built | `reports:unit/themes/stores/calls`, `reports:unit/themes/stores/kpis` (the stores add up to the all-stores row, ratios after summing, like for like with k/N), `reports:unit/themes/stores/same-day`, `reports:unit/themes/stores/since-opening` (K from the youngest store with a complete week, the latest week without Tết), `demo-analytics:themes/stores.smoke`, `e2e:demo/theme-so-sanh`, `e2e:live/themes` (seven themes on the seed) (#193) | covered |
-| FR-THM-09 | Sections a POS cannot feed | Should | built | `pgtap:33_theme_functions` (provisional menu roles, null attach rates), `reports:unit/themes/menu/margins`, `reports:unit/themes/menu/attach`, `reports:unit/themes/hours/productivity`, `reports:unit/themes/payments/fees`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-thanh-toan`, phase 10a's verification (#102) (each missing-input state on the real tenant), `pgtap:37_shift_and_quality_functions` (the inputs a store lacks: costs, seats, opening hours, identified customers), `reports:unit/themes/stores/kpis` (chưa thiết lập in a figure's own cell, a dash for a store without sales), `web:reports/card-adapter`, `web:components/report-card/table-sorting` (words in a value column sort after every number; #193) | partial |
+| FR-THM-09 | Sections a POS cannot feed | Should | built | `pgtap:33_theme_functions` (provisional menu roles, null attach rates), `reports:unit/themes/menu/margins`, `reports:unit/themes/menu/attach`, `reports:unit/themes/hours/productivity`, `reports:unit/themes/payments/fees`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-thanh-toan`, phase 10a's verification (#102) (each missing-input state on the real tenant), `pgtap:37_shift_and_quality_functions` (the inputs a store lacks: costs, seats, opening hours, identified customers), `reports:unit/themes/stores/kpis` (chưa thiết lập in a figure's own cell, a dash for a store without sales), `web:reports/card-adapter`, `web:components/report-card/table-sorting` (words in a value column sort after every number; #193), `reports:unit/themes/quality/customers` and `costs` (no customer of the list yet, partial cost coverage; #158) | partial |
 
 #### FR-SET — Settings and manual data
 
@@ -1055,7 +1056,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | FR-SET-04 | Targets | Must | in build | `pgtap:05_write_policies` (table); screen planned, `web:settings/manual/supabase-manual-source` and `web:settings/manual/demo-manual-source` (targets upserted on store, period kind and start; #105) | partial |
 | FR-SET-05 | Payment fee rates | Should | in build | `pgtap:10_payment_fee_rates` (table); screen planned, `web:settings/supabase-settings-source` and `web:settings/demo-settings-source` (fee rates upserted on scope, method and date, the null store included), `e2e:live/settings-manual` (the tenant-wide key resolved through supabase-js; #105) | partial |
 | FR-SET-06 | Payment-kind mapping | Should | built | `core:unit/payment-kind` (override rule), `pgtap:38_settings_writes`; `web:settings/payment-kinds/payment-kinds`, `web:settings/payment-kinds/payment-kinds-form`, `web:pages/settings/phan-loai-page` (the Loại thanh toán tab: the POS, override and effective kinds, "Theo POS" deleting the override, the read-only states), `e2e:demo/settings-phan-loai` (a re-mapped method moving in Thanh toán's payment mix and back), `e2e:live/settings-phan-loai` (the kind override moving the method in Thanh toán, the catch-up banner; #160), `web:settings/supabase-settings-source` and `web:settings/demo-settings-source` (POS, override and effective kinds; overrides upserted and cleared), `e2e:live/settings-manual` (#105) | covered |
-| FR-SET-07 | Item-type roles and categories | Must | built | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`; the roles screen built (#89), the Nhóm của món tab (#160: `web:settings/categories/categories`, `web:settings/categories/categories-form`, `web:settings/categories/use-uncategorised-sales` (one `data_quality_items` call per POS account over 90 days, the best sellers first, an item sold by name), `web:pages/settings/phan-loai-page` (only the item's own account's types, "Theo POS" deleting the override), `e2e:demo/settings-phan-loai` (the uncategorised demo item re-mapped out of Chưa phân loại on Thực đơn), `e2e:live/settings-phan-loai` (an item without a type re-mapped through the real tables, Thực đơn checked before the catch-up ends)), `demo-analytics:parity/overrides`, `demo-analytics:parity/menu`, `web:settings/catch-up/use-analytics-catch-up`, `web:settings/use-settings-mutation` (a mapping save starts the catch-up), `web:data/invalidate-analytics` (a mounted analytics query of the tenant refetches at once, another tenant's does not), `web:settings/roles/roles`, `web:settings/roles/roles-form`, `web:pages/settings/phan-loai-page`, `web:settings/supabase-settings-source` (one upsert, a cleared role deleted), `core:unit/item-role` (`suggestRole`), `e2e:demo/settings-phan-loai` (Tháng's attach round trip), `pgtap:37_shift_and_quality_functions` (an overridden item and an item without a type in `data_quality_items`), `web:settings/supabase-settings-source` and `web:settings/demo-settings-source` (items with their POS category and override; overrides upserted and cleared), `e2e:live/settings-manual` (#105) | partial |
+| FR-SET-07 | Item-type roles and categories | Must | built | `pgtap:11_item_type_roles_and_holidays`, `pgtap:14_analytics_refresh`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`; the roles screen built (#89), the Nhóm của món tab (#160: `web:settings/categories/categories`, `web:settings/categories/categories-form`, `web:settings/categories/use-uncategorised-sales` (one `data_quality_items` call per POS account over 90 days, the best sellers first, an item sold by name), `web:pages/settings/phan-loai-page` (only the item's own account's types, "Theo POS" deleting the override), `e2e:demo/settings-phan-loai` (the uncategorised demo item re-mapped out of Chưa phân loại on Thực đơn), `e2e:live/settings-phan-loai` (an item without a type re-mapped through the real tables, Thực đơn checked before the catch-up ends)), `demo-analytics:parity/overrides`, `demo-analytics:parity/menu`, `web:settings/catch-up/use-analytics-catch-up`, `web:settings/use-settings-mutation` (a mapping save starts the catch-up), `web:data/invalidate-analytics` (a mounted analytics query of the tenant refetches at once, another tenant's does not), `web:settings/roles/roles`, `web:settings/roles/roles-form`, `web:pages/settings/phan-loai-page`, `web:settings/supabase-settings-source` (one upsert, a cleared role deleted), `core:unit/item-role` (`suggestRole`), `e2e:demo/settings-phan-loai` (Tháng's attach round trip), `pgtap:37_shift_and_quality_functions` (an overridden item and an item without a type in `data_quality_items`), `web:settings/supabase-settings-source` and `web:settings/demo-settings-source` (items with their POS category and override; overrides upserted and cleared), `e2e:live/settings-manual` (#105), `e2e:demo/theme-chat-luong` (re-mapped from the card's link, the item leaves the table without a reload: A6) and `reports:unit/themes/quality/uncategorised` (one shared rule with Phân loại; #158) | partial |
 | FR-SET-08 | Tenant holidays | Should | built | `pgtap:11_item_type_roles_and_holidays`, `pgtap:22_report_functions`, `pgtap:38_settings_writes`; screen planned, `web:settings/supabase-settings-source` and `web:settings/demo-settings-source` (a year of national and custom days, a custom day added once and deleted), `e2e:live/settings-manual` (#105), `web:pages/settings/ngay-le-page` (add and delete with the author, only the tenant's own days deleted, 80 characters with marks counted once, a duplicate held back in either Unicode form, a retry that empties the form and moves the year, focus kept), `web:settings/holidays/holidays`, `web:settings/validation`, `web:settings/access`, `e2e:demo/settings-ngay-le` (a day off on one of the 8 earlier Tuesdays turns Ngày's chip to 7/8 weeks and back without a reload), `e2e:live/settings` (a day outside the national calendar saved through row-level security with "Bạn" in the audit line leaves the day report's baseline; #106) | covered |
 | FR-SET-09 | Default language | Could | built | `pgtap:38_settings_writes`; `web:state/preferences` (a language chosen with the toggle wins, an older stored language without that mark gives way to the default), `web:settings/tenant-default-language`, `web:settings/supabase-settings-source` (the default-language read), `e2e:demo/settings-cua-hang` (the default applies, then the toggle wins), `e2e:live/settings` (a new session opens in English; #159) | covered |
 | FR-SET-10 | Legal texts | Must | in build | `pgtap:12_consent_and_legal` (tables), `pgtap:38_settings_writes`; page planned (#164), `web:settings/manual/supabase-manual-source` and `web:settings/manual/demo-manual-source` (drafts inserted or patched, publication and retirement through the two functions, frozen texts), `e2e:live/settings-manual` (#105) | partial |
@@ -1173,7 +1174,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | FR-CMP-07 | Anti-spam floor for advertising | Must | verified locally | `pgtap:26_notify_schema` | covered |
 | FR-CMP-08 | Operational messages kept apart | Must | verified locally | `pgtap:26_notify_schema`, `pgtap:27_notify_policy` | covered |
 | FR-CMP-09 | Legal form and cross-border decision | Must | waits for owner | `pgtap:01_schema` (column); owner decision, `pgtap:38_settings_writes`, `web:pages/settings/cua-hang-page` and `e2e:demo/settings-cua-hang` (the legal form saved by an owner only, with its dated line; #159) | owner check |
-| FR-CMP-10 | E-invoice status flagged | Must | in build | `pgtap:01_schema` (columns); the Cửa hàng page saves the e-invoice status and the receipt numbering with the data's suggestion (`web:pages/settings/cua-hang-page`, `e2e:live/settings`; #159), the data-quality page planned (#158), `pgtap:38_settings_writes`, `pgtap:37_shift_and_quality_functions` (`data_quality_summary` returns each store's e-invoice status), `demo-analytics:parity/data-quality-summary` (#157) | partial |
+| FR-CMP-10 | E-invoice status flagged | Must | in build | `pgtap:01_schema` (columns); the Cửa hàng page saves the e-invoice status and the receipt numbering with the data's suggestion (`web:pages/settings/cua-hang-page`, `e2e:live/settings`; #159), the data-quality page planned (#158), `pgtap:38_settings_writes`, `pgtap:37_shift_and_quality_functions` (`data_quality_summary` returns each store's e-invoice status), `demo-analytics:parity/data-quality-summary` (#157), `reports:unit/themes/quality/compliance` (every e-invoice state, eight receipt-numbering cases, the three notices), `demo-analytics:themes/quality.smoke` (only the young store's row), `e2e:demo/theme-chat-luong` (the young store flagged, opening Cửa hàng), `e2e:live/themes` (the seeded coffee store `not_configured` flagged, configured stores not; #158) | covered |
 | FR-CMP-11 | Redemptions on the e-invoice | Must | planned | planned | planned |
 | FR-CMP-12 | Discount caps | Must | in build | `core:unit/promotion-rules`, `reports:unit/themes/rules`, `demo-analytics:parity/promotion-compliance`, `demo-analytics:parity/item-discount-days` (#152) | partial |
 | FR-CMP-13 | No cash-like rewards | Must | planned | planned | planned |
@@ -1295,7 +1296,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | NFR-PRV-03 | Message content retention | Must | verified locally | `pgtap:28_notify_outbox` | covered |
 | NFR-PRV-04 | Former members redacted | Must | verified locally | `pgtap:28_notify_outbox` | covered |
 | NFR-PRV-05 | No third-party tracking | Must | verified locally | `e2e:demo/report-day`, `e2e:demo/report-year`, `apps/web/index.html`, `e2e:demo/theme-khuyen-mai` (#191) | partial |
-| NFR-PRV-06 | Customer data for data roles only | Must | verified locally | `pgtap:04_tenant_isolation`, `pgtap:06_anon_and_tokens`, `pgtap:08_publisher_role`, `pgtap:39_theme_access_b` (customer and consent counts of `data_quality_summary` for data roles only) | covered |
+| NFR-PRV-06 | Customer data for data roles only | Must | verified locally | `pgtap:04_tenant_isolation`, `pgtap:06_anon_and_tokens`, `pgtap:08_publisher_role`, `pgtap:39_theme_access_b` (customer and consent counts of `data_quality_summary` for data roles only), `reports:unit/themes/quality/customers` (customer cells are counts only; #158) | covered |
 | NFR-PRV-07 | Minimal Zalo-derived data | Must | planned | planned | planned |
 
 #### NFR-PERF — Performance
@@ -1336,7 +1337,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/settings-phan-loai` (the Nhóm của món and Loại thanh toán tabs at 360 and 1280 px; #160), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-so-sanh` (#193), `e2e:demo/settings-ngay-le` (Ngày lễ and both slots at 360 and 1280 px, light and dark; #106), `e2e:demo/theme-ca-ket-tien` (the cashier card at 360 and 1280 px, light and dark; #192) | covered |
+| NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/settings-phan-loai` (the Nhóm của món and Loại thanh toán tabs at 360 and 1280 px; #160), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-so-sanh` (#193), `e2e:demo/settings-ngay-le` (Ngày lễ and both slots at 360 and 1280 px, light and dark; #106), `e2e:demo/theme-ca-ket-tien` (the cashier card at 360 and 1280 px, light and dark; #192), `e2e:demo/theme-chat-luong` (#158) | covered |
 | NFR-A11Y-02 | Lighthouse accessibility | Must | verified locally | Lighthouse recipe in `apps/web/README.md` | covered |
 | NFR-A11Y-03 | Contrast | Must | verified locally | `apps/web/e2e/support/checks.ts`, `design-tokens:tokens` | covered |
 | NFR-A11Y-04 | Charts have tables | Must | verified locally | `web:components/report-card/report-card`, `e2e:demo/theme-so-sanh` (#193) | covered |
@@ -1346,7 +1347,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-I18N-01 | Vietnamese first, English second | Must | verified locally | `web:i18n/i18n`, `web:i18n/report-keys`, `web:i18n/theme-keys`, `web:i18n/wording-sheets`, `e2e:live/today`, `e2e:demo/demo`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191) | covered |
+| NFR-I18N-01 | Vietnamese first, English second | Must | verified locally | `web:i18n/i18n`, `web:i18n/report-keys`, `web:i18n/theme-keys`, `web:i18n/wording-sheets`, `e2e:live/today`, `e2e:demo/demo`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-chat-luong` (#158) | covered |
 | NFR-I18N-02 | Formatting by locale and currency | Must | verified locally | `web:lib/format`, `notify:unit/render/format`, `web:settings/number-text`, `web:settings/forms/money-field`, `web:lib/csv` | covered |
 | NFR-I18N-03 | Registry spelling | Should | verified locally | `web:i18n/i18n` | covered |
 | NFR-I18N-04 | Notification language | Should | in build | `notify:unit/render/templates` | covered |
@@ -1357,12 +1358,12 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-so-sanh` (#193) | covered |
+| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-so-sanh` (#193), `e2e:demo/theme-chat-luong` and `web:components/report-card` (long text wraps in wide cards; #158) | covered |
 | NFR-UX-02 | Layout on phones and desktops | Should | built | `e2e:demo/demo` (360 px) | partial |
 | NFR-UX-03 | Installable | Should | verified locally | `e2e:demo/demo`, `e2e:pages/install`, `web:shell/install-assets` | covered |
 | NFR-UX-04 | New version prompt | Should | built | no automated test | partial |
 | NFR-UX-05 | Demo always labelled | Must | verified locally | `e2e:demo/demo`, `web:settings/demo-settings-source` and `web:settings/manual/demo-manual-source` (the demo's settings writes stay in the session's store; #105) | covered |
-| NFR-UX-06 | Plain states instead of zeros | Must | verified locally | `e2e:demo/report-day`, `e2e:demo/report-month`, `web:settings/catch-up/catch-up-banner`, `web:pages/settings/settings-layout`, the So sánh card tests (no sales, no common day, no complete week, stores about even; #193) | covered |
+| NFR-UX-06 | Plain states instead of zeros | Must | verified locally | `e2e:demo/report-day`, `e2e:demo/report-month`, `web:settings/catch-up/catch-up-banner`, `web:pages/settings/settings-layout`, the So sánh card tests (no sales, no common day, no complete week, stores about even; #193), the Chất lượng dữ liệu card tests' no-data cases (#158) | covered |
 | NFR-UX-07 | Mini App design rules | Must | planned | planned | planned |
 
 #### NFR-MNT — Maintainability
@@ -1569,7 +1570,6 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-THM-02 | Giờ & ngày trong tuần | verified locally | pgTAP, parity, the demo and live specs hold the functions and the page; `reports:live/theme-live-check` with `LIVE_REFERENCE_SHEET` prints `matches: true` for every hour, weekday, hour band and weekend share of the private reference window (2026-11-15, again at phase 10a's verification (#102) on 2026-11-16), and the page opened on the real tenant for that window shows it. | The owner's reading of Giờ & ngày beside the private sheet (OC-03, #189). |
 | FR-THM-03 | Thực đơn | in build | pgTAP, the parity suite and the demo and live specs hold the menu functions and the eight cards; the engine smoke test and the demo spec hold that no modifier name appears in an item table (the sugar and ice card lists them on purpose) and that the uncategorised item shows with its action; the demo spec of Ngưỡng báo cáo holds that a saved minimum of items per role reaches the matrix, and the page downloads once in the semicolon dialect. | A spec that costs entered for five items show the margin of those five only, once the costs page exists (#161). |
 | FR-THM-06 | Khuyến mãi & giảm giá | built | The contracts of its five functions (rows parsed, unknown kinds and comparators refused), the `promo` and `cmp` parameters (replaced when unreadable, one history entry per change, shown inside the lift card), the SQL functions against hand calculations for the three comparators (pgTAP 36, #150), and the `promotion_days` and `promotion_lift` ports equal to the SQL (#190) are tested. The page (#191) is covered by its card tests, the smoke test, `e2e:demo/theme-khuyen-mai` and `e2e:live/themes`. | The rule cards on the page (#153). |
-| FR-DQ-12 | Data-quality page | in build | The page: pgTAP holds the three data-quality functions and their access, and their demo ports equal the SQL under both settings variants (#157). | A live Playwright spec on the seeded stack: the page flags the coffee store without e-invoicing (#158). |
 | FR-THM-09 | Sections a POS cannot feed | built | pgTAP shows the provisional menu roles without costs and the null attach rates without a role; unit tests hold the margin card asking for costs, the attach card's dash and roles action while a role is unmapped, RevPASH only with seats and the fee card's dash without a rate; phase 10a's verification (#102) saw each of these states on the real tenant. | Sections that follow a connector's declared capabilities (no costs, no customer identity), with a connector that declares no costs and no manual costs entered (10b). |
 | FR-THM-04 | Thanh toán & tiền mặt | verified locally | pgTAP shows `shift_review` and `cash_variance_flags` following the tenant's cash thresholds; the parity suite holds the demo's `shift_review` to them; the unit, engine smoke and demo specs hold the payment mix (kind shares summing to 1 and matching the methods), the cash trend, the drawer card (thresholds line, no e-mail-like text) and the fee card (the dash and the fees link without a rate); the demo spec of Ngưỡng báo cáo holds the round trip from a saved cash threshold to the drawer card's thresholds line and back to the default, and the page downloads once in the semicolon dialect. | The owner's reading of Thanh toán beside the private sheet (OC-03, #189); `reports:live/theme-live-check` prints `matches: true` for the payment mix of the reference window, compared as shares of invoices (2026-11-15, again at phase 10a's verification on 2026-11-16). |
 | FR-REP-14 | Card loading and errors | built | Settling is tested on the demo, the size refusal is classified in `reports:unit/rpc-source`, and `web:reports/use-cards-load` drives a failing card and its retry in the loader; no test shows the error card or the size message in the browser. | A web test that makes one card's call fail and expects the error card with its retry, and one that answers SQLSTATE 22023 and expects the request for fewer stores or a shorter period. |
@@ -1590,7 +1590,6 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-OPS-03 | Web deploy | built | The Pages-shaped build is tested by `e2e:pages/install`, and "Deploy web app" deployed `937ab46` and `0f8fa1d`; no CI job runs the bundle and size checks (request R-AS09). | Add `pnpm --filter @fnb/web build` to CI (request R-AS09); confirm the next deploy after the owner's push. |
 | FR-OPS-09 | Scheduled workflows kept active | built | The workflow exists but failed on its first scheduled run on 2026-11-09 (request R-P01). | After the fix, dispatch it once and confirm it is green; then check it weekly (operations calendar). |
 | FR-OPS-10 | Cron delay probes | built | The probes run; `scripts/cron-delay-report.mjs` misattributes late runs (request R-P03), so the measured delays come from the GitHub API ([operations.md](operations.md) section 2.3). | Re-run the report after its fix and compare it with section 2.3 of operations.md. |
-| FR-CMP-10 | E-invoice status flagged | in build | The store columns are tested; the Cửa hàng page saves the e-invoice status and the receipt numbering with the data's suggestion (#159); `data_quality_summary` returns each store's status in both engines (#156, #157). The data-quality page does not exist. | FR-DQ-12's spec: the page flags the seeded coffee store (#158). |
 | FR-CMP-12 | Discount caps | in build | `core:unit/promotion-rules` and `reports:unit/themes/rules` hold the dated cap and day-limit rules and their helpers; pgTAP 36 checks `promotion_compliance` and `item_discount_days` against hand counts (#150), and their demo ports equal the SQL, the parity-only 60 % and gift cases included (#152). | pgTAP or unit tests that a promotion or coupon above the cap cannot be saved and that the discount-day count per item equals a hand count (#150, #153, phase 18b). |
 | FR-CMP-14 | Lucky-draw warning | in build | `reports:unit/themes/rules` holds the keywords and their match, and `promotion_catalogue` returns the names the warning reads, in SQL and in the demo port alike (#152); no page shows the warning yet. | A Playwright test that the lucky-draw warning shows on Khuyến mãi & giảm giá (#153). |
 | FR-POR-03 | Another POS | built | The conformance suite runs on the two built connectors; the third connector that proves the claim (CSV) does not exist. | FR-CON-17 and FR-POR-05 (20a). |

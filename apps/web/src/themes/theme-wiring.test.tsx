@@ -109,10 +109,7 @@ vi.mock("./use-theme-load", () => ({
 }));
 
 function paymentsTheme(): ThemeDefinition {
-	const definition = themeDefinitions.payments;
-	if (definition === undefined)
-		throw new Error("the payments theme is missing");
-	return definition;
+	return themeDefinitions.payments;
 }
 
 const probed = { search: "", navigation: "" };

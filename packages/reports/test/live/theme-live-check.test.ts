@@ -64,12 +64,15 @@ const CALL_BUDGET_MS: Readonly<Record<string, number>> = {
 	modifier_summary: 50,
 	payment_summary: 50,
 	analytics_catch_up_status: 50,
+	data_quality_payments: 50,
 	shift_review: 100,
 	hour_profile: 150,
 	item_margins: 150,
+	data_quality_items: 150,
 	store_coverage: 200,
 	item_summary: 200,
 	basket_pairs: 300,
+	data_quality_summary: 300,
 	item_attach: 400,
 	shift_adjustments: 400,
 };
@@ -284,7 +287,6 @@ describe.skipIf(!LIVE)("live check of the thematic reports", () => {
 		const active = live();
 		const overBudget: string[] = [];
 		for (const [kind, definition] of Object.entries(themeDefinitions)) {
-			if (definition === undefined) continue;
 			const ranges = {
 				default: rangeOfPreset(definition.defaultPreset, active.asOf),
 				longest: customRange(

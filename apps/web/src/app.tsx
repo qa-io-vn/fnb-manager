@@ -154,11 +154,11 @@ export const routes: RouteObject[] = [
 									),
 							},
 							{
-								path: ":slug",
+								path: "chat-luong",
 								lazy: () =>
-									import("./pages/themes/later/later-page").then((module) => ({
-										Component: module.LaterThemePage,
-									})),
+									import("./pages/themes/chat-luong/chat-luong-page").then(
+										(module) => ({ Component: module.ChatLuongPage }),
+									),
 							},
 							{
 								path: "*",

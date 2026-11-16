@@ -4,7 +4,7 @@
 	"settings.store.code.label": "Store code",
 	"settings.store.eInvoice.configured": "Registered",
 	"settings.store.eInvoice.disabled": "Turned off",
-	"settings.store.eInvoice.hint": "The Data quality page, coming soon, will name a store that has not registered e-invoices.",
+	"settings.store.eInvoice.hint": "The Data quality page names a store whose status is not Registered.",
 	"settings.store.eInvoice.label": "E-invoices",
 	"settings.store.eInvoice.not_configured": "Not registered",
 	"settings.store.eInvoice.unknown": "Not known",

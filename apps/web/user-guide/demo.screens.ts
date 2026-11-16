@@ -267,6 +267,20 @@ test("the So sánh store figures, same-day shape and since-opening cards", async
 	}
 });
 
+test("the Chất lượng dữ liệu e-invoice finding and the uncategorised item with their fixes", async ({
+	page,
+}) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await openThemePage(page, "quality", "range=28d");
+	for (const [card, name] of [
+		["compliance", "theme-chat-luong-compliance"],
+		["uncategorised", "theme-chat-luong-uncategorised"],
+		["verification", "theme-chat-luong-verification"],
+	] as const) {
+		await shootElement(themeCard(page, "quality", card), name);
+	}
+});
+
 test("Cài đặt: Ngưỡng báo cáo and the choice kept on this device", async ({
 	page,
 }) => {

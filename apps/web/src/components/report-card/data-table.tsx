@@ -183,9 +183,14 @@ function isTextual(column: TableColumn): boolean {
 	return column.kind === "text";
 }
 
-function textWrapping(isFirst: boolean, wide: boolean): string {
+function textWrapping(
+	isFirst: boolean,
+	wide: boolean,
+	longText: boolean,
+): string {
 	if (!wide) return "";
-	return isFirst ? "md:whitespace-nowrap" : "whitespace-nowrap";
+	if (isFirst) return "md:whitespace-nowrap";
+	return longText ? "" : "whitespace-nowrap";
 }
 
 const LONG_TEXT_CHARACTERS = 24;
@@ -215,7 +220,7 @@ function cellClass(
 	longText = false,
 ): string {
 	const alignment = isTextual(column)
-		? `text-left ${textWrapping(isFirst, wide)}`
+		? `text-left ${textWrapping(isFirst, wide, longText)}`
 		: "text-right whitespace-nowrap tabular-nums";
 	const width = isFirst
 		? compact

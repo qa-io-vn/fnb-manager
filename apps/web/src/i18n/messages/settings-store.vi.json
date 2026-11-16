@@ -4,7 +4,7 @@
 	"settings.store.code.label": "Mã cửa hàng",
 	"settings.store.eInvoice.configured": "Đã đăng ký",
 	"settings.store.eInvoice.disabled": "Đã tắt",
-	"settings.store.eInvoice.hint": "Trang Chất lượng dữ liệu (sắp có) sẽ nêu tên cửa hàng chưa đăng ký hóa đơn điện tử.",
+	"settings.store.eInvoice.hint": "Trang Chất lượng dữ liệu nêu tên cửa hàng chưa ở trạng thái Đã đăng ký.",
 	"settings.store.eInvoice.label": "Hóa đơn điện tử",
 	"settings.store.eInvoice.not_configured": "Chưa đăng ký",
 	"settings.store.eInvoice.unknown": "Chưa rõ",

@@ -316,6 +316,40 @@ describe("ReportCard", () => {
 		expect(second?.className.split(" ")).toContain("whitespace-nowrap");
 	});
 
+	it("lets a column of long text wrap within its width in a wide card, so its last column stays reachable on a phone", () => {
+		const hints: TableSpec = {
+			...table,
+			columns: [
+				...table.columns,
+				{ key: "kind", label: "Loại", kind: "text" },
+				{ key: "fix", label: "Cách sửa", kind: "text" },
+			],
+			rows: [
+				{
+					id: "a",
+					cells: {
+						store: "Quán Một",
+						kind: "Tiền mặt",
+						fix: "Sửa trong POS: đăng ký hóa đơn điện tử khởi tạo từ máy tính tiền",
+					},
+				},
+			],
+		};
+		renderWithLanguage(<ReportCard {...props({ table: hints, wide: true })} />);
+		const cells = within(
+			screen.getByRole("table", { name: "Doanh thu thuần" }),
+		).getAllByRole("cell");
+		const classOf = (text: string) =>
+			cells.find((cell) => cell.textContent === text)?.className.split(" ") ??
+			[];
+		const fix = classOf(
+			"Sửa trong POS: đăng ký hóa đơn điện tử khởi tạo từ máy tính tiền",
+		);
+		expect(fix).not.toContain("whitespace-nowrap");
+		expect(fix).toContain("sm:min-w-64");
+		expect(classOf("Tiền mặt")).toContain("whitespace-nowrap");
+	});
+
 	it("gives a column of long text more room than a column of short words", () => {
 		const reasons: TableSpec = {
 			...table,

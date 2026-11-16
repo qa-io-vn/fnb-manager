@@ -242,7 +242,7 @@ Use the browser's own print command (Ctrl+P or ⌘P on a computer, Share then Pr
 
 ## The thematic reports ("Chủ đề")
 
-"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. Seven are built: **Doanh thu & xu hướng**, **Giờ & ngày trong tuần**, **Thực đơn**, **Thanh toán & tiền mặt**, **Khuyến mãi & giảm giá**, **Ca & két tiền** and **So sánh cửa hàng**. The last one, Chất lượng dữ liệu, comes in phase 10b: its tab is already there and opens a page that says so, and from it the other tabs lead back with the same range and stores.
+"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. All eight are built: **Doanh thu & xu hướng**, **Giờ & ngày trong tuần**, **Thực đơn**, **Thanh toán & tiền mặt**, **Khuyến mãi & giảm giá**, **Ca & két tiền**, **So sánh cửa hàng** and **Chất lượng dữ liệu**, and every tab keeps the range and the stores you chose.
 
 ![Doanh thu & xu hướng on a computer: the theme tabs, the range presets and dates, then the Doanh thu thuần, Xu hướng doanh thu and Số hóa đơn cards](user-guide/theme-doanh-thu.png)
 
@@ -410,6 +410,24 @@ So sánh puts two or more stores side by side. Choose them in the store picker (
 
 More detail: [reports/so-sanh.md](reports/so-sanh.md).
 
+### Chất lượng dữ liệu (Data quality)
+
+Chất lượng dữ liệu lists what is missing or wrong in your data, so that every other report gets more complete over time. Each card counts one kind of finding, and every finding says where to fix it, in the column "Cách sửa": "Sửa trong POS: …" when the fix belongs in the POS, the Settings page and tab when it belongs in the app, or running the sync again for a day. The link under the card's note opens that Settings page. The page itself changes nothing, and it shows counts only, never a customer.
+
+**Hóa đơn điện tử, đánh số hóa đơn và hồ sơ cửa hàng** names every store whose e-invoice status is not recorded as "Đã đăng ký" in Cài đặt → Cửa hàng, with the hint to register cash-register e-invoices in the POS and the link "Ghi trạng thái hóa đơn điện tử" to record the status once it is done. A store not yet recorded reads "Chưa rõ" and is flagged too. The same card flags a receipt numbering that is not recorded or that the data contradicts, a member feature switched off (switch it on in the POS, then record it), and missing opening hours, seats or opening date; "Mở hồ sơ cửa hàng" opens Cài đặt → Cửa hàng for those, and the second table shows each store's profile at a glance.
+
+![The compliance card of the demo: Cửa hàng mẫu 2 flagged for e-invoicing, its other findings with how to fix them, and the profile of both stores](user-guide/theme-chat-luong-compliance.png)
+
+**Món chưa có nhóm, nhóm chưa có vai trò** lists the items sold without a category, with their share of item revenue, and the categories with sales but no role. "Phân loại món" opens Cài đặt → Phân loại → Nhóm của món, where the same items are listed under Chưa phân loại; once you choose a category there, the item is gone from this card the next time you open it. "Gán vai trò món" opens the roles.
+
+![The uncategorised card of the demo: one item without a category, its share of item revenue and the link to choose its category](user-guide/theme-chat-luong-uncategorised.png)
+
+**Ngày chưa đối soát** lists the store-days that do not match the POS totals or were not checked, the same rule as the "chưa đối soát" badge, with the hint to run the sync again for that day. Over long ranges the days are grouped by week or month. **Món chưa có giá vốn** gives the share of item revenue that had a cost on the day it was sold, the same figure as on Thực đơn, and the 20 best sellers that still have no cost, with the link to enter costs. **Phương thức thanh toán chưa phân loại** lists the payment methods the POS counts as "Khác" and that you have not classified, with the link to Loại thanh toán (a method you set to "Khác" yourself is not listed), and any method missing from the POS catalogue. **Dòng tùy chọn** shows how many sold lines are sugar, ice or free-topping choices, which never count as items, and how many catalogue modifiers were sold as items (normally 0). **Định danh khách và đồng ý** gives the share of invoices that carry a phone number or a customer id and, once invoices are linked to customers of the customer list, how many of them agreed to loyalty, with the reminder to use "Thêm khách hàng" at payment. Until then, while invoices carry phone numbers only, the card says so instead of showing a 0 % coverage.
+
+![The verification card of the demo: two store-days not verified, each with its state and the hint to run the sync again](user-guide/theme-chat-luong-verification.png)
+
+More detail: [reports/chat-luong.md](reports/chat-luong.md).
+
 ### Links, printing and CSV
 
 The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08&to=2026-11-06`) and, when not every store is selected, the stores (`&store=…`). Two dates that make up a preset open as that preset, so the address then reads `range=…`. Printing and "Tải CSV" work as on the reports; theme files are named `<theme>-<card>-<from>_<to>.csv`, for example `doanh-thu-net_revenue-2026-10-07_2026-11-03.csv`.
@@ -537,7 +555,7 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 ![The Kế hoạch page saying Sắp có and naming the roadmap phase that brings it](user-guide/coming-soon.png)
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
-- **More thematic reports** ("Chủ đề", phase 10): Chất lượng dữ liệu, and the promotion catalogue and legal checks of Khuyến mãi. Doanh thu, Giờ & ngày, Thực đơn, Thanh toán, Khuyến mãi, Ca & két tiền and So sánh cửa hàng are already there (see above).
+- **More thematic reports** ("Chủ đề", phase 10): the promotion catalogue and legal checks of Khuyến mãi. Doanh thu, Giờ & ngày, Thực đơn, Thanh toán, Khuyến mãi, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu are already there (see above).
 - **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (your own days off) and Ngưỡng báo cáo are open (see above). Item costs, monthly targets, payment fees and legal texts come next. Target progress waits for a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
 - **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).

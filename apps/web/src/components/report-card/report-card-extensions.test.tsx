@@ -143,6 +143,10 @@ describe("report card extensions", () => {
 								tone: "warning",
 								text: "Chưa gán vai trò món.",
 								action: { label: "Gán vai trò món", to: "/cai-dat/phan-loai" },
+								secondaryAction: {
+									label: "Phân loại món",
+									to: "/cai-dat/phan-loai?tab=nhom-mon",
+								},
 							},
 							decomposition: { label: "Chênh lệch +1.000 ₫", parts: [] },
 							table: {
@@ -192,6 +196,11 @@ describe("report card extensions", () => {
 		expect(
 			screen.getByRole("link", { name: "Gán vai trò món" }),
 		).toHaveAttribute("href", "/cai-dat/phan-loai");
+		expect(
+			within(screen.getByRole("note"))
+				.getAllByRole("link")
+				.map((link) => link.getAttribute("href")),
+		).toEqual(["/cai-dat/phan-loai", "/cai-dat/phan-loai?tab=nhom-mon"]);
 		expect(screen.getByTestId("decomposition").textContent).toBe(
 			"Chênh lệch +1.000 ₫",
 		);

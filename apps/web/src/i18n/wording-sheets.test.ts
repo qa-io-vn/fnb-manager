@@ -30,6 +30,7 @@ const SHEETS = {
 		"theme-promotions",
 		"theme-shifts",
 		"theme-stores",
+		"theme-quality",
 		"settings",
 		"settings-thresholds",
 		"settings-mapping",

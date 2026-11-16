@@ -92,8 +92,8 @@ The single list of metrics that reports, exports, the AI data pack, digests and 
 
 | id | Tiếng Việt | English | Unit | Formula | Grain | Direction | Source | Reports | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `modifier_line_share` | Tỷ trọng dòng tùy chọn | Modifier line share | fraction | modifier lines ÷ (item lines + modifier lines) of non-voided invoices | store-period | neutral | `data_quality_summary()` | Chất lượng dữ liệu | available now; the function comes with phase 10b |
-| `consent_coverage` | Tỷ lệ khách định danh có đồng ý tích điểm | Consent coverage of identified customers | fraction | identified customers with a loyalty consent ÷ identified customers | store-period | higher | `data_quality_summary()` | Chất lượng dữ liệu | needs customer identity; the function comes with phase 10b |
+| `modifier_line_share` | Tỷ trọng dòng tùy chọn | Modifier line share | fraction | modifier lines ÷ (item lines + modifier lines) of non-voided invoices | store-period | neutral | `data_quality_summary()` | Chất lượng dữ liệu | available now |
+| `consent_coverage` | Tỷ lệ khách định danh có đồng ý tích điểm | Consent coverage of identified customers | fraction | identified customers with a loyalty consent ÷ identified customers | store-period | higher | `data_quality_summary()` | Chất lượng dữ liệu | needs customer identity; counts the customers of the customer list (`customer_id`); invoices with a phone number only link to none, so it stays empty until Zalo identity (phases 16–19) |
 
 ## Customers and loyalty
 

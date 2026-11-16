@@ -81,9 +81,7 @@ function contextOf(
 	};
 }
 
-const definitions = Object.values(themeDefinitions).filter(
-	(definition): definition is ThemeDefinition => definition !== undefined,
-);
+const definitions: readonly ThemeDefinition[] = Object.values(themeDefinitions);
 
 const runs = definitions.flatMap((definition) =>
 	SELECTIONS.flatMap((selection) =>

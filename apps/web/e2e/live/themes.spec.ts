@@ -37,6 +37,7 @@ const titles = {
 	promotions: "Khuyến mãi & giảm giá",
 	shifts: "Ca & két tiền",
 	stores: "So sánh cửa hàng",
+	quality: "Chất lượng dữ liệu",
 } as const;
 
 async function seededClock(): Promise<SeededClock> {
@@ -58,7 +59,7 @@ async function signIn(page: Page, clock: SeededClock) {
 	).toBeVisible();
 }
 
-test("the seven thematic reports render on the seeded stack through the SQL functions", async ({
+test("the eight thematic reports render on the seeded stack through the SQL functions", async ({
 	page,
 }) => {
 	const clock = await seededClock();
@@ -71,6 +72,7 @@ test("the seven thematic reports render on the seeded stack through the SQL func
 		"promotions",
 		"shifts",
 		"stores",
+		"quality",
 	] as const) {
 		await page.goto(themeUrl(kind, "range=7d"));
 		await waitForSettledThemeCards(page);
@@ -142,4 +144,65 @@ test("Giờ & ngày opens each seeded store from a dated deep link and shows its
 		await expect(productivity).toContainText("(RevPASH)");
 		await expect(productivity).toContainText(`${store.seat_count} ghế`);
 	}
+});
+
+test("Chất lượng dữ liệu flags the seeded coffee store, whose e-invoices are not registered, and links to Cửa hàng to record the status", async ({
+	page,
+}) => {
+	const client = await signedInClient();
+	const { data, error } = await client
+		.from("stores")
+		.select("id,code,name,e_invoice_status")
+		.order("name");
+	if (error) throw error;
+	const stores = data as {
+		id: string;
+		code: string | null;
+		name: string;
+		e_invoice_status: string;
+	}[];
+	const coffee = stores.find((store) => store.code === "COF");
+	expect(coffee?.e_invoice_status).toBe("not_configured");
+	const clock = await seededClock();
+	await signIn(page, clock);
+	await page.goto(themeUrl("quality", "range=28d"));
+	await waitForSettledThemeCards(page);
+	await expectEveryThemeCardSettled(page, "quality");
+	const compliance = themeCard(page, "quality", "compliance");
+	const findings = compliance.getByRole("table", {
+		name: "Việc cần làm theo cửa hàng",
+		exact: true,
+	});
+	await expect(
+		findings
+			.locator("tbody tr")
+			.filter({ hasText: coffee?.name ?? "COF" })
+			.filter({ hasText: "Chưa đăng ký hóa đơn điện tử" }),
+	).toHaveCount(1);
+	for (const store of stores.filter(
+		(entry) => entry.e_invoice_status === "configured",
+	)) {
+		await expect(
+			findings
+				.locator("tbody tr")
+				.filter({ hasText: store.name })
+				.filter({ hasText: "hóa đơn điện tử" }),
+		).toHaveCount(0);
+	}
+	const action = compliance
+		.getByTestId("card-notice")
+		.getByRole("link", { name: "Ghi trạng thái hóa đơn điện tử" });
+	await expect(action).toHaveAttribute("href", /#\/cai-dat\/cua-hang$/);
+	const modifiers = themeCard(page, "quality", "modifiers").getByRole("table", {
+		name: "Dòng món và dòng tùy chọn theo cửa hàng",
+		exact: true,
+	});
+	const modifierRows = await modifiers.locator("tbody tr").all();
+	expect(modifierRows.length).toBeGreaterThan(0);
+	for (const row of modifierRows) {
+		await expect(row.locator("td").nth(4)).toHaveText("0");
+	}
+	await action.click();
+	await expect(page).toHaveURL(/#\/cai-dat\/cua-hang$/);
+	await expect(page.getByTestId("store-page")).toBeVisible();
 });

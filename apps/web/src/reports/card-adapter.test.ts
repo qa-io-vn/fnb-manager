@@ -226,6 +226,72 @@ describe("card adapter", () => {
 		});
 	});
 
+	it("gives a notice a second Settings link when its finding has two fixes, and sends the e-invoice action to Cửa hàng", () => {
+		const both = toReportCardProps(
+			card({
+				notice: {
+					tone: "info",
+					part: { key: "theme.quality.uncategorised.bothNotice", values: {} },
+					action: "settings_categories",
+					secondaryAction: "settings_roles",
+				},
+			}),
+			"quality",
+			t,
+			formatters,
+		);
+		expect(both.notice?.action).toEqual({
+			label: "Phân loại món",
+			to: "/cai-dat/phan-loai?tab=nhom-mon",
+		});
+		expect(both.notice?.secondaryAction).toEqual({
+			label: "Gán vai trò món",
+			to: "/cai-dat/phan-loai",
+		});
+		const eInvoice = toReportCardProps(
+			card({
+				notice: {
+					tone: "warning",
+					part: {
+						key: "theme.quality.compliance.eInvoiceNotice",
+						values: {},
+					},
+					action: "settings_e_invoice",
+				},
+			}),
+			"quality",
+			t,
+			formatters,
+		);
+		expect(eInvoice.notice?.action).toEqual({
+			label: "Ghi trạng thái hóa đơn điện tử",
+			to: "/cai-dat/cua-hang",
+		});
+		expect(eInvoice.notice).not.toHaveProperty("secondaryAction");
+		for (const [action, label, to] of [
+			["settings_store_profile", "Mở hồ sơ cửa hàng", "/cai-dat/cua-hang"],
+			[
+				"settings_payment_kinds",
+				"Phân loại thanh toán",
+				"/cai-dat/phan-loai?tab=thanh-toan",
+			],
+		] as const) {
+			const props = toReportCardProps(
+				card({
+					notice: {
+						tone: "info",
+						part: { key: "theme.quality.compliance.storeNotice", values: {} },
+						action,
+					},
+				}),
+				"quality",
+				t,
+				formatters,
+			);
+			expect(props.notice?.action, action).toEqual({ label, to });
+		}
+	});
+
 	it("translates message cells and keeps heat columns", () => {
 		const model: TableModel = {
 			captionKey: "report.day.payments.table",

@@ -1,4 +1,9 @@
-import { addDays, type IsoDate, type ThemeRow } from "@fnb/reports";
+import {
+	addDays,
+	type IsoDate,
+	isUncategorisedItem,
+	type ThemeRow,
+} from "@fnb/reports";
 import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useAnalyticsSourceState } from "../../data/analytics-source-context";
@@ -30,20 +35,12 @@ export function uncategorisedWindow(asOf: IsoDate): {
 	return { from: addDays(asOf, 1 - UNCATEGORISED_WINDOW_DAYS), to: asOf };
 }
 
-export function isUncategorisedSale(row: DataQualityItemRow): boolean {
-	return (
-		!row.type_known &&
-		!row.catalogue_modifier &&
-		row.override_type_external_id === null
-	);
-}
-
 export function uncategorisedSoldItems(
 	accounts: readonly AccountQualityRows[],
 ): SoldUncategorisedItem[] {
 	return accounts
 		.flatMap(({ posAccountId, rows }) =>
-			rows.filter(isUncategorisedSale).map((row) => ({
+			rows.filter(isUncategorisedItem).map((row) => ({
 				posAccountId: row.pos_account_id ?? posAccountId,
 				itemExternalId: row.item_external_id,
 				itemName: row.item_name,

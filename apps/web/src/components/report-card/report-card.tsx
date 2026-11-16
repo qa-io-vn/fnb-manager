@@ -16,10 +16,16 @@ import type {
 	VerificationMarker,
 } from "./types";
 
+export interface CardNoticeAction {
+	label: string;
+	to: string;
+}
+
 export interface CardNotice {
 	tone: "info" | "warning";
 	text: string;
-	action?: { label: string; to: string };
+	action?: CardNoticeAction;
+	secondaryAction?: CardNoticeAction;
 }
 
 export interface CardDecomposition {
@@ -75,11 +81,17 @@ function Notice({ notice }: { notice: CardNotice }) {
 			data-testid="card-notice"
 		>
 			<span>{notice.text}</span>
-			{notice.action ? (
-				<TextLink to={notice.action.to} className="font-semibold print:hidden">
-					{notice.action.label}
-				</TextLink>
-			) : null}
+			{[notice.action, notice.secondaryAction].map((action) =>
+				action ? (
+					<TextLink
+						key={`${action.to} ${action.label}`}
+						to={action.to}
+						className="font-semibold print:hidden"
+					>
+						{action.label}
+					</TextLink>
+				) : null,
+			)}
 		</p>
 	);
 }
