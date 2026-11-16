@@ -1,6 +1,6 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt) and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo, Phân loại and the catch-up banner). It lists every Vietnamese template these pages use (510 entries, 164 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt) and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán). It lists every Vietnamese template these pages use (536 entries, 173 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
 The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
@@ -924,17 +924,22 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `settings.thresholds.device.hint` | Lựa chọn dưới đây chỉ áp dụng cho thiết bị này và ai cũng chọn được. | The choice below applies to this device only, and any member may make it. | — |
 | `settings.thresholds.device.title` | Thiết bị này | This device | — |
 
-## Cài đặt → Phân loại · Settings, classification (`settings-mapping.vi.json`, 15 mục)
+## Cài đặt → Phân loại · Settings, classification (`settings-mapping.vi.json`, 41 mục)
 
 ### Thẻ phân loại · classification tabs (`settings.mapping.tab*`)
 
 | Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
 | --- | --- | --- | --- |
 | `settings.mapping.tab.categories` | Nhóm của món | Item categories | — |
-| `settings.mapping.tab.later` | Phần này có ở giai đoạn {phase} của lộ trình. | This part comes in phase {phase} of the roadmap. | `{phase}` |
 | `settings.mapping.tab.paymentKinds` | Loại thanh toán | Payment kinds | — |
 | `settings.mapping.tab.roles` | Vai trò nhóm món | Item-type roles | — |
 | `settings.mapping.tabs.label` | Các phần của trang Phân loại | Parts of the Classification page | — |
+
+### Dùng chung · shared (`settings.mapping.followPos`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `settings.mapping.followPos` | Theo POS | As in the POS | — |
 
 ### Vai trò nhóm món · item-type roles (`settings.mapping.roles.*`)
 
@@ -950,3 +955,39 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `settings.mapping.roles.usage` | {items} món đã bán · {share} doanh thu món trong 28 ngày | {items} items sold · {share} of item revenue over 28 days | `{items}` `{share}` |
 | `settings.mapping.roles.usageNone` | Không bán món nào trong 28 ngày | Nothing sold over 28 days | — |
 | `settings.mapping.roles.usageUnavailable` | Chưa đọc được số bán 28 ngày. | The 28-day sales could not be read. | — |
+
+### Nhóm của món · item categories (`settings.mapping.categories.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `settings.mapping.categories.empty` | Chưa có món nào; món đến từ POS sau lần đồng bộ đầu tiên. | No items yet; they come from the POS after the first sync. | — |
+| `settings.mapping.categories.inactive` | Đã ngừng bán trên POS | No longer sold in the POS | — |
+| `settings.mapping.categories.intro` | Mỗi món được tính vào nhóm món của nó trên POS. Khi POS thiếu nhóm hoặc xếp sai, hãy chọn ở đây một nhóm của cùng tài khoản POS; "Theo POS" dùng lại nhóm trên POS. | Each item counts in its item type in the POS. When the POS lacks a type or has the wrong one, choose a type of the same POS account here; "As in the POS" goes back to the POS's type. | — |
+| `settings.mapping.categories.notInCatalogue` | Không có trong danh mục POS | Not in the POS catalogue | — |
+| `settings.mapping.categories.onPos` | Trên POS: {type} | In the POS: {type} | `{type}` |
+| `settings.mapping.categories.overridden.hint` | Các món này tính theo nhóm chọn ở đây thay cho nhóm trên POS; chọn "Theo POS" để bỏ. | These items count in the type chosen here instead of the POS's; choose "As in the POS" to undo it. | — |
+| `settings.mapping.categories.overridden.title` | Đã chọn nhóm tại đây ({count}) | Type chosen here ({count}) | `{count}` |
+| `settings.mapping.categories.posNone` | chưa có nhóm | no type | — |
+| `settings.mapping.categories.posUnknown` | nhóm {type}, không có trong danh mục | type {type}, not in the catalogue | `{type}` |
+| `settings.mapping.categories.search.found` | Số món khớp: {count}. | Matching items: {count}. | `{count}` |
+| `settings.mapping.categories.search.hint` | Tìm theo tên, cỡ, mã món hoặc nhóm trong {count} món. | Search by name, size, item code or type among {count} items. | `{count}` |
+| `settings.mapping.categories.search.label` | Tìm món | Find an item | — |
+| `settings.mapping.categories.search.more` | Đang hiện {shown} trong {count} món khớp; gõ thêm để thu hẹp. | Showing {shown} of {count} matching items; type more to narrow the search. | `{shown}` `{count}` |
+| `settings.mapping.categories.search.none` | Không có món nào khớp. | No item matches. | — |
+| `settings.mapping.categories.search.title` | Tất cả món | All items | — |
+| `settings.mapping.categories.typeGone` | {type} (không còn trên POS) | {type} (no longer in the POS) | `{type}` |
+| `settings.mapping.categories.uncategorised.failed` | Chưa đọc được các món đã bán trong 90 ngày qua. | The items sold over the last 90 days could not be read. | — |
+| `settings.mapping.categories.uncategorised.hint` | Món đã bán trong 90 ngày qua mà POS chưa gán nhóm, hoặc gán một nhóm không có trong danh mục POS; món bán nhiều đứng trước. | Items sold over the last 90 days that the POS gave no type, or a type its catalogue does not have; the best sellers come first. | — |
+| `settings.mapping.categories.uncategorised.label` | Chưa phân loại | Uncategorised | — |
+| `settings.mapping.categories.uncategorised.none` | Món nào bán trong 90 ngày qua cũng đã có nhóm. | Every item sold over the last 90 days has a type. | — |
+| `settings.mapping.categories.uncategorised.title` | Chưa phân loại ({count}) | Uncategorised ({count}) | `{count}` |
+| `settings.mapping.categories.withSize` | {name} (cỡ {size}) | {name} (size {size}) | `{name}` `{size}` |
+
+### Loại thanh toán · payment kinds (`settings.mapping.kinds.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `settings.mapping.kinds.drawerNote` | Tiền mặt dự kiến trong két của các ca đã qua chỉ đổi theo loại mới sau khi đồng bộ lại những ngày đó. | The expected cash in the drawer of past shifts follows the new kind only after those days are synced again. | — |
+| `settings.mapping.kinds.empty` | Chưa có phương thức thanh toán nào; chúng đến từ POS sau lần đồng bộ đầu tiên. | No payment methods yet; they come from the POS after the first sync. | — |
+| `settings.mapping.kinds.intro` | Mỗi phương thức thanh toán được tính theo loại mà POS gán cho nó. Nếu POS xếp sai, hãy chọn loại đúng ở đây; "Theo POS" dùng lại loại trên POS. | Each payment method counts under the kind the POS gives it. If the POS has it wrong, choose the right kind here; "As in the POS" goes back to the POS's kind. | — |
+| `settings.mapping.kinds.state` | Trên POS: {pos} · Đang tính là: {kind} | In the POS: {pos} · Counted as: {kind} | `{pos}` `{kind}` |

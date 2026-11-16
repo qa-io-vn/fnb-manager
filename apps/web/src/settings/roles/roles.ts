@@ -1,6 +1,7 @@
 import { suggestRole } from "@fnb/core";
 import { addDays, type IsoDate } from "@fnb/reports";
 import type { MessageKey } from "../../i18n";
+import type { Draft } from "../forms/draft";
 import type { ItemTypeEntry, ItemTypeRole, RoleChange } from "../source";
 
 export const USAGE_WINDOW_DAYS = 28;
@@ -21,7 +22,9 @@ export const ROLE_LABEL_KEYS: Readonly<Record<ItemTypeRole, MessageKey>> = {
 	other: "report.role.other",
 };
 
-export type RoleDraft = Readonly<Record<string, ItemTypeRole | null>>;
+export { keepEdits } from "../forms/draft";
+
+export type RoleDraft = Draft<ItemTypeRole>;
 
 export interface AccountGroup {
 	readonly posAccountId: string;
@@ -55,20 +58,6 @@ export function roleKeyOf(
 export function savedDraftOf(entries: readonly ItemTypeEntry[]): RoleDraft {
 	return Object.fromEntries(
 		entries.map((entry) => [roleKeyOf(entry), entry.role]),
-	);
-}
-
-export function keepEdits(
-	previousSaved: RoleDraft,
-	nextSaved: RoleDraft,
-	draft: RoleDraft,
-): RoleDraft {
-	return Object.fromEntries(
-		Object.entries(nextSaved).map(([key, role]) => {
-			const edited =
-				key in draft && (draft[key] ?? null) !== (previousSaved[key] ?? null);
-			return [key, edited ? (draft[key] ?? null) : role];
-		}),
 	);
 }
 

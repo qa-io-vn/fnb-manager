@@ -80,6 +80,25 @@ Pages call writes only through `useSettingsMutation(write, options)`. The `write
   - otherwise `settings.error.<code>`.
 - **`canRetry`** is true after a network failure, and `retry()` sends the same arguments again.
 
+## Phân loại: item categories and payment kinds
+
+The two 10b tabs of Settings → Phân loại write the override tables of the table above. Owners and managers with an unlimited scope may save them, like the roles (`useSettingsAccess("roles")`); every other member reads them as text with the read-only note and no save bar.
+
+- **Nhóm của món** (`?tab=nhom-mon`) reads `items` and `itemTypes`, and `data_quality_items` through `useUncategorisedSales`.
+  - "Chưa phân loại" lists what Thực đơn and Chất lượng dữ liệu call uncategorised. The hook calls `data_quality_items` once per POS account, with the store ids of that account, over the 90 days ending on the last complete day. Since the function reports each item under the account of the first store asked that sold it, every row of such a call carries that account in `pos_account_id`.
+  - The hook keeps the rows with `type_known`, `catalogue_modifier` and an override all false or null, in the function's order (net amount, highest first, across the accounts). Each row is joined to `items` by POS account and item key, the key of the sale lines (`coalesce(item_external_id, item_name)`). An item sold without an id therefore gets an entry of its own, outside the catalogue, and its override is saved under that key.
+  - An item whose override the cached `items` already hold leaves the list at once, before the function is read again. The call goes through the cached analytics path, so the save's `invalidateAnalytics` reads it again. While it loads the list says so; if it fails, it offers "Thử lại".
+  - Then come the saved overrides, those whose item left the catalogue included, so they can be cleared. Last is a search over every item, the uncategorised first.
+  - Each item offers "Theo POS" and the item types of its own POS account, never another account's and never free text. Saving sends the changed items to `saveCategoryOverrides`; "Theo POS" is a null type, so it deletes the override.
+- **Loại thanh toán** (`?tab=thanh-toan`) reads `paymentMethods`. It shows each method under its POS account with the POS kind (`pos_kind`), the override and the kind in effect. Saving sends the changed methods to `saveKindOverrides`; "Theo POS" is a null kind, so it deletes the override. The tab notes that the expected cash of past shifts changes only after those days are synced again.
+- **After a save.** Both tabs save through `useSettingsMutation` with `touchesMappings`, so:
+  - the tenant's settings and analytics are invalidated, and the next report read shows an item in its new type, an in-app navigation back included;
+  - the catch-up starts for members who may refresh, and its banner shows on every settings and theme page while days are pending; when the runner finishes it says "Đã cập nhật xong số liệu theo thay đổi phân loại." until it is closed;
+  - the cached list takes the saved overrides at once, so the page shows them even if reading them back fails.
+
+  In the demo the store re-ingests at once, so the banner never shows.
+- **Errors.** The save bar shows the message of `errorKey`. After a network failure a "Thử lại" button calls `retry()`, which sends the same changes again.
+
 ## Queries
 
 `apps/web/src/settings/queries.ts` has one hook per read: `useMembership`, `useItemTypes`, `useReportSettings`, `useCatchUpStatus`, `useTenantProfile`, `useTenantDefaultLanguage`, `useStoreProfiles`, `useItems`, `usePaymentMethods`, `useFeeRates`, `useHolidays(year)`, `useItemCosts`, `useTargets` and `useLegalDocuments`.
@@ -131,4 +150,7 @@ Row-level security and `app.stamp_store_profile` decide regardless: a refused ho
 | `web:state/preferences`, `web:settings/tenant-default-language` | the tenant's default language only without a chosen one (an earlier version's unmarked Vietnamese included), the toggle winning and being stored as chosen |
 | `e2e:demo/settings-cua-hang` | the page without a receipt suggestion, an incomplete span and a duplicate code refused, hours and seats saved for the young store bringing RevPASH to Giờ & ngày after an in-app navigation, a saved default language switching the session and the toggle winning, axe at 360 and 1280 px |
 | `e2e:live/settings` | on the fixture tenant: the owner's profile save through row-level security with its audit line and the data's suggestion, the duplicate code, a manager's read-only hours and the owner's role in the audit line, a store-limited manager's one store, and a new session opening in the tenant's English |
+| `web:settings/categories/categories`, `web:settings/categories/categories-form`, `web:settings/categories/use-uncategorised-sales`, `web:settings/payment-kinds/payment-kinds`, `web:settings/payment-kinds/payment-kinds-form`, `web:pages/settings/phan-loai-page` | one `data_quality_items` call per POS account over 90 days, the uncategorised items in sales order with an item sold by name, the loading and failed states, the search, only the item's own account's types, the changed rows with "Theo POS" as a delete, the cached list after a save, the catch-up started after a save and not after a refusal, the refusal messages and the retry, the read-only tabs |
+| `e2e:demo/settings-phan-loai` | re-mapping the uncategorised demo item takes it out of Chưa phân loại on Thực đơn and into its new category, and a re-mapped payment method moves in Thanh toán's payment mix and back, all through the app's links without a reload; axe at 360 and 1280 px |
+| `e2e:live/settings-phan-loai` | on the fixture tenant of #103: the item without a type re-mapped through the real tables, the kind override moving the method in Thanh toán, the catch-up banner appearing and clearing after each, both tabs read-only for staff and viewer |
 | `e2e:live/settings-manual` | on the fixture tenant of #103, through PostgREST: the tenant-wide cost key, one statement per save, fee rates, the store-limited manager's scope, the store code, the opening hours and span refusals, the tenant profile, both override kinds, holidays and the legal lifecycle |

@@ -240,6 +240,29 @@ test("Cài đặt: Phân loại with a suggestion for an unassigned item type", 
 	await shootElement(page.getByTestId("mapping-page"), "settings-phan-loai");
 });
 
+test("Cài đặt: Phân loại, the item categories with the uncategorised demo item and a search, then the payment kinds", async ({
+	page,
+}) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await page.goto("/#/cai-dat/phan-loai?tab=nhom-mon");
+	const categories = page.getByTestId("categories-form");
+	await expect(
+		categories.getByTestId("categories-uncategorised-list"),
+	).toBeVisible();
+	await categories.getByRole("searchbox", { name: "Tìm món" }).fill("banh");
+	await expect(categories.getByTestId("categories-search-list")).toBeVisible();
+	await shootElement(page.getByTestId("mapping-page"), "settings-nhom-mon");
+	await page
+		.getByTestId("mapping-tabs")
+		.getByRole("link", { name: "Loại thanh toán" })
+		.click();
+	await expect(page.getByTestId("payment-kinds-form")).toBeVisible();
+	await shootElement(
+		page.getByTestId("mapping-page"),
+		"settings-loai-thanh-toan",
+	);
+});
+
 test("the printed report", async ({ page }) => {
 	await page.setViewportSize({ width: A4_WIDTH_PX, height: 1123 });
 	await openReportPage(page, "day");
