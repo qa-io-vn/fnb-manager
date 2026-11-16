@@ -46,6 +46,8 @@ function seed() {
 		["analytics", "demo", OTHER, "item_summary", {}],
 		["settings", "demo", TENANT, "reportSettings"],
 		["rows", "demo", TENANT],
+		["demo", "today", TENANT, "store-1"],
+		["demo", "today", OTHER, "store-1"],
 	];
 	for (const key of keys) client.setQueryData(key, 1);
 	return keys;
@@ -65,7 +67,7 @@ describe("useSettingsMutation", () => {
 		catchUp.start.mockClear();
 	});
 
-	it("refreshes the settings and the analytics after a mapping save that failed part way, without starting the catch-up", async () => {
+	it("refreshes the settings, the analytics and Hôm nay after a mapping save that failed part way, without starting the catch-up", async () => {
 		const failing = renderHook(
 			() =>
 				useSettingsMutation(
@@ -84,6 +86,8 @@ describe("useSettingsMutation", () => {
 		);
 		expect(stale(["analytics", "demo", TENANT, "item_summary", {}])).toBe(true);
 		expect(stale(["analytics", "demo", OTHER, "item_summary", {}])).toBe(false);
+		expect(stale(["demo", "today", TENANT, "store-1"])).toBe(true);
+		expect(stale(["demo", "today", OTHER, "store-1"])).toBe(false);
 		expect(catchUp.start).not.toHaveBeenCalled();
 	});
 
@@ -123,7 +127,7 @@ describe("useSettingsMutation", () => {
 		expect(catchUp.start).not.toHaveBeenCalled();
 	});
 
-	it("invalidates the tenant's settings and analytics only after a successful write", async () => {
+	it("invalidates the tenant's settings, analytics and Hôm nay only after a successful write", async () => {
 		const write = vi.fn(async () => undefined);
 		const { result } = renderHook(() => useSettingsMutation(write), {
 			wrapper,
@@ -144,6 +148,8 @@ describe("useSettingsMutation", () => {
 		expect(stale(["settings", "demo", TENANT, "reportSettings"])).toBe(true);
 		expect(stale(["analytics", "demo", OTHER, "item_summary", {}])).toBe(false);
 		expect(stale(["rows", "demo", TENANT])).toBe(false);
+		expect(stale(["demo", "today", TENANT, "store-1"])).toBe(true);
+		expect(stale(["demo", "today", OTHER, "store-1"])).toBe(false);
 	});
 
 	it("keeps every cache and reports the mapped code when the write is refused", async () => {
@@ -169,6 +175,7 @@ describe("useSettingsMutation", () => {
 			false,
 		);
 		expect(stale(["settings", "demo", TENANT, "reportSettings"])).toBe(false);
+		expect(stale(["demo", "today", TENANT, "store-1"])).toBe(false);
 	});
 
 	it.each([

@@ -322,6 +322,20 @@ test("Cài đặt: Phân loại, the item categories with the uncategorised demo
 	);
 });
 
+test("Cài đặt: Ngày lễ with a day off of the business and the national days of the year", async ({
+	page,
+}) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await page.goto("/#/cai-dat/ngay-le");
+	await expect(page.getByTestId("holidays-global")).toBeVisible();
+	const form = page.getByTestId("holidays-add");
+	await form.getByLabel("Ngày", { exact: true }).fill("2026-12-24");
+	await form.getByLabel("Tên", { exact: true }).fill("Nghỉ sửa quán");
+	await form.getByRole("button", { name: "Thêm" }).click();
+	await expect(page.getByTestId("holiday-delete")).toHaveCount(1);
+	await shootElement(page.getByTestId("holidays-page"), "settings-ngay-le");
+});
+
 test("the printed report", async ({ page }) => {
 	await page.setViewportSize({ width: A4_WIDTH_PX, height: 1123 });
 	await openReportPage(page, "day");

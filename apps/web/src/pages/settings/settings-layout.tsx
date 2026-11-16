@@ -56,10 +56,16 @@ function SettingsPlaceholder({ page }: { page: SettingsPageEntry }) {
 	const t = useT();
 	return (
 		<div
-			className="rounded-xl border border-dashed border-line bg-surface-raised p-5"
+			className="space-y-2 rounded-xl border border-dashed border-line bg-surface-raised p-5"
 			data-testid="settings-placeholder"
+			data-status={page.status}
 		>
-			<p className="mb-2 font-medium">{t("settings.placeholder.title")}</p>
+			<p className="font-medium">{t("settings.placeholder.title")}</p>
+			{page.slotKey === undefined ? null : (
+				<p data-testid="settings-slot-summary">
+					{translateKey(t, page.slotKey)}
+				</p>
+			)}
 			<p className="text-ink-muted">
 				{t("settings.placeholder.body", {
 					page: translateKey(t, page.titleKey),

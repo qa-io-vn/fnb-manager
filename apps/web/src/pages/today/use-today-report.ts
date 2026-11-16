@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { VerificationMarker } from "../../components/report-card/types";
+import { TODAY_QUERY_PART } from "../../data/invalidate-analytics";
 import type { RowSource, StoreRow, TenantRow } from "../../data/row-source";
 import { computeToday, planToday, type TodayReport } from "../../metrics/today";
 import { verificationOf } from "../../metrics/verification";
@@ -75,7 +76,7 @@ export function useTodayReport(
 	return useQuery({
 		queryKey: [
 			source.kind,
-			"today",
+			TODAY_QUERY_PART,
 			tenant.id,
 			stores.map((store) => store.id).join(","),
 		],

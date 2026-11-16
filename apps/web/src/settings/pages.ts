@@ -6,15 +6,18 @@ export type SettingsPageId =
 	| "classification"
 	| "holidays"
 	| "thresholds"
-	| "legal";
+	| "legal"
+	| "alerts"
+	| "digests";
 
 export interface SettingsPageEntry {
 	readonly id: SettingsPageId;
 	readonly slug: string;
 	readonly titleKey: string;
 	readonly phase: string;
-	readonly status: "built" | "planned";
+	readonly status: "built" | "planned" | "slot";
 	readonly load: (() => Promise<{ default: ComponentType }>) | null;
+	readonly slotKey?: string;
 }
 
 export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
@@ -47,8 +50,8 @@ export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
 		slug: "ngay-le",
 		titleKey: "settings.page.holidays",
 		phase: "10b",
-		status: "planned",
-		load: null,
+		status: "built",
+		load: () => import("../pages/settings/ngay-le-page"),
 	},
 	{
 		id: "thresholds",
@@ -65,6 +68,24 @@ export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
 		phase: "10b",
 		status: "planned",
 		load: null,
+	},
+	{
+		id: "alerts",
+		slug: "canh-bao",
+		titleKey: "settings.alerts.title",
+		phase: "12",
+		status: "slot",
+		load: null,
+		slotKey: "settings.alerts.slot",
+	},
+	{
+		id: "digests",
+		slug: "ban-tin",
+		titleKey: "settings.digests.title",
+		phase: "12",
+		status: "slot",
+		load: null,
+		slotKey: "settings.digests.slot",
 	},
 ];
 

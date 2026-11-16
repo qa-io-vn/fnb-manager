@@ -7,6 +7,8 @@ export const settingsSlugs = [
 	"ngay-le",
 	"bao-cao",
 	"phap-ly",
+	"canh-bao",
+	"ban-tin",
 ] as const;
 
 export type SettingsSlug = (typeof settingsSlugs)[number];

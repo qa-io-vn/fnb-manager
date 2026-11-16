@@ -67,34 +67,67 @@ describe("SettingsLayout", () => {
 	});
 
 	it("opens the page of the address with its place in the sub-navigation", () => {
-		renderSettings("/cai-dat/ngay-le");
+		renderSettings("/cai-dat/phap-ly");
 		expect(
-			screen.getByRole("heading", { level: 2, name: "Ngày lễ" }),
+			screen.getByRole("heading", { level: 2, name: "Pháp lý" }),
 		).toBeInTheDocument();
-		expect(screen.getByRole("link", { name: "Ngày lễ" })).toHaveAttribute(
+		expect(screen.getByRole("link", { name: "Pháp lý" })).toHaveAttribute(
 			"aria-current",
 			"page",
 		);
 		expect(screen.getByTestId("settings-placeholder")).toHaveTextContent("10b");
+		expect(screen.queryByTestId("settings-slot-summary")).toBeNull();
 		expect(screen.queryByTestId("catch-up-banner")).toBeNull();
 	});
+
+	it.each([
+		["canh-bao", "Cảnh báo", "Zalo Bot"],
+		["ban-tin", "Bản tin", "bản tin hằng ngày"],
+	])(
+		"renders the %s slot as a placeholder naming phase 12 under the same layout",
+		(slug, title, summary) => {
+			renderSettings(`/cai-dat/${slug}`);
+			expect(
+				screen.getByRole("heading", { level: 2, name: title }),
+			).toBeInTheDocument();
+			expect(screen.getByRole("link", { name: title })).toHaveAttribute(
+				"aria-current",
+				"page",
+			);
+			const placeholder = screen.getByTestId("settings-placeholder");
+			expect(placeholder).toHaveAttribute("data-status", "slot");
+			expect(placeholder).toHaveTextContent(
+				`Trang ${title} có ở giai đoạn 12 của lộ trình.`,
+			);
+			expect(screen.getByTestId("settings-slot-summary")).toHaveTextContent(
+				summary,
+			);
+		},
+	);
 
 	it("makes each page's lazy component once, so a move between two built pages can finish", () => {
 		const thresholds = settingsPageOf("bao-cao");
 		const roles = settingsPageOf("phan-loai");
 		const holidays = settingsPageOf("ngay-le");
-		if (thresholds === null || roles === null || holidays === null) {
+		const alerts = settingsPageOf("canh-bao");
+		if (
+			thresholds === null ||
+			roles === null ||
+			holidays === null ||
+			alerts === null
+		) {
 			throw new Error("a settings page is missing");
 		}
 		expect(loadedPageOf(thresholds)).toBe(loadedPageOf(thresholds));
 		expect(loadedPageOf(roles)).toBe(loadedPageOf(roles));
+		expect(loadedPageOf(holidays)).toBe(loadedPageOf(holidays));
 		expect(loadedPageOf(roles)).not.toBe(loadedPageOf(thresholds));
-		expect(loadedPageOf(holidays)).toBeNull();
+		expect(loadedPageOf(alerts)).toBeNull();
 	});
 
 	it("shows the catch-up line on every settings page while days are pending, with no action for a member who may not refresh", () => {
 		current.pendingDays = 198;
-		renderSettings("/cai-dat/ngay-le");
+		renderSettings("/cai-dat/canh-bao");
 		const banner = screen.getByTestId("catch-up-banner");
 		expect(banner).toHaveTextContent("còn 198 ngày");
 		expect(banner).toHaveTextContent("Chủ hoặc quản lý có thể cập nhật ngay.");

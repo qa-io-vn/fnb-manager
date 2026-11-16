@@ -1,6 +1,6 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền and So sánh cửa hàng of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán). It lists every Vietnamese template these pages use (705 entries, 234 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền and So sánh cửa hàng of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (709 entries, 234 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
 The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-promotions`, `theme-shifts`, `theme-stores`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
@@ -1031,7 +1031,7 @@ The headline caption "trên {count} ca" and the shift labels "Ca n ngày …" ar
 | `theme.stores.table.week` | Tuần thứ | Week | — |
 | `theme.stores.table.weekFrom` | Tuần từ | Week from | — |
 
-## Cài đặt: phần dùng chung · Settings, shared parts (`settings.vi.json`, 90 mục)
+## Cài đặt: phần dùng chung · Settings, shared parts (`settings.vi.json`, 94 mục)
 
 ### Chung · general (`settings.*`)
 
@@ -1063,6 +1063,17 @@ The headline caption "trên {count} ca" and the shift labels "Ca n ngày …" ar
 | --- | --- | --- | --- |
 | `settings.placeholder.body` | Trang {page} có ở giai đoạn {phase} của lộ trình. | The {page} page comes in phase {phase} of the roadmap. | `{page}` `{phase}` |
 | `settings.placeholder.title` | Trang này đang được xây dựng | This page is being built | — |
+
+### Trang dành chỗ cho giai đoạn 12 · slots for phase 12 (`settings.alerts.*`, `settings.digests.*`)
+
+The two pages phase 12 fills: their name in the settings menu and the line their placeholder shows. Phase 12 moves these keys into message files of its own.
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `settings.alerts.slot` | Nơi nhận cảnh báo qua Zalo Bot hoặc e-mail, nút gửi thử và các quy tắc cảnh báo của từng cửa hàng. | Where alerts go, by Zalo Bot or e-mail, a test button and the alert rules of each store. | — |
+| `settings.alerts.title` | Cảnh báo | Alerts | — |
+| `settings.digests.slot` | Các bản tin hằng ngày đã gửi, để xem lại ngay trong ứng dụng, và nơi nhận của từng bản tin. | The daily digests sent, to read again in the app, and where each one went. | — |
+| `settings.digests.title` | Bản tin | Digests | — |
 
 ### Thông báo chỉ xem · read-only notices (`settings.readOnly.*`)
 

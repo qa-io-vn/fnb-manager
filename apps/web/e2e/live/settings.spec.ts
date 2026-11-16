@@ -1,3 +1,4 @@
+import { isExcludedDay, VIETNAM_HOLIDAYS } from "@fnb/core";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { writeCodeOf } from "../../src/settings/source";
@@ -6,9 +7,10 @@ import { isLocalStackConfigured } from "../support/local-stack";
 import {
 	type ExpectedConsoleError,
 	expectNoConsoleErrors,
+	waitForSettledCards,
 	watchConsoleErrors,
 } from "../support/reports";
-import { openSettings, saveSettings } from "../support/settings";
+import { openSettings, saveSettings, settingsNav } from "../support/settings";
 import {
 	createSettingsFixture,
 	type SettingsFixture,
@@ -164,6 +166,123 @@ test("a store-limited manager sees and changes only the store in scope", async (
 	await expect(
 		storeBlock(page, storeIds[0]).getByTestId("settings-save-bar"),
 	).toBeVisible();
+	expectNoConsoleErrors(page);
+});
+
+function daysBefore(date: string, days: number): string {
+	const shifted = new Date(`${date}T00:00:00Z`);
+	shifted.setUTCDate(shifted.getUTCDate() - days);
+	return shifted.toISOString().slice(0, 10);
+}
+
+const BASELINE_WEEKS = [1, 2, 3, 4] as const;
+
+function baselinePlan(sales: { readonly from: string; readonly to: string }): {
+	readonly reportDay: string;
+	readonly sampleDay: string;
+} {
+	for (let back = 0; back < 7; back += 1) {
+		const reportDay = daysBefore(sales.to, back);
+		const samples = BASELINE_WEEKS.map((week) =>
+			daysBefore(reportDay, 7 * week),
+		).filter(
+			(day) => day >= sales.from && !isExcludedDay(VIETNAM_HOLIDAYS, day),
+		);
+		const [sampleDay] = samples;
+		if (sampleDay !== undefined && samples.length >= 2) {
+			return { reportDay, sampleDay };
+		}
+	}
+	throw new Error(
+		"no day of the fixture's sales has two same-weekday samples outside the national calendar",
+	);
+}
+
+async function baselineWeeks(page: Page): Promise<number> {
+	const chip = page
+		.getByTestId("card-day-net_revenue")
+		.getByTestId("comparison-chip")
+		.filter({ hasText: /so với mức nền \(\d\/8 tuần\)/ });
+	const text = (await chip.textContent()) ?? "";
+	return Number(/\((\d)\/8 tuần\)/.exec(text)?.[1]);
+}
+
+test("a day off saved in the browser carries the owner as its author, leaves the day's baseline, and an insert naming someone else is refused", async ({
+	page,
+}) => {
+	const { tenantId, sales, logins } = created();
+	const { reportDay, sampleDay } = baselinePlan(sales);
+	const name = "Nghỉ thử nghiệm";
+	watchConsoleErrors(page);
+	await created().signIn(page, "owner");
+	await page.goto(`/#/bao-cao/ngay?date=${reportDay}`);
+	await waitForSettledCards(page);
+	const before = await baselineWeeks(page);
+	expect(before).toBeGreaterThanOrEqual(2);
+	await page
+		.getByRole("navigation", { name: "Điều hướng chính" })
+		.getByRole("link", { name: "Cài đặt" })
+		.click();
+	await settingsNav(page).getByRole("link", { name: "Ngày lễ" }).click();
+	await expect(page.getByTestId("holidays-global")).toBeVisible();
+	await page
+		.getByLabel("Năm", { exact: true })
+		.selectOption(sampleDay.slice(0, 4));
+	const form = page.getByTestId("holidays-add");
+	await form.getByLabel("Ngày", { exact: true }).fill(sampleDay);
+	await form.getByLabel("Tên", { exact: true }).fill(name);
+	await form.getByRole("button", { name: "Thêm" }).click();
+	await expect(page.getByTestId("holidays-status")).toContainText(
+		`Đã thêm ${name}`,
+	);
+	const row = page
+		.getByTestId("holidays-custom")
+		.locator(`[data-testid="holiday-row"][data-date="${sampleDay}"]`);
+	await expect(row.getByTestId("settings-audit-line")).toHaveText(
+		new RegExp(`^Bạn sửa lần cuối ${DATE_AND_TIME}\\.$`),
+	);
+	const owner = await clientAs("owner");
+	const { data: stored, error: readError } = await owner
+		.from("holidays")
+		.select("id,kind,created_by,updated_by")
+		.eq("tenant_id", tenantId)
+		.eq("holiday_date", sampleDay);
+	expect(readError).toBeNull();
+	expect(stored).toEqual([
+		{
+			id: expect.any(String),
+			kind: "custom",
+			created_by: logins.owner.userId,
+			updated_by: logins.owner.userId,
+		},
+	]);
+	const { error: forged } = await owner.from("holidays").insert({
+		tenant_id: tenantId,
+		country_code: "VN",
+		holiday_date: daysBefore(sales.to, 14),
+		name: "Ghi tên người khác",
+		kind: "custom",
+		created_by: logins.manager.userId,
+	});
+	expect(forged?.code).toBe("42501");
+	await page.goBack();
+	await page.goBack();
+	await waitForSettledCards(page);
+	await expect.poll(() => baselineWeeks(page)).toBe(before - 1);
+	await page.goForward();
+	await page.goForward();
+	await page
+		.getByLabel("Năm", { exact: true })
+		.selectOption(sampleDay.slice(0, 4));
+	await row.getByRole("button", { name: new RegExp(`^Xóa ${name}`) }).click();
+	await expect(page.getByTestId("holidays-status")).toContainText(
+		`Đã xóa ${name}`,
+	);
+	const { data: left } = await owner
+		.from("holidays")
+		.select("id")
+		.eq("tenant_id", tenantId);
+	expect(left).toEqual([]);
 	expectNoConsoleErrors(page);
 });
 

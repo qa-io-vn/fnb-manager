@@ -196,7 +196,26 @@ export function storeCodeValueOf(text: string): string | null {
 	return trimmed === "" ? null : trimmed;
 }
 
-function dateWithin(bounds: { min: IsoDate; max: IsoDate }) {
+export const HOLIDAY_NAME_MAX_LENGTH = 80;
+
+export function holidayNameValueOf(text: string): string {
+	return text.normalize("NFC").trim();
+}
+
+export const holidayName = z
+	.string({ error: "required" satisfies ValidationKey })
+	.superRefine((value, ctx) => {
+		const length = [...holidayNameValueOf(value)].length;
+		if (length === 0) {
+			raise(ctx, { key: "required" });
+			return;
+		}
+		if (length > HOLIDAY_NAME_MAX_LENGTH) {
+			raise(ctx, { key: "textLength", max: HOLIDAY_NAME_MAX_LENGTH });
+		}
+	});
+
+export function dateWithin(bounds: { min: IsoDate; max: IsoDate }) {
 	return z
 		.string({ error: "date" satisfies ValidationKey })
 		.superRefine((value, ctx) => {

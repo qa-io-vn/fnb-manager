@@ -1,6 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef } from "react";
-import { invalidateAnalytics } from "../data/invalidate-analytics";
+import {
+	invalidateAnalytics,
+	invalidateTodayReport,
+} from "../data/invalidate-analytics";
 import type { MessageKey } from "../i18n";
 import { useReadyTenantScope } from "../state/tenant-scope";
 import { useCatchUpRunner } from "./catch-up/catch-up-context";
@@ -81,6 +84,7 @@ export function useSettingsMutation<Args>(
 			await Promise.all([
 				invalidateSettings(queryClient, tenant.id),
 				invalidateAnalytics(queryClient, tenant.id),
+				invalidateTodayReport(queryClient, tenant.id),
 			]);
 			if (touchesMappings && state.status === "ready") {
 				startCatchUp(state.source);
@@ -91,6 +95,7 @@ export function useSettingsMutation<Args>(
 			await Promise.all([
 				invalidateSettings(queryClient, tenant.id),
 				invalidateAnalytics(queryClient, tenant.id),
+				invalidateTodayReport(queryClient, tenant.id),
 			]);
 		},
 	});

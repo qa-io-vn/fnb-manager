@@ -5,8 +5,12 @@ import {
 	businessDate,
 	choice,
 	dateBounds,
+	dateWithin,
 	decimalInRange,
+	HOLIDAY_NAME_MAX_LENGTH,
 	hasIssues,
+	holidayName,
+	holidayNameValueOf,
 	integerInRange,
 	issueOf,
 	issuesByField,
@@ -190,6 +194,44 @@ describe("storeCode", () => {
 		expect(storeCodeValueOf(" Q1 ")).toBe("Q1");
 		expect(storeCodeValueOf("   ")).toBeNull();
 		expect(storeCodeValueOf("")).toBeNull();
+	});
+});
+
+describe("holidayName", () => {
+	it("takes 1 to 80 characters once trimmed, counting letters with marks as one", () => {
+		expect(HOLIDAY_NAME_MAX_LENGTH).toBe(80);
+		expect(issueOf(holidayName, "Nghỉ sửa quán")).toBeNull();
+		expect(issueOf(holidayName, ` ${"ạ".repeat(80)} `)).toBeNull();
+		expect(issueOf(holidayName, "ạ".repeat(81))).toEqual({
+			key: "textLength",
+			max: 80,
+		});
+		expect(issueOf(holidayName, "   ")).toEqual({ key: "required" });
+		expect(issueOf(holidayName, "")).toEqual({ key: "required" });
+	});
+
+	it("counts a name typed with combining marks as its composed letters", () => {
+		const decomposed = "ạ".normalize("NFD");
+		expect(decomposed).toHaveLength(2);
+		expect(issueOf(holidayName, decomposed.repeat(80))).toBeNull();
+		expect(issueOf(holidayName, decomposed.repeat(81))).toEqual({
+			key: "textLength",
+			max: 80,
+		});
+		expect(holidayNameValueOf(` ${"Nghỉ".normalize("NFD")} `)).toBe("Nghỉ");
+	});
+});
+
+describe("dateWithin", () => {
+	it("refuses a date outside its bounds and text that is no date", () => {
+		const calendar = dateWithin({ min: "2024-01-01", max: "2030-12-31" });
+		expect(issueOf(calendar, "2030-12-31")).toBeNull();
+		expect(issueOf(calendar, "2023-12-31")).toEqual({
+			key: "dateRange",
+			min: "2024-01-01",
+			max: "2030-12-31",
+		});
+		expect(issueOf(calendar, "2026-02-30")).toEqual({ key: "date" });
 	});
 });
 

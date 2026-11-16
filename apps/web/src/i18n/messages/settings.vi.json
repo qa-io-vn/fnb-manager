@@ -1,4 +1,6 @@
 {
+	"settings.alerts.slot": "Nơi nhận cảnh báo qua Zalo Bot hoặc e-mail, nút gửi thử và các quy tắc cảnh báo của từng cửa hàng.",
+	"settings.alerts.title": "Cảnh báo",
 	"settings.audit.at": "Sửa lần cuối {when}.",
 	"settings.audit.byRole": "Sửa lần cuối {when}, bởi {role}.",
 	"settings.audit.byYou": "Bạn sửa lần cuối {when}.",
@@ -20,6 +22,8 @@
 	"settings.catchUp.start": "Cập nhật ngay",
 	"settings.catchUp.waitForOwner": "Chủ hoặc quản lý có thể cập nhật ngay.",
 	"settings.demoNote": "Bản demo: thay đổi chỉ giữ trong phiên này; tải lại trang là về như cũ.",
+	"settings.digests.slot": "Các bản tin hằng ngày đã gửi, để xem lại ngay trong ứng dụng, và nơi nhận của từng bản tin.",
+	"settings.digests.title": "Bản tin",
 	"settings.error.duplicate": "Không lưu được: đã có một dòng như vậy.",
 	"settings.error.forbidden": "Không lưu được: tài khoản của bạn không có quyền sửa mục này.",
 	"settings.error.frozen": "Không lưu được: dữ liệu này đã khóa, không sửa được nữa.",

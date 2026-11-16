@@ -5,7 +5,10 @@ export type SettingsArea =
 	| "thresholds"
 	| "tenantProfile"
 	| "storeProfile"
-	| "openingHours";
+	| "openingHours"
+	| "holidays"
+	| "alertRules"
+	| "alertMutes";
 
 export type ReadOnlyReason =
 	| "notMember"
@@ -41,6 +44,10 @@ function unlimitedOwnerAccess(membership: Membership): SettingsAccess {
 		: denied("ownerOnly");
 }
 
+function ownDestinationsAccess(membership: Membership): SettingsAccess {
+	return managesData(membership) ? ALLOWED : denied("role");
+}
+
 function storeProfileAccess(
 	membership: Membership,
 	storeId: string | null,
@@ -72,6 +79,9 @@ const AREA_ACCESS: Readonly<
 	tenantProfile: unlimitedOwnerAccess,
 	storeProfile: storeProfileAccess,
 	openingHours: openingHoursAccess,
+	holidays: rolesAccess,
+	alertRules: unlimitedOwnerAccess,
+	alertMutes: ownDestinationsAccess,
 };
 
 export function settingsAccess(

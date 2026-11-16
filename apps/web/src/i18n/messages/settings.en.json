@@ -1,4 +1,6 @@
 {
+	"settings.alerts.slot": "Where alerts go, by Zalo Bot or e-mail, a test button and the alert rules of each store.",
+	"settings.alerts.title": "Alerts",
 	"settings.audit.at": "Last changed on {when}.",
 	"settings.audit.byRole": "Last changed on {when} by {role}.",
 	"settings.audit.byYou": "You last changed this on {when}.",
@@ -20,6 +22,8 @@
 	"settings.catchUp.start": "Refresh now",
 	"settings.catchUp.waitForOwner": "An owner or a manager can refresh now.",
 	"settings.demoNote": "Demo: changes last only for this session; reloading the page undoes them.",
+	"settings.digests.slot": "The daily digests sent, to read again in the app, and where each one went.",
+	"settings.digests.title": "Digests",
 	"settings.error.duplicate": "Not saved: such a row already exists.",
 	"settings.error.forbidden": "Not saved: your login is not allowed to change this.",
 	"settings.error.frozen": "Not saved: this data is locked and can no longer change.",

@@ -62,6 +62,47 @@ describe("settingsAccess", () => {
 		},
 	);
 
+	it.each([
+		["owner", false, "holidays", true, null],
+		["owner", true, "holidays", false, "scope"],
+		["manager", false, "holidays", true, null],
+		["manager", true, "holidays", false, "scope"],
+		["staff", false, "holidays", false, "role"],
+		["viewer", false, "holidays", false, "role"],
+		["publisher", false, "holidays", false, "role"],
+	] as const)(
+		"%s (store-limited: %s) on %s writes %s, reason %s",
+		(role, scoped, area, canWrite, reason) => {
+			expect(settingsAccess(area, member(role, scoped))).toEqual({
+				canWrite,
+				reason,
+			});
+		},
+	);
+
+	it.each([
+		["owner", false, "alertRules", true, null],
+		["owner", true, "alertRules", false, "ownerOnly"],
+		["manager", false, "alertRules", false, "ownerOnly"],
+		["manager", true, "alertRules", false, "ownerOnly"],
+		["staff", false, "alertRules", false, "ownerOnly"],
+		["owner", false, "alertMutes", true, null],
+		["owner", true, "alertMutes", true, null],
+		["manager", false, "alertMutes", true, null],
+		["manager", true, "alertMutes", true, null],
+		["staff", false, "alertMutes", false, "role"],
+		["viewer", false, "alertMutes", false, "role"],
+		["publisher", false, "alertMutes", false, "role"],
+	] as const)(
+		"keeps alert rules to unlimited owners and lets %s (store-limited: %s) on %s write %s, reason %s",
+		(role, scoped, area, canWrite, reason) => {
+			expect(settingsAccess(area, member(role, scoped))).toEqual({
+				canWrite,
+				reason,
+			});
+		},
+	);
+
 	it("keeps a store-limited member to the profile and hours of their own stores", () => {
 		const other = "22222222-2222-4222-8222-222222222222";
 		for (const area of ["storeProfile", "openingHours"] as const) {

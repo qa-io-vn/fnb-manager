@@ -55,7 +55,7 @@ The navigation sits at the bottom on a phone and on the left on a wide screen.
 | Báo cáo | Reports | Ngày, Tuần, Tháng, Năm | verified locally |
 | Chủ đề | Topics | thematic reports: Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt, Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng | the first four verified locally; Khuyến mãi & giảm giá, Ca & két tiền and So sánh cửa hàng built |
 | Kế hoạch | Plans | saved strategy plans | "Sắp có" |
-| Cài đặt | Settings | Cửa hàng (the business and store profiles), Phân loại (item-type roles, item categories and payment kinds) and Ngưỡng báo cáo (the report thresholds and this device's CSV format); the other settings pages say which phase brings them | Phân loại and Ngưỡng báo cáo verified locally; Cửa hàng built; the other pages planned |
+| Cài đặt | Settings | Cửa hàng (the business and store profiles), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (the national holidays and your own days off) and Ngưỡng báo cáo (the report thresholds and this device's CSV format); the other settings pages say which phase brings them | Phân loại and Ngưỡng báo cáo verified locally; Cửa hàng and Ngày lễ built; the other pages planned |
 
 - A page that is not built yet says "Sắp có" and names the roadmap phase that brings it ("Dự kiến ở giai đoạn … của lộ trình.").
 - The top bar holds the language switch (**VI** / **EN**), "Đăng xuất", the store choice and the freshness badge. On a phone the store choice folds into one summary button; tap it to open.
@@ -92,7 +92,7 @@ Hôm nay has two sections, each with a badge that says whether the day is reconc
 | "Hôm qua · {date}" (yesterday) | Doanh thu thuần, Số hóa đơn, Giá trị trung bình mỗi hóa đơn |
 
 - **Doanh thu thuần** (Net revenue): the total of the invoices that were not voided, after item, bill and voucher discounts. **Số hóa đơn** (Invoices) counts those invoices. **Giá trị trung bình mỗi hóa đơn** (Average ticket) is net revenue divided by invoices.
-- Each of these compares with **mức nền cùng thứ** (the same-weekday baseline): the median of the same weekday over the previous 8 weeks, with public holidays and Tết days left out. For today it counts only up to the same time of day ("so với mức nền cùng thứ đến 10:15"), so a morning is never compared with a whole day. Without enough history the chip reads "chưa có mức nền cùng thứ".
+- Each of these compares with **mức nền cùng thứ** (the same-weekday baseline): the median of the same weekday over the previous 8 weeks, with public holidays, Tết days and your own days off (Cài đặt → Ngày lễ) left out. For today it counts only up to the same time of day ("so với mức nền cùng thứ đến 10:15"), so a morning is never compared with a whole day. Without enough history the chip reads "chưa có mức nền cùng thứ".
 - **Doanh thu theo giờ** (Revenue by hour): today's net revenue hour by hour against the usual curve, with the peak hour.
 - **Top 5 món hôm nay** (Top 5 items today): the best sellers so far, with quantity and share of item revenue.
 - **Thanh toán hôm nay** (Payments today): the amount per payment method, and **tiền mặt cần đếm** (cash to count): the total taken in cash today, not counting the opening float.
@@ -412,7 +412,7 @@ The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08
 
 ## Cài đặt (Settings)
 
-"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. Three pages are open today, **Cửa hàng**, **Phân loại** (item-type roles, item categories and payment kinds) and **Ngưỡng báo cáo**; Dữ liệu nhập tay, Ngày lễ and Pháp lý each say which roadmap phase brings them.
+"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. Four pages are open today, **Cửa hàng**, **Phân loại** (item-type roles, item categories and payment kinds), **Ngày lễ** and **Ngưỡng báo cáo**; Dữ liệu nhập tay and Pháp lý each say which roadmap phase brings them. **Cảnh báo** (alerts) and **Bản tin** (the daily digest) are already in the list: each says what it will hold and that it comes with phase 12.
 
 ### Cửa hàng (Stores)
 
@@ -450,6 +450,18 @@ Each item type of the POS (the categories the POS sorts its items into, such as 
   ![Loại thanh toán on a computer: the note on past shifts' expected cash, then each payment method of the demo's POS account with the kind the POS gives it and the kind in effect](user-guide/settings-loai-thanh-toan.png)
 
 - The same people may save these two tabs as the roles; everyone else reads them with the same note.
+
+### Ngày lễ (Holidays)
+
+![Ngày lễ on a computer: the year, one day off of the business with who saved it and its Xóa button, the form to add another, then the national days of 2026 with their kind](user-guide/settings-ngay-le.png)
+
+The reports compare a day with the same weekday of the 8 weeks before ("mức nền cùng thứ") and forecast from past days. A holiday, or a day the shop was closed or unusually busy, would pull those numbers off, so such days are left out. This page shows which days that are.
+
+- **Năm** chooses the year, from 2024 to 2030; the page opens on the current year.
+- **Ngày nghỉ riêng** (your own days off): days that count for your business only, such as a day closed for repairs or a local festival. Add one with its date and a name of up to 80 characters, then **Thêm**; **Xóa** removes it. The line under each day says when it was saved and who saved it ("Bạn", or the role). The same date cannot hold two days off with the same name.
+- The next report you open leaves such a day out. On Ngày, for example, the chip "so với mức nền cùng thứ" turns into "so với mức nền (7/8 tuần)" when one of the 8 weeks is a day off; deleting the day brings the week back.
+- **Ngày lễ quốc gia** (national holidays) lists the public holidays and the Tết days of the year, each marked "Ngày lễ" or "Tết". They come with the app and cannot be changed here. The national calendar comes with the app for 2024 to 2028 only, because the days that follow the lunar calendar (Tết, Giỗ Tổ Hùng Vương) are worked out year by year, so 2029 and 2030 show no national days yet; your own days off of those years still count.
+- Owners and managers who see every store can add and remove days off; everyone else sees both lists with a note saying why not. In the demo a change lasts until the page is reloaded.
 
 ### Ngưỡng báo cáo (Report thresholds)
 
@@ -522,7 +534,7 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
 - **More thematic reports** ("Chủ đề", phase 10): Chất lượng dữ liệu, and the promotion catalogue and legal checks of Khuyến mãi. Doanh thu, Giờ & ngày, Thực đơn, Thanh toán, Khuyến mãi, Ca & két tiền and So sánh cửa hàng are already there (see above).
-- **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Phân loại (item-type roles, item categories and payment kinds) and Ngưỡng báo cáo are open (see above). Item costs, monthly targets, payment fees, holidays and legal texts come next. Target progress waits for a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
+- **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (your own days off) and Ngưỡng báo cáo are open (see above). Item costs, monthly targets, payment fees and legal texts come next. Target progress waits for a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
 - **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).
 
