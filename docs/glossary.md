@@ -176,6 +176,10 @@ Each card has an id in `@fnb/reports` and a title key `report.<report>.<name>.ti
 | Ca lệch két vượt ngưỡng | flagged shifts | display series `flagged_shifts` | shifts over any of the three thresholds |
 | khuyến mãi · giảm giá món · giảm giá hóa đơn · voucher | promotion · item discount · bill discount · voucher | `promotion_kind`: `item`, `bill`, `voucher` | |
 | tỷ lệ giảm giá · chi phí giảm giá | discount rate · discount cost | metric `discount_rate`; display series `discount_cost` | all discounts ÷ gross revenue; the discount amount itself |
+| mức giảm tối đa · vượt mức | maximum discount · over the cap | card `rule_cap`; display series `over_cap_promotions`; rule `discount_cap` of `promotionRules` | an item or bill discount strictly between the cap in force on its day (50 %) and the whole amount before it; vouchers are listed apart |
+| món tặng · hóa đơn miễn phí | gift line · free invoice | `theme.promotions.ruleCap.gift`, `.freeInvoice`; `full_discount_rows` of `promotion_compliance` | a line or an invoice discounted in full; counted apart and never over the cap |
+| ngày giảm giá bán · chỉ để theo dõi | price-discount day · for information only | metric `discount_days`; card `rule_days`; rule `discount_days` | a day the item sold below its price on its line or under a bill discount below 100 %; gift and voucher days are not price-discount days. "Chỉ để theo dõi" marks the count after the 120-day limit's reported repeal on 26 June 2026 |
+| chương trình may rủi | lucky draw | rule `lucky_draw_registration`; `theme.promotions.catalogue.luckyDraw` | a promotion with an element of chance, which needs registration; found by keywords in promotion names |
 
 ### Comparisons and time
 
@@ -308,6 +312,8 @@ Display series that only the web app names (`displaySeries`):
 | Doanh thu từ ngày khai trương | Net revenue since opening | `since_opening_net` |
 | Chỉ số ngày của cửa hàng | Store day index | `store_day_index` |
 | Chênh lệch chỉ số giữa các cửa hàng | Gap between the stores' indices | `store_day_gap` |
+| Khuyến mãi được dùng | Promotions used | `promotions_used` |
+| Khuyến mãi giảm quá mức tối đa | Promotions over the maximum discount | `over_cap_promotions` |
 
 ## 5. Domain terms
 

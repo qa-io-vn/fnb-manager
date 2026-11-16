@@ -1,5 +1,9 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
-import { checkPage, waitForCharts } from "../support/checks";
+import {
+	checkPage,
+	expectNoSeriousAxeViolations,
+	waitForCharts,
+} from "../support/checks";
 import {
 	expectNoConsoleErrors,
 	expectNoExternalRequests,
@@ -52,7 +56,7 @@ async function expectLiftSubtitle(page: Page, text: string): Promise<void> {
 	await expect(liftCard(page)).toContainText(text);
 }
 
-test("Khuyến mãi opens on the last four weeks with its three cards settled and the lift of the costliest promotion", async ({
+test("Khuyến mãi opens on the last four weeks with its six cards settled and the lift of the costliest promotion", async ({
 	page,
 }) => {
 	await openTheme(page, "promotions");
@@ -107,6 +111,77 @@ test("Khuyến mãi opens on the last four weeks with its three cards settled an
 	await choosePreset(page, "Năm nay");
 	await expectEveryThemeCardSettled(page, "promotions");
 	await expectLiftSubtitle(page, "92 ngày cuối kỳ");
+	expectNoConsoleErrors(page);
+});
+
+test("the rule cards check the cap with its basis and vouchers apart, count discount days as information only after the reported repeal, and warn about the lucky-draw name in the catalogue", async ({
+	page,
+}) => {
+	await openTheme(page, "promotions");
+	await expectEveryThemeCardSettled(page, "promotions");
+	const cap = themeCard(page, "promotions", "rule_cap");
+	await expect(cap).toContainText(
+		"Tối đa 50% giá ngay trước khuyến mãi (Thông tư 39/2025/TT-BCT, Điều 4); đối chiếu với quy định đến ngày 12/11/2026, không thay cho tư vấn pháp lý.",
+	);
+	await expect(cap.getByTestId("headline")).toHaveText("0");
+	await expect(cap.getByTestId("sentence")).toContainText(
+		"Không có giảm giá món hay giảm giá hóa đơn nào quá 50%",
+	);
+	await expect(cap.getByTestId("sentence")).toContainText(
+		"Voucher được ghi riêng, không tính vào mức giảm này",
+	);
+	await expect(cap.getByTestId("card-notice")).toContainText(
+		"chương trình khuyến mại tập trung do cơ quan nhà nước tổ chức được giảm đến 100%",
+	);
+	const capTables = cap.locator("table");
+	await expect(capTables).toHaveCount(2);
+	await expect(capTables.first().locator("tbody tr").last()).toContainText(
+		"Cả hóa đơn (gồm voucher)",
+	);
+	await expect(capTables.nth(1).locator("tbody tr").first()).toContainText(
+		"Voucher 20k",
+	);
+	const days = themeCard(page, "promotions", "rule_days");
+	await expect(days).toContainText("năm 2026 · chỉ để theo dõi");
+	const daysSentence = days.getByTestId("sentence");
+	await expect(daysSentence).toContainText(
+		"Giới hạn 120 ngày giảm giá bán mỗi món mỗi năm (Nghị định 81/2018/NĐ-CP, Điều 10) được cho là đã bãi bỏ từ 26/06/2026 theo Nghị định 239/2026/NĐ-CP; thông tin này còn đang được kiểm tra",
+	);
+	await expect(daysSentence).toContainText(
+		"Không món nào có hơn 120 ngày giảm giá bán trong 01/01/2026 – 25/06/2026, khi giới hạn còn áp dụng.",
+	);
+	await expect(daysSentence).toContainText(
+		"ngày tặng món và ngày dùng voucher là hình thức khuyến mại khác",
+	);
+	await expect(days.getByTestId("table-preview-toggle")).toBeVisible();
+	const catalogue = themeCard(page, "promotions", "catalogue");
+	await expect(catalogue.getByTestId("headline")).toHaveText("5");
+	await expect(catalogue.getByTestId("sentence")).toContainText(
+		"4 chương trình đang bật trong danh mục POS không được dùng hơn 90 ngày tính đến 03/11/2026",
+	);
+	const warning = catalogue.getByTestId("card-notice");
+	await expect(warning).toContainText("Tên của Vòng quay may mắn");
+	await expect(warning).toContainText(
+		"phải đăng ký với Sở Công Thương nếu chạy trong một tỉnh",
+	);
+	await expect(warning).toContainText("Nghị định 81/2018/NĐ-CP, Điều 13 và 19");
+	await expect(warning).toContainText(
+		"Nghị định 239/2026/NĐ-CP được cho là đã thay đổi thủ tục này",
+	);
+	await expect(warning).toContainText(
+		"Đối chiếu với quy định đến ngày 12/11/2026; không thay cho tư vấn pháp lý.",
+	);
+	await expectNoSeriousAxeViolations(page);
+	await page.emulateMedia({ colorScheme: "dark" });
+	await expectNoSeriousAxeViolations(page);
+	await page.emulateMedia({ colorScheme: "light" });
+	await openTheme(page, "promotions", "from=2026-05-29&to=2026-06-25");
+	await expectEveryThemeCardSettled(page, "promotions");
+	await expect(days.getByTestId("sentence")).toContainText(
+		"Theo Nghị định 81/2018/NĐ-CP, Điều 10, mỗi món được giảm giá bán không quá 120 ngày trong một năm.",
+	);
+	await expect(days).not.toContainText("chỉ để theo dõi");
+	await expectThemeInEnglish(page, "Promotions & discounts");
 	expectNoConsoleErrors(page);
 });
 
@@ -231,7 +306,7 @@ test("every Khuyến mãi table downloads as UTF-8 CSV with a BOM and the Vietna
 			)),
 		);
 	}
-	expect(headers).toHaveLength(4);
+	expect(headers).toHaveLength(8);
 	const text = headers.join(" ");
 	for (const label of [
 		"Loại giảm giá",
@@ -244,6 +319,15 @@ test("every Khuyến mãi table downloads as UTF-8 CSV with a BOM and the Vietna
 		"Ngày đối chứng",
 		"Mốc so sánh",
 		"Dự kiến nếu không khuyến mãi",
+		"Trong danh mục POS",
+		"Số ngày dùng trong 365 ngày",
+		"Mức giảm một phần cao nhất",
+		"Lần vượt mức",
+		"Giảm toàn bộ",
+		"Ngày giảm giá bán",
+		"Ngày tặng món",
+		"Ngày dùng voucher",
+		"Lần trừ hơn mức tối đa",
 	]) {
 		expect(text).toContain(label);
 	}

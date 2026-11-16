@@ -49,6 +49,7 @@ export const registryMetricIds = [
 	"payment_fee_estimate",
 	"promo_lift",
 	"promo_net_lift",
+	"discount_days",
 	"shift_void_rate",
 	"shift_void_rate_zscore",
 	"removed_line_rate",
@@ -89,6 +90,8 @@ export const displaySeries = {
 	unverified_days: { unit: "count", direction: "lower" },
 	unclassified_payment_methods: { unit: "count", direction: "lower" },
 	store_findings: { unit: "count", direction: "lower" },
+	promotions_used: { unit: "count", direction: "neutral" },
+	over_cap_promotions: { unit: "count", direction: "lower" },
 } as const satisfies Record<
 	string,
 	{ unit: MetricUnit; direction: MetricDirection }

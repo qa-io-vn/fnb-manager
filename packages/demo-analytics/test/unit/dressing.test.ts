@@ -4,11 +4,14 @@ import {
 	DEMO_BILL_DISCOUNT_NAME,
 	DEMO_CASHIERS,
 	DEMO_ITEM_PROMOTION_NAME,
+	DEMO_LUCKY_DRAW_PROMOTION,
+	DEMO_POS_ACCOUNT_ID,
 	DEMO_SEED,
 	DEMO_UNCATEGORISED_ITEM,
 	DemoDayCache,
 	demoCashierFor,
 	demoMenu,
+	demoPromotionCatalogue,
 	dressDemoDay,
 	menuVariantFor,
 } from "../../src/index.js";
@@ -239,5 +242,32 @@ describe("demo dressing", () => {
 		expect(
 			menu.itemsById.get(DEMO_UNCATEGORISED_ITEM)?.itemTypeExternalId,
 		).toBe("TYPE-009");
+	});
+
+	it("renames one catalogue promotion that no sale points to with a lucky-draw name and keeps the others as the mock menu has them", async () => {
+		const catalogue = demoPromotionCatalogue(DEMO_POS_ACCOUNT_ID);
+		expect(
+			catalogue.map((promotion) => [promotion.externalId, promotion.name]),
+		).toEqual(
+			MENU.catalog.promotions.map((promotion) => [
+				promotion.externalId,
+				promotion.externalId === DEMO_LUCKY_DRAW_PROMOTION.externalId
+					? DEMO_LUCKY_DRAW_PROMOTION.name
+					: promotion.name,
+			]),
+		);
+		const days = new DemoDayCache({ now: () => NOW, volumeScale: 0.5 });
+		const day = await days.generated("MOCK-S1", "2026-11-03");
+		const keys = new Set(
+			(day?.sales ?? []).flatMap((sale) => [
+				...sale.lines.flatMap((line) =>
+					line.promotionExternalId === undefined
+						? []
+						: [line.promotionExternalId],
+				),
+			]),
+		);
+		expect(keys.size).toBeGreaterThan(0);
+		expect(keys.has(DEMO_LUCKY_DRAW_PROMOTION.externalId)).toBe(false);
 	});
 });

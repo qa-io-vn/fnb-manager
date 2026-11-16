@@ -1,6 +1,6 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (847 entries, 264 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (923 entries, 299 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
 The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-promotions`, `theme-shifts`, `theme-stores`, `theme-quality`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
@@ -29,23 +29,29 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{a}` | 2 | `theme.menu.pairs.caption` |
 | `{abs}` | 1 | `theme.payments.drawer.thresholds` |
 | `{amount}` | 5 | `theme.promotions.discountCost.largest` |
+| `{article}` | 1 | `theme.promotions.rules.basisOne` |
+| `{articles}` | 1 | `theme.promotions.rules.basisMany` |
 | `{b}` | 2 | `theme.menu.pairs.caption` |
+| `{basis}` | 6 | `theme.promotions.catalogue.luckyDraw` |
 | `{best}` | 3 | `theme.hours.heatmap.main` |
 | `{bestCount}` | 1 | `theme.shifts.sales.main` |
 | `{bestDay}` | 1 | `theme.hours.heatmap.main` |
 | `{bestHour}` | 1 | `theme.hours.heatmap.main` |
 | `{bestValue}` | 2 | `theme.hours.weekday.main` |
 | `{bucket}` | 7 | `theme.payments.trend.down` |
+| `{cap}` | 7 | `theme.promotions.ruleCap.caption` |
 | `{cashier}` | 2 | `theme.shifts.adjustments.main` |
 | `{category}` | 2 | `theme.menu.categoryMix.caption` |
+| `{checked}` | 5 | `theme.promotions.catalogue.luckyDraw` |
 | `{cost}` | 3 | `theme.promotions.lift.caption` |
-| `{count}` | 34 | `theme.menu.preferences.otherOnly` |
+| `{count}` | 41 | `theme.menu.preferences.otherOnly` |
 | `{coverage}` | 2 | `theme.quality.costs.coverage` |
 | `{covered}` | 2 | `theme.menu.movers.captionLikeForLike` |
 | `{customers}` | 1 | `theme.quality.customers.coverage` |
-| `{date}` | 11 | `theme.page.todayClamped` |
+| `{date}` | 13 | `theme.page.todayClamped` |
+| `{dates}` | 7 | `theme.promotions.ruleCap.freeInvoices` |
 | `{day}` | 5 | `settings.hours.addSpanTo` |
-| `{days}` | 26 | `theme.range.summary` |
+| `{days}` | 29 | `theme.range.summary` |
 | `{dead}` | 1 | `theme.hours.peakDead.main` |
 | `{deadShare}` | 1 | `theme.hours.peakDead.main` |
 | `{definition}` | 1 | `theme.promotions.lift.subtitle` |
@@ -56,10 +62,12 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{faller}` | 2 | `theme.menu.movers.fallersOnly` |
 | `{fallerChange}` | 2 | `theme.menu.movers.fallersOnly` |
 | `{fee}` | 1 | `theme.payments.fees.costliest` |
-| `{first}` | 4 | `theme.payments.trend.down` |
+| `{first}` | 6 | `theme.payments.trend.down` |
 | `{flagged}` | 2 | `theme.shifts.cashiers.main` |
-| `{from}` | 4 | `theme.range.span` |
+| `{freeDates}` | 1 | `theme.promotions.ruleCap.giftsAndFree` |
+| `{from}` | 5 | `theme.range.span` |
 | `{gap}` | 3 | `theme.hours.weekday.main` |
+| `{giftDates}` | 1 | `theme.promotions.ruleCap.giftsAndFree` |
 | `{gross}` | 3 | `theme.promotions.lift.caption` |
 | `{group}` | 1 | `theme.hours.shiftWindows.mainOne` |
 | `{high}` | 3 | `theme.stores.kpis.items` |
@@ -68,14 +76,19 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{hours}` | 1 | `theme.hours.peakDead.window` |
 | `{ice}` | 2 | `theme.menu.preferences.iceOnly` |
 | `{iceShare}` | 2 | `theme.menu.preferences.iceOnly` |
-| `{invoices}` | 3 | `theme.menu.pairs.main` |
-| `{item}` | 4 | `theme.menu.movers.caption` |
+| `{instrument}` | 2 | `theme.promotions.rules.basisMany` |
+| `{invoices}` | 4 | `theme.menu.pairs.main` |
+| `{item}` | 7 | `theme.menu.movers.caption` |
 | `{items}` | 3 | `theme.menu.margins.rate` |
+| `{keyword}` | 2 | `theme.promotions.catalogue.luckyDrawMatch` |
 | `{kind}` | 4 | `theme.promotions.discountCost.largestUnnamed` |
+| `{last}` | 1 | `theme.promotions.rules.basisMany` |
 | `{level}` | 1 | `theme.menu.preferences.caption` |
 | `{lift}` | 1 | `theme.menu.pairs.main` |
+| `{limit}` | 4 | `theme.promotions.ruleDays.limit` |
 | `{low}` | 3 | `theme.stores.kpis.items` |
 | `{lowIndex}` | 1 | `theme.stores.sameDay.main` |
+| `{matches}` | 1 | `theme.promotions.catalogue.luckyDraw` |
 | `{max}` | 4 | `settings.validation.atMost` |
 | `{measured}` | 1 | `theme.shifts.adjustments.none` |
 | `{method}` | 1 | `theme.payments.fees.costliest` |
@@ -87,7 +100,9 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{net}` | 2 | `theme.promotions.lift.gain` |
 | `{notChecked}` | 1 | `theme.quality.verification.main` |
 | `{notMatched}` | 1 | `theme.quality.verification.main` |
+| `{number}` | 2 | `theme.promotions.rules.instrument.circular` |
 | `{other}` | 1 | `theme.stores.sinceOpening.main` |
+| `{others}` | 1 | `theme.promotions.catalogue.luckyDrawMore` |
 | `{page}` | 1 | `settings.placeholder.body` |
 | `{payment}` | 1 | `theme.payments.mix.otherMover` |
 | `{peak}` | 2 | `theme.hours.peakDead.main` |
@@ -95,20 +110,22 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{phase}` | 1 | `settings.placeholder.body` |
 | `{points}` | 12 | `theme.revenue.trend.caption` |
 | `{pos}` | 1 | `settings.mapping.kinds.state` |
-| `{promotion}` | 5 | `theme.promotions.discountCost.largest` |
+| `{promotion}` | 7 | `theme.promotions.discountCost.largest` |
 | `{quantity}` | 1 | `theme.menu.movers.newItem` |
 | `{quiet}` | 1 | `theme.hours.heatmap.main` |
 | `{quietDay}` | 1 | `theme.hours.heatmap.main` |
 | `{quietHour}` | 1 | `theme.hours.heatmap.main` |
-| `{range}` | 97 | `theme.print.summary` |
-| `{rate}` | 5 | `theme.menu.margins.rate` |
+| `{range}` | 104 | `theme.print.summary` |
+| `{rate}` | 8 | `theme.menu.margins.rate` |
 | `{reasons}` | 1 | `theme.shifts.adjustments.main` |
 | `{reference}` | 26 | `theme.range.summary` |
 | `{rel}` | 1 | `theme.payments.drawer.thresholds` |
 | `{report}` | 1 | `theme.print.summary` |
+| `{rest}` | 1 | `theme.promotions.rules.basisList` |
 | `{riser}` | 2 | `theme.menu.movers.main` |
 | `{riserChange}` | 2 | `theme.menu.movers.main` |
 | `{role}` | 2 | `settings.audit.byRole` |
+| `{rows}` | 2 | `theme.promotions.ruleCap.gifts` |
 | `{seats}` | 1 | `theme.hours.productivity.revpash` |
 | `{share}` | 14 | `theme.revenue.storeShare.main` |
 | `{shift}` | 3 | `theme.payments.drawer.shiftOn` |
@@ -136,6 +153,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{worst}` | 2 | `theme.hours.weekday.main` |
 | `{worstCount}` | 1 | `theme.shifts.sales.main` |
 | `{worstValue}` | 1 | `theme.shifts.sales.main` |
+| `{year}` | 4 | `theme.promotions.ruleDays.caption` |
 | `{z}` | 1 | `theme.payments.drawer.thresholds` |
 
 ## Points the review may settle
@@ -149,6 +167,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 - So sánh cửa hàng: the store-day index read as "bằng … lần mức trung bình của mình" (`theme.stores.sameDay.main`), the like-for-like all-stores row "Tất cả cửa hàng (so với kỳ trước: cùng cửa hàng)" (`theme.stores.kpis.allStoresLikeForLike`), and the sentence that skips the Tết weeks (`theme.stores.sinceOpening.tetSkipped`).
 - How the card "Theo thu ngân" speaks of people: it names a cashier only when one named cashier alone has the most shifts over the drawer thresholds, never the "chưa rõ thu ngân" row, always adds that figures per cashier are a prompt to look again and no conclusion about a person, asks for individual POS logins when a store's shifts all carry one login, and asks for display names when the logins differ but none has one (`theme.shifts.cashiers.main`, `.tied`, `.unnamed`, `.caution`, `.single`, `.singlePerStore`, `.logins`, `.unnamedAll`, `.displayNames`).
 - On Chất lượng dữ liệu, the "Sửa trong POS: …" hints (`theme.quality.fix.pos.*`), the legal line of the e-invoice notice (`theme.quality.compliance.eInvoiceNotice`), "Chưa rõ" for an e-invoice status not yet recorded (the word Cài đặt → Cửa hàng uses), and "danh sách khách hàng" for the customers an invoice is linked to, as against an invoice that only carries a phone number (`theme.quality.customers.*`).
+- The legal wording of the rule cards of Khuyến mãi: "được cho là đã bãi bỏ … còn đang được kiểm tra" for the reported repeal of the 120-day limit by Nghị định 239/2026/NĐ-CP, "chỉ để theo dõi" for the count after it, "món tặng" and "hóa đơn miễn phí" for full discounts and "Voucher được ghi riêng" for vouchers, all kept apart from the cap, "chương trình khuyến mại tập trung do cơ quan nhà nước tổ chức" for the 100 % exception, "chương trình may rủi" for lucky draws with the reported change of procedure by Nghị định 239/2026/NĐ-CP, and the closing "Đối chiếu với quy định đến ngày {checked}; không thay cho tư vấn pháp lý." (`theme.promotions.ruleDays.*`, `theme.promotions.ruleCap.*`, `theme.promotions.catalogue.luckyDraw`). The final wording of the repeal sentence follows the legal read (#50).
 
 ## Dùng chung cho các chủ đề · Shared by the thematic reports (`themes.vi.json`, 39 mục)
 
@@ -747,7 +766,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `theme.payments.table.previousShare` | Tỷ trọng kỳ trước | Previous share | — |
 | `theme.payments.table.weekFrom` | Tuần từ | Week from | — |
 
-## Khuyến mãi & giảm giá · Promotions and discounts (`theme-promotions.vi.json`, 71 mục)
+## Khuyến mãi & giảm giá · Promotions and discounts (`theme-promotions.vi.json`, 147 mục)
 
 ### Tiêu đề · title (`theme.promotions.title`)
 
@@ -845,20 +864,116 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `theme.promotions.lift.flagDaily.no_control_store` | Không có cửa hàng nào không chạy chương trình để so sánh, và chương trình chạy gần như mỗi ngày nên so với các tuần trước cũng chưa tách được hiệu quả; hãy chọn khoảng ngày có những ngày không chạy chương trình này. | No store went without the promotion to compare with, and it ran almost every day, so the weeks before cannot separate its effect either; choose a range that includes days without this promotion. | — |
 | `theme.promotions.lift.flagNoStore.few_control_days` | Chưa đủ 7 ngày không khuyến mãi để tách hiệu quả khỏi xu hướng; hãy chọn khoảng ngày có những ngày không chạy chương trình này. | There are fewer than 7 days without the promotion to separate its effect from the trend; choose a range that includes days without this promotion. | — |
 
+### Thẻ «Danh mục khuyến mãi» (`theme.promotions.catalogue.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.catalogue.active` | Đang bật | On | — |
+| `theme.promotions.catalogue.allRecent` | Mọi chương trình đang bật trong danh mục POS đều được dùng trong {days} ngày tính đến {date}. | Every active promotion in the POS catalogue was used in the {days} days up to {date}. | `{days}` `{date}` |
+| `theme.promotions.catalogue.caption` | khuyến mãi được dùng trong khoảng ngày | promotions used in the range | — |
+| `theme.promotions.catalogue.inactive` | Đã tắt | Off | — |
+| `theme.promotions.catalogue.listed` | Có | Yes | — |
+| `theme.promotions.catalogue.luckyDraw` | Tên của {matches} có từ thường gặp ở chương trình may rủi. Theo {basis}, chương trình khuyến mại mang tính may rủi phải đăng ký với Sở Công Thương nếu chạy trong một tỉnh, hoặc với Bộ Công Thương nếu chạy ở nhiều tỉnh; Nghị định 239/2026/NĐ-CP được cho là đã thay đổi thủ tục này (cách chứng kiến xác định người trúng thưởng và hồ sơ đăng ký). Đối chiếu với quy định đến ngày {checked}; không thay cho tư vấn pháp lý. | The name of {matches} holds a word common in lucky draws. Under {basis}, a promotion with an element of chance must be registered with the provincial Department of Industry and Trade when it runs in one province, or with the Ministry of Industry and Trade when it runs in several; Decree 239/2026/NĐ-CP is reported to have changed this procedure (how winners are witnessed and the registration dossier). Checked against the rules as of {checked}; not legal advice. | `{matches}` `{basis}` `{checked}` |
+| `theme.promotions.catalogue.luckyDrawMatch` | {promotion} (“{keyword}”) | {promotion} (“{keyword}”) | `{promotion}` `{keyword}` |
+| `theme.promotions.catalogue.luckyDrawMore` | {first} và {others} chương trình khác | {first} and {others} other promotions | `{first}` `{others}` |
+| `theme.promotions.catalogue.luckyDrawPossible` | {promotion} (có thể là “{keyword}”, tên viết không dấu) | {promotion} (possibly “{keyword}”, written without tone marks) | `{promotion}` `{keyword}` |
+| `theme.promotions.catalogue.noCatalogue` | Danh mục POS chưa có chương trình khuyến mãi nào đang bật. | The POS catalogue has no active promotion. | — |
+| `theme.promotions.catalogue.none` | Không có khuyến mãi nào được dùng trong {range}. | No promotion was used in {range}. | `{range}` |
+| `theme.promotions.catalogue.stale` | {count} chương trình đang bật trong danh mục POS không được dùng hơn {days} ngày tính đến {date}; nếu không còn chạy, có thể tắt trên POS cho danh mục gọn hơn. | {count} active promotions in the POS catalogue have not been used for more than {days} days up to {date}; if they no longer run, switching them off in the POS keeps the catalogue tidy. | `{count}` `{days}` `{date}` |
+| `theme.promotions.catalogue.table` | Khuyến mãi đã dùng và danh mục POS | Promotions used and the POS catalogue | — |
+| `theme.promotions.catalogue.title` | Danh mục khuyến mãi | Promotion catalogue | — |
+| `theme.promotions.catalogue.unlisted` | Không | No | — |
+| `theme.promotions.catalogue.used` | Trong {range} có {count} khuyến mãi được dùng. | {count} promotions were used in {range}. | `{range}` `{count}` |
+
+### Thẻ «Mức giảm tối đa» (`theme.promotions.ruleCap.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.ruleCap.caption` | giảm giá món hoặc hóa đơn có lần giảm quá {cap} | item or bill discounts with a discount over {cap} | `{cap}` |
+| `theme.promotions.ruleCap.concentrated` | Theo {basis}, chương trình khuyến mại tập trung do cơ quan nhà nước tổ chức được giảm đến {rate}; ngày của các chương trình này không có trong dữ liệu nên mọi ngày đều được đối chiếu với mức {cap}. Đối chiếu với quy định đến ngày {checked}; không thay cho tư vấn pháp lý. | Under {basis}, state-run concentrated promotion programmes allow up to {rate} off; their dates are not in the data, so every day is checked against {cap}. Checked against the rules as of {checked}; not legal advice. | `{basis}` `{rate}` `{cap}` `{checked}` |
+| `theme.promotions.ruleCap.freeInvoice` | Hóa đơn miễn phí | Free invoice | — |
+| `theme.promotions.ruleCap.freeInvoices` | {count} hóa đơn miễn phí (giảm toàn bộ hóa đơn) trong {dates} được tính riêng, không tính là vượt mức; thường là mời khách hoặc nhân viên, hãy kiểm tra lại với thể lệ chương trình. | {count} free invoices (the whole invoice off) in {dates} are counted apart, not as over the cap; they are usually on the house for guests or staff, so check them against the programme's rules. | `{count}` `{dates}` |
+| `theme.promotions.ruleCap.gift` | Món tặng | Gift | — |
+| `theme.promotions.ruleCap.gifts` | {rows} dòng món tặng (giảm toàn bộ giá món) trong {dates} được tính riêng, không tính là vượt mức; hãy đối chiếu với thể lệ chương trình. | {rows} gift lines (the whole item price off) in {dates} are counted apart, not as over the cap; check them against the programme's rules. | `{rows}` `{dates}` |
+| `theme.promotions.ruleCap.giftsAndFree` | {rows} dòng món tặng (giảm toàn bộ giá món) trong {giftDates} và {count} hóa đơn miễn phí (giảm toàn bộ hóa đơn) trong {freeDates} được tính riêng, không tính là vượt mức; hóa đơn miễn phí thường là mời khách hoặc nhân viên, hãy đối chiếu cả hai với thể lệ chương trình. | {rows} gift lines (the whole item price off) in {giftDates} and {count} free invoices (the whole invoice off) in {freeDates} are counted apart, not as over the cap; free invoices are usually on the house for guests or staff, so check both against the programme's rules. | `{rows}` `{giftDates}` `{count}` `{freeDates}` |
+| `theme.promotions.ruleCap.invoiceTotal` | Cả hóa đơn (gồm voucher) | Whole invoice (vouchers included) | — |
+| `theme.promotions.ruleCap.noDiscount` | Không có giảm giá nào trong {range} để đối chiếu. | There was no discount in {range} to check. | `{range}` |
+| `theme.promotions.ruleCap.noRule` | Không có mức giảm tối đa nào áp dụng cho {range}. | No maximum discount applies to {range}. | `{range}` |
+| `theme.promotions.ruleCap.none` | Không có giảm giá món hay giảm giá hóa đơn nào quá {cap} trong {range}. | No item or bill discount took more than {cap} off in {range}. | `{cap}` `{range}` |
+| `theme.promotions.ruleCap.over` | {count} chương trình giảm giá món hoặc hóa đơn có lần giảm quá {cap} trong {range}, cao nhất {rate}. | {count} item or bill discounts took more than {cap} off at least once in {range}, up to {rate}. | `{count}` `{cap}` `{range}` `{rate}` |
+| `theme.promotions.ruleCap.overInvoices` | Không chương trình giảm giá món hay hóa đơn nào giảm quá {cap} trong {range}, nhưng {invoices} hóa đơn có tổng mức giảm quá {cap}, cao nhất {rate}. | No item or bill discount took more than {cap} off in {range}, but {invoices} invoices had more than {cap} off in total, up to {rate}. | `{cap}` `{range}` `{invoices}` `{rate}` |
+| `theme.promotions.ruleCap.subtitle` | Tối đa {cap} giá ngay trước khuyến mãi ({basis}); đối chiếu với quy định đến ngày {checked}, không thay cho tư vấn pháp lý. | At most {cap} of the price just before the promotion ({basis}); checked against the rules as of {checked}, not legal advice. | `{cap}` `{basis}` `{checked}` |
+| `theme.promotions.ruleCap.table` | Giảm giá món và hóa đơn, cả hóa đơn ở dòng cuối | Item and bill discounts, whole invoices last | — |
+| `theme.promotions.ruleCap.title` | Mức giảm tối đa | Maximum discount | — |
+| `theme.promotions.ruleCap.voucherTable` | Voucher, ghi riêng ngoài mức giảm tối đa | Vouchers, listed apart from the maximum discount | — |
+| `theme.promotions.ruleCap.vouchers` | Voucher được ghi riêng, không tính vào mức giảm này: {count} lần dùng voucher trừ hơn {cap} giá trị còn lại của hóa đơn trong {dates}; voucher là hình thức khuyến mại khác, hãy đối chiếu với thể lệ chương trình. | Vouchers are listed apart and not counted against this cap: {count} voucher uses took more than {cap} off the rest of the invoice in {dates}; a voucher is another form of promotion, so check them against the programme's rules. | `{count}` `{cap}` `{dates}` |
+
+### Thẻ «Số ngày giảm giá bán trong năm» (`theme.promotions.ruleDays.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.ruleDays.basis` | Chỉ đếm ngày giảm giá bán, trên dòng món hoặc qua giảm giá hóa đơn; ngày tặng món và ngày dùng voucher là hình thức khuyến mại khác nên được ghi riêng, không cộng vào. | Only price-discount days count, on the item line or through a bill discount; gift days and voucher days are other forms of promotion, so they are shown apart and never added. | — |
+| `theme.promotions.ruleDays.caption` | {item} · năm {year} | {item} · {year} | `{item}` `{year}` |
+| `theme.promotions.ruleDays.captionInfo` | {item} · năm {year} · chỉ để theo dõi | {item} · {year} · for information only | `{item}` `{year}` |
+| `theme.promotions.ruleDays.captionYear` | năm {year} | {year} | `{year}` |
+| `theme.promotions.ruleDays.captionYearInfo` | năm {year} · chỉ để theo dõi | {year} · for information only | `{year}` |
+| `theme.promotions.ruleDays.limit` | Theo {basis}, mỗi món được giảm giá bán không quá {limit} ngày trong một năm. Đối chiếu với quy định đến ngày {checked}; không thay cho tư vấn pháp lý. | Under {basis}, an item may be sold at a discount on at most {limit} days a year. Checked against the rules as of {checked}; not legal advice. | `{basis}` `{limit}` `{checked}` |
+| `theme.promotions.ruleDays.noRule` | Không có giới hạn số ngày giảm giá bán nào áp dụng; số ngày được đếm để theo dõi. | No limit on discount days applies; the days are counted for tracking. | — |
+| `theme.promotions.ruleDays.none` | Không món nào được giảm giá bán trong {dates}. | No item was sold at a discount in {dates}. | `{dates}` |
+| `theme.promotions.ruleDays.noneOver` | Không món nào có hơn {limit} ngày giảm giá bán trong {dates}, khi giới hạn còn áp dụng. | No item had more than {limit} discount days in {dates}, while the limit applied. | `{limit}` `{dates}` |
+| `theme.promotions.ruleDays.over` | {count} món có hơn {limit} ngày giảm giá bán trong {dates}, khi giới hạn còn áp dụng; nhiều nhất là {item} với {days} ngày. | {count} items had more than {limit} discount days in {dates}, while the limit applied; the most was {item} with {days} days. | `{count}` `{limit}` `{dates}` `{item}` `{days}` |
+| `theme.promotions.ruleDays.repealed` | Giới hạn {limit} ngày giảm giá bán mỗi món mỗi năm ({basis}) được cho là đã bãi bỏ từ {from} theo Nghị định 239/2026/NĐ-CP; thông tin này còn đang được kiểm tra, nên số ngày vẫn được đếm để theo dõi. Đối chiếu với quy định đến ngày {checked}; không thay cho tư vấn pháp lý. | The limit of {limit} discount days per item a year ({basis}) is reported repealed from {from} by Decree 239/2026/NĐ-CP; this is still being checked, so the days are still counted for tracking. Checked against the rules as of {checked}; not legal advice. | `{limit}` `{basis}` `{from}` `{checked}` |
+| `theme.promotions.ruleDays.table` | Món có nhiều ngày giảm giá bán nhất trong năm | Items with the most discount days in the year | — |
+| `theme.promotions.ruleDays.title` | Số ngày giảm giá bán trong năm | Discount days in the year | — |
+
+### Căn cứ pháp lý · legal basis of the rule cards (`theme.promotions.rules.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.rules.basisDuring` | {basis} ({dates}) | {basis} ({dates}) | `{basis}` `{dates}` |
+| `theme.promotions.rules.basisList` | {first}; {rest} | {first}; {rest} | `{first}` `{rest}` |
+| `theme.promotions.rules.basisMany` | {instrument}, Điều {articles} và {last} | {instrument}, Articles {articles} and {last} | `{instrument}` `{articles}` `{last}` |
+| `theme.promotions.rules.basisOne` | {instrument}, Điều {article} | {instrument}, Article {article} | `{instrument}` `{article}` |
+| `theme.promotions.rules.instrument.circular` | Thông tư {number} | Circular {number} | `{number}` |
+| `theme.promotions.rules.instrument.decree` | Nghị định {number} | Decree {number} | `{number}` |
+
 ### Tên cột bảng · table columns (`theme.promotions.table.*`)
 
 | Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
 | --- | --- | --- | --- |
+| `theme.promotions.table.aboveCapRows` | Lần trừ hơn mức tối đa | Uses above the maximum | — |
+| `theme.promotions.table.active` | Trạng thái trên POS | Status in the POS | — |
+| `theme.promotions.table.billDays` | Trong đó qua giảm giá hóa đơn | Of which by a bill discount | — |
+| `theme.promotions.table.checkedRows` | Số lần đối chiếu | Checked | — |
 | `theme.promotions.table.controlDay` | Ngày đối chứng | Control day | — |
 | `theme.promotions.table.counterfactual` | Dự kiến nếu không khuyến mãi | Expected without the promotion | — |
+| `theme.promotions.table.daysUsed365` | Số ngày dùng trong 365 ngày | Days used in 365 days | — |
+| `theme.promotions.table.discount365` | Giảm giá trong 365 ngày | Discount in 365 days | — |
+| `theme.promotions.table.firstAbove` | Trên mức lần đầu | First above the maximum | — |
+| `theme.promotions.table.firstFull` | Giảm toàn bộ lần đầu | First full discount | — |
+| `theme.promotions.table.firstOver` | Vượt mức lần đầu | First over the cap | — |
+| `theme.promotions.table.firstPriceDiscount` | Giảm giá bán lần đầu | First discount day | — |
 | `theme.promotions.table.firstUsed` | Dùng lần đầu | First used | — |
+| `theme.promotions.table.fullKind` | Giảm toàn bộ | Fully discounted | — |
+| `theme.promotions.table.fullRows` | Số lần giảm toàn bộ | Full discounts | — |
+| `theme.promotions.table.giftDays` | Ngày tặng món | Gift days | — |
 | `theme.promotions.table.gross` | Doanh thu gộp | Gross revenue | — |
+| `theme.promotions.table.inCatalogue` | Trong danh mục POS | In the POS catalogue | — |
 | `theme.promotions.table.invoiceShare` | Tỷ lệ hóa đơn | Share of invoices | — |
+| `theme.promotions.table.lastAbove` | Trên mức lần cuối | Last above the maximum | — |
+| `theme.promotions.table.lastFull` | Giảm toàn bộ lần cuối | Last full discount | — |
+| `theme.promotions.table.lastOver` | Vượt mức lần cuối | Last over the cap | — |
+| `theme.promotions.table.lastPriceDiscount` | Giảm giá bán lần cuối | Last discount day | — |
 | `theme.promotions.table.lastUsed` | Dùng lần cuối | Last used | — |
 | `theme.promotions.table.lift` | Tăng thêm | Lift | — |
+| `theme.promotions.table.lineDays` | Trong đó trên dòng món | Of which on the line | — |
+| `theme.promotions.table.maxPartialRate` | Mức giảm một phần cao nhất | Largest partial discount | — |
+| `theme.promotions.table.overCapRows` | Lần vượt mức | Over the cap | — |
+| `theme.promotions.table.priceDays` | Ngày giảm giá bán | Discount days | — |
 | `theme.promotions.table.promotionDay` | Ngày khuyến mãi | Promotion day | — |
 | `theme.promotions.table.reference` | Mốc so sánh | Reference | — |
 | `theme.promotions.table.voucher` | Voucher | Voucher | — |
+| `theme.promotions.table.voucherDays` | Ngày dùng voucher | Voucher days | — |
 
 ## Ca & két tiền · Shifts and cash drawer (`theme-shifts.vi.json`, 56 mục)
 

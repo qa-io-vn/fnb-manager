@@ -43,6 +43,14 @@ import {
 	type PromotionChoice,
 	promotionOptions,
 } from "./params.js";
+import {
+	type CapPeriod,
+	capPeriods,
+	type DiscountDaysPlan,
+	discountDaysPlan,
+	needsDaysUnderRule,
+	themePromotionRules,
+} from "./rules.js";
 
 export const PROMOTIONS_SLUG = "khuyen-mai";
 export const LIFT_WINDOW_DAYS = 92;
@@ -57,7 +65,13 @@ export const promotionsCalls = {
 	series: "series",
 	settings: "settings",
 	lift: LIFT_CALL_KEY,
+	catalogue: "catalogue",
+	discountDays: "discountDays",
+	discountDaysUnderRule: "discountDaysUnderRule",
 } as const;
+
+export const COMPLIANCE_CALL_PREFIX = "compliance.";
+export const COMPLIANCE_CALLS = `${COMPLIANCE_CALL_PREFIX}*`;
 
 const likeForLikeKeys = [
 	TOTALS_LIKE_FOR_LIKE_KEYS.previous,
@@ -83,6 +97,13 @@ export const promotionsNeeds = {
 		promotionsCalls.promotionsW92,
 		promotionsCalls.settings,
 		promotionsCalls.lift,
+	],
+	catalogue: [promotionsCalls.coverage, promotionsCalls.catalogue],
+	ruleCap: [promotionsCalls.coverage, COMPLIANCE_CALLS],
+	ruleDays: [
+		promotionsCalls.coverage,
+		promotionsCalls.discountDays,
+		promotionsCalls.discountDaysUnderRule,
 	],
 } as const;
 
@@ -125,6 +146,63 @@ export function liftPreWeeks(results: ThemeCallResults): number | null {
 	return settingsOf(rows).settings.promoPreWeeks;
 }
 
+export function complianceCallKey(index: number): string {
+	return `${COMPLIANCE_CALL_PREFIX}${index + 1}`;
+}
+
+export function themeCapPeriods(
+	context: Pick<ThemeContext, "range">,
+): CapPeriod[] {
+	return capPeriods(themePromotionRules(), context.range);
+}
+
+export function themeDiscountDaysPlan(
+	context: Pick<ThemeContext, "range">,
+): DiscountDaysPlan {
+	return discountDaysPlan(themePromotionRules(), context.range.to);
+}
+
+export function ruleCalls(context: ThemeContext): readonly ReportCallSpec[] {
+	const storeIds = themeStoreIds(context);
+	const plan = themeDiscountDaysPlan(context);
+	return [
+		reportCall(promotionsCalls.catalogue, "promotion_catalogue", {
+			store_ids: storeIds,
+			as_of_date: context.range.to,
+		}),
+		...themeCapPeriods(context).map((period, index) =>
+			reportCall(complianceCallKey(index), "promotion_compliance", {
+				store_ids: storeIds,
+				from_date: period.from,
+				to_date: period.to,
+				cap_rate: period.cap,
+			}),
+		),
+		...(plan.counted
+			? [
+					reportCall(promotionsCalls.discountDays, "item_discount_days", {
+						store_ids: storeIds,
+						calendar_year: plan.year,
+						as_of_date: plan.asOf,
+					}),
+				]
+			: []),
+		...(needsDaysUnderRule(plan) && plan.underRule !== null
+			? [
+					reportCall(
+						promotionsCalls.discountDaysUnderRule,
+						"item_discount_days",
+						{
+							store_ids: storeIds,
+							calendar_year: plan.year,
+							as_of_date: plan.underRule.to,
+						},
+					),
+				]
+			: []),
+	];
+}
+
 export function promotionsPrimaryCalls(
 	context: ThemeContext,
 ): readonly ReportCallSpec[] {
@@ -154,6 +232,7 @@ export function promotionsPrimaryCalls(
 		reportCall(promotionsCalls.settings, "report_settings_of", {
 			store_ids: storeIds,
 		}),
+		...ruleCalls(context),
 	];
 }
 

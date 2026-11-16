@@ -282,5 +282,17 @@
 	"metric.store_findings.label": "Stores with something to do",
 	"metric.store_findings.formula": "Stores with at least one finding: e-invoices not Registered, receipt numbering not recorded or unlike the data, the member feature off, or no opening hours, seats or opening date.",
 	"metric.store_findings.grain": "Store.",
-	"metric.store_findings.convention": "Read from the store profile in Settings → Stores; the app fixes nothing by itself."
+	"metric.store_findings.convention": "Read from the store profile in Settings → Stores; the app fixes nothing by itself.",
+	"metric.discount_days.label": "Discount days in the year",
+	"metric.discount_days.formula": "Days from 1 January to the as-of day on which the item sold below its list price on its line or on an invoice with a bill discount; gift days and voucher days are left out.",
+	"metric.discount_days.grain": "Item-year; several stores are counted together.",
+	"metric.discount_days.convention": "A line with the whole price off is a gift, not a discount day.",
+	"metric.promotions_used.label": "Promotions used",
+	"metric.promotions_used.formula": "Promotions (item discounts, bill discounts, vouchers) last used within the range.",
+	"metric.promotions_used.grain": "Range; several stores are counted together.",
+	"metric.promotions_used.convention": "Bill discounts and vouchers are told apart by name or code; catalogue promotions never used are not counted.",
+	"metric.over_cap_promotions.label": "Promotions over the maximum discount",
+	"metric.over_cap_promotions.formula": "Item or bill discounts with at least one discount above the maximum and below the whole price before it.",
+	"metric.over_cap_promotions.grain": "Range; each day uses the maximum in force on it.",
+	"metric.over_cap_promotions.convention": "Vouchers, gifts and free invoices (the whole amount off) are listed apart and not counted here."
 }

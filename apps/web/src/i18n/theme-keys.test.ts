@@ -4,9 +4,14 @@ import {
 	demoStores,
 } from "@fnb/demo-analytics";
 import {
+	buildCatalogueCard,
 	buildLiftCard,
+	buildRuleCapCard,
+	buildRuleDaysCard,
 	type CardModel,
+	complianceCallKey,
 	coverageModel,
+	customRange,
 	type NamedPreset,
 	PROMOTION_COMPARATORS,
 	parseThemeParams,
@@ -291,6 +296,120 @@ function liftCardOf(
 	});
 }
 
+function compliance(overrides: Readonly<Record<string, unknown>>) {
+	return {
+		promotion_kind: "item",
+		promotion_key: "KM-01",
+		promotion_name: "Giảm 60% món",
+		checked_rows: 10,
+		max_partial_rate: 0.6,
+		over_cap_rows: 3,
+		over_cap_discount_amount: 90_000,
+		first_over_cap_on: "2026-06-02",
+		last_over_cap_on: "2026-06-20",
+		full_discount_rows: 0,
+		full_discount_amount: 0,
+		first_full_discount_on: null,
+		last_full_discount_on: null,
+		...overrides,
+	};
+}
+
+const RULE_ROWS: Readonly<Record<string, readonly unknown[]>> = {
+	[promotionsCalls.catalogue]: [
+		{
+			promotion_kind: "bill",
+			promotion_key: "QUAY SO",
+			promotion_name: "QUAY SO",
+			in_catalogue: false,
+			catalogue_active: null,
+			starts_at: null,
+			ends_at: null,
+			first_used_on: "2026-06-01",
+			last_used_on: "2026-06-10",
+			days_used_365: 5,
+			invoices_365: 9,
+			discount_365: 300_000,
+		},
+		{
+			promotion_kind: "item",
+			promotion_key: "KM-01",
+			promotion_name: "Bốc thăm trúng thưởng",
+			in_catalogue: true,
+			catalogue_active: true,
+			starts_at: null,
+			ends_at: null,
+			first_used_on: "2026-05-01",
+			last_used_on: "2026-06-20",
+			days_used_365: 40,
+			invoices_365: 120,
+			discount_365: 2_400_000,
+		},
+	],
+	[complianceCallKey(0)]: [
+		compliance({}),
+		compliance({
+			promotion_key: "TANG-01",
+			promotion_name: "Tặng bánh",
+			max_partial_rate: null,
+			over_cap_rows: 0,
+			over_cap_discount_amount: 0,
+			first_over_cap_on: null,
+			last_over_cap_on: null,
+			full_discount_rows: 4,
+			first_full_discount_on: "2026-06-03",
+			last_full_discount_on: "2026-06-21",
+		}),
+		compliance({
+			promotion_kind: "voucher",
+			promotion_key: "Voucher 20k",
+			promotion_name: "Voucher 20k",
+			max_partial_rate: 0.7,
+			over_cap_rows: 2,
+		}),
+		compliance({
+			promotion_kind: "invoice_total",
+			promotion_key: "all",
+			promotion_name: null,
+			over_cap_rows: 3,
+			full_discount_rows: 1,
+			first_full_discount_on: "2026-06-12",
+			last_full_discount_on: "2026-06-12",
+		}),
+	],
+	[promotionsCalls.discountDays]: [
+		{
+			item_external_id: "CF-01",
+			item_name: "Cà phê sữa",
+			price_discount_days: 121,
+			line_price_discount_days: 100,
+			bill_discount_days: 30,
+			gift_days: 4,
+			voucher_days: 50,
+			first_price_discount_on: "2026-01-02",
+			last_price_discount_on: "2026-06-25",
+		},
+	],
+};
+
+function ruleCardsUnderTheLimit(): CardModel[] {
+	const base = contextOf(promotionsTheme, ["MOCK-S1"], "28d");
+	const context = {
+		...base,
+		range: customRange("2026-05-29", "2026-06-25", base.range.asOf),
+	};
+	const input = {
+		context,
+		coverage: coverageModel([], context),
+		results: { rows: (key: string) => RULE_ROWS[key] as never },
+	};
+	return [
+		buildCatalogueCard(input),
+		buildRuleCapCard(input),
+		buildRuleDaysCard(input),
+	];
+}
+
 describe("theme keys", () => {
 	it("declares every shared theme key in both languages", () => {
 		const missing = stringsOf(themeKeys).filter(
@@ -354,6 +473,46 @@ describe("theme keys", () => {
 			for (const text of lift.expected.en) expect(en).toContain(text);
 		},
 	);
+
+	it("translates the rule cards with the 120-day limit in force, a line over the cap, gifts, a free invoice and two lucky-draw names, with every placeholder filled in both languages", () => {
+		const cards = ruleCardsUnderTheLimit();
+		expect(cards.map((card) => card.notice?.part.key)).toEqual([
+			promotionsKeys.catalogue.luckyDraw,
+			promotionsKeys.ruleCap.concentrated,
+			undefined,
+		]);
+		const shown = expectCardsTranslated("promotions", cards);
+		const vi = shown.filter((_, index) => index % 2 === 0).join(" ");
+		const en = shown.filter((_, index) => index % 2 === 1).join(" ");
+		for (const text of [
+			"Nghị định 81/2018/NĐ-CP, Điều 13 và 19",
+			"Thông tư 39/2025/TT-BCT, Điều 4",
+			"Nghị định 81/2018/NĐ-CP, Điều 10",
+			"không thay cho tư vấn pháp lý",
+			"Tên của QUAY SO (có thể là “quay số”, tên viết không dấu) và 1 chương trình khác",
+			"Tối đa 50% giá ngay trước khuyến mãi",
+			"do cơ quan nhà nước tổ chức được giảm đến 100%",
+			"Voucher được ghi riêng, không tính vào mức giảm này",
+			"Nghị định 239/2026/NĐ-CP được cho là đã thay đổi thủ tục này",
+			"dòng món tặng",
+			"hóa đơn miễn phí",
+			"khi giới hạn còn áp dụng",
+		]) {
+			expect(vi).toContain(text);
+		}
+		for (const text of [
+			"Decree 81/2018/NĐ-CP, Articles 13 and 19",
+			"Circular 39/2025/TT-BCT, Article 4",
+			"not legal advice",
+			"gift lines",
+			"free invoices",
+			"possibly “quay số”",
+			"Vouchers are listed apart",
+			"state-run concentrated promotion programmes allow up to 100%",
+		]) {
+			expect(en).toContain(text);
+		}
+	});
 
 	it.each(
 		comparatorRuns.map(

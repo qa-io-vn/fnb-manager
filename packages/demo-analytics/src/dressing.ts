@@ -5,6 +5,10 @@ import type { IsoDate } from "@fnb/reports";
 export const DEMO_ITEM_PROMOTION_NAME = "Giảm 10% món";
 export const DEMO_BILL_DISCOUNT_NAME = "Giảm 5% hóa đơn";
 export const DEMO_UNCATEGORISED_ITEM = "SN-001";
+export const DEMO_LUCKY_DRAW_PROMOTION = {
+	externalId: "PROMO-05",
+	name: "Vòng quay may mắn",
+} as const;
 
 export interface DemoCashier {
 	readonly externalId: string;
@@ -27,6 +31,15 @@ export function demoCashierFor(date: IsoDate, shiftIndex: number): DemoCashier {
 			DEMO_CASHIERS.length) %
 		DEMO_CASHIERS.length;
 	return DEMO_CASHIERS[index] as DemoCashier;
+}
+
+export function dressDemoPromotionName(
+	externalId: string,
+	name: string,
+): string {
+	return externalId === DEMO_LUCKY_DRAW_PROMOTION.externalId
+		? DEMO_LUCKY_DRAW_PROMOTION.name
+		: name;
 }
 
 export function dressDemoCatalogItem(item: CanonicalItem): CanonicalItem {

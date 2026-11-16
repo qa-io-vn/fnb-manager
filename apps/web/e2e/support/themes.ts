@@ -42,7 +42,14 @@ export const themeCardIds: Record<ThemeKind, readonly string[]> = {
 		"preferences",
 	],
 	payments: ["payment_mix", "cash_trend", "drawer", "fees"],
-	promotions: ["discount_cost", "vouchers", "lift"],
+	promotions: [
+		"discount_cost",
+		"vouchers",
+		"lift",
+		"catalogue",
+		"rule_cap",
+		"rule_days",
+	],
 	shifts: ["shift_sales", "drawer", "adjustments", "cashiers"],
 	stores: ["kpis", "same_day", "since_opening"],
 	quality: [

@@ -1,4 +1,14 @@
 export {
+	buildCatalogueCard,
+	CATALOGUE_UNUSED_DAYS,
+	type CatalogueRow,
+	catalogueCard,
+	type LuckyDrawFinding,
+	luckyDrawFindings,
+	promotionUsedIn,
+	unusedInCatalogue,
+} from "./cards/catalogue.js";
+export {
 	buildDiscountCostCard,
 	DISCOUNT_COMPONENTS,
 	discountCostCard,
@@ -9,6 +19,25 @@ export {
 	liftCard,
 	liftFigures,
 } from "./cards/lift.js";
+export {
+	buildRuleCapCard,
+	type ComplianceRow,
+	complianceRows,
+	freeInvoiceSummary,
+	giftSummary,
+	overCapPromotions,
+	ruleCapCard,
+	voucherRows,
+	vouchersAboveCap,
+} from "./cards/rule-cap.js";
+export {
+	buildRuleDaysCard,
+	type DiscountDaysRow,
+	mostDiscounted,
+	overTheLimit,
+	RULE_DAYS_TABLE_ROWS,
+	ruleDaysCard,
+} from "./cards/rule-days.js";
 export { buildVouchersCard, vouchersCard } from "./cards/vouchers.js";
 export { promotionsCards, promotionsTheme } from "./definition.js";
 export {
@@ -36,8 +65,27 @@ export {
 	promotionParamValue,
 } from "./params.js";
 export {
+	type CapPeriod,
+	type CapSegment,
+	capBases,
+	capPeriods,
+	type DiscountDaysPlan,
+	datedBasesValue,
+	discountDaysPlan,
+	legalBasisValue,
+	needsDaysUnderRule,
+	PROMOTION_RULES_COUNTRY,
+	themePromotionRules,
+} from "./rules.js";
+export {
+	COMPLIANCE_CALL_PREFIX,
+	COMPLIANCE_CALLS,
+	complianceCallKey,
 	LIFT_WINDOW_DAYS,
 	liftWindow,
 	PROMOTIONS_SLUG,
 	promotionsCalls,
+	ruleCalls,
+	themeCapPeriods,
+	themeDiscountDaysPlan,
 } from "./support.js";

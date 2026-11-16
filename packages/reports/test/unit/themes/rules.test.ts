@@ -23,7 +23,7 @@ function capRule(
 		countryCode: "XX",
 		validFrom,
 		validTo,
-		parameters: { maxDiscountRate },
+		parameters: { maxDiscountRate, concentratedMaxDiscountRate: 1 },
 		legalBasis: {
 			instrument: "circular",
 			number: "1/2030/TT-BCT",

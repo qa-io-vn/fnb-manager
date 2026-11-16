@@ -22,6 +22,7 @@ export type RuleNote = Readonly<Record<LegalLanguage, string>>;
 
 export interface DiscountCapParameters {
 	readonly maxDiscountRate: number;
+	readonly concentratedMaxDiscountRate: number;
 }
 
 export interface DiscountDaysParameters {
@@ -147,19 +148,30 @@ const CAP_NOTE: RuleNote = {
 	vi: "Mức giảm giá không được vượt quá 50 % giá ngay trước thời gian khuyến mại.",
 };
 
+const CONCENTRATED_NOTE: RuleNote = {
+	en: "State-run concentrated promotion programmes allow up to 100 %.",
+	vi: "Các chương trình khuyến mại tập trung do cơ quan nhà nước tổ chức được giảm đến 100 %.",
+};
+
+const CAP_PARAMETERS: DiscountCapParameters = {
+	maxDiscountRate: 0.5,
+	concentratedMaxDiscountRate: 1,
+};
+
 const VIETNAM_RULES: readonly PromotionRule[] = [
 	{
 		id: "discount_cap",
 		countryCode: "VN",
 		validFrom: "2018-05-22",
 		validTo: "2025-06-30",
-		parameters: { maxDiscountRate: 0.5 },
+		parameters: CAP_PARAMETERS,
 		legalBasis: { ...DECREE_81, articles: [7] },
 		sources: [SOURCES.decree81, SOURCES.vcciCaps],
 		checkedOn: PROMOTION_RULES_CHECKED_ON,
 		legalWatch: true,
 		notes: [
 			CAP_NOTE,
+			CONCENTRATED_NOTE,
 			{
 				en: "Circular 39/2025/TT-BCT set the cap from 1 July 2025; how the two instruments handed over before that date is for the legal read to confirm.",
 				vi: "Thông tư 39/2025/TT-BCT quy định mức tối đa từ ngày 1/7/2025; việc chuyển tiếp giữa hai văn bản trước ngày đó cần được rà soát pháp lý xác nhận.",
@@ -171,7 +183,7 @@ const VIETNAM_RULES: readonly PromotionRule[] = [
 		countryCode: "VN",
 		validFrom: "2025-07-01",
 		validTo: null,
-		parameters: { maxDiscountRate: 0.5 },
+		parameters: CAP_PARAMETERS,
 		legalBasis: {
 			instrument: "circular",
 			number: "39/2025/TT-BCT",
@@ -182,10 +194,7 @@ const VIETNAM_RULES: readonly PromotionRule[] = [
 		legalWatch: true,
 		notes: [
 			CAP_NOTE,
-			{
-				en: "Concentrated national promotion programmes allow up to 100 %.",
-				vi: "Các chương trình khuyến mại tập trung cấp quốc gia được giảm đến 100 %.",
-			},
+			CONCENTRATED_NOTE,
 			{
 				en: "No cap applies to price-stabilised goods, fresh food or a business that is closing.",
 				vi: "Không áp dụng mức tối đa với hàng hóa bình ổn giá, thực phẩm tươi sống và trường hợp chấm dứt hoạt động kinh doanh.",

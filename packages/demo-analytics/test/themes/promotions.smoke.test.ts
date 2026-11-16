@@ -8,12 +8,14 @@ import {
 	promotionsCalls,
 	promotionsKeys,
 	promotionsTheme,
+	RULE_DAYS_TABLE_ROWS,
 	runPlannedCalls,
 	runTheme,
 	type ThemeContext,
 	themeResultsOf,
 } from "@fnb/reports";
 import { describe, expect, it } from "vitest";
+import { DEMO_LUCKY_DRAW_PROMOTION } from "../../src/index.js";
 import { STORE_SELECTIONS } from "../reports/report-keys.js";
 import {
 	messageFile,
@@ -139,6 +141,90 @@ describe("Khuyến mãi on the demo engine", () => {
 		);
 		return { entries, coverage, results: themeResultsOf(entries) };
 	}
+
+	it("checks the demo against the rules: the reported repeal for the end-to-end year with the days up to 25/06/2026 asked apart, the cap with the whole invoice last, and the catalogue", async () => {
+		const context = themeSmokeContext(["MOCK-S1", "MOCK-S2"], "28d");
+		const { entries } = await answered(context);
+		expect(
+			entries.get(promotionsCalls.discountDaysUnderRule)?.length,
+		).toBeGreaterThan(0);
+		const cards = await runTheme(promotionsTheme, context, source);
+		const days = cards.find((card) => card.id === "rule_days");
+		expect(days?.narrative.map((part) => part.key)).toEqual([
+			promotionsKeys.ruleDays.repealed,
+			promotionsKeys.ruleDays.noneOver,
+			promotionsKeys.ruleDays.basis,
+		]);
+		expect(days?.headline.caption?.key).toBe(
+			promotionsKeys.ruleDays.captionInfo,
+		);
+		const dayRows = days?.tables[0]?.rows ?? [];
+		expect(dayRows.length).toBeGreaterThan(0);
+		expect(dayRows.length).toBeLessThanOrEqual(RULE_DAYS_TABLE_ROWS);
+		for (const row of dayRows) {
+			const price = Number(row.cells.priceDays);
+			expect(Number(row.cells.lineDays)).toBeLessThanOrEqual(price);
+			expect(Number(row.cells.billDays)).toBeLessThanOrEqual(price);
+			expect(price).toBeLessThanOrEqual(
+				Number(row.cells.lineDays) + Number(row.cells.billDays),
+			);
+		}
+		const cap = cards.find((card) => card.id === "rule_cap");
+		const capRows = cap?.tables[0]?.rows ?? [];
+		expect(cap?.headline.value).toBe(
+			capRows.filter(
+				(row) =>
+					row.cells.kind !== promotionsKeys.ruleCap.invoiceTotal &&
+					Number(row.cells.overRows) > 0,
+			).length,
+		);
+		expect(capRows.at(-1)?.cells.kind).toBe(
+			promotionsKeys.ruleCap.invoiceTotal,
+		);
+		for (const row of capRows) {
+			if (Number(row.cells.overRows) > 0) {
+				expect(Number(row.cells.maxRate)).toBeGreaterThan(0.5);
+			}
+		}
+		expect(cap?.notice?.part.key).toBe(promotionsKeys.ruleCap.concentrated);
+		const vouchers = cap?.tables[1];
+		expect(vouchers?.captionKey).toBe(promotionsKeys.ruleCap.voucherTable);
+		expect(vouchers?.rows.some((row) => Number(row.cells.aboveRows) > 0)).toBe(
+			true,
+		);
+		expect(cap?.narrative.map((part) => part.key)).toContain(
+			promotionsKeys.ruleCap.vouchers,
+		);
+		const catalogue = cards.find((card) => card.id === "catalogue");
+		expect(catalogue?.headline.value).toBeGreaterThan(0);
+		expect(catalogue?.tables[0]?.rows.length).toBeGreaterThan(0);
+		expect(catalogue?.notice?.tone).toBe("warning");
+		expect(catalogue?.notice?.part.key).toBe(
+			promotionsKeys.catalogue.luckyDraw,
+		);
+		expect(JSON.stringify(catalogue?.notice?.part.values.matches)).toContain(
+			DEMO_LUCKY_DRAW_PROMOTION.name,
+		);
+	}, 60_000);
+
+	it("reads the 120-day limit as in force for a range that ends on 25/06/2026 and asks for the year only once", async () => {
+		const base = themeSmokeContext(["MOCK-S1"], "28d");
+		const context: ThemeContext = {
+			...base,
+			range: customRange("2026-05-29", "2026-06-25", base.range.asOf),
+		};
+		expect(
+			promotionsTheme
+				.primaryCalls(context)
+				.some((call) => call.key === promotionsCalls.discountDaysUnderRule),
+		).toBe(false);
+		const cards = await runTheme(promotionsTheme, context, source);
+		const days = cards.find((card) => card.id === "rule_days");
+		expect(days?.narrative[0]?.key).toBe(promotionsKeys.ruleDays.limit);
+		expect(days?.headline.caption?.key).toBe(promotionsKeys.ruleDays.caption);
+		expect(missingKeys(cards, catalogs)).toEqual([]);
+		expect(unfilledPlaceholders(cards, catalogs)).toEqual([]);
+	}, 60_000);
 
 	it("shows a dash with the reason for a promotion that runs every day, and disables the sister store when both stores ran it", async () => {
 		const context = themeSmokeContext(["MOCK-S1", "MOCK-S2"], "28d");

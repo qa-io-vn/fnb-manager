@@ -282,5 +282,17 @@
 	"metric.store_findings.label": "Cửa hàng còn việc cần làm",
 	"metric.store_findings.formula": "Số cửa hàng có ít nhất một mục: hóa đơn điện tử chưa Đã đăng ký, cách đánh số hóa đơn chưa ghi hoặc khác dữ liệu, tính năng thành viên đang tắt, thiếu giờ mở cửa, số ghế hoặc ngày khai trương.",
 	"metric.store_findings.grain": "Cửa hàng.",
-	"metric.store_findings.convention": "Đọc từ hồ sơ cửa hàng trong Cài đặt → Cửa hàng; ứng dụng không tự sửa mục nào."
+	"metric.store_findings.convention": "Đọc từ hồ sơ cửa hàng trong Cài đặt → Cửa hàng; ứng dụng không tự sửa mục nào.",
+	"metric.discount_days.label": "Số ngày giảm giá bán trong năm",
+	"metric.discount_days.formula": "Số ngày từ 1/1 đến ngày tính mà món được bán dưới giá niêm yết trên dòng món hoặc nằm trong hóa đơn được giảm giá; không tính ngày tặng món và ngày dùng voucher.",
+	"metric.discount_days.grain": "Món-năm; nhiều cửa hàng đếm chung.",
+	"metric.discount_days.convention": "Giảm toàn bộ giá món là món tặng, không tính là ngày giảm giá bán.",
+	"metric.promotions_used.label": "Khuyến mãi được dùng",
+	"metric.promotions_used.formula": "Số khuyến mãi (giảm giá món, giảm giá hóa đơn, voucher) có lần dùng cuối trong khoảng ngày.",
+	"metric.promotions_used.grain": "Khoảng ngày; nhiều cửa hàng đếm chung.",
+	"metric.promotions_used.convention": "Giảm giá hóa đơn và voucher được nhận theo tên hoặc mã; chương trình trong danh mục POS chưa từng dùng không được đếm.",
+	"metric.over_cap_promotions.label": "Khuyến mãi giảm quá mức tối đa",
+	"metric.over_cap_promotions.formula": "Số chương trình giảm giá món hoặc giảm giá hóa đơn có ít nhất một lần giảm cao hơn mức tối đa và thấp hơn toàn bộ giá trước khuyến mãi.",
+	"metric.over_cap_promotions.grain": "Khoảng ngày; mỗi ngày dùng mức tối đa áp dụng cho ngày đó.",
+	"metric.over_cap_promotions.convention": "Voucher, món tặng và hóa đơn miễn phí (giảm toàn bộ) được ghi riêng, không tính vào số này."
 }

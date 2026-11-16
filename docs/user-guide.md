@@ -346,7 +346,7 @@ More detail: [reports/thanh-toan.md](reports/thanh-toan.md).
 
 ### Khuyến mãi & giảm giá (Promotions and discounts)
 
-Khuyến mãi shows what your promotions cost and whether one of them paid for itself.
+Khuyến mãi shows what your promotions cost, whether one of them paid for itself, and how they stand against the promotion rules.
 
 **Chi phí giảm giá** adds up the item discounts, bill discounts and vouchers of the range, with their share of gross revenue ("2,0% doanh thu gộp"). Its chips compare the cost, then the rate in points, with the range before and the same range last year. The sentence names the promotion that cost most; the first table lists every promotion with its invoices, discount, share of the cost and the first and last day it was used, and the second splits the cost into items, bills and vouchers for this range and the one before. The bars stack the three by day, or by week beyond 35 days.
 
@@ -368,7 +368,21 @@ The card then shows the net result in big type, "+" for a gain and "−" for a l
 |---|---|
 | ![The lift card of a bill discount measured against the weeks before: a net loss in big type, the extra gross revenue and the discount cost under it, the trend sentence, the bars of gross revenue and the days](user-guide/theme-khuyen-mai-lift.png) | ![The lift card of a voucher that ran every day: a dash, the reason and what to try, and the greyed-out store comparison with its reason](user-guide/theme-khuyen-mai-lift-dash.png) |
 
-Your choices are in the address (`&promo=…&cmp=prior_weeks`), so a link opens the same comparison. The promotion catalogue and the legal checks (the 50 % cap and the days of price discounts in a year) come next.
+Your choices are in the address (`&promo=…&cmp=prior_weeks`), so a link opens the same comparison.
+
+The last three cards check your promotions against the Vietnamese promotion rules that apply on each date. They inform; they never say you broke a rule, and each legal sentence names the decree or circular and its article, the date the rules were last checked (12/11/2026) and that it is not legal advice.
+
+**Danh mục khuyến mãi** counts the promotions used in the range and lists every promotion, voucher and named bill discount with whether it is in the POS catalogue, whether it is switched on, when it was last used and its days and discount over the last 365 days. It names how many catalogue promotions that are still switched on have not been used for more than 90 days, which you may switch off in the POS. When the name of a promotion holds a word of a lucky draw ("bốc thăm", "quay số", "trúng thưởng", "lucky draw" and the like, also written without tone marks), a yellow note reminds you that a promotion with an element of chance must be registered with the Sở Công Thương, or with the Bộ Công Thương when it runs in several provinces, and that Decree 239/2026/NĐ-CP is reported to have changed this procedure. In the demo, the catalogue promotion "Vòng quay may mắn" shows the note.
+
+![The catalogue card: the promotions used in the range, the catalogue promotions not used for 90 days, the lucky-draw note for the demo's "Vòng quay may mắn" and the list with catalogue, status, last use, days and discount over 365 days](user-guide/theme-khuyen-mai-catalogue.png)
+
+**Mức giảm tối đa** counts the item and bill discounts that took more than 50 % off the price before the promotion at least once (the cap of Circular 39/2025/TT-BCT, Article 4; a range across 1 July 2025 names Decree 81/2018/NĐ-CP, Article 7, too, with the dates of each). A free item ("món tặng") and a fully free invoice ("hóa đơn miễn phí") are never counted as over the cap: they are named apart with their dates for you to check against the rules of the programme. Vouchers are another form of promotion and are listed apart too, in their own sentence and table, when one took more than 50 % off the rest of an invoice. The first table ends with a row for whole invoices, vouchers included. A note says that state-run concentrated promotion programmes allow up to 100 %; their dates are not in the data, so every day is checked against 50 %.
+
+**Số ngày giảm giá bán trong năm** counts, for each item, the days of this year on which it was sold at a discount, on its line or through a bill discount; gift and voucher days are shown beside them, never added. The old limit of 120 such days per item and year (Decree 81/2018/NĐ-CP, Article 10) is reported repealed from 26/06/2026 by Decree 239/2026/NĐ-CP, which is still being checked: for a range ending after 25/06/2026 the count is marked "chỉ để theo dõi" (for information only), and an item is named as over 120 days only for the days up to 25/06/2026.
+
+| | |
+|---|---|
+| ![The maximum discount card: the cap with its circular and check date, no item or bill discount over it, the vouchers listed apart, the note on state-run programmes and the table ending with whole invoices](user-guide/theme-khuyen-mai-rule-cap.png) | ![The discount days card: the item with the most discount days marked for information only, the reported repeal, the days up to 25/06/2026 and the items with their line, bill, gift and voucher days](user-guide/theme-khuyen-mai-rule-days.png) |
 
 More detail: [reports/khuyen-mai.md](reports/khuyen-mai.md).
 
@@ -580,7 +594,6 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 ![The Kế hoạch page saying Sắp có and naming the roadmap phase that brings it](user-guide/coming-soon.png)
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
-- **More thematic reports** ("Chủ đề", phase 10): the promotion catalogue and legal checks of Khuyến mãi. Doanh thu, Giờ & ngày, Thực đơn, Thanh toán, Khuyến mãi, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu are already there (see above).
 - **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Dữ liệu nhập tay (item costs), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (your own days off) and Ngưỡng báo cáo are open (see above). The item-cost CSV import, monthly targets, payment fees and legal texts come next. Target progress waits for a monthly target. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
 - **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).

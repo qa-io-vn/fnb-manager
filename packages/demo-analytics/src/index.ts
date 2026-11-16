@@ -51,11 +51,13 @@ export {
 	DEMO_BILL_DISCOUNT_NAME,
 	DEMO_CASHIERS,
 	DEMO_ITEM_PROMOTION_NAME,
+	DEMO_LUCKY_DRAW_PROMOTION,
 	DEMO_UNCATEGORISED_ITEM,
 	type DemoCashier,
 	demoCashierFor,
 	dressDemoCatalogItem,
 	dressDemoDay,
+	dressDemoPromotionName,
 } from "./dressing.js";
 export {
 	holidayKindOn,

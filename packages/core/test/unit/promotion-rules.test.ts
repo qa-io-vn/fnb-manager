@@ -129,6 +129,20 @@ describe("promotionRules", () => {
 		expect(versionOn("discount_cap", "2018-05-21")).toBeUndefined();
 	});
 
+	it("lets state-run concentrated programmes reach 100 % under both versions of the cap", () => {
+		for (const date of ["2025-06-30", "2025-07-01", REPEAL_DATE]) {
+			expect(versionOn("discount_cap", date)?.parameters).toEqual({
+				maxDiscountRate: 0.5,
+				concentratedMaxDiscountRate: 1,
+			});
+		}
+		for (const rule of VN.filter((entry) => entry.id === "discount_cap")) {
+			expect(rule.notes.map((note) => note.en)).toContain(
+				"State-run concentrated promotion programmes allow up to 100 %.",
+			);
+		}
+	});
+
 	it("records the day limit and the keywords as parameters and every rule as a legal-watch item", () => {
 		expect(versionOn("discount_days", "2026-01-01")?.parameters).toEqual({
 			maxDaysPerItemYear: 120,

@@ -117,3 +117,65 @@ export function threeRanges(
 	}
 	return rows;
 }
+
+export type CatalogueRow = ThemeRow<"promotion_catalogue">;
+export type ComplianceRow = ThemeRow<"promotion_compliance">;
+export type DiscountDaysRow = ThemeRow<"item_discount_days">;
+
+export function catalogueRow(
+	overrides: Partial<CatalogueRow> = {},
+): CatalogueRow {
+	return {
+		promotion_kind: "item",
+		promotion_key: "KM-01",
+		promotion_name: "Mua 2 tặng 1",
+		in_catalogue: true,
+		catalogue_active: true,
+		starts_at: null,
+		ends_at: null,
+		first_used_on: "2026-01-10",
+		last_used_on: "2026-11-02",
+		days_used_365: 120,
+		invoices_365: 400,
+		discount_365: 8_000_000,
+		...overrides,
+	};
+}
+
+export function complianceRow(
+	overrides: Partial<ComplianceRow> = {},
+): ComplianceRow {
+	return {
+		promotion_kind: "item",
+		promotion_key: "KM-01",
+		promotion_name: "Giảm 20% món",
+		checked_rows: 40,
+		max_partial_rate: 0.2,
+		over_cap_rows: 0,
+		over_cap_discount_amount: 0,
+		first_over_cap_on: null,
+		last_over_cap_on: null,
+		full_discount_rows: 0,
+		full_discount_amount: 0,
+		first_full_discount_on: null,
+		last_full_discount_on: null,
+		...overrides,
+	};
+}
+
+export function discountDaysRow(
+	overrides: Partial<DiscountDaysRow> = {},
+): DiscountDaysRow {
+	return {
+		item_external_id: "CF-01",
+		item_name: "Cà phê sữa",
+		price_discount_days: 40,
+		line_price_discount_days: 30,
+		bill_discount_days: 15,
+		gift_days: 0,
+		voucher_days: 0,
+		first_price_discount_on: "2026-01-05",
+		last_price_discount_on: "2026-06-20",
+		...overrides,
+	};
+}

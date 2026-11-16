@@ -67,7 +67,7 @@ function followUps(
 }
 
 describe("the Khuyến mãi theme", () => {
-	it("is registered under its slug with a 28-day default, at most 400 days and three cards", () => {
+	it("is registered under its slug with a 28-day default, at most 400 days and six cards", () => {
 		expect(themeDefinitionOf("promotions")).toBe(promotionsTheme);
 		expect(promotionsTheme.slug).toBe("khuyen-mai");
 		expect(promotionsTheme.defaultPreset).toBe("28d");
@@ -76,6 +76,9 @@ describe("the Khuyến mãi theme", () => {
 			"discount_cost",
 			"vouchers",
 			"lift",
+			"catalogue",
+			"rule_cap",
+			"rule_days",
 		]);
 		expect(promotionsTheme.params.map((spec) => spec.id)).toEqual([
 			"promo",
@@ -93,6 +96,10 @@ describe("the Khuyến mãi theme", () => {
 			"promotionsW92",
 			"series",
 			"settings",
+			"catalogue",
+			"compliance.1",
+			"discountDays",
+			"discountDaysUnderRule",
 		]);
 		const range = callOf(calls, "promotions");
 		const window = callOf(calls, "promotionsW92");

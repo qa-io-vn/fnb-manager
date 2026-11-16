@@ -9,6 +9,7 @@ import {
 	DEMO_POS_ACCOUNT_ID,
 	ESTABLISHED_STORE_OPENED_ON,
 } from "../calendar.js";
+import { dressDemoPromotionName } from "../dressing.js";
 import { money } from "../pg-numeric.js";
 import { byteOrder } from "../text-order.js";
 import { discountRows } from "./discount-rows.js";
@@ -36,7 +37,7 @@ export function demoPromotionCatalogue(
 	if (posAccountId !== DEMO_POS_ACCOUNT_ID) return [];
 	return MENU.catalog.promotions.map((promotion) => ({
 		externalId: promotion.externalId,
-		name: promotion.name,
+		name: dressDemoPromotionName(promotion.externalId, promotion.name),
 		active: true,
 		startsAt: null,
 		endsAt: null,

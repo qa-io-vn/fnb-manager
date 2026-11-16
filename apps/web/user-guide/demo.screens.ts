@@ -230,6 +230,21 @@ test("the Khuyến mãi discount cost, vouchers and promotion lift", async ({
 	);
 });
 
+test("the Khuyến mãi catalogue and rule cards", async ({ page }) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await openThemePage(page, "promotions", "range=28d");
+	await expect(
+		themeCard(page, "promotions", "rule_days").getByTestId("sentence"),
+	).toContainText("được cho là đã bãi bỏ");
+	for (const [card, name] of [
+		["catalogue", "theme-khuyen-mai-catalogue"],
+		["rule_cap", "theme-khuyen-mai-rule-cap"],
+		["rule_days", "theme-khuyen-mai-rule-days"],
+	] as const) {
+		await shootElement(themeCard(page, "promotions", card), name);
+	}
+});
+
 test("the Ca & két tiền sales, drawer and adjustments cards", async ({
 	page,
 }) => {
