@@ -4,29 +4,52 @@ import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+	type AnalyticsRow,
 	addDays,
 	asOfDate,
+	COVERAGE_CALL_KEY,
+	capPeriods,
+	coverageModel,
 	createRpcReportSource,
 	customRange,
 	DEFAULT_REPORT_SETTINGS,
 	type IsoDate,
 	isDefaultReportSettings,
+	MAX_THEME_RANGE_DAYS,
 	parseThemeParams,
+	type ReportCallSpec,
 	type ReportRange,
 	type ReportSource,
 	type ReportStore,
 	rangeOfPreset,
+	reportCallIdentity,
 	runTheme,
 	settingsOfRow,
+	THEME_ORDER,
 	type ThemeContext,
 	type ThemeDefinition,
+	type ThemeKind,
 	themeDefinitions,
+	themePromotionRules,
+	themeResultsOf,
+	yearOf,
 } from "../../src/index.js";
+import {
+	catalogueModifierFacts,
+	flaggedShifts,
+	itemsWithoutDiscount,
+	missingFunctions,
+	overBudgetCalls,
+	promotionIdentities,
+	promotionYear,
+	TIMED_SPANS,
+	type TimedSpan,
+} from "./identity-checks.js";
 import {
 	asMember,
 	createPostgresRpcClient,
 	LIVE_CONNECTION_OPTIONS,
-	type PostgresRpcClient,
+	type SerialRpcClient,
 	serialRpcClient,
 } from "./postgres-rpc-client.js";
 import {
@@ -56,34 +79,25 @@ const LIVE =
 const TENANT_SLUG = process.env.LIVE_TENANT ?? "live-local";
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../../../", import.meta.url));
 
-const CALL_BUDGET_MS: Readonly<Record<string, number>> = {
-	range_totals: 50,
-	opening_productivity: 50,
-	hour_weekday_heatmap: 50,
-	menu_engineering: 50,
-	modifier_summary: 50,
-	payment_summary: 50,
-	analytics_catch_up_status: 50,
-	data_quality_payments: 50,
-	shift_review: 100,
-	hour_profile: 150,
-	item_margins: 150,
-	data_quality_items: 150,
-	store_coverage: 200,
-	item_summary: 200,
-	basket_pairs: 300,
-	data_quality_summary: 300,
-	item_attach: 400,
-	shift_adjustments: 400,
-};
-const PAGE_BUDGET_MS = 600;
-const ANY_CALL_BUDGET_MS = 1_500;
 const YEAR_DAYS = 365;
 const SHIFT_DAYS = 92;
 const BASKET_CHUNK_DAYS = 91;
 const MENU_MIN_WINDOW_DAYS = 7;
 const QUANTITY_EPSILON = 1e-6;
 const DEFAULT_WINDOW_PRESET = "28d";
+const PROMOTION_DAYS_FUNCTION = "promotion_days";
+
+type RangeShape = Pick<ThemeDefinition, "defaultPreset" | "maxRangeDays">;
+
+interface TimedPage {
+	readonly kind: ThemeKind;
+	readonly span: TimedSpan;
+}
+
+interface RecordingSource {
+	readonly source: ReportSource;
+	readonly rows: Map<string, readonly unknown[]>;
+}
 
 interface LiveStore extends ReportStore {
 	readonly posAccountId: string;
@@ -92,12 +106,17 @@ interface LiveStore extends ReportStore {
 interface ThemeLiveSetup {
 	readonly sql: postgres.Sql;
 	readonly userId: string;
-	readonly client: PostgresRpcClient;
+	readonly client: SerialRpcClient;
 	readonly source: ReportSource;
 	readonly tenantId: string;
 	readonly stores: readonly LiveStore[];
 	readonly asOf: IsoDate;
 	readonly rowCounts: ReadonlyMap<string, number>;
+}
+
+interface StoreSelection {
+	readonly label: string;
+	readonly stores: readonly LiveStore[];
 }
 
 interface PrivateSheet {
@@ -122,6 +141,19 @@ function privateSheet(): PrivateSheet | null {
 	if (value === undefined || value.trim() === "") return null;
 	const path = isAbsolute(value) ? value : resolve(REPOSITORY_ROOT, value);
 	return { path, text: readFileSync(path, "utf8") };
+}
+
+function modifierPeriods(
+	setup: Pick<ThemeLiveSetup, "asOf">,
+	sheet: PrivateSheet | null,
+): Record<string, DateWindow> {
+	return {
+		window:
+			sheet === null
+				? rangeOfPreset(DEFAULT_WINDOW_PRESET, setup.asOf)
+				: parseReferenceSheet(sheet.text).window,
+		year: { from: addDays(setup.asOf, 1 - YEAR_DAYS), to: setup.asOf },
+	};
 }
 
 function siblingFile(sheet: PrivateSheet, name: string): string {
@@ -180,6 +212,82 @@ function themeContext(
 	};
 }
 
+function storeSelections(stores: readonly LiveStore[]): StoreSelection[] {
+	return [
+		...stores.map((store, index) => ({
+			label: `store ${index + 1}`,
+			stores: [store],
+		})),
+		{ label: "all", stores },
+	];
+}
+
+function uuidArray(stores: readonly ReportStore[]): string {
+	return `{${stores.map((store) => store.id).join(",")}}`;
+}
+
+function timedPages(): TimedPage[] {
+	return THEME_ORDER.flatMap((kind) =>
+		TIMED_SPANS.map((span) => ({ kind, span })),
+	);
+}
+
+function timedRange(
+	shape: RangeShape,
+	span: TimedSpan,
+	asOf: IsoDate,
+): ReportRange {
+	return span === "default"
+		? rangeOfPreset(shape.defaultPreset, asOf)
+		: customRange(addDays(asOf, 1 - shape.maxRangeDays), asOf, asOf);
+}
+
+function identityOf(spec: Pick<ReportCallSpec, "name" | "args">): string {
+	return reportCallIdentity(spec);
+}
+
+function recordingSource(source: ReportSource): RecordingSource {
+	const rows = new Map<string, readonly unknown[]>();
+	return {
+		rows,
+		source: {
+			kind: source.kind,
+			async call(name, args) {
+				const result = await source.call(name, args);
+				rows.set(identityOf({ name, args } as ReportCallSpec), result);
+				return result;
+			},
+			async callTheme(name, args) {
+				const result = await source.callTheme(name, args);
+				rows.set(identityOf({ name, args } as ReportCallSpec), result);
+				return result;
+			},
+		},
+	};
+}
+
+function plannedFunctions(
+	definition: ThemeDefinition,
+	context: ThemeContext,
+	recorded: ReadonlyMap<string, readonly unknown[]>,
+): string[] {
+	const primary = definition.primaryCalls(context);
+	const entries = new Map(
+		primary.map((spec) => [spec.key, recorded.get(identityOf(spec)) ?? []]),
+	);
+	const coverage = coverageModel(
+		(entries.get(COVERAGE_CALL_KEY) ??
+			[]) as readonly AnalyticsRow<"store_coverage">[],
+		context,
+	);
+	const followUps = definition.followUpCalls(
+		context,
+		coverage,
+		themeResultsOf(entries),
+	);
+	return [...primary, ...followUps].map((spec) => spec.name);
+}
+
 async function catchUpStatus(setup: ThemeLiveSetup) {
 	const started = performance.now();
 	const rows = await asMember(setup.sql, setup.userId, (transaction) =>
@@ -228,10 +336,10 @@ describe.skipIf(!LIVE)("live check of the thematic reports", () => {
 	let setup: ThemeLiveSetup | null = null;
 
 	beforeAll(async () => {
-		const sql = postgres(
-			process.env.DATABASE_URL ?? "",
-			LIVE_CONNECTION_OPTIONS,
-		);
+		const sql = postgres(process.env.DATABASE_URL ?? "", {
+			...LIVE_CONNECTION_OPTIONS,
+			connection: { default_transaction_read_only: true },
+		});
 		const [tenant] = await sql`
 			select t.id::text as id, m.user_id::text as user_id
 			from public.tenants t
@@ -283,55 +391,74 @@ describe.skipIf(!LIVE)("live check of the thematic reports", () => {
 		return setup;
 	}
 
-	it("1. each theme page stays within its call budgets at the default range and at its longest", async () => {
-		const active = live();
-		const overBudget: string[] = [];
-		for (const [kind, definition] of Object.entries(themeDefinitions)) {
-			const ranges = {
-				default: rangeOfPreset(definition.defaultPreset, active.asOf),
-				longest: customRange(
-					addDays(active.asOf, 1 - definition.maxRangeDays),
-					active.asOf,
-					active.asOf,
+	for (const { kind, span } of timedPages()) {
+		it(`1. ${kind} at its ${span} range stays within its call budgets`, async () => {
+			const active = live();
+			const definition = themeDefinitions[kind];
+			const range = timedRange(definition, span, active.asOf);
+			const context = themeContext(active, definition, range);
+			const recording = recordingSource(active.source);
+			await active.client.idle();
+			const before = active.client.calls.length;
+			await runTheme(definition, context, recording.source);
+			await catchUpStatus(active);
+			const calls = active.client.calls.slice(before);
+			const planned = plannedFunctions(definition, context, recording.rows);
+			const missing = missingFunctions(planned, calls);
+			const overBudget = overBudgetCalls(calls, span);
+			report("theme timing", {
+				theme: kind,
+				range: span,
+				days: range.days,
+				calls: calls.length,
+				plannedFunctions: new Set(planned).size,
+				missingFunctions: missing.length,
+				slowestMs: Math.round(
+					Math.max(0, ...calls.map((call) => call.milliseconds)),
 				),
-			};
-			for (const [span, range] of Object.entries(ranges)) {
-				const before = active.client.calls.length;
-				await runTheme(
-					definition,
-					themeContext(active, definition, range),
-					active.source,
-				);
-				await catchUpStatus(active);
-				const calls = active.client.calls.slice(before);
-				const slowest = Math.max(0, ...calls.map((call) => call.milliseconds));
-				report("theme timing", {
-					theme: kind,
-					range: span,
-					days: range.days,
-					calls: calls.length,
-					slowestMs: Math.round(slowest),
-				});
-				for (const call of calls) {
-					const budget = CALL_BUDGET_MS[call.fn];
-					if (call.milliseconds >= ANY_CALL_BUDGET_MS) {
-						overBudget.push(`${kind} ${span} ${call.fn}`);
-					} else if (
-						span === "default" &&
-						budget !== undefined &&
-						call.milliseconds > budget
-					) {
-						overBudget.push(`${kind} ${span} ${call.fn}`);
-					}
-				}
-				if (span === "default" && slowest >= PAGE_BUDGET_MS) {
-					overBudget.push(`${kind} ${span} page`);
-				}
-			}
-		}
-		report("theme budgets", { overBudget: overBudget.length });
-		expect(overBudget).toEqual([]);
-	});
+				overBudget: overBudget.length,
+			});
+			expect(missing).toEqual([]);
+			expect(overBudget).toEqual([]);
+		});
+	}
+
+	for (const span of TIMED_SPANS) {
+		it(`1. promotion_days at its ${span} range stays within its call budgets`, async () => {
+			const active = live();
+			const range = timedRange(
+				{
+					defaultPreset: DEFAULT_WINDOW_PRESET,
+					maxRangeDays: MAX_THEME_RANGE_DAYS,
+				},
+				span,
+				active.asOf,
+			);
+			await active.client.idle();
+			const before = active.client.calls.length;
+			const rows = await active.source.callTheme(PROMOTION_DAYS_FUNCTION, {
+				store_ids: active.stores.map((store) => store.id),
+				from_date: range.from,
+				to_date: range.to,
+			});
+			const calls = active.client.calls.slice(before);
+			const missing = missingFunctions([PROMOTION_DAYS_FUNCTION], calls);
+			const overBudget = overBudgetCalls(calls, span);
+			report("function timing", {
+				function: PROMOTION_DAYS_FUNCTION,
+				range: span,
+				days: range.days,
+				rows: rows.length,
+				missingFunctions: missing.length,
+				slowestMs: Math.round(
+					Math.max(0, ...calls.map((call) => call.milliseconds)),
+				),
+				overBudget: overBudget.length,
+			});
+			expect(missing).toEqual([]);
+			expect(overBudget).toEqual([]);
+		});
+	}
 
 	it("2. the reference window agrees with the private sheet (A1)", async () => {
 		const active = live();
@@ -450,14 +577,7 @@ describe.skipIf(!LIVE)("live check of the thematic reports", () => {
 	it("3. modifiers never count or appear as items over the window and the last 365 days (A2)", async () => {
 		const active = live();
 		const sheet = privateSheet();
-		const window: DateWindow =
-			sheet === null
-				? rangeOfPreset(DEFAULT_WINDOW_PRESET, active.asOf)
-				: parseReferenceSheet(sheet.text).window;
-		const periods: Record<string, DateWindow> = {
-			window,
-			year: { from: addDays(active.asOf, 1 - YEAR_DAYS), to: active.asOf },
-		};
+		const periods = modifierPeriods(active, sheet);
 		const modifierRows = await asMember(
 			active.sql,
 			active.userId,
@@ -634,7 +754,39 @@ describe.skipIf(!LIVE)("live check of the thematic reports", () => {
 		expect(failures).toEqual([]);
 	});
 
-	it("4. the default thresholds change nothing in shift_review and cash_variance_flags", async () => {
+	it("4. the data-quality functions find no catalogue modifier sold as an item over the window and the last 365 days (A2)", async () => {
+		const active = live();
+		const failures: string[] = [];
+		for (const [name, period] of Object.entries(
+			modifierPeriods(active, privateSheet()),
+		)) {
+			const range = {
+				store_ids: active.stores.map((store) => store.id),
+				from_date: period.from,
+				to_date: period.to,
+			};
+			const quality = catalogueModifierFacts(
+				await active.source.callTheme("data_quality_summary", range),
+				await active.source.callTheme("data_quality_items", range),
+			);
+			report("quality modifiers", {
+				period: name,
+				days: windowDays(period),
+				...quality,
+			});
+			if (!quality.linesAllZero) {
+				failures.push(`${name} catalogue modifier lines`);
+			}
+			if (quality.catalogueModifierItems > 0) {
+				failures.push(`${name} catalogue modifier items`);
+			}
+			if (quality.summaryRows === 0) failures.push(`${name} no summary`);
+			if (quality.qualityItems === 0) failures.push(`${name} no items`);
+		}
+		expect(failures).toEqual([]);
+	});
+
+	it("5. the default thresholds change nothing in shift_review and cash_variance_flags", async () => {
 		const active = live();
 		const to = active.asOf;
 		const from = addDays(to, 1 - SHIFT_DAYS);
@@ -702,7 +854,7 @@ describe.skipIf(!LIVE)("live check of the thematic reports", () => {
 		expect(flagsEqual).toBe(true);
 	});
 
-	it("5. report_settings_of answers with the defaults and no analytics day is pending", async () => {
+	it("6. report_settings_of answers with the defaults and no analytics day is pending", async () => {
 		const active = live();
 		const rows = await active.source.callTheme("report_settings_of", {
 			store_ids: active.stores.map((store) => store.id),
@@ -736,7 +888,117 @@ describe.skipIf(!LIVE)("live check of the thematic reports", () => {
 		expect(pendingDays).toBe(0);
 	});
 
-	it("6. the real tenant's row counts are the same after the run", async () => {
+	it("7. shift_review and cash_variance_flags flag the same shifts with the tenant's thresholds over the last 92 days (FR-THM-07)", async () => {
+		const active = live();
+		const to = active.asOf;
+		const from = addDays(to, 1 - SHIFT_DAYS);
+		const outcomes: boolean[] = [];
+		let allStoresShifts = 0;
+		for (const selection of storeSelections(active.stores)) {
+			const review = await active.source.call("shift_review", {
+				store_ids: selection.stores.map((store) => store.id),
+				from_date: from,
+				to_date: to,
+			});
+			const cashFlags = await asMember(
+				active.sql,
+				active.userId,
+				(transaction) =>
+					transaction.unsafe(
+						"select shift_id::text as shift_id from public.cash_variance_flags($1::uuid[], $2::date, $3::date)",
+						[uuidArray(selection.stores), from, to],
+					),
+			);
+			const shifts = flaggedShifts(
+				review,
+				cashFlags.map((row) => ({ shift_id: String(row.shift_id) })),
+			);
+			report("flagged shifts", {
+				selection: selection.label,
+				days: SHIFT_DAYS,
+				shifts: review.length,
+				...shifts,
+			});
+			outcomes.push(shifts.agree);
+			if (selection.stores.length === active.stores.length) {
+				allStoresShifts = review.length;
+			}
+		}
+		expect(outcomes).toHaveLength(active.stores.length + 1);
+		expect(allStoresShifts).toBeGreaterThan(0);
+		expect(outcomes.every(Boolean)).toBe(true);
+	});
+
+	it("8. promotion_compliance and item_discount_days agree with promotion_summary over the year to date, or the last year on 1 January", async () => {
+		const active = live();
+		const year = promotionYear(active.asOf);
+		const periods = capPeriods(themePromotionRules(), year);
+		const failures: string[] = [];
+		let compared = 0;
+		let allStoresDiscountItems = 0;
+		for (const selection of storeSelections(active.stores)) {
+			const storeIds = selection.stores.map((store) => store.id);
+			for (const [position, period] of periods.entries()) {
+				const range = {
+					store_ids: storeIds,
+					from_date: period.from,
+					to_date: period.to,
+				};
+				const identities = promotionIdentities(
+					await active.source.call("promotion_summary", range),
+					await active.source.callTheme("promotion_compliance", {
+						...range,
+						cap_rate: period.cap,
+					}),
+				);
+				report("promotion identities", {
+					selection: selection.label,
+					capPeriod: position + 1,
+					days: windowDays(period),
+					...identities,
+				});
+				compared += identities.promotions;
+				const label = `${selection.label} period ${position + 1}`;
+				if (!identities.keysAgree) failures.push(`${label} keys`);
+				if (!identities.checkedRowsAgree) {
+					failures.push(`${label} checked rows`);
+				}
+				if (!identities.flaggedWithinDiscount) {
+					failures.push(`${label} flagged discount`);
+				}
+			}
+			const discountDays = await active.source.callTheme("item_discount_days", {
+				store_ids: storeIds,
+				calendar_year: yearOf(year.to),
+				as_of_date: year.to,
+			});
+			const withoutDiscount = itemsWithoutDiscount(discountDays);
+			report("discount days", {
+				selection: selection.label,
+				days: windowDays(year),
+				discountItems: discountDays.length,
+				itemsWithoutDiscount: withoutDiscount,
+			});
+			if (withoutDiscount > 0) {
+				failures.push(`${selection.label} items without a discount`);
+			}
+			if (selection.stores.length === active.stores.length) {
+				allStoresDiscountItems = discountDays.length;
+			}
+		}
+		report("promotion checks", {
+			capPeriods: periods.length,
+			compared,
+			allStoresDiscountItems,
+			failures: failures.length,
+		});
+		expect(periods.length).toBeGreaterThan(0);
+		expect(compared).toBeGreaterThan(0);
+		expect(allStoresDiscountItems).toBeGreaterThan(0);
+		expect(failures).toEqual([]);
+	});
+
+	it("9. the real tenant's row counts are the same after the run", async () => {
 		const active = live();
 		const after = await rowCountsOf(active.sql, active.tenantId);
 		const changed = [...after].filter(

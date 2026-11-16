@@ -137,7 +137,11 @@ export function createPostgresRpcClient(
 	};
 }
 
-export function serialRpcClient(client: PostgresRpcClient): PostgresRpcClient {
+export interface SerialRpcClient extends PostgresRpcClient {
+	idle(): Promise<void>;
+}
+
+export function serialRpcClient(client: PostgresRpcClient): SerialRpcClient {
 	let queue: Promise<unknown> = Promise.resolve();
 	return {
 		calls: client.calls,
@@ -145,6 +149,13 @@ export function serialRpcClient(client: PostgresRpcClient): PostgresRpcClient {
 			const next = queue.then(() => client.rpc(fn, args));
 			queue = next.catch(() => undefined);
 			return next;
+		},
+		async idle() {
+			let tail: Promise<unknown>;
+			do {
+				tail = queue;
+				await tail;
+			} while (tail !== queue);
 		},
 	};
 }
