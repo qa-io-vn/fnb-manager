@@ -277,7 +277,14 @@ export function optionOf(
 				yAxisIndex: axisIndex(axis, twoAxes),
 				...(series.stack === undefined ? {} : { stack: series.stack }),
 				itemStyle: { color },
-				lineStyle: series.kind === "line" ? { color, width: 2 } : undefined,
+				lineStyle:
+					series.kind === "line"
+						? {
+								color,
+								width: 2,
+								...(series.dashed === true ? { type: "dashed" as const } : {}),
+							}
+						: undefined,
 				showSymbol: false,
 				barMaxWidth: 40,
 				tooltip: {

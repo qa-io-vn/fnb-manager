@@ -82,6 +82,7 @@ export const displaySeries = {
 	modifier_pref: { unit: "fraction", direction: "neutral" },
 	shift_net: { unit: "money", direction: "neutral" },
 	store_day_index: { unit: "decimal", direction: "neutral" },
+	store_day_gap: { unit: "decimal", direction: "neutral" },
 } as const satisfies Record<
 	string,
 	{ unit: MetricUnit; direction: MetricDirection }

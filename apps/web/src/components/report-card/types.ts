@@ -49,6 +49,8 @@ export type SeriesTone =
 	| "primary"
 	| "secondary"
 	| "tertiary"
+	| "quaternary"
+	| "quinary"
 	| "muted"
 	| "positive"
 	| "negative";
@@ -69,6 +71,7 @@ export interface ChartSeries {
 	values: readonly (number | null)[];
 	axis?: ChartAxis;
 	stack?: string;
+	dashed?: boolean;
 }
 
 export interface ChartMarkLine {

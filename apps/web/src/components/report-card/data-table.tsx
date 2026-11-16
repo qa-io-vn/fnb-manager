@@ -310,8 +310,8 @@ export function DataTable({
 		[language],
 	);
 	const rows = useMemo(
-		() => sortRows(table.rows, sort, collator),
-		[table.rows, sort, collator],
+		() => sortRows(table.rows, sort, collator, table.columns),
+		[table.rows, sort, collator, table.columns],
 	);
 	const heat = useMemo(
 		() => heatLevels(table.rows, table.heatColumns ?? []),

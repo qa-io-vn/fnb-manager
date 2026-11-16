@@ -6,6 +6,7 @@ import { paymentsTheme } from "./payments/definition.js";
 import { promotionsTheme } from "./promotions/definition.js";
 import { revenueTheme } from "./revenue/definition.js";
 import { shiftsTheme } from "./shifts/definition.js";
+import { storesTheme } from "./stores/definition.js";
 
 export const themeDefinitions: Readonly<
 	Partial<Record<ThemeKind, ThemeDefinition>>
@@ -16,6 +17,7 @@ export const themeDefinitions: Readonly<
 	payments: paymentsTheme,
 	promotions: promotionsTheme,
 	shifts: shiftsTheme,
+	stores: storesTheme,
 };
 
 export function themeDefinitionOf(kind: ThemeKind): ThemeDefinition | null {

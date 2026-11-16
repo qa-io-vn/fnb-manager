@@ -14,4 +14,5 @@ export * from "./rules.js";
 export * from "./settings.js";
 export * from "./shifts/index.js";
 export * from "./source.js";
+export * from "./stores/index.js";
 export * from "./support.js";

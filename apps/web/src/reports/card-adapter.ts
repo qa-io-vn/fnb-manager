@@ -4,6 +4,7 @@ import {
 	type ColumnKind,
 	type Comparison,
 	type Decomposition,
+	isValueColumn,
 	type NoticeAction,
 	type ReportKind,
 	reportKeys,
@@ -270,6 +271,7 @@ export function chartOf(
 				value === null ? null : value * scaleOf(series.axis),
 			),
 			...(series.stack === null ? {} : { stack: series.stack }),
+			...(series.dashed === true ? { dashed: true } : {}),
 		})),
 		valueKind: chartKindOf(chart.leftUnit),
 		...(chart.rightUnit === null
@@ -292,7 +294,12 @@ export function chartOf(
 export function tableOf(table: TableModel, t: Translate): TableSpec {
 	const messageColumns = new Set(
 		table.columns
-			.filter((column) => column.kind === "message" || column.kind === "label")
+			.filter(
+				(column) =>
+					column.kind === "message" ||
+					column.kind === "label" ||
+					isValueColumn(column.kind),
+			)
 			.map((column) => column.key),
 	);
 	const shiftColumns = new Set(

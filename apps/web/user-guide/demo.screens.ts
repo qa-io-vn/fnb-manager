@@ -244,6 +244,20 @@ test("the Ca & két tiền sales, drawer and adjustments cards", async ({
 	}
 });
 
+test("the So sánh store figures, same-day shape and since-opening cards", async ({
+	page,
+}) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await openThemePage(page, "stores", "range=28d");
+	for (const [card, name] of [
+		["kpis", "theme-so-sanh-kpis"],
+		["same_day", "theme-so-sanh-same-day"],
+		["since_opening", "theme-so-sanh-since-opening"],
+	] as const) {
+		await shootElement(themeCard(page, "stores", card), name);
+	}
+});
+
 test("Cài đặt: Ngưỡng báo cáo and the choice kept on this device", async ({
 	page,
 }) => {

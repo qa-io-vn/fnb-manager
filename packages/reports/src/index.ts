@@ -200,6 +200,7 @@ export {
 export {
 	column,
 	isLabelKey,
+	isValueColumn,
 	LABEL_KEY_PREFIX,
 	PERIOD_COLUMN,
 	type PeriodTableRow,

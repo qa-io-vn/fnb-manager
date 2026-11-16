@@ -737,7 +737,7 @@ Full run on 2026-11-16 after migration `data_quality_payments_account_order`: 2,
 
 ### 8.3 Playwright specs
 
-Listed with `playwright test --list` on 2026-11-16 after #191: 177 tests in 26 files.
+Listed with `playwright test --list` on 2026-11-16 after #193: 185 tests in 27 files.
 
 | Project | File | Tests |
 |---|---|---:|
@@ -763,11 +763,12 @@ Listed with `playwright test --list` on 2026-11-16 after #191: 177 tests in 26 f
 | `demo` | `e2e/demo/theme-thuc-don.spec.ts` | 8 |
 | `demo` | `e2e/demo/theme-thanh-toan.spec.ts` | 8 |
 | `demo` | `e2e/demo/theme-khuyen-mai.spec.ts` | 9 |
+| `demo` | `e2e/demo/theme-so-sanh.spec.ts` | 8 |
 | `demo` | `e2e/demo/theme-ca-ket-tien.spec.ts` | 10 |
 | `demo` | `e2e/demo/theme-navigation.spec.ts` | 4 |
 | `pages` | `e2e/pages/install.spec.ts` | 2 |
 | `pages` | `e2e/pages/report-year-performance.spec.ts` | 1 |
-| | **Total** | **177** (live 43, demo 131, pages 3) |
+| | **Total** | **185** (live 43, demo 139, pages 3) |
 
 At phase 10a's verification the list held 126 tests in 19 files and all 126 passed with one worker and no retries; the phase 9 verification had 63 and phase 6 had 20.
 
@@ -848,7 +849,7 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | FR-DQ | 10 | 1 | 1 | 1 | 13 |
 | FR-ANA | 15 | – | 1 | 1 | 17 |
 | FR-REP | 17 | 2 | – | 2 | 21 |
-| FR-THM | 3 | 5 | 1 | – | 9 |
+| FR-THM | 4 | 5 | – | – | 9 |
 | FR-SET | 3 | 8 | – | – | 11 |
 | FR-EXP | – | 2 | 8 | – | 10 |
 | FR-STR | 1 | – | 9 | – | 10 |
@@ -858,7 +859,7 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | FR-STF | – | – | 23 | – | 23 |
 | FR-LOY | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | 7 | – | 12 |
-| **FR total** | **138** | **35** | **109** | **14** | **296** |
+| **FR total** | **139** | **35** | **108** | **14** | **296** |
 | NFR-SEC | 6 | 6 | 2 | 1 | 15 |
 | NFR-PRV | 5 | 1 | 1 | – | 7 |
 | NFR-PERF | 4 | 4 | 1 | – | 9 |
@@ -871,18 +872,18 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | NFR-OBS | 3 | 1 | – | – | 4 |
 | NFR-HYG | 4 | 1 | 1 | – | 6 |
 | **NFR total** | **47** | **22** | **9** | **2** | **80** |
-| **All** | **185** | **57** | **118** | **16** | **376** |
+| **All** | **186** | **57** | **117** | **16** | **376** |
 
 ```mermaid
 pie showData
     title Coverage of the requirements on 2026-11-16
-    "covered" : 185
+    "covered" : 186
     "partial" : 57
-    "planned" : 118
+    "planned" : 117
     "owner check" : 16
 ```
 
-Of the 256 requirements that are verified locally, built, in build or waiting for the owner, 185 are covered, 54 partial, 1 planned and 16 owner checks. Of the 120 that are designed or planned, 117 have no test yet and 3 are partly held by tests of the database rules they rest on.
+Of the 257 requirements that are verified locally, built, in build or waiting for the owner, 186 are covered, 54 partial, 1 planned and 16 owner checks. Of the 119 that are designed or planned, 116 have no test yet and 3 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -1015,13 +1016,13 @@ Of the 256 requirements that are verified locally, built, in build or waiting fo
 | FR-REP-06 | Numbers from SQL only | Must | verified locally | `reports:unit/rpc-source`, `reports:unit/definition`, `pgtap:22_report_functions`, `reports:unit/themes/contract`, `reports:unit/themes/source` (the 10b functions, #149) | covered |
 | FR-REP-07 | As-of rule | Must | verified locally | `reports:unit/as-of-and-bounds`, `web:reports/report-route`, `e2e:demo/report-day` | covered |
 | FR-REP-08 | Deep links | Must | verified locally | `web:reports/report-route`, `web:reports/period-navigator`, `web:themes/theme-route`, `e2e:demo/report-day`, `e2e:demo/theme-navigation` (theme links keep the range and the stores), `e2e:live/themes` (a dated link per store), `web:themes/theme-wiring` (theme parameters), `reports:unit/themes/promotions/params` | covered |
-| FR-REP-09 | Coverage and young stores | Must | verified locally | `reports:unit/coverage-and-comparison`, `e2e:live/reports`, `e2e:demo/report-year`, `reports:unit/themes/promotions/discount-cost` and `vouchers` (the young store's missing last year, like for like), `e2e:demo/theme-khuyen-mai` (#191) | covered |
+| FR-REP-09 | Coverage and young stores | Must | verified locally | `reports:unit/coverage-and-comparison`, `e2e:live/reports`, `e2e:demo/report-year`, `reports:unit/themes/promotions/discount-cost` and `vouchers` (the young store's missing last year, like for like), `e2e:demo/theme-khuyen-mai` (#191), `reports:unit/themes/stores/kpis` and `calls` (the all-stores change like for like over the covered stores, labelled k/N; #193) | covered |
 | FR-REP-10 | Sentences from templates | Must | verified locally | `reports:unit/decomposition-and-narrative`, `web:metrics/sentences`, `web:i18n/wording-sheets`, the Ca & két tiền card tests and smoke test (#155), the Khuyến mãi card tests and `web:i18n/theme-keys` (#191) | covered |
 | FR-REP-11 | Report card | Must | verified locally | `web:components/report-card/report-card`, `web:components/report-card/report-card-extensions`, `web:themes/theme-param-controls` (the controls slot), `web:components/report-card` and `web:reports/card-adapter` (a signed money headline; #191) | covered |
 | FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan`, `web:settings/thresholds/thresholds-form`, `e2e:demo/settings-bao-cao`, phase 10a's verification (#102) (one CSV per theme from the real tenant: BOM, strict UTF-8, Vietnamese headers), `e2e:demo/theme-ca-ket-tien` (every table as UTF-8 CSV with a BOM, and semicolon-separated; #155), `e2e:demo/theme-khuyen-mai` (every table as UTF-8 CSV with a BOM, and semicolon-separated; #191) | partial |
 | FR-REP-13 | Print layout | Should | verified locally | `e2e:demo/demo`, `e2e:demo/report-day`, the four theme specs (`expectThemePrintLayout`: the summary line, no buttons, no tabs or pickers), `e2e:demo/theme-ca-ket-tien` (print without controls, Ca n in print; #155), `e2e:demo/theme-khuyen-mai` (print without pickers; #191) | covered |
 | FR-REP-14 | Card loading and errors | Should | built | `e2e:demo/report-day` (cards settle); `web:reports/use-cards-load` (a failed card with its retry, a failed coverage call) | partial |
-| FR-REP-15 | Store and period selection | Must | verified locally | `web:shell/period-picker`, `web:state/preferences`, `pgtap:22_report_functions` | covered |
+| FR-REP-15 | Store and period selection | Must | verified locally | `web:shell/period-picker`, `web:state/preferences`, `pgtap:22_report_functions`, `reports:unit/themes/stores/calls` (one store asks only for coverage; the days call within 900 rows) and `e2e:demo/theme-so-sanh` (one store: every card asks for a second; #193) | covered |
 | FR-REP-16 | Target progress | Should | verified locally | `reports:unit/reports/month/shifts-targets`, `e2e:demo/report-month` | covered |
 | FR-REP-17 | Demo mode | Must | verified locally | `e2e:demo/demo`, `e2e:demo/report-month`, `e2e:live/auth`, `web:demo/demo-row-source` (a custom holiday of the demo's settings leaves the baseline), `demo-analytics:unit/settings` (the demo's settings store: defaults, versions, refused writes, the 10b defaults; #151), `demo-analytics:unit/report-source` (a handler for every theme function, the planned reads of the 10b functions too; #151), `demo-analytics:unit/promotion-ports` (#190), `demo-analytics:unit/shift-adjustments` (#154), `demo-analytics:unit/data-quality-ports` (#157) | covered |
 | FR-REP-18 | Navigation | Must | verified locally | `e2e:live/today`, `web:themes/theme-tabs`, `e2e:demo/theme-navigation` (the eight theme tabs, the pages of 10b, `#/chu-de`) | covered |
@@ -1040,8 +1041,8 @@ Of the 256 requirements that are verified locally, built, in build or waiting fo
 | FR-THM-05 | Range presets | Could | verified locally | `reports:unit/themes/range`, `web:themes/range-picker`, `web:themes/theme-route`, `web:themes/theme-wiring` (the device's last preset; the range notices), `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-navigation` | covered |
 | FR-THM-06 | Khuyến mãi & giảm giá | Should | built | `reports:unit/themes/contract`, `reports:unit/themes/promotions/params`, `web:themes/theme-wiring` (the contracts and the `promo` and `cmp` parameters, #149); `pgtap:36_promotion_functions` (#150); `demo-analytics:parity/promotion-days`, `demo-analytics:parity/promotion-lift`, `demo-analytics:unit/promotion-ports` (#190); the other ports and the page planned, `demo-analytics:parity/promotion-catalogue`, `demo-analytics:parity/promotion-compliance`, `demo-analytics:parity/item-discount-days` (#152), `reports:unit/themes/promotions/discount-cost`, `reports:unit/themes/promotions/vouchers`, `reports:unit/themes/promotions/lift` (a measured gain, loss and sister-store lift, every flag's sentence), `reports:unit/themes/promotions/definition` (the lift asked with the tenant's pre-period weeks), `demo-analytics:themes/promotions.smoke` (a measured bill discount in the demo), `web:themes/theme-wiring` (the sister store disabled with its reason, kept while only the comparator changes), `web:themes/theme-param-controls`, `web:i18n/theme-keys` (a measured lift in both languages with every placeholder filled), `e2e:demo/theme-khuyen-mai`, `e2e:live/themes` (six themes on the seed) (#191) | partial |
 | FR-THM-07 | Ca & két tiền | Should | built | `pgtap:37_shift_and_quality_functions` (`shift_adjustments`: attribution by the invoice's shift and by time, rates, one-sided z-scores on unrounded rates) (#150); `demo-analytics:parity/shift-adjustments`, `demo-analytics:unit/shift-adjustments` (#154); `reports:unit/themes/shifts/calls`, `reports:unit/themes/shifts/shift-sales`, `reports:unit/themes/shifts/drawer` (the flagged shifts equal `shift_review`'s flagged rows), `reports:unit/themes/shifts/adjustments` (only what `shift_adjustments` flags, every missing z-score explained), `reports:unit/themes/shifts/labels`, `demo-analytics:themes/shifts.smoke` (a shift has the same Ca n in every card), `web:pages/themes/ca-ket-tien/shift-privacy` (no POS shift name or e-mail in CSV or rendered markup), `e2e:demo/theme-ca-ket-tien`, `e2e:live/themes` (the five thematic reports on the seed) (#155) | covered |
-| FR-THM-08 | So sánh cửa hàng | Should | designed | planned | planned |
-| FR-THM-09 | Sections a POS cannot feed | Should | built | `pgtap:33_theme_functions` (provisional menu roles, null attach rates), `reports:unit/themes/menu/margins`, `reports:unit/themes/menu/attach`, `reports:unit/themes/hours/productivity`, `reports:unit/themes/payments/fees`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-thanh-toan`, phase 10a's verification (#102) (each missing-input state on the real tenant), `pgtap:37_shift_and_quality_functions` (the inputs a store lacks: costs, seats, opening hours, identified customers) | partial |
+| FR-THM-08 | So sánh cửa hàng | Should | built | `reports:unit/themes/stores/calls`, `reports:unit/themes/stores/kpis` (the stores add up to the all-stores row, ratios after summing, like for like with k/N), `reports:unit/themes/stores/same-day`, `reports:unit/themes/stores/since-opening` (K from the youngest store with a complete week, the latest week without Tết), `demo-analytics:themes/stores.smoke`, `e2e:demo/theme-so-sanh`, `e2e:live/themes` (seven themes on the seed) (#193) | covered |
+| FR-THM-09 | Sections a POS cannot feed | Should | built | `pgtap:33_theme_functions` (provisional menu roles, null attach rates), `reports:unit/themes/menu/margins`, `reports:unit/themes/menu/attach`, `reports:unit/themes/hours/productivity`, `reports:unit/themes/payments/fees`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-thanh-toan`, phase 10a's verification (#102) (each missing-input state on the real tenant), `pgtap:37_shift_and_quality_functions` (the inputs a store lacks: costs, seats, opening hours, identified customers), `reports:unit/themes/stores/kpis` (chưa thiết lập in a figure's own cell, a dash for a store without sales), `web:reports/card-adapter`, `web:components/report-card/table-sorting` (words in a value column sort after every number; #193) | partial |
 
 #### FR-SET — Settings and manual data
 
@@ -1334,10 +1335,10 @@ Of the 256 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/settings-phan-loai` (the Nhóm của món and Loại thanh toán tabs at 360 and 1280 px; #160), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191) | covered |
+| NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/settings-phan-loai` (the Nhóm của món and Loại thanh toán tabs at 360 and 1280 px; #160), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-so-sanh` (#193) | covered |
 | NFR-A11Y-02 | Lighthouse accessibility | Must | verified locally | Lighthouse recipe in `apps/web/README.md` | covered |
 | NFR-A11Y-03 | Contrast | Must | verified locally | `apps/web/e2e/support/checks.ts`, `design-tokens:tokens` | covered |
-| NFR-A11Y-04 | Charts have tables | Must | verified locally | `web:components/report-card/report-card` | covered |
+| NFR-A11Y-04 | Charts have tables | Must | verified locally | `web:components/report-card/report-card`, `e2e:demo/theme-so-sanh` (#193) | covered |
 | NFR-A11Y-05 | Keyboard and screen readers | Should | verified locally | `web:reports/period-navigator`, `e2e:demo/demo`, `web:themes/theme-param-controls` | covered |
 
 #### NFR-I18N — Internationalisation
@@ -1355,12 +1356,12 @@ Of the 256 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191) | covered |
+| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-so-sanh` (#193) | covered |
 | NFR-UX-02 | Layout on phones and desktops | Should | built | `e2e:demo/demo` (360 px) | partial |
 | NFR-UX-03 | Installable | Should | verified locally | `e2e:demo/demo`, `e2e:pages/install`, `web:shell/install-assets` | covered |
 | NFR-UX-04 | New version prompt | Should | built | no automated test | partial |
 | NFR-UX-05 | Demo always labelled | Must | verified locally | `e2e:demo/demo`, `web:settings/demo-settings-source` and `web:settings/manual/demo-manual-source` (the demo's settings writes stay in the session's store; #105) | covered |
-| NFR-UX-06 | Plain states instead of zeros | Must | verified locally | `e2e:demo/report-day`, `e2e:demo/report-month`, `web:settings/catch-up/catch-up-banner`, `web:pages/settings/settings-layout` | covered |
+| NFR-UX-06 | Plain states instead of zeros | Must | verified locally | `e2e:demo/report-day`, `e2e:demo/report-month`, `web:settings/catch-up/catch-up-banner`, `web:pages/settings/settings-layout`, the So sánh card tests (no sales, no common day, no complete week, stores about even; #193) | covered |
 | NFR-UX-07 | Mini App design rules | Must | planned | planned | planned |
 
 #### NFR-MNT — Maintainability
@@ -1415,11 +1416,6 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | NFR-MNT-07 | Canonical column-name lint | P2, P4 | A lint that fails when a POS field name appears outside `raw` in the canonical schema; owner decision D4 (request R-F03). |
 | NFR-HYG-06 | Preflight log lint | P1 | A preflight check that fails a job printing a structured secret; masking at job start covers the risk today (request R-F03). |
 
-#### Phase 10: thematic reports, settings, manual data (1)
-
-| ID | Requirement | Phase | Planned test |
-|---|---|---|---|
-| FR-THM-08 | So sánh cửa hàng | P10b | A page test that per-store figures add up to the all-stores figure; `pgtap:22_report_functions` already holds the per-store sums of `period_compare_by_store`. |
 
 #### Phase 11: exports, data pack, strategy plans (18)
 

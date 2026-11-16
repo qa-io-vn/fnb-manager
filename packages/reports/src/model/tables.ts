@@ -104,8 +104,11 @@ export function tableKeys(table: TableModel): string[] {
 	const labelColumns = table.columns
 		.filter((item) => item.kind === "label")
 		.map((item) => item.key);
+	const valueColumns = table.columns
+		.filter((item) => isValueColumn(item.kind))
+		.map((item) => item.key);
 	for (const row of table.rows) {
-		for (const key of messageColumns) {
+		for (const key of [...messageColumns, ...valueColumns]) {
 			const cell = row.cells[key];
 			if (typeof cell === "string") keys.push(cell);
 		}
@@ -118,6 +121,21 @@ export function tableKeys(table: TableModel): string[] {
 }
 
 export const LABEL_KEY_PREFIX = "report.";
+
+const VALUE_COLUMN_KINDS: ReadonlySet<ColumnKind> = new Set<ColumnKind>([
+	"money",
+	"count",
+	"decimal",
+	"ratio",
+	"percent",
+	"signedPercent",
+	"percentPoints",
+	"percentChange",
+]);
+
+export function isValueColumn(kind: ColumnKind): boolean {
+	return VALUE_COLUMN_KINDS.has(kind);
+}
 
 export function isLabelKey(cell: unknown): cell is string {
 	return typeof cell === "string" && cell.startsWith(LABEL_KEY_PREFIX);

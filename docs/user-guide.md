@@ -53,7 +53,7 @@ The navigation sits at the bottom on a phone and on the left on a wide screen.
 |---|---|---|---|
 | Hôm nay | Today | today and yesterday | verified locally |
 | Báo cáo | Reports | Ngày, Tuần, Tháng, Năm | verified locally |
-| Chủ đề | Topics | thematic reports: Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt, Ca & két tiền | the first four verified locally; Ca & két tiền built |
+| Chủ đề | Topics | thematic reports: Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt, Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng | the first four verified locally; Khuyến mãi & giảm giá, Ca & két tiền and So sánh cửa hàng built |
 | Kế hoạch | Plans | saved strategy plans | "Sắp có" |
 | Cài đặt | Settings | Cửa hàng (the business and store profiles), Phân loại (item-type roles, item categories and payment kinds) and Ngưỡng báo cáo (the report thresholds and this device's CSV format); the other settings pages say which phase brings them | Phân loại and Ngưỡng báo cáo verified locally; Cửa hàng built; the other pages planned |
 
@@ -242,7 +242,7 @@ Use the browser's own print command (Ctrl+P or ⌘P on a computer, Share then Pr
 
 ## The thematic reports ("Chủ đề")
 
-"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. Six are built: **Doanh thu & xu hướng**, **Giờ & ngày trong tuần**, **Thực đơn**, **Thanh toán & tiền mặt**, **Khuyến mãi & giảm giá** and **Ca & két tiền**. The others (So sánh cửa hàng and Chất lượng dữ liệu) come in phase 10b: their tabs are already there and open a page that says so, and from it the other tabs lead back with the same range and stores.
+"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. Seven are built: **Doanh thu & xu hướng**, **Giờ & ngày trong tuần**, **Thực đơn**, **Thanh toán & tiền mặt**, **Khuyến mãi & giảm giá**, **Ca & két tiền** and **So sánh cửa hàng**. The last one, Chất lượng dữ liệu, comes in phase 10b: its tab is already there and opens a page that says so, and from it the other tabs lead back with the same range and stores.
 
 ![Doanh thu & xu hướng on a computer: the theme tabs, the range presets and dates, then the Doanh thu thuần, Xu hướng doanh thu and Số hóa đơn cards](user-guide/theme-doanh-thu.png)
 
@@ -388,6 +388,24 @@ Ca & két tiền looks at each shift of the range, at most the last 92 days: a l
 
 More detail: [reports/ca-ket-tien.md](reports/ca-ket-tien.md).
 
+### So sánh cửa hàng (Store comparison)
+
+So sánh puts two or more stores side by side. Choose them in the store picker ("Tất cả" or several stores); with one store, every card says "Chọn ít nhất hai cửa hàng để so sánh."
+
+**Chỉ số theo cửa hàng** gives the share of revenue of the store that sells most, then one row per store with the same figures: revenue and its change against the range before, invoices, average ticket and its change, items per ticket, average item price, cash share, discount rate, invoices with a voucher, the share of invoices with an identified customer, revenue per opening hour and per seat-hour. The last row, **Tất cả cửa hàng**, is the stores added together: revenue and invoices are the sum of the rows above, and the averages and shares are worked out from those sums, not averaged. The sentence names the widest gap in average ticket and in items per ticket, or says the stores are about even. Revenue per opening hour shows "chưa thiết lập" for a store whose opening hours are not entered, and revenue per seat-hour for a store without opening hours or a seat count; the card links to the store settings. A store that opened after the range before began reads "chưa có dữ liệu kỳ trước" in the change columns; the all-stores row then compares only the stores that were open in both ranges, says so in its name ("cùng cửa hàng"), and the sentence gives how many of the stores that is. In any figure column, a cell with words instead of a number sorts after the numbers.
+
+![The store figures card: the leading store's share, the bars of each store's revenue for the range before and this one, and the table with one row per store and the all-stores row](user-guide/theme-so-sanh-kpis.png)
+
+**Cùng ngày, so sánh dáng** compares the shape of the stores' days rather than their size: each day's revenue of a store is divided by that store's own average day over the range, so 1 is an ordinary day for that store whatever its size. The lines show each store's index (five colours, then the same colours dashed from the sixth store on) and the card names the day the stores went most apart, with the gap between the highest and the lowest index that day as the number at the top. Ranges over 92 days, or many stores, are compared by week (or month) instead, per day with sales so a short week is not read as a weak one.
+
+![The same-day card: the day the two stores went most apart, a line per store around the dashed line at 1, and each store's revenue and index per day](user-guide/theme-so-sanh-same-day.png)
+
+**Từ ngày khai trương** lines the stores up on their own opening: week 1 of each store is its first seven days, whatever the date. It compares up to 26 weeks, as many as the youngest store has complete, with each week's average revenue per day with sales (as Năm does for a young store), and says how far the youngest store reached against an older store in the same week of its life, using the latest week in which neither store had a Tết day: Tết weeks are marked "có ngày Tết" in the table, and the sentence says when it had to step back from them. This card does not follow the chosen range. A store with less than one complete week is left blank ("—") and named under the sentence; several such stores are named together.
+
+![The since-opening card: the young store's latest complete week, a line per store from week 1, and each store's weeks with their average per day](user-guide/theme-so-sanh-since-opening.png)
+
+More detail: [reports/so-sanh.md](reports/so-sanh.md).
+
 ### Links, printing and CSV
 
 The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08&to=2026-11-06`) and, when not every store is selected, the stores (`&store=…`). Two dates that make up a preset open as that preset, so the address then reads `range=…`. Printing and "Tải CSV" work as on the reports; theme files are named `<theme>-<card>-<from>_<to>.csv`, for example `doanh-thu-net_revenue-2026-10-07_2026-11-03.csv`.
@@ -503,7 +521,7 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 ![The Kế hoạch page saying Sắp có and naming the roadmap phase that brings it](user-guide/coming-soon.png)
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
-- **More thematic reports** ("Chủ đề", phase 10): So sánh cửa hàng and Chất lượng dữ liệu, and the promotion catalogue and legal checks of Khuyến mãi. Doanh thu, Giờ & ngày, Thực đơn, Thanh toán, Khuyến mãi and Ca & két tiền are already there (see above).
+- **More thematic reports** ("Chủ đề", phase 10): Chất lượng dữ liệu, and the promotion catalogue and legal checks of Khuyến mãi. Doanh thu, Giờ & ngày, Thực đơn, Thanh toán, Khuyến mãi, Ca & két tiền and So sánh cửa hàng are already there (see above).
 - **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Phân loại (item-type roles, item categories and payment kinds) and Ngưỡng báo cáo are open (see above). Item costs, monthly targets, payment fees, holidays and legal texts come next. Target progress waits for a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
 - **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).

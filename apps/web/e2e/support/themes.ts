@@ -13,7 +13,8 @@ export type ThemeKind =
 	| "menu"
 	| "payments"
 	| "promotions"
-	| "shifts";
+	| "shifts"
+	| "stores";
 
 export const themeSlugs: Record<ThemeKind, string> = {
 	revenue: "doanh-thu",
@@ -22,6 +23,7 @@ export const themeSlugs: Record<ThemeKind, string> = {
 	payments: "thanh-toan",
 	promotions: "khuyen-mai",
 	shifts: "ca-ket-tien",
+	stores: "so-sanh",
 };
 
 export const themeCardIds: Record<ThemeKind, readonly string[]> = {
@@ -40,6 +42,7 @@ export const themeCardIds: Record<ThemeKind, readonly string[]> = {
 	payments: ["payment_mix", "cash_trend", "drawer", "fees"],
 	promotions: ["discount_cost", "vouchers", "lift"],
 	shifts: ["shift_sales", "drawer", "adjustments"],
+	stores: ["kpis", "same_day", "since_opening"],
 };
 
 const RAW_KEY = /\b(report|metric|theme)\.[a-z]+[A-Za-z_]*\./;

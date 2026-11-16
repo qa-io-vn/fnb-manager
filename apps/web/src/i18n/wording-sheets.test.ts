@@ -29,6 +29,7 @@ const SHEETS = {
 		"theme-payments",
 		"theme-promotions",
 		"theme-shifts",
+		"theme-stores",
 		"settings",
 		"settings-thresholds",
 		"settings-mapping",

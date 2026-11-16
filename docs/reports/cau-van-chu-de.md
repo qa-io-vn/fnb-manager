@@ -1,8 +1,8 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá and Ca & két tiền of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán). It lists every Vietnamese template these pages use (652 entries, 212 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền and So sánh cửa hàng of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán). It lists every Vietnamese template these pages use (705 entries, 234 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
-The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-promotions`, `theme-shifts`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
+The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-promotions`, `theme-shifts`, `theme-stores`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
 ## How to review
 
@@ -35,13 +35,13 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{bestDay}` | 1 | `theme.hours.heatmap.main` |
 | `{bestHour}` | 1 | `theme.hours.heatmap.main` |
 | `{bestValue}` | 2 | `theme.hours.weekday.main` |
-| `{bucket}` | 5 | `theme.payments.trend.down` |
+| `{bucket}` | 7 | `theme.payments.trend.down` |
 | `{cashier}` | 1 | `theme.shifts.adjustments.main` |
 | `{category}` | 2 | `theme.menu.categoryMix.caption` |
 | `{cost}` | 3 | `theme.promotions.lift.caption` |
 | `{count}` | 18 | `theme.menu.preferences.otherOnly` |
-| `{covered}` | 1 | `theme.menu.movers.captionLikeForLike` |
-| `{date}` | 8 | `theme.page.todayClamped` |
+| `{covered}` | 2 | `theme.menu.movers.captionLikeForLike` |
+| `{date}` | 11 | `theme.page.todayClamped` |
 | `{day}` | 5 | `settings.hours.addSpanTo` |
 | `{days}` | 26 | `theme.range.summary` |
 | `{dead}` | 1 | `theme.hours.peakDead.main` |
@@ -56,9 +56,11 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{fee}` | 1 | `theme.payments.fees.costliest` |
 | `{first}` | 4 | `theme.payments.trend.down` |
 | `{from}` | 4 | `theme.range.span` |
-| `{gap}` | 1 | `theme.hours.weekday.main` |
+| `{gap}` | 3 | `theme.hours.weekday.main` |
 | `{gross}` | 3 | `theme.promotions.lift.caption` |
 | `{group}` | 1 | `theme.hours.shiftWindows.mainOne` |
+| `{high}` | 3 | `theme.stores.kpis.items` |
+| `{highIndex}` | 1 | `theme.stores.sameDay.main` |
 | `{hour}` | 1 | `theme.hours.heatmap.caption` |
 | `{hours}` | 1 | `theme.hours.peakDead.window` |
 | `{ice}` | 2 | `theme.menu.preferences.iceOnly` |
@@ -69,15 +71,18 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{kind}` | 4 | `theme.promotions.discountCost.largestUnnamed` |
 | `{level}` | 1 | `theme.menu.preferences.caption` |
 | `{lift}` | 1 | `theme.menu.pairs.main` |
+| `{low}` | 3 | `theme.stores.kpis.items` |
+| `{lowIndex}` | 1 | `theme.stores.sameDay.main` |
 | `{max}` | 4 | `settings.validation.atMost` |
 | `{measured}` | 1 | `theme.shifts.adjustments.none` |
 | `{method}` | 1 | `theme.payments.fees.costliest` |
 | `{min}` | 3 | `settings.validation.atLeast` |
 | `{minimum}` | 5 | `theme.menu.matrix.lowSample` |
-| `{month}` | 3 | `theme.revenue.byMonth.caption` |
+| `{month}` | 4 | `theme.revenue.byMonth.caption` |
 | `{n}` | 3 | `settings.hours.close` |
 | `{name}` | 2 | `theme.promotions.lift.option` |
 | `{net}` | 2 | `theme.promotions.lift.gain` |
+| `{other}` | 1 | `theme.stores.sinceOpening.main` |
 | `{page}` | 1 | `settings.placeholder.body` |
 | `{payment}` | 1 | `theme.payments.mix.otherMover` |
 | `{peak}` | 2 | `theme.hours.peakDead.main` |
@@ -90,7 +95,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{quiet}` | 1 | `theme.hours.heatmap.main` |
 | `{quietDay}` | 1 | `theme.hours.heatmap.main` |
 | `{quietHour}` | 1 | `theme.hours.heatmap.main` |
-| `{range}` | 72 | `theme.print.summary` |
+| `{range}` | 78 | `theme.print.summary` |
 | `{rate}` | 4 | `theme.menu.margins.rate` |
 | `{reasons}` | 1 | `theme.shifts.adjustments.main` |
 | `{reference}` | 26 | `theme.range.summary` |
@@ -100,26 +105,27 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{riserChange}` | 2 | `theme.menu.movers.main` |
 | `{role}` | 2 | `settings.audit.byRole` |
 | `{seats}` | 1 | `theme.hours.productivity.revpash` |
-| `{share}` | 8 | `theme.revenue.storeShare.main` |
+| `{share}` | 9 | `theme.revenue.storeShare.main` |
 | `{shift}` | 3 | `theme.payments.drawer.shiftOn` |
 | `{shown}` | 1 | `settings.mapping.categories.search.more` |
 | `{size}` | 1 | `settings.mapping.categories.withSize` |
 | `{stars}` | 2 | `theme.menu.matrix.stars` |
-| `{store}` | 4 | `theme.revenue.storeShare.caption` |
-| `{stores}` | 1 | `theme.print.summary` |
+| `{store}` | 10 | `theme.revenue.storeShare.caption` |
+| `{stores}` | 2 | `theme.print.summary` |
 | `{sugar}` | 2 | `theme.menu.preferences.main` |
 | `{sugarShare}` | 2 | `theme.menu.preferences.main` |
 | `{theme}` | 1 | `theme.laterPage.body` |
 | `{time}` | 2 | `settings.audit.when` |
 | `{to}` | 5 | `theme.range.span` |
-| `{total}` | 1 | `theme.menu.movers.captionLikeForLike` |
+| `{total}` | 2 | `theme.menu.movers.captionLikeForLike` |
 | `{type}` | 3 | `settings.mapping.categories.onPos` |
-| `{value}` | 52 | `theme.revenue.net.down` |
+| `{value}` | 53 | `theme.revenue.net.down` |
 | `{voucher}` | 1 | `theme.promotions.vouchers.top` |
+| `{week}` | 4 | `theme.stores.sinceOpening.caption` |
 | `{weekday}` | 3 | `theme.hours.heatmap.caption` |
 | `{weekdays}` | 1 | `theme.hours.shiftWindows.main` |
 | `{weekend}` | 1 | `theme.hours.shiftWindows.main` |
-| `{weeks}` | 4 | `theme.compare.previousWeeks` |
+| `{weeks}` | 5 | `theme.compare.previousWeeks` |
 | `{when}` | 3 | `settings.audit.at` |
 | `{window}` | 1 | `theme.hours.shiftWindows.mainOne` |
 | `{worst}` | 2 | `theme.hours.weekday.main` |
@@ -135,6 +141,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 - "Thiết bị này" for the per-device CSV format, and the wording of its two choices (`settings.thresholds.device.*`).
 - "đáng xem lại" for the shifts Ca & két tiền flags, and the caution that a z-score compares a shift with earlier shifts and is no verdict on a person (`theme.shifts.adjustments.main`, `theme.shifts.adjustments.basis`).
 - The lift words "lãi ròng" and "lỗ ròng" for the net lift, "doanh thu gộp tăng thêm" for the gross lift, and "đối chứng" for what each comparator compares with (`theme.promotions.lift.*`); the headline always comes with the gross lift and the discount cost in its caption.
+- So sánh cửa hàng: the store-day index read as "bằng … lần mức trung bình của mình" (`theme.stores.sameDay.main`), the like-for-like all-stores row "Tất cả cửa hàng (so với kỳ trước: cùng cửa hàng)" (`theme.stores.kpis.allStoresLikeForLike`), and the sentence that skips the Tết weeks (`theme.stores.sinceOpening.tetSkipped`).
 
 ## Dùng chung cho các chủ đề · Shared by the thematic reports (`themes.vi.json`, 43 mục)
 
@@ -938,6 +945,91 @@ The headline caption "trên {count} ca" and the shift labels "Ca n ngày …" ar
 | `theme.shifts.table.voidRate` | Tỷ lệ hủy | Void rate | — |
 | `theme.shifts.table.voidZ` | Điểm z hủy | Void z-score | — |
 | `theme.shifts.table.voids` | Số lần hủy | Voids | — |
+
+## So sánh cửa hàng · Store comparison (`theme-stores.vi.json`, 53 mục)
+
+### Tiêu đề · title (`theme.stores.title`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.stores.title` | So sánh cửa hàng | Store comparison | — |
+
+### Dùng chung trong chủ đề · shared by the cards (`theme.stores.needTwo`, `theme.stores.storeSeries`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.stores.needTwo` | Chọn ít nhất hai cửa hàng để so sánh. | Choose at least two stores to compare. | — |
+| `theme.stores.storeSeries` | {store} | {store} | `{store}` |
+
+### Thẻ «Chỉ số theo cửa hàng» (`theme.stores.kpis.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.stores.kpis.allStores` | Tất cả cửa hàng | All stores | — |
+| `theme.stores.kpis.allStoresLikeForLike` | Tất cả cửa hàng (so với kỳ trước: cùng cửa hàng) | All stores (change: same stores) | — |
+| `theme.stores.kpis.caption` | {store} dẫn đầu doanh thu thuần | {store} leads on net revenue | `{store}` |
+| `theme.stores.kpis.chart` | Doanh thu thuần theo cửa hàng, kỳ trước và kỳ này | Net revenue by store, previous period and this one | — |
+| `theme.stores.kpis.items` | Số món mỗi hóa đơn ở {high} cao hơn {low} {gap}. | Items per ticket at {high} are {gap} above {low}. | `{high}` `{low}` `{gap}` |
+| `theme.stores.kpis.itemsEven` | Số món mỗi hóa đơn ở các cửa hàng gần như bằng nhau. | Items per ticket are about the same at every store. | — |
+| `theme.stores.kpis.likeForLike` | Dòng Tất cả cửa hàng so với kỳ trước chỉ tính cùng cửa hàng ({covered}/{total}): những cửa hàng đã có số liệu từ đầu kỳ trước. | The all-stores change against the previous period counts the same stores only ({covered}/{total}): those with data from the start of the previous period. | `{covered}` `{total}` |
+| `theme.stores.kpis.main` | Trong {range}, giá trị trung bình mỗi hóa đơn ở {high} cao hơn {low} {gap}. | In {range}, the average ticket at {high} is {gap} above {low}. | `{range}` `{high}` `{low}` `{gap}` |
+| `theme.stores.kpis.mainEven` | Trong {range}, giá trị trung bình mỗi hóa đơn ở các cửa hàng gần như bằng nhau. | In {range}, the average ticket is about the same at every store. | `{range}` |
+| `theme.stores.kpis.noData` | Chưa có doanh thu nào trong {range}. | No sales in {range}. | `{range}` |
+| `theme.stores.kpis.noGap` | Trong {range}, chưa có hai cửa hàng cùng có hóa đơn để so sánh. | In {range}, fewer than two stores have invoices to compare. | `{range}` |
+| `theme.stores.kpis.notConfiguredNotice` | Nhập giờ mở cửa và số ghế của từng cửa hàng để so sánh doanh thu mỗi giờ mở cửa và mỗi ghế. | Enter each store's opening hours and seats to compare revenue per opening hour and per seat. | — |
+| `theme.stores.kpis.table` | Chỉ số của từng cửa hàng và của tất cả cửa hàng | Figures of each store and of all stores | — |
+| `theme.stores.kpis.title` | Chỉ số theo cửa hàng | Figures by store | — |
+
+### Thẻ «Cùng ngày, so sánh dáng» (`theme.stores.sameDay.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.stores.sameDay.average` | Mức trung bình của cửa hàng | The store's average | — |
+| `theme.stores.sameDay.caption` | chênh lệch chỉ số giữa các cửa hàng, lớn nhất {bucket} | gap between the stores' indices, widest {bucket} | `{bucket}` |
+| `theme.stores.sameDay.chart` | Chỉ số của từng cửa hàng (1 là mức trung bình của cửa hàng đó) | Each store's index (1 is that store's average) | — |
+| `theme.stores.sameDay.dayBucket` | ngày {date} | on {date} | `{date}` |
+| `theme.stores.sameDay.main` | Các cửa hàng lệch nhau nhiều nhất {bucket}: {high} bán bằng {highIndex} lần mức trung bình của mình, {low} bằng {lowIndex} lần. | The stores were furthest apart {bucket}: {high} sold {highIndex} times its own average, {low} {lowIndex} times. | `{bucket}` `{high}` `{highIndex}` `{low}` `{lowIndex}` |
+| `theme.stores.sameDay.monthBucket` | tháng {month} | in {month} | `{month}` |
+| `theme.stores.sameDay.noData` | Chưa có doanh thu nào trong {range}. | No sales in {range}. | `{range}` |
+| `theme.stores.sameDay.noOverlap` | Trong {range}, chưa có lúc nào hai cửa hàng cùng có doanh thu để so sánh. | In {range}, no two stores have sales at the same time to compare. | `{range}` |
+| `theme.stores.sameDay.table` | Doanh thu và chỉ số so với mức trung bình của từng cửa hàng | Net revenue and index against each store's own average | — |
+| `theme.stores.sameDay.title` | Cùng ngày, so sánh dáng | Same days, shape compared | — |
+| `theme.stores.sameDay.weekBucket` | tuần từ {date} | in the week from {date} | `{date}` |
+
+### Thẻ «Từ ngày khai trương» (`theme.stores.sinceOpening.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.stores.sinceOpening.caption` | tuần thứ {week} của {store} | week {week} at {store} | `{week}` `{store}` |
+| `theme.stores.sinceOpening.chart` | Doanh thu trung bình mỗi ngày, tuần thứ k sau khai trương | Average daily net revenue in week k after opening | — |
+| `theme.stores.sinceOpening.main` | Tuần thứ {week} sau khai trương: {store} đạt {share} so với {other} cùng tuần. | Week {week} after opening: {store} reached {share} of {other} in the same week. | `{week}` `{store}` `{share}` `{other}` |
+| `theme.stores.sinceOpening.noData` | Chưa cửa hàng nào đủ một tuần trọn vẹn kể từ khai trương. | No store has a complete week since opening yet. | — |
+| `theme.stores.sinceOpening.single` | Tuần thứ {week} sau khai trương, {store} bán trung bình {value} mỗi ngày. | In week {week} after opening, {store} sold {value} a day on average. | `{week}` `{store}` `{value}` |
+| `theme.stores.sinceOpening.subtitle` | {weeks} tuần đầu sau khai trương của mỗi cửa hàng | each store's first {weeks} weeks after opening | `{weeks}` |
+| `theme.stores.sinceOpening.table` | Doanh thu trung bình mỗi ngày theo tuần kể từ khai trương | Average daily net revenue by week since opening | — |
+| `theme.stores.sinceOpening.tetSkipped` | Các tuần sau tuần thứ {week} có ngày Tết ở một trong hai cửa hàng nên không dùng để so sánh. | The weeks after week {week} hold Tết days at one of the two stores, so they are not used for the comparison. | `{week}` |
+| `theme.stores.sinceOpening.tetWeek` | có ngày Tết | has Tết days | — |
+| `theme.stores.sinceOpening.title` | Từ ngày khai trương | Since opening | — |
+| `theme.stores.sinceOpening.tooYoung` | {store} có số liệu từ {date}, chưa đủ một tuần trọn vẹn nên để trống. | {store} has data from {date} only, less than a complete week, so it is left blank. | `{store}` `{date}` |
+| `theme.stores.sinceOpening.tooYoungMany` | {stores} chưa đủ một tuần trọn vẹn kể từ khi có số liệu nên để trống. | {stores} have less than a complete week of data, so they are left blank. | `{stores}` |
+
+### Tên cột bảng · table columns (`theme.stores.table.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.stores.table.avgPerDay` | TB mỗi ngày | Average per day | — |
+| `theme.stores.table.cashShare` | Tỷ trọng tiền mặt | Cash share | — |
+| `theme.stores.table.daysWithData` | Ngày có bán | Days with sales | — |
+| `theme.stores.table.discountRate` | Tỷ lệ giảm giá | Discount rate | — |
+| `theme.stores.table.index` | Chỉ số so với trung bình | Index against the average | — |
+| `theme.stores.table.netChange` | Doanh thu so với kỳ trước | Net revenue against the previous period | — |
+| `theme.stores.table.revpash` | Doanh thu mỗi ghế mỗi giờ | Revenue per seat-hour | — |
+| `theme.stores.table.salesPerHour` | Doanh thu mỗi giờ mở cửa | Revenue per opening hour | — |
+| `theme.stores.table.tet` | Tết | Tết | — |
+| `theme.stores.table.ticketChange` | TB mỗi hóa đơn so với kỳ trước | Average ticket against the previous period | — |
+| `theme.stores.table.voucherShare` | Hóa đơn dùng voucher | Invoices with a voucher | — |
+| `theme.stores.table.week` | Tuần thứ | Week | — |
+| `theme.stores.table.weekFrom` | Tuần từ | Week from | — |
 
 ## Cài đặt: phần dùng chung · Settings, shared parts (`settings.vi.json`, 90 mục)
 

@@ -252,6 +252,70 @@ describe("card adapter", () => {
 		});
 	});
 
+	it("writes a state key in a value column as its words and keeps the numbers of that column", () => {
+		const model: TableModel = {
+			captionKey: "theme.stores.kpis.table",
+			columns: [
+				{ key: "store", labelKey: "report.table.store", kind: "label" },
+				{
+					key: "revpash",
+					labelKey: "theme.stores.table.revpash",
+					kind: "money",
+				},
+				{
+					key: "netChange",
+					labelKey: "theme.stores.table.netChange",
+					kind: "signedPercent",
+				},
+			],
+			rows: [
+				{
+					id: "a",
+					cells: {
+						store: "Cửa hàng mẫu 1",
+						revpash: 12_500,
+						netChange: 0.1,
+					},
+				},
+				{
+					id: "b",
+					cells: {
+						store: "Cửa hàng mẫu 2",
+						revpash: "report.unavailable.not_configured.previous",
+						netChange: "report.unavailable.store_too_young.previous",
+					},
+				},
+				{
+					id: "all",
+					cells: {
+						store: "theme.stores.kpis.allStores",
+						revpash: null,
+						netChange: null,
+					},
+				},
+			],
+			initialSort: null,
+			variant: "standard",
+			heatColumns: [],
+		};
+		const table = tableOf(model, t);
+		expect(table.columns.map((column) => column.kind)).toEqual([
+			"text",
+			"money",
+			"signedPercent",
+		]);
+		expect(table.rows.map((row) => row.cells)).toEqual([
+			{ store: "Cửa hàng mẫu 1", revpash: 12_500, netChange: 0.1 },
+			{
+				store: "Cửa hàng mẫu 2",
+				revpash: "chưa thiết lập",
+				netChange: "chưa có dữ liệu kỳ trước",
+			},
+			{ store: "Tất cả cửa hàng", revpash: null, netChange: null },
+		]);
+		expect(tableOf(model, tEn).rows[1]?.cells.revpash).toBe("not set up");
+	});
+
 	it("writes shift cells as Ca n and cashier keys as their label, never a raw value", () => {
 		const model: TableModel = {
 			captionKey: "report.day.shifts.table",
@@ -353,6 +417,39 @@ describe("card adapter", () => {
 			{ label: "so với mục tiêu", value: 0.8, axis: "right" },
 		]);
 		expect(spec.markAreas).toEqual([{ label: "Tết", from: 0, to: 1 }]);
+		expect(spec.series[0]).not.toHaveProperty("dashed");
+	});
+
+	it("keeps the fourth and fifth store tones and dashes the lines a model marks as dashed", () => {
+		const line = (tone: "quaternary" | "quinary", dashed?: boolean) => ({
+			label: { key: "report.periodRow.current", values: {} },
+			kind: "line" as const,
+			tone,
+			axis: "left" as const,
+			stack: null,
+			values: [1, 2],
+			...(dashed === undefined ? {} : { dashed }),
+		});
+		const spec = chartOf(
+			{
+				labelKey: "report.day.hourly.chart",
+				categories: [
+					{ kind: "hour", value: 8 },
+					{ kind: "hour", value: 9 },
+				],
+				series: [line("quaternary"), line("quinary", true)],
+				leftUnit: "ratio",
+				rightUnit: null,
+				markLines: [],
+				markAreas: [],
+			},
+			t,
+			formatters,
+		);
+		expect(spec.series.map((series) => [series.tone, series.dashed])).toEqual([
+			["quaternary", undefined],
+			["quinary", true],
+		]);
 	});
 
 	it("shows decomposition parts that add up to the total they show", () => {

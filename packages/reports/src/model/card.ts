@@ -103,6 +103,8 @@ export type SeriesTone =
 	| "primary"
 	| "secondary"
 	| "tertiary"
+	| "quaternary"
+	| "quinary"
 	| "muted"
 	| "positive"
 	| "negative";
@@ -114,6 +116,7 @@ export interface ChartSeriesModel {
 	readonly axis: "left" | "right";
 	readonly stack: string | null;
 	readonly values: readonly (number | null)[];
+	readonly dashed?: boolean;
 }
 
 export interface ChartMarkLine {

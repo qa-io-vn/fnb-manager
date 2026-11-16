@@ -59,7 +59,7 @@ Names from `reportNames`; routes from [`web-app.md`](web-app.md).
 | Thanh toán & tiền mặt | Payments and cash | `payments` | `#/chu-de/thanh-toan` | 10a, built |
 | Khuyến mãi & giảm giá | Promotions and discounts | `promotions` | `#/chu-de/khuyen-mai` | 10b |
 | Ca & két tiền | Shifts and cash drawer | `shifts` | `#/chu-de/ca-ket-tien` | 10b |
-| So sánh cửa hàng | Store comparison | none | `#/chu-de/so-sanh` | 10b |
+| So sánh cửa hàng | Store comparison | `stores` | `#/chu-de/so-sanh` | 10b, built |
 | Chất lượng dữ liệu | Data quality | `data_quality` | `#/chu-de/chat-luong` | 10b |
 | Khách hàng | Customers | `customers` | none yet | needs customer identity (Track C, phases 16 to 19) |
 
@@ -212,7 +212,7 @@ Each card has an id in `@fnb/reports` and a title key `report.<report>.<name>.ti
 | dữ liệu mẫu | sample data | `badge.sample` | demo numbers |
 | chưa đồng bộ · cập nhật lúc | not synced yet · updated at | `badge.neverSynced`, `badge.updatedAt` | the freshness badge: the latest successful sync run |
 | chưa có dữ liệu năm trước · cửa hàng mới | no data from last year yet · new store | `report.unavailable.store_too_young.*` | the store opened after the reference period started |
-| chưa đo được · chưa thiết lập · đang tích lũy dữ liệu | not measured · not set up · still collecting data | `report.unavailable.*` | why a comparison has no value; never shown as 0 |
+| chưa đo được · chưa thiết lập · đang tích lũy dữ liệu | not measured · not set up · still collecting data | `report.unavailable.*` | why a comparison, or a figure's cell such as So sánh's RevPASH without seats, has no value; never shown as 0 |
 
 ### Digests and alerts (phase 12)
 
@@ -306,6 +306,8 @@ Display series that only the web app names (`displaySeries`):
 | Chỉ số mùa vụ | Seasonality index | `seasonality_index` |
 | Số món theo vòng đời | Items by lifecycle status | `item_lifecycle_count` |
 | Doanh thu từ ngày khai trương | Net revenue since opening | `since_opening_net` |
+| Chỉ số ngày của cửa hàng | Store day index | `store_day_index` |
+| Chênh lệch chỉ số giữa các cửa hàng | Gap between the stores' indices | `store_day_gap` |
 
 ## 5. Domain terms
 

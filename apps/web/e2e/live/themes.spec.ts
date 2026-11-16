@@ -36,6 +36,7 @@ const titles = {
 	payments: "Thanh toán & tiền mặt",
 	promotions: "Khuyến mãi & giảm giá",
 	shifts: "Ca & két tiền",
+	stores: "So sánh cửa hàng",
 } as const;
 
 async function seededClock(): Promise<SeededClock> {
@@ -57,7 +58,7 @@ async function signIn(page: Page, clock: SeededClock) {
 	).toBeVisible();
 }
 
-test("the six thematic reports render on the seeded stack through the SQL functions", async ({
+test("the seven thematic reports render on the seeded stack through the SQL functions", async ({
 	page,
 }) => {
 	const clock = await seededClock();
@@ -69,6 +70,7 @@ test("the six thematic reports render on the seeded stack through the SQL functi
 		"payments",
 		"promotions",
 		"shifts",
+		"stores",
 	] as const) {
 		await page.goto(themeUrl(kind, "range=7d"));
 		await waitForSettledThemeCards(page);
@@ -90,6 +92,14 @@ test("the six thematic reports render on the seeded stack through the SQL functi
 					SEEDED_SHIFT_NAMES,
 				);
 			}
+		}
+		if (kind === "stores") {
+			const kpis = themeCard(page, "stores", "kpis");
+			await expect(kpis.getByTestId("headline")).toHaveText(/\d/);
+			await expect(kpis.locator("tbody tr").last()).toContainText(
+				"Tất cả cửa hàng",
+			);
+			await expect(kpis).not.toContainText("chưa thiết lập");
 		}
 	}
 	await page.goto(themeUrl("hours", "range=7d"));

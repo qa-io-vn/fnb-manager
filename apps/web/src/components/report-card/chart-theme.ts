@@ -8,6 +8,7 @@ export interface ChartPalette {
 	secondary: string;
 	tertiary: string;
 	quaternary: string;
+	quinary: string;
 	muted: string;
 	positive: string;
 	negative: string;
@@ -23,6 +24,7 @@ function paletteOf(colorOf: (token: ColorName) => string): ChartPalette {
 		secondary: colorOf("chart-2"),
 		tertiary: colorOf("chart-3"),
 		quaternary: colorOf("chart-4"),
+		quinary: colorOf("chart-5"),
 		muted: colorOf("chart-muted"),
 		positive: colorOf("positive"),
 		negative: colorOf("negative"),

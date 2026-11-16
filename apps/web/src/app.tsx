@@ -147,6 +147,13 @@ export const routes: RouteObject[] = [
 									),
 							},
 							{
+								path: "so-sanh",
+								lazy: () =>
+									import("./pages/themes/so-sanh/so-sanh-page").then(
+										(module) => ({ Component: module.SoSanhPage }),
+									),
+							},
+							{
 								path: ":slug",
 								lazy: () =>
 									import("./pages/themes/later/later-page").then((module) => ({
