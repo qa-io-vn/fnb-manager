@@ -75,6 +75,10 @@ export {
 export { openingHoursPresent } from "./functions/opening-hours.js";
 export { openingProductivity } from "./functions/opening-productivity.js";
 export { seriesBuckets } from "./functions/period-series.js";
+export {
+	type DemoCatalogPromotion,
+	demoPromotionCatalogue,
+} from "./functions/promotion-catalogue.js";
 export { rangeTotals } from "./functions/range-totals.js";
 export { reportSettingsOf } from "./functions/report-settings-of.js";
 export {

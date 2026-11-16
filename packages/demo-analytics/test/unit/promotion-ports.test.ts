@@ -124,4 +124,79 @@ describe("the promotion ports' arguments", () => {
 		expect(withTenant).toEqual(withCall);
 		expect(withTenant).not.toEqual(withDefault);
 	});
+
+	it("refuse a discount-day year outside 2023 to the current year, a cap outside 0 to 1 and a compliance range over 400 days", async () => {
+		const demo = source();
+		await expect(
+			demo.callTheme("item_discount_days", {
+				store_ids: ["MOCK-S1"],
+				calendar_year: 2022,
+			}),
+		).rejects.toMatchObject({ code: INVALID_ARGUMENTS_CODE });
+		await expect(
+			demo.callTheme("item_discount_days", {
+				store_ids: ["MOCK-S1"],
+				calendar_year: 2027,
+			}),
+		).rejects.toMatchObject({
+			code: "22023",
+			functionName: "item_discount_days",
+		});
+		for (const cap of [0, -0.1, 1.01]) {
+			await expect(
+				demo.callTheme("promotion_compliance", {
+					store_ids: ["MOCK-S1"],
+					from_date: AS_OF,
+					to_date: AS_OF,
+					cap_rate: cap,
+				}),
+				String(cap),
+			).rejects.toMatchObject({ code: INVALID_ARGUMENTS_CODE });
+		}
+		await expect(
+			demo.callTheme("promotion_compliance", {
+				store_ids: ["MOCK-S1"],
+				from_date: addDays(AS_OF, -400),
+				to_date: AS_OF,
+			}),
+		).rejects.toMatchObject({
+			code: "22023",
+			functionName: "promotion_compliance",
+		});
+		expect(
+			await demo.callTheme("promotion_compliance", {
+				store_ids: ["MOCK-S1"],
+				from_date: AS_OF,
+				to_date: AS_OF,
+				cap_rate: 1,
+			}),
+		).toEqual(expect.any(Array));
+	});
+
+	it("take the current year of the stores' time zone, so New Year's Day in Vietnam opens the new year while UTC is still on the old one", async () => {
+		const newYear = new Date("2026-12-31T17:30:00.000Z");
+		const demo = createDemoReportSource({
+			now: () => newYear,
+			volumeScale: 0.1,
+			settings: new DemoSettingsStore(demoSettings("2026-12-31")),
+		});
+		expect(
+			await demo.callTheme("item_discount_days", {
+				store_ids: ["MOCK-S1"],
+				calendar_year: 2027,
+			}),
+		).toEqual([]);
+		await expect(
+			demo.callTheme("item_discount_days", {
+				store_ids: ["UNKNOWN"],
+				calendar_year: 2027,
+			}),
+		).rejects.toMatchObject({ code: "22023" });
+		expect(
+			await demo.callTheme("item_discount_days", {
+				store_ids: ["UNKNOWN"],
+				calendar_year: 2026,
+			}),
+		).toEqual([]);
+	});
 });

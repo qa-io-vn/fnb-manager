@@ -27,12 +27,14 @@ import { adjustmentEvents, mapSale, mapShift } from "@fnb/sync";
 import type postgres from "postgres";
 import {
 	createDemoAnalyticsSource,
+	DEMO_POS_ACCOUNT_ID,
 	DEMO_SEED,
 	DEMO_TENANT_PROFILE,
 	type DemoAnalyticsSource,
 	DemoDayCache,
 	type DemoStoreDefinition,
 	type DemoStoreId,
+	demoPromotionCatalogue,
 	demoRoles,
 	demoStoreProfiles,
 	minorUnits,
@@ -643,6 +645,17 @@ async function seedDataset(
 				external_id: method.externalId,
 				name: method.name,
 				kind: method.kind,
+			})),
+		),
+		...insertStatements(
+			"public.promotions",
+			["tenant_id", "pos_account_id", "external_id", "name", "active"],
+			demoPromotionCatalogue(DEMO_POS_ACCOUNT_ID).map((promotion) => ({
+				tenant_id: tenantId,
+				pos_account_id: posAccountId,
+				external_id: promotion.externalId,
+				name: promotion.name,
+				active: promotion.active,
 			})),
 		),
 		...insertStatements(

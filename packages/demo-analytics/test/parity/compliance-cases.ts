@@ -17,13 +17,26 @@ export const GIFT_PROMOTION = {
 } as const;
 export const ITEM_PROMOTION_ID = "PROMO-04";
 export const DEEP_DISCOUNT_SHARE = 0.6;
+export const FULL_VOUCHER = {
+	code: "PARITY-VOUCHER",
+	name: "Phiếu quà tặng toàn phần",
+} as const;
 
-export type ComplianceCase = "gift_line" | "deep_line" | "deep_bill";
+export type ComplianceCase =
+	| "gift_line"
+	| "deep_line"
+	| "deep_bill"
+	| "full_bill"
+	| "free_invoice"
+	| "full_voucher";
 
 export const COMPLIANCE_CASES: readonly ComplianceCase[] = [
 	"gift_line",
 	"deep_line",
 	"deep_bill",
+	"full_bill",
+	"free_invoice",
+	"full_voucher",
 ];
 
 export interface ComplianceCaseSale {
@@ -107,7 +120,26 @@ function rewriteSale(
 		});
 		return discount;
 	}
-	const discount = roundMoney(sale.netAmount * DEEP_DISCOUNT_SHARE);
+	if (kind === "free_invoice") {
+		let discount = 0;
+		for (const line of itemLines(sale)) {
+			discount = roundMoney(discount + line.grossAmount);
+			discountLine(day, sale, line, line.grossAmount, GIFT_PROMOTION);
+		}
+		return discount;
+	}
+	if (kind === "full_voucher") {
+		const discount = sale.netAmount;
+		sale.voucherAmount = discount;
+		sale.voucherCode = FULL_VOUCHER.code;
+		sale.voucherName = FULL_VOUCHER.name;
+		lowerTotals(day, sale, discount);
+		return discount;
+	}
+	const discount =
+		kind === "full_bill"
+			? sale.netAmount
+			: roundMoney(sale.netAmount * DEEP_DISCOUNT_SHARE);
 	sale.billDiscountAmount = discount;
 	sale.billDiscountName = DEMO_BILL_DISCOUNT_NAME;
 	lowerTotals(day, sale, discount);
@@ -133,16 +165,25 @@ export function complianceCases(asOf: IsoDate): DemoDayRewrite {
 		const cases = complianceCaseSales(day);
 		const byId = new Map(day.sales.map((sale) => [sale.externalId, sale]));
 		let totalDiscount = 0;
+		let totalVoucher = 0;
 		for (const { kind, saleExternalId } of cases) {
 			const sale = byId.get(saleExternalId);
-			if (sale !== undefined) totalDiscount += rewriteSale(day, sale, kind);
+			if (sale === undefined) continue;
+			const amount = rewriteSale(day, sale, kind);
+			if (kind === "full_voucher") totalVoucher += amount;
+			else totalDiscount += amount;
 		}
 		day.dailyTotal = {
 			...day.dailyTotal,
 			discountAmount: roundMoney(
 				(day.dailyTotal.discountAmount ?? 0) + totalDiscount,
 			),
-			netAmount: roundMoney(day.dailyTotal.netAmount - totalDiscount),
+			voucherAmount: roundMoney(
+				(day.dailyTotal.voucherAmount ?? 0) + totalVoucher,
+			),
+			netAmount: roundMoney(
+				day.dailyTotal.netAmount - totalDiscount - totalVoucher,
+			),
 		};
 		return day;
 	};
