@@ -24,6 +24,12 @@ describe("settingsAccess", () => {
 		["staff", false, "thresholds", false, "ownerOnly"],
 		["viewer", true, "thresholds", false, "ownerOnly"],
 		["publisher", false, "thresholds", false, "ownerOnly"],
+		["owner", false, "legal", true, null],
+		["owner", true, "legal", false, "ownerOnly"],
+		["manager", false, "legal", false, "ownerOnly"],
+		["staff", false, "legal", false, "ownerOnly"],
+		["viewer", false, "legal", false, "ownerOnly"],
+		["publisher", false, "legal", false, "ownerOnly"],
 	] as const)(
 		"%s (store-limited: %s) on %s writes %s, reason %s",
 		(role, scoped, area, canWrite, reason) => {

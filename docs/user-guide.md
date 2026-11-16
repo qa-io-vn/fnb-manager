@@ -55,7 +55,7 @@ The navigation sits at the bottom on a phone and on the left on a wide screen.
 | Báo cáo | Reports | Ngày, Tuần, Tháng, Năm | verified locally |
 | Chủ đề | Topics | thematic reports: Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt, Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng | the first four verified locally; Khuyến mãi & giảm giá, Ca & két tiền and So sánh cửa hàng built |
 | Kế hoạch | Plans | saved strategy plans | "Sắp có" |
-| Cài đặt | Settings | Cửa hàng (the business and store profiles), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (the national holidays and your own days off) and Ngưỡng báo cáo (the report thresholds and this device's CSV format); the other settings pages say which phase brings them | Phân loại and Ngưỡng báo cáo verified locally; Cửa hàng and Ngày lễ built; the other pages planned |
+| Cài đặt | Settings | Cửa hàng (the business and store profiles), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (the national holidays and your own days off), Ngưỡng báo cáo (the report thresholds and this device's CSV format) and Pháp lý (the legal texts and their versions); the other settings pages say which phase brings them | Phân loại and Ngưỡng báo cáo verified locally; Cửa hàng, Ngày lễ and Pháp lý built; the other pages planned |
 
 - A page that is not built yet says "Sắp có" and names the roadmap phase that brings it ("Dự kiến ở giai đoạn … của lộ trình.").
 - The top bar holds the language switch (**VI** / **EN**), "Đăng xuất", the store choice and the freshness badge. On a phone the store choice folds into one summary button; tap it to open.
@@ -450,7 +450,7 @@ The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08
 
 ## Cài đặt (Settings)
 
-"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. Five pages are open today, **Cửa hàng**, **Dữ liệu nhập tay** (item costs so far), **Phân loại** (item-type roles, item categories and payment kinds), **Ngày lễ** and **Ngưỡng báo cáo**; Pháp lý says which roadmap phase brings it. **Cảnh báo** (alerts) and **Bản tin** (the daily digest) are already in the list: each says what it will hold and that it comes with phase 12.
+"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. Six pages are open today, **Cửa hàng**, **Dữ liệu nhập tay** (item costs so far), **Phân loại** (item-type roles, item categories and payment kinds), **Ngày lễ**, **Ngưỡng báo cáo** and **Pháp lý**. **Cảnh báo** (alerts) and **Bản tin** (the daily digest) are already in the list: each says what it will hold and that it comes with phase 12.
 
 ### Cửa hàng (Stores)
 
@@ -559,6 +559,37 @@ The reports decide what to flag from nine thresholds. They belong to the whole b
 - **Dấu chấm phẩy cho Excel cài đặt vùng Việt Nam**: semicolons and a decimal comma (`12,5`). Choose it when Excel puts a whole row in one column.
 - The choice takes effect at once, for every table of the reports and the thematic reports, and stays on this device after a reload. Both formats keep the byte-order mark, so Vietnamese letters show correctly.
 
+### Pháp lý (Legal texts)
+
+![Pháp lý on a computer: the Thông báo bảo mật section with the Vietnamese draft, its status, its version label and its buttons, and the empty English list](user-guide/settings-phap-ly.png)
+
+This page keeps the business's legal texts as numbered versions. A version that is published can never be changed or deleted, so every consent a customer or staff member gives later points at the exact text they saw. The app writes no legal wording: you write the texts, or have them written, and publish them here when they are ready.
+
+- **Six kinds of text**, each with a list in Tiếng Việt and one in Tiếng Anh: Thông báo bảo mật (privacy notice), Quy định bảo vệ thông tin (information-protection rules), Điều khoản Mini App (Mini App terms), Thông báo cho nhân viên (staff notice), Nội dung đồng ý tích điểm (loyalty consent text) and Nội dung đồng ý nhận tin quảng cáo (marketing consent text). The Mini Apps of later phases show these texts; until then they are kept here.
+- Each list starts with the version in force ("Đang áp dụng: …, công bố …"), then the drafts, then the versions no longer in force, newest first. Every version shows its **Mã phiên bản ghi khi đồng ý**, the label each consent will record, and the dates it was published and retired. **Xem nội dung** shows a version's text.
+- In the demo, the Vietnamese privacy notice starts as a draft made of the skeleton's headings.
+
+#### Publishing the privacy notice
+
+1. Under Thông báo bảo mật, Tiếng Việt, press **Tạo bản nháp** (or **Sửa** on a draft that is already there).
+
+   ![The draft editor on a computer: the title, the version label with its suggestion, "Tạo bản nháp từ khung" with what the skeleton holds, the Soạn and Xem trước buttons, the text box with the six headings, and Lưu bản nháp](user-guide/settings-phap-ly-editor.png)
+
+2. Give it a **Tiêu đề** (title) and keep or change the **Mã phiên bản**. The page suggests the kind and the month, such as `privacy-notice-2026-11`, with `.2` added when that label is taken. A label holds lower-case letters without accents, digits, dots and hyphens, at most 40 characters, and differs from the other versions of that text.
+3. Write the text in **Nội dung (Markdown)**: `##` starts a heading, `-` a list item, and `**…**` makes words bold. **Tạo bản nháp từ khung** fills an empty box with six headings to write under: purpose, data collected, retention, people's rights and how to use them, contact, and the processors and foreign hosting involved. It adds no legal wording. **Xem trước** shows the text as it will read; **Soạn** goes back to writing.
+4. Press **Lưu bản nháp**. A draft can be edited, saved again or deleted (**Xóa bản nháp**) as often as you like.
+5. Press **Công bố** on the draft. The page asks first, because a published text is final, and names the version in force that publishing retires at the same time:
+
+   ![The confirmation under a draft: publishing makes the text final, with the Công bố and Quay lại buttons](user-guide/settings-phap-ly-confirm.png)
+
+   Press **Công bố** again to publish, or **Quay lại** to keep the draft. The publication date comes from the database's clock, not from your device.
+6. To change a published text, create a new version and publish it. **Ngừng áp dụng** withdraws the version in force without a replacement, after the same kind of question; a retired version cannot be put back in force.
+
+- Only an owner who sees every store can write, publish or retire texts. Everyone else reads the page with a note saying so, and sees no button except Xem nội dung.
+- If the text was published or withdrawn meanwhile on another device or tab, the page says so instead of acting twice and shows the list as it now stands.
+- At the foot of the page, **Mục liên quan** names what comes later (the customer consents and personal-data requests, phase 17a) and leads to the **Loại hình pháp lý** on Cửa hàng.
+- In the demo a change lasts until the page is reloaded.
+
 ## Data freshness and the verified badge
 
 - **The freshness badge** in the top bar shows when the last sync for your business succeeded: "cập nhật lúc {time}" today, "cập nhật lúc {time} ngày {date}" on an earlier day, "chưa đồng bộ" if no sync has succeeded yet, and "chưa rõ lúc cập nhật" if the app could not read it. It checks again every 5 minutes. A sale rung up after that time appears after the next sync.
@@ -594,7 +625,7 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 ![The Kế hoạch page saying Sắp có and naming the roadmap phase that brings it](user-guide/coming-soon.png)
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
-- **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Dữ liệu nhập tay (item costs), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (your own days off) and Ngưỡng báo cáo are open (see above). The item-cost CSV import, monthly targets, payment fees and legal texts come next. Target progress waits for a monthly target. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
+- **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Dữ liệu nhập tay (item costs), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (your own days off), Ngưỡng báo cáo and Pháp lý (the legal texts) are open (see above). The item-cost CSV import, monthly targets and payment fees come next. Target progress waits for a monthly target. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
 - **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).
 

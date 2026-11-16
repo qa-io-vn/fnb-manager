@@ -422,6 +422,36 @@ test("Cài đặt: Dữ liệu nhập tay, item costs with a later change and it
 	);
 });
 
+test("Cài đặt: Pháp lý with the draft privacy notice, its editor on the skeleton and the publication's confirmation", async ({
+	page,
+}) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await page.goto("/#/cai-dat/phap-ly");
+	const privacy = page.locator(
+		'[data-testid="legal-kind"][data-kind="privacy_notice"]',
+	);
+	const vietnamese = privacy.locator(
+		'[data-testid="legal-group"][data-language="vi"]',
+	);
+	const draft = vietnamese.getByTestId("legal-version").first();
+	await expect(draft.getByTestId("legal-publish")).toBeVisible();
+	await shootElement(privacy, "settings-phap-ly");
+	const english = privacy.locator(
+		'[data-testid="legal-group"][data-language="en"]',
+	);
+	await english.getByTestId("legal-new").click();
+	const editor = english.getByTestId("legal-editor");
+	await editor.getByLabel("Tiêu đề").fill("Privacy notice");
+	await editor.getByTestId("legal-skeleton").click();
+	await expect(editor.getByTestId("legal-body")).toHaveValue(/^## /);
+	await editor.getByLabel("Tiêu đề").focus();
+	await shootElement(editor, "settings-phap-ly-editor");
+	await editor.getByTestId("legal-close").click();
+	await draft.getByTestId("legal-publish").click();
+	await expect(draft.getByTestId("legal-confirm")).toBeVisible();
+	await shootElement(draft, "settings-phap-ly-confirm");
+});
+
 test("the printed report", async ({ page }) => {
 	await page.setViewportSize({ width: A4_WIDTH_PX, height: 1123 });
 	await openReportPage(page, "day");

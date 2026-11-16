@@ -43,9 +43,6 @@ test("the sub-navigation opens each page on a phone and as a side column on a co
 	await settingsNav(page).getByRole("link", { name: "Ngày lễ" }).click();
 	await expectCurrentSettingsPage(page, "Ngày lễ");
 	await expect(page.getByTestId("holidays-page")).toBeVisible();
-	await settingsNav(page).getByRole("link", { name: "Cảnh báo" }).click();
-	await expectCurrentSettingsPage(page, "Cảnh báo");
-	await expect(page.getByTestId("settings-placeholder")).toContainText("12");
 	await page.setViewportSize({ width: 1280, height: 800 });
 	const nav = await settingsNav(page).boundingBox();
 	const heading = await page.getByRole("heading", { level: 2 }).boundingBox();
@@ -56,6 +53,12 @@ test("the sub-navigation opens each page on a phone and as a side column on a co
 	);
 	await settingsNav(page).getByRole("link", { name: "Pháp lý" }).click();
 	await expectCurrentSettingsPage(page, "Pháp lý");
+	await expect(page.getByTestId("legal-page")).toBeVisible();
+	await expect(page.getByTestId("settings-placeholder")).toHaveCount(0);
+	await settingsNav(page).getByRole("link", { name: "Cảnh báo" }).click();
+	await expectCurrentSettingsPage(page, "Cảnh báo");
+	await expect(page.getByTestId("settings-placeholder")).toContainText("12");
+	await expect(page.getByTestId("settings-slot-summary")).toBeVisible();
 });
 
 test("the links the reports give to Settings still land on their page", async ({

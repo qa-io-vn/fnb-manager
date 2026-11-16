@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { todayIn } from "../../src/lib/business-dates";
+import { createFormatters } from "../../src/lib/format";
 import { createSupabaseManualSource } from "../../src/settings/manual/supabase-manual-source";
 import { writeCodeOf } from "../../src/settings/source";
 import { createSupabaseSettingsSource } from "../../src/settings/supabase-settings-source";
@@ -523,6 +525,9 @@ test("store and tenant profiles: a duplicate code, the owner-only opening hours 
 			manager.updateTenantProfile(tenantId, { legalForm: "enterprise" }),
 		),
 	).toBe("forbidden");
+	expect(
+		await owner.updateTenantProfile(tenantId, { defaultLanguage: "vi" }),
+	).toMatchObject({ defaultLanguage: "vi" });
 });
 
 test("category and payment-kind overrides are saved, read back over the POS values and cleared", async () => {
@@ -647,4 +652,186 @@ test("a legal draft is published and retired through the functions, and a publis
 	expect(retired).toMatchObject({ status: "retired" });
 	expect(retired?.publishedAt).not.toBeNull();
 	expect(retired?.retiredAt).not.toBeNull();
+});
+
+const TIME_ZONE = "Asia/Ho_Chi_Minh";
+const RULES_FIRST = "data-protection-rules-e2e-1";
+const RULES_NEXT = "data-protection-rules-e2e-2";
+const CONSENT_VERSION = "loyalty-consent-text-e2e-1";
+
+function shownInstant(iso: string | null): string {
+	if (iso === null) throw new Error("the database set no date");
+	const formatters = createFormatters({
+		currencyCode: "VND",
+		uiLocale: "vi-VN",
+		timeZone: TIME_ZONE,
+		unitLabels: { million: "tr", billion: "tỷ" },
+	});
+	const instant = new Date(iso);
+	return `${formatters.date(todayIn(TIME_ZONE, instant))} lúc ${formatters.time(instant)}`;
+}
+
+async function openLegal(page: Page, role: SettingsRole): Promise<void> {
+	watchConsoleErrors(page);
+	await created().signIn(page, role);
+	await openSettings(page, "phap-ly");
+	await expect(
+		page.getByRole("heading", { level: 2, name: "Pháp lý", exact: true }),
+	).toBeVisible();
+}
+
+function legalGroup(page: Page, kind: string, language = "vi"): Locator {
+	return page.locator(
+		`[data-testid="legal-group"][data-kind="${kind}"][data-language="${language}"]`,
+	);
+}
+
+function legalVersion(scope: Locator, version: string): Locator {
+	return scope.locator(
+		`[data-testid="legal-version"][data-version="${version}"]`,
+	);
+}
+
+test("the database refuses a text inserted as published, a status set by hand and a change once published, and publishing the next version retires the one in force in the same call", async () => {
+	const { tenantId } = created();
+	const client = await clientAs("owner");
+	const owner = createSupabaseManualSource(client);
+	const text = {
+		kind: "data_protection_rules" as const,
+		language: "vi" as const,
+		title: "Quy định bảo vệ thông tin",
+		bodyMarkdown: "## Liên hệ",
+	};
+	const insertedAsPublished = await client.from("legal_documents").insert({
+		tenant_id: tenantId,
+		kind: text.kind,
+		language: text.language,
+		version: RULES_FIRST,
+		title: text.title,
+		body_markdown: text.bodyMarkdown,
+		status: "published",
+		published_at: new Date().toISOString(),
+	});
+	expect(insertedAsPublished.error?.code).toBe("42501");
+	const first = await owner.saveLegalDraft(tenantId, {
+		...text,
+		version: RULES_FIRST,
+	});
+	const statusByHand = await client
+		.from("legal_documents")
+		.update({ status: "published" })
+		.eq("id", first.id);
+	expect(statusByHand.error?.code).toBe("42501");
+	await owner.publishLegalDocument(tenantId, first.id);
+	const changedOncePublished = await client
+		.from("legal_documents")
+		.update({ title: "Sửa sau khi công bố" })
+		.eq("id", first.id);
+	expect(changedOncePublished.error?.code).toBe("55000");
+	const next = await owner.saveLegalDraft(tenantId, {
+		...text,
+		version: RULES_NEXT,
+	});
+	await owner.publishLegalDocument(tenantId, next.id);
+	expect(await refusal(owner.publishLegalDocument(tenantId, next.id))).toBe(
+		"invalid",
+	);
+	expect(await refusal(owner.retireLegalDocument(tenantId, first.id))).toBe(
+		"invalid",
+	);
+	const rules = (await owner.legalDocuments(tenantId)).filter(
+		(row) => row.kind === "data_protection_rules",
+	);
+	const retired = rules.find((row) => row.version === RULES_FIRST);
+	const published = rules.find((row) => row.version === RULES_NEXT);
+	expect(retired).toMatchObject({ status: "retired", title: text.title });
+	expect(published).toMatchObject({ status: "published", retiredAt: null });
+	expect(retired?.retiredAt).not.toBeNull();
+	expect(retired?.retiredAt).toBe(published?.publishedAt);
+});
+
+test("the owner drafts from the skeleton, publishes and retires through the Pháp lý page, which shows the database's dates", async ({
+	page,
+}) => {
+	const { tenantId } = created();
+	const owner = createSupabaseManualSource(await clientAs("owner"));
+	await openLegal(page, "owner");
+	const terms = legalGroup(page, "mini_app_terms");
+	await expect(terms.getByTestId("legal-current")).toHaveText(
+		"Chưa có bản đang áp dụng.",
+	);
+	await terms.getByTestId("legal-new").click();
+	const editor = terms.getByTestId("legal-editor");
+	const version = await editor.getByLabel("Mã phiên bản").inputValue();
+	expect(version).toMatch(/^mini-app-terms-\d{4}-\d{2}$/);
+	await editor.getByLabel("Tiêu đề").fill("Điều khoản Mini App");
+	await editor.getByRole("button", { name: "Tạo bản nháp từ khung" }).click();
+	await editor.getByRole("button", { name: "Lưu bản nháp" }).click();
+	await expect(editor.getByTestId("legal-editor-status")).toHaveText(
+		"Đã lưu bản nháp.",
+	);
+	await editor.getByRole("button", { name: "Đóng" }).click();
+	const row = legalVersion(terms, version);
+	await expect(row.getByTestId("settings-audit-line")).toContainText(
+		"Bạn sửa lần cuối",
+	);
+	await row.getByRole("button", { name: `Công bố ${version}` }).click();
+	await row
+		.getByTestId("legal-confirm")
+		.getByRole("button", { name: "Công bố" })
+		.click();
+	await expect(terms.getByTestId("legal-group-status")).toHaveText(
+		`Đã công bố ${version}.`,
+	);
+	const stored = (await owner.legalDocuments(tenantId)).find(
+		(document) => document.version === version,
+	);
+	expect(stored).toMatchObject({ status: "published", retiredAt: null });
+	await expect(terms.getByTestId("legal-current")).toHaveText(
+		`Đang áp dụng: ${version}, công bố ${shownInstant(stored?.publishedAt ?? null)}.`,
+	);
+	await expect(row.getByTestId("legal-edit")).toHaveCount(0);
+	await row.getByRole("button", { name: `Ngừng áp dụng ${version}` }).click();
+	await row
+		.getByTestId("legal-confirm")
+		.getByRole("button", { name: "Ngừng áp dụng" })
+		.click();
+	await expect(row.getByTestId("legal-status")).toHaveText("Đã ngừng áp dụng");
+	const retired = (await owner.legalDocuments(tenantId)).find(
+		(document) => document.version === version,
+	);
+	expect(retired?.status).toBe("retired");
+	await expect(row.getByTestId("legal-retired-at")).toHaveText(
+		shownInstant(retired?.retiredAt ?? null),
+	);
+	expectNoConsoleErrors(page);
+});
+
+test("a manager reads the legal texts with the reason and no write control", async ({
+	page,
+}) => {
+	const { tenantId } = created();
+	const owner = createSupabaseManualSource(await clientAs("owner"));
+	const consent = await owner.saveLegalDraft(tenantId, {
+		kind: "loyalty_consent_text",
+		language: "vi",
+		version: CONSENT_VERSION,
+		title: "Nội dung đồng ý tích điểm",
+		bodyMarkdown: "## Mục đích xử lý dữ liệu",
+	});
+	await owner.publishLegalDocument(tenantId, consent.id);
+	await openLegal(page, "manager");
+	await expect(page.getByTestId("settings-read-only")).toHaveText(
+		"Chỉ chủ xem được tất cả cửa hàng mới soạn, công bố hay ngừng áp dụng được văn bản pháp lý; bạn đang xem ở chế độ chỉ đọc.",
+	);
+	const loyalty = legalGroup(page, "loyalty_consent_text");
+	const published = legalVersion(loyalty, CONSENT_VERSION);
+	await expect(published.getByTestId("legal-status")).toHaveText(
+		"Đang áp dụng",
+	);
+	await expect(page.getByTestId("legal-new")).toHaveCount(0);
+	await expect(page.getByTestId("legal-publish")).toHaveCount(0);
+	await expect(page.getByTestId("legal-retire")).toHaveCount(0);
+	await expect(published.getByRole("button")).toHaveCount(1);
+	expectNoConsoleErrors(page);
 });

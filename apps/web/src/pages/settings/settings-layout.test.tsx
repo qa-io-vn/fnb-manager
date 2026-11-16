@@ -66,7 +66,7 @@ describe("SettingsLayout", () => {
 		current.pendingDays = 0;
 	});
 
-	it("opens the page of the address with its place in the sub-navigation", () => {
+	it("opens the built page of the address, loading it lazily, with its place in the sub-navigation", () => {
 		renderSettings("/cai-dat/phap-ly");
 		expect(
 			screen.getByRole("heading", { level: 2, name: "Pháp lý" }),
@@ -75,7 +75,8 @@ describe("SettingsLayout", () => {
 			"aria-current",
 			"page",
 		);
-		expect(screen.getByTestId("settings-placeholder")).toHaveTextContent("10b");
+		expect(screen.getByRole("status")).toHaveTextContent("Đang tải…");
+		expect(screen.queryByTestId("settings-placeholder")).toBeNull();
 		expect(screen.queryByTestId("settings-slot-summary")).toBeNull();
 		expect(screen.queryByTestId("catch-up-banner")).toBeNull();
 	});

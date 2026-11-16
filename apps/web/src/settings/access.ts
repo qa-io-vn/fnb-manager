@@ -9,7 +9,8 @@ export type SettingsArea =
 	| "holidays"
 	| "alertRules"
 	| "alertMutes"
-	| "manualData";
+	| "manualData"
+	| "legal";
 
 export type ReadOnlyReason =
 	| "notMember"
@@ -93,6 +94,7 @@ const AREA_ACCESS: Readonly<
 	alertRules: unlimitedOwnerAccess,
 	alertMutes: ownDestinationsAccess,
 	manualData: manualDataAccess,
+	legal: unlimitedOwnerAccess,
 };
 
 export function settingsAccess(

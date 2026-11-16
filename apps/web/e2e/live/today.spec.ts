@@ -173,8 +173,9 @@ test("Cài đặt opens Cửa hàng on the seeded stack, and a page still to com
 	await expect(page.getByTestId("settings-placeholder")).toHaveCount(0);
 	await expect(page.getByTestId("settings-demo-note")).toHaveCount(0);
 	await checkPage(page);
-	await page.goto("/#/cai-dat/phap-ly");
-	await expect(page.getByTestId("settings-placeholder")).toContainText("10b");
+	await page.goto("/#/cai-dat/canh-bao");
+	await expect(page.getByTestId("settings-placeholder")).toContainText("12");
+	await expect(page.getByTestId("settings-slot-summary")).toBeVisible();
 });
 
 test("Ngưỡng báo cáo reads the seeded thresholds through the database's own rules, without writing", async ({

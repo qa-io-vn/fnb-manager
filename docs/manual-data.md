@@ -10,7 +10,9 @@ What the owner types in because the POS does not know it: item costs, monthly ta
 
 The page is `apps/web/src/pages/settings/du-lieu-nhap-tay-page.tsx`. Its tabs are declared once in `MANUAL_TABS`, and each tab is a component of `TAB_SECTIONS`, so a new tab replaces its placeholder entry and nothing else. An unknown `tab` opens Giá vốn. The reports link here: the margin card's "Nhập giá vốn" to `?tab=gia-von`, Tháng's "Đặt mục tiêu tháng" to `?tab=muc-tieu`, the fee estimate's link to `?tab=phi`.
 
-How the page reads and writes is in [settings.md](settings.md): `ManualSettingsSource`, `useSettingsMutation` and the error codes. The table and its policies are in [schema.md](schema.md#item_costs).
+The business's legal texts are typed in too, on their own page, **Cài đặt → Pháp lý** (`#/cai-dat/phap-ly`): see [Legal documents](#legal-documents-settings--pháp-lý).
+
+How the pages read and write is in [settings.md](settings.md): `ManualSettingsSource`, `useSettingsMutation` and the error codes. The tables and their policies are in [schema.md](schema.md#item_costs), with the write rules of every table under [who can write what](schema.md#who-can-write-what).
 
 ## Item costs
 
@@ -61,6 +63,56 @@ A read-only scope shows every value and the history, with no field, no "Xóa" an
 
 The demo starts without any cost, so Thực đơn's margin card asks for costs. A cost saved on the tab goes into the session's `DemoSettingsStore`, which the demo engine's `item_margins` and `menu_engineering` read, so the card lists the costed items at the next view; a reload starts again without costs.
 
+## Legal documents (Settings → Pháp lý)
+
+The business's legal texts, kept as numbered versions in `legal_documents` (migration `settings_writes_and_legal`, hardened by `settings_writes_hardening`; ADR-021). A version's text never changes once it is published, so `consent_records.policy_version` (phases 14 to 19) always points at the words a person saw and the dates they were in force. The platform writes no legal wording: the owner writes or commissions the texts and publishes them when they are ready (#12).
+
+### Kinds and languages
+
+| Kind (`legal_document_kind`) | On the page | Read later by |
+|---|---|---|
+| `privacy_notice` | Thông báo bảo mật | the Mini Apps, before any staff or customer data is processed (FR-CMP-17; phases 14a and 18a) |
+| `data_protection_rules` | Quy định bảo vệ thông tin | the Mini Apps, next to the privacy notice (FR-CMP-17) |
+| `mini_app_terms` | Điều khoản Mini App | the Mini Apps' terms popup (ADR-022) |
+| `staff_notice` | Thông báo cho nhân viên | the staff Mini App (phase 14a) |
+| `loyalty_consent_text` | Nội dung đồng ý tích điểm | the consent screen for the `loyalty` purpose (FR-CMP-01) |
+| `marketing_consent_text` | Nội dung đồng ý nhận tin quảng cáo | the consent screen for the `marketing` purpose (FR-CMP-01) |
+
+Each kind has one list per language, `vi` and `en`. At most one version of a kind and language is published at a time (`legal_documents_one_published_key`).
+
+### Versions
+
+- **The label** (`version`) is what a consent record stores. It starts with a lower-case letter or a digit and holds only lower-case letters, digits, dots and hyphens, at most 40 characters (`^[a-z0-9][a-z0-9.-]{0,39}$`), and is unique per tenant, kind and language.
+- **The suggestion.** The editor proposes `<kind>-YYYY-MM` with hyphens and the month of the tenant's current day, such as `privacy-notice-2026-11`, and adds `.2`, `.3`, … when that label is taken in the list. The owner may type another label.
+- **The text** is a title of 1 to 200 characters and a Markdown body of 1 to 100,000 characters. The page's preview reads headings (`#` to `######` and a space; a closing run of `#` is dropped only when a space precedes it, so `# C#` stays "C#"), paragraphs, `-`, `*` or `+` bullets, numbered lists (which run on across blank lines and keep their first number, so clause 3 after a paragraph stays 3), `**bold**`, `*italic*` or `_italic_`, `` `code` `` and links; a link opens only when it starts with `https://`, `http://` or `mailto:` (any other, such as `javascript:`, `data:` or `//host`, shows as plain text), and the text is never read as HTML. Any 100,000 characters read in linear time.
+- **The skeleton.** "Tạo bản nháp từ khung" fills an empty body with six headings in the document's language and no legal wording: purpose, data collected, retention, people's rights and how to use them, contact, and processors and hosting abroad (from [the personal-data deep dive](deep-dives/vietnam-legal-requirements.md#1-personal-data-pdpl-2025-decree-3562025-decree-3302026)). It is the demo engine's `legalDraftSkeleton`, held equal by `web:settings/legal/legal-rules`.
+
+### Publication and retirement
+
+```mermaid
+stateDiagram-v2
+    [*] --> draft: insert (status draft only)
+    draft --> draft: edit title, body, version
+    draft --> [*]: delete
+    draft --> published: publish_legal_document()
+    published --> retired: retire_legal_document(), or the next version's publication
+```
+
+- **Drafts.** An owner with an unlimited scope inserts drafts and edits their title, body and label; a draft can be deleted. A row inserted with `status = 'published'` or a `published_at` is refused (`42501`), and so is a change to `status` or a date by hand (column grants).
+- **Publishing.** `publish_legal_document(id)` checks the caller, retires the version in force of the same kind and language and publishes the draft, in one call and under one lock, with `published_at` and `retired_at` set to the database's `now()`. The browser never sends a date.
+- **Retiring.** `retire_legal_document(id)` withdraws the version in force without a replacement; the kind and language then have no version in force until the next publication.
+- **A change made elsewhere.** Publishing a version that is no longer a draft, or retiring one that is no longer in force, is refused with `22023`, as happens after another tab's change or a retry whose first answer was lost. The page then says the text was published or withdrawn elsewhere and reads the list again.
+- **Frozen.** A published or retired version's title, body, label, kind and language never change (`55000`), it never moves back, and it is never deleted from the browser. The page shows no edit control on it, and a refused write says `settings.legal.frozen`.
+- **Who.** Writing, publishing and retiring need an owner with an unlimited scope, because the texts also govern managers and staff (`R-FX09` in [requirements.md](requirements.md) records the difference from FR-SET-10's acceptance line). Every data member reads the texts; the page shows the others `settings.legal.readOnly`.
+
+### In the demo
+
+The demo store (`DemoSettingsStore`) keeps the same kinds, languages, label, length and lifecycle rules and starts with one draft Vietnamese privacy notice built from the skeleton. Its dates are the browser's clock at the moment of the write, and a reload starts again from that draft.
+
+### Later
+
+The consent ledger (`consent_records`) and data-subject requests are listed on their own page in phase 17a; the Pháp lý page names that slot. Showing the texts inside the Mini Apps belongs to phases 14a and 18a.
+
 ## Tests
 
 | Test | What it proves |
@@ -69,4 +121,5 @@ The demo starts without any cost, so Thực đơn's margin card asks for costs. 
 | `web:settings/manual/costs-tab` | a first cost dated 01/01/2023 and a later one today, the earlier days kept; a store showing the cost for all stores until its own, dated today by default and replacing the shared cost on past days only when dated back; unsaved rows kept on the list through a search and locking the scope; the refusals and nothing sent; the history and a delete; delete refusals in their own words and the retry; a store-limited manager writing their store and reading the costs for all stores, with no 90-day read for all stores before the membership is known; staff read-only; a lost connection and "Thử lại"; the 90-day order, its loading and failure |
 | `web:settings/manual/use-item-sales`, `web:pages/settings/du-lieu-nhap-tay-page`, `web:settings/access` | the 90-day window and order, the hook's loading, ready, failed and retried reads, no read without a store, a failed analytics source; the three tabs and their placeholders; the `manualData` access rules |
 | `e2e:demo/settings-gia-von` | the A3 flow on store 1: Thực đơn open for store 1 first, five costs for that store dated 01/01/2023 (asserted before saving), back through the app's links, the margin card lists exactly those five with their unit costs while the matrix stays "tạm tính"; a later cost dated today leaving the margin on the earlier cost; the refusals; a store's own cost dated back over a cost for all stores showing on Thực đơn for that store while the other store keeps the shared cost; the search, axe at 360 and 1280 px in light and dark, English without raw keys |
-| `e2e:live/settings-manual` | on the fixture tenant: the A3 flow through the real tables for store 1 (the five costs alone on the margin card, the drinks "tạm tính" while one drink lacks a cost, a later cost dated today leaving the margin on the earlier cost); a store-limited manager saving their store's cost and reading the cost for all stores without a control |
+| `web:settings/legal/legal-rules`, `web:settings/legal/markdown`, `web:settings/legal/markdown-preview`, `web:settings/legal/legal-editor`, `web:pages/settings/phap-ly-page`, `e2e:demo/settings-phap-ly` | the legal documents: see [settings.md](settings.md#tests) |
+| `e2e:live/settings-manual` | on the fixture tenant: the A3 flow through the real tables for store 1 (the five costs alone on the margin card, the drinks "tạm tính" while one drink lacks a cost, a later cost dated today leaving the margin on the earlier cost); a store-limited manager saving their store's cost and reading the cost for all stores without a control; the legal lifecycle through the functions and the Pháp lý page |

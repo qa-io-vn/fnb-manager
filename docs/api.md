@@ -197,8 +197,8 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`metric_value`](#publicmetric_value) | metric_value | invoker, stable | `numeric` | SQL: `metric_compare`; `fnb digest --check-ngay` | verified locally (phase 8) |
 | [`metric_compare`](#publicmetric_compare) | metric_value | invoker, stable | rows per metric and period | web reports, digest | verified locally (phase 9) |
 | [`refresh_my_analytics`](#publicrefresh_my_analytics) | settings and writes | definer, volatile | `bigint` | the web catch-up runner through the settings source (`refreshChunk`, the newest 92 pending days at a time) | verified locally (phase 8) |
-| [`publish_legal_document`](#publicpublish_legal_document) | settings and writes | definer, volatile | `uuid` | the Pháp lý settings page (planned, #164) | built (phase 10b) |
-| [`retire_legal_document`](#publicretire_legal_document) | settings and writes | definer, volatile | `uuid` | the Pháp lý settings page (planned, #164) | built (phase 10b) |
+| [`publish_legal_document`](#publicpublish_legal_document) | settings and writes | definer, volatile | `uuid` | the Pháp lý settings page (#164) | built (phase 10b) |
+| [`retire_legal_document`](#publicretire_legal_document) | settings and writes | definer, volatile | `uuid` | the Pháp lý settings page (#164) | built (phase 10b) |
 | [`analytics_catch_up_status`](#publicanalytics_catch_up_status) | settings and writes | invoker, stable | 0 or 1 row | the web catch-up banner and runner through the settings source (`catchUpStatus`), on every theme and settings page | verified locally (phase 10a) |
 | [`report_settings_of`](#publicreport_settings_of) | themes | invoker, stable | rows per store | web themes Giờ & ngày, Thực đơn, Thanh toán, Khuyến mãi and Ca & két tiền | verified locally (phase 10a) |
 | [`range_totals`](#publicrange_totals) | themes | invoker, stable | rows per range and store | web themes Doanh thu, Thanh toán and Khuyến mãi | verified locally (phase 10a) |
@@ -677,7 +677,7 @@ returns uuid
 ```
 
 - **Who may call:** an owner with an unlimited scope of the document's tenant. Anyone else, and an id the caller cannot see, gets `42501`, so ids cannot be probed; a document that is not a draft gives `22023`.
-- **Called by:** the Pháp lý settings page, planned (#164).
+- **Called by:** the Pháp lý settings page (#164), through "Công bố" after a confirmation; a `22023` answer there says the version was already published or withdrawn elsewhere.
 - **Status:** built (phase 10b; pgTAP `38_settings_writes.sql`).
 - **Notes:** checks the caller before taking any lock, then serialises publications of the same kind and language with a transaction lock, retires the version that is published, publishes this draft and returns its id, all in one call, with dates from the database's clock. A published or retired text never changes again (`55000`).
 
@@ -689,7 +689,7 @@ returns uuid
 ```
 
 - **Who may call:** as `publish_legal_document`; a document that is not published gives `22023`.
-- **Called by:** the Pháp lý settings page, planned (#164).
+- **Called by:** the Pháp lý settings page (#164), through "Ngừng áp dụng" after a confirmation; a `22023` answer there says the version was already published or withdrawn elsewhere.
 - **Status:** built (phase 10b; pgTAP `38_settings_writes.sql`).
 - **Notes:** retires the published version with the database's clock and returns its id; the kind and language then have no published version until another is published.
 
@@ -714,7 +714,7 @@ Settings are written as rows, not through functions. RLS decides each write. The
 | `alert_rules` | owner with an unlimited scope; a trigger validates the rule and its parameters (`22023`) | the same | the same |
 | `channel_policies` | owner with an unlimited scope, tenant rows only; CHECK constraints keep the legal floors | the same | the same |
 
-Status: the tables, policies and triggers are verified locally (pgTAP `05_write_policies.sql`, `07_write_scope_and_attribution.sql`, `10_payment_fee_rates.sql`, `11_item_type_roles_and_holidays.sql`, `12_consent_and_legal.sql`, `31_notify_access.sql`, `35_mappings_and_catch_up.sql`). Inserts must name the caller as `created_by`, and a trigger sets `updated_by` to the caller on every insert and update of the manual-input tables, `item_category_overrides`, `report_settings`, `payment_kind_overrides`, `legal_documents` and `holidays`; a member's change of a store or tenant profile column stamps `profile_updated_at` and `profile_updated_by`. The 10b rows are verified by pgTAP `38_settings_writes.sql`. Cài đặt → Ngưỡng báo cáo writes `report_settings` (phase 10a); the other Settings screens are designed for phase 10b, Kế hoạch and `fnb publish-plan` (which will insert plans as the publisher) for 11b, and Settings → Cảnh báo after step 12c. The 10b Settings pages that write the store and tenant profiles, the payment-kind overrides and the legal texts are planned (#159, #160, #164); the database rules they rely on are in place. Destinations in `notification_channels` are written only by server code ([section 3.5](#35-notifications)).
+Status: the tables, policies and triggers are verified locally (pgTAP `05_write_policies.sql`, `07_write_scope_and_attribution.sql`, `10_payment_fee_rates.sql`, `11_item_type_roles_and_holidays.sql`, `12_consent_and_legal.sql`, `31_notify_access.sql`, `35_mappings_and_catch_up.sql`). Inserts must name the caller as `created_by`, and a trigger sets `updated_by` to the caller on every insert and update of the manual-input tables, `item_category_overrides`, `report_settings`, `payment_kind_overrides`, `legal_documents` and `holidays`; a member's change of a store or tenant profile column stamps `profile_updated_at` and `profile_updated_by`. The 10b rows are verified by pgTAP `38_settings_writes.sql`. Cài đặt → Ngưỡng báo cáo writes `report_settings` (phase 10a); the other Settings screens are designed for phase 10b, Kế hoạch and `fnb publish-plan` (which will insert plans as the publisher) for 11b, and Settings → Cảnh báo after step 12c. The 10b Settings pages that write the store and tenant profiles (Cửa hàng, #159), the payment-kind overrides (Phân loại, #160) and the legal texts (Pháp lý, #164) are built on these rules. Destinations in `notification_channels` are written only by server code ([section 3.5](#35-notifications)).
 
 ### 3.5 Notifications
 

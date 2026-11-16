@@ -66,8 +66,8 @@ export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
 		slug: "phap-ly",
 		titleKey: "settings.page.legal",
 		phase: "10b",
-		status: "planned",
-		load: null,
+		status: "built",
+		load: () => import("../pages/settings/phap-ly-page"),
 	},
 	{
 		id: "alerts",
