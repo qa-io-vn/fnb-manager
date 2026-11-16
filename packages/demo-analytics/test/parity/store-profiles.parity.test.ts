@@ -8,6 +8,7 @@ import type {
 import { ParityReport } from "./compare.js";
 import { parityClock, parityDatasets } from "./datasets.js";
 import {
+	literal,
 	type OpenParityDatabase,
 	openParityDatabase,
 	type SeededDataset,
@@ -145,8 +146,8 @@ describe("store_profiles in the engine equals the SQL", () => {
 				eInvoiceStatus: "configured",
 			});
 			await active().connection.rows(
-				"update public.stores set opening_hours = $1::jsonb, e_invoice_status = 'configured' where id = $2::uuid",
-				[JSON.stringify(CHANGED_HOURS), seeded.uuidOf("MOCK-S2")],
+				`update public.stores set opening_hours = ${literal(CHANGED_HOURS)}, e_invoice_status = 'configured' where id = $1::uuid`,
+				[seeded.uuidOf("MOCK-S2")],
 			);
 			for (const stores of STORE_SETS) {
 				await compareProfiles(seeded, stores, " changed");
