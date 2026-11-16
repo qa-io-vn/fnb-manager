@@ -1,5 +1,7 @@
 import coreEn from "./messages/core.en.json";
 import coreVi from "./messages/core.vi.json";
+import exportsEn from "./messages/exports.en.json";
+import exportsVi from "./messages/exports.vi.json";
 import metricsEn from "./messages/metrics.en.json";
 import metricsVi from "./messages/metrics.vi.json";
 import reportDayEn from "./messages/report-day.en.json";
@@ -62,7 +64,8 @@ export type MessageKey =
 	| keyof typeof settingsLegalVi
 	| keyof typeof themesVi
 	| keyof typeof themeRevenueVi
-	| keyof typeof themeHoursVi;
+	| keyof typeof themeHoursVi
+	| keyof typeof exportsVi;
 
 export interface MessageFile {
 	readonly name: string;
@@ -103,7 +106,7 @@ export const messageFiles: readonly MessageFile[] = [
 	{
 		name: "core",
 		prefix: null,
-		excludedPrefixes: ["metric.", "report.", "theme.", "settings."],
+		excludedPrefixes: ["metric.", "report.", "theme.", "settings.", "exports."],
 		vi: coreVi,
 		en: coreEn,
 	},
@@ -260,6 +263,13 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: settingsLegalVi,
 		en: settingsLegalEn,
+	},
+	{
+		name: "exports",
+		prefix: "exports.",
+		excludedPrefixes: [],
+		vi: exportsVi,
+		en: exportsEn,
 	},
 ];
 
