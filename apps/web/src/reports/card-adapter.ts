@@ -46,7 +46,7 @@ import {
 export const noticeRoutes: Readonly<Record<NoticeAction, string>> = {
 	today: "/",
 	settings_roles: "/cai-dat/phan-loai",
-	settings_targets: "/cai-dat/du-lieu-nhap-tay",
+	settings_targets: "/cai-dat/du-lieu-nhap-tay?tab=muc-tieu",
 	settings_costs: "/cai-dat/du-lieu-nhap-tay?tab=gia-von",
 	settings_fees: "/cai-dat/du-lieu-nhap-tay?tab=phi",
 	settings_store: "/cai-dat/cua-hang",

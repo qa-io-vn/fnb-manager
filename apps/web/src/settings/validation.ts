@@ -155,6 +155,12 @@ export function money(
 	});
 }
 
+export const ITEM_COST_MAX = 100_000_000;
+
+export function itemCost(fractionDigits: number) {
+	return money(fractionDigits, { min: 0, max: ITEM_COST_MAX });
+}
+
 export function dateBounds(today: IsoDate): { min: IsoDate; max: IsoDate } {
 	const nextYear = Number(today.slice(0, 4)) + 1;
 	return { min: FIRST_BUSINESS_DATE, max: `${nextYear}-12-31` };

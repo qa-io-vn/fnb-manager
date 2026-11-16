@@ -11,9 +11,11 @@ import {
 	hasIssues,
 	holidayName,
 	holidayNameValueOf,
+	ITEM_COST_MAX,
 	integerInRange,
 	issueOf,
 	issuesByField,
+	itemCost,
 	money,
 	openingDate,
 	openingDateBounds,
@@ -126,6 +128,22 @@ describe("money", () => {
 			max: 100,
 		});
 		expect(issueOf(money(3), 1.005)).toEqual({ key: "decimals", digits: 2 });
+	});
+});
+
+describe("itemCost", () => {
+	it("takes whole đồng from 0 to 100,000,000 and refuses a negative cost or a fraction", () => {
+		const schema = itemCost(0);
+		expect(ITEM_COST_MAX).toBe(100_000_000);
+		expect(issueOf(schema, 0)).toBeNull();
+		expect(issueOf(schema, ITEM_COST_MAX)).toBeNull();
+		expect(issueOf(schema, -1)).toEqual({ key: "atLeast", min: 0 });
+		expect(issueOf(schema, ITEM_COST_MAX + 1)).toEqual({
+			key: "atMost",
+			max: ITEM_COST_MAX,
+		});
+		expect(issueOf(schema, 8_333.33)).toEqual({ key: "wholeMoney" });
+		expect(issueOf(itemCost(2), 8_333.33)).toBeNull();
 	});
 });
 

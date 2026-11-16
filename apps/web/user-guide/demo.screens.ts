@@ -359,6 +359,54 @@ test("Cài đặt: Ngày lễ with a day off of the business and the national da
 	await shootElement(page.getByTestId("holidays-page"), "settings-ngay-le");
 });
 
+test("Cài đặt: Dữ liệu nhập tay, item costs with a later change and its history, then the margins they bring to Thực đơn", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: COMPUTER.width, height: 3200 });
+	await page.goto("/#/cai-dat/du-lieu-nhap-tay?tab=gia-von");
+	const costs = page.getByTestId("costs-form");
+	await expect(costs).toHaveAttribute("data-sales", "ready");
+	const rows = costs.getByTestId("cost-row");
+	for (const [index, amount] of ["18000", "14000", "16000"].entries()) {
+		await rows.nth(index).getByLabel("Giá vốn mới").fill(amount);
+	}
+	await page.getByTestId("settings-save").click();
+	await expect(page.getByTestId("settings-save-bar-status")).toHaveText(
+		"Đã lưu.",
+	);
+	await rows.first().getByLabel("Giá vốn mới").fill("19000");
+	await page.getByTestId("settings-save").click();
+	await expect(page.getByTestId("settings-save-bar-status")).toHaveText(
+		"Đã lưu.",
+	);
+	await costs.getByRole("searchbox", { name: "Tìm món" }).fill("matcha");
+	await expect(rows.first()).toContainText("Matcha Latte");
+	await rows.first().getByTestId("cost-history-toggle").click();
+	await rows.nth(1).getByLabel("Giá vốn mới").fill("21000");
+	await rows.nth(1).getByLabel("Giá vốn mới").blur();
+	await shootElement(page.getByTestId("manual-page"), "settings-gia-von");
+	await page.setViewportSize(COMPUTER);
+	await page.getByTestId("settings-cancel").click();
+	await page
+		.getByRole("navigation", { name: "Điều hướng chính" })
+		.getByRole("link", { name: "Chủ đề" })
+		.click();
+	await page
+		.getByTestId("theme-tabs")
+		.getByRole("link", { name: "Thực đơn" })
+		.click();
+	await waitForSettledThemeCards(page);
+	await expect(
+		themeCard(page, "menu", "margins").getByRole("table", {
+			name: "Biên lợi nhuận các món có giá vốn",
+		}),
+	).toBeVisible();
+	await shootElement(
+		themeCard(page, "menu", "margins"),
+		"theme-thuc-don-margins-costed",
+	);
+});
+
 test("the printed report", async ({ page }) => {
 	await page.setViewportSize({ width: A4_WIDTH_PX, height: 1123 });
 	await openReportPage(page, "day");

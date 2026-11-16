@@ -24,6 +24,16 @@ describe("SETTINGS_PAGES", () => {
 		expect(settingsPageOf(undefined)).toBeNull();
 	});
 
+	it("builds Dữ liệu nhập tay as a lazy page of 10b", () => {
+		const manual = settingsPageOf("du-lieu-nhap-tay");
+		expect(manual).toMatchObject({
+			id: "manualData",
+			status: "built",
+			phase: "10b",
+		});
+		expect(manual?.load).toBeTypeOf("function");
+	});
+
 	it("builds Ngày lễ as a lazy page of 10b", () => {
 		const holidays = settingsPageOf("ngay-le");
 		expect(holidays).toMatchObject({

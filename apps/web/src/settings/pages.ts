@@ -34,8 +34,8 @@ export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
 		slug: "du-lieu-nhap-tay",
 		titleKey: "settings.page.manualData",
 		phase: "10b",
-		status: "planned",
-		load: null,
+		status: "built",
+		load: () => import("../pages/settings/du-lieu-nhap-tay-page"),
 	},
 	{
 		id: "classification",

@@ -24,7 +24,7 @@ The first connector is iPOS Fabi (Vietnam). The first users are two single-store
 | `.github/workflows/` | CI (lint, typecheck, unit tests, the Edge Function's Deno type-check, migrations and pgTAP, web end-to-end, secret and identifier scan), migrations, nightly sync, Edge Function deployment, backups, cron probes, Pages deployment |
 | `docs/` | Roadmap, decisions, schema, secrets contract, connector docs, deep dives (`docs/private/` is gitignored and holds anything shop-specific) |
 
-`docs/status.md` says what is built, what comes next and how to continue on another machine. Start with `docs/roadmap.md`, then `docs/decisions.md` and `docs/schema.md`. `docs/sync.md` covers the sync engine and the `fnb` CLI, `docs/web-app.md` the web app and its demo mode, `docs/settings.md` the settings sources and their errors, `docs/metrics.md` the metric definitions, and `docs/go-live.md` the first cloud deployment step by step.
+`docs/status.md` says what is built, what comes next and how to continue on another machine. Start with `docs/roadmap.md`, then `docs/decisions.md` and `docs/schema.md`. `docs/sync.md` covers the sync engine and the `fnb` CLI, `docs/web-app.md` the web app and its demo mode, `docs/settings.md` the settings sources and their errors, `docs/manual-data.md` the item costs and other manual data, `docs/metrics.md` the metric definitions, and `docs/go-live.md` the first cloud deployment step by step.
 
 ## Local development
 

@@ -121,7 +121,7 @@ test("target progress needs a target for every selected store", async ({
 	await expect(notice).toContainText("Cửa hàng mẫu 2");
 	await expect(
 		notice.getByRole("link", { name: "Đặt mục tiêu tháng" }),
-	).toHaveAttribute("href", "#/cai-dat/du-lieu-nhap-tay");
+	).toHaveAttribute("href", "#/cai-dat/du-lieu-nhap-tay?tab=muc-tieu");
 	await openReport(page, "month", "month=2026-11&store=MOCK-S1");
 	const single = card(page, "target_progress");
 	await expect(single.getByTestId("headline")).toHaveText(/\d.*%/);

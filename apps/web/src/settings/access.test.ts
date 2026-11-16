@@ -121,6 +121,30 @@ describe("settingsAccess", () => {
 		});
 	});
 
+	it.each([
+		["owner", false, null, true, null],
+		["manager", false, null, true, null],
+		["owner", true, null, false, "scope"],
+		["manager", true, null, false, "scope"],
+		["staff", false, null, false, "role"],
+		["viewer", false, null, false, "role"],
+		["owner", false, store, true, null],
+		["manager", false, store, true, null],
+		["owner", true, store, true, null],
+		["manager", true, store, true, null],
+		["manager", true, "22222222-2222-4222-8222-222222222222", false, "scope"],
+		["staff", false, store, false, "role"],
+		["viewer", true, store, false, "role"],
+		["publisher", false, store, false, "role"],
+	] as const)(
+		"%s (store-limited: %s) on the manual data of %s writes %s, reason %s",
+		(role, scoped, storeId, canWrite, reason) => {
+			expect(
+				settingsAccess("manualData", member(role, scoped), storeId),
+			).toEqual({ canWrite, reason });
+		},
+	);
+
 	it("refuses a login without membership and waits while it loads", () => {
 		expect(settingsAccess("roles", null)).toEqual({
 			canWrite: false,

@@ -8,7 +8,8 @@ export type SettingsArea =
 	| "openingHours"
 	| "holidays"
 	| "alertRules"
-	| "alertMutes";
+	| "alertMutes"
+	| "manualData";
 
 export type ReadOnlyReason =
 	| "notMember"
@@ -59,6 +60,15 @@ function storeProfileAccess(
 		: denied("scope");
 }
 
+function manualDataAccess(
+	membership: Membership,
+	storeId: string | null,
+): SettingsAccess {
+	return storeId === null
+		? rolesAccess(membership)
+		: storeProfileAccess(membership, storeId);
+}
+
 function openingHoursAccess(
 	membership: Membership,
 	storeId: string | null,
@@ -82,6 +92,7 @@ const AREA_ACCESS: Readonly<
 	holidays: rolesAccess,
 	alertRules: unlimitedOwnerAccess,
 	alertMutes: ownDestinationsAccess,
+	manualData: manualDataAccess,
 };
 
 export function settingsAccess(

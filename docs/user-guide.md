@@ -292,9 +292,11 @@ Thực đơn shows which items carry the menu. **Ma trận thực đơn** classe
 
 ![The Thực đơn matrix for one store over 4 weeks: 30 stars among 75 drinks, each group's class mix as stacked shares, the first 20 rows of the item table and the class counts per group](user-guide/theme-thuc-don-matrix.png)
 
-**Biên lợi nhuận món** shows the gross margin of the items that have a cost, with their cost, margin and the share of their revenue the cost covers. In the demo no item has a cost yet, so the card asks you to enter costs and links to Settings.
+**Biên lợi nhuận món** shows the gross margin of the items that have a cost, with their cost, margin and the share of their revenue the cost covers. Items without a cost are left out, so the card lists only the items you have costed. In the demo no item has a cost yet, so the card asks you to enter costs and links to **Nhập giá vốn** in Settings ([Dữ liệu nhập tay](#dữ-liệu-nhập-tay-manual-data)).
 
 ![The margins card of the demo: no item has a cost yet, with the link to enter costs](user-guide/theme-thuc-don-margins.png)
+
+![The margins card after costs were entered for three demo items: their margin rate and the three items alone in the table](user-guide/theme-thuc-don-margins-costed.png)
 
 **Món tăng, món giảm** compares each item's quantity with the range before: the five that rose and fell most among items that sold at least 10 in the range before (a rising item also at least 10 in this one), and the best-selling new items. When a store has no sales in the range before, it says so instead of guessing.
 
@@ -434,7 +436,7 @@ The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08
 
 ## Cài đặt (Settings)
 
-"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. Four pages are open today, **Cửa hàng**, **Phân loại** (item-type roles, item categories and payment kinds), **Ngày lễ** and **Ngưỡng báo cáo**; Dữ liệu nhập tay and Pháp lý each say which roadmap phase brings them. **Cảnh báo** (alerts) and **Bản tin** (the daily digest) are already in the list: each says what it will hold and that it comes with phase 12.
+"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. Five pages are open today, **Cửa hàng**, **Dữ liệu nhập tay** (item costs so far), **Phân loại** (item-type roles, item categories and payment kinds), **Ngày lễ** and **Ngưỡng báo cáo**; Pháp lý says which roadmap phase brings it. **Cảnh báo** (alerts) and **Bản tin** (the daily digest) are already in the list: each says what it will hold and that it comes with phase 12.
 
 ### Cửa hàng (Stores)
 
@@ -451,6 +453,29 @@ Settings open on this page. It holds the facts of your business and of each stor
   - **Hóa đơn điện tử** (not known, not registered, registered, turned off), **Đánh số hóa đơn** (every day, every year, never, not known) and **Tính năng thành viên trên POS** (not known, on, off). Under Đánh số hóa đơn the page says what the receipt numbers of the last months suggest, once at least 20 days have numeric receipt numbers; "Dùng gợi ý" fills it in when they restart every day. The demo's receipt numbers are not plain numbers, so the demo shows no suggestion.
 - Each block has its own save bar: **Lưu** saves only what you changed in that block, and the line under it says when it last changed and who changed it ("Bạn", or the role). A code another store already uses is refused with "Không lưu được: mã này đã dùng cho một cửa hàng khác của chuỗi.", and an unfinished time span keeps Lưu unavailable.
 - Owners and managers of a store can change its block; other members see every value with a note saying why not. In the demo a change lasts until the page is reloaded.
+
+### Dữ liệu nhập tay (Manual data)
+
+![Giá vốn on a computer: the scope locked while a cost is typed, a search for "matcha", one item with today's cost, its share of the price and its history of two costs, and the next item with a new cost dated 01/01/2023](user-guide/settings-gia-von.png)
+
+This page holds what the POS does not know. It has three tabs: **Giá vốn** (item costs) is open; **Mục tiêu** (monthly targets) and **Phí thanh toán** (payment fees) say which phase brings them.
+
+**Giá vốn** is what one item sold costs you. Thực đơn uses it for the margin of each item and for the menu matrix; an item without a cost is still classed on its price and marked "tạm tính".
+
+- **Áp dụng cho**: "Tất cả cửa hàng" sets one cost for every store; choosing a store sets that store's own cost, which it uses instead of the shared one from its date. A store that has no cost of its own shows the shared one, marked "theo Tất cả cửa hàng". You can switch only once your changes are saved or cancelled.
+- **The list** starts with the items sold over the last 90 days, best sellers first, then the rest of the menu (toppings and other options are never listed). Each item shows its size, category, list price and 90-day revenue, today's cost with the date it started and its share of the price, and who saved it last. **Tìm món** finds an item by name, size, code or category, with or without Vietnamese marks; **Xem thêm 25 món** shows more.
+- **Entering a cost**: type it in **Giá vốn mới** (whole đồng; "18000" becomes "18.000" when you leave the field) and check **Áp dụng từ ngày**:
+  - an item's very first cost starts on **01/01/2023** and covers the whole sales history ("Áp dụng cho toàn bộ lịch sử bán."), so Thực đơn shows its margin for any range at once;
+  - a later change starts **today** ("Từ ngày này trở đi; các ngày trước giữ giá vốn cũ."): the days before keep the earlier cost, so past margins do not move;
+  - a store's own cost for an item that already has a cost for all stores also starts **today** ("… các ngày trước giữ giá vốn chung."). If you pick an earlier date, the page warns that the store's cost replaces the shared one on those past days too ("… kể cả các ngày đã qua.");
+  - when a later cost exists, the line under the date says the last day your cost covers ("… đến hết 31/05/2026 …");
+  - picking a date that already has a cost replaces that cost ("Thay giá vốn đang có từ đúng ngày này.").
+- **Lưu** saves every cost you typed together, or none of them. A negative cost, a fraction of a đồng ("Nhập số tiền chẵn đồng, không có phần lẻ."), more than 100.000.000 ₫ or a changed date without a cost keeps Lưu unavailable; nothing is rounded for you. An item you are changing stays on the list even when the search would hide it, and you can switch **Áp dụng cho** only once the changes are saved or cancelled.
+- **Lịch sử giá vốn** lists an item's costs in the chosen scope, newest first, with the one in force marked "đang áp dụng"; **Xóa** removes one, and the days it covered go back to the earlier cost. If the connection drops, the page says it could not delete and offers **Thử lại**.
+- After a save, the next Thực đơn you open uses the new costs, even if you go back to a page you had open before.
+- Owners and managers can enter costs for their stores; the costs for all stores need an owner or manager who sees every store. A manager of one store sees the shared costs read-only and enters their store's own. Other members read every cost with a note saying why not. In the demo a cost lasts until the page is reloaded.
+
+More detail: [manual-data.md](manual-data.md).
 
 ### Phân loại (Classification)
 
@@ -556,7 +581,7 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
 - **More thematic reports** ("Chủ đề", phase 10): the promotion catalogue and legal checks of Khuyến mãi. Doanh thu, Giờ & ngày, Thực đơn, Thanh toán, Khuyến mãi, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu are already there (see above).
-- **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (your own days off) and Ngưỡng báo cáo are open (see above). Item costs, monthly targets, payment fees and legal texts come next. Target progress waits for a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
+- **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Dữ liệu nhập tay (item costs), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (your own days off) and Ngưỡng báo cáo are open (see above). The item-cost CSV import, monthly targets, payment fees and legal texts come next. Target progress waits for a monthly target. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
 - **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).
 
@@ -591,3 +616,5 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 | Vai trò nhóm món, Chưa gán | Item-type role, Not assigned | the part an item type plays in the reports (Đồ uống, Đồ ăn, Đồ ăn nhẹ, Topping, Khác), or none yet |
 | Gợi ý | Suggested | a role the app reads from an item type's name; saved only when you press Lưu |
 | Cập nhật ngay | Refresh now | recalculate the days still waiting after a mapping change |
+| Giá vốn, Áp dụng từ ngày | Item cost, Applies from | what one item sold costs you, and the first day that cost counts |
+| Tất cả cửa hàng, theo Tất cả cửa hàng | All stores, from All stores | a cost shared by every store, and a store using that shared cost because it has none of its own |
