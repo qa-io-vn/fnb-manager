@@ -193,6 +193,7 @@ test("Ngưỡng báo cáo reads the seeded thresholds through the database's own
 		["Số giờ cao điểm", "3"],
 		["Ngưỡng giờ thấp điểm", "50"],
 		["Ngưỡng giờ đông", "125"],
+		["Số tuần trước khuyến mãi", "4"],
 	];
 	for (const [label, value] of shown) {
 		await expect(form.getByLabel(label, { exact: true })).toHaveValue(value);

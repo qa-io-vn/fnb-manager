@@ -34,13 +34,14 @@ export const THRESHOLD_FIELDS = [
 	"peakHours",
 	"deadHourRatio",
 	"busyHourRatio",
+	"promoPreWeeks",
 ] as const satisfies readonly (keyof ReportSettings)[];
 
 export type ThresholdField = (typeof THRESHOLD_FIELDS)[number];
 
 export type ThresholdKind = "integer" | "percent" | "money";
 
-export type ThresholdGroup = "menu" | "cash" | "hours";
+export type ThresholdGroup = "menu" | "cash" | "hours" | "promotions";
 
 export interface ThresholdSpec {
 	readonly field: ThresholdField;
@@ -58,6 +59,7 @@ export const THRESHOLD_GROUPS: readonly {
 	{ group: "menu", titleKey: "settings.thresholds.group.menu" },
 	{ group: "cash", titleKey: "settings.thresholds.group.cash" },
 	{ group: "hours", titleKey: "settings.thresholds.group.hours" },
+	{ group: "promotions", titleKey: "settings.thresholds.group.promotions" },
 ];
 
 export const THRESHOLD_SPECS: readonly ThresholdSpec[] = [
@@ -124,6 +126,14 @@ export const THRESHOLD_SPECS: readonly ThresholdSpec[] = [
 		labelKey: "settings.thresholds.busyHourRatio.label",
 		hintKey: "settings.thresholds.busyHourRatio.hint",
 		unitKey: null,
+	},
+	{
+		field: "promoPreWeeks",
+		group: "promotions",
+		kind: "integer",
+		labelKey: "settings.thresholds.promoPreWeeks.label",
+		hintKey: "settings.thresholds.promoPreWeeks.hint",
+		unitKey: "settings.thresholds.unit.weeks",
 	},
 ];
 

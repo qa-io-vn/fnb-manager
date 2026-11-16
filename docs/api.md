@@ -182,12 +182,12 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`store_coverage`](#publicstore_coverage) | reports | invoker, stable | rows per store | web reports, digest | verified locally (phase 9) |
 | [`period_compare`](#publicperiod_compare) | reports | invoker, stable | 3 or 4 rows | web reports, digest | verified locally (phase 8) |
 | [`period_compare_by_store`](#publicperiod_compare_by_store) | reports | invoker, stable | rows per store and period | web reports, digest | verified locally (phase 9) |
-| [`period_series`](#publicperiod_series) | reports | invoker, stable | rows per bucket | web reports, digest, web themes Doanh thu and Thanh toán | verified locally (phase 9) |
+| [`period_series`](#publicperiod_series) | reports | invoker, stable | rows per bucket | web reports, digest, web themes Doanh thu, Thanh toán and Khuyến mãi | verified locally (phase 9) |
 | [`daily_baselines`](#publicdaily_baselines) | reports | invoker, stable | rows per date | web reports | verified locally (phase 9) |
 | [`hourly_profile`](#publichourly_profile) | reports | invoker, stable | 24 rows | web reports, digest | verified locally (phase 9) |
 | [`item_summary`](#publicitem_summary) | reports | invoker, stable | rows per item | web reports, digest | verified locally (phase 9) |
 | [`payment_summary`](#publicpayment_summary) | reports | invoker, stable | rows per payment method | web reports, digest, web theme Thanh toán | verified locally (phase 9) |
-| [`promotion_summary`](#publicpromotion_summary) | reports | invoker, stable | rows per promotion | web reports, digest | verified locally (phase 9) |
+| [`promotion_summary`](#publicpromotion_summary) | reports | invoker, stable | rows per promotion | web reports, digest, web theme Khuyến mãi | verified locally (phase 9) |
 | [`shift_review`](#publicshift_review) | reports | invoker, stable | rows per shift | web reports, digest, web themes Thanh toán and Ca & két tiền | verified locally (phase 9) |
 | [`store_targets`](#publicstore_targets) | reports | invoker, stable | rows per store | web reports | verified locally (phase 9) |
 | [`item_velocity`](#publicitem_velocity) | reports | invoker, stable | rows per item | web reports | verified locally (phase 8) |
@@ -200,8 +200,8 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`publish_legal_document`](#publicpublish_legal_document) | settings and writes | definer, volatile | `uuid` | the Pháp lý settings page (planned, #164) | built (phase 10b) |
 | [`retire_legal_document`](#publicretire_legal_document) | settings and writes | definer, volatile | `uuid` | the Pháp lý settings page (planned, #164) | built (phase 10b) |
 | [`analytics_catch_up_status`](#publicanalytics_catch_up_status) | settings and writes | invoker, stable | 0 or 1 row | the web catch-up banner and runner through the settings source (`catchUpStatus`), on every theme and settings page | verified locally (phase 10a) |
-| [`report_settings_of`](#publicreport_settings_of) | themes | invoker, stable | rows per store | web themes Giờ & ngày, Thực đơn, Thanh toán and Ca & két tiền | verified locally (phase 10a) |
-| [`range_totals`](#publicrange_totals) | themes | invoker, stable | rows per range and store | web themes Doanh thu and Thanh toán | verified locally (phase 10a) |
+| [`report_settings_of`](#publicreport_settings_of) | themes | invoker, stable | rows per store | web themes Giờ & ngày, Thực đơn, Thanh toán, Khuyến mãi and Ca & két tiền | verified locally (phase 10a) |
+| [`range_totals`](#publicrange_totals) | themes | invoker, stable | rows per range and store | web themes Doanh thu, Thanh toán and Khuyến mãi | verified locally (phase 10a) |
 | [`opening_productivity`](#publicopening_productivity) | themes | invoker, stable | rows per store | web theme Giờ & ngày | verified locally (phase 10a) |
 | [`hour_profile`](#publichour_profile) | themes | invoker, stable | up to 82 rows | web theme Giờ & ngày | verified locally (phase 10a) |
 | [`menu_engineering`](#publicmenu_engineering) | themes | invoker, stable | rows per item | web theme Thực đơn | verified locally (phase 10a) |
@@ -209,9 +209,9 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`item_attach`](#publicitem_attach) | themes | invoker, stable | 1 row, then rows per drink | Thực đơn (attach rates, last 92 days and the 92 before) | verified locally (phase 10a) |
 | [`basket_pairs`](#publicbasket_pairs) | themes | invoker, stable | up to 900 pairs | Thực đơn (items sold together, last 92 days, 3 invoices, top 50) | verified locally (phase 10a) |
 | [`modifier_summary`](#publicmodifier_summary) | themes | invoker, stable | rows per modifier name | Thực đơn (sugar and ice, with the previous range) | verified locally (phase 10a) |
-| [`promotion_days`](#publicpromotion_days) | themes | invoker, stable | rows per store, date and promotion | no caller yet (Khuyến mãi, #191) | built (phase 10b) |
+| [`promotion_days`](#publicpromotion_days) | themes | invoker, stable | rows per store, date and promotion | no caller yet; the demo port (#190) | built (phase 10b) |
 | [`promotion_catalogue`](#publicpromotion_catalogue) | themes | invoker, stable | rows per promotion | no caller yet (Khuyến mãi, #153) | built (phase 10b) |
-| [`promotion_lift`](#publicpromotion_lift) | themes | invoker, stable | a row per day, then a summary | no caller yet (Khuyến mãi, #191) | built (phase 10b) |
+| [`promotion_lift`](#publicpromotion_lift) | themes | invoker, stable | a row per day, then a summary | web theme Khuyến mãi (its lift card) | built (phase 10b) |
 | [`promotion_compliance`](#publicpromotion_compliance) | themes | invoker, stable | rows per promotion, then the invoice total | no caller yet (Khuyến mãi, #153) | built (phase 10b) |
 | [`item_discount_days`](#publicitem_discount_days) | themes | invoker, stable | rows per item | no caller yet (Khuyến mãi, #153) | built (phase 10b) |
 | [`shift_adjustments`](#publicshift_adjustments) | themes | invoker, stable | rows per shift | web theme Ca & két tiền | built (phase 10b) |
@@ -514,7 +514,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** web reports (Ngày discounts, Tuần promotions, Tháng discount cost), digest.
+- **Called by:** web reports (Ngày discounts, Tuần promotions, Tháng discount cost), digest, the web theme Khuyến mãi (the range for its discount and voucher cards, and the last 92 days of the range for the lift card's promotion picker, one call when they are the same days).
 - **Notes:** one row per promotion; `promotion_kind` is `item`, `bill` or `voucher`, and `lines` is null for bills and vouchers. At most 400 days (92 until migration `promotion_and_shift_functions` of phase 10b).
 
 #### `public.shift_review`
@@ -901,7 +901,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** nothing yet; Khuyến mãi's lift card (#191) and the demo port (#190).
+- **Called by:** nothing on a screen yet; the demo port (#190). Khuyến mãi's lift card (#191) reads `promotion_lift`, which finds the promotion days itself.
 - **Status:** built (phase 10b; pgTAP `36_promotion_functions.sql`).
 - **Notes:** per store, date and promotion, optionally one kind or one kind and key (a key without a kind gives `22023`). `promotion_name` is the POS name, else the key; `lines` is null for bills and vouchers. Summed over dates and stores it equals `promotion_summary`. At most 400 days and 900 rows; ordered by date, store position, kind and key.
 
@@ -941,7 +941,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** nothing yet; Khuyến mãi's lift card (#191).
+- **Called by:** the web theme Khuyến mãi's lift card (#191), once its 92-day promotions and `report_settings_of` have answered, for the chosen promotion and comparator over the last 92 days of the range, with `pre_weeks` set to the tenant's `promo_pre_weeks` from `report_settings_of`, so a saved change gives a new call; the demo port in `@fnb/demo-analytics`, held to it by `demo-analytics:parity/promotion-lift`.
 - **Status:** built (phase 10b; pgTAP `36_promotion_functions.sql`).
 - **Notes:** difference-in-differences on gross revenue for one promotion over at most 92 days, against `baseline` (the median of the same weekday in the 8 weeks before, at least 3 dates), `prior_weeks` (the mean of the weekday in the `pre_weeks` before the first promotion day, the tenant's 4 when null) or `sister_store` (the requested stores that did not run it). Baseline and prior weeks subtract the mean trend of at least 7 control days. One row per day of the window, then a summary row (`business_date` null) with the counts, `gross_lift_amount`, the discount and `net_lift_amount` of the measured days, `lift_rate` and the `flags` (`no_test_store`, `few_promo_days`, `few_control_days`, `few_reference_days`, `unmeasured_days`, `no_control_store`, `control_differs_in_size`, `excluded_days_in_window`, `other_promotions`). A wrong kind, comparator or `pre_weeks` outside 2 to 8 gives `22023`. Definitions in [`schema.md`](schema.md), "Thematic report functions (phase 10)".
 

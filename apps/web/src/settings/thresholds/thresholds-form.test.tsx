@@ -77,6 +77,7 @@ describe("ThresholdsForm", () => {
 			["Số giờ cao điểm", "3", "Mặc định: 3 giờ."],
 			["Ngưỡng giờ thấp điểm", "50", "Mặc định: 50%."],
 			["Ngưỡng giờ đông", "125", "Mặc định: 125%."],
+			["Số tuần trước khuyến mãi", "4", "Mặc định: 4 tuần."],
 		];
 		for (const [label, value, defaultText] of values) {
 			expect(field(label), label).toHaveValue(value);
@@ -103,6 +104,11 @@ describe("ThresholdsForm", () => {
 				"textbox",
 			),
 		).toHaveLength(3);
+		expect(
+			within(screen.getByTestId("thresholds-group-promotions")).getAllByRole(
+				"textbox",
+			),
+		).toHaveLength(1);
 		expect(screen.getByTestId("thresholds-z-fixed")).toHaveTextContent(
 			"cố định ở mức 2",
 		);
@@ -211,19 +217,29 @@ describe("ThresholdsForm", () => {
 		});
 	});
 
-	it("never sends a value that belongs to another page", async () => {
+	it("saves the promotion weeks of Khuyến mãi and restores them with the others", async () => {
 		const user = userEvent.setup();
 		const { props } = renderForm({
 			saved: { ...SAVED_ROW, settings: { ...CUSTOM, promoPreWeeks: 6 } },
 		});
+		expect(field("Số tuần trước khuyến mãi")).toHaveValue("6");
+		await retype(user, "Số tuần trước khuyến mãi", "9");
+		expect(screen.getByTestId("thresholds-form")).toHaveTextContent(
+			"Nhập giá trị từ 2 đến 8.",
+		);
+		await retype(user, "Số tuần trước khuyến mãi", "8");
+		await user.click(screen.getByRole("button", { name: "Lưu" }));
+		expect(props.onSave).toHaveBeenLastCalledWith({ promoPreWeeks: 8 });
 		await user.click(
 			screen.getByRole("button", { name: "Khôi phục mặc định" }),
 		);
+		expect(field("Số tuần trước khuyến mãi")).toHaveValue("4");
 		await user.click(screen.getByRole("button", { name: "Lưu" }));
-		expect(props.onSave).toHaveBeenCalledExactlyOnceWith({
+		expect(props.onSave).toHaveBeenLastCalledWith({
 			menuWindowDays: 28,
 			cashAbsThreshold: 50_000,
 			busyHourRatio: 1.25,
+			promoPreWeeks: 4,
 		});
 	});
 
@@ -350,7 +366,7 @@ describe("ThresholdsForm", () => {
 		for (const input of screen.getAllByRole("textbox")) {
 			expect(input).toHaveAttribute("readonly");
 		}
-		expect(screen.getAllByRole("textbox")).toHaveLength(8);
+		expect(screen.getAllByRole("textbox")).toHaveLength(9);
 		expect(screen.queryByTestId("settings-save-bar")).toBeNull();
 		expect(screen.queryByTestId("settings-restore-defaults")).toBeNull();
 		expect(screen.getByTestId("settings-audit-line")).toBeInTheDocument();

@@ -142,6 +142,7 @@ describe("typed values", () => {
 describe("card adapter", () => {
 	it("maps headline units to value kinds", () => {
 		expect(headlineKindOf("money")).toBe("money");
+		expect(headlineKindOf("signedMoney")).toBe("signedMoney");
 		expect(headlineKindOf("fraction")).toBe("percent");
 		expect(headlineKindOf("signedFraction")).toBe("signedPercent");
 		expect(headlineKindOf("percentChange")).toBe("percentChange");

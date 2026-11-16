@@ -242,7 +242,7 @@ Use the browser's own print command (Ctrl+P or ⌘P on a computer, Share then Pr
 
 ## The thematic reports ("Chủ đề")
 
-"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. Five are built: **Doanh thu & xu hướng**, **Giờ & ngày trong tuần**, **Thực đơn**, **Thanh toán & tiền mặt** and **Ca & két tiền**. The others (Khuyến mãi & giảm giá, So sánh cửa hàng and Chất lượng dữ liệu) come in phase 10b: their tabs are already there and open a page that says so, and from it the other tabs lead back with the same range and stores.
+"Chủ đề" in the navigation opens reports that look at one subject over any range of days instead of a calendar period. Six are built: **Doanh thu & xu hướng**, **Giờ & ngày trong tuần**, **Thực đơn**, **Thanh toán & tiền mặt**, **Khuyến mãi & giảm giá** and **Ca & két tiền**. The others (So sánh cửa hàng and Chất lượng dữ liệu) come in phase 10b: their tabs are already there and open a page that says so, and from it the other tabs lead back with the same range and stores.
 
 ![Doanh thu & xu hướng on a computer: the theme tabs, the range presets and dates, then the Doanh thu thuần, Xu hướng doanh thu and Số hóa đơn cards](user-guide/theme-doanh-thu.png)
 
@@ -342,6 +342,34 @@ Thanh toán shows how customers pay. **Cơ cấu thanh toán theo loại** gives
 
 More detail: [reports/thanh-toan.md](reports/thanh-toan.md).
 
+### Khuyến mãi & giảm giá (Promotions and discounts)
+
+Khuyến mãi shows what your promotions cost and whether one of them paid for itself.
+
+**Chi phí giảm giá** adds up the item discounts, bill discounts and vouchers of the range, with their share of gross revenue ("2,0% doanh thu gộp"). Its chips compare the cost, then the rate in points, with the range before and the same range last year. The sentence names the promotion that cost most; the first table lists every promotion with its invoices, discount, share of the cost and the first and last day it was used, and the second splits the cost into items, bills and vouchers for this range and the one before. The bars stack the three by day, or by week beyond 35 days.
+
+![The discount cost card: the cost with its share of gross revenue, the cost and rate chips, the promotions and the components](user-guide/theme-khuyen-mai-cost.png)
+
+**Voucher** gives the share of invoices that used a voucher, against the range before and last year in points, names the voucher used on the most invoices and lists every voucher.
+
+![The voucher card: the share of invoices with a voucher, its two chips and the vouchers used](user-guide/theme-khuyen-mai-vouchers.png)
+
+**Hiệu quả khuyến mãi** asks whether one promotion brought in more than it gave away, over the last 92 days of the range at most. Choose the promotion in **Chương trình** (the costliest comes first) and what to compare with in **So với**:
+
+- **Cùng thứ các tuần trước**: the same weekday over the 8 weeks before, at the same stores (the default);
+- **Các tuần trước chương trình**: the weeks before the first day of the promotion, as many as Cài đặt → Ngưỡng báo cáo says (4 by default);
+- **Cửa hàng không chạy chương trình**: a store you selected that did not run it. When every selected store ran it, as with a single store, this choice is greyed out and the reason is written under it.
+
+The card then shows the net result in big type, "+" for a gain and "−" for a loss, with the extra gross revenue and the discount cost beside it: net = extra revenue − discount cost. The general trend, measured on days without the promotion, is taken out first, so a busy month does not count as the promotion's doing. A promotion that runs every day leaves no such days: the card then shows "—" with the reason and what to try (a range with days without the promotion, or a store that did not run it when one is selected), never a simple before-and-after figure. The table lists every day, promotion days first, with the expected revenue next to the real one.
+
+| | |
+|---|---|
+| ![The lift card of a bill discount measured against the weeks before: a net loss in big type, the extra gross revenue and the discount cost under it, the trend sentence, the bars of gross revenue and the days](user-guide/theme-khuyen-mai-lift.png) | ![The lift card of a voucher that ran every day: a dash, the reason and what to try, and the greyed-out store comparison with its reason](user-guide/theme-khuyen-mai-lift-dash.png) |
+
+Your choices are in the address (`&promo=…&cmp=prior_weeks`), so a link opens the same comparison. The promotion catalogue and the legal checks (the 50 % cap and the days of price discounts in a year) come next.
+
+More detail: [reports/khuyen-mai.md](reports/khuyen-mai.md).
+
 ### Ca & két tiền (Shifts and cash drawer)
 
 Ca & két tiền looks at each shift of the range, at most the last 92 days: a longer range is shortened to its last 92 days, and the tabs from another theme open it on those days. Shifts read "Ca 1", "Ca 2"… in the order they opened that day in their store; the POS shift name and a cashier's e-mail address never show, on screen, in print or in a CSV file, and a cashier entered as an e-mail address reads "chưa rõ thu ngân".
@@ -407,9 +435,9 @@ Each item type of the POS (the categories the POS sorts its items into, such as 
 
 ### Ngưỡng báo cáo (Report thresholds)
 
-![Cài đặt on a computer: the page names on the left, then the Thực đơn, Tiền mặt and Giờ thresholds with their defaults, the save bar and the choice kept on this device](user-guide/settings-bao-cao.png)
+![Cài đặt on a computer: the page names on the left, then the Thực đơn, Tiền mặt, Giờ and Khuyến mãi thresholds with their defaults, the save bar and the choice kept on this device](user-guide/settings-bao-cao.png)
 
-The reports decide what to flag from eight thresholds. They belong to the whole business, not to one store, and every report reads the same values: saving here changes Ngày, Tháng, the thematic reports and the daily digest together, and the page says so.
+The reports decide what to flag from nine thresholds. They belong to the whole business, not to one store, and every report reads the same values: saving here changes Ngày, Tháng, the thematic reports and the daily digest together, and the page says so.
 
 | Group | Threshold | What it changes | Default | Allowed |
 |---|---|---|---|---|
@@ -421,6 +449,7 @@ The reports decide what to flag from eight thresholds. They belong to the whole 
 | Giờ | Số giờ cao điểm | how many of the best-selling hours count as peak hours | 3 giờ | 1 to 6 |
 | Giờ | Ngưỡng giờ thấp điểm | an hour selling below this share of the average hour is a quiet hour | 50 % | 10 to 90 % |
 | Giờ | Ngưỡng giờ đông | an hour with invoices at or above this share of the average hour is busy; busy hours in a row form the suggested shift windows | 125 % | 105 to 300 % |
+| Khuyến mãi | Số tuần trước khuyến mãi | how many weeks before the first promotion day Hiệu quả khuyến mãi compares with, when it compares with the weeks before or with a store that did not run it | 4 tuần | 2 to 8 |
 
 - A shift is flagged when it passes any of three rules. The third, the z-score of the variance, is fixed at 2 and shown for reference. If most shifts are flagged for small differences, raise the two cash thresholds; lower them to watch the drawer more closely.
 - Each field shows its default under it. A value outside its range is refused as soon as you leave the field, with the allowed range in words, and "Lưu" stays unavailable until it is corrected. An amount may be typed as `80000`, `80.000` or `80,000`: all three are 80.000 ₫, since đồng have no fraction. A percentage takes a comma or a point as its decimal mark.
@@ -474,7 +503,7 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 ![The Kế hoạch page saying Sắp có and naming the roadmap phase that brings it](user-guide/coming-soon.png)
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
-- **More thematic reports** ("Chủ đề", phase 10): Khuyến mãi & giảm giá, So sánh cửa hàng and Chất lượng dữ liệu. Doanh thu, Giờ & ngày, Thực đơn, Thanh toán and Ca & két tiền are already there (see above).
+- **More thematic reports** ("Chủ đề", phase 10): So sánh cửa hàng and Chất lượng dữ liệu, and the promotion catalogue and legal checks of Khuyến mãi. Doanh thu, Giờ & ngày, Thực đơn, Thanh toán, Khuyến mãi and Ca & két tiền are already there (see above).
 - **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Phân loại (item-type roles, item categories and payment kinds) and Ngưỡng báo cáo are open (see above). Item costs, monthly targets, payment fees, holidays and legal texts come next. Target progress waits for a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
 - **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).

@@ -71,6 +71,7 @@ export interface ThemeParamOption {
 	readonly labelKey: string;
 	readonly labelValues?: Readonly<Record<string, ThemeParamLabelValue>>;
 	readonly disabled?: boolean;
+	readonly reasonKey?: string;
 }
 
 export interface ThemeParamSpec {

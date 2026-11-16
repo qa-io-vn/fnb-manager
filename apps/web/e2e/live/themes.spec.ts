@@ -34,6 +34,7 @@ const titles = {
 	hours: "Giờ & ngày trong tuần",
 	menu: "Thực đơn",
 	payments: "Thanh toán & tiền mặt",
+	promotions: "Khuyến mãi & giảm giá",
 	shifts: "Ca & két tiền",
 } as const;
 
@@ -56,7 +57,7 @@ async function signIn(page: Page, clock: SeededClock) {
 	).toBeVisible();
 }
 
-test("the five thematic reports render on the seeded stack through the SQL functions", async ({
+test("the six thematic reports render on the seeded stack through the SQL functions", async ({
 	page,
 }) => {
 	const clock = await seededClock();
@@ -66,6 +67,7 @@ test("the five thematic reports render on the seeded stack through the SQL funct
 		"hours",
 		"menu",
 		"payments",
+		"promotions",
 		"shifts",
 	] as const) {
 		await page.goto(themeUrl(kind, "range=7d"));

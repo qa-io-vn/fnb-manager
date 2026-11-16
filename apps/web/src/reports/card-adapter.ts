@@ -73,6 +73,8 @@ export function headlineKindOf(unit: ValueUnit): Exclude<ValueKind, "text"> {
 	switch (unit) {
 		case "money":
 			return "money";
+		case "signedMoney":
+			return "signedMoney";
 		case "count":
 			return "count";
 		case "decimal":
@@ -91,6 +93,7 @@ export function headlineKindOf(unit: ValueUnit): Exclude<ValueKind, "text"> {
 export function chartKindOf(unit: ValueUnit): ChartValueKind {
 	switch (unit) {
 		case "money":
+		case "signedMoney":
 			return "money";
 		case "count":
 			return "count";

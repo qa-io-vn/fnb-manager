@@ -1,8 +1,8 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Ca & két tiền of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán). It lists every Vietnamese template these pages use (578 entries, 182 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá and Ca & két tiền of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán). It lists every Vietnamese template these pages use (652 entries, 212 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
-The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-shifts`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
+The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-promotions`, `theme-shifts`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
 ## How to review
 
@@ -28,6 +28,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | --- | --- | --- |
 | `{a}` | 2 | `theme.menu.pairs.caption` |
 | `{abs}` | 1 | `theme.payments.drawer.thresholds` |
+| `{amount}` | 5 | `theme.promotions.discountCost.largest` |
 | `{b}` | 2 | `theme.menu.pairs.caption` |
 | `{best}` | 3 | `theme.hours.heatmap.main` |
 | `{bestCount}` | 1 | `theme.shifts.sales.main` |
@@ -37,14 +38,16 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{bucket}` | 5 | `theme.payments.trend.down` |
 | `{cashier}` | 1 | `theme.shifts.adjustments.main` |
 | `{category}` | 2 | `theme.menu.categoryMix.caption` |
-| `{count}` | 13 | `theme.menu.preferences.otherOnly` |
+| `{cost}` | 3 | `theme.promotions.lift.caption` |
+| `{count}` | 18 | `theme.menu.preferences.otherOnly` |
 | `{covered}` | 1 | `theme.menu.movers.captionLikeForLike` |
 | `{date}` | 8 | `theme.page.todayClamped` |
 | `{day}` | 5 | `settings.hours.addSpanTo` |
-| `{days}` | 20 | `theme.range.summary` |
+| `{days}` | 26 | `theme.range.summary` |
 | `{dead}` | 1 | `theme.hours.peakDead.main` |
 | `{deadShare}` | 1 | `theme.hours.peakDead.main` |
-| `{delta}` | 16 | `theme.revenue.net.down` |
+| `{definition}` | 1 | `theme.promotions.lift.subtitle` |
+| `{delta}` | 18 | `theme.revenue.net.down` |
 | `{digits}` | 1 | `settings.validation.decimals` |
 | `{drinks}` | 2 | `theme.menu.matrix.stars` |
 | `{factor}` | 1 | `theme.menu.matrix.subtitle` |
@@ -54,14 +57,16 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{first}` | 4 | `theme.payments.trend.down` |
 | `{from}` | 4 | `theme.range.span` |
 | `{gap}` | 1 | `theme.hours.weekday.main` |
+| `{gross}` | 3 | `theme.promotions.lift.caption` |
 | `{group}` | 1 | `theme.hours.shiftWindows.mainOne` |
 | `{hour}` | 1 | `theme.hours.heatmap.caption` |
 | `{hours}` | 1 | `theme.hours.peakDead.window` |
 | `{ice}` | 2 | `theme.menu.preferences.iceOnly` |
 | `{iceShare}` | 2 | `theme.menu.preferences.iceOnly` |
-| `{invoices}` | 1 | `theme.menu.pairs.main` |
+| `{invoices}` | 3 | `theme.menu.pairs.main` |
 | `{item}` | 4 | `theme.menu.movers.caption` |
 | `{items}` | 3 | `theme.menu.margins.rate` |
+| `{kind}` | 4 | `theme.promotions.discountCost.largestUnnamed` |
 | `{level}` | 1 | `theme.menu.preferences.caption` |
 | `{lift}` | 1 | `theme.menu.pairs.main` |
 | `{max}` | 4 | `settings.validation.atMost` |
@@ -71,28 +76,34 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{minimum}` | 5 | `theme.menu.matrix.lowSample` |
 | `{month}` | 3 | `theme.revenue.byMonth.caption` |
 | `{n}` | 3 | `settings.hours.close` |
+| `{name}` | 2 | `theme.promotions.lift.option` |
+| `{net}` | 2 | `theme.promotions.lift.gain` |
 | `{page}` | 1 | `settings.placeholder.body` |
 | `{payment}` | 1 | `theme.payments.mix.otherMover` |
 | `{peak}` | 2 | `theme.hours.peakDead.main` |
 | `{peakShare}` | 2 | `theme.hours.peakDead.main` |
-| `{phase}` | 3 | `theme.laterPage.body` |
-| `{points}` | 10 | `theme.revenue.trend.caption` |
+| `{phase}` | 2 | `theme.laterPage.body` |
+| `{points}` | 12 | `theme.revenue.trend.caption` |
+| `{pos}` | 1 | `settings.mapping.kinds.state` |
+| `{promotion}` | 5 | `theme.promotions.discountCost.largest` |
 | `{quantity}` | 1 | `theme.menu.movers.newItem` |
 | `{quiet}` | 1 | `theme.hours.heatmap.main` |
 | `{quietDay}` | 1 | `theme.hours.heatmap.main` |
 | `{quietHour}` | 1 | `theme.hours.heatmap.main` |
-| `{range}` | 60 | `theme.print.summary` |
-| `{rate}` | 3 | `theme.menu.margins.rate` |
+| `{range}` | 72 | `theme.print.summary` |
+| `{rate}` | 4 | `theme.menu.margins.rate` |
 | `{reasons}` | 1 | `theme.shifts.adjustments.main` |
-| `{reference}` | 19 | `theme.range.summary` |
+| `{reference}` | 26 | `theme.range.summary` |
 | `{rel}` | 1 | `theme.payments.drawer.thresholds` |
 | `{report}` | 1 | `theme.print.summary` |
 | `{riser}` | 2 | `theme.menu.movers.main` |
 | `{riserChange}` | 2 | `theme.menu.movers.main` |
 | `{role}` | 2 | `settings.audit.byRole` |
 | `{seats}` | 1 | `theme.hours.productivity.revpash` |
-| `{share}` | 6 | `theme.revenue.storeShare.main` |
+| `{share}` | 8 | `theme.revenue.storeShare.main` |
 | `{shift}` | 3 | `theme.payments.drawer.shiftOn` |
+| `{shown}` | 1 | `settings.mapping.categories.search.more` |
+| `{size}` | 1 | `settings.mapping.categories.withSize` |
 | `{stars}` | 2 | `theme.menu.matrix.stars` |
 | `{store}` | 4 | `theme.revenue.storeShare.caption` |
 | `{stores}` | 1 | `theme.print.summary` |
@@ -102,11 +113,13 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{time}` | 2 | `settings.audit.when` |
 | `{to}` | 5 | `theme.range.span` |
 | `{total}` | 1 | `theme.menu.movers.captionLikeForLike` |
-| `{value}` | 44 | `theme.revenue.net.down` |
+| `{type}` | 3 | `settings.mapping.categories.onPos` |
+| `{value}` | 52 | `theme.revenue.net.down` |
+| `{voucher}` | 1 | `theme.promotions.vouchers.top` |
 | `{weekday}` | 3 | `theme.hours.heatmap.caption` |
 | `{weekdays}` | 1 | `theme.hours.shiftWindows.main` |
 | `{weekend}` | 1 | `theme.hours.shiftWindows.main` |
-| `{weeks}` | 1 | `theme.compare.previousWeeks` |
+| `{weeks}` | 4 | `theme.compare.previousWeeks` |
 | `{when}` | 3 | `settings.audit.at` |
 | `{window}` | 1 | `theme.hours.shiftWindows.mainOne` |
 | `{worst}` | 2 | `theme.hours.weekday.main` |
@@ -121,8 +134,9 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 - "tạm tính" in the menu matrix while costs are missing (`theme.menu.matrix.provisionalCell`).
 - "Thiết bị này" for the per-device CSV format, and the wording of its two choices (`settings.thresholds.device.*`).
 - "đáng xem lại" for the shifts Ca & két tiền flags, and the caution that a z-score compares a shift with earlier shifts and is no verdict on a person (`theme.shifts.adjustments.main`, `theme.shifts.adjustments.basis`).
+- The lift words "lãi ròng" and "lỗ ròng" for the net lift, "doanh thu gộp tăng thêm" for the gross lift, and "đối chứng" for what each comparator compares with (`theme.promotions.lift.*`); the headline always comes with the gross lift and the discount cost in its caption.
 
-## Dùng chung cho các chủ đề · Shared by the thematic reports (`themes.vi.json`, 44 mục)
+## Dùng chung cho các chủ đề · Shared by the thematic reports (`themes.vi.json`, 43 mục)
 
 ### Thẻ chọn chủ đề · theme tabs (`theme.tabs.*`)
 
@@ -207,7 +221,6 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 
 | Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
 | --- | --- | --- | --- |
-| `theme.later.promotions` | Khuyến mãi & giảm giá | Promotions and discounts | — |
 | `theme.later.quality` | Chất lượng dữ liệu | Data quality | — |
 | `theme.later.stores` | So sánh cửa hàng | Store comparison | — |
 
@@ -734,6 +747,119 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `theme.payments.table.previousShare` | Tỷ trọng kỳ trước | Previous share | — |
 | `theme.payments.table.weekFrom` | Tuần từ | Week from | — |
 
+## Khuyến mãi & giảm giá · Promotions and discounts (`theme-promotions.vi.json`, 71 mục)
+
+### Tiêu đề · title (`theme.promotions.title`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.title` | Khuyến mãi & giảm giá | Promotions & discounts | — |
+
+### Thẻ «Chi phí giảm giá» (`theme.promotions.discountCost.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.discountCost.caption` | {rate} doanh thu gộp | {rate} of gross revenue | `{rate}` |
+| `theme.promotions.discountCost.chartDay` | Giảm giá món, hóa đơn và voucher theo ngày | Item, bill and voucher discounts by day | — |
+| `theme.promotions.discountCost.chartWeek` | Giảm giá món, hóa đơn và voucher theo tuần | Item, bill and voucher discounts by week | — |
+| `theme.promotions.discountCost.componentsTable` | Thành phần giảm giá, kỳ này và kỳ trước | Discount components, this range and the one before | — |
+| `theme.promotions.discountCost.down` | Chi phí giảm giá trong {range} là {value}, thấp hơn {delta} {reference}. | Discounts in {range} cost {value}, {delta} less {reference}. | `{range}` `{value}` `{delta}` `{reference}` |
+| `theme.promotions.discountCost.flat` | Chi phí giảm giá trong {range} là {value}, gần như không đổi {reference}. | Discounts in {range} cost {value}, about the same {reference}. | `{range}` `{value}` `{reference}` |
+| `theme.promotions.discountCost.largest` | Lớn nhất là {promotion}: {amount}, {share} chi phí giảm giá. | The largest was {promotion}: {amount}, {share} of the discount cost. | `{promotion}` `{amount}` `{share}` |
+| `theme.promotions.discountCost.largestUnnamed` | {kind} không tên tốn nhiều nhất: {amount}, {share} chi phí giảm giá. | {kind} without a name cost the most: {amount}, {share} of the discount cost. | `{kind}` `{amount}` `{share}` |
+| `theme.promotions.discountCost.noData` | Chưa có hóa đơn nào trong {range}. | There are no invoices in {range} yet. | `{range}` |
+| `theme.promotions.discountCost.noReference` | Chi phí giảm giá trong {range} là {value}. | Discounts in {range} cost {value}. | `{range}` `{value}` |
+| `theme.promotions.discountCost.none` | Không có giảm giá hay voucher nào trong {range}. | There were no discounts or vouchers in {range}. | `{range}` |
+| `theme.promotions.discountCost.rateCompare` | tỷ lệ giảm giá {reference} | discount rate {reference} | `{reference}` |
+| `theme.promotions.discountCost.table` | Khuyến mãi đã dùng trong khoảng ngày | Promotions used in the range | — |
+| `theme.promotions.discountCost.title` | Chi phí giảm giá | Discount cost | — |
+| `theme.promotions.discountCost.up` | Chi phí giảm giá trong {range} là {value}, cao hơn {delta} {reference}. | Discounts in {range} cost {value}, {delta} more {reference}. | `{range}` `{value}` `{delta}` `{reference}` |
+
+### Thẻ «Voucher» (`theme.promotions.vouchers.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.vouchers.down` | Trong {range}, {value} hóa đơn có dùng voucher, giảm {points} điểm % {reference}. | In {range}, {value} of invoices used a voucher, down {points} points {reference}. | `{range}` `{value}` `{points}` `{reference}` |
+| `theme.promotions.vouchers.flat` | Trong {range}, {value} hóa đơn có dùng voucher, gần như không đổi {reference}. | In {range}, {value} of invoices used a voucher, about the same {reference}. | `{range}` `{value}` `{reference}` |
+| `theme.promotions.vouchers.noData` | Chưa có hóa đơn nào trong {range}. | There are no invoices in {range} yet. | `{range}` |
+| `theme.promotions.vouchers.noReference` | Trong {range}, {value} hóa đơn có dùng voucher. | In {range}, {value} of invoices used a voucher. | `{range}` `{value}` |
+| `theme.promotions.vouchers.none` | Không hóa đơn nào dùng voucher trong {range}. | No invoice used a voucher in {range}. | `{range}` |
+| `theme.promotions.vouchers.table` | Voucher đã dùng | Vouchers used | — |
+| `theme.promotions.vouchers.title` | Voucher | Voucher | — |
+| `theme.promotions.vouchers.top` | Dùng nhiều nhất là {voucher}: {invoices} hóa đơn, giảm {amount}. | The most used was {voucher}: {invoices} invoices, {amount} off. | `{voucher}` `{invoices}` `{amount}` |
+| `theme.promotions.vouchers.topUnnamed` | Dùng nhiều nhất là một voucher không tên: {invoices} hóa đơn, giảm {amount}. | The most used was an unnamed voucher: {invoices} invoices, {amount} off. | `{invoices}` `{amount}` |
+| `theme.promotions.vouchers.up` | Trong {range}, {value} hóa đơn có dùng voucher, tăng {points} điểm % {reference}. | In {range}, {value} of invoices used a voucher, up {points} points {reference}. | `{range}` `{value}` `{points}` `{reference}` |
+
+### Thẻ «Hiệu quả khuyến mãi» (`theme.promotions.lift.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.lift.caption` | Doanh thu gộp tăng thêm {gross} · chi phí giảm giá {cost} | Gross lift {gross} · discount cost {cost} | `{gross}` `{cost}` |
+| `theme.promotions.lift.chart` | Doanh thu gộp ngày khuyến mãi (cột) và mức dự kiến nếu không khuyến mãi (đường) | Gross revenue on promotion days (bars) and the level expected without the promotion (line) | — |
+| `theme.promotions.lift.gain` | {promotion} lãi ròng {net} trong {days} ngày khuyến mãi đo được: doanh thu gộp tăng thêm {gross}, chi phí giảm giá {cost}. | {promotion} earned {net} net over {days} measured promotion days: a gross lift of {gross} against a discount cost of {cost}. | `{promotion}` `{net}` `{days}` `{gross}` `{cost}` |
+| `theme.promotions.lift.loss` | {promotion} lỗ ròng {net} trong {days} ngày khuyến mãi đo được: doanh thu gộp tăng thêm {gross}, chi phí giảm giá {cost}. | {promotion} lost {net} net over {days} measured promotion days: a gross lift of {gross} against a discount cost of {cost}. | `{promotion}` `{net}` `{days}` `{gross}` `{cost}` |
+| `theme.promotions.lift.no` | Không | No | — |
+| `theme.promotions.lift.none` | Không có khuyến mãi nào trong {days} ngày cuối kỳ nên chưa có gì để đo. | No promotion ran in the last {days} days of the range, so there is nothing to measure. | `{days}` |
+| `theme.promotions.lift.noneNotice` | Hiệu quả được đo trên những ngày cuối kỳ; hãy chọn khoảng ngày có chạy khuyến mãi. | The lift is measured on the last days of the range; choose a range in which a promotion ran. | — |
+| `theme.promotions.lift.notMeasured` | Chưa đo được hiệu quả của {promotion} trong {days} ngày cuối kỳ. | The lift of {promotion} could not be measured in the last {days} days of the range. | `{promotion}` `{days}` |
+| `theme.promotions.lift.subtitle` | {promotion} · {days} ngày cuối kỳ · {definition} | {promotion} · last {days} days of the range · {definition} | `{promotion}` `{days}` `{definition}` |
+| `theme.promotions.lift.table` | Từng ngày, ngày khuyến mãi trước | Day by day, promotion days first | — |
+| `theme.promotions.lift.title` | Hiệu quả khuyến mãi | Promotion lift | — |
+| `theme.promotions.lift.trend` | Đã trừ xu hướng chung {amount} mỗi ngày, đo trên {days} ngày không khuyến mãi. | The general trend of {amount} a day, measured on {days} days without the promotion, is taken out. | `{amount}` `{days}` |
+| `theme.promotions.lift.yes` | Có | Yes | — |
+
+### Chọn chương trình và đối chứng · promotion and comparator pickers (`theme.promotions.lift.promotion`, `.option*`, `.comparator*`, `.noControl`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.lift.comparator.baseline` | Cùng thứ các tuần trước | The same weekday in earlier weeks | — |
+| `theme.promotions.lift.comparator.prior_weeks` | Các tuần trước chương trình | The weeks before the promotion | — |
+| `theme.promotions.lift.comparator.sister_store` | Cửa hàng không chạy chương trình | A store that did not run it | — |
+| `theme.promotions.lift.comparatorLabel` | So với | Compared with | — |
+| `theme.promotions.lift.noControl` | Mọi cửa hàng đang chọn đều chạy chương trình này nên không có cửa hàng để so sánh. | Every chosen store ran this promotion, so there is no store to compare with. | — |
+| `theme.promotions.lift.option` | {name} ({kind}) | {name} ({kind}) | `{name}` `{kind}` |
+| `theme.promotions.lift.optionUnnamed` | {kind} không tên | {kind}, unnamed | `{kind}` |
+| `theme.promotions.lift.promotion` | Chương trình | Promotion | — |
+
+### Đối chứng của từng cách so · what each comparator compares with (`theme.promotions.lift.definition.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.lift.definition.baseline` | đối chứng: cùng thứ trong {weeks} tuần trước của chính cửa hàng | control: the same weekday in the {weeks} weeks before, at the same stores | `{weeks}` |
+| `theme.promotions.lift.definition.prior_weeks` | đối chứng: {weeks} tuần trước ngày khuyến mãi đầu tiên | control: the {weeks} weeks before the first promotion day | `{weeks}` |
+| `theme.promotions.lift.definition.sister_store` | đối chứng: cửa hàng không chạy chương trình, so với {weeks} tuần trước của chính nó | control: stores that did not run it, against their own {weeks} weeks before | `{weeks}` |
+
+### Lưu ý của phép đo · lift flags (`theme.promotions.lift.flag.*`, and the advice variants `.flagNoStore.*` and `.flagDaily.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.lift.flag.control_differs_in_size` | Doanh thu của cửa hàng đối chứng chênh hơn gấp đôi cửa hàng chạy chương trình nên phép so sánh kém tin cậy. | The control stores' revenue differs from the promoting stores' by more than a factor of two, so the comparison is less reliable. | — |
+| `theme.promotions.lift.flag.excluded_days_in_window` | Có ngày lễ hoặc Tết trong kỳ đo; những ngày đó không dùng làm mốc so sánh. | The measured days include a holiday or Tết; those days are not used as a reference. | — |
+| `theme.promotions.lift.flag.few_control_days` | Chưa đủ 7 ngày không khuyến mãi để tách hiệu quả khỏi xu hướng; thử so với cửa hàng không chạy chương trình hoặc chọn khoảng có ngày không khuyến mãi. | There are fewer than 7 days without the promotion to separate its effect from the trend; try comparing with a store that did not run it or choose a range with days without the promotion. | — |
+| `theme.promotions.lift.flag.few_promo_days` | Chương trình chạy chưa tới 3 ngày nên kết quả chưa chắc chắn. | The promotion ran on fewer than 3 days, so the result is uncertain. | — |
+| `theme.promotions.lift.flag.few_reference_days` | Có ngày khuyến mãi thiếu ngày cùng thứ trước đó để làm mốc nên chưa đo được. | Some promotion days lack earlier days of the same weekday to compare with, so they are not measured. | — |
+| `theme.promotions.lift.flag.no_control_store` | Không có cửa hàng nào không chạy chương trình để so sánh; hãy so với các tuần trước chương trình. | No store went without the promotion to compare with; compare with the weeks before the promotion instead. | — |
+| `theme.promotions.lift.flag.no_test_store` | Không cửa hàng nào đang chọn dùng chương trình này trong kỳ đo; hãy chọn cửa hàng hoặc khoảng ngày khác. | None of the chosen stores used this promotion in the measured days; choose other stores or another range. | — |
+| `theme.promotions.lift.flag.other_promotions` | Trong các ngày khuyến mãi còn có chương trình khác nên phần tăng thêm không chỉ do chương trình này. | Other promotions also ran on the promotion days, so the lift is not due to this promotion alone. | — |
+| `theme.promotions.lift.flag.unmeasured_days` | Có ngày khuyến mãi chưa đo được nên không tính vào kết quả. | Some promotion days could not be measured and are left out of the result. | — |
+| `theme.promotions.lift.flagDaily.no_control_store` | Không có cửa hàng nào không chạy chương trình để so sánh, và chương trình chạy gần như mỗi ngày nên so với các tuần trước cũng chưa tách được hiệu quả; hãy chọn khoảng ngày có những ngày không chạy chương trình này. | No store went without the promotion to compare with, and it ran almost every day, so the weeks before cannot separate its effect either; choose a range that includes days without this promotion. | — |
+| `theme.promotions.lift.flagNoStore.few_control_days` | Chưa đủ 7 ngày không khuyến mãi để tách hiệu quả khỏi xu hướng; hãy chọn khoảng ngày có những ngày không chạy chương trình này. | There are fewer than 7 days without the promotion to separate its effect from the trend; choose a range that includes days without this promotion. | — |
+
+### Tên cột bảng · table columns (`theme.promotions.table.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.table.controlDay` | Ngày đối chứng | Control day | — |
+| `theme.promotions.table.counterfactual` | Dự kiến nếu không khuyến mãi | Expected without the promotion | — |
+| `theme.promotions.table.firstUsed` | Dùng lần đầu | First used | — |
+| `theme.promotions.table.gross` | Doanh thu gộp | Gross revenue | — |
+| `theme.promotions.table.invoiceShare` | Tỷ lệ hóa đơn | Share of invoices | — |
+| `theme.promotions.table.lastUsed` | Dùng lần cuối | Last used | — |
+| `theme.promotions.table.lift` | Tăng thêm | Lift | — |
+| `theme.promotions.table.promotionDay` | Ngày khuyến mãi | Promotion day | — |
+| `theme.promotions.table.reference` | Mốc so sánh | Reference | — |
+| `theme.promotions.table.voucher` | Voucher | Voucher | — |
+
 ## Ca & két tiền · Shifts and cash drawer (`theme-shifts.vi.json`, 43 mục)
 
 ### Tiêu đề và thông báo chung · title and shared notices (`theme.shifts.title`, `theme.shifts.noData`, `theme.shifts.noShifts`)
@@ -965,7 +1091,7 @@ The headline caption "trên {count} ca" and the shift labels "Ca n ngày …" ar
 | `settings.catchUp.start` | Cập nhật ngay | Refresh now | — |
 | `settings.catchUp.waitForOwner` | Chủ hoặc quản lý có thể cập nhật ngay. | An owner or a manager can refresh now. | — |
 
-## Cài đặt → Ngưỡng báo cáo · Settings, report thresholds (`settings-thresholds.vi.json`, 32 mục)
+## Cài đặt → Ngưỡng báo cáo · Settings, report thresholds (`settings-thresholds.vi.json`, 36 mục)
 
 ### Trang và các nhóm ngưỡng · page and threshold groups (`settings.thresholds.*`)
 
@@ -984,6 +1110,7 @@ The headline caption "trên {count} ca" and the shift labels "Ca n ngày …" ar
 | `settings.thresholds.group.cash` | Tiền mặt | Cash | — |
 | `settings.thresholds.group.hours` | Giờ | Hours | — |
 | `settings.thresholds.group.menu` | Thực đơn | Menu | — |
+| `settings.thresholds.group.promotions` | Khuyến mãi | Promotions | — |
 | `settings.thresholds.menuLowSampleItems.hint` | Vai trò có ít món hơn thì xếp loại chỉ để tham khảo. | A role with fewer items is classed for reference only. | — |
 | `settings.thresholds.menuLowSampleItems.label` | Số món tối thiểu mỗi vai trò | Fewest items per role | — |
 | `settings.thresholds.menuPopularityFactor.hint` | Món là bán chạy khi tỷ trọng số bán đạt ít nhất mức này so với phần chia đều giữa các món cùng vai trò. | An item is popular when its share of the quantity sold reaches at least this much of an even split among the items of its role. | — |
@@ -993,9 +1120,12 @@ The headline caption "trên {count} ca" and the shift labels "Ca n ngày …" ar
 | `settings.thresholds.note` | Lưu ở đây là đổi cùng lúc báo cáo Ngày, Tháng, các báo cáo chủ đề và bản tin ngày, vì tất cả cùng đọc các ngưỡng này. | Saving here changes the Daily and Monthly reports, the thematic reports and the daily digest together, because they all read these thresholds. | — |
 | `settings.thresholds.peakHours.hint` | Số giờ bán nhiều nhất được tính là giờ cao điểm. | This many best-selling hours count as peak hours. | — |
 | `settings.thresholds.peakHours.label` | Số giờ cao điểm | Peak hours counted | — |
+| `settings.thresholds.promoPreWeeks.hint` | Hiệu quả khuyến mãi so với cùng thứ trong số tuần này trước ngày khuyến mãi đầu tiên, khi so với các tuần trước hoặc với cửa hàng không chạy chương trình. | The promotion lift compares with the same weekday in this many weeks before the first promotion day, when compared with the weeks before or with a store that did not run it. | — |
+| `settings.thresholds.promoPreWeeks.label` | Số tuần trước khuyến mãi | Weeks before a promotion | — |
 | `settings.thresholds.unit.days` | ngày | days | — |
 | `settings.thresholds.unit.hours` | giờ | hours | — |
 | `settings.thresholds.unit.items` | món | items | — |
+| `settings.thresholds.unit.weeks` | tuần | weeks | — |
 | `settings.thresholds.usingDefaults` | Đang dùng giá trị mặc định. | Using the default values. | — |
 
 ### Thiết bị này: định dạng CSV · this device's CSV format (`settings.thresholds.device.*`)

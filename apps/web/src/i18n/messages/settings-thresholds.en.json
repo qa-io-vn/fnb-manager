@@ -18,6 +18,7 @@
 	"settings.thresholds.group.cash": "Cash",
 	"settings.thresholds.group.hours": "Hours",
 	"settings.thresholds.group.menu": "Menu",
+	"settings.thresholds.group.promotions": "Promotions",
 	"settings.thresholds.menuLowSampleItems.hint": "A role with fewer items is classed for reference only.",
 	"settings.thresholds.menuLowSampleItems.label": "Fewest items per role",
 	"settings.thresholds.menuPopularityFactor.hint": "An item is popular when its share of the quantity sold reaches at least this much of an even split among the items of its role.",
@@ -27,8 +28,11 @@
 	"settings.thresholds.note": "Saving here changes the Daily and Monthly reports, the thematic reports and the daily digest together, because they all read these thresholds.",
 	"settings.thresholds.peakHours.hint": "This many best-selling hours count as peak hours.",
 	"settings.thresholds.peakHours.label": "Peak hours counted",
+	"settings.thresholds.promoPreWeeks.hint": "The promotion lift compares with the same weekday in this many weeks before the first promotion day, when compared with the weeks before or with a store that did not run it.",
+	"settings.thresholds.promoPreWeeks.label": "Weeks before a promotion",
 	"settings.thresholds.unit.days": "days",
 	"settings.thresholds.unit.hours": "hours",
 	"settings.thresholds.unit.items": "items",
+	"settings.thresholds.unit.weeks": "weeks",
 	"settings.thresholds.usingDefaults": "Using the default values."
 }

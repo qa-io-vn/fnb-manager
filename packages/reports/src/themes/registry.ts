@@ -3,6 +3,7 @@ import type { ThemeDefinition } from "./definition.js";
 import { hoursTheme } from "./hours/definition.js";
 import { menuTheme } from "./menu/definition.js";
 import { paymentsTheme } from "./payments/definition.js";
+import { promotionsTheme } from "./promotions/definition.js";
 import { revenueTheme } from "./revenue/definition.js";
 import { shiftsTheme } from "./shifts/definition.js";
 
@@ -13,6 +14,7 @@ export const themeDefinitions: Readonly<
 	hours: hoursTheme,
 	menu: menuTheme,
 	payments: paymentsTheme,
+	promotions: promotionsTheme,
 	shifts: shiftsTheme,
 };
 

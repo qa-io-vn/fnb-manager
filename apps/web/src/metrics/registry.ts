@@ -47,6 +47,8 @@ export const registryMetricIds = [
 	"gross_margin_rate",
 	"cost_coverage",
 	"payment_fee_estimate",
+	"promo_lift",
+	"promo_net_lift",
 	"shift_void_rate",
 	"shift_void_rate_zscore",
 	"removed_line_rate",

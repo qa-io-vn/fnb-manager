@@ -1,5 +1,6 @@
 export type ValueUnit =
 	| "money"
+	| "signedMoney"
 	| "count"
 	| "decimal"
 	| "ratio"
@@ -78,6 +79,7 @@ export function partValue(sentence: SentencePart): TypedValue {
 export function signedKindOf(unit: ValueUnit): NumericValueKind {
 	switch (unit) {
 		case "money":
+		case "signedMoney":
 			return "moneySigned";
 		case "count":
 			return "countSigned";
@@ -98,6 +100,8 @@ export function plainKindOf(unit: ValueUnit): NumericValueKind {
 	switch (unit) {
 		case "money":
 			return "money";
+		case "signedMoney":
+			return "moneySigned";
 		case "count":
 			return "count";
 		case "decimal":

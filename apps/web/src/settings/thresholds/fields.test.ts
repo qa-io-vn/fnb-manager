@@ -35,8 +35,8 @@ function specOf(field: ThresholdField): ThresholdSpec {
 }
 
 describe("the thresholds of the page", () => {
-	it("are every report setting except the promotion weeks of phase 10b", () => {
-		expect([...THRESHOLD_FIELDS, "promoPreWeeks"].sort()).toEqual(
+	it("are every report setting, the promotion weeks of phase 10b included", () => {
+		expect([...THRESHOLD_FIELDS].sort()).toEqual(
 			Object.keys(REPORT_SETTING_LIMITS).sort(),
 		);
 		expect(THRESHOLD_SPECS.map((spec) => spec.field)).toEqual([
@@ -54,6 +54,7 @@ describe("the thresholds of the page", () => {
 			peakHours: "3",
 			deadHourRatio: "50",
 			busyHourRatio: "125",
+			promoPreWeeks: "4",
 		});
 	});
 
@@ -72,6 +73,9 @@ describe("the thresholds of the page", () => {
 		);
 		expect(thresholdDefaultText(specOf("cashAbsThreshold"), format, null)).toBe(
 			format.formatters.moneyExact(50_000),
+		);
+		expect(thresholdDefaultText(specOf("promoPreWeeks"), format, "tuần")).toBe(
+			"4 tuần",
 		);
 	});
 });
@@ -123,17 +127,27 @@ describe("readThresholdDraft", () => {
 		expect(draft.changes).toEqual({});
 	});
 
-	it("never touches the promotion weeks of the saved row", () => {
+	it("hands back the promotion weeks only when they change, within 2 to 8 weeks", () => {
 		const saved: ReportSettings = {
 			...DEFAULT_REPORT_SETTINGS,
 			promoPreWeeks: 6,
 		};
-		const draft = readThresholdDraft(
-			saved,
-			{ ...thresholdTextsOf(saved, format), peakHours: "4" },
-			format,
-		);
-		expect(draft.changes).toEqual({ peakHours: 4 });
+		const texts = thresholdTextsOf(saved, format);
+		expect(
+			readThresholdDraft(saved, { ...texts, peakHours: "4" }, format).changes,
+		).toEqual({ peakHours: 4 });
+		expect(
+			readThresholdDraft(saved, { ...texts, promoPreWeeks: "8" }, format)
+				.changes,
+		).toEqual({ promoPreWeeks: 8 });
+		expect(
+			readThresholdDraft(saved, { ...texts, promoPreWeeks: "9" }, format)
+				.issues,
+		).toEqual({ promoPreWeeks: { key: "range", min: 2, max: 8 } });
+		expect(
+			readThresholdDraft(saved, { ...texts, promoPreWeeks: "1" }, format)
+				.issues,
+		).toEqual({ promoPreWeeks: { key: "range", min: 2, max: 8 } });
 	});
 
 	it("accepts each shown bound and refuses one step outside it, as the database does", () => {
@@ -240,6 +254,9 @@ describe("defaults and refusals", () => {
 		expect(thresholdFieldOfConstraint("menuWindowDays")).toBe("menuWindowDays");
 		expect(
 			thresholdFieldOfConstraint("report_settings_promo_pre_weeks_check"),
+		).toBe("promoPreWeeks");
+		expect(
+			thresholdFieldOfConstraint("report_settings_other_check"),
 		).toBeNull();
 		expect(thresholdFieldOfConstraint(null)).toBeNull();
 	});

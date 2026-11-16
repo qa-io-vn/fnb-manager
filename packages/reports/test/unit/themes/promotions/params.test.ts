@@ -9,7 +9,11 @@ import type { ThemeCallResults } from "../../../../src/themes/definition.js";
 import {
 	COMPARATOR_PARAM,
 	chosenPromotion,
+	comparatorOptions,
+	LIFT_CALL_KEY,
 	LIFT_CARD_ID,
+	lacksControlStore,
+	liftSummary,
 	PROMOTION_PARAM,
 	PROMOTIONS_W92_CALL_KEY,
 	parsePromotionParam,
@@ -235,14 +239,72 @@ describe("the Khuyến mãi parameters", () => {
 		});
 	});
 
-	it("take fixed options as they are and the promotion's options from the answered call only", () => {
+	it("take both parameters' options from the answered calls only", () => {
 		const comparator = spec(COMPARATOR_PARAM);
-		expect(themeParamOptions(comparator, null)).toBe(comparator.options);
+		expect(themeParamOptions(comparator, null)).toBeNull();
+		expect(themeParamOptions(comparator, resultsWith(undefined))).toBeNull();
 		const promotion = spec(PROMOTION_PARAM);
 		expect(themeParamOptions(promotion, null)).toBeNull();
 		expect(themeParamOptions(promotion, resultsWith(undefined))).toBeNull();
 		expect(
 			themeParamOptions(promotion, resultsWith(SUMMARY as never))?.[0],
 		).toMatchObject({ value: "item:KM-01" });
+	});
+});
+
+describe("the comparator options", () => {
+	function liftResults(rows: readonly unknown[] | undefined): ThemeCallResults {
+		return {
+			rows: (key: string) =>
+				key === LIFT_CALL_KEY ? (rows as never) : undefined,
+		};
+	}
+
+	const summary = (controlStores: number) => ({
+		business_date: null,
+		control_store_count: controlStores,
+	});
+
+	it("are unknown until the lift has answered, and offer every comparator while a store went without the promotion", () => {
+		const all = spec(COMPARATOR_PARAM).options;
+		expect(comparatorOptions(liftResults(undefined))).toBeNull();
+		expect(comparatorOptions(liftResults([]))).toEqual(all);
+		expect(comparatorOptions(liftResults([summary(1)]))).toEqual(all);
+		expect(lacksControlStore(liftResults([summary(1)]))).toBe(false);
+	});
+
+	it("disable the sister store with its reason when every selected store ran the promotion", () => {
+		const options = comparatorOptions(
+			liftResults([{ business_date: "2026-10-20" }, summary(0)]),
+		);
+		expect(options).toEqual([
+			{
+				value: "baseline",
+				labelKey: "theme.promotions.lift.comparator.baseline",
+			},
+			{
+				value: "prior_weeks",
+				labelKey: "theme.promotions.lift.comparator.prior_weeks",
+			},
+			{
+				value: "sister_store",
+				labelKey: "theme.promotions.lift.comparator.sister_store",
+				disabled: true,
+				reasonKey: "theme.promotions.lift.noControl",
+			},
+		]);
+		expect(
+			themeParamOptions(spec(COMPARATOR_PARAM), liftResults([summary(0)])),
+		).toEqual(options);
+	});
+
+	it("read the summary row, the one without a date", () => {
+		expect(liftSummary(undefined)).toBeNull();
+		expect(
+			liftSummary([
+				{ business_date: "2026-10-20" },
+				{ business_date: null, control_store_count: 2 },
+			] as never),
+		).toMatchObject({ control_store_count: 2 });
 	});
 });

@@ -1,5 +1,6 @@
 import {
 	COMPARATOR_PARAM,
+	LIFT_CALL_KEY,
 	PROMOTION_PARAM,
 	PROMOTIONS_W92_CALL_KEY,
 	promotionParams,
@@ -462,6 +463,79 @@ describe("the parameters of a theme card", () => {
 		);
 		await waitFor(() => expect(probed.search).toBe("?range=28d"));
 		expect(probed.navigation).toBe("REPLACE");
+	});
+
+	it("disables the sister store with its reason once the lift found no store without the promotion, and drops it from the address", async () => {
+		loaded.cards = [{ id: "lift", status: "error", retry: () => undefined }];
+		loaded.rows = {
+			[PROMOTIONS_W92_CALL_KEY]: PROMOTION_ROWS,
+			[LIFT_CALL_KEY]: [{ business_date: null, control_store_count: 0 }],
+		};
+		render(
+			<>
+				<ThemePage definition={withPromotionParams()} />
+				<AddressProbe />
+			</>,
+			{ wrapper: wrapperAt("/chu-de/thanh-toan?range=28d&cmp=sister_store") },
+		);
+		const card = screen.getByTestId("card-payments-lift");
+		const sister = within(card).getByRole("radio", {
+			name: "Cửa hàng không chạy chương trình",
+		});
+		expect(sister).toBeDisabled();
+		expect(sister).toHaveAccessibleDescription(
+			"Mọi cửa hàng đang chọn đều chạy chương trình này nên không có cửa hàng để so sánh.",
+		);
+		await waitFor(() => expect(probed.search).toBe("?range=28d"));
+		expect(probed.navigation).toBe("REPLACE");
+		expect(
+			within(screen.getByTestId("card-payments-lift")).getByRole("radio", {
+				name: "Cùng thứ các tuần trước",
+			}),
+		).toBeChecked();
+	});
+
+	it("keeps the sister store disabled while only the comparator changes and its lift loads, and offers it again for another promotion until that lift answers", async () => {
+		const user = userEvent.setup();
+		loaded.cards = [{ id: "lift", status: "error", retry: () => undefined }];
+		loaded.rows = {
+			[PROMOTIONS_W92_CALL_KEY]: PROMOTION_ROWS,
+			[LIFT_CALL_KEY]: [{ business_date: null, control_store_count: 0 }],
+		};
+		render(
+			<>
+				<ThemePage definition={withPromotionParams()} />
+				<AddressProbe />
+			</>,
+			{ wrapper: wrapperAt("/chu-de/thanh-toan?range=28d") },
+		);
+		const card = () => screen.getByTestId("card-payments-lift");
+		const sister = () =>
+			within(card()).getByRole("radio", {
+				name: "Cửa hàng không chạy chương trình",
+			});
+		expect(sister()).toBeDisabled();
+		loaded.rows = { [PROMOTIONS_W92_CALL_KEY]: PROMOTION_ROWS };
+		await user.click(
+			within(card()).getByRole("radio", {
+				name: "Các tuần trước chương trình",
+			}),
+		);
+		await waitFor(() =>
+			expect(probed.search).toBe("?range=28d&cmp=prior_weeks"),
+		);
+		expect(sister()).toBeDisabled();
+		const select = within(card()).getByRole("combobox", {
+			name: "Chương trình",
+		});
+		fireEvent.change(select, { target: { value: "bill:unnamed" } });
+		fireEvent.blur(select);
+		await waitFor(() =>
+			expect(probed.search).toBe(
+				"?range=28d&promo=bill%3Aunnamed&cmp=prior_weeks",
+			),
+		);
+		expect(sister()).toBeEnabled();
 	});
 
 	it("keeps a card's controls while it loads and gives the focus back to the control that changed", async () => {

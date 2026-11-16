@@ -199,6 +199,37 @@ test("the Thanh toán payment mix and cash trend", async ({ page }) => {
 	);
 });
 
+test("the Khuyến mãi discount cost, vouchers and promotion lift", async ({
+	page,
+}) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await openThemePage(page, "promotions", "range=28d");
+	await shootElement(
+		themeCard(page, "promotions", "discount_cost"),
+		"theme-khuyen-mai-cost",
+	);
+	await shootElement(
+		themeCard(page, "promotions", "vouchers"),
+		"theme-khuyen-mai-vouchers",
+	);
+	await shootElement(
+		themeCard(page, "promotions", "lift"),
+		"theme-khuyen-mai-lift-dash",
+	);
+	await openThemePage(
+		page,
+		"promotions",
+		`from=2026-03-03&to=2026-06-02&promo=${encodeURIComponent("bill:Giảm 5% hóa đơn")}&cmp=prior_weeks`,
+	);
+	await expect(
+		themeCard(page, "promotions", "lift").getByTestId("sentence"),
+	).toContainText("lỗ ròng");
+	await shootElement(
+		themeCard(page, "promotions", "lift"),
+		"theme-khuyen-mai-lift",
+	);
+});
+
 test("the Ca & két tiền sales, drawer and adjustments cards", async ({
 	page,
 }) => {

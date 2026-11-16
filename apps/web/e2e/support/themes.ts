@@ -7,13 +7,20 @@ import {
 	watchConsoleErrors,
 } from "./reports";
 
-export type ThemeKind = "revenue" | "hours" | "menu" | "payments" | "shifts";
+export type ThemeKind =
+	| "revenue"
+	| "hours"
+	| "menu"
+	| "payments"
+	| "promotions"
+	| "shifts";
 
 export const themeSlugs: Record<ThemeKind, string> = {
 	revenue: "doanh-thu",
 	hours: "gio-ngay",
 	menu: "thuc-don",
 	payments: "thanh-toan",
+	promotions: "khuyen-mai",
 	shifts: "ca-ket-tien",
 };
 
@@ -31,6 +38,7 @@ export const themeCardIds: Record<ThemeKind, readonly string[]> = {
 		"preferences",
 	],
 	payments: ["payment_mix", "cash_trend", "drawer", "fees"],
+	promotions: ["discount_cost", "vouchers", "lift"],
 	shifts: ["shift_sales", "drawer", "adjustments"],
 };
 

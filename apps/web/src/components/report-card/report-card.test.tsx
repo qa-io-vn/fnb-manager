@@ -145,6 +145,29 @@ describe("ReportCard", () => {
 		);
 	});
 
+	it("signs a gain in a signed money headline and keeps the minus of a loss", () => {
+		renderWithLanguage(
+			<ReportCard
+				{...props({ headline: { value: 1_250_000, kind: "signedMoney" } })}
+			/>,
+		);
+		expect(
+			screen.getByTestId("headline").textContent?.replace(/\s/g, " "),
+		).toBe("+1,3 tr ₫");
+		renderWithLanguage(
+			<ReportCard
+				{...props({ headline: { value: -914_500, kind: "signedMoney" } })}
+			/>,
+		);
+		expect(
+			screen
+				.getAllByTestId("headline")
+				.at(-1)
+				?.getAttribute("title")
+				?.replace(/\s/g, " "),
+		).toMatch(/^[-−]914\.500 ₫$/);
+	});
+
 	it("colours chips by the metric direction", () => {
 		renderWithLanguage(<ReportCard {...props()} />);
 		const chips = screen.getAllByTestId("comparison-chip");

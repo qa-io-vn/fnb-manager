@@ -58,7 +58,9 @@ test("Ngưỡng báo cáo shows every threshold with its default and refuses a v
 	await expect(field(page, "Số giờ cao điểm")).toHaveValue("3");
 	await expect(field(page, "Ngưỡng giờ thấp điểm")).toHaveValue("50");
 	await expect(field(page, "Ngưỡng giờ đông")).toHaveValue("125");
+	await expect(field(page, "Số tuần trước khuyến mãi")).toHaveValue("4");
 	await expect(thresholdsForm(page)).toContainText("Mặc định: 28 ngày.");
+	await expect(thresholdsForm(page)).toContainText("Mặc định: 4 tuần.");
 	await expect(page.getByTestId("thresholds-z-fixed")).toContainText(
 		"cố định ở mức 2",
 	);
@@ -160,7 +162,7 @@ test("a field reached with the keyboard on a phone is never hidden behind the sa
 	await openThresholds(page);
 	const fields = thresholdsForm(page).getByRole("textbox");
 	const count = await fields.count();
-	expect(count).toBe(8);
+	expect(count).toBe(9);
 	await fields.first().focus();
 	for (let index = 0; index < count; index += 1) {
 		const focused = fields.nth(index);

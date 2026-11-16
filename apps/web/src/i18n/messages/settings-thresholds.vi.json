@@ -18,6 +18,7 @@
 	"settings.thresholds.group.cash": "Tiền mặt",
 	"settings.thresholds.group.hours": "Giờ",
 	"settings.thresholds.group.menu": "Thực đơn",
+	"settings.thresholds.group.promotions": "Khuyến mãi",
 	"settings.thresholds.menuLowSampleItems.hint": "Vai trò có ít món hơn thì xếp loại chỉ để tham khảo.",
 	"settings.thresholds.menuLowSampleItems.label": "Số món tối thiểu mỗi vai trò",
 	"settings.thresholds.menuPopularityFactor.hint": "Món là bán chạy khi tỷ trọng số bán đạt ít nhất mức này so với phần chia đều giữa các món cùng vai trò.",
@@ -27,8 +28,11 @@
 	"settings.thresholds.note": "Lưu ở đây là đổi cùng lúc báo cáo Ngày, Tháng, các báo cáo chủ đề và bản tin ngày, vì tất cả cùng đọc các ngưỡng này.",
 	"settings.thresholds.peakHours.hint": "Số giờ bán nhiều nhất được tính là giờ cao điểm.",
 	"settings.thresholds.peakHours.label": "Số giờ cao điểm",
+	"settings.thresholds.promoPreWeeks.hint": "Hiệu quả khuyến mãi so với cùng thứ trong số tuần này trước ngày khuyến mãi đầu tiên, khi so với các tuần trước hoặc với cửa hàng không chạy chương trình.",
+	"settings.thresholds.promoPreWeeks.label": "Số tuần trước khuyến mãi",
 	"settings.thresholds.unit.days": "ngày",
 	"settings.thresholds.unit.hours": "giờ",
 	"settings.thresholds.unit.items": "món",
+	"settings.thresholds.unit.weeks": "tuần",
 	"settings.thresholds.usingDefaults": "Đang dùng giá trị mặc định."
 }

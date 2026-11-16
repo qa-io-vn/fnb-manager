@@ -133,6 +133,13 @@ export const routes: RouteObject[] = [
 									),
 							},
 							{
+								path: "khuyen-mai",
+								lazy: () =>
+									import("./pages/themes/khuyen-mai/khuyen-mai-page").then(
+										(module) => ({ Component: module.KhuyenMaiPage }),
+									),
+							},
+							{
 								path: "ca-ket-tien",
 								lazy: () =>
 									import("./pages/themes/ca-ket-tien/ca-ket-tien-page").then(

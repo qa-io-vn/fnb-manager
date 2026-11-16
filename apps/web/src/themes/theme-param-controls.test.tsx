@@ -209,6 +209,53 @@ describe("ThemeParamControls", () => {
 		expect(
 			screen.getByRole("radio", { name: "Cùng thứ các tuần trước" }),
 		).toBeEnabled();
+		expect(screen.queryByTestId("theme-param-reason-cmp")).toBeNull();
+	});
+
+	it("says why an option is disabled and ties the reason to that option", () => {
+		const comparator = specOf(COMPARATOR_PARAM);
+		renderWithLanguage(
+			<ThemeParamControls
+				choices={choices(
+					OPTIONS.map((option, index) =>
+						index === 2
+							? {
+									...option,
+									disabled: true,
+									reasonKey: "theme.promotions.lift.noControl",
+								}
+							: option,
+					),
+					{},
+					comparator.options.map((option) =>
+						option.value === "sister_store"
+							? {
+									...option,
+									disabled: true,
+									reasonKey: "theme.promotions.lift.noControl",
+								}
+							: option,
+					),
+				)}
+				onChange={() => undefined}
+			/>,
+		);
+		const sister = screen.getByRole("radio", {
+			name: "Cửa hàng không chạy chương trình",
+		});
+		expect(sister).toBeDisabled();
+		expect(sister).toHaveAccessibleDescription(
+			"Mọi cửa hàng đang chọn đều chạy chương trình này nên không có cửa hàng để so sánh.",
+		);
+		expect(
+			screen.getByRole("radio", { name: "Cùng thứ các tuần trước" }),
+		).not.toHaveAttribute("aria-describedby");
+		expect(screen.getByTestId("theme-param-reason-cmp")).toBeVisible();
+		expect(
+			screen.getByRole("combobox", { name: "Chương trình" }),
+		).toHaveAccessibleDescription(
+			"Mọi cửa hàng đang chọn đều chạy chương trình này nên không có cửa hàng để so sánh.",
+		);
 	});
 
 	it("disables the select while its options load and leaves it out when there is none", () => {

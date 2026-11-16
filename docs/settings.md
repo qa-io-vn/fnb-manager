@@ -99,6 +99,12 @@ The two 10b tabs of Settings → Phân loại write the override tables of the t
   In the demo the store re-ingests at once, so the banner never shows.
 - **Errors.** The save bar shows the message of `errorKey`. After a network failure a "Thử lại" button calls `retry()`, which sends the same changes again.
 
+## Ngưỡng báo cáo: the Khuyến mãi field
+
+Ngưỡng báo cáo shows the nine `report_settings` columns in four groups: Thực đơn, Tiền mặt, Giờ and, since #191, Khuyến mãi with "Số tuần trước khuyến mãi" (`promoPreWeeks`, `promo_pre_weeks`: 2 to 8 weeks, default 4). Its hint and default show like the others' ("Mặc định: 4 tuần."), a value outside 2 to 8 is refused with "Nhập giá trị từ 2 đến 8." before anything is sent, a refusal by `report_settings_promo_pre_weeks_check` is shown on the field, and "Khôi phục mặc định" sets it back to 4 with the rest. It is saved like any other threshold, through `saveReportSettings` and `useSettingsMutation`, so the cached analytics are dropped at once.
+
+Khuyến mãi's lift card reads the field through `report_settings_of` and passes it to `promotion_lift` as `pre_weeks` (the function also falls back to it when a call leaves `pre_weeks` out), so the call and the card's subtitle use one value and a saved change asks for a new lift: the `prior_weeks` comparator averages that many weeks before the first promotion day, and `sister_store` compares both the promoting and the control stores with that many weeks before. The demo engine reads the same field from the session's `DemoSettingsStore`, and the lift card names the weeks in its subtitle, so the next view shows the change in both modes.
+
 ## Queries
 
 `apps/web/src/settings/queries.ts` has one hook per read: `useMembership`, `useItemTypes`, `useReportSettings`, `useCatchUpStatus`, `useTenantProfile`, `useTenantDefaultLanguage`, `useStoreProfiles`, `useItems`, `usePaymentMethods`, `useFeeRates`, `useHolidays(year)`, `useItemCosts`, `useTargets` and `useLegalDocuments`.

@@ -2,6 +2,7 @@ import type { MetricDirection } from "../../metrics/registry";
 
 export type ValueKind =
 	| "money"
+	| "signedMoney"
 	| "count"
 	| "decimal"
 	| "ratio"

@@ -2,6 +2,8 @@ import {
 	type ThemeCallResults,
 	type ThemeContext,
 	type ThemeDefinition,
+	type ThemeParamOption,
+	type ThemeParamSpec,
 	themeKeys,
 	themeParamOptions,
 	themeParamsOfCard,
@@ -35,6 +37,32 @@ function Notice({ testId, children }: { testId: string; children: string }) {
 	);
 }
 
+interface KeptOptions {
+	readonly scope: string;
+	readonly options: readonly ThemeParamOption[];
+}
+
+export function paramOptionsScope(
+	context: ThemeContext,
+	paramId: string,
+): string {
+	const others = Object.entries(context.params)
+		.filter(([id]) => id !== paramId)
+		.sort(([left], [right]) => (left < right ? -1 : 1));
+	return JSON.stringify([
+		context.range.from,
+		context.range.to,
+		context.stores.map((store) => store.id),
+		others,
+	]);
+}
+
+function fixedOptionsOf(
+	spec: ThemeParamSpec,
+): readonly ThemeParamOption[] | null {
+	return spec.options.length > 0 ? spec.options : null;
+}
+
 function CardControls({
 	definition,
 	cardId,
@@ -51,11 +79,23 @@ function CardControls({
 	onChange: (id: string, value: string, replace: boolean) => void;
 }) {
 	const specs = themeParamsOfCard(definition.params, cardId);
-	const choices = specs.map((spec) => ({
-		spec,
-		options: themeParamOptions(spec, answered),
-		value: context.params[spec.id] ?? spec.defaultValue,
-	}));
+	const kept = useRef(new Map<string, KeptOptions>());
+	const choices = specs.map((spec) => {
+		const scope = paramOptionsScope(context, spec.id);
+		const answeredOptions = themeParamOptions(spec, answered);
+		const previous = kept.current.get(spec.id);
+		if (answeredOptions !== null) {
+			kept.current.set(spec.id, { scope, options: answeredOptions });
+		}
+		return {
+			spec,
+			options:
+				answeredOptions ??
+				(previous?.scope === scope ? previous.options : null) ??
+				fixedOptionsOf(spec),
+			value: context.params[spec.id] ?? spec.defaultValue,
+		};
+	});
 	const unoffered = choices.find(
 		(choice) =>
 			choice.spec.optionsFrom !== undefined &&

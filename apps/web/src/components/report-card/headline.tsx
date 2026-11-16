@@ -28,6 +28,11 @@ export function formatValue(
 			return compact
 				? formatters.moneyCompact(value)
 				: formatters.moneyExact(value);
+		case "signedMoney":
+			return signed(
+				compact ? formatters.moneyCompact(value) : formatters.moneyExact(value),
+				value,
+			);
 		case "count":
 			return formatters.count(value);
 		case "decimal":

@@ -27,6 +27,7 @@ const SHEETS = {
 		"theme-hours",
 		"theme-menu",
 		"theme-payments",
+		"theme-promotions",
 		"theme-shifts",
 		"settings",
 		"settings-thresholds",

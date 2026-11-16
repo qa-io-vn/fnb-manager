@@ -3,7 +3,6 @@
 	"theme.compare.previousDays": "vs the previous {days} days",
 	"theme.compare.previousWeeks": "vs the previous {weeks} weeks",
 	"theme.heat.legend": "Darker means higher, in 5 levels",
-	"theme.later.promotions": "Promotions and discounts",
 	"theme.later.quality": "Data quality",
 	"theme.later.stores": "Store comparison",
 	"theme.laterPage.body": "The {theme} topic comes in phase {phase} of the roadmap. The topics already built are in the tabs above.",

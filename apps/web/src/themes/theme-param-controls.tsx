@@ -50,6 +50,48 @@ function controlId(paramId: string): string {
 	return `theme-param-${paramId}`;
 }
 
+function reasonId(baseId: string, value: string): string {
+	return `${baseId}-reason-${encodeURIComponent(value)}`;
+}
+
+function explainedOptions(
+	options: readonly ThemeParamOption[] | null,
+): readonly (ThemeParamOption & { readonly reasonKey: string })[] {
+	return (options ?? []).flatMap((option) =>
+		option.disabled === true && option.reasonKey !== undefined
+			? [{ ...option, reasonKey: option.reasonKey }]
+			: [],
+	);
+}
+
+function DisabledReasons({
+	baseId,
+	paramId,
+	options,
+}: {
+	baseId: string;
+	paramId: string;
+	options: readonly ThemeParamOption[] | null;
+}) {
+	const t = useT();
+	const explained = explainedOptions(options);
+	if (explained.length === 0) return null;
+	return (
+		<>
+			{explained.map((option) => (
+				<p
+					key={option.value}
+					id={reasonId(baseId, option.value)}
+					className="text-xs text-ink-muted"
+					data-testid={`theme-param-reason-${paramId}`}
+				>
+					{translateKey(t, option.reasonKey)}
+				</p>
+			))}
+		</>
+	);
+}
+
 function useFocusOnMount(
 	focus: boolean,
 	element: () => HTMLElement | null | undefined,
@@ -93,6 +135,9 @@ function SelectControl({
 	);
 	useFocusOnMount(focus, () => select.current);
 	if (options !== null && options.length === 0) return null;
+	const reasons = explainedOptions(options).map((option) =>
+		reasonId(id, option.value),
+	);
 	const commit = (value: string) => {
 		if (timer.current !== null) clearTimeout(timer.current);
 		timer.current = null;
@@ -111,6 +156,7 @@ function SelectControl({
 				className={`${fieldVariants()} w-full min-w-0 max-w-full`}
 				value={options === null ? "" : draft}
 				disabled={options === null}
+				aria-describedby={reasons.length === 0 ? undefined : reasons.join(" ")}
 				onChange={(event) => {
 					const next = event.target.value;
 					setDraft(next);
@@ -137,6 +183,7 @@ function SelectControl({
 					))
 				)}
 			</select>
+			<DisabledReasons baseId={id} paramId={choice.spec.id} options={options} />
 		</div>
 	);
 }
@@ -180,12 +227,22 @@ function RadioControl({
 							className="size-5 shrink-0 accent-accent"
 							checked={shown === option.value}
 							disabled={option.disabled === true}
+							aria-describedby={
+								option.disabled === true && option.reasonKey !== undefined
+									? reasonId(name, option.value)
+									: undefined
+							}
 							onChange={() => onChange(option.value)}
 						/>
 						<span>{optionLabel(t, option)}</span>
 					</label>
 				))}
 			</div>
+			<DisabledReasons
+				baseId={name}
+				paramId={choice.spec.id}
+				options={options}
+			/>
 		</fieldset>
 	);
 }

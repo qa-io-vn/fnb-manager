@@ -14,7 +14,7 @@ describe("the theme tabs", () => {
 		expect(entries.map((entry) => entry.kind)).toEqual(THEME_ORDER);
 		expect(
 			entries.filter((entry) => entry.built).map((entry) => entry.kind),
-		).toEqual(["revenue", "hours", "menu", "payments", "shifts"]);
+		).toEqual(["revenue", "hours", "menu", "payments", "promotions", "shifts"]);
 		for (const entry of entries) {
 			expect(isMessageKey(entry.titleKey), entry.titleKey).toBe(true);
 			const definition = themeDefinitions[entry.kind];
@@ -36,7 +36,6 @@ describe("the theme tabs", () => {
 	it("give the themes of 10b still to come their slugs and never shorten a range on the way to one", () => {
 		const later = themeTabEntries().filter((entry) => !entry.built);
 		expect(later.map((entry) => [entry.slug, entry.maxRangeDays])).toEqual([
-			["khuyen-mai", MAX_THEME_RANGE_DAYS],
 			["so-sanh", MAX_THEME_RANGE_DAYS],
 			["chat-luong", MAX_THEME_RANGE_DAYS],
 		]);
@@ -46,6 +45,7 @@ describe("the theme tabs", () => {
 		expect(laterThemeOfSlug("so-sanh")?.kind).toBe("stores");
 		expect(laterThemeOfSlug("ca-ket-tien")).toBeNull();
 		expect(laterThemeOfSlug("doanh-thu")).toBeNull();
+		expect(laterThemeOfSlug("khuyen-mai")).toBeNull();
 		expect(laterThemeOfSlug("khong-co")).toBeNull();
 		expect(laterThemeOfSlug(undefined)).toBeNull();
 	});
