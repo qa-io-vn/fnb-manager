@@ -55,7 +55,7 @@ The navigation sits at the bottom on a phone and on the left on a wide screen.
 | Báo cáo | Reports | Ngày, Tuần, Tháng, Năm | verified locally |
 | Chủ đề | Topics | thematic reports: Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt | verified locally |
 | Kế hoạch | Plans | saved strategy plans | "Sắp có" |
-| Cài đặt | Settings | Phân loại (item-type roles) and Ngưỡng báo cáo (the report thresholds and this device's CSV format); the other settings pages say which phase brings them | Phân loại and Ngưỡng báo cáo verified locally; the other pages planned |
+| Cài đặt | Settings | Cửa hàng (the business and store profiles), Phân loại (item-type roles) and Ngưỡng báo cáo (the report thresholds and this device's CSV format); the other settings pages say which phase brings them | Phân loại and Ngưỡng báo cáo verified locally; Cửa hàng built; the other pages planned |
 
 - A page that is not built yet says "Sắp có" and names the roadmap phase that brings it ("Dự kiến ở giai đoạn … của lộ trình.").
 - The top bar holds the language switch (**VI** / **EN**), "Đăng xuất", the store choice and the freshness badge. On a phone the store choice folds into one summary button; tap it to open.
@@ -348,7 +348,23 @@ The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08
 
 ## Cài đặt (Settings)
 
-"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. Two pages are open today, **Phân loại** (its item-type roles) and **Ngưỡng báo cáo**; Cửa hàng, Dữ liệu nhập tay, Ngày lễ and Pháp lý each say which roadmap phase brings them.
+"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. Three pages are open today, **Cửa hàng**, **Phân loại** (its item-type roles) and **Ngưỡng báo cáo**; Dữ liệu nhập tay, Ngày lễ and Pháp lý each say which roadmap phase brings them.
+
+### Cửa hàng (Stores)
+
+![Cửa hàng on a computer: one store's block with the facts from the POS marked "lấy từ POS", its code, opening date, opening hours, seats, e-invoice status, receipt numbering and member features, and its save bar](user-guide/settings-cua-hang.png)
+
+Settings open on this page. It holds the facts of your business and of each store that the reports, alerts and compliance checks rely on.
+
+- **Doanh nghiệp** (Business): the **Loại hình pháp lý** (household business, micro-enterprise, small enterprise, other enterprise, or not yet known), which decides whether storing customer data on servers abroad needs a dossier, and the **Ngôn ngữ mặc định** (Tiếng Việt or English). A member who has never pressed VI or EN on a device opens the app in the default language; once they press it, that device keeps their choice. If you have never pressed VI or EN yourself, saving English as the default switches your own screen to English at once; press VI to keep Vietnamese on your device. Only an owner who sees every store can change this block.
+- **One block per store you can see.** The name, address, time zone and the hour the business day starts are marked "lấy từ POS": they come from the POS and cannot be changed here. You can set:
+  - **Mã cửa hàng**: up to 12 characters, different from the other stores' codes; it appears in labels and in the cost CSV. Leave it empty for no code.
+  - **Ngày khai trương**: lines up comparisons since opening.
+  - **Giờ mở cửa**: per weekday, closed or up to three spans (a store whose hours were never entered says so above the days, which all start as closed); a span closing at or before its opening runs past midnight, and "Chép sang các ngày khác" copies a day. Saving the hours changes Giờ & ngày, the opening-hour figures of Hôm nay, when the sync runs during the day and when the digest is sent. Only an owner of the store can change them; a manager sees them with a note saying why.
+  - **Số ghế**: RevPASH (revenue per seat per hour) appears on Giờ & ngày once it is set.
+  - **Hóa đơn điện tử** (not known, not registered, registered, turned off), **Đánh số hóa đơn** (every day, every year, never, not known) and **Tính năng thành viên trên POS** (not known, on, off). Under Đánh số hóa đơn the page says what the receipt numbers of the last months suggest, once at least 20 days have numeric receipt numbers; "Dùng gợi ý" fills it in when they restart every day. The demo's receipt numbers are not plain numbers, so the demo shows no suggestion.
+- Each block has its own save bar: **Lưu** saves only what you changed in that block, and the line under it says when it last changed and who changed it ("Bạn", or the role). A code another store already uses is refused with "Không lưu được: mã này đã dùng cho một cửa hàng khác của chuỗi.", and an unfinished time span keeps Lưu unavailable.
+- Owners and managers of a store can change its block; other members see every value with a note saying why not. In the demo a change lasts until the page is reloaded.
 
 ### Phân loại (Classification)
 
@@ -433,7 +449,7 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
 - **More thematic reports** ("Chủ đề", phase 10): Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu. Doanh thu, Giờ & ngày, Thực đơn and Thanh toán are already there (see above).
-- **More settings and manual data** ("Cài đặt", phase 10): Phân loại (item-type roles) and Ngưỡng báo cáo are open (see above). Item categories and payment kinds (the other two tabs of Phân loại) come next, then the store profile, opening hours, seat counts, item costs, monthly targets, payment fees, holidays and legal texts. Target progress waits for a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
+- **More settings and manual data** ("Cài đặt", phase 10): Phân loại (item-type roles) and Ngưỡng báo cáo are open (see above). Cửa hàng (the store profile, opening hours and seat counts) is open too. Item categories and payment kinds (the other two tabs of Phân loại) come next, then item costs, monthly targets, payment fees, holidays and legal texts. Target progress waits for a monthly target. Later reports use item costs for margins and seat counts for revenue per seat-hour. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
 - **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).
 

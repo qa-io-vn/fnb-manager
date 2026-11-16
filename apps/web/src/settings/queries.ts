@@ -13,6 +13,7 @@ export type SettingsRead =
 	| "reportSettings"
 	| "catchUp"
 	| "tenantProfile"
+	| "defaultLanguage"
 	| "storeProfiles"
 	| "items"
 	| "paymentMethods"
@@ -101,6 +102,12 @@ export function useReportSettings() {
 export function useTenantProfile() {
 	return useSettingsRead("tenantProfile", (source, tenantId) =>
 		source.tenantProfile(tenantId),
+	);
+}
+
+export function useTenantDefaultLanguage() {
+	return useSettingsRead("defaultLanguage", (source, tenantId) =>
+		source.defaultLanguage(tenantId),
 	);
 }
 

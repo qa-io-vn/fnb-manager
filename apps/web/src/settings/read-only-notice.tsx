@@ -10,17 +10,36 @@ const REASON_KEYS: Readonly<Record<ReadOnlyReason, MessageKey>> = {
 	unavailable: "settings.readOnly.unavailable",
 };
 
-export function ReadOnlyNotice({ access }: { access: SettingsAccess }) {
+export type ReasonMessages = Readonly<
+	Partial<Record<ReadOnlyReason, MessageKey>>
+>;
+
+export function readOnlyReasonKey(
+	reason: ReadOnlyReason,
+	messages: ReasonMessages = {},
+): MessageKey {
+	return messages[reason] ?? REASON_KEYS[reason];
+}
+
+export function ReadOnlyNotice({
+	access,
+	messages,
+	testId = "settings-read-only",
+}: {
+	access: SettingsAccess;
+	messages?: ReasonMessages;
+	testId?: string;
+}) {
 	const t = useT();
 	if (access.canWrite || access.reason === null) return null;
 	return (
 		<p
 			role="note"
 			className="rounded-lg border border-line bg-surface-sunken px-3 py-2 text-sm"
-			data-testid="settings-read-only"
+			data-testid={testId}
 			data-reason={access.reason}
 		>
-			{t(REASON_KEYS[access.reason])}
+			{t(readOnlyReasonKey(access.reason, messages))}
 		</p>
 	);
 }

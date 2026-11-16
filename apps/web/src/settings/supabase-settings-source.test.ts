@@ -716,6 +716,18 @@ describe("the Supabase settings source's 10b areas", () => {
 		expect(called(update, "eq")).toEqual([["id", TENANT]]);
 	});
 
+	it("reads the default language alone, without the audit's member and user reads", async () => {
+		const { client, log } = fakeClient(
+			() => ({ data: [{ default_language: "en" }], error: null }),
+			false,
+		);
+		const source = createSupabaseSettingsSource(client);
+		expect(await source.defaultLanguage(TENANT)).toBe("en");
+		expect(log.map((entry) => entry.table)).toEqual(["tenants"]);
+		expect(called(log[0], "select")).toEqual([["default_language"]]);
+		expect(called(log[0], "eq")).toEqual([["id", TENANT]]);
+	});
+
 	it("refuses an update that row-level security answered with no row", async () => {
 		const { client } = fakeClient(
 			(recorded) => membersAnswer(recorded) ?? { data: [], error: null },

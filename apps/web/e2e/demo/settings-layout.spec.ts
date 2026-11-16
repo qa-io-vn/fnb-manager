@@ -22,7 +22,8 @@ test("Cài đặt opens Cửa hàng with the sub-navigation and the demo note", 
 	await expect(page.getByTestId("settings-demo-note")).toContainText(
 		"chỉ giữ trong phiên này",
 	);
-	await expect(page.getByTestId("settings-placeholder")).toContainText("10b");
+	await expect(page.getByTestId("store-page")).toBeVisible();
+	await expect(page.getByTestId("settings-placeholder")).toHaveCount(0);
 	await expect(page.getByTestId("period-picker")).toHaveCount(0);
 	expectNoConsoleErrors(page);
 });
@@ -74,8 +75,6 @@ test("Cài đặt passes axe, fits 360 px and reads in English without raw keys"
 	await expectCurrentSettingsPage(page, "Stores");
 	const text = (await page.locator("main").textContent()) ?? "";
 	expect(RAW_KEY.test(text)).toBe(false);
-	await expect(page.getByTestId("settings-placeholder")).toContainText(
-		"phase 10b",
-	);
+	await expect(page.getByTestId("tenant-profile")).toContainText("Legal form");
 	await page.getByRole("button", { name: "VI", exact: true }).click();
 });

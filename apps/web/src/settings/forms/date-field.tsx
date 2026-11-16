@@ -21,6 +21,7 @@ export interface DateFieldProps extends Omit<FieldProps, "children"> {
 	readonly onChange: (text: string) => void;
 	readonly onBlur?: () => void;
 	readonly today: IsoDate;
+	readonly bounds?: { readonly min: IsoDate; readonly max: IsoDate };
 	readonly testId?: string;
 }
 
@@ -29,10 +30,10 @@ export function DateField({
 	onChange,
 	onBlur,
 	today,
+	bounds = dateBounds(today),
 	testId,
 	...field
 }: DateFieldProps) {
-	const bounds = dateBounds(today);
 	return (
 		<Field {...field}>
 			{(control) => (

@@ -18,7 +18,7 @@ Reads return rows with their audit entry (`AuditEntry`: when, and "you", a membe
 | Area | Reads | Writes | Table and key |
 |---|---|---|---|
 | Membership | `membership` | — | `tenant_members` |
-| Tenant profile | `tenantProfile` (legal form, default language) | `updateTenantProfile` | `tenants`, update of `legal_form` and `default_language` |
+| Tenant profile | `tenantProfile` (legal form, default language), `defaultLanguage` (that column alone, for the shell) | `updateTenantProfile` | `tenants`, update of `legal_form` and `default_language` |
 | Store profiles | `storeProfiles` (the POS facts and the seven profile columns) | `updateStoreProfile` (only the columns given) | `stores`, update of the profile columns |
 | Item-type roles | `itemTypes` | `saveRoles` | `item_type_roles` on `pos_account_id, item_type_external_id` |
 | Items and categories | `items` (the POS category and the override; an override whose item the catalogue lacks is listed with `inCatalogue: false`, so it can be cleared) | `saveCategoryOverrides` (a null type deletes the override) | `item_category_overrides` on `pos_account_id, item_external_id` |
@@ -82,7 +82,7 @@ Pages call writes only through `useSettingsMutation(write, options)`. The `write
 
 ## Queries
 
-`apps/web/src/settings/queries.ts` has one hook per read: `useMembership`, `useItemTypes`, `useReportSettings`, `useCatchUpStatus`, `useTenantProfile`, `useStoreProfiles`, `useItems`, `usePaymentMethods`, `useFeeRates`, `useHolidays(year)`, `useItemCosts`, `useTargets` and `useLegalDocuments`.
+`apps/web/src/settings/queries.ts` has one hook per read: `useMembership`, `useItemTypes`, `useReportSettings`, `useCatchUpStatus`, `useTenantProfile`, `useTenantDefaultLanguage`, `useStoreProfiles`, `useItems`, `usePaymentMethods`, `useFeeRates`, `useHolidays(year)`, `useItemCosts`, `useTargets` and `useLegalDocuments`.
 
 Their keys are `["settings", sourceKind, tenantId, area, ...parts]`, with the year as a part for holidays. So `invalidateSettings(queryClient, tenantId)` drops every settings read of the tenant at once.
 
@@ -93,6 +93,32 @@ Their keys are `["settings", sourceKind, tenantId, area, ...parts]`, with the ye
 - **Audit line.** It shows "you" with the time of the session's last save that changed that row. Rows from the demo's defaults have none, and a save that changes nothing stamps nothing, as the profile triggers do live.
 - **Legal texts.** Publication and retirement follow the database's functions. Publishing a draft retires the text it replaces, and a published or retired text is never edited or deleted.
 
+## The Cửa hàng page
+
+`#/cai-dat/cua-hang`, the page the settings open on (`src/pages/settings/cua-hang-page.tsx`, forms in `src/settings/store/`).
+
+- **The business block** holds the legal form (household business, micro-enterprise, small enterprise, other enterprise, not yet known; one dated line says it decides the dossier for transferring personal data abroad, ADR-019) and the default language (Tiếng Việt or English).
+- **One block per store** the member can see. The name, address, time zone and business-day start are text marked "lấy từ POS", with no control: the master-data sync overwrites the first three, and the day start fixes the business date of every sale. The block edits the store code, the opening date, the opening hours, the seats, the e-invoice status, the receipt numbering and the member feature on the POS. Under the receipt numbering the page names what `data_quality_summary` suggests (`receipt_restarts_daily`): whether at least 90 % of the days with numeric receipt numbers, over the 120 days up to the last complete day, start at 3 or below. It needs at least 20 such days and shows nothing otherwise; "Dùng gợi ý" appears when they restart daily and stays, unavailable, once applied. The demo's receipt numbers are not numeric (`HD…`), so the demo never shows a suggestion; the live check of `e2e:live/settings` shows it on the fixture tenant.
+- Each block has its own save bar and audit line, and sends only the fields that changed. A store whose opening hours were never entered (null) says so above the days, which the editor shows as closed. A line under the opening hours says that saving them changes Giờ & ngày, Hôm nay's opening-hour figures, the incremental sync's schedule and the digest's time.
+
+### Who may change what
+
+| Block | May save | Everyone else |
+|---|---|---|
+| Business | an owner with an unlimited scope (`useSettingsAccess("tenantProfile")`) | reads it with `settings.store.tenant.readOnly` |
+| Store, except the opening hours | an owner or manager with the store in scope (`useSettingsAccess("storeProfile", storeId)`) | reads it with `settings.store.readOnly.role` or `.scope` |
+| Opening hours of a store | an owner with the store in scope (`useSettingsAccess("openingHours", storeId)`) | a manager reads them with `settings.store.hours.readOnly`; the rest of the block stays editable |
+
+Row-level security and `app.stamp_store_profile` decide regardless: a refused hours change shows `settings.store.hours.ownerOnly`, a code another store uses `settings.store.code.duplicate` (also under the code field), and invalid hours `settings.store.hours.invalid`.
+
+### Checks before a save
+
+`src/settings/validation.ts`: `storeCode` (at most 12 characters once trimmed; an empty code is saved as none), `seatCount` (whole seats from 0 to 5,000; empty is unknown), `openingDate` (from 2000-01-01, so an older store can record its opening, to the end of next year) and the opening-hours editor's own check of each span. A change with a problem keeps the save bar's "Lưu" unavailable.
+
+### The default language
+
+`PreferencesProvider` keeps the device's language in storage only once the member chose it with the toggle, marked `languageChosen: true`. A Vietnamese an earlier version stored without that marker counts as not chosen (it was saved with every other preference), while an unmarked English is kept, since only the toggle could have stored it. Until a language is chosen, `TenantDefaultLanguage`, mounted in the shell, reads `defaultLanguage` (the column `tenants.default_language` alone, without the audit's member reads) and applies it through `adoptDefaultLanguage`, so a new session opens in the tenant's language and the toggle still wins on that device. It follows the tenant's language while the session runs too: an owner who never chose a language sees the app switch as soon as they save another default.
+
 ## Tests
 
 | Test | What it proves |
@@ -101,4 +127,8 @@ Their keys are `["settings", sourceKind, tenantId, area, ...parts]`, with the ye
 | `web:settings/demo-settings-source`, `web:settings/manual/demo-manual-source` | a round trip for every method on the demo store, the audit stamps, the legal lifecycle and the same refusals |
 | `web:settings/use-settings-mutation` | every error message, the owner-only hours message only when the hours changed, the retry, invalidation only after a success |
 | `web:settings/queries`, `web:settings/settings-source-context` | each read goes to its source with its key; both sources load together |
+| `web:pages/settings/cua-hang-page`, `web:settings/store/store-fields` | the POS facts without a control, a round trip of every profile field and of the tenant block on the demo store, the audit line, the limits of code, seats, opening date and spans, the messages of `42501`, `23505`, `23514` and a lost connection, the read-only states of a manager, a store-limited owner, staff and a viewer, the receipt-numbering suggestion |
+| `web:state/preferences`, `web:settings/tenant-default-language` | the tenant's default language only without a chosen one (an earlier version's unmarked Vietnamese included), the toggle winning and being stored as chosen |
+| `e2e:demo/settings-cua-hang` | the page without a receipt suggestion, an incomplete span and a duplicate code refused, hours and seats saved for the young store bringing RevPASH to Giờ & ngày after an in-app navigation, a saved default language switching the session and the toggle winning, axe at 360 and 1280 px |
+| `e2e:live/settings` | on the fixture tenant: the owner's profile save through row-level security with its audit line and the data's suggestion, the duplicate code, a manager's read-only hours and the owner's role in the audit line, a store-limited manager's one store, and a new session opening in the tenant's English |
 | `e2e:live/settings-manual` | on the fixture tenant of #103, through PostgREST: the tenant-wide cost key, one statement per save, fee rates, the store-limited manager's scope, the store code, the opening hours and span refusals, the tenant profile, both override kinds, holidays and the legal lifecycle |

@@ -160,7 +160,7 @@ test("placeholder pages say what is coming and in which phase", async ({
 	}
 });
 
-test("Cài đặt opens its layout on the seeded stack with the phase of each placeholder", async ({
+test("Cài đặt opens Cửa hàng on the seeded stack, and a page still to come names its phase", async ({
 	page,
 }) => {
 	await signIn(page);
@@ -169,9 +169,12 @@ test("Cài đặt opens its layout on the seeded stack with the phase of each pl
 	await expect(
 		page.getByRole("heading", { level: 1, name: "Cài đặt" }),
 	).toBeVisible();
-	await expect(page.getByTestId("settings-placeholder")).toContainText("10b");
+	await expect(page.getByTestId("store-profile").first()).toBeVisible();
+	await expect(page.getByTestId("settings-placeholder")).toHaveCount(0);
 	await expect(page.getByTestId("settings-demo-note")).toHaveCount(0);
 	await checkPage(page);
+	await page.goto("/#/cai-dat/phap-ly");
+	await expect(page.getByTestId("settings-placeholder")).toContainText("10b");
 });
 
 test("Ngưỡng báo cáo reads the seeded thresholds through the database's own rules, without writing", async ({

@@ -23,8 +23,8 @@ export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
 		slug: "cua-hang",
 		titleKey: "settings.page.store",
 		phase: "10b",
-		status: "planned",
-		load: null,
+		status: "built",
+		load: () => import("../pages/settings/cua-hang-page"),
 	},
 	{
 		id: "manualData",

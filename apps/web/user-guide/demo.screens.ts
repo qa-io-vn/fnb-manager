@@ -213,6 +213,17 @@ test("Cài đặt: Ngưỡng báo cáo and the choice kept on this device", asyn
 	);
 });
 
+test("Cài đặt: Cửa hàng with a store's POS facts and its own settings", async ({
+	page,
+}) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await page.goto("/#/cai-dat/cua-hang");
+	const store = page.getByTestId("store-profile").first();
+	await expect(store.getByTestId("store-pos-facts")).toBeVisible();
+	await expect(page.getByTestId("tenant-profile")).toBeVisible();
+	await shootElement(store, "settings-cua-hang");
+});
+
 test("Cài đặt: Phân loại with a suggestion for an unassigned item type", async ({
 	page,
 }) => {

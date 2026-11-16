@@ -14,6 +14,7 @@ import {
 	type PaymentKindOverride,
 } from "@fnb/demo-analytics";
 import { isDefaultReportSettings } from "@fnb/reports";
+import type { Language } from "../i18n";
 import {
 	byKeys,
 	demoAuditOf,
@@ -171,6 +172,10 @@ export function createDemoSettingsSource(
 
 		async tenantProfile(): Promise<TenantProfile> {
 			return tenantProfileOf(store);
+		},
+
+		async defaultLanguage(): Promise<Language> {
+			return store.tenantProfile().defaultLanguage;
 		},
 
 		async updateTenantProfile(_tenantId, change): Promise<TenantProfile> {

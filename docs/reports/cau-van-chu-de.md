@@ -1,6 +1,6 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt) and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo, Phân loại and the catch-up banner). It lists every Vietnamese template these pages use (509 entries, 163 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt) and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo, Phân loại and the catch-up banner). It lists every Vietnamese template these pages use (510 entries, 164 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
 The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
@@ -62,7 +62,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{items}` | 3 | `theme.menu.margins.rate` |
 | `{level}` | 1 | `theme.menu.preferences.caption` |
 | `{lift}` | 1 | `theme.menu.pairs.main` |
-| `{max}` | 3 | `settings.validation.atMost` |
+| `{max}` | 4 | `settings.validation.atMost` |
 | `{method}` | 1 | `theme.payments.fees.costliest` |
 | `{min}` | 3 | `settings.validation.atLeast` |
 | `{minimum}` | 5 | `theme.menu.matrix.lowSample` |
@@ -728,7 +728,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `theme.payments.table.previousShare` | Tỷ trọng kỳ trước | Previous share | — |
 | `theme.payments.table.weekFrom` | Tuần từ | Week from | — |
 
-## Cài đặt: phần dùng chung · Settings, shared parts (`settings.vi.json`, 89 mục)
+## Cài đặt: phần dùng chung · Settings, shared parts (`settings.vi.json`, 90 mục)
 
 ### Chung · general (`settings.*`)
 
@@ -827,6 +827,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `settings.validation.openingHours` | Giờ mở cửa chưa đúng dạng; kiểm tra lại từng khung giờ. | The opening hours are not in the expected shape; check each span. | — |
 | `settings.validation.range` | Nhập giá trị từ {min} đến {max}. | Enter a value from {min} to {max}. | `{min}` `{max}` |
 | `settings.validation.required` | Ô này không được để trống. | This field cannot be empty. | — |
+| `settings.validation.textLength` | Nhập tối đa {max} ký tự. | Use at most {max} characters. | `{max}` |
 | `settings.validation.time` | Nhập giờ dạng giờ:phút, ví dụ 07:00. | Enter a time as hours:minutes, for example 07:00. | — |
 | `settings.validation.wholeMoney` | Nhập số tiền chẵn đồng, không có phần lẻ. | Enter a whole amount, without a fraction. | — |
 

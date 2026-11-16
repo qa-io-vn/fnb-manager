@@ -23,6 +23,7 @@ export const VALIDATION_KEYS = [
 	"time",
 	"openingHours",
 	"choice",
+	"textLength",
 ] as const;
 
 export type ValidationKey = (typeof VALIDATION_KEYS)[number];
@@ -43,6 +44,7 @@ export const VALIDATION_MESSAGE_KEYS: Readonly<
 	time: "settings.validation.time",
 	openingHours: "settings.validation.openingHours",
 	choice: "settings.validation.choice",
+	textLength: "settings.validation.textLength",
 };
 
 export interface ValidationIssue {
@@ -158,8 +160,43 @@ export function dateBounds(today: IsoDate): { min: IsoDate; max: IsoDate } {
 	return { min: FIRST_BUSINESS_DATE, max: `${nextYear}-12-31` };
 }
 
+export const FIRST_OPENING_DATE: IsoDate = "2000-01-01";
+
+export function openingDateBounds(today: IsoDate): {
+	min: IsoDate;
+	max: IsoDate;
+} {
+	return { min: FIRST_OPENING_DATE, max: dateBounds(today).max };
+}
+
 export function businessDate(today: IsoDate) {
-	const bounds = dateBounds(today);
+	return dateWithin(dateBounds(today));
+}
+
+export function openingDate(today: IsoDate) {
+	return dateWithin(openingDateBounds(today));
+}
+
+export const STORE_CODE_MAX_LENGTH = 12;
+
+export const SEAT_COUNT_MAX = 5_000;
+
+export const seatCount = integerInRange(0, SEAT_COUNT_MAX);
+
+export const storeCode = z
+	.string({ error: "textLength" satisfies ValidationKey })
+	.superRefine((value, ctx) => {
+		if ([...value.trim()].length > STORE_CODE_MAX_LENGTH) {
+			raise(ctx, { key: "textLength", max: STORE_CODE_MAX_LENGTH });
+		}
+	});
+
+export function storeCodeValueOf(text: string): string | null {
+	const trimmed = text.trim();
+	return trimmed === "" ? null : trimmed;
+}
+
+function dateWithin(bounds: { min: IsoDate; max: IsoDate }) {
 	return z
 		.string({ error: "date" satisfies ValidationKey })
 		.superRefine((value, ctx) => {

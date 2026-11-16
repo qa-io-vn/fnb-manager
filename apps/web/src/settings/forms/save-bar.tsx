@@ -16,9 +16,10 @@ export interface SaveBarProps {
 	readonly onSave: () => void;
 	readonly onCancel: () => void;
 	readonly status?: SaveBarStatus | null;
+	readonly label?: string;
 }
 
-const UNAVAILABLE_CLASS =
+export const UNAVAILABLE_CLASS =
 	"aria-disabled:cursor-not-allowed aria-disabled:border aria-disabled:border-line aria-disabled:bg-surface-sunken aria-disabled:text-ink-muted";
 
 const TONE_CLASSES: Readonly<Record<SaveBarTone, string>> = {
@@ -34,6 +35,7 @@ export function SaveBar({
 	onSave,
 	onCancel,
 	status,
+	label,
 }: SaveBarProps) {
 	const t = useT();
 	const hasChanges = pendingCount > 0;
@@ -51,7 +53,7 @@ export function SaveBar({
 		: t("settings.saveBar.none");
 	return (
 		<section
-			aria-label={t("settings.saveBar.label")}
+			aria-label={label ?? t("settings.saveBar.label")}
 			className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-surface-raised p-2 shadow-sm lg:bottom-2 print:hidden"
 			data-testid="settings-save-bar"
 			data-sticky-save-bar=""

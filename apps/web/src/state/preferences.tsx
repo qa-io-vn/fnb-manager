@@ -18,6 +18,7 @@ const DEFAULT_TIME_ZONE = "Asia/Ho_Chi_Minh";
 
 export interface Preferences {
 	language: Language;
+	languageChosen: boolean;
 	tenantId: string | null;
 	storeIds: string[] | null;
 	period: Period;
@@ -34,6 +35,7 @@ export function defaultPreferences(now: Date = new Date()): Preferences {
 	const today = localToday(now);
 	return {
 		language: "vi",
+		languageChosen: false,
 		tenantId: null,
 		storeIds: null,
 		period: defaultPeriod(today),
@@ -49,13 +51,29 @@ function isStringArray(value: unknown): value is string[] {
 	);
 }
 
+const LANGUAGE_SAVED_WITHOUT_CHOICE: Language = "vi";
+
+export function chosenLanguageOf(
+	stored: Readonly<Record<string, unknown>>,
+): Language | null {
+	if (!isLanguage(stored.language)) return null;
+	if (stored.languageChosen === true) return stored.language;
+	return stored.language === LANGUAGE_SAVED_WITHOUT_CHOICE
+		? null
+		: stored.language;
+}
+
 export function parsePreferences(
 	value: unknown,
 ): Partial<Preferences> | undefined {
 	if (typeof value !== "object" || value === null) return undefined;
 	const stored = value as Record<string, unknown>;
 	const parsed: Partial<Preferences> = {};
-	if (isLanguage(stored.language)) parsed.language = stored.language;
+	const chosen = chosenLanguageOf(stored);
+	if (chosen !== null) {
+		parsed.language = chosen;
+		parsed.languageChosen = true;
+	}
 	if (typeof stored.tenantId === "string") parsed.tenantId = stored.tenantId;
 	if (stored.storeIds === null || isStringArray(stored.storeIds)) {
 		parsed.storeIds = stored.storeIds;
@@ -86,6 +104,23 @@ export function reanchoredToday(
 	};
 }
 
+export function storedPreferencesOf(
+	preferences: Preferences,
+): Record<string, unknown> {
+	const { language, languageChosen, ...rest } = preferences;
+	return languageChosen ? { ...rest, language, languageChosen } : rest;
+}
+
+export function withDefaultLanguage(
+	preferences: Preferences,
+	language: Language,
+): Preferences {
+	if (preferences.languageChosen || preferences.language === language) {
+		return preferences;
+	}
+	return { ...preferences, language };
+}
+
 export function loadPreferences(now: Date = new Date()): Preferences {
 	return reanchoredToday(
 		{
@@ -100,6 +135,7 @@ export function loadPreferences(now: Date = new Date()): Preferences {
 interface PreferencesContextValue {
 	preferences: Preferences;
 	update: (change: Partial<Preferences>) => void;
+	adoptDefaultLanguage: (language: Language) => void;
 }
 
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
@@ -119,13 +155,20 @@ export function PreferencesProvider({
 			const next = {
 				...previous,
 				...change,
+				...(change.language ? { languageChosen: true } : {}),
 				...(change.period ? { periodSetOn: localToday(new Date()) } : {}),
 			};
-			writeStoredJson(PREFERENCES_KEY, next);
+			writeStoredJson(PREFERENCES_KEY, storedPreferencesOf(next));
 			return next;
 		});
 	}, []);
-	const value = useMemo(() => ({ preferences, update }), [preferences, update]);
+	const adoptDefaultLanguage = useCallback((language: Language) => {
+		setPreferences((previous) => withDefaultLanguage(previous, language));
+	}, []);
+	const value = useMemo(
+		() => ({ preferences, update, adoptDefaultLanguage }),
+		[preferences, update, adoptDefaultLanguage],
+	);
 	return (
 		<PreferencesContext.Provider value={value}>
 			{children}

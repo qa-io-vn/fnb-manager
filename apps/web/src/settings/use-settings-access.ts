@@ -5,7 +5,10 @@ import {
 } from "./access";
 import { useMembership } from "./queries";
 
-export function useSettingsAccess(area: SettingsArea): SettingsAccess {
+export function useSettingsAccess(
+	area: SettingsArea,
+	storeId: string | null = null,
+): SettingsAccess {
 	const membership = useMembership();
 	if (membership.status === "error") {
 		return { canWrite: false, reason: "unavailable" };
@@ -13,5 +16,6 @@ export function useSettingsAccess(area: SettingsArea): SettingsAccess {
 	return settingsAccess(
 		area,
 		membership.status === "success" ? membership.data : undefined,
+		storeId,
 	);
 }

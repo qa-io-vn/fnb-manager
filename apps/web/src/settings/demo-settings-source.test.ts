@@ -164,9 +164,11 @@ describe("the demo settings source's 10b areas", () => {
 			defaultLanguage: "vi",
 			audit: null,
 		});
+		expect(await source.defaultLanguage(TENANT)).toBe("vi");
 		const saved = await source.updateTenantProfile(TENANT, {
 			defaultLanguage: "en",
 		});
+		expect(await source.defaultLanguage(TENANT)).toBe("en");
 		expect(saved).toMatchObject({
 			legalForm: "household_business",
 			defaultLanguage: "en",

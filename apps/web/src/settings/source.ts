@@ -195,6 +195,7 @@ export interface SettingsSource {
 	readonly kind: "supabase" | "demo";
 	membership(tenantId: string): Promise<Membership | null>;
 	tenantProfile(tenantId: string): Promise<TenantProfile>;
+	defaultLanguage(tenantId: string): Promise<Language>;
 	updateTenantProfile(
 		tenantId: string,
 		change: TenantProfileChange,

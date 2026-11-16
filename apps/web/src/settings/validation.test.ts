@@ -11,11 +11,18 @@ import {
 	issueOf,
 	issuesByField,
 	money,
+	openingDate,
+	openingDateBounds,
 	openingHoursSchema,
 	openingTime,
 	PERCENT_LIMIT,
 	percentage,
 	reportSettingsSchema,
+	SEAT_COUNT_MAX,
+	STORE_CODE_MAX_LENGTH,
+	seatCount,
+	storeCode,
+	storeCodeValueOf,
 	VALIDATION_KEYS,
 	VALIDATION_MESSAGE_KEYS,
 	WHOLE_MONEY_MAX,
@@ -142,6 +149,66 @@ describe("businessDate", () => {
 		expect(issueOf(schema, "2026-02-30")).toEqual({ key: "date" });
 		expect(issueOf(schema, "15/11/2026")).toEqual({ key: "date" });
 		expect(issueOf(schema, 20261115)).toEqual({ key: "date" });
+	});
+});
+
+describe("openingDate", () => {
+	const today = "2026-11-16";
+
+	it("runs from 2000-01-01 to the end of next year, so an older store can record its opening", () => {
+		expect(openingDateBounds(today)).toEqual({
+			min: "2000-01-01",
+			max: "2027-12-31",
+		});
+		expect(issueOf(openingDate(today), "2000-01-01")).toBeNull();
+		expect(issueOf(openingDate(today), "2018-05-20")).toBeNull();
+		expect(issueOf(openingDate(today), "2027-12-31")).toBeNull();
+		expect(issueOf(openingDate(today), "1999-12-31")).toEqual({
+			key: "dateRange",
+			min: "2000-01-01",
+			max: "2027-12-31",
+		});
+		expect(issueOf(openingDate(today), "2026-02-30")).toEqual({
+			key: "date",
+		});
+	});
+});
+
+describe("storeCode", () => {
+	it("takes up to 12 characters once trimmed, counting letters with marks as one", () => {
+		expect(STORE_CODE_MAX_LENGTH).toBe(12);
+		expect(issueOf(storeCode, "Q1")).toBeNull();
+		expect(issueOf(storeCode, "  ABCDEFGHIJKL  ")).toBeNull();
+		expect(issueOf(storeCode, "ĐƯỜNGMẪUSỐ12")).toBeNull();
+		expect(issueOf(storeCode, "ABCDEFGHIJKLM")).toEqual({
+			key: "textLength",
+			max: 12,
+		});
+	});
+
+	it("saves the trimmed code, and an empty one as no code", () => {
+		expect(storeCodeValueOf(" Q1 ")).toBe("Q1");
+		expect(storeCodeValueOf("   ")).toBeNull();
+		expect(storeCodeValueOf("")).toBeNull();
+	});
+});
+
+describe("seatCount", () => {
+	it("takes whole seats from 0 to 5,000", () => {
+		expect(SEAT_COUNT_MAX).toBe(5_000);
+		expect(issueOf(seatCount, 0)).toBeNull();
+		expect(issueOf(seatCount, 5_000)).toBeNull();
+		expect(issueOf(seatCount, -1)).toEqual({
+			key: "range",
+			min: 0,
+			max: 5_000,
+		});
+		expect(issueOf(seatCount, 5_001)).toEqual({
+			key: "range",
+			min: 0,
+			max: 5_000,
+		});
+		expect(issueOf(seatCount, 12.5)).toEqual({ key: "integer" });
 	});
 });
 

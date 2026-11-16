@@ -12,6 +12,7 @@ import {
 	useItemCosts,
 	useLegalDocuments,
 	useTargets,
+	useTenantDefaultLanguage,
 	useTenantProfile,
 } from "./queries";
 import { type CatchUpStatus, NO_CATCH_UP } from "./source";
@@ -139,6 +140,10 @@ describe("the 10b settings reads", () => {
 				calls.push(`tenant:${tenantId}`);
 				return { legalForm: "unknown", defaultLanguage: "vi", audit: null };
 			},
+			defaultLanguage: async (tenantId: string) => {
+				calls.push(`language:${tenantId}`);
+				return "en";
+			},
 			holidays: async (tenantId: string, year: number) => {
 				calls.push(`holidays:${tenantId}:${year}`);
 				return [];
@@ -168,6 +173,7 @@ describe("the 10b settings reads", () => {
 		const reads = renderHook(
 			() => [
 				useTenantProfile(),
+				useTenantDefaultLanguage(),
 				useHolidays(2026),
 				useHolidays(2027),
 				useItemCosts(),
@@ -185,6 +191,7 @@ describe("the 10b settings reads", () => {
 				`holidays:${TENANT}:2027`,
 				"costs",
 				"legal",
+				`language:${TENANT}`,
 				`tenant:${TENANT}`,
 				"targets",
 			].sort(),
@@ -194,6 +201,11 @@ describe("the 10b settings reads", () => {
 				settingsQueryKey("supabase", TENANT, "holidays", 2027),
 			),
 		).toEqual([]);
+		expect(
+			client.getQueryData(
+				settingsQueryKey("supabase", TENANT, "defaultLanguage"),
+			),
+		).toBe("en");
 		expect(
 			isTenantSettingsKey(
 				settingsQueryKey("supabase", TENANT, "holidays", 2027),

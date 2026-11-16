@@ -79,6 +79,7 @@
 	"settings.validation.openingHours": "Giờ mở cửa chưa đúng dạng; kiểm tra lại từng khung giờ.",
 	"settings.validation.range": "Nhập giá trị từ {min} đến {max}.",
 	"settings.validation.required": "Ô này không được để trống.",
+	"settings.validation.textLength": "Nhập tối đa {max} ký tự.",
 	"settings.validation.time": "Nhập giờ dạng giờ:phút, ví dụ 07:00.",
 	"settings.validation.wholeMoney": "Nhập số tiền chẵn đồng, không có phần lẻ.",
 	"settings.weekday.fri": "Thứ Sáu",

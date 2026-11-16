@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { useT } from "../i18n";
 import { CatchUpProvider } from "../settings/catch-up/catch-up-context";
 import { SettingsSourceProvider } from "../settings/settings-source-context";
+import { TenantDefaultLanguage } from "../settings/tenant-default-language";
 import { TenantScopeProvider } from "../state/tenant-scope";
 import { BottomNavigation, SideRail } from "./navigation";
 import { ScopeGate } from "./scope-status";
@@ -28,6 +29,7 @@ export function AppShell() {
 				>
 					<ScopeGate>
 						<SettingsSourceProvider>
+							<TenantDefaultLanguage />
 							<CatchUpProvider>
 								<Outlet />
 							</CatchUpProvider>

@@ -73,20 +73,55 @@ const SCREEN_HEIGHT_PX = 800;
 const CHART_SVG = '[data-testid="echarts"] svg';
 const SETTLE_TIMEOUT = 60_000;
 
-const consoleErrors = new WeakMap<Page, string[]>();
+interface ConsoleError {
+	readonly text: string;
+	readonly url: string;
+}
+
+export interface ExpectedConsoleError {
+	readonly text: RegExp;
+	readonly url: RegExp;
+	readonly atMost: number;
+}
+
+const consoleErrors = new WeakMap<Page, ConsoleError[]>();
 
 export function watchConsoleErrors(page: Page): void {
 	if (consoleErrors.has(page)) return;
-	const errors: string[] = [];
+	const errors: ConsoleError[] = [];
 	consoleErrors.set(page, errors);
 	page.on("console", (message) => {
-		if (message.type() === "error") errors.push(message.text());
+		if (message.type() === "error") {
+			errors.push({ text: message.text(), url: message.location().url });
+		}
 	});
-	page.on("pageerror", (error) => errors.push(error.message));
+	page.on("pageerror", (error) =>
+		errors.push({ text: error.message, url: "" }),
+	);
 }
 
-export function expectNoConsoleErrors(page: Page): void {
-	expect(consoleErrors.get(page) ?? [], "browser console errors").toEqual([]);
+function isExpected(error: ConsoleError, expected: ExpectedConsoleError) {
+	return expected.text.test(error.text) && expected.url.test(error.url);
+}
+
+export function expectNoConsoleErrors(
+	page: Page,
+	expected: readonly ExpectedConsoleError[] = [],
+): void {
+	const errors = consoleErrors.get(page) ?? [];
+	const unexpected = errors.filter(
+		(error) => !expected.some((allowed) => isExpected(error, allowed)),
+	);
+	expect(
+		unexpected.map((error) => error.text),
+		"browser console errors",
+	).toEqual([]);
+	for (const allowed of expected) {
+		const seen = errors.filter((error) => isExpected(error, allowed)).length;
+		expect(seen, `expected console errors ${allowed.text}`).toBeLessThanOrEqual(
+			allowed.atMost,
+		);
+	}
 }
 
 export function reportUrl(kind: ReportKind, search = ""): string {

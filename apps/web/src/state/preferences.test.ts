@@ -1,6 +1,15 @@
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { defaultPeriod } from "../lib/period";
-import { loadPreferences, PREFERENCES_KEY } from "./preferences";
+import {
+	defaultPreferences,
+	loadPreferences,
+	PREFERENCES_KEY,
+	PreferencesProvider,
+	storedPreferencesOf,
+	usePreferences,
+	withDefaultLanguage,
+} from "./preferences";
 
 const morning = new Date("2026-11-08T02:00:00.000Z");
 
@@ -66,5 +75,93 @@ describe("stored preferences", () => {
 		expect(loadPreferences(morning).period).toEqual(
 			defaultPeriod("2026-11-08"),
 		);
+	});
+});
+
+function stored(): Record<string, unknown> {
+	return JSON.parse(window.localStorage.getItem(PREFERENCES_KEY) ?? "{}");
+}
+
+describe("the tenant's default language", () => {
+	afterEach(() => window.localStorage.clear());
+
+	it("counts a language as chosen only when this device stored it as chosen", () => {
+		expect(loadPreferences(morning)).toMatchObject({
+			language: "vi",
+			languageChosen: false,
+		});
+		store({ language: "vi", languageChosen: true });
+		expect(loadPreferences(morning)).toMatchObject({
+			language: "vi",
+			languageChosen: true,
+		});
+		store({ language: "en", languageChosen: true });
+		expect(loadPreferences(morning)).toMatchObject({
+			language: "en",
+			languageChosen: true,
+		});
+		store({ language: "fr", languageChosen: true });
+		expect(loadPreferences(morning).languageChosen).toBe(false);
+	});
+
+	it("ignores the Vietnamese an earlier version saved without a choice, and keeps an English only the toggle could have saved", () => {
+		store({ language: "vi", csvDialect: "semicolon" });
+		expect(loadPreferences(morning)).toMatchObject({
+			language: "vi",
+			languageChosen: false,
+			csvDialect: "semicolon",
+		});
+		store({ language: "en" });
+		expect(loadPreferences(morning)).toMatchObject({
+			language: "en",
+			languageChosen: true,
+		});
+	});
+
+	it("applies the tenant's language only without a chosen one", () => {
+		const fresh = defaultPreferences(morning);
+		expect(withDefaultLanguage(fresh, "en").language).toBe("en");
+		const chosen = { ...fresh, languageChosen: true };
+		expect(withDefaultLanguage(chosen, "en")).toBe(chosen);
+	});
+
+	it("stores the language only once it was chosen, marked as chosen", () => {
+		const fresh = { ...defaultPreferences(morning), language: "en" as const };
+		expect(storedPreferencesOf(fresh)).not.toHaveProperty("language");
+		expect(storedPreferencesOf(fresh)).not.toHaveProperty("languageChosen");
+		expect(
+			storedPreferencesOf({ ...fresh, languageChosen: true }),
+		).toMatchObject({ language: "en", languageChosen: true });
+	});
+
+	it("follows the tenant's language on a device without a stored one, until the toggle is used", () => {
+		const { result } = renderHook(() => usePreferences(), {
+			wrapper: PreferencesProvider,
+		});
+		act(() => result.current.adoptDefaultLanguage("en"));
+		expect(result.current.preferences.language).toBe("en");
+		act(() => result.current.update({ csvDialect: "semicolon" }));
+		expect(stored()).not.toHaveProperty("language");
+		expect(stored().csvDialect).toBe("semicolon");
+		act(() => result.current.update({ language: "vi" }));
+		expect(stored()).toMatchObject({ language: "vi", languageChosen: true });
+		act(() => result.current.adoptDefaultLanguage("en"));
+		expect(result.current.preferences.language).toBe("vi");
+	});
+
+	it("keeps a chosen language over the tenant's, and follows the tenant's over an old unmarked one", () => {
+		store({ language: "vi" });
+		const before = renderHook(() => usePreferences(), {
+			wrapper: PreferencesProvider,
+		});
+		act(() => before.result.current.adoptDefaultLanguage("en"));
+		expect(before.result.current.preferences.language).toBe("en");
+		before.unmount();
+		store({ language: "vi", languageChosen: true });
+		const { result } = renderHook(() => usePreferences(), {
+			wrapper: PreferencesProvider,
+		});
+		act(() => result.current.adoptDefaultLanguage("en"));
+		expect(result.current.preferences.language).toBe("vi");
 	});
 });

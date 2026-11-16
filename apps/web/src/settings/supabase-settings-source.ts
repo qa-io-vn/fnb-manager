@@ -14,6 +14,7 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { fetchAllPages, fetchOnce } from "../data/paginate";
+import type { Language } from "../i18n";
 import {
 	type AuditAuthor,
 	type AuditEntry,
@@ -116,6 +117,8 @@ const tenantRow = z.object({
 
 const TENANT_SELECT =
 	"legal_form,default_language,profile_updated_at,profile_updated_by";
+
+const defaultLanguageRow = z.object({ default_language: language });
 
 const openingSpan = z.tuple([z.string(), z.string()]);
 
@@ -446,6 +449,15 @@ export function createSupabaseSettingsSource(
 		},
 
 		tenantProfile,
+
+		async defaultLanguage(tenantId): Promise<Language> {
+			const [row] = await fetchOnce(
+				defaultLanguageRow,
+				client.from("tenants").select("default_language").eq("id", tenantId),
+			);
+			if (row === undefined) throw new Error("the tenant is not visible");
+			return row.default_language;
+		},
 
 		async updateTenantProfile(
 			tenantId,

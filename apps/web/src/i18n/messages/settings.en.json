@@ -79,6 +79,7 @@
 	"settings.validation.openingHours": "The opening hours are not in the expected shape; check each span.",
 	"settings.validation.range": "Enter a value from {min} to {max}.",
 	"settings.validation.required": "This field cannot be empty.",
+	"settings.validation.textLength": "Use at most {max} characters.",
 	"settings.validation.time": "Enter a time as hours:minutes, for example 07:00.",
 	"settings.validation.wholeMoney": "Enter a whole amount, without a fraction.",
 	"settings.weekday.fri": "Friday",
