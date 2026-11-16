@@ -65,6 +65,7 @@ function maxText(left: string | null, right: string | null): string | null {
 }
 
 export interface EffectiveType {
+	readonly accountId: string;
 	readonly typeId: string | null;
 	readonly typeName: string | null;
 	readonly source: "override" | "pos" | "none";
@@ -107,6 +108,7 @@ export function effectiveItemTypes(
 			if (role !== null) break;
 		}
 		types.set(key, {
+			accountId: account,
 			typeId,
 			typeName:
 				override !== null ? override.itemTypeName : (posName.get(key) ?? null),

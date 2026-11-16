@@ -177,6 +177,7 @@ export interface StoreDayAggregates {
 	readonly shifts: readonly ShiftAggregate[];
 	readonly promotions: readonly PromotionUsage[];
 	readonly itemLines: number;
+	readonly itemLinesByExternalId: ReadonlyMap<string, number>;
 	readonly removedLinesByDate: ReadonlyMap<IsoDate, number>;
 	readonly shiftSales: readonly ShiftSales[];
 	readonly discounts: readonly DiscountRow[];
@@ -543,6 +544,7 @@ export function aggregateStoreDay(
 	const shiftSales = new Map<string, Writable<ShiftSales>>();
 	const discounts: DiscountRow[] = [];
 	const discountedInvoices: DiscountedInvoice[] = [];
+	const itemLinesByExternalId = new Map<string, number>();
 	let itemLines = 0;
 	let drinkInvoices = 0;
 	let toppingInvoices = 0;
@@ -645,6 +647,13 @@ export function aggregateStoreDay(
 		for (const line of sale.lines) {
 			if (!isItemLine(line)) continue;
 			saleItemLines += 1;
+			const lineExternalId = textOrNull(line.itemExternalId);
+			if (lineExternalId !== null) {
+				itemLinesByExternalId.set(
+					lineExternalId,
+					(itemLinesByExternalId.get(lineExternalId) ?? 0) + 1,
+				);
+			}
 			const itemName = line.itemName;
 			const itemId = textOrNull(line.itemExternalId) ?? itemName;
 			const known = items.get(itemId);
@@ -970,6 +979,7 @@ export function aggregateStoreDay(
 			invoices: invoiceIds.size,
 		})),
 		itemLines,
+		itemLinesByExternalId,
 		removedLinesByDate,
 		shiftSales: [...shiftSales.values()],
 		discounts,

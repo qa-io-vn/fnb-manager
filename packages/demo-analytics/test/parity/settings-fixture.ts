@@ -186,16 +186,6 @@ export async function applyMenuVariant(
 	const variant = menuVariant(seeded, accountId);
 	const statements = [
 		...insertStatements(
-			"public.item_types",
-			["tenant_id", "pos_account_id", "external_id", "name"],
-			MENU.catalog.itemTypes.map((type) => ({
-				tenant_id: seeded.tenantId,
-				pos_account_id: seeded.posAccountId,
-				external_id: type.externalId,
-				name: type.name,
-			})),
-		),
-		...insertStatements(
 			"public.item_category_overrides",
 			[
 				"tenant_id",

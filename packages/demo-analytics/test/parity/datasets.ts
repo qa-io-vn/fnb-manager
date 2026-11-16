@@ -14,8 +14,10 @@ import {
 	type DemoDayRewrite,
 	ESTABLISHED_STORE_OPENED_ON,
 } from "../../src/index.js";
+import { unattributedCases } from "./attribution-cases.js";
 import { complianceCases } from "./compliance-cases.js";
 import { bothRewrites, orphanVoids } from "./orphan-cases.js";
+import { numberedReceipts } from "./receipt-cases.js";
 import { soloPromotion } from "./solo-cases.js";
 
 export type ParityDatasetId = "D1" | "D2" | "D3";
@@ -77,6 +79,8 @@ export function parityDatasets(
 			rewriteDay: bothRewrites(
 				soloPromotion(clock.asOf),
 				orphanVoids(clock.asOf),
+				numberedReceipts(),
+				unattributedCases(clock.asOf),
 			),
 		},
 		D2: {

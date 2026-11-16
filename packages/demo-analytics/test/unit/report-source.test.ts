@@ -13,11 +13,6 @@ import { DATA_QUALITY_PAYMENTS_MAX_DAYS } from "../../src/functions/data-quality
 import { ITEM_ATTACH_MAX_DAYS } from "../../src/functions/item-attach.js";
 import { ITEM_MARGINS_MAX_DAYS } from "../../src/functions/item-margins.js";
 import { MODIFIER_SUMMARY_MAX_DAYS } from "../../src/functions/modifier-summary.js";
-import {
-	NOT_IMPLEMENTED_CODE,
-	PORT_PENDING_FUNCTIONS,
-	type PortPendingFunction,
-} from "../../src/functions/port-pending.js";
 import { PROMOTION_COMPLIANCE_MAX_DAYS } from "../../src/functions/promotion-compliance.js";
 import { PROMOTION_DAYS_MAX_DAYS } from "../../src/functions/promotion-days.js";
 import {
@@ -112,10 +107,6 @@ const minimalArgs: { [N in ThemeFunctionName]: ThemeArgs<N> } = {
 	},
 };
 
-function portPending(name: ThemeFunctionName): name is PortPendingFunction {
-	return (PORT_PENDING_FUNCTIONS as readonly string[]).includes(name);
-}
-
 describe("createDemoReportSource", () => {
 	it("has a handler and a read plan for every thematic function of the contract, and keeps phase 9's handlers", async () => {
 		expect(sorted(Object.keys(themeHandlers))).toEqual(
@@ -155,7 +146,6 @@ describe("createDemoReportSource", () => {
 
 	it("answers every thematic function with rows of its contract and reads only the store-days it planned", async () => {
 		for (const name of Object.keys(themeFunctions) as ThemeFunctionName[]) {
-			if (portPending(name)) continue;
 			const source = createDemoReportSource({
 				now: () => NOW,
 				volumeScale: 0.2,
@@ -169,41 +159,7 @@ describe("createDemoReportSource", () => {
 		}
 	});
 
-	it("refuses every 10b function whose port has not landed with not_implemented, after ingesting exactly the store-days its port will read", async () => {
-		expect(PORT_PENDING_FUNCTIONS.length).toBeGreaterThan(0);
-		for (const name of PORT_PENDING_FUNCTIONS) {
-			const days = new DemoDayCache({ now: () => NOW, volumeScale: 0.05 });
-			const source = createDemoReportSource({
-				now: () => NOW,
-				days,
-				settings: new DemoSettingsStore(demoSettings(AS_OF)),
-			});
-			await expect(
-				source.callTheme(name, minimalArgs[name] as never),
-				name,
-			).rejects.toMatchObject({
-				code: NOT_IMPLEMENTED_CODE,
-				functionName: name,
-			});
-			const planned = new Set<string>();
-			for (const range of themeReads[name](minimalArgs[name] as never)) {
-				for (const storeId of range.storeIds) {
-					for (
-						let date = range.from;
-						date <= range.to;
-						date = addDays(date, 1)
-					) {
-						if (days.isPlanned(storeId, date))
-							planned.add(`${storeId}|${date}`);
-					}
-				}
-			}
-			expect(planned.size, name).toBeGreaterThan(0);
-			expect(days.generations(), name).toBe(planned.size);
-		}
-	});
-
-	it("still checks the arguments of a function whose port has not landed", async () => {
+	it("checks the arguments of a 10b function before its port runs", async () => {
 		const source = createDemoReportSource({ now: () => NOW, volumeScale: 0.2 });
 		await expect(
 			source.callTheme("promotion_lift", {

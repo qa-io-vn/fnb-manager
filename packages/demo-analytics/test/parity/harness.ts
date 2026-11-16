@@ -37,6 +37,7 @@ import {
 	demoPromotionCatalogue,
 	demoRoles,
 	demoStoreProfiles,
+	dressDemoCatalogItem,
 	minorUnits,
 } from "../../src/index.js";
 import {
@@ -645,6 +646,43 @@ async function seedDataset(
 				external_id: method.externalId,
 				name: method.name,
 				kind: method.kind,
+			})),
+		),
+		...insertStatements(
+			"public.item_types",
+			["tenant_id", "pos_account_id", "external_id", "name"],
+			MENU.catalog.itemTypes.map((type) => ({
+				tenant_id: tenantId,
+				pos_account_id: posAccountId,
+				external_id: type.externalId,
+				name: type.name,
+			})),
+		),
+		...insertStatements(
+			"public.items",
+			[
+				"tenant_id",
+				"pos_account_id",
+				"external_id",
+				"name",
+				"base_name",
+				"size_label",
+				"item_type_external_id",
+				"list_price",
+				"is_modifier",
+				"active",
+			],
+			MENU.catalog.items.map(dressDemoCatalogItem).map((item) => ({
+				tenant_id: tenantId,
+				pos_account_id: posAccountId,
+				external_id: item.externalId,
+				name: item.name,
+				base_name: item.baseName ?? null,
+				size_label: item.sizeLabel ?? null,
+				item_type_external_id: item.itemTypeExternalId ?? null,
+				list_price: item.listPrice,
+				is_modifier: item.isModifier,
+				active: item.active,
 			})),
 		),
 		...insertStatements(

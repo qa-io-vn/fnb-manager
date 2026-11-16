@@ -1,5 +1,5 @@
 begin;
-select plan(31);
+select plan(33);
 
 create temp table fixture as
 select
@@ -303,6 +303,8 @@ select
   'dddddddd-dddd-4ddd-8ddd-000000003761'::uuid as account_id,
   'dddddddd-dddd-4ddd-8ddd-000000003771'::uuid as store_1,
   'dddddddd-dddd-4ddd-8ddd-000000003772'::uuid as store_2,
+  'dddddddd-dddd-4ddd-8ddd-000000003762'::uuid as second_account_id,
+  'dddddddd-dddd-4ddd-8ddd-000000003779'::uuid as store_3,
   'dddddddd-dddd-4ddd-8ddd-000000003781'::uuid as customer_1,
   'dddddddd-dddd-4ddd-8ddd-000000003782'::uuid as customer_2;
 
@@ -310,7 +312,9 @@ insert into public.tenants (id, slug, name)
 select tenant_id, 'theme-pgtap-quality', 'Quality' from quality;
 
 insert into public.pos_accounts (id, tenant_id, connector, account_key, display_name)
-select account_id, tenant_id, 'mock', 'theme-pgtap-quality', 'Quality POS' from quality;
+select account_id, tenant_id, 'mock', 'theme-pgtap-quality', 'Quality POS' from quality
+union all
+select second_account_id, tenant_id, 'mock', 'theme-pgtap-quality-b', 'Quality POS B' from quality;
 
 insert into public.stores (
   id, tenant_id, pos_account_id, external_id, name, opening_hours, seat_count, opened_on, e_invoice_status, tran_no_reset_period, member_capture_status
@@ -320,6 +324,9 @@ select q.store_1, q.tenant_id, q.account_id, 'quality-1', 'Quality 1', '{"mon": 
 from quality q
 union all
 select q.store_2, q.tenant_id, q.account_id, 'quality-2', 'Quality 2', null, null, null, 'unknown', 'unknown', 'unknown'
+from quality q
+union all
+select q.store_3, q.tenant_id, q.second_account_id, 'quality-b1', 'Quality B1', null, null, null, 'unknown', 'unknown', 'unknown'
 from quality q;
 
 insert into public.item_types (tenant_id, pos_account_id, external_id, name)
@@ -403,6 +410,9 @@ insert into public.payment_methods (tenant_id, pos_account_id, external_id, name
 select q.tenant_id, q.account_id, m.external_id, m.name, m.kind
 from quality q
 cross join (values ('CASH', 'Tiền mặt', 'cash'::public.payment_kind), ('WALLET', 'Ví', 'other'), ('CARD', 'Thẻ', 'card')) as m (external_id, name, kind);
+
+insert into public.payment_methods (tenant_id, pos_account_id, external_id, name, kind)
+select q.tenant_id, q.second_account_id, 'CARD', 'Thẻ', 'card' from quality q;
 
 insert into public.payment_kind_overrides (tenant_id, pos_account_id, payment_method_external_id, kind)
 select tenant_id, account_id, 'WALLET', 'ewallet' from quality;
@@ -503,6 +513,28 @@ select results_eq(
       ('CARD', 'card', 'card', null, true, null, null)
   $$,
   'data-quality payments list every catalogue method, an unpaid one last, and a paid id without a catalogue row'
+);
+
+select results_eq(
+  $$
+    select p.pos_account_id
+    from quality q
+    cross join lateral public.data_quality_payments(array[q.store_3, q.store_1], '2025-10-01', '2025-10-31') p
+    where p.payment_method_external_id = 'CARD'
+  $$,
+  $$ select unnest(array[q.second_account_id, q.account_id]) from quality q $$,
+  'the same unpaid method on two accounts comes first for the account of the first store asked'
+);
+
+select results_eq(
+  $$
+    select p.pos_account_id
+    from quality q
+    cross join lateral public.data_quality_payments(array[q.store_1, q.store_3], '2025-10-01', '2025-10-31') p
+    where p.payment_method_external_id = 'CARD'
+  $$,
+  $$ select unnest(array[q.account_id, q.second_account_id]) from quality q $$,
+  'and swaps when the stores are asked the other way round'
 );
 
 select throws_ok(
