@@ -1,8 +1,8 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt) and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán). It lists every Vietnamese template these pages use (536 entries, 173 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Ca & két tiền of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán). It lists every Vietnamese template these pages use (578 entries, 182 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
-The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
+The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-shifts`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
 ## How to review
 
@@ -29,17 +29,19 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{a}` | 2 | `theme.menu.pairs.caption` |
 | `{abs}` | 1 | `theme.payments.drawer.thresholds` |
 | `{b}` | 2 | `theme.menu.pairs.caption` |
-| `{best}` | 2 | `theme.hours.heatmap.main` |
+| `{best}` | 3 | `theme.hours.heatmap.main` |
+| `{bestCount}` | 1 | `theme.shifts.sales.main` |
 | `{bestDay}` | 1 | `theme.hours.heatmap.main` |
 | `{bestHour}` | 1 | `theme.hours.heatmap.main` |
-| `{bestValue}` | 1 | `theme.hours.weekday.main` |
+| `{bestValue}` | 2 | `theme.hours.weekday.main` |
 | `{bucket}` | 5 | `theme.payments.trend.down` |
+| `{cashier}` | 1 | `theme.shifts.adjustments.main` |
 | `{category}` | 2 | `theme.menu.categoryMix.caption` |
-| `{count}` | 7 | `theme.menu.preferences.otherOnly` |
+| `{count}` | 13 | `theme.menu.preferences.otherOnly` |
 | `{covered}` | 1 | `theme.menu.movers.captionLikeForLike` |
 | `{date}` | 8 | `theme.page.todayClamped` |
 | `{day}` | 5 | `settings.hours.addSpanTo` |
-| `{days}` | 19 | `theme.range.summary` |
+| `{days}` | 20 | `theme.range.summary` |
 | `{dead}` | 1 | `theme.hours.peakDead.main` |
 | `{deadShare}` | 1 | `theme.hours.peakDead.main` |
 | `{delta}` | 16 | `theme.revenue.net.down` |
@@ -63,6 +65,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{level}` | 1 | `theme.menu.preferences.caption` |
 | `{lift}` | 1 | `theme.menu.pairs.main` |
 | `{max}` | 4 | `settings.validation.atMost` |
+| `{measured}` | 1 | `theme.shifts.adjustments.none` |
 | `{method}` | 1 | `theme.payments.fees.costliest` |
 | `{min}` | 3 | `settings.validation.atLeast` |
 | `{minimum}` | 5 | `theme.menu.matrix.lowSample` |
@@ -78,8 +81,9 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{quiet}` | 1 | `theme.hours.heatmap.main` |
 | `{quietDay}` | 1 | `theme.hours.heatmap.main` |
 | `{quietHour}` | 1 | `theme.hours.heatmap.main` |
-| `{range}` | 57 | `theme.print.summary` |
+| `{range}` | 60 | `theme.print.summary` |
 | `{rate}` | 3 | `theme.menu.margins.rate` |
+| `{reasons}` | 1 | `theme.shifts.adjustments.main` |
 | `{reference}` | 19 | `theme.range.summary` |
 | `{rel}` | 1 | `theme.payments.drawer.thresholds` |
 | `{report}` | 1 | `theme.print.summary` |
@@ -88,7 +92,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{role}` | 2 | `settings.audit.byRole` |
 | `{seats}` | 1 | `theme.hours.productivity.revpash` |
 | `{share}` | 6 | `theme.revenue.storeShare.main` |
-| `{shift}` | 2 | `theme.payments.drawer.shiftOn` |
+| `{shift}` | 3 | `theme.payments.drawer.shiftOn` |
 | `{stars}` | 2 | `theme.menu.matrix.stars` |
 | `{store}` | 4 | `theme.revenue.storeShare.caption` |
 | `{stores}` | 1 | `theme.print.summary` |
@@ -98,14 +102,16 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{time}` | 2 | `settings.audit.when` |
 | `{to}` | 5 | `theme.range.span` |
 | `{total}` | 1 | `theme.menu.movers.captionLikeForLike` |
-| `{value}` | 42 | `theme.revenue.net.down` |
+| `{value}` | 44 | `theme.revenue.net.down` |
 | `{weekday}` | 3 | `theme.hours.heatmap.caption` |
 | `{weekdays}` | 1 | `theme.hours.shiftWindows.main` |
 | `{weekend}` | 1 | `theme.hours.shiftWindows.main` |
 | `{weeks}` | 1 | `theme.compare.previousWeeks` |
 | `{when}` | 3 | `settings.audit.at` |
 | `{window}` | 1 | `theme.hours.shiftWindows.mainOne` |
-| `{worst}` | 1 | `theme.hours.weekday.main` |
+| `{worst}` | 2 | `theme.hours.weekday.main` |
+| `{worstCount}` | 1 | `theme.shifts.sales.main` |
+| `{worstValue}` | 1 | `theme.shifts.sales.main` |
 | `{z}` | 1 | `theme.payments.drawer.thresholds` |
 
 ## Points the review may settle
@@ -114,8 +120,9 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 - The five hour levels "cao điểm", "thấp điểm", "đông", "vắng" and "bình thường" (`theme.hours.level.*`), which the thresholds of Ngưỡng báo cáo decide.
 - "tạm tính" in the menu matrix while costs are missing (`theme.menu.matrix.provisionalCell`).
 - "Thiết bị này" for the per-device CSV format, and the wording of its two choices (`settings.thresholds.device.*`).
+- "đáng xem lại" for the shifts Ca & két tiền flags, and the caution that a z-score compares a shift with earlier shifts and is no verdict on a person (`theme.shifts.adjustments.main`, `theme.shifts.adjustments.basis`).
 
-## Dùng chung cho các chủ đề · Shared by the thematic reports (`themes.vi.json`, 45 mục)
+## Dùng chung cho các chủ đề · Shared by the thematic reports (`themes.vi.json`, 44 mục)
 
 ### Thẻ chọn chủ đề · theme tabs (`theme.tabs.*`)
 
@@ -202,7 +209,6 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | --- | --- | --- | --- |
 | `theme.later.promotions` | Khuyến mãi & giảm giá | Promotions and discounts | — |
 | `theme.later.quality` | Chất lượng dữ liệu | Data quality | — |
-| `theme.later.shifts` | Ca & két tiền | Shifts and cash drawer | — |
 | `theme.later.stores` | So sánh cửa hàng | Store comparison | — |
 
 ### Trang chủ đề chưa có · page of a topic not built yet (`theme.laterPage.*`)
@@ -727,6 +733,85 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `theme.payments.table.posFee` | Phí POS ghi nhận | Fee reported by the POS | — |
 | `theme.payments.table.previousShare` | Tỷ trọng kỳ trước | Previous share | — |
 | `theme.payments.table.weekFrom` | Tuần từ | Week from | — |
+
+## Ca & két tiền · Shifts and cash drawer (`theme-shifts.vi.json`, 43 mục)
+
+### Tiêu đề và thông báo chung · title and shared notices (`theme.shifts.title`, `theme.shifts.noData`, `theme.shifts.noShifts`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.shifts.noData` | Chưa có ca nào trong {range}. | No shift in {range}. | `{range}` |
+| `theme.shifts.noShifts` | Chưa có ca nào; kiểm tra thu ngân có mở và đóng ca trên POS không. | No shift yet; check that cashiers open and close shifts on the POS. | — |
+| `theme.shifts.title` | Ca & két tiền | Shifts and cash drawer | — |
+
+### Thẻ «Doanh thu và hóa đơn theo ca» (`theme.shifts.sales.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.shifts.sales.average` | Trong {range}, mỗi ca bán trung bình {value}, trên {count} ca. | In {range}, a shift took {value} on average, over {count} shifts. | `{range}` `{value}` `{count}` |
+| `theme.shifts.sales.caption` | trung bình mỗi ca, trên {count} ca | average per shift, over {count} shifts | `{count}` |
+| `theme.shifts.sales.chart` | Doanh thu thuần của các ca gần nhất | Net revenue of the latest shifts | — |
+| `theme.shifts.sales.main` | Trong {range}, mỗi ca bán trung bình {value}; {best} cao nhất ({bestValue} mỗi ca, {bestCount} ca), {worst} thấp nhất ({worstValue} mỗi ca, {worstCount} ca). | In {range}, a shift took {value} on average; {best} took the most ({bestValue} a shift, {bestCount} shifts) and {worst} the least ({worstValue} a shift, {worstCount} shifts). | `{range}` `{value}` `{best}` `{bestValue}` `{bestCount}` `{worst}` `{worstValue}` `{worstCount}` |
+| `theme.shifts.sales.series` | Doanh thu thuần | Net revenue | — |
+| `theme.shifts.sales.table` | Các ca, mới nhất trước | Shifts, newest first | — |
+| `theme.shifts.sales.title` | Doanh thu và hóa đơn theo ca | Sales and invoices per shift | — |
+
+### Thẻ «Chênh lệch két» (`theme.shifts.drawer.*`)
+
+The card's sentences, thresholds line, shift labels and first table are those of Thanh toán's drawer card (`report.shifts.*` in the report sheet, `theme.payments.drawer.*` above); only the title and the table per cashier are its own.
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.shifts.drawer.cashierTable` | Lệch két theo thu ngân | Drawer variance by cashier | — |
+| `theme.shifts.drawer.title` | Chênh lệch két | Drawer variance | — |
+
+### Thẻ «Hủy, xóa món và sửa sau khi đóng ca» (`theme.shifts.adjustments.*`)
+
+The headline caption "trên {count} ca" and the shift labels "Ca n ngày …" are Thanh toán's (`theme.payments.drawer.caption`, `theme.payments.drawer.shiftOn`, `theme.payments.drawer.shiftOnAt`).
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.shifts.adjustments.basis` | So với các ca của chính cửa hàng trong {days} ngày trước, tỷ lệ hủy và xóa món chỉ được đánh dấu khi cao hơn thường lệ; mọi lần sửa sau khi đóng ca đều được đánh dấu. Điểm z so một ca với các ca trước, không phải kết luận về một người. | Against the store's own shifts of the {days} days before, void and removed-line rates are flagged only when higher than usual; every edit after the close is flagged. A z-score compares a shift with earlier shifts and is not a judgement of a person. | `{days}` |
+| `theme.shifts.adjustments.chart` | Điểm z cao hơn của các ca được đánh dấu | Higher z-score of the flagged shifts | — |
+| `theme.shifts.adjustments.main` | {count} ca đáng xem lại; đứng đầu là {shift} ({cashier}): {reasons}. | {count} shifts are worth a second look; first is {shift} ({cashier}): {reasons}. | `{count}` `{shift}` `{cashier}` `{reasons}` |
+| `theme.shifts.adjustments.none` | Trong {measured} ca so được với các ca trước, không ca nào hủy hay xóa món nhiều hơn thường lệ; trong cả {count} ca, không ca nào bị sửa sau khi đóng ca. | Of the {measured} shifts that could be compared with earlier shifts, none had more voids or removed lines than usual; of all {count} shifts, none was edited after its close. | `{measured}` `{count}` |
+| `theme.shifts.adjustments.series` | Điểm z cao hơn | Higher z-score | — |
+| `theme.shifts.adjustments.table` | Các ca, điểm z cao nhất trước | Shifts, highest z-score first | — |
+| `theme.shifts.adjustments.threshold` | Ngưỡng z | z threshold | — |
+| `theme.shifts.adjustments.title` | Hủy, xóa món và sửa sau khi đóng ca | Voids, removed lines and edits after close | — |
+| `theme.shifts.adjustments.unmeasured` | Chưa so được ca nào trong {count} ca với các ca trước nên chưa biết ca nào hủy hay xóa món nhiều hơn thường lệ; không ca nào bị sửa sau khi đóng ca. | None of the {count} shifts could be compared with earlier shifts yet, so it is not known whether any had more voids or removed lines than usual; none was edited after its close. | `{count}` |
+| `theme.shifts.adjustments.unscored` | Điểm z hiện dấu — khi ca chưa có đủ {count} ca trước đó của cửa hàng, hoặc khi các ca trước có cùng một tỷ lệ (chẳng hạn chưa từng xóa món) nên chưa có gì để so. | A z-score shows — when a shift has fewer than {count} earlier shifts of the store, or when the earlier shifts all have the same rate (for instance no removed line at all), so there is nothing to compare with. | `{count}` |
+
+### Lý do đánh dấu ca · reasons a shift is flagged (`theme.shifts.reasons.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.shifts.reasons.after_close` | có sửa sau khi đóng ca | edited after the close | — |
+| `theme.shifts.reasons.removed_lines` | xóa món nhiều hơn thường lệ | more removed lines than usual | — |
+| `theme.shifts.reasons.removed_lines_after_close` | xóa món nhiều hơn thường lệ và có sửa sau khi đóng ca | more removed lines than usual and edited after the close | — |
+| `theme.shifts.reasons.voids` | hủy nhiều hơn thường lệ | more voids than usual | — |
+| `theme.shifts.reasons.voids_after_close` | hủy nhiều hơn thường lệ và có sửa sau khi đóng ca | more voids than usual and edited after the close | — |
+| `theme.shifts.reasons.voids_removed_lines` | hủy và xóa món nhiều hơn thường lệ | more voids and removed lines than usual | — |
+| `theme.shifts.reasons.voids_removed_lines_after_close` | hủy và xóa món nhiều hơn thường lệ, có sửa sau khi đóng ca | more voids and removed lines than usual, and edited after the close | — |
+
+### Tên cột bảng · table columns (`theme.shifts.table.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.shifts.table.edits` | Số lần sửa | Edits | — |
+| `theme.shifts.table.editsAfterClose` | Sửa sau khi đóng ca | Edits after close | — |
+| `theme.shifts.table.flagged` | Ca vượt ngưỡng | Over the thresholds | — |
+| `theme.shifts.table.largestOverage` | Thừa nhiều nhất | Largest overage | — |
+| `theme.shifts.table.largestShortage` | Thiếu nhiều nhất | Largest shortage | — |
+| `theme.shifts.table.meanVariance` | Lệch két TB mỗi ca (tuyệt đối) | Mean variance per shift (absolute) | — |
+| `theme.shifts.table.removedLines` | Món bị xóa | Removed lines | — |
+| `theme.shifts.table.removedRate` | Tỷ lệ xóa món | Removed-line rate | — |
+| `theme.shifts.table.removedZ` | Điểm z xóa món | Removed-line z-score | — |
+| `theme.shifts.table.shifts` | Số ca | Shifts | — |
+| `theme.shifts.table.totalVariance` | Tổng lệch két (tuyệt đối) | Total drawer variance (absolute) | — |
+| `theme.shifts.table.voidRate` | Tỷ lệ hủy | Void rate | — |
+| `theme.shifts.table.voidZ` | Điểm z hủy | Void z-score | — |
+| `theme.shifts.table.voids` | Số lần hủy | Voids | — |
 
 ## Cài đặt: phần dùng chung · Settings, shared parts (`settings.vi.json`, 90 mục)
 

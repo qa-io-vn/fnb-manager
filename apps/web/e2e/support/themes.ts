@@ -7,13 +7,14 @@ import {
 	watchConsoleErrors,
 } from "./reports";
 
-export type ThemeKind = "revenue" | "hours" | "menu" | "payments";
+export type ThemeKind = "revenue" | "hours" | "menu" | "payments" | "shifts";
 
 export const themeSlugs: Record<ThemeKind, string> = {
 	revenue: "doanh-thu",
 	hours: "gio-ngay",
 	menu: "thuc-don",
 	payments: "thanh-toan",
+	shifts: "ca-ket-tien",
 };
 
 export const themeCardIds: Record<ThemeKind, readonly string[]> = {
@@ -30,6 +31,7 @@ export const themeCardIds: Record<ThemeKind, readonly string[]> = {
 		"preferences",
 	],
 	payments: ["payment_mix", "cash_trend", "drawer", "fees"],
+	shifts: ["shift_sales", "drawer", "adjustments"],
 };
 
 const RAW_KEY = /\b(report|metric|theme)\.[a-z]+[A-Za-z_]*\./;
@@ -228,6 +230,15 @@ export async function expectCsvTablesWithBom(
 	return (
 		await downloadCardTables(page, card, "comma", THEME_CSV_FILE_NAME)
 	).map((download) => download.header);
+}
+
+export async function csvTablesWithBom(
+	page: Page,
+	card: Locator,
+): Promise<string[]> {
+	return (
+		await downloadCardTables(page, card, "comma", THEME_CSV_FILE_NAME)
+	).map((download) => download.text);
 }
 
 export async function expectSemicolonCsvTables(

@@ -66,7 +66,6 @@ export const themeKeys = {
 	},
 	later: {
 		promotions: "theme.later.promotions",
-		shifts: "theme.later.shifts",
 		stores: "theme.later.stores",
 		quality: "theme.later.quality",
 	},

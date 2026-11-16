@@ -188,7 +188,7 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`item_summary`](#publicitem_summary) | reports | invoker, stable | rows per item | web reports, digest | verified locally (phase 9) |
 | [`payment_summary`](#publicpayment_summary) | reports | invoker, stable | rows per payment method | web reports, digest, web theme Thanh toán | verified locally (phase 9) |
 | [`promotion_summary`](#publicpromotion_summary) | reports | invoker, stable | rows per promotion | web reports, digest | verified locally (phase 9) |
-| [`shift_review`](#publicshift_review) | reports | invoker, stable | rows per shift | web reports, digest, web theme Thanh toán | verified locally (phase 9) |
+| [`shift_review`](#publicshift_review) | reports | invoker, stable | rows per shift | web reports, digest, web themes Thanh toán and Ca & két tiền | verified locally (phase 9) |
 | [`store_targets`](#publicstore_targets) | reports | invoker, stable | rows per store | web reports | verified locally (phase 9) |
 | [`item_velocity`](#publicitem_velocity) | reports | invoker, stable | rows per item | web reports | verified locally (phase 8) |
 | [`month_pace`](#publicmonth_pace) | reports | invoker, stable | 1 row | web reports | verified locally (phase 8) |
@@ -200,7 +200,7 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`publish_legal_document`](#publicpublish_legal_document) | settings and writes | definer, volatile | `uuid` | the Pháp lý settings page (planned, #164) | built (phase 10b) |
 | [`retire_legal_document`](#publicretire_legal_document) | settings and writes | definer, volatile | `uuid` | the Pháp lý settings page (planned, #164) | built (phase 10b) |
 | [`analytics_catch_up_status`](#publicanalytics_catch_up_status) | settings and writes | invoker, stable | 0 or 1 row | the web catch-up banner and runner through the settings source (`catchUpStatus`), on every theme and settings page | verified locally (phase 10a) |
-| [`report_settings_of`](#publicreport_settings_of) | themes | invoker, stable | rows per store | web themes Giờ & ngày, Thực đơn and Thanh toán | verified locally (phase 10a) |
+| [`report_settings_of`](#publicreport_settings_of) | themes | invoker, stable | rows per store | web themes Giờ & ngày, Thực đơn, Thanh toán and Ca & két tiền | verified locally (phase 10a) |
 | [`range_totals`](#publicrange_totals) | themes | invoker, stable | rows per range and store | web themes Doanh thu and Thanh toán | verified locally (phase 10a) |
 | [`opening_productivity`](#publicopening_productivity) | themes | invoker, stable | rows per store | web theme Giờ & ngày | verified locally (phase 10a) |
 | [`hour_profile`](#publichour_profile) | themes | invoker, stable | up to 82 rows | web theme Giờ & ngày | verified locally (phase 10a) |
@@ -214,7 +214,7 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`promotion_lift`](#publicpromotion_lift) | themes | invoker, stable | a row per day, then a summary | no caller yet (Khuyến mãi, #191) | built (phase 10b) |
 | [`promotion_compliance`](#publicpromotion_compliance) | themes | invoker, stable | rows per promotion, then the invoice total | no caller yet (Khuyến mãi, #153) | built (phase 10b) |
 | [`item_discount_days`](#publicitem_discount_days) | themes | invoker, stable | rows per item | no caller yet (Khuyến mãi, #153) | built (phase 10b) |
-| [`shift_adjustments`](#publicshift_adjustments) | themes | invoker, stable | rows per shift | no caller yet (Ca & két tiền, #155) | built (phase 10b) |
+| [`shift_adjustments`](#publicshift_adjustments) | themes | invoker, stable | rows per shift | web theme Ca & két tiền | built (phase 10b) |
 | [`data_quality_items`](#publicdata_quality_items) | themes | invoker, stable | rows per item | no caller yet (Chất lượng dữ liệu, #157, #158) | built (phase 10b) |
 | [`data_quality_summary`](#publicdata_quality_summary) | themes | invoker, stable | a row for all stores, then one per store | no caller yet (Chất lượng dữ liệu, #157, #158) | built (phase 10b) |
 | [`data_quality_payments`](#publicdata_quality_payments) | themes | invoker, stable | rows per payment method | no caller yet (Chất lượng dữ liệu, #157, #158) | built (phase 10b) |
@@ -539,7 +539,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** web reports (Ngày shifts, Tháng shift statistics), digest, Thanh toán's drawer card (the last 92 days of the range, thresholds left to the tenant's settings). The demo port reads the same settings for thresholds a call leaves out, held by `demo-analytics:parity/shift-review` with the default and a tenant's thresholds.
+- **Called by:** web reports (Ngày shifts, Tháng shift statistics), digest, Thanh toán's drawer card (the last 92 days of the range, thresholds left to the tenant's settings), Ca & két tiền's sales and drawer cards (the range, at most 92 days, thresholds left to the tenant's settings). The demo port reads the same settings for thresholds a call leaves out, held by `demo-analytics:parity/shift-review` with the default and a tenant's thresholds.
 - **Notes:** every shift of `agg_shift_cash` in the range, with the cash columns, the trailing z-score, the three threshold flags, `flagged` and `reasons`. Null thresholds read the tenant's report settings of the first visible store (50,000 and 0.005 without a settings row), so Ngày, Tháng and the digest flag what the settings say without passing them; explicit thresholds win, each on its own. A call with stores of two tenants applies the first visible store's thresholds to all of them; the web app never mixes tenants. The flagged rows equal `cash_variance_flags`. At most 92 days.
 
 #### `public.store_targets`
@@ -999,7 +999,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** nothing yet; Ca & két tiền (#155).
+- **Called by:** Ca & két tiền's adjustments card (the range, at most 92 days, the z threshold left to the tenant's settings).
 - **Status:** built (phase 10b; pgTAP `37_shift_and_quality_functions.sql`).
 - **Notes:** per shift of `agg_shift_cash` in the range: its orders and item lines, its voids, edits and removed lines (an event goes to the shift of its invoice, else to the shift whose window holds its time), edits after the shift closed, and the void and removed-line rates scored one-sided against the store's shifts of the 56 days before (at least 3). `flagged` when a score is above the threshold (the tenant's 2 when null) or an edit came after the close; `reasons` lists `voids`, `removed_lines`, `after_close`. At most 92 days.
 

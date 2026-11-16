@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { checkPage, waitForCharts } from "../support/checks";
 import {
+	expectNoConsoleErrors,
 	expectNoExternalRequests,
 	expectShiftsLabelledByNumber,
+	watchConsoleErrors,
 } from "../support/reports";
 import {
 	choosePreset,
@@ -51,12 +53,14 @@ test("Thanh toán opens on the last four weeks with both cards settled", async (
 	await expect(buckets.getByRole("columnheader").first()).toContainText(
 		"Tuần từ",
 	);
+	expectNoConsoleErrors(page);
 });
 
 test("a custom range survives a reload, steps by its own length and comes back", async ({
 	page,
 }) => {
 	await expectRangeRoundTrip(page, "payments");
+	expectNoConsoleErrors(page);
 });
 
 test("the young store has no last year to compare the cash share with", async ({
@@ -69,6 +73,7 @@ test("the young store has no last year to compare the cash share with", async ({
 			.getByTestId("comparison-chip")
 			.nth(1),
 	).toContainText("chưa có dữ liệu năm trước");
+	expectNoConsoleErrors(page);
 });
 
 test("every Thanh toán table downloads as UTF-8 CSV with a BOM", async ({
@@ -91,6 +96,7 @@ test("every Thanh toán table downloads as UTF-8 CSV with a BOM", async ({
 	]) {
 		expect(text).toContain(label);
 	}
+	expectNoConsoleErrors(page);
 });
 
 test("the drawer card states the thresholds and labels shifts Ca n on screen, in CSV and in print", async ({
@@ -105,6 +111,7 @@ test("the drawer card states the thresholds and labels shifts Ca n on screen, in
 		"card-payments-drawer",
 		/Ca (sáng|chiều|tối)/,
 	);
+	expectNoConsoleErrors(page);
 });
 
 test("the fee card shows a dash and the fees link while no fee rate is entered", async ({
@@ -117,11 +124,13 @@ test("the fee card shows a dash and the fees link while no fee rate is entered",
 	await expect(
 		fees.getByTestId("card-notice").getByRole("link"),
 	).toHaveAttribute("href", /cai-dat\/du-lieu-nhap-tay\?tab=phi/);
+	expectNoConsoleErrors(page);
 });
 
 test("Thanh toán prints without controls, passes axe, fits 360 px, stays local and reads in English", async ({
 	page,
 }) => {
+	watchConsoleErrors(page);
 	await expectNoExternalRequests(page, async () => {
 		await page.goto(themeUrl("payments"));
 		await waitForSettledThemeCards(page);
@@ -130,6 +139,7 @@ test("Thanh toán prints without controls, passes axe, fits 360 px, stays local 
 	await expectThemePrintLayout(page);
 	await checkPage(page);
 	await expectThemeInEnglish(page, "Payments and cash");
+	expectNoConsoleErrors(page);
 });
 
 test("Thanh toán downloads every table semicolon-separated with its exact headers and decimal commas on a device set to that format", async ({
@@ -147,4 +157,5 @@ test("Thanh toán downloads every table semicolon-separated with its exact heade
 		);
 	}
 	expectDecimalCommas(texts);
+	expectNoConsoleErrors(page);
 });

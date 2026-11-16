@@ -11,6 +11,11 @@ import {
 
 type ShiftRow = AnalyticsRow<"shift_review">;
 
+export type NumberedShift = Pick<
+	ShiftRow,
+	"store_id" | "shift_id" | "shift_external_id" | "business_date" | "opened_at"
+>;
+
 const EMAIL_LIKE = /[^\s@]+@[^\s@]+\.[^\s@]+/;
 
 export function isEmailLike(text: string): boolean {
@@ -34,13 +39,13 @@ export function cashierCell(name: string | null): string {
 	return shownCashier(name) ?? reportKeys.label.unknownCashier;
 }
 
-function openedAtMillis(row: ShiftRow): number {
+function openedAtMillis(row: NumberedShift): number {
 	const millis =
 		row.opened_at === null ? Number.NaN : Date.parse(row.opened_at);
 	return Number.isNaN(millis) ? Number.POSITIVE_INFINITY : millis;
 }
 
-function byOpening(left: ShiftRow, right: ShiftRow): number {
+function byOpening(left: NumberedShift, right: NumberedShift): number {
 	return (
 		openedAtMillis(left) - openedAtMillis(right) ||
 		left.shift_external_id.localeCompare(right.shift_external_id)
@@ -48,9 +53,9 @@ function byOpening(left: ShiftRow, right: ShiftRow): number {
 }
 
 export function shiftNumbers(
-	rows: readonly ShiftRow[],
+	rows: readonly NumberedShift[],
 ): ReadonlyMap<string, number> {
-	const days = new Map<string, ShiftRow[]>();
+	const days = new Map<string, NumberedShift[]>();
 	for (const row of rows) {
 		const key = `${row.store_id ?? ""}|${row.business_date}`;
 		const members = days.get(key);

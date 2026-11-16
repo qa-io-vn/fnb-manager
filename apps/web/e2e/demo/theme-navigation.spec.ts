@@ -73,12 +73,16 @@ test("a theme of phase 10b says when it comes and its tabs lead back with the ra
 	page,
 }) => {
 	await openTheme(page, "revenue", "range=91d&store=MOCK-S2");
-	await tabs(page).getByRole("link", { name: "Ca & két tiền" }).click();
-	await expect(page).toHaveURL(/#\/chu-de\/ca-ket-tien\?/);
+	const later = tabs(page).locator('a[data-built="false"]').first();
+	await expect(later).toBeVisible();
+	const title = ((await later.textContent()) ?? "").trim();
+	expect(TAB_TITLES).toContain(title);
+	await later.click();
+	await expect(page).toHaveURL(/#\/chu-de\/[a-z-]+\?/);
 	expect(themeSearch(page).get("range")).toBe("91d");
 	expect(themeSearch(page).get("store")).toBe("MOCK-S2");
 	await expect(
-		page.getByRole("heading", { level: 1, name: "Ca & két tiền" }),
+		page.getByRole("heading", { level: 1, name: title }),
 	).toBeVisible();
 	await expect(page.getByTestId("theme-later")).toContainText(
 		"Chủ đề này đang được xây dựng",
@@ -87,7 +91,7 @@ test("a theme of phase 10b says when it comes and its tabs lead back with the ra
 		"giai đoạn 10b",
 	);
 	await expect(
-		tabs(page).getByRole("link", { name: "Ca & két tiền" }),
+		tabs(page).getByRole("link", { name: title, exact: true }),
 	).toHaveAttribute("aria-current", "page");
 	await expect(page.getByTestId("range-picker")).toHaveCount(0);
 	await checkPage(page);

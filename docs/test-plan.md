@@ -292,7 +292,7 @@ Live checks read the real tenant on the build machine. They are opt-in (`LIVE=1`
 | Suite | What it checks | How it stays read-only |
 |---|---|---|
 | `reports:live/live-check` | 1. Three seeded-random store-days and yesterday: report headlines equal the POS control totals in `sync_checks` (invoices exact, net within the larger of 1,000 and 0.05 %), `metric_value` and the series buckets. 2. The last complete month: the same, plus `month_pace`. 3. Day buckets add up to the month, month buckets to the year to date. 4. A young store shows the graceful state and the total compares like for like. 5. Aggregates of the last 7 days are fresh. 6. The slowest call of each report is under 1.5 s. 7. With `LIVE_ACCEPTANCE=<private file>`, Năm's peak month and year-over-year change agree with the private sheet (prints `matches: true` or `false`; otherwise "owner check pending") | Every call runs in a read-only transaction as `authenticated`, with the claims of an owner member of the tenant |
-| `reports:live/theme-live-check` | Phase 10 (#86), in the same `test:live` run, one file after the other. 1. Every theme page (Doanh thu, Giờ & ngày, Thực đơn, Thanh toán) with the page's own calls and `analytics_catch_up_status`, at its default range and at 400 days, each call timed alone: at the default range `range_totals`, `opening_productivity`, `hour_weekday_heatmap`, `menu_engineering`, `modifier_summary`, `payment_summary` and `analytics_catch_up_status` under 50 ms, `shift_review` 100 ms, `hour_profile` and `item_margins` 150 ms, `store_coverage` and `item_summary` 200 ms, `basket_pairs` 300 ms, `item_attach` 400 ms, the slowest call of a page under 600 ms; any call under 1,500 ms at both ranges. 2. A1, with `LIVE_REFERENCE_SHEET=<private sheet>`: each store column of the reference-window section matches exactly one store. Invoices, net, average ticket, an hour's net, an hour band's share (hours inclusive), the Friday-to-Sunday share, Sunday's net and the payment mix are compared with `hour_profile`, the summed heatmap, `range_totals` and `payment_summary`, as are every hour and weekday of the hourly table the section points to. The mix is compared as shares of invoices, because the sheet counts invoices per method. Shares match within 1 point; amounts and counts within half the last written digit or 0.5 %. The identities must hold: profile equals totals, heatmap equals profile, payment shares sum to 1. Unset: `owner check pending`. 3. A2, over the window and the last 365 days: the quantities of `item_summary` and `item_margins` add up to `range_totals.items_sold`; no key of `item_summary`, `item_margins`, `menu_engineering`, `item_attach` or `basket_pairs` (in 91-day chunks, their limit being 92) is a catalogue modifier, or a key sold on modifier lines, of the same POS account; with the sheet, its menu checks (top sellers, modifier share of a day). 4. `shift_review` and `cash_variance_flags` without thresholds equal the calls with the store's thresholds (the defaults while the tenant has no settings row) over 92 days. 5. `report_settings_of` answers with the defaults and false flags; `analytics_catch_up_status` has no pending day. 6. The tenant's row counts in every table with a `tenant_id` are the same after the run | Every call runs in a read-only transaction as `authenticated` with the owner's claims, serialised; the sheet is read in memory and printed as `row <n> column <k>: matches: true|false` only |
+| `reports:live/theme-live-check` | Phase 10 (#86), in the same `test:live` run, one file after the other. 1. Every theme page (Doanh thu, Giờ & ngày, Thực đơn, Thanh toán, and Ca & két tiền since #155 at 28 and 92 days, with `shift_adjustments` under a 400 ms call budget and `shift_review` under 100 ms) with the page's own calls and `analytics_catch_up_status`, at its default range and at 400 days, each call timed alone: at the default range `range_totals`, `opening_productivity`, `hour_weekday_heatmap`, `menu_engineering`, `modifier_summary`, `payment_summary` and `analytics_catch_up_status` under 50 ms, `shift_review` 100 ms, `hour_profile` and `item_margins` 150 ms, `store_coverage` and `item_summary` 200 ms, `basket_pairs` 300 ms, `item_attach` 400 ms, the slowest call of a page under 600 ms; any call under 1,500 ms at both ranges. 2. A1, with `LIVE_REFERENCE_SHEET=<private sheet>`: each store column of the reference-window section matches exactly one store. Invoices, net, average ticket, an hour's net, an hour band's share (hours inclusive), the Friday-to-Sunday share, Sunday's net and the payment mix are compared with `hour_profile`, the summed heatmap, `range_totals` and `payment_summary`, as are every hour and weekday of the hourly table the section points to. The mix is compared as shares of invoices, because the sheet counts invoices per method. Shares match within 1 point; amounts and counts within half the last written digit or 0.5 %. The identities must hold: profile equals totals, heatmap equals profile, payment shares sum to 1. Unset: `owner check pending`. 3. A2, over the window and the last 365 days: the quantities of `item_summary` and `item_margins` add up to `range_totals.items_sold`; no key of `item_summary`, `item_margins`, `menu_engineering`, `item_attach` or `basket_pairs` (in 91-day chunks, their limit being 92) is a catalogue modifier, or a key sold on modifier lines, of the same POS account; with the sheet, its menu checks (top sellers, modifier share of a day). 4. `shift_review` and `cash_variance_flags` without thresholds equal the calls with the store's thresholds (the defaults while the tenant has no settings row) over 92 days. 5. `report_settings_of` answers with the defaults and false flags; `analytics_catch_up_status` has no pending day. 6. The tenant's row counts in every table with a `tenant_id` are the same after the run | Every call runs in a read-only transaction as `authenticated` with the owner's claims, serialised; the sheet is read in memory and printed as `row <n> column <k>: matches: true|false` only |
 | `notify:live/digest-equals-ngay` | For the three latest complete business days, all stores and each store: the digest model equals a separate Ngày build field by field, the POS control totals and `metric_value` | Dry-run builds; no `digests` row is written |
 | `connector-ipos:live/smoke`, `live/connector`, `live/adjustments` | Login and store discovery; daily sales of 7 days; yesterday's invoices; control totals equal emitted sales; the discount identity on voucher invoices; 30 days of adjustments without schema errors | Reads the POS with local credentials from `.env` (the only suite that loads `.env` itself); writes nothing |
 
@@ -737,7 +737,7 @@ Full run on 2026-11-16 after migration `data_quality_payments_account_order`: 2,
 
 ### 8.3 Playwright specs
 
-Listed with `playwright test --list` on 2026-11-16 after #160: 158 tests in 24 files.
+Listed with `playwright test --list` on 2026-11-16 after #155: 168 tests in 25 files.
 
 | Project | File | Tests |
 |---|---|---:|
@@ -762,10 +762,11 @@ Listed with `playwright test --list` on 2026-11-16 after #160: 158 tests in 24 f
 | `demo` | `e2e/demo/theme-gio-ngay.spec.ts` | 8 |
 | `demo` | `e2e/demo/theme-thuc-don.spec.ts` | 8 |
 | `demo` | `e2e/demo/theme-thanh-toan.spec.ts` | 8 |
+| `demo` | `e2e/demo/theme-ca-ket-tien.spec.ts` | 10 |
 | `demo` | `e2e/demo/theme-navigation.spec.ts` | 4 |
 | `pages` | `e2e/pages/install.spec.ts` | 2 |
 | `pages` | `e2e/pages/report-year-performance.spec.ts` | 1 |
-| | **Total** | **158** (live 43, demo 112, pages 3) |
+| | **Total** | **168** (live 43, demo 122, pages 3) |
 
 At phase 10a's verification the list held 126 tests in 19 files and all 126 passed with one worker and no retries; the phase 9 verification had 63 and phase 6 had 20.
 
@@ -846,7 +847,7 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | FR-DQ | 10 | 1 | 1 | 1 | 13 |
 | FR-ANA | 15 | – | 1 | 1 | 17 |
 | FR-REP | 17 | 2 | – | 2 | 21 |
-| FR-THM | 2 | 6 | 1 | – | 9 |
+| FR-THM | 3 | 5 | 1 | – | 9 |
 | FR-SET | 3 | 8 | – | – | 11 |
 | FR-EXP | – | 2 | 8 | – | 10 |
 | FR-STR | 1 | – | 9 | – | 10 |
@@ -856,7 +857,7 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | FR-STF | – | – | 23 | – | 23 |
 | FR-LOY | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | 7 | – | 12 |
-| **FR total** | **137** | **36** | **109** | **14** | **296** |
+| **FR total** | **138** | **35** | **109** | **14** | **296** |
 | NFR-SEC | 6 | 6 | 2 | 1 | 15 |
 | NFR-PRV | 5 | 1 | 1 | – | 7 |
 | NFR-PERF | 4 | 4 | 1 | – | 9 |
@@ -869,18 +870,18 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | NFR-OBS | 3 | 1 | – | – | 4 |
 | NFR-HYG | 4 | 1 | 1 | – | 6 |
 | **NFR total** | **47** | **22** | **9** | **2** | **80** |
-| **All** | **184** | **58** | **118** | **16** | **376** |
+| **All** | **185** | **57** | **118** | **16** | **376** |
 
 ```mermaid
 pie showData
     title Coverage of the requirements on 2026-11-16
-    "covered" : 184
-    "partial" : 58
+    "covered" : 185
+    "partial" : 57
     "planned" : 118
     "owner check" : 16
 ```
 
-Of the 256 requirements that are verified locally, built, in build or waiting for the owner, 184 are covered, 55 partial, 1 planned and 16 owner checks. Of the 120 that are designed or planned, 117 have no test yet and 3 are partly held by tests of the database rules they rest on.
+Of the 256 requirements that are verified locally, built, in build or waiting for the owner, 185 are covered, 54 partial, 1 planned and 16 owner checks. Of the 120 that are designed or planned, 117 have no test yet and 3 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -993,7 +994,7 @@ Of the 256 requirements that are verified locally, built, in build or waiting fo
 | FR-ANA-08 | Median same-weekday baseline | Must | verified locally | `pgtap:15_analytics_queries`, `demo-analytics:parity/core-functions`, `web:metrics/today`, `pgtap:36_promotion_functions` (the lift's same-weekday median), `demo-analytics:parity/promotion-lift` (#190) | covered |
 | FR-ANA-09 | Benchmark forecasts with tracked error | Must | verified locally | `pgtap:15_analytics_queries`, `demo-analytics:parity/forecasts` | covered |
 | FR-ANA-10 | Exact ticket decomposition | Must | verified locally | `reports:unit/decomposition-and-narrative` | covered |
-| FR-ANA-11 | Query functions | Must | verified locally | `pgtap:15_analytics_queries`, `pgtap:16_analytics_menu_and_cash`, `demo-analytics:parity/item-velocity`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`, `e2e:demo/settings-bao-cao` | covered |
+| FR-ANA-11 | Query functions | Must | verified locally | `pgtap:15_analytics_queries`, `pgtap:16_analytics_menu_and_cash`, `demo-analytics:parity/item-velocity`, `pgtap:33_theme_functions`, `pgtap:35_mappings_and_catch_up`, `e2e:demo/settings-bao-cao`, `reports:unit/themes/shifts/calls` and `reports:unit/themes/shifts/drawer` (the tenant's thresholds, never over 92 days, the flags of `shift_review`; #155) | covered |
 | FR-ANA-12 | Report functions with limits | Must | verified locally | `pgtap:13_analytics_schema`, `pgtap:22_report_functions`, `pgtap:23_report_access`, `reports:unit/rpc-source`, `pgtap:33_theme_functions`, `pgtap:34_theme_access`, `pgtap:36_promotion_functions`, `pgtap:37_shift_and_quality_functions` (the 10b limits), `pgtap:39_theme_access_b` (every 10b function's scope) | covered |
 | FR-ANA-13 | Parity of the browser port | Must | verified locally | `demo-analytics:parity/*` (22 files), CI `database` job, `demo-analytics:parity/overrides` (with fee rates and a custom holiday), `demo-analytics:parity/menu`, `demo-analytics:parity/basket-modifiers`, `demo-analytics:parity/discount-rows` (with D3's compliance cases; #151), `demo-analytics:parity/promotion-days`, `demo-analytics:parity/promotion-lift` (#190), `demo-analytics:parity/promotion-catalogue`, `demo-analytics:parity/promotion-compliance`, `demo-analytics:parity/item-discount-days` (#152), `demo-analytics:parity/shift-adjustments` (#154), `demo-analytics:parity/data-quality-items`, `demo-analytics:parity/data-quality-summary`, `demo-analytics:parity/data-quality-payments` (#157) | covered |
 | FR-ANA-14 | Benchmark context kept apart | Should | verified locally | `metrics:consistency/document` | covered |
@@ -1014,10 +1015,10 @@ Of the 256 requirements that are verified locally, built, in build or waiting fo
 | FR-REP-07 | As-of rule | Must | verified locally | `reports:unit/as-of-and-bounds`, `web:reports/report-route`, `e2e:demo/report-day` | covered |
 | FR-REP-08 | Deep links | Must | verified locally | `web:reports/report-route`, `web:reports/period-navigator`, `web:themes/theme-route`, `e2e:demo/report-day`, `e2e:demo/theme-navigation` (theme links keep the range and the stores), `e2e:live/themes` (a dated link per store), `web:themes/theme-wiring` (theme parameters), `reports:unit/themes/promotions/params` | covered |
 | FR-REP-09 | Coverage and young stores | Must | verified locally | `reports:unit/coverage-and-comparison`, `e2e:live/reports`, `e2e:demo/report-year` | covered |
-| FR-REP-10 | Sentences from templates | Must | verified locally | `reports:unit/decomposition-and-narrative`, `web:metrics/sentences`, `web:i18n/wording-sheets` | covered |
+| FR-REP-10 | Sentences from templates | Must | verified locally | `reports:unit/decomposition-and-narrative`, `web:metrics/sentences`, `web:i18n/wording-sheets`, the Ca & két tiền card tests and smoke test (#155) | covered |
 | FR-REP-11 | Report card | Must | verified locally | `web:components/report-card/report-card`, `web:components/report-card/report-card-extensions`, `web:themes/theme-param-controls` (the controls slot) | covered |
-| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan`, `web:settings/thresholds/thresholds-form`, `e2e:demo/settings-bao-cao`, phase 10a's verification (#102) (one CSV per theme from the real tenant: BOM, strict UTF-8, Vietnamese headers) | partial |
-| FR-REP-13 | Print layout | Should | verified locally | `e2e:demo/demo`, `e2e:demo/report-day`, the four theme specs (`expectThemePrintLayout`: the summary line, no buttons, no tabs or pickers) | covered |
+| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan`, `web:settings/thresholds/thresholds-form`, `e2e:demo/settings-bao-cao`, phase 10a's verification (#102) (one CSV per theme from the real tenant: BOM, strict UTF-8, Vietnamese headers), `e2e:demo/theme-ca-ket-tien` (every table as UTF-8 CSV with a BOM, and semicolon-separated; #155) | partial |
+| FR-REP-13 | Print layout | Should | verified locally | `e2e:demo/demo`, `e2e:demo/report-day`, the four theme specs (`expectThemePrintLayout`: the summary line, no buttons, no tabs or pickers), `e2e:demo/theme-ca-ket-tien` (print without controls, Ca n in print; #155) | covered |
 | FR-REP-14 | Card loading and errors | Should | built | `e2e:demo/report-day` (cards settle); `web:reports/use-cards-load` (a failed card with its retry, a failed coverage call) | partial |
 | FR-REP-15 | Store and period selection | Must | verified locally | `web:shell/period-picker`, `web:state/preferences`, `pgtap:22_report_functions` | covered |
 | FR-REP-16 | Target progress | Should | verified locally | `reports:unit/reports/month/shifts-targets`, `e2e:demo/report-month` | covered |
@@ -1025,7 +1026,7 @@ Of the 256 requirements that are verified locally, built, in build or waiting fo
 | FR-REP-18 | Navigation | Must | verified locally | `e2e:live/today`, `web:themes/theme-tabs`, `e2e:demo/theme-navigation` (the eight theme tabs, the pages of 10b, `#/chu-de`) | covered |
 | FR-REP-19 | Owner wording review | Should | waits for owner | owner check | owner check |
 | FR-REP-20 | Owner comparison with POS reports | Must | waits for owner | owner check after `reports:live/live-check` | owner check |
-| FR-REP-21 | Shift labels carry no personal data | Must | verified locally | `reports:unit/model/shifts`, `reports:unit/reports/day/details`, `reports:unit/reports/month/shifts-targets`, `web:reports/card-adapter`, `e2e:demo/report-day`, `e2e:demo/report-month`, `e2e:live/reports`, `reports:live/live-check` | covered |
+| FR-REP-21 | Shift labels carry no personal data | Must | verified locally | `reports:unit/model/shifts`, `reports:unit/reports/day/details`, `reports:unit/reports/month/shifts-targets`, `web:reports/card-adapter`, `e2e:demo/report-day`, `e2e:demo/report-month`, `e2e:live/reports`, `reports:live/live-check`, `reports:unit/themes/shifts/labels`, `web:pages/themes/ca-ket-tien/shift-privacy` (#155) | covered |
 
 #### FR-THM — Thematic reports
 
@@ -1037,7 +1038,7 @@ Of the 256 requirements that are verified locally, built, in build or waiting fo
 | FR-THM-04 | Thanh toán & tiền mặt | Should | verified locally | `pgtap:35_mappings_and_catch_up` (cash thresholds from the settings); `demo-analytics:parity/shift-review`, `demo-analytics:themes/payments.smoke`, `e2e:demo/theme-thanh-toan` (the four cards), `e2e:demo/settings-bao-cao` (a saved cash threshold reaches the drawer card), `reports:live/theme-live-check` (opt-in: the payment mix of the reference window; the default thresholds change neither `shift_review` nor `cash_variance_flags`), phase 10a's verification (#102) (the page on the real tenant for the reference window) | partial |
 | FR-THM-05 | Range presets | Could | verified locally | `reports:unit/themes/range`, `web:themes/range-picker`, `web:themes/theme-route`, `web:themes/theme-wiring` (the device's last preset; the range notices), `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-navigation` | covered |
 | FR-THM-06 | Khuyến mãi & giảm giá | Should | in build | `reports:unit/themes/contract`, `reports:unit/themes/promotions/params`, `web:themes/theme-wiring` (the contracts and the `promo` and `cmp` parameters, #149); `pgtap:36_promotion_functions` (#150); `demo-analytics:parity/promotion-days`, `demo-analytics:parity/promotion-lift`, `demo-analytics:unit/promotion-ports` (#190); the other ports and the page planned, `demo-analytics:parity/promotion-catalogue`, `demo-analytics:parity/promotion-compliance`, `demo-analytics:parity/item-discount-days` (#152) | partial |
-| FR-THM-07 | Ca & két tiền | Should | in build | `pgtap:37_shift_and_quality_functions` (`shift_adjustments`: attribution by the invoice's shift and by time, rates, one-sided z-scores on unrounded rates) (#150); `demo-analytics:parity/shift-adjustments`, `demo-analytics:unit/shift-adjustments` (#154); the page planned (#155) | partial |
+| FR-THM-07 | Ca & két tiền | Should | built | `pgtap:37_shift_and_quality_functions` (`shift_adjustments`: attribution by the invoice's shift and by time, rates, one-sided z-scores on unrounded rates) (#150); `demo-analytics:parity/shift-adjustments`, `demo-analytics:unit/shift-adjustments` (#154); `reports:unit/themes/shifts/calls`, `reports:unit/themes/shifts/shift-sales`, `reports:unit/themes/shifts/drawer` (the flagged shifts equal `shift_review`'s flagged rows), `reports:unit/themes/shifts/adjustments` (only what `shift_adjustments` flags, every missing z-score explained), `reports:unit/themes/shifts/labels`, `demo-analytics:themes/shifts.smoke` (a shift has the same Ca n in every card), `web:pages/themes/ca-ket-tien/shift-privacy` (no POS shift name or e-mail in CSV or rendered markup), `e2e:demo/theme-ca-ket-tien`, `e2e:live/themes` (the five thematic reports on the seed) (#155) | covered |
 | FR-THM-08 | So sánh cửa hàng | Should | designed | planned | planned |
 | FR-THM-09 | Sections a POS cannot feed | Should | built | `pgtap:33_theme_functions` (provisional menu roles, null attach rates), `reports:unit/themes/menu/margins`, `reports:unit/themes/menu/attach`, `reports:unit/themes/hours/productivity`, `reports:unit/themes/payments/fees`, `demo-analytics:themes/hours.smoke`, `e2e:demo/theme-thanh-toan`, phase 10a's verification (#102) (each missing-input state on the real tenant), `pgtap:37_shift_and_quality_functions` (the inputs a store lacks: costs, seats, opening hours, identified customers) | partial |
 
@@ -1332,7 +1333,7 @@ Of the 256 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/settings-phan-loai` (the Nhóm của món and Loại thanh toán tabs at 360 and 1280 px; #160) | covered |
+| NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/settings-phan-loai` (the Nhóm của món and Loại thanh toán tabs at 360 and 1280 px; #160), `e2e:demo/theme-ca-ket-tien` (#155) | covered |
 | NFR-A11Y-02 | Lighthouse accessibility | Must | verified locally | Lighthouse recipe in `apps/web/README.md` | covered |
 | NFR-A11Y-03 | Contrast | Must | verified locally | `apps/web/e2e/support/checks.ts`, `design-tokens:tokens` | covered |
 | NFR-A11Y-04 | Charts have tables | Must | verified locally | `web:components/report-card/report-card` | covered |
@@ -1342,7 +1343,7 @@ Of the 256 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-I18N-01 | Vietnamese first, English second | Must | verified locally | `web:i18n/i18n`, `web:i18n/report-keys`, `web:i18n/theme-keys`, `web:i18n/wording-sheets`, `e2e:live/today`, `e2e:demo/demo`, `e2e:demo/settings-cua-hang` (#159) | covered |
+| NFR-I18N-01 | Vietnamese first, English second | Must | verified locally | `web:i18n/i18n`, `web:i18n/report-keys`, `web:i18n/theme-keys`, `web:i18n/wording-sheets`, `e2e:live/today`, `e2e:demo/demo`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155) | covered |
 | NFR-I18N-02 | Formatting by locale and currency | Must | verified locally | `web:lib/format`, `notify:unit/render/format`, `web:settings/number-text`, `web:settings/forms/money-field`, `web:lib/csv` | covered |
 | NFR-I18N-03 | Registry spelling | Should | verified locally | `web:i18n/i18n` | covered |
 | NFR-I18N-04 | Notification language | Should | in build | `notify:unit/render/templates` | covered |
@@ -1353,7 +1354,7 @@ Of the 256 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159) | covered |
+| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155) | covered |
 | NFR-UX-02 | Layout on phones and desktops | Should | built | `e2e:demo/demo` (360 px) | partial |
 | NFR-UX-03 | Installable | Should | verified locally | `e2e:demo/demo`, `e2e:pages/install`, `web:shell/install-assets` | covered |
 | NFR-UX-04 | New version prompt | Should | built | no automated test | partial |
@@ -1384,7 +1385,7 @@ Of the 256 requirements that are verified locally, built, in build or waiting fo
 | NFR-OBS-01 | Job summaries | Must | built | `.github/workflows/*.yml`, `jobs:unit/account-numbers` | partial |
 | NFR-OBS-02 | Logs in our own tables | Must | verified locally | `pgtap:01_schema`, `pgtap:20_incremental_schedule`, `pgtap:28_notify_outbox` | covered |
 | NFR-OBS-03 | Notification observability | Should | verified locally | `pgtap:28_notify_outbox`, `jobs:integration/notify-cli` | covered |
-| NFR-OBS-04 | Browser errors fail tests | Should | verified locally | `apps/web/e2e/support/reports.ts` | covered |
+| NFR-OBS-04 | Browser errors fail tests | Should | verified locally | `apps/web/e2e/support/reports.ts`, `e2e:demo/theme-ca-ket-tien` and `e2e:demo/theme-thanh-toan` (every test ends on the console check; #155) | covered |
 
 #### NFR-HYG — Public-repository hygiene
 
@@ -1570,7 +1571,6 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-THM-02 | Giờ & ngày trong tuần | verified locally | pgTAP, parity, the demo and live specs hold the functions and the page; `reports:live/theme-live-check` with `LIVE_REFERENCE_SHEET` prints `matches: true` for every hour, weekday, hour band and weekend share of the private reference window (2026-11-15, again at phase 10a's verification (#102) on 2026-11-16), and the page opened on the real tenant for that window shows it. | The owner's reading of Giờ & ngày beside the private sheet (OC-03, #189). |
 | FR-THM-03 | Thực đơn | in build | pgTAP, the parity suite and the demo and live specs hold the menu functions and the eight cards; the engine smoke test and the demo spec hold that no modifier name appears in an item table (the sugar and ice card lists them on purpose) and that the uncategorised item shows with its action; the demo spec of Ngưỡng báo cáo holds that a saved minimum of items per role reaches the matrix, and the page downloads once in the semicolon dialect. | A spec that costs entered for five items show the margin of those five only, once the costs page exists (#161). |
 | FR-THM-06 | Khuyến mãi & giảm giá | in build | The contracts of its five functions (rows parsed, unknown kinds and comparators refused), the `promo` and `cmp` parameters (replaced when unreadable, one history entry per change, shown inside the lift card), the SQL functions against hand calculations for the three comparators (pgTAP 36, #150), and the `promotion_days` and `promotion_lift` ports equal to the SQL (#190) are tested. | The page's specs (#191). |
-| FR-THM-07 | Ca & két tiền | in build | The page: pgTAP holds `shift_adjustments` (attribution, rates, one-sided scores), and its demo port equals the SQL, a void without an invoice attributed by time included (#154). | A unit or live test that the flagged shifts equal those of `shift_review` and `cash_variance_flags` (#155). |
 | FR-DQ-12 | Data-quality page | in build | The page: pgTAP holds the three data-quality functions and their access, and their demo ports equal the SQL under both settings variants (#157). | A live Playwright spec on the seeded stack: the page flags the coffee store without e-invoicing (#158). |
 | FR-THM-09 | Sections a POS cannot feed | built | pgTAP shows the provisional menu roles without costs and the null attach rates without a role; unit tests hold the margin card asking for costs, the attach card's dash and roles action while a role is unmapped, RevPASH only with seats and the fee card's dash without a rate; phase 10a's verification (#102) saw each of these states on the real tenant. | Sections that follow a connector's declared capabilities (no costs, no customer identity), with a connector that declares no costs and no manual costs entered (10b). |
 | FR-THM-04 | Thanh toán & tiền mặt | verified locally | pgTAP shows `shift_review` and `cash_variance_flags` following the tenant's cash thresholds; the parity suite holds the demo's `shift_review` to them; the unit, engine smoke and demo specs hold the payment mix (kind shares summing to 1 and matching the methods), the cash trend, the drawer card (thresholds line, no e-mail-like text) and the fee card (the dash and the fees link without a rate); the demo spec of Ngưỡng báo cáo holds the round trip from a saved cash threshold to the drawer card's thresholds line and back to the default, and the page downloads once in the semicolon dialect. | The owner's reading of Thanh toán beside the private sheet (OC-03, #189); `reports:live/theme-live-check` prints `matches: true` for the payment mix of the reference window, compared as shares of invoices (2026-11-15, again at phase 10a's verification on 2026-11-16). |

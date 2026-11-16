@@ -83,11 +83,12 @@ export const cashMetrics = [
 			"`invoice_events` of kind `line_removed` ÷ item lines of the period",
 		grains: ["store-day", "cashier-period", "shift"],
 		direction: "lower",
-		source: "`invoice_events` (fact table; no aggregate yet)",
+		source:
+			"`metric_value()` per store and period, `shift_adjustments()` (`removed_line_rate`) per shift, both from `invoice_events`",
 		reports: ["shifts"],
 		status: "available now",
 		statusNote:
-			"populated once the adjustment sync of phase 7 runs; computed by the reports layer",
+			"populated once the adjustment sync of phase 7 runs; the cashier-period grain is not computed yet",
 	},
 	{
 		id: "payment_fee_estimate",
@@ -120,7 +121,6 @@ export const cashMetrics = [
 		source: "`shift_adjustments()` (`void_rate`)",
 		reports: ["shifts"],
 		status: "available now",
-		statusNote: "the function comes with phase 10b",
 	},
 	{
 		id: "shift_void_rate_zscore",
@@ -137,7 +137,8 @@ export const cashMetrics = [
 		source: "`shift_adjustments()` (`void_z_score`)",
 		reports: ["shifts"],
 		status: "available now",
-		statusNote: "the function comes with phase 10b",
+		statusNote:
+			"empty with fewer than 3 earlier shifts or when their rates do not differ; flagged above the tenant's z threshold (2 by default)",
 	},
 	{
 		id: "removed_line_rate_zscore",
@@ -154,7 +155,8 @@ export const cashMetrics = [
 		source: "`shift_adjustments()` (`removed_z_score`)",
 		reports: ["shifts"],
 		status: "available now",
-		statusNote: "the function comes with phase 10b",
+		statusNote:
+			"empty with fewer than 3 earlier shifts or when their rates do not differ; flagged above the tenant's z threshold (2 by default)",
 	},
 	{
 		id: "edits_after_close",
@@ -171,6 +173,5 @@ export const cashMetrics = [
 		source: "`shift_adjustments()` (`edits_after_close`)",
 		reports: ["shifts"],
 		status: "available now",
-		statusNote: "the function comes with phase 10b",
 	},
 ] as const satisfies readonly MetricDefinition[];

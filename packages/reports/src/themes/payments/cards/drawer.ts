@@ -3,11 +3,13 @@ import type {
 	ChartModel,
 	NoticeModel,
 	TableColumnModel,
+	TableModel,
 } from "../../../model/card.js";
 import { reportKeys, shiftReasonsKey } from "../../../model/keys.js";
 import {
 	cashierCell,
 	cashierShownValue,
+	type NumberedShift,
 	shiftNumbers,
 	shiftNumberValue,
 } from "../../../model/shifts.js";
@@ -23,6 +25,7 @@ import {
 	textValue,
 } from "../../../model/values.js";
 import { byVariance } from "../../../reports/day/cards/shifts.js";
+import type { ThemeContext } from "../../context.js";
 import type { ThemeCardDefinition, ThemeCardInput } from "../../definition.js";
 import { themeKeys } from "../../keys.js";
 import { themeMarkers } from "../../support.js";
@@ -37,15 +40,36 @@ import {
 } from "../support.js";
 
 export const DRAWER_CHART_SHIFTS = 20;
-const DRAWER_PREVIEW_ROWS = 10;
+export const DRAWER_PREVIEW_ROWS = 10;
 
-interface Labeller {
-	readonly numberOf: (row: ShiftRow) => number;
-	readonly storeName: (row: ShiftRow) => string | null;
+export type LabelledShift = Pick<
+	NumberedShift,
+	"shift_id" | "store_id" | "business_date"
+>;
+
+export interface ShiftLabeller {
+	readonly numberOf: (row: LabelledShift) => number;
+	readonly storeName: (row: LabelledShift) => string | null;
 	readonly multiStore: boolean;
 }
 
-function shiftLabel(row: ShiftRow, labeller: Labeller): TypedValue {
+export function shiftLabeller(
+	context: Pick<ThemeContext, "stores">,
+	rows: readonly NumberedShift[],
+): ShiftLabeller {
+	const numbers = shiftNumbers(rows);
+	return {
+		numberOf: (row) => numbers.get(row.shift_id) ?? 0,
+		storeName: (row) =>
+			context.stores.find((store) => store.id === row.store_id)?.name ?? null,
+		multiStore: isMultiStore(context),
+	};
+}
+
+export function shiftOnLabel(
+	row: LabelledShift,
+	labeller: ShiftLabeller,
+): TypedValue {
 	const values = {
 		shift: shiftNumberValue(labeller.numberOf(row)),
 		date: textValue("date", row.business_date),
@@ -61,13 +85,18 @@ function shiftLabel(row: ShiftRow, labeller: Labeller): TypedValue {
 	);
 }
 
-function settingsOf(input: ThemeCardInput): SettingsRow | null {
-	const rows = input.results.rows(paymentsCalls.settings, "report_settings_of");
+export function drawerSettings(
+	input: ThemeCardInput,
+	key: string,
+): SettingsRow | null {
+	const rows = input.results.rows(key, "report_settings_of");
 	const first = input.context.stores[0]?.id;
 	return rows?.find((row) => row.store_id === first) ?? rows?.[0] ?? null;
 }
 
-function thresholdsPart(settings: SettingsRow | null): SentencePart | null {
+export function drawerThresholdsPart(
+	settings: SettingsRow | null,
+): SentencePart | null {
 	if (settings === null) return null;
 	return part(paymentsKeys.drawer.thresholds, {
 		abs: numberValue("moneyExact", settings.cash_abs_threshold),
@@ -76,17 +105,11 @@ function thresholdsPart(settings: SettingsRow | null): SentencePart | null {
 	});
 }
 
-function mainPart(
+export function drawerFlaggedPart(
 	rows: readonly ShiftRow[],
 	flagged: readonly ShiftRow[],
-	labeller: Labeller,
-	days: number,
+	labeller: ShiftLabeller,
 ): SentencePart {
-	if (rows.length === 0) {
-		return part(paymentsKeys.drawer.noData, {
-			days: numberValue("count", days),
-		});
-	}
 	const largest = flagged[0];
 	if (largest === undefined || largest.variance_amount === null) {
 		return part(reportKeys.shifts.none, {
@@ -95,7 +118,7 @@ function mainPart(
 	}
 	return part(reportKeys.shifts.largest, {
 		count: numberValue("count", flagged.length),
-		shift: shiftLabel(largest, labeller),
+		shift: shiftOnLabel(largest, labeller),
 		cashier: cashierShownValue(largest.cashier_name),
 		variance: numberValue("moneySigned", largest.variance_amount),
 		reasons: messageValue(
@@ -104,9 +127,9 @@ function mainPart(
 	});
 }
 
-function chartOf(
+export function drawerChart(
 	rows: readonly ShiftRow[],
-	labeller: Labeller,
+	labeller: ShiftLabeller,
 ): ChartModel | null {
 	const shown = rows
 		.filter((row) => row.variance_amount !== null)
@@ -114,7 +137,7 @@ function chartOf(
 	if (shown.length === 0) return null;
 	return {
 		labelKey: paymentsKeys.drawer.chart,
-		categories: shown.map((row) => shiftLabel(row, labeller)),
+		categories: shown.map((row) => shiftOnLabel(row, labeller)),
 		series: [
 			{
 				label: part(reportKeys.shifts.over),
@@ -144,25 +167,12 @@ function chartOf(
 	};
 }
 
-export function buildDrawerCard(input: ThemeCardInput): CardModel {
-	const { context } = input;
-	const window = shiftWindow(context);
-	const rows = byVariance(
-		input.results.rows(paymentsCalls.shifts, "shift_review") ?? [],
-	);
-	const flagged = rows.filter((row) => row.flagged);
-	const numbers = shiftNumbers(rows);
-	const multiStore = isMultiStore(context);
-	const storeName = (row: ShiftRow) =>
-		context.stores.find((store) => store.id === row.store_id)?.name ?? null;
-	const labeller: Labeller = {
-		numberOf: (row) => numbers.get(row.shift_id) ?? 0,
-		storeName,
-		multiStore,
-	};
-	const thresholds = thresholdsPart(settingsOf(input));
+export function drawerTable(
+	rows: readonly ShiftRow[],
+	labeller: ShiftLabeller,
+): TableModel {
 	const columns: TableColumnModel[] = [
-		...(multiStore ? [STORE_COLUMN] : []),
+		...(labeller.multiStore ? [STORE_COLUMN] : []),
 		column("date", reportKeys.table.date, "date"),
 		column("shift", reportKeys.table.shift, "shift"),
 		column("cashier", reportKeys.table.cashier, "label"),
@@ -173,6 +183,53 @@ export function buildDrawerCard(input: ThemeCardInput): CardModel {
 		column("zScore", reportKeys.table.zScore, "decimal"),
 		column("reasons", reportKeys.table.reasons, "message"),
 	];
+	return tableModel({
+		captionKey: paymentsKeys.drawer.table,
+		columns,
+		rows: rows.map((row) => ({
+			id: row.shift_id,
+			cells: {
+				store: labeller.storeName(row),
+				date: row.business_date,
+				shift: labeller.numberOf(row),
+				cashier: cashierCell(row.cashier_name),
+				cashSales: row.cash_sales_amount,
+				expectedCash: row.expected_cash_amount,
+				drawer: row.drawer_amount,
+				variance: row.variance_amount,
+				zScore: row.z_score,
+				reasons: shiftReasonsKey(row.reasons),
+			},
+		})),
+		previewRows: DRAWER_PREVIEW_ROWS,
+	});
+}
+
+function mainPart(
+	rows: readonly ShiftRow[],
+	flagged: readonly ShiftRow[],
+	labeller: ShiftLabeller,
+	days: number,
+): SentencePart {
+	if (rows.length === 0) {
+		return part(paymentsKeys.drawer.noData, {
+			days: numberValue("count", days),
+		});
+	}
+	return drawerFlaggedPart(rows, flagged, labeller);
+}
+
+export function buildDrawerCard(input: ThemeCardInput): CardModel {
+	const { context } = input;
+	const window = shiftWindow(context);
+	const rows = byVariance(
+		input.results.rows(paymentsCalls.shifts, "shift_review") ?? [],
+	);
+	const flagged = rows.filter((row) => row.flagged);
+	const labeller = shiftLabeller(context, rows);
+	const thresholds = drawerThresholdsPart(
+		drawerSettings(input, paymentsCalls.settings),
+	);
 	const notice: NoticeModel | null =
 		rows.length === 0
 			? {
@@ -205,29 +262,8 @@ export function buildDrawerCard(input: ThemeCardInput): CardModel {
 			mainPart(rows, flagged, labeller, window.days),
 			...(thresholds === null ? [] : [thresholds]),
 		],
-		tables: [
-			tableModel({
-				captionKey: paymentsKeys.drawer.table,
-				columns,
-				rows: rows.map((row) => ({
-					id: row.shift_id,
-					cells: {
-						store: storeName(row),
-						date: row.business_date,
-						shift: labeller.numberOf(row),
-						cashier: cashierCell(row.cashier_name),
-						cashSales: row.cash_sales_amount,
-						expectedCash: row.expected_cash_amount,
-						drawer: row.drawer_amount,
-						variance: row.variance_amount,
-						zScore: row.z_score,
-						reasons: shiftReasonsKey(row.reasons),
-					},
-				})),
-				previewRows: DRAWER_PREVIEW_ROWS,
-			}),
-		],
-		chart: chartOf(rows, labeller),
+		tables: [drawerTable(rows, labeller)],
+		chart: drawerChart(rows, labeller),
 		notice,
 		markers: themeMarkers(input, true),
 		csvName: paymentsCsvName(context, "drawer"),

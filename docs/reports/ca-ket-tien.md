@@ -1,0 +1,57 @@
+# Ca & két tiền — shifts and cash drawer
+
+Route `#/chu-de/ca-ket-tien?range=<preset>` or `?from=…&to=…`, plus `&store=<id>,<id>` · title "Ca & két tiền" · default the last 28 days, at most 92 · built in phase 10b (#155) on the range rules of [Doanh thu](doanh-thu.md#range) (ADR-035).
+
+Ca & két tiền puts each shift beside the store's other shifts: what it sold, how its drawer counted against the cash expected, and whether its voids, removed lines or edits after the close stand out against the store's own recent shifts. It is a prompt to look at a shift, never a verdict on a person.
+
+## Range
+
+The 92-day maximum is the limit of `shift_adjustments` (and of the 56 trailing days its scores read). A longer preset (52 tuần, or Năm nay from April) or a link with longer dates is shortened to its last 92 days with the page's notice "Chủ đề này xem tối đa 92 ngày nên chỉ hiện 92 ngày cuối."; the address then holds the two dates. ‹ and › step by the range's own length. A tab from another theme carries the range moved to the last 92 days (`moveRangeToLimit`), without the notice. The functions are always called with at most the last 92 days of the range, even if a context longer than the definition allows were built.
+
+## Calls
+
+| Key | Call |
+|---|---|
+| `coverage` | `store_coverage(S, R.from, R.to)` |
+| `shifts` | `shift_review(S, R.from, R.to)`, thresholds left out so the tenant's cash thresholds apply (D3) |
+| `adjustments` | `shift_adjustments(S, R.from, R.to)`, the z threshold left out so the tenant's applies (2 by default) |
+| `settings` | `report_settings_of(S)` |
+
+There are no follow-up calls. Each card waits only for the calls it reads (`shiftsNeeds`): every card for `coverage`, the sales card for `shifts`, the drawer card for `shifts` and `settings`, the adjustments card for `adjustments` and `settings`. A slow or failed `shift_adjustments` call therefore leaves the sales and drawer cards standing, and a failed `shift_review` call the adjustments card; a failed `coverage` call holds back all three cards and a failed `settings` call the drawer and adjustments cards.
+
+## Cards
+
+| Card | Headline | Sentence | Table and chart |
+|---|---|---|---|
+| Doanh thu và hóa đơn theo ca (`shift_sales`, metric `shift_net`) | net revenue per shift on average (Σ `sales_amount` ÷ shifts), captioned "trung bình mỗi ca, trên {n} ca" | the average, then the shift slot ("Ca n", pooled over the selected stores) with the highest and the lowest average net, each with its number of shifts; the plain average alone when there is only one slot | store (several stores), date, shift, cashier, opened, closed (the store's wall clock), invoices, net revenue; newest first, opening on 10 rows · bars of net revenue for the last 40 shifts in time order |
+| Chênh lệch két (`drawer`, metric `flagged_shifts`, related `cash_variance`, `cash_variance_zscore`) | the shifts `shift_review` flags, captioned "trên {n} ca" | Thanh toán's drawer sentences (`report.shifts.none` or `.largest`, the largest variance named "Ca n ngày …", with the store when several are selected), then the thresholds line "Ngưỡng: {abs} · {rel} tiền mặt bán · z trên {z}" from `report_settings_of` | Thanh toán's drawer table (store, date, shift, cashier, cash sales, expected, counted, variance, z-score, reasons; largest variance first, 10 rows) · second table per cashier (per store and cashier when several stores are selected): shifts, flagged, Σ\|variance\| and mean \|variance\| (labelled "(tuyệt đối)"), largest shortage, largest overage, most flags first · Thanh toán's bars of over and short variances for the 20 largest |
+| Hủy, xóa món và sửa sau khi đóng ca (`adjustments`, metric `shift_void_rate`, related `shift_void_rate_zscore`, `removed_line_rate`, `removed_line_rate_zscore`, `edits_after_close`, `edit_rate`) | the shifts `shift_adjustments` flags, captioned "trên {n} ca" | "{n} ca đáng xem lại; đứng đầu là Ca n ngày … (thu ngân): lý do." for the top-ranked flagged shift; otherwise that none of the shifts that could be compared stood out and none was edited after the close, or, when no shift could be compared yet, that this is not known; then the basis: each shift is compared with the store's own shifts of the 56 days before, a rate is flagged only when higher than usual, every edit after the close is flagged, and a z-score compares a shift with earlier shifts and is not a judgement of a person | store, date, shift, cashier, invoices, voids, void rate, void z, removed lines, removed-line rate, removed-line z, edits, edits after close, reasons; ranked by the higher of the two z-scores (a shift without either last), then by edits after close, 10 rows · bars of the higher z-score of the shifts flagged for their void or removed-line rate (at most 20; a shift flagged only for an edit after the close is left out), with a dashed line at the tenant's z threshold |
+
+The flags are the functions' own: the drawer card counts exactly the rows `shift_review` flags under the tenant's thresholds, the same shifts `cash_variance_flags` flags (pgTAP of phase 10a; the live comparison is #166), and the adjustments card counts exactly the rows `shift_adjustments` flags (a rate's z-score above the threshold, or an edit after the close). The reasons read as one message per combination (`theme.shifts.reasons.*`: hủy, xóa món, sửa sau khi đóng ca).
+
+CSV files are named `ca-ket-tien-<card>-<from>_<to>.csv` and the drawer card's table per cashier `ca-ket-tien-drawer-<from>_<to>-2.csv`, UTF-8 with a BOM, in the device's comma or semicolon format.
+
+The per-cashier card Theo thu ngân (`cashiers`, #192) is planned as a fourth card: it adds `packages/reports/src/themes/shifts/cards/cashiers.ts`, its keys under `theme.shifts.cashiers.*` and one entry in `shiftsCards`, and reuses `shiftLabeller`, `shownCashier` and `cashierCell`. If it is cut, the cut is recorded here.
+
+## Shift labels and cashiers
+
+- A shift reads "Ca 1", "Ca 2", … by its opening time within its store and business day, ties broken by its external id and a shift without an opening time last: `shiftNumbers` of `packages/reports/src/model/shifts.ts` (#48), the digest's rule. Each card numbers the shifts of its own call; both functions return the shifts of `agg_shift_cash` in the range, so a shift reads the same in every card (unit and engine smoke tests).
+- The POS shift name and external id are never shown, because on the real data the name holds the cashier's POS login e-mail. With several stores the labels in sentences and charts carry the store ("Ca 1 ngày 20/10/2026 ở …").
+- A cashier value that is empty or shaped like an e-mail address shows as "chưa rõ thu ngân" (`shownCashier`, `cashierCell`, `cashierShownValue`); in the table per cashier such shifts fall into that one group.
+- The same rules hold on screen, in print and in every CSV, because print and CSV take their text from the same table models; the drawer card's sentence, table and chart are built by the helpers Thanh toán's drawer card uses (`shiftLabeller`, `shiftOnLabel`, `drawerTable`, `drawerChart`, `drawerFlaggedPart`, `drawerThresholdsPart` in `themes/payments/cards/drawer.ts`), not copies of them.
+
+## States and markers
+
+- **No shift.** Without shifts in the range each card says "Chưa có ca nào trong {range}.", shows "—" and a notice to check that cashiers open and close shifts on the POS.
+- **No z-score.** A z-score needs 3 earlier shifts of the store in the 56 days before whose rates differ. Without them (a young store, a store's first weeks of data, or earlier shifts that all have the same rate, such as no removed line at all) the score is empty, the table shows "—" and the adjustments card says why in a notice whenever any shift of the range lacks either score.
+- **No edit or void synced.** Voids, removed lines and edits come from the POS adjustment events; a store whose POS sends none shows rates of 0 and no z-score.
+- **Catch-up pending.** Every card carries "đang cập nhật" while a catch-up range overlaps the page's range, since the shift aggregates are written by the refresh.
+- **Payouts.** A cash payout is not synced from the POS, so it reads as a shortage (the `cash_variance` note under "Giải thích chỉ số").
+
+## Tests
+
+- Unit: `packages/reports/test/unit/themes/shifts/calls.test.ts` (the definition, the four calls without thresholds, every need planned, the 92-day clamp of presets and dates, calls never longer than 92 days), `shift-sales.test.ts` (the average, the strongest and weakest slot, the plain average for one slot, newest first with wall-clock times and the masked cashier, the last 40 shifts in time order, no shift), `drawer.test.ts` (the flagged count equal to `shift_review`'s flagged rows, the sentence, table and chart equal to Thanh toán's, the table per cashier with its sums and an e-mail login under the unknown cashier, several stores, no shift), `adjustments.test.ts` (the higher z-score, the ranking with nulls last and edits after close second, flags only from the function, the top shift's masked cashier and reasons, the basis, the notice for a missing z-score whether the earlier shifts are too few or have no spread, the chart of rate flags only and its z line, none flagged among the measured shifts, nothing measured, no shift, the reason combinations) and `labels.test.ts` ("Ca n" by opening time per store and day alike in all three cards; no e-mail-shaped text in a sentence, table row or chart label).
+- Web unit: `apps/web/src/pages/themes/ca-ket-tien/shift-privacy.test.tsx` (fixture rows whose shift and cashier names are `example.com` addresses: no e-mail in any card's text, table or CSV in both dialects and both languages, and no "@" anywhere in the rendered `ReportCard` markup of each card, attributes and accessible labels included), `src/themes/theme-route.test.ts` and `theme-tabs.test.ts` (the 92-day clamp from presets, dates and other tabs; stepping by 92 days).
+- Demo engine: `packages/demo-analytics/test/themes/shifts.smoke.test.ts` (three store selections, four presets, every key and placeholder in both languages, no e-mail-shaped text, the drawer's flagged count equal to `shift_review`'s, the same "Ca n" for a shift in every card). Parity of `shift_adjustments` is #154's; of `shift_review`, phase 9's and #99's.
+- Live (read-only, `test:live`): `packages/reports/test/live/theme-live-check.test.ts` runs the page at 28 and 92 days within the page budget, `shift_adjustments` within its 400 ms call budget and `shift_review` within 100 ms.
+- Playwright: `e2e/demo/theme-ca-ket-tien.spec.ts` (the three cards settle on 28 days and 13 weeks; 52 tuần and a long link shortened to 92 days with the notice, stepping by 92 days; a tab from a 52-week range; a custom range through a reload and a step; the young store and its first weeks with the notice and a "—" z-score cell; the thresholds line, the basis and the table per cashier; "Ca n" with no POS shift name or e-mail address on screen, in the CSV and in print; every table's CSV with the BOM, its headers and no "@"; print, axe at 360 and 1280 px in light and dark, no external request, English; the semicolon format; no console error in any test) and `e2e/live/themes.spec.ts` (the page through the SQL functions on the seeded stack, "Ca n" and never the seeded POS shift name).

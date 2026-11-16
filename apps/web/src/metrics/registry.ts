@@ -47,6 +47,12 @@ export const registryMetricIds = [
 	"gross_margin_rate",
 	"cost_coverage",
 	"payment_fee_estimate",
+	"shift_void_rate",
+	"shift_void_rate_zscore",
+	"removed_line_rate",
+	"removed_line_rate_zscore",
+	"edits_after_close",
+	"edit_rate",
 ] as const satisfies readonly RegistryMetricId[];
 
 export const displaySeries = {

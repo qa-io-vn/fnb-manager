@@ -10,10 +10,14 @@ import {
 	signedInClient,
 	visibleStores,
 } from "../support/local-stack";
-import { watchConsoleErrors } from "../support/reports";
+import {
+	expectShiftsLabelledByNumber,
+	watchConsoleErrors,
+} from "../support/reports";
 import {
 	expectEveryThemeCardSettled,
 	themeCard,
+	themeCardIds,
 	themeUrl,
 	waitForSettledThemeCards,
 } from "../support/themes";
@@ -23,11 +27,14 @@ test.skip(
 	"the local Supabase stack is not configured in .env.local",
 );
 
+const SEEDED_SHIFT_NAMES = /Shift \d/;
+
 const titles = {
 	revenue: "Doanh thu & xu hướng",
 	hours: "Giờ & ngày trong tuần",
 	menu: "Thực đơn",
 	payments: "Thanh toán & tiền mặt",
+	shifts: "Ca & két tiền",
 } as const;
 
 async function seededClock(): Promise<SeededClock> {
@@ -49,12 +56,18 @@ async function signIn(page: Page, clock: SeededClock) {
 	).toBeVisible();
 }
 
-test("the four thematic reports render on the seeded stack through the SQL functions", async ({
+test("the five thematic reports render on the seeded stack through the SQL functions", async ({
 	page,
 }) => {
 	const clock = await seededClock();
 	await signIn(page, clock);
-	for (const kind of ["revenue", "hours", "menu", "payments"] as const) {
+	for (const kind of [
+		"revenue",
+		"hours",
+		"menu",
+		"payments",
+		"shifts",
+	] as const) {
 		await page.goto(themeUrl(kind, "range=7d"));
 		await waitForSettledThemeCards(page);
 		await expect(
@@ -66,6 +79,15 @@ test("the four thematic reports render on the seeded stack through the SQL funct
 			await expect(
 				themeCard(page, "menu", "margins").getByTestId("headline"),
 			).toHaveText(/\d/);
+		}
+		if (kind === "shifts") {
+			for (const id of themeCardIds.shifts) {
+				await expectShiftsLabelledByNumber(
+					page,
+					`card-shifts-${id}`,
+					SEEDED_SHIFT_NAMES,
+				);
+			}
 		}
 	}
 	await page.goto(themeUrl("hours", "range=7d"));

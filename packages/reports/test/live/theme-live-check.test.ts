@@ -71,6 +71,7 @@ const CALL_BUDGET_MS: Readonly<Record<string, number>> = {
 	item_summary: 200,
 	basket_pairs: 300,
 	item_attach: 400,
+	shift_adjustments: 400,
 };
 const PAGE_BUDGET_MS = 600;
 const ANY_CALL_BUDGET_MS = 1_500;

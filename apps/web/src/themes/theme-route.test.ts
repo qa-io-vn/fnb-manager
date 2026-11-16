@@ -1,4 +1,10 @@
-import { rangeOfPreset, revenueTheme } from "@fnb/reports";
+import {
+	moveRangeToLimit,
+	rangeOfPreset,
+	revenueTheme,
+	shiftsTheme,
+	stepRange,
+} from "@fnb/reports";
 import { describe, expect, it } from "vitest";
 import { parseThemeSearch, themeHref } from "./theme-route";
 
@@ -85,5 +91,36 @@ describe("the thematic report's address", () => {
 				null,
 			),
 		).toBe("/chu-de/thanh-toan?from=2026-10-08&to=2026-11-01");
+	});
+
+	it("shortens every range of Ca & két tiền to its 92 days, from a preset, dates or another theme's range, and steps by 92 days", () => {
+		const parseShifts = (search: string) =>
+			parseThemeSearch(shiftsTheme, new URLSearchParams(search), AS_OF, STORES);
+		expect(shiftsTheme.maxRangeDays).toBe(92);
+		expect(parseShifts("").canonical).toBe("range=28d");
+		expect(parseShifts("range=91d").resolved.rangeClamped).toBe(false);
+		for (const search of [
+			"range=364d",
+			"range=this_year",
+			"from=2026-01-01&to=2026-11-03",
+		]) {
+			const parsed = parseShifts(search);
+			expect(parsed.resolved.rangeClamped, search).toBe(true);
+			expect(parsed.resolved.range.days, search).toBe(92);
+			expect(parsed.resolved.range.to, search).toBe(AS_OF);
+			expect(parsed.canonical, search).toBe("from=2026-08-04&to=2026-11-03");
+		}
+		const clamped = parseShifts("range=364d").resolved.range;
+		const earlier = stepRange(clamped, -1);
+		expect(earlier.days).toBe(92);
+		expect(earlier.to).toBe("2026-08-03");
+		const year = rangeOfPreset("364d", AS_OF);
+		expect(
+			themeHref(
+				"ca-ket-tien",
+				moveRangeToLimit(year, shiftsTheme.maxRangeDays),
+				null,
+			),
+		).toBe("/chu-de/ca-ket-tien?from=2026-08-04&to=2026-11-03");
 	});
 });

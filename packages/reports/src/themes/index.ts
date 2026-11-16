@@ -12,5 +12,6 @@ export * from "./registry.js";
 export * from "./revenue/index.js";
 export * from "./rules.js";
 export * from "./settings.js";
+export * from "./shifts/index.js";
 export * from "./source.js";
 export * from "./support.js";

@@ -4,6 +4,7 @@ import { hoursTheme } from "./hours/definition.js";
 import { menuTheme } from "./menu/definition.js";
 import { paymentsTheme } from "./payments/definition.js";
 import { revenueTheme } from "./revenue/definition.js";
+import { shiftsTheme } from "./shifts/definition.js";
 
 export const themeDefinitions: Readonly<
 	Partial<Record<ThemeKind, ThemeDefinition>>
@@ -12,6 +13,7 @@ export const themeDefinitions: Readonly<
 	hours: hoursTheme,
 	menu: menuTheme,
 	payments: paymentsTheme,
+	shifts: shiftsTheme,
 };
 
 export function themeDefinitionOf(kind: ThemeKind): ThemeDefinition | null {

@@ -199,6 +199,20 @@ test("the Thanh toán payment mix and cash trend", async ({ page }) => {
 	);
 });
 
+test("the Ca & két tiền sales, drawer and adjustments cards", async ({
+	page,
+}) => {
+	await page.setViewportSize(TALL_COMPUTER);
+	await openThemePage(page, "shifts", "range=28d&store=MOCK-S1");
+	for (const [card, name] of [
+		["shift_sales", "theme-ca-ket-tien-sales"],
+		["drawer", "theme-ca-ket-tien-drawer"],
+		["adjustments", "theme-ca-ket-tien-adjustments"],
+	] as const) {
+		await shootElement(themeCard(page, "shifts", card), name);
+	}
+});
+
 test("Cài đặt: Ngưỡng báo cáo and the choice kept on this device", async ({
 	page,
 }) => {
