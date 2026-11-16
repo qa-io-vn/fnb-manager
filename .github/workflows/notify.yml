@@ -62,3 +62,8 @@ jobs:
           NOTIFY_TELEGRAM_BOT_TOKEN: ${{ secrets.NOTIFY_TELEGRAM_BOT_TOKEN }}
           NOTIFY_WEBHOOK_SECRET: ${{ secrets.NOTIFY_WEBHOOK_SECRET }}
         run: node apps/jobs/bin/fnb.mjs notify tick --skip-if-scheduler-healthy --budget-seconds 300
+      - name: Check the notification pipeline
+        if: always() && steps.config.outputs.configured == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node apps/jobs/bin/fnb.mjs notify check

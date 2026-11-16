@@ -46,6 +46,15 @@ jobs:
       - name: Type-check the sync-incremental Edge Function with Deno
         working-directory: supabase/functions/sync-incremental
         run: deno check index.ts
+      - name: Test the sync-incremental Edge Function with Deno
+        working-directory: supabase/functions/sync-incremental
+        run: deno test
+      - name: Type-check the notify Edge Function with Deno
+        working-directory: supabase/functions/notify
+        run: deno check index.ts
+      - name: Test the notify Edge Function with Deno
+        working-directory: supabase/functions/notify
+        run: deno test
 
   database:
     name: Migrations and pgTAP tests
@@ -72,6 +81,34 @@ jobs:
       - run: pnpm --filter @fnb/demo-analytics test:parity:postgres
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      - name: Notification integration suite
+        run: pnpm --filter @fnb/notify test:integration
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          NOTIFY_INTEGRATION: "1"
+      - name: Notification CLI integration suite
+        run: pnpm --filter @fnb/jobs exec vitest run test/integration/notify-cli.test.ts
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          NOTIFY_INTEGRATION: "1"
+      - name: The notification suites leave no fixture behind
+        if: always()
+        working-directory: packages/notify
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          LEFTOVER_QUERY: >-
+            select
+            (select count(*) from public.tenants where starts_with(slug, 'notify-it-'))::integer as tenants,
+            (select count(*) from app.bot_poll_state where right(secret_name, 3) = '_IT')::integer as poll_rows
+        run: |
+          node --input-type=module -e '
+            import postgres from "postgres";
+            const sql = postgres(process.env.DATABASE_URL, { max: 1, connect_timeout: 10 });
+            const [row] = await sql.unsafe(process.env.LEFTOVER_QUERY);
+            await sql.end();
+            console.log(`notify-it- tenants left ${row.tenants}, _IT poll-state rows left ${row.poll_rows}`);
+            process.exit(row.tenants === 0 && row.poll_rows === 0 ? 0 : 1);
+          '
       - if: always()
         run: pnpm exec supabase stop --no-backup
 

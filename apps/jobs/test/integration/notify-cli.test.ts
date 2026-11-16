@@ -1,5 +1,7 @@
+import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { PassThrough } from "node:stream";
+import { fileURLToPath } from "node:url";
 import { shiftIsoDate, zonedInstant } from "@fnb/core";
 import { localIsoDate } from "@fnb/notify";
 import { CompositeNotifier, OutboxNotifier } from "@fnb/notify/outbox";
@@ -13,6 +15,7 @@ import {
 	createFixtureTenant,
 	type FixtureTenant,
 	type MockProviders,
+	SYNTHETIC_BOT_TOKEN,
 	startMockProviders,
 } from "@fnb/notify/testing";
 import {
@@ -65,6 +68,34 @@ async function fnb(
 		{ streams, loadEnvFile: false, ...(now === undefined ? {} : { now }) },
 	);
 	return { code, stdout: out.join(""), stderr: err.join("") };
+}
+
+const FALLBACK_SCRIPT = fileURLToPath(
+	new URL("../../../../scripts/notify-fallback.mjs", import.meta.url),
+);
+
+function fallbackScript(
+	args: readonly string[],
+	environment: Readonly<Record<string, string>>,
+): Promise<Result> {
+	return new Promise((resolve, reject) => {
+		const child = spawn(process.execPath, [FALLBACK_SCRIPT, ...args], {
+			env: { ...environment },
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+		const out: Buffer[] = [];
+		const err: Buffer[] = [];
+		child.stdout.on("data", (chunk: Buffer) => out.push(chunk));
+		child.stderr.on("data", (chunk: Buffer) => err.push(chunk));
+		child.on("error", reject);
+		child.on("close", (code) =>
+			resolve({
+				code: code ?? -1,
+				stdout: Buffer.concat(out).toString("utf8"),
+				stderr: Buffer.concat(err).toString("utf8"),
+			}),
+		);
+	});
 }
 
 describe.skipIf(!ENABLED)("fnb notify on the local stack", () => {
@@ -321,6 +352,88 @@ describe.skipIf(!ENABLED)("fnb notify on the local stack", () => {
 		`;
 		expect(consent?.revoked).toBe(true);
 	}, 60_000);
+
+	it("notify setup stores the web app address and the previous value comes back", async () => {
+		const [before] = await sql<{ app_base_url: string | null }[]>`
+			select app_base_url from app.notify_settings limit 1
+		`;
+		try {
+			const stored = await fnb(
+				["notify", "setup", "--app-url", "https://example.github.io/fnb-it"],
+				{ ...fixture.environment, CI: "1" },
+			);
+			expect(stored.code, stored.stderr).toBe(0);
+			expect(stored.stdout).toContain("setup: app base URL stored");
+			expect(stored.stdout).not.toContain("example.github.io");
+			const [after] = await sql<{ app_base_url: string | null }[]>`
+				select app_base_url from app.notify_settings limit 1
+			`;
+			expect(after?.app_base_url).toBe("https://example.github.io/fnb-it/");
+			const shown = await fnb(["notify", "setup"], fixture.environment);
+			expect(shown.stdout).toContain("https://example.github.io/fnb-it/");
+			const refused = await fnb(
+				["notify", "setup", "--app-url", "http://example.github.io/fnb-it/"],
+				fixture.environment,
+			);
+			expect(refused.code).toBe(2);
+		} finally {
+			await sql`
+				update app.notify_settings
+				set app_base_url = ${before?.app_base_url ?? null}
+				where singleton
+			`;
+		}
+		const [restored] = await sql<{ app_base_url: string | null }[]>`
+			select app_base_url from app.notify_settings limit 1
+		`;
+		expect(restored?.app_base_url ?? null).toBe(before?.app_base_url ?? null);
+	}, 60_000);
+
+	it("notify check is green for the fixture tenant and red for a failing destination", async () => {
+		const [settings] = await sql<{ enabled: boolean }[]>`
+			select enabled from app.notify_settings limit 1
+		`;
+		expect(settings?.enabled, "the local notify schedule is disabled").toBe(
+			false,
+		);
+		const unscoped = await fnb(["notify", "check"], fixture.environment);
+		expect(unscoped.code).toBe(2);
+		const green = await fnb(["notify", "check", "--tenant", fixture.slug], {
+			...fixture.environment,
+			CI: "1",
+		});
+		expect(green.code, green.stderr).toBe(0);
+		expect(green.stdout).toContain("check: green · schedule disabled");
+		const [destination] = await listDestinations(sql, fixture.tenantId);
+		const [previous] = await sql<{ failures: number }[]>`
+			select consecutive_failures as failures from public.notification_channels
+			where id = ${destination?.id ?? ""}::uuid
+		`;
+		try {
+			await sql`
+				update public.notification_channels set consecutive_failures = 3
+				where id = ${destination?.id ?? ""}::uuid
+			`;
+			const red = await fnb(["notify", "check", "--tenant", fixture.slug], {
+				...fixture.environment,
+				CI: "1",
+			});
+			expect(red.code).toBe(1);
+			expect(red.stderr).toContain(
+				"destination_failing: destination 1 (zalo_bot) failed 3 times in a row",
+			);
+			for (const text of [fixture.slug, fixture.name, fixture.owner.email]) {
+				expect(red.stderr).not.toContain(text);
+				expect(green.stdout).not.toContain(text);
+			}
+		} finally {
+			await sql`
+				update public.notification_channels
+				set consecutive_failures = ${previous?.failures ?? 0}
+				where id = ${destination?.id ?? ""}::uuid
+			`;
+		}
+	}, 60_000);
 });
 
 describe.skipIf(!ENABLED)("alerts through the CLI on the local stack", () => {
@@ -403,6 +516,32 @@ describe.skipIf(!ENABLED)("alerts through the CLI on the local stack", () => {
 		);
 		expect(alertsToChat()).toHaveLength(before);
 
+		const jobEvents = async () => {
+			const [row] = await sql<{ count: string }[]>`
+				select count(*)::text as count from public.alert_events where rule_key = 'job_failed'
+			`;
+			return Number(row?.count ?? 0);
+		};
+		const eventsBeforeMissing = await jobEvents();
+		const missing = await fnb(
+			[
+				"notify",
+				"job-failed",
+				"--tenant",
+				`notify-it-missing-${randomUUID().slice(0, 8)}`,
+				"--workflow",
+				"Sync",
+				"--conclusion",
+				"failure",
+			],
+			{ ...fixture.environment, CI: "1" },
+		);
+		expect(missing.code, missing.stderr).toBe(4);
+		expect(missing.stderr).toContain(
+			"the tenant does not exist; nothing recorded",
+		);
+		expect(await jobEvents()).toBe(eventsBeforeMissing);
+
 		const unreachable = await fnb(
 			[
 				"notify",
@@ -420,6 +559,38 @@ describe.skipIf(!ENABLED)("alerts through the CLI on the local stack", () => {
 			},
 		);
 		expect(unreachable.code).toBe(3);
+		const fallbackChat = `synthetic-chat-fallback-${randomUUID().slice(0, 8)}`;
+		const fallback = await fallbackScript(
+			[
+				"send",
+				"--workflow",
+				"Sync",
+				"--conclusion",
+				"failure",
+				"--install",
+				"success",
+				"--database-exit",
+				String(unreachable.code),
+			],
+			{
+				NOTIFY_ZALO_BOT_BASE_URL: mock.baseUrl,
+				NOTIFY_ZALO_BOT_TOKEN: SYNTHETIC_BOT_TOKEN,
+				NOTIFY_FALLBACK_TARGETS: JSON.stringify([
+					{ kind: "zalo_bot", chat_id: fallbackChat },
+				]),
+			},
+		);
+		expect(fallback.code, fallback.stderr).toBe(0);
+		expect(fallback.stdout.trim()).toBe("fallback targets 1, reached 1");
+		expect(fallback.stdout).not.toContain(fallbackChat);
+		const fallbackTexts = mock
+			.zaloMessages()
+			.filter((entry) => entry.chatId === fallbackChat && entry.accepted)
+			.map((entry) => entry.text);
+		expect(fallbackTexts).toHaveLength(1);
+		expect(fallbackTexts[0]).toContain(
+			"Không kết nối được cơ sở dữ liệu (dự án Supabase có thể đang tạm dừng).",
+		);
 		const usage = await fnb(
 			["notify", "job-failed", "--workflow", "Sync"],
 			fixture.environment,
@@ -556,4 +727,63 @@ describe.skipIf(!ENABLED)("alerts through the CLI on the local stack", () => {
 		`;
 		expect(Number(suppressed?.count)).toBe(1);
 	}, 300_000);
+
+	it("notify resend queues one new row pointing at a failed alert, numbered :resend:1 then :resend:2", async () => {
+		const [destination] = (
+			await listDestinations(sql, fixture.tenantId)
+		).filter((entry) => entry.kind === "zalo_bot" && entry.status === "active");
+		const enqueuedAt = zonedInstant(shiftIsoDate(today, 40), 10 * 60, ZONE);
+		const original = await enqueueMessage(sql, {
+			tenantId: fixture.tenantId,
+			channelId: destination?.id ?? "",
+			kind: "alert",
+			templateRef: "alert.sync_stale.v1",
+			dedupeKey: `alert:it-${randomUUID()}:cli:open`,
+			title: "Cảnh báo thử nghiệm",
+			body: "Cảnh báo thử nghiệm để gửi lại.",
+			severity: "critical",
+			expiresAt: new Date(enqueuedAt.getTime() + 86_400_000),
+			at: enqueuedAt,
+		});
+		mock.failNext("sendMessage", { kind: "status", status: 400 });
+		await fixture.cycle({ at: new Date(enqueuedAt.getTime() + MINUTE) });
+		const status = async (id: string) =>
+			(
+				await sql<{ status: string }[]>`
+					select status from public.outbound_messages where id = ${id}::uuid
+				`
+			)[0]?.status;
+		expect(await status(original)).toBe("failed");
+		for (const attempt of [1, 2]) {
+			const resent = await fnb(
+				["notify", "resend", "--tenant", fixture.slug, "--message", original],
+				{ ...fixture.environment, CI: "1" },
+			);
+			expect(resent.code, `${attempt}: ${resent.stderr}`).toBe(0);
+			expect(resent.stdout).toContain("resend: 1 new message queued");
+			expect(resent.stdout).not.toContain(original);
+		}
+		const copies = await sql<{ id: string; dedupe_key: string }[]>`
+			select id::text as id, dedupe_key from public.outbound_messages
+			where resend_of = ${original}::uuid
+			order by created_at, dedupe_key
+		`;
+		expect(
+			copies.map((copy) => copy.dedupe_key.split(":resend:").at(-1)),
+		).toEqual(["1", "2"]);
+		expect(await status(original)).toBe("failed");
+		const refused = await fnb(
+			[
+				"notify",
+				"resend",
+				"--tenant",
+				fixture.slug,
+				"--message",
+				copies[0]?.id ?? "",
+			],
+			fixture.environment,
+		);
+		expect(refused.code).toBe(2);
+		expect(refused.stderr).toContain("22023");
+	}, 120_000);
 });

@@ -82,11 +82,13 @@ describe("secrets by reference", () => {
 			"NOTIFY_ZALO_BOT_TOKEN_2",
 		]);
 		expect(JSON.stringify(names)).not.toContain("synthetic");
-		expect(claimableSecretNames(names, createAdapterRegistry())).toEqual([
-			"NOTIFY_EMAIL_API_KEY",
-			"NOTIFY_ZALO_BOT_TOKEN",
-			"NOTIFY_ZALO_BOT_TOKEN_2",
-		]);
+		expect(claimableSecretNames(names, createAdapterRegistry())).toEqual(names);
+		expect(
+			claimableSecretNames(names, {
+				...createAdapterRegistry(),
+				telegram: { ...createAdapterRegistry().telegram, available: false },
+			}),
+		).not.toContain("NOTIFY_TELEGRAM_BOT_TOKEN");
 		expect(credentialKindOf("NOTIFY_ZALO_BOT_TOKEN_IT")).toBe("zalo_bot");
 		expect(credentialKindOf("NOTIFY_EMAIL_FROM")).toBeNull();
 	});
@@ -98,6 +100,17 @@ describe("secrets by reference", () => {
 		expect(PROVIDER_BASE_URLS.telegram).toBe("https://api.telegram.org");
 		expect(PROVIDER_BASE_URLS.brevo).toBe("https://api.brevo.com");
 		expect(PROVIDER_BASE_URLS.resend).toBe("https://api.resend.com");
+		expect(providerBaseUrl("hmac_webhook", {})).toBe("");
+		expect(
+			providerBaseUrl("hmac_webhook", {
+				NOTIFY_WEBHOOK_BASE_URL: "http://127.0.0.1:8787",
+			}),
+		).toBe("http://127.0.0.1:8787");
+		expect(
+			providerBaseUrl("hmac_webhook", {
+				NOTIFY_WEBHOOK_BASE_URL: "https://attacker.example.com",
+			}),
+		).toBe("");
 		expect(
 			providerBaseUrl("zalo_bot", {
 				NOTIFY_ZALO_BOT_BASE_URL: "http://127.0.0.1:8787",
@@ -152,5 +165,11 @@ describe("secrets by reference", () => {
 				NOTIFY_ZALO_BOT_BASE_URL: "http://127.0.0.1:8787",
 			}),
 		).toBe(false);
+		expect(
+			providersUseLoopback(["zalo_bot", "hmac_webhook"], {
+				NOTIFY_ZALO_BOT_BASE_URL: "http://127.0.0.1:8787",
+				NOTIFY_WEBHOOK_BASE_URL: "http://127.0.0.1:8787",
+			}),
+		).toBe(true);
 	});
 });

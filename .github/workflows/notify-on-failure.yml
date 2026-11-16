@@ -1,0 +1,101 @@
+name: Notify on workflow failure
+
+on:
+  workflow_run:
+    workflows:
+      - Sync
+      - Backup database
+      - Migrate database
+      - Deploy web app
+      - Deploy Edge Functions
+      - Notify
+      - Scheduled workflows active
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notify-on-failure-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  alert:
+    name: Alert the owner about a failed workflow
+    if: >-
+      github.event.workflow_run.event != 'pull_request' &&
+      contains(fromJSON('["failure", "timed_out", "startup_failure"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+      RUN_STARTED_AT: ${{ github.event.workflow_run.run_started_at }}
+      CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+    steps:
+      - name: Check configuration
+        id: config
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          NOTIFY_FALLBACK_TARGETS: ${{ secrets.NOTIFY_FALLBACK_TARGETS }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] && [ -z "$NOTIFY_FALLBACK_TARGETS" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Failure alerts not configured yet; GitHub's own e-mail is the only notice." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.config.outputs.configured == 'true'
+      - uses: actions/setup-node@v5
+        if: steps.config.outputs.configured == 'true'
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Mask the fallback targets
+        if: steps.config.outputs.configured == 'true'
+        env:
+          NOTIFY_FALLBACK_TARGETS: ${{ secrets.NOTIFY_FALLBACK_TARGETS }}
+          NOTIFY_ZALO_BOT_TOKEN: ${{ secrets.NOTIFY_ZALO_BOT_TOKEN }}
+          NOTIFY_EMAIL_API_KEY: ${{ secrets.NOTIFY_EMAIL_API_KEY }}
+          NOTIFY_TELEGRAM_BOT_TOKEN: ${{ secrets.NOTIFY_TELEGRAM_BOT_TOKEN }}
+        run: node scripts/notify-fallback.mjs mask
+      - uses: pnpm/action-setup@v4
+        id: pnpm
+        if: steps.config.outputs.configured == 'true'
+        continue-on-error: true
+      - name: Install
+        id: install
+        if: steps.pnpm.outcome == 'success'
+        continue-on-error: true
+        run: pnpm install --frozen-lockfile
+      - name: Record and send through the database
+        id: database
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          NOTIFY_ZALO_BOT_TOKEN: ${{ secrets.NOTIFY_ZALO_BOT_TOKEN }}
+          NOTIFY_EMAIL_API_KEY: ${{ secrets.NOTIFY_EMAIL_API_KEY }}
+          NOTIFY_EMAIL_FROM: ${{ secrets.NOTIFY_EMAIL_FROM }}
+          NOTIFY_EMAIL_FROM_NAME: ${{ secrets.NOTIFY_EMAIL_FROM_NAME }}
+          NOTIFY_TELEGRAM_BOT_TOKEN: ${{ secrets.NOTIFY_TELEGRAM_BOT_TOKEN }}
+          NOTIFY_WEBHOOK_SECRET: ${{ secrets.NOTIFY_WEBHOOK_SECRET }}
+        run: |
+          node apps/jobs/bin/fnb.mjs mask-credentials
+          set +e
+          node apps/jobs/bin/fnb.mjs notify job-failed --workflow "$WORKFLOW_NAME" --conclusion "$CONCLUSION" --run-id "$RUN_ID" --attempt "$RUN_ATTEMPT" --started-at "$RUN_STARTED_AT"
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit $code
+      - name: Send directly without the database
+        if: steps.config.outputs.configured == 'true' && steps.database.outputs.exit_code != '0'
+        env:
+          NOTIFY_FALLBACK_TARGETS: ${{ secrets.NOTIFY_FALLBACK_TARGETS }}
+          NOTIFY_ZALO_BOT_TOKEN: ${{ secrets.NOTIFY_ZALO_BOT_TOKEN }}
+          NOTIFY_EMAIL_API_KEY: ${{ secrets.NOTIFY_EMAIL_API_KEY }}
+          NOTIFY_TELEGRAM_BOT_TOKEN: ${{ secrets.NOTIFY_TELEGRAM_BOT_TOKEN }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          DATABASE_EXIT: ${{ steps.database.outputs.exit_code }}
+        run: node scripts/notify-fallback.mjs send --workflow "$WORKFLOW_NAME" --conclusion "$CONCLUSION" --install "$INSTALL_OUTCOME" --database-exit "$DATABASE_EXIT"

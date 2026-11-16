@@ -73,6 +73,8 @@
 		"../../../packages/core/src/schemas/sale.js": "../../../packages/core/src/schemas/sale.ts",
 		"../../../packages/core/src/schemas/shift.js": "../../../packages/core/src/schemas/shift.ts",
 		"../../../packages/core/src/schemas/store.js": "../../../packages/core/src/schemas/store.ts",
+		"../../../packages/notify/src/outbox/composite-notifier.js": "../../../packages/notify/src/outbox/composite-notifier.ts",
+		"../../../packages/notify/src/outbox/outbox-notifier.js": "../../../packages/notify/src/outbox/outbox-notifier.ts",
 		"../../../packages/runner/src/accounts.js": "../../../packages/runner/src/accounts.ts",
 		"../../../packages/runner/src/budget.js": "../../../packages/runner/src/budget.ts",
 		"../../../packages/runner/src/connectors.js": "../../../packages/runner/src/connectors.ts",
@@ -144,6 +146,7 @@
 		"@fnb/connector-ipos": "../../../packages/connector-ipos/src/index.ts",
 		"@fnb/connector-mock": "../../../packages/connector-mock/src/index.ts",
 		"@fnb/core": "../../../packages/core/src/index.ts",
+		"@fnb/notify/outbox": "../../../packages/notify/src/outbox/index.ts",
 		"@fnb/runner": "../../../packages/runner/src/index.ts",
 		"@fnb/runner/postgres": "../../../packages/runner/src/postgres/index.ts",
 		"@fnb/sync": "../../../packages/sync/src/index.ts",
@@ -274,6 +277,10 @@
 			"./common.js": "../../../packages/core/src/schemas/common.ts",
 			"./enums.js": "../../../packages/core/src/schemas/enums.ts",
 			"./iso-date-pattern.js": "../../../packages/core/src/schemas/iso-date-pattern.ts"
+		},
+		"../../../packages/notify/src/outbox/": {
+			"./composite-notifier.js": "../../../packages/notify/src/outbox/composite-notifier.ts",
+			"./outbox-notifier.js": "../../../packages/notify/src/outbox/outbox-notifier.ts"
 		},
 		"../../../packages/runner/src/": {
 			"./accounts.js": "../../../packages/runner/src/accounts.ts",

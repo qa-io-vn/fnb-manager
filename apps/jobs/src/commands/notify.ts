@@ -26,6 +26,8 @@ import {
 	messageOutcomes,
 	type NumberedDestination,
 	notifySchedule,
+	type ResendableMessage,
+	resendableMessages,
 	schedulerHealth,
 	tenantNotifyStatus,
 	waitingSummary,
@@ -323,7 +325,7 @@ async function tick(
 		)
 	) {
 		throw new UsageError(
-			"--at sends only to a loopback mock server: point the base URL of every built provider (NOTIFY_ZALO_BOT_BASE_URL, NOTIFY_BREVO_BASE_URL) at http://127.0.0.1:<port>, or add --dry-run",
+			"--at sends only to a loopback mock server: point the base URL of every built provider (NOTIFY_ZALO_BOT_BASE_URL, NOTIFY_TELEGRAM_BASE_URL, NOTIFY_BREVO_BASE_URL, NOTIFY_RESEND_BASE_URL) at http://127.0.0.1:<port>, or add --dry-run",
 		);
 	}
 	if (!dryRun) {
@@ -420,8 +422,27 @@ async function status(
 		}
 		context.output.line(`  open alerts: ${countList(report.openEpisodes)}`);
 		context.output.line(`  digests ${days} d: ${countList(report.digests)}`);
+		if (!context.output.ci) {
+			for (const message of await resendableMessages(
+				sql,
+				tenant.id,
+				at,
+				days,
+			)) {
+				context.output.line(resendableLine(message, tenant.timezone));
+			}
+		}
 	}
 	return 0;
+}
+
+export function resendableLine(
+	message: ResendableMessage,
+	timeZone: string,
+): string {
+	const when =
+		message.businessDate ?? formatLocalInstant(message.createdAt, timeZone);
+	return `  resendable: message ${message.id} (${message.kind}, ${message.status}, ${when}); fnb notify resend --message ${message.id}`;
 }
 
 function outcomeText(
@@ -563,6 +584,7 @@ const statusCommand: CommandSpec = {
 		"Messages of the last --days by state, the next release time, the oldest queued message and the uncertain count.",
 		"Per destination, numbered by creation: kind, status, last success, this month's count (the Zalo Bot Basic plan allows 3,000 a month) and the last error code.",
 		"Open alert episodes by rule, digests of the last --days, the notify schedule and its last tick.",
+		"Locally, never in CI, it lists the ids of uncertain or failed digests and alerts of the last --days, for fnb notify resend.",
 		"In CI tenants are 'tenant n' and destinations 'destination n (kind)'; no name, address, chat id or amount is printed.",
 	],
 	run: status,

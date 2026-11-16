@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     steps:
       - run: |
           disabled="$(gh workflow list --all --json name,state,id --jq '.[] | select(.state == "disabled_inactivity") | "\(.id) \(.name)"')"
@@ -27,3 +28,5 @@ jobs:
             echo "Re-enabled: ${name}" >> "$GITHUB_STEP_SUMMARY"
           done
           echo "::warning::Scheduled workflows had been disabled by inactivity and were re-enabled"
+          echo "The run fails on purpose so the failure listener reports the re-enabled workflows." >> "$GITHUB_STEP_SUMMARY"
+          exit 1

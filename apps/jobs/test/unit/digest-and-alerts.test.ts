@@ -84,8 +84,23 @@ describe("fnb digest", () => {
 		]);
 		expect(realTenant.code).toBe(2);
 		expect(realTenant.stderr).toContain("only for a fixture tenant");
-		const revise = await run(["digest", "--due", "--revise"]);
+		const revise = await run([
+			"digest",
+			"--revise",
+			"--tenant",
+			"t",
+			"--date",
+			"2026-11-07",
+		]);
 		expect(revise.code).toBe(2);
+		const revisedAt = await run([
+			"digest",
+			"--revise",
+			"--at",
+			"2026-11-08T03:30:00+07:00",
+		]);
+		expect(revisedAt.code).toBe(2);
+		expect(revisedAt.stderr).toContain("--tenant is required");
 		const resend = await run(["digest", "--tenant", "t", "--resend", "--due"]);
 		expect(resend.code).toBe(2);
 	});

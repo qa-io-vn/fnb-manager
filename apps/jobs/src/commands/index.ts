@@ -2,8 +2,10 @@ import { digestCommand } from "./digest.js";
 import { doctorCommand } from "./doctor.js";
 import { maskCommand } from "./mask.js";
 import { notifyCommands } from "./notify.js";
+import { notifyFallbackEntryCommand } from "./notify-fallback.js";
 import { notifyJobFailedCommand } from "./notify-job.js";
 import { notifyLinkCommand, notifyUnlinkCommand } from "./notify-link.js";
+import { notifyOpsCommands } from "./notify-ops.js";
 import { onboardCommand } from "./onboard.js";
 import type { CommandSpec } from "./spec.js";
 import { statusCommand } from "./status.js";
@@ -22,6 +24,8 @@ export const COMMANDS: readonly CommandSpec[] = [
 	notifyLinkCommand,
 	notifyUnlinkCommand,
 	notifyJobFailedCommand,
+	notifyFallbackEntryCommand,
+	...notifyOpsCommands,
 ];
 
 export function findCommand(words: readonly string[]): CommandSpec | undefined {

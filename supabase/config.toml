@@ -396,6 +396,12 @@ verify_jwt = false
 import_map = "./functions/sync-incremental/deno.json"
 entrypoint = "./functions/sync-incremental/index.ts"
 
+[functions.notify]
+enabled = true
+verify_jwt = false
+import_map = "./functions/notify/deno.json"
+entrypoint = "./functions/notify/index.ts"
+
 [analytics]
 enabled = true
 port = 54327

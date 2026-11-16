@@ -1,3 +1,8 @@
+import { presentSecretNames } from "@fnb/notify";
+import {
+	doctorNotifyFacts,
+	notificationsAvailable,
+} from "@fnb/notify/postgres";
 import { connectAccount } from "@fnb/runner";
 import {
 	accountStatuses,
@@ -18,9 +23,13 @@ import {
 	isLocalDatabase,
 	migrationDrift,
 	migrationFiles,
+	notifyDestinationsCheck,
+	notifyScheduleChecks,
+	notifySecretsCheck,
 	openingHoursCheck,
 	pauseRiskHealth,
 	syncAgeHealth,
+	zaloBotQuotaCheck,
 } from "./doctor-checks.js";
 import { ageText, hoursSince } from "./formatting.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
@@ -210,6 +219,33 @@ async function incrementalChecks(
 	return checks;
 }
 
+async function notifyChecks(context: CommandContext): Promise<DoctorCheck[]> {
+	const { sql } = context.services.db();
+	if (!(await notificationsAvailable(sql))) {
+		return [
+			{
+				name: "notifications",
+				health: "unavailable",
+				detail: "app.notify_settings is missing; apply the migrations",
+			},
+		];
+	}
+	const now = context.now();
+	const facts = await doctorNotifyFacts(sql, now);
+	return [
+		...notifyScheduleChecks(facts.schedule, now),
+		notifySecretsCheck({
+			here: presentSecretNames(context.env),
+			dispatchers: facts.dispatchers,
+			destinationSecrets: facts.destinationSecrets,
+			missing: facts.missingSecrets,
+			now,
+		}),
+		notifyDestinationsCheck(facts.destinations, facts.failingDestinations),
+		zaloBotQuotaCheck(facts.zaloMonthCounts),
+	];
+}
+
 const UNMEASURED: DoctorCheck[] = [
 	{
 		name: "disk",
@@ -246,6 +282,7 @@ async function doctor(context: CommandContext): Promise<number> {
 		checks.push(...(await syncChecks(context, local)));
 		checks.push(await scheduleCheck(context));
 		checks.push(...(await incrementalChecks(context)));
+		checks.push(...(await notifyChecks(context)));
 	}
 	checks.push(...UNMEASURED);
 	context.output.table(
@@ -272,6 +309,7 @@ export const doctorCommand: CommandSpec = {
 		"Exits 1 when any check is red. Disk and egress are reported as unavailable: only the Supabase dashboard measures them.",
 		"Sync age: green within 26 h, yellow within 72 h, red beyond. Database size is in MiB (1 MiB = 1,048,576 bytes), the unit of pg_size_pretty with which Supabase measures its 500 MB free-plan quota: yellow from 400 MiB, red from 475 MiB.",
 		"Sync alerts: red while app.sync_alerts holds an open alert, raised by the scheduler itself at every tick: a watched store over the 90-minute dead-man threshold, or a scheduled call that expired unclaimed. Opening hours: yellow when an active store's hours were entered without a usable span (it is then synced at every tick).",
+		"Notifications: the notify schedule is yellow while disabled; the notify tick is red when the schedule is enabled and no tick ran for 60 minutes; notify secrets lists the NOTIFY_* names this machine holds and those each dispatcher last reported (names only), red after a no_dispatcher_secret cancellation in the last 7 days and yellow when a destination's secret was never reported; notify destinations is red while a destination is failing; Zalo Bot quota is yellow from 80 % of the Basic plan's 3,000 messages a month.",
 	],
 	run: doctor,
 };

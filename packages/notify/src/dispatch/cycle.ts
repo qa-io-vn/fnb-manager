@@ -19,6 +19,7 @@ import {
 	type SendOutcome,
 	USER_AGENT,
 } from "../channels/types.js";
+import { webhookPayload } from "../channels/webhook.js";
 import { emailHtml } from "../render/html.js";
 import { renderQueuedMessage } from "../render/queued.js";
 import { fitSubject, fitToUnits } from "../render/truncate.js";
@@ -206,10 +207,40 @@ export async function sha256Hex(text: string): Promise<string> {
 		.join("");
 }
 
+function isWebhook(claim: Pick<ClaimedMessage, "channelKind">): boolean {
+	return claim.channelKind === "webhook";
+}
+
+export function destinationAddress(
+	claim: Pick<ClaimedMessage, "channelKind" | "address" | "config">,
+): string | null {
+	if (claim.address !== null) {
+		return claim.address;
+	}
+	if (!isWebhook(claim)) {
+		return null;
+	}
+	const url = claim.config.url;
+	return typeof url === "string" && url !== "" ? url : null;
+}
+
 function renderedText(
 	claim: ClaimedMessage,
 	adapter: ChannelAdapter,
 ): { title: string | null; body: string } {
+	if (isWebhook(claim) && claim.body === null) {
+		return {
+			title: null,
+			body: webhookPayload({
+				kind: claim.kind,
+				ruleKey: claim.ruleKey,
+				severity: claim.severity,
+				params: claim.params,
+				storeName: claim.storeName,
+				at: new Date(claim.claimedAt),
+			}),
+		};
+	}
 	if (claim.body !== null) {
 		return {
 			title:
@@ -354,7 +385,8 @@ async function sendClaimed(
 		claim.secretName,
 		input.environment,
 	);
-	if (!adapter.available || secret === null || claim.address === null) {
+	const address = destinationAddress(claim);
+	if (!adapter.available || secret === null || address === null) {
 		await finish({
 			kind: "failed",
 			code: !adapter.available
@@ -386,6 +418,7 @@ async function sendClaimed(
 		report.add("lost_lease");
 		return;
 	}
+	const fitted = fitToUnits(begun.body, adapter.limits.maxTextUnits);
 	const message: RenderedMessage = {
 		messageId: claim.messageId,
 		kind: claim.kind,
@@ -393,20 +426,15 @@ async function sendClaimed(
 			begun.title === null
 				? null
 				: fitSubject(begun.title, adapter.limits.maxSubjectChars),
-		text: fitToUnits(begun.body, adapter.limits.maxTextUnits),
-		html: adapter.limits.supportsHtml
-			? emailHtml(
-					claim.kind,
-					fitToUnits(begun.body, adapter.limits.maxTextUnits),
-				)
-			: null,
-		webhookBody: null,
+		text: fitted,
+		html: adapter.limits.supportsHtml ? emailHtml(claim.kind, fitted) : null,
+		webhookBody: isWebhook(claim) ? begun.body : null,
 	};
 	const destination: Destination = {
 		channelId: claim.channelId,
 		kind: claim.channelKind,
 		provider: claim.provider,
-		address: claim.address,
+		address,
 		config: destinationConfig(claim, input.environment),
 	};
 	await spacing.waitFor(claim.channelId, adapter.limits.minSpacingMs);

@@ -6,6 +6,7 @@ import { PostgresSyncRepository } from "@fnb/sync/postgres";
 import type { Sql } from "postgres";
 import { createAdapterRegistry } from "../channels/registry.js";
 import { FIXTURE_TENANT_SLUG_PREFIX } from "../channels/secrets.js";
+import { webhookAddressHint } from "../channels/webhook.js";
 import {
 	CLI_CYCLE_LIMITS,
 	type CycleBudgetLimits,
@@ -15,6 +16,7 @@ import { runNotifyCycle } from "../dispatch/cycle.js";
 import type { CycleReport } from "../dispatch/report.js";
 import type { NotifyRepository } from "../dispatch/repository.js";
 import {
+	createWebhookDestination,
 	destinationState,
 	issueLinkCode,
 	prepareBotDestination,
@@ -26,6 +28,9 @@ import {
 	INTEGRATION_SECRET_NAMES,
 	SYNTHETIC_BOT_TOKEN,
 	SYNTHETIC_EMAIL_KEY,
+	SYNTHETIC_TELEGRAM_BOT,
+	SYNTHETIC_TELEGRAM_TOKEN,
+	SYNTHETIC_WEBHOOK_SECRET,
 	syntheticEnvironment,
 } from "./environment.js";
 import type { MockProviders } from "./mock-providers.js";
@@ -96,8 +101,19 @@ export interface FixtureTenant {
 	): Promise<string>;
 	linkEmail(
 		member: FixtureMember,
-		options?: Omit<FixtureLinkOptions, "chatId">,
+		options?: Omit<FixtureLinkOptions, "chatId"> & {
+			readonly provider?: "brevo" | "resend";
+		},
 	): Promise<string>;
+	linkTelegram(
+		member: FixtureMember,
+		options?: FixtureLinkOptions,
+	): Promise<string>;
+	addWebhook(options?: {
+		readonly path?: string;
+		readonly label?: string;
+		readonly at?: Date;
+	}): Promise<string>;
 	accountEntry(overrides?: {
 		readonly rejectLogin?: true;
 	}): FixtureAccountEntry;
@@ -124,6 +140,23 @@ function suffix(): string {
 	return randomBytes(4).toString("hex");
 }
 
+function randomInt(): number {
+	return randomBytes(3).readUIntBE(0, 3);
+}
+
+export async function deleteFixturePollState(sql: Sql): Promise<number> {
+	const names = JSON.stringify(Object.values(INTEGRATION_SECRET_NAMES));
+	const rows = await sql`
+		delete from app.bot_poll_state
+		where secret_name in (select jsonb_array_elements_text(${names}::text::jsonb))
+			and not exists (
+				select 1 from public.tenants t where t.slug like ${`${FIXTURE_SLUG_PREFIX}%`}
+			)
+		returning secret_name
+	`;
+	return rows.length;
+}
+
 export async function deleteStaleFixtureTenants(sql: Sql): Promise<number> {
 	const tenants = await sql`
 		delete from public.tenants
@@ -136,6 +169,7 @@ export async function deleteStaleFixtureTenants(sql: Sql): Promise<number> {
 		where email like ${`${FIXTURE_SLUG_PREFIX}%@example.com`}
 			and created_at < now() - interval '1 hour'
 	`;
+	await deleteFixturePollState(sql);
 	return tenants.length;
 }
 
@@ -191,7 +225,12 @@ export async function createFixtureTenant(
 		mockEnvironment: options.mock.environment(),
 	});
 	options.mock.registerZaloBot(SYNTHETIC_BOT_TOKEN, "Bot synthetic");
+	options.mock.registerTelegramBot(
+		SYNTHETIC_TELEGRAM_TOKEN,
+		SYNTHETIC_TELEGRAM_BOT,
+	);
 	options.mock.registerEmailKey(SYNTHETIC_EMAIL_KEY);
+	options.mock.registerWebhookSecret(SYNTHETIC_WEBHOOK_SECRET);
 	const seed = options.seed ?? 1;
 
 	const cleanup = async () => {
@@ -202,6 +241,7 @@ export async function createFixtureTenant(
 				where id in (select jsonb_array_elements_text(${JSON.stringify(logins)}::text::jsonb)::uuid)
 			`;
 		}
+		await deleteFixturePollState(sql);
 	};
 
 	const addMember = async (
@@ -352,16 +392,73 @@ export async function createFixtureTenant(
 		return prepared.channelId;
 	};
 
+	const linkTelegram = async (
+		member: FixtureMember,
+		linkOptions: FixtureLinkOptions = {},
+	): Promise<string> => {
+		const chatId = linkOptions.chatId ?? String(700_000_000 + randomInt());
+		const at = linkOptions.at ?? new Date();
+		const prepared = await prepareBotDestination(sql, {
+			tenantId,
+			userId: member.userId,
+			kind: "telegram",
+			provider: "telegram",
+			label: linkOptions.label ?? "Telegram",
+			secretName: INTEGRATION_SECRET_NAMES.telegram,
+			timezone: null,
+			storeIds: null,
+		});
+		const code = await issueLinkCode(sql, prepared.channelId, "bot_link", at);
+		options.mock.queueTelegramUpdate(SYNTHETIC_TELEGRAM_TOKEN, {
+			chatId,
+			text: `/start ${code}`,
+		});
+		await cycle({ at });
+		options.mock.queueTelegramUpdate(SYNTHETIC_TELEGRAM_TOKEN, {
+			chatId,
+			text: "ĐỒNG Ý",
+		});
+		await cycle({ at });
+		const state = await destinationState(sql, prepared.channelId);
+		if (state?.status !== "active") {
+			throw new Error(
+				`the fixture Telegram destination did not become active (status ${state?.status ?? "missing"})`,
+			);
+		}
+		return prepared.channelId;
+	};
+
+	const addWebhook = async (
+		webhookOptions: {
+			readonly path?: string;
+			readonly label?: string;
+			readonly at?: Date;
+		} = {},
+	): Promise<string> => {
+		const url = `https://hooks.example.com${webhookOptions.path ?? "/fnb/alerts"}`;
+		return createWebhookDestination(sql, {
+			tenantId,
+			label: webhookOptions.label ?? "Webhook",
+			secretName: INTEGRATION_SECRET_NAMES.webhook,
+			url,
+			addressHint: webhookAddressHint(url),
+			timezone: null,
+			at: webhookOptions.at ?? new Date(),
+		});
+	};
+
 	const linkEmail = async (
 		member: FixtureMember,
-		linkOptions: Omit<FixtureLinkOptions, "chatId"> = {},
+		linkOptions: Omit<FixtureLinkOptions, "chatId"> & {
+			readonly provider?: "brevo" | "resend";
+		} = {},
 	): Promise<string> => {
 		const at = linkOptions.at ?? new Date();
 		const prepared = await prepareBotDestination(sql, {
 			tenantId,
 			userId: member.userId,
 			kind: "email",
-			provider: "brevo",
+			provider: linkOptions.provider ?? "brevo",
 			label: linkOptions.label ?? "E-mail",
 			secretName: INTEGRATION_SECRET_NAMES.email,
 			timezone: null,
@@ -424,6 +521,8 @@ export async function createFixtureTenant(
 		seed,
 		emailKey: SYNTHETIC_EMAIL_KEY,
 		linkEmail,
+		linkTelegram,
+		addWebhook,
 		accountEntry,
 		windowRun,
 		accountId: account.id,

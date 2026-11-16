@@ -1,3 +1,4 @@
+import { CompositeNotifier, OutboxNotifier } from "@fnb/notify/outbox";
 import {
 	type AccountEntry,
 	ConsoleNotifier,
@@ -5,10 +6,12 @@ import {
 	edgeFunctionBudget,
 	type IncrementalTicket,
 	isTicket,
+	type Notifier,
 	outcomeLine,
 	outcomeReport,
 	parseAccountEntries,
 	runIncrementalStore,
+	type SecretSources,
 } from "@fnb/runner";
 import { PostgresRunnerDatabase } from "@fnb/runner/postgres";
 import {
@@ -42,12 +45,59 @@ type PostgresClient = ReturnType<typeof createPostgresClient>;
 export const CLAIM_QUEUE_LIMIT = 32;
 const CLAIM_IDLE_SECONDS = 30;
 
-const SECRET_SOURCES = {
-	variables: ["IPOS_APP_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY"],
-	databaseVariables: ["FNB_DB_URL", "SUPABASE_DB_URL"],
-	dictionaryVariables: ["SUPABASE_SECRET_KEYS", "SUPABASE_PUBLISHABLE_KEYS"],
-	includeAccountKeys: true,
-};
+const SECRET_VARIABLES = [
+	"IPOS_APP_KEY",
+	"SUPABASE_SERVICE_ROLE_KEY",
+	"SUPABASE_ANON_KEY",
+] as const;
+const NOTIFY_VARIABLE_PATTERN = /^NOTIFY_[A-Z0-9_]{1,60}$/;
+const NOTIFY_BASE_URL_PATTERN = /^NOTIFY_[A-Z0-9_]+_BASE_URL$/;
+const NOTIFY_NOT_SECRET: ReadonlySet<string> = new Set([
+	"NOTIFY_INTEGRATION",
+	"NOTIFY_EMAIL_FROM_NAME",
+	"NOTIFY_FALLBACK_TARGETS",
+]);
+const MIN_REDACTED_LENGTH = 6;
+
+export function notifySecretVariables(
+	environment: FunctionEnvironment,
+): string[] {
+	return Object.keys(environment)
+		.filter(
+			(name) =>
+				NOTIFY_VARIABLE_PATTERN.test(name) &&
+				!NOTIFY_NOT_SECRET.has(name) &&
+				!NOTIFY_BASE_URL_PATTERN.test(name) &&
+				(environment[name]?.trim().length ?? 0) >= MIN_REDACTED_LENGTH,
+		)
+		.sort();
+}
+
+export function secretSources(environment: FunctionEnvironment): SecretSources {
+	return {
+		variables: [...SECRET_VARIABLES, ...notifySecretVariables(environment)],
+		databaseVariables: ["FNB_DB_URL", "SUPABASE_DB_URL"],
+		dictionaryVariables: ["SUPABASE_SECRET_KEYS", "SUPABASE_PUBLISHABLE_KEYS"],
+		includeAccountKeys: true,
+	};
+}
+
+export function functionRedactor(environment: FunctionEnvironment): Redactor {
+	return createRedactor(
+		collectSecretValues(environment, secretSources(environment)),
+	);
+}
+
+export function runNotifier(
+	sql: () => PostgresClient,
+	redact: Redactor,
+	write: (line: string) => void = (line) => console.warn(line),
+): Notifier {
+	return new CompositeNotifier([
+		new ConsoleNotifier(write, redact),
+		new OutboxNotifier(sql, "incremental"),
+	]);
+}
 
 const claimClients = new Map<string, PostgresClient>();
 let claimsInFlight = 0;
@@ -139,10 +189,7 @@ async function runClaimed(
 			entries: context.entries,
 			environment: context.environment,
 			storeId: ticket.storeId,
-			notifier: new ConsoleNotifier(
-				(line) => console.warn(line),
-				context.redact,
-			),
+			notifier: runNotifier(() => sql, context.redact),
 			redact: context.redact,
 			triggeredBy: ticket.source,
 			incremental: {
@@ -175,9 +222,7 @@ export async function handleRequest(
 	if (!parsed) {
 		return json({ error: "the body must be JSON with a ticket id" }, 400);
 	}
-	const redact = createRedactor(
-		collectSecretValues(environment, SECRET_SOURCES),
-	);
+	const redact = functionRedactor(environment);
 	const log = (line: string) =>
 		console.log(redact(`sync-incremental: ${line}`));
 	const databaseUrl = environment.FNB_DB_URL || environment.SUPABASE_DB_URL;

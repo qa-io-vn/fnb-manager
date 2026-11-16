@@ -146,7 +146,7 @@ jobs:
         if: always() && steps.config.outputs.configured == 'true'
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: node apps/jobs/bin/fnb.mjs digest --due
+        run: node apps/jobs/bin/fnb.mjs digest --due --revise
       - name: Send due messages
         if: always() && steps.config.outputs.configured == 'true'
         env:

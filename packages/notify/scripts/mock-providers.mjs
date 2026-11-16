@@ -17,11 +17,11 @@ const { startMockProviders } = await import(
 );
 const mock = await startMockProviders({ port, acceptAnyToken: true });
 console.log(
-	`mock providers listening on 127.0.0.1:${mock.port}; set NOTIFY_ZALO_BOT_BASE_URL and NOTIFY_BREVO_BASE_URL to ${mock.baseUrl}`,
+	`mock providers listening on 127.0.0.1:${mock.port}; set ${Object.keys(mock.environment()).join(", ")} to ${mock.baseUrl}`,
 );
 const stop = async () => {
 	console.log(
-		`mock providers: requests ${mock.requestCount()}, messages accepted ${mock.zaloMessages().length}, e-mails accepted ${mock.emails().length}`,
+		`mock providers: requests ${mock.requestCount()}, Zalo messages ${mock.zaloMessages().length}, Telegram messages ${mock.telegramMessages().length}, e-mails ${mock.emails().length}, webhook deliveries ${mock.webhookDeliveries().length}`,
 	);
 	await mock.close();
 	process.exit(0);
