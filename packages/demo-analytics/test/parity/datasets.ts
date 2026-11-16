@@ -15,6 +15,7 @@ import {
 	ESTABLISHED_STORE_OPENED_ON,
 } from "../../src/index.js";
 import { complianceCases } from "./compliance-cases.js";
+import { soloPromotion } from "./solo-cases.js";
 
 export type ParityDatasetId = "D1" | "D2" | "D3";
 
@@ -72,6 +73,7 @@ export function parityDatasets(
 			from: addDays(clock.asOf, -100),
 			to: clock.today,
 			volumeScale: 0.3,
+			rewriteDay: soloPromotion(clock.asOf),
 		},
 		D2: {
 			id: "D2",

@@ -327,7 +327,7 @@ describe("the engine ports of the report functions equal the SQL", () => {
 			active(),
 			seeded,
 			"promotion_summary",
-			{ store_ids: stores, from_date: addDays(anchor, -92), to_date: anchor },
+			{ store_ids: stores, from_date: addDays(anchor, -400), to_date: anchor },
 			{ key: ["promotion_kind", "promotion_key"] },
 		);
 		await compareCall(

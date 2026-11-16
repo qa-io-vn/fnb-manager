@@ -35,13 +35,13 @@ export function complianceDay(asOf: IsoDate): IsoDate {
 	return addDays(asOf, -COMPLIANCE_DAYS_BEFORE_AS_OF);
 }
 
-function itemLines(sale: CanonicalSale): CanonicalLine[] {
+export function itemLines(sale: CanonicalSale): CanonicalLine[] {
 	return sale.lines.filter(
 		(line) => toDbLineKind(line.lineKind) === "item" && line.grossAmount > 0,
 	);
 }
 
-function plainSale(sale: CanonicalSale): boolean {
+export function plainSale(sale: CanonicalSale): boolean {
 	return (
 		sale.status === "completed" &&
 		sale.itemDiscountAmount === 0 &&
@@ -53,7 +53,7 @@ function plainSale(sale: CanonicalSale): boolean {
 	);
 }
 
-function discountLine(
+export function discountLine(
 	day: GeneratedDay,
 	sale: CanonicalSale,
 	line: CanonicalLine,

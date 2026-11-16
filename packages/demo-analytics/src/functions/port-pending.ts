@@ -4,9 +4,7 @@ import type { ThemeHandler } from "./theme-support.js";
 export const NOT_IMPLEMENTED_CODE = "not_implemented";
 
 export const PORT_PENDING_FUNCTIONS = [
-	"promotion_days",
 	"promotion_catalogue",
-	"promotion_lift",
 	"promotion_compliance",
 	"item_discount_days",
 	"shift_adjustments",
