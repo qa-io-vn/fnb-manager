@@ -1,10 +1,10 @@
 # User guide
 
-Purpose and audience: what the FNB Manager app shows and how to read it, for the owner and the store managers. The app speaks Vietnamese by default; this guide is in English and quotes the Vietnamese labels exactly as the app shows them, with the app's own English label in brackets where it helps. It describes the app as built and verified on 2026-11-15; parts that are designed or planned say so.
+Purpose and audience: what the FNB Manager app shows and how to read it, for the owner and the store managers. The app speaks Vietnamese by default; this guide is in English and quotes the Vietnamese labels exactly as the app shows them, with the app's own English label in brackets where it helps. It describes the app as built and verified on 2026-11-15, and Xuất dữ liệu as built on 2026-11-18; parts that are designed or planned say so.
 
 The screenshots come from the demo, so they show the sample stores "Cửa hàng mẫu 1" and "Cửa hàng mẫu 2" and generated numbers, never a real shop. They are taken on 4 November 2026 at 12:30 in Vietnam, in Vietnamese unless a caption says otherwise, and are retaken whenever a screen changes (`pnpm --filter @fnb/web docs:screenshots`).
 
-Last updated 2026-11-15
+Last updated 2026-11-18
 
 ## What the app is for
 
@@ -58,6 +58,7 @@ The navigation sits at the bottom on a phone and on the left on a wide screen.
 | Cài đặt | Settings | Cửa hàng (the business and store profiles), Dữ liệu nhập tay (item costs and their CSV import, monthly targets and payment fees), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (the national holidays and your own days off), Ngưỡng báo cáo (the report thresholds and this device's CSV format) and Pháp lý (the legal texts and their versions); the other settings pages say which phase brings them | Phân loại and Ngưỡng báo cáo verified locally; Cửa hàng, Dữ liệu nhập tay, Ngày lễ and Pháp lý built; the other pages planned |
 
 - A page that is not built yet says "Sắp có" and names the roadmap phase that brings it ("Dự kiến ở giai đoạn … của lộ trình.").
+- Xuất dữ liệu (Exports) has no item in the navigation yet; [Xuất dữ liệu](#xuất-dữ-liệu-exports) below says how to open it.
 - The top bar holds the language switch (**VI** / **EN**), "Đăng xuất", the store choice and the freshness badge. On a phone the store choice folds into one summary button; tap it to open.
 - **VI** is the default. **EN** switches every label, sentence and number format to English. The browser remembers the choice.
 - When a new version is published, a prompt says "Có phiên bản mới — tải lại"; tap it to reload.
@@ -624,6 +625,57 @@ This page keeps the business's legal texts as numbered versions. A version that 
 - At the foot of the page, **Mục liên quan** names what comes later (the customer consents and personal-data requests, phase 17a) and leads to the **Loại hình pháp lý** on Cửa hàng.
 - In the demo a change lasts until the page is reloaded.
 
+## Xuất dữ liệu (Exports)
+
+This page takes your sales data out of the app as files: the invoices, their lines, the payments, the shifts and the daily summary, month by month, in one ZIP file. Every file is checked against the database before you download it, so what you open in Excel or a script is exactly what the app holds. It was built on 2026-11-18 and checked on the build machine's test data; the check on real data and the owner's check in Excel are still to come. [exports.md](exports.md) describes the files and the check in full.
+
+- **Opening it.** The page has no item in the navigation yet. Add `#/xuat-du-lieu?tab=xuat` after the app's address, for example `http://localhost:5173/#/xuat-du-lieu?tab=xuat` on the local app. The page has two tabs: **Gói dữ liệu cho AI** (the AI data pack, which comes in the next step; for now the tab says so and links to the other one) and **Xuất dữ liệu**.
+- **Who can use it.** Owners and managers. Staff and viewers read "Chỉ chủ quán và quản lý xuất được dữ liệu." Every file holds only the rows you can already see in the app.
+- **In the demo** the tab says "Bản demo không có dữ liệu hóa đơn thật để xuất." and links to the pack tab. For the same reason this section has no screenshots yet: screenshots come from the demo, never from real data.
+
+### Choosing what to export
+
+| Field | What to do |
+|---|---|
+| **Cửa hàng** | The stores chosen in the top bar are ticked; tick or untick others. |
+| **Từ tháng**, **Đến tháng** | The first and the last month, from the month your stores' history starts to the current month; the last complete month is chosen at first. At most 12 months at a time ("Tối đa 12 tháng mỗi lần xuất"). The running month holds figures up to the day the hint under the months names, the same last day as the reports. |
+| **Bảng dữ liệu** | All five are ticked: Hóa đơn (invoices), Dòng hóa đơn (invoice lines), Thanh toán (payments), Ca (shifts) and Tổng hợp ngày (daily summary: each day's totals for the chosen stores together and for each store, as the reports compute them). |
+| **Định dạng tệp** | **CSV** in this device's format (commas, or semicolons with a decimal comma; the link next to it leads to Cài đặt › Ngưỡng báo cáo, where **Thiết bị này** changes it), or **JSON**, which keeps every code exactly as the database holds it. |
+| **Kèm thông tin cá nhân** | Unticked. See the next section. |
+
+1. Press **Ước tính** to see the rows of each month and store and the estimated transfer ("Ước tính khoảng … MB dữ liệu truyền tải (gói Free: 5 GB mỗi tháng)"). A line also says how much this phone or computer has already exported this month.
+2. Press **Xuất dữ liệu**. Above 100 MB the page asks "Lần xuất này ước tính hơn 100 MB. Vẫn xuất?": **Vẫn xuất** goes on, **Thôi** goes back.
+3. The progress names each month, store and table with the rows read so far ("Tháng 10/2026 · S1 · Dòng hóa đơn 6.000/8.914"). **Dừng** stops at once, and no file is made.
+4. At the end, **Tải fnb-xuat-du-lieu_….zip** downloads the archive, with one line for each month and store:
+   - "Đã đối chiếu với cơ sở dữ liệu: … — khớp": its files equal the database.
+   - "Dữ liệu thay đổi trong lúc xuất; thử lại sau ít phút": a sync wrote new sales while that month was being read. Its files are in the archive but not checked; export that month again a few minutes later.
+   - "… — không khớp với cơ sở dữ liệu; hãy báo lỗi này": this should never happen; tell whoever runs the system.
+   - "Tổng hợp ngày khớp hóa đơn", or "Tổng hợp ngày chưa khớp, cần làm mới số liệu phân tích" when the daily totals have not caught up with the latest sales yet; the other files stay checked.
+
+   "Đã nhận … MB (chưa nén)" says how much data the export transferred, counted generously, so the real figure is at most that. **Xuất lần khác** starts again.
+
+### The personal-data box
+
+**Kèm thông tin cá nhân** (Include personal data) adds the columns that name or reach a person: customers' names and phone numbers, the names of employees and cashiers, the shift name (on real data the till can put a cashier's login e-mail there), voucher codes, notes on lines and payment references. Without it these columns are not even read from the database.
+
+- Only an owner, or a manager who sees every store, is offered the box. A manager limited to some stores never sees it.
+- It starts unticked every time and applies to that one export only.
+- Tick it only when you need those columns, and keep such an archive private: `doc-truoc.txt` and `manifest.json` then say that the files hold personal data.
+
+### What the archive holds
+
+- `doc-truoc.txt` ("read first"): in Vietnamese, what each column means, the CSV format used, how to open the files in Excel, one check line for each month and store, and how much data was transferred.
+- `manifest.json`: every file with its rows, its size and its fingerprints, and whether it was checked; for scripts and for checking the archive later.
+- A folder per month (`2026-10/`) with the daily summary `tong-hop-ngay.csv` and a folder per store (`S1/`, `S2/`…) holding `hoa-don`, `dong-hoa-don`, `thanh-toan` and `ca`. Paths name the stores by their labels S1, S2…; inside, the files give each store's name.
+
+Column headings are the database's own column names (`business_date`, `net_amount`…), so scripts can rely on them, and `doc-truoc.txt` explains each one. Times appear twice where it helps: as stored, and in the store's local time (`sold_at_local`, written `YYYY-MM-DD HH:MM:SS`), which Excel reads as a date and time.
+
+### Opening the files in Excel
+
+- Double-click a CSV file: the Vietnamese letters show correctly. If every value lands in one column, choose the semicolon format under Cài đặt › Ngưỡng báo cáo › Thiết bị này and export again.
+- Excel turns a column of digits into numbers and drops leading zeros, so a receipt number such as `0012` loses its zeros when the file is double-clicked. To keep them, open the file with **Data › From Text/CSV**, choose **Transform Data** and set `receipt_no` and the code columns (`id`, the `…external_id` columns and the `…_code` columns) to **Text** before loading, or choose "Do not detect data types". In Excel for Microsoft 365 or Excel 2024, File › Options › Data › Automatic Data Conversion can also switch off the removal of leading zeros.
+- The JSON files keep every code exactly and suit a script better than Excel.
+
 ## Data freshness and the verified badge
 
 - **The freshness badge** in the top bar shows when the last sync for your business succeeded: "cập nhật lúc {time}" today, "cập nhật lúc {time} ngày {date}" on an earlier day, "chưa đồng bộ" if no sync has succeeded yet, and "chưa rõ lúc cập nhật" if the app could not read it. It checks again every 5 minutes. A sale rung up after that time appears after the next sync.
@@ -660,7 +712,7 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
 - **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Dữ liệu nhập tay (item costs, monthly targets and payment fees), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (your own days off), Ngưỡng báo cáo and Pháp lý (the legal texts) are open (see above). Target progress waits for a monthly target. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
-- **Exports, the AI data pack and plans** ("Xuất dữ liệu" and "Kế hoạch", phase 11, designed at roadmap level): CSV and JSON exports by month; a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
+- **The AI data pack and plans** ("Gói dữ liệu cho AI" on Xuất dữ liệu, and "Kế hoạch", phase 11; the exports are open, see [Xuất dữ liệu](#xuất-dữ-liệu-exports)): a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).
 
 ## Words you will see
@@ -696,3 +748,6 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 | Cập nhật ngay | Refresh now | recalculate the days still waiting after a mapping change |
 | Giá vốn, Áp dụng từ ngày | Item cost, Applies from | what one item sold costs you, and the first day that cost counts |
 | Tất cả cửa hàng, theo Tất cả cửa hàng | All stores, from All stores | a cost shared by every store, and a store using that shared cost because it has none of its own |
+| Xuất dữ liệu | Export data | take the sales data out as files, each checked against the database |
+| Kèm thông tin cá nhân | Include personal data | add the columns that name or reach a person to one export |
+| Đã đối chiếu với cơ sở dữ liệu: … — khớp | Checked against the database: … — matched | an exported month's files equal the database |

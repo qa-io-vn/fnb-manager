@@ -2,7 +2,7 @@
 
 Purpose and audience: this is the master test plan of FNB Manager. It says how the programme proves that the platform does what [requirements.md](requirements.md) asks: which quality risks the tests address, which test levels exist and where they run, which data they use, the exact commands, the process from a build to a verdict, what CI checks, which tests exist today, how every requirement traces to a test or an owner check, how each phase is accepted, and how results are reported. It is written for the owner (a café and tea-shop owner who reads English; the app speaks Vietnamese), for a developer who takes the work over on another machine, for reviewers and testers who plan and run the checks, and for whoever operates the platform after go-live.
 
-Last updated 2026-11-16
+Last updated 2026-11-18
 
 ## Contents
 
@@ -57,7 +57,7 @@ Out of scope:
 
 | Document | What a tester takes from it |
 |---|---|
-| [requirements.md](requirements.md) | The 375 requirements with their acceptance criteria and the short test references used here |
+| [requirements.md](requirements.md) | The 376 requirements with their acceptance criteria and the short test references used here |
 | [roadmap.md](roadmap.md) | Each phase's deliverables, acceptance lines, owner actions and gates |
 | [plan.md](plan.md) | Roles, the definition of done, the quality gates and the risk register |
 | [status.md](status.md) | What is verified, with figures; where results are recorded |
@@ -66,6 +66,7 @@ Out of scope:
 | [architecture.md](architecture.md), [security.md](security.md) | Components, trust boundaries, the RLS matrix, open security items |
 | [schema.md](schema.md) | The database and what each pgTAP file covers |
 | [sync.md](sync.md), [web-app.md](web-app.md), [metrics.md](metrics.md), [reports/](reports/ngay.md) | The behaviour under test for the sync, the web app, the metrics and the reports |
+| [exports.md](exports.md), [strategy.md](strategy.md) | The browser export and its proof against `export_control_totals`; the data pack format, the plan format and every lint code with its level |
 | [api.md](api.md) | The database functions, the Edge Function answers and the error codes |
 | [secrets.md](secrets.md), [go-live.md](go-live.md) | The secrets each command needs; the cloud steps that unlock the cloud checks |
 | [decisions.md](decisions.md) | ADR-009 (synthetic fixtures, opt-in live checks), ADR-014 (realistic acceptance gates), ADR-015 (scanning), ADR-029 (report numbers from SQL with a parity-tested port) |
@@ -200,9 +201,10 @@ Every package runs `vitest run` on its `test/` folder (`test/unit`, plus the gat
 | `@fnb/design-tokens` | The token files: the same tokens in every theme, components equal to the hex form, WCAG 2.2 AA contrast of the text and focus pairs in the light, dark and print themes; the generated CSS and palette equal to a fresh build |
 | `@fnb/reports` | Periods and ISO weeks, the as-of rule, coverage and like-for-like comparisons, the exact decomposition, the narrative, the RPC source (errors, truncation guard), each card of Ngày, Tuần, Tháng and Năm |
 | `@fnb/demo-analytics` | The demo calendar, generated days, ingest, Postgres-exact numerics, the source; plus the parity suite (2.6) and a smoke run of each report on the demo engine |
+| `@fnb/datapack` | The pack format ([strategy.md](strategy.md)): the canonical text, decimals and units, the hash, `pack_id` and the clock, the committed JSON Schema files with Ajv against zod, every invariant, each aggregates-only rule with a fixture that breaks it, the estimate and the trimming ladder; the plan lint: normalisation, front matter, sections and fields, the number grammar in both languages, citations, one fixture per lint code, the same results under jsdom, `planRecord`; source scans for locale, clock, randomness and Node APIs |
 | `@fnb/notify` | Channel adapters (Zalo Bot, Brevo), secret resolution, timed fetch, rendering and truncation, templates, the digest model and fingerprint, the digest-line rules, the dispatch cycle, link parsing, the outbox notifier, the tenant-filter guard and the synthetic-environment guard |
 | `@fnb/jobs` | The CLI and its help, configuration and masking, numbered output in CI, `doctor`, the status window, the incremental checks, `notify` and `digest` commands |
-| `@fnb/web` | The report card and its extensions, keyset paging, the demo row source, i18n completeness and key parity, CSV, formatting, the Hôm nay metrics, verification and sentences, the web registry, the card adapter, the period navigator and picker, report routes, install assets (their colours equal to the design tokens), preferences, the lazy-chunk patterns, no raw colour outside the token package |
+| `@fnb/web` | The report card and its extensions, keyset paging, the demo row source, i18n completeness and key parity, CSV, formatting, the Hôm nay metrics, verification and sentences, the web registry, the card adapter, the period navigator and picker, report routes, install assets (their colours equal to the design tokens), preferences, the lazy-chunk patterns, no raw colour outside the token package; the export engine (the month plan, the keyset reader against a fake PostgREST, the fingerprints shared with pgTAP, columns, writers, the archive, the estimate, the run) and the Xuất dữ liệu page ([exports.md](exports.md)) |
 
 ### 2.5 Database tests (pgTAP)
 
@@ -273,8 +275,8 @@ Playwright (`@playwright/test` ^1.65.0 with `@axe-core/playwright`) drives Chrom
 
 | Project | Server | What it covers | Skips when |
 |---|---|---|---|
-| `live` (port 5191) | Vite against the local stack, from `apps/web/.env.local` | Sign-in and sign-out, password-reset mail in the mail catcher, an expired recovery link, the demo offered from the login page, zero rows for a client without a session, Hôm nay on the seed for all stores and per store with its verification state, the language toggle, placeholder pages, the four reports on the seed, Hôm nay's yesterday equal to Ngày, the settings fixture's five logins, the settings sources' writes through PostgREST, the Cửa hàng page under row-level security (#159), and Phân loại's category and payment-kind tabs through the real tables with the catch-up (#160) | `VITE_SUPABASE_URL` or `VITE_SUPABASE_PUBLISHABLE_KEY` is empty (normally read from `apps/web/.env.local`) |
-| `demo` (port 5192) | Vite with empty Supabase variables | The demo banner and numbers, every demo page with axe at 360 px, the store table inside its card, print, favicon and manifest, no login route without a backend, the nine, eight, ten and seven cards of the reports, deep links, the as-of rule, the young store's states, CSV with a BOM, no request outside the origin, English, the design catalogue with axe and its popover, focus never hidden under the top bar, and the Settings pages: Cửa hàng, Ngưỡng báo cáo and Phân loại | never |
+| `live` (port 5191) | Vite against the local stack, from `apps/web/.env.local` | Sign-in and sign-out, password-reset mail in the mail catcher, an expired recovery link, the demo offered from the login page, zero rows for a client without a session, Hôm nay on the seed for all stores and per store with its verification state, the language toggle, the placeholder page `#/ke-hoach`, the four reports on the seed, Hôm nay's yesterday equal to Ngày, the settings fixture's five logins, the settings sources' writes through PostgREST, the Cửa hàng page under row-level security (#159), Phân loại's category and payment-kind tabs through the real tables with the catch-up (#160), and Xuất dữ liệu (#141): a month of a fixture tenant exported as CSV and as JSON, every file verified, the BOM and strict UTF-8, the manifest's fingerprints equal to `export_control_totals` read by the same member, personal data only when ticked, staff and viewers gated and a store-limited manager without the personal-data box | `VITE_SUPABASE_URL` or `VITE_SUPABASE_PUBLISHABLE_KEY` is empty (normally read from `apps/web/.env.local`) |
+| `demo` (port 5192) | Vite with empty Supabase variables | The demo banner and numbers, every demo page with axe at 360 px, the store table inside its card, print, favicon and manifest, no login route without a backend, the nine, eight, ten and seven cards of the reports, deep links, the as-of rule, the young store's states, CSV with a BOM, no request outside the origin, English, the design catalogue with axe and its popover, focus never hidden under the top bar, the Settings pages: Cửa hàng, Ngưỡng báo cáo and Phân loại, and Xuất dữ liệu's two tabs with the demo's notice | never |
 | `pages` (port 5193) | `vite build` under `/fnb-manager/`, then `vite preview` | Icons and manifest under the Pages base path, Năm within 8 seconds on a CPU four times slower in the production build, and no design catalogue in the production build | never |
 
 Common rules:
@@ -283,7 +285,7 @@ Common rules:
 - `checkPage` (`apps/web/e2e/support/checks.ts`) runs axe with the WCAG 2.0, 2.1 and 2.2 A and AA tags plus best practice and fails on any serious or critical violation, at 1280 px and at 360 px, and again in the dark colour scheme at 360 px; it fails on sideways page scroll at 360 px and checks that the last column of every wide table is reachable inside its card by scrolling it to the end, where column snapping rests it fully in view.
 - `watchConsoleErrors` (`apps/web/e2e/support/reports.ts`) fails a spec on any console error or page error once the cards have settled and after printing.
 - Clocks are fixed: the demo specs set the browser clock (`page.clock.setFixedTime`), and the live specs set it just after the newest seeded date (`clockAfterSeed` in `apps/web/e2e/support/local-stack.ts`), so the results do not move with the calendar.
-- The live specs sign in with the seed's development login, read from `supabase/seed.sql`, and compute their expected numbers from the invoices they can read through RLS.
+- The live specs sign in with the seed's development login, read from `supabase/seed.sql`, and compute their expected numbers from the invoices they can read through RLS. The settings and export specs build their own fixture tenant instead (section 4.3); the export spec can also run read-only on another login's tenant (section 5.3).
 
 ### 2.9 Live data checks
 
@@ -431,7 +433,7 @@ The pgTAP analytics files, the live end-to-end specs and the local CLI demonstra
 | `it-sync-…` | `jobs:integration/local-stack` | at the end of the test | The CLI on the local stack |
 | `notify-it-…` | `createFixtureTenant` in `@fnb/notify/testing` (two stores on a mock account, 70 days synced, an owner and a store-limited manager, destinations linked on `_IT` secret names) | after the suite; any such tenant older than an hour is deleted when a suite starts | The notification integration and CLI tests |
 | `notify-it-pgtap-…` | pgTAP files 26 to 31 | rolled back | Notification database tests |
-| `e2e-settings-…` | `createSettingsFixture` in `apps/web/e2e/support/settings-fixture.ts` (two stores on a mock account, two item types and six items of which one has no type, a cash and an `other` payment method, 35 days of generated sales per store ending yesterday (`fixture.sales`) refreshed into the aggregates, five logins `e2e-<role>-<hex>@example.com`: owner, manager, store-limited manager, staff, viewer) | by the spec's `afterAll` teardown; a run first removes `e2e-settings-` tenants and fixture-shaped logins older than an hour that belong to no other tenant | The live settings specs of 10b (#159 to #165) and the fixture's self-check `e2e:live/settings-fixture`; the live Phân loại spec adds one `invoice_payments` row per fixture invoice (its primary method and paid amount) and refreshes the aggregates in its own `beforeAll`, rows that belong to the fixture tenant and go with it at teardown (on delete cascade) |
+| `e2e-settings-…` | `createSettingsFixture` in `apps/web/e2e/support/settings-fixture.ts` (two stores on a mock account, two item types and six items of which one has no type, a cash and an `other` payment method, 35 days of generated sales per store ending yesterday (`fixture.sales`) refreshed into the aggregates, five logins `e2e-<role>-<hex>@example.com`: owner, manager, store-limited manager, staff, viewer) | by the spec's `afterAll` teardown; a run first removes `e2e-settings-` tenants and fixture-shaped logins older than an hour that belong to no other tenant | The live settings specs of 10b (#159 to #165) and the fixture's self-check `e2e:live/settings-fixture`; the live Phân loại spec adds one `invoice_payments` row per fixture invoice (its primary method and paid amount) and refreshes the aggregates in its own `beforeAll`, rows that belong to the fixture tenant and go with it at teardown (on delete cascade); the live export spec (#141) likewise adds, for the month it exports, a payment with a reference per invoice, a shift per store and day named with a synthetic cashier login (`cashier@example.com`) and a synthetic customer name and phone on some invoices |
 | `parity-…` | the parity harness | with its database | Postgres parity datasets |
 | other pgTAP fixtures | pgTAP files | rolled back | Two-tenant and role tests |
 
@@ -527,6 +529,7 @@ Run from the repository root. `<db>` stands for the local database URL, `postgre
 | `apps/web/.env.local` filled | the `live` Playwright project | Written from `pnpm db:status` locally, from `supabase status -o env` in CI |
 | `E2E_PORT_OFFSET` | separate ports and folders per Playwright run | |
 | `E2E_DATABASE_URL` | the database the live settings fixture writes its tenant to | The local stack's URL when unset; any host postgres-js would reach other than this machine is refused before connecting |
+| `E2E_LOGIN_EMAIL` and `E2E_LOGIN_PASSWORD`, optionally `E2E_TENANT_SLUG` | `e2e:live/exports` on that login's tenant instead of a fixture tenant: the last complete month exported read-only and compared with `export_control_totals` read by the same login | Read by `liveLogin()` in `apps/web/e2e/support/local-stack.ts`, which falls back to the seeded login; the personal-data and role tests then skip |
 
 A gated suite that skips is not a pass. The verdict of a step names each gated suite the step depends on and shows it ran.
 
@@ -702,6 +705,8 @@ From the run of 2026-11-16 at phase 10a's verification (#102), every package wit
 
 `packages/runner/test/integration` exists but holds no test.
 
+Later runs, one package at a time, on 2026-11-18 after the exports (#139 to #141) and the pack format and plan lint (#130, #135): `@fnb/datapack`, new since the run above, 338 of 338 in 20 files; `@fnb/web` 1,420 passed and 4 failed, the four also failing on the commit before the exports: two `web:i18n/wording-sheets` tests that fail only on a working copy whose documents have CRLF line ends, and two `web:pages/settings/cua-hang-page` cases that fail only just after local midnight.
+
 ### 8.2 pgTAP files
 
 Planned tests per file, read from each file's `select plan(…)` on 2026-11-16 after migration `settings_writes_and_legal` (#104). Files 33 to 35 are phase 10a's, files 36 to 39 phase 10b's.
@@ -735,15 +740,16 @@ Planned tests per file, read from each file's `select plan(…)` on 2026-11-16 a
 
 By phase (files grouped by the phase that created them; 01, 03 and 12 were extended in 12a, 01 and 03 again in 10a and 10b): phase 2, 409; phase 7, 153; phase 8, 291; phase 9, 143; phase 10a, 183; phase 10b, 210; phase 12, 694.
 
-Full run on 2026-11-16 after migration `fee_and_target_limits`: 2,159 of 2,159 in 40 files. Earlier: 2,153 of 2,153 in 40 files after migration `pack_and_export_functions`; 2,090 of 2,090 in 38 files after migration `item_costs_amount_whole_dong`; 2,085 of 2,085 in 38 files after migration `data_quality_payments_account_order`; 2,083 of 2,083 in 38 files after migration `data_quality_functions`; 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`. Earlier full runs: 1,849 of 1,849 at phase 10a's verification; 1,845 of 1,845 on 2026-11-14; 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
+Full run on 2026-11-18 on the local stack after the exports and the pack format: 2,159 of 2,159 in 40 files, `40_pack_functions.sql` and `41_export_totals.sql` included. Earlier: 2,159 of 2,159 in 40 files on 2026-11-16 after migration `fee_and_target_limits`; 2,153 of 2,153 in 40 files after migration `pack_and_export_functions`; 2,090 of 2,090 in 38 files after migration `item_costs_amount_whole_dong`; 2,085 of 2,085 in 38 files after migration `data_quality_payments_account_order`; 2,083 of 2,083 in 38 files after migration `data_quality_functions`; 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`. Earlier full runs: 1,849 of 1,849 at phase 10a's verification; 1,845 of 1,845 on 2026-11-14; 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
 
 ### 8.3 Playwright specs
 
-Listed with `playwright test --list` on 2026-11-16 after #163: 228 tests in 33 files.
+Listed with `playwright test --list` on 2026-11-18 after #141: 234 tests in 35 files.
 
 | Project | File | Tests |
 |---|---|---:|
 | `live` | `e2e/live/auth.spec.ts` | 6 |
+| `live` | `e2e/live/exports.spec.ts` | 5 |
 | `live` | `e2e/live/reports.spec.ts` | 4 |
 | `live` | `e2e/live/settings-fixture.spec.ts` | 9 |
 | `live` | `e2e/live/settings-manual.spec.ts` | 15 |
@@ -751,7 +757,8 @@ Listed with `playwright test --list` on 2026-11-16 after #163: 228 tests in 33 f
 | `live` | `e2e/live/settings-phan-loai.spec.ts` | 4 |
 | `live` | `e2e/live/themes.spec.ts` | 3 |
 | `live` | `e2e/live/today.spec.ts` | 7 |
-| `demo` | `e2e/demo/demo.spec.ts` | 13 |
+| `demo` | `e2e/demo/demo.spec.ts` | 12 |
+| `demo` | `e2e/demo/datapack.spec.ts` | 2 |
 | `demo` | `e2e/demo/report-day.spec.ts` | 12 |
 | `demo` | `e2e/demo/report-week.spec.ts` | 8 |
 | `demo` | `e2e/demo/report-month.spec.ts` | 13 |
@@ -776,7 +783,7 @@ Listed with `playwright test --list` on 2026-11-16 after #163: 228 tests in 33 f
 | `demo` | `e2e/demo/theme-navigation.spec.ts` | 4 |
 | `pages` | `e2e/pages/install.spec.ts` | 2 |
 | `pages` | `e2e/pages/report-year-performance.spec.ts` | 1 |
-| | **Total** | **228** (live 53, demo 172, pages 3) |
+| | **Total** | **234** (live 58, demo 173, pages 3) |
 
 At phase 10a's verification the list held 126 tests in 19 files and all 126 passed with one worker and no retries; the phase 9 verification had 63 and phase 6 had 20.
 
@@ -813,13 +820,13 @@ At phase 10a's verification the list held 126 tests in 19 files and all 126 pass
 
 | Check | Result | Date and source |
 |---|---|---|
-| Unit tests | 2,375 passed, 39 skipped (gated), 232 files, 13 packages | 2026-11-16, phase 10a's verification (#102) |
-| pgTAP | 2,159 of 2,159 in 40 files after migration `fee_and_target_limits`; 2,153 of 2,153 in 40 files after migration `pack_and_export_functions`; 2,090 of 2,090 in 38 files after migration `item_costs_amount_whole_dong`; 2,085 of 2,085 in 38 files after migration `data_quality_payments_account_order`; 2,083 of 2,083 in 38 files after migration `data_quality_functions`; 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`; 1,849 of 1,849 in 34 files at phase 10a's verification; `20_incremental_schedule.sql` unedited | 2026-11-16, #104 and #102 |
+| Unit tests | 2,375 passed, 39 skipped (gated), 232 files, 13 packages; since then `@fnb/datapack` 338 of 338 in 20 files, and `@fnb/web` 1,420 passed with 4 known failures that also fail on the commit before (section 8.1) | 2026-11-16, phase 10a's verification (#102); 2026-11-18, local runs |
+| pgTAP | 2,159 of 2,159 in 40 files on 2026-11-18 after the exports and the pack format; 2,159 of 2,159 in 40 files after migration `fee_and_target_limits`; 2,153 of 2,153 in 40 files after migration `pack_and_export_functions`; 2,090 of 2,090 in 38 files after migration `item_costs_amount_whole_dong`; 2,085 of 2,085 in 38 files after migration `data_quality_payments_account_order`; 2,083 of 2,083 in 38 files after migration `data_quality_functions`; 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`; 1,849 of 1,849 in 34 files at phase 10a's verification; `20_incremental_schedule.sql` unedited | 2026-11-16, #104 and #102 |
 | Parity in Postgres | every parity file green in CI's `database` job on `b8779ab` | 2026-11-16, #102 |
 | Integration suites on the local stack | sync 100 of 100; jobs 64, 6 gated; notification CLI 6 of 6; notification digests and alerts 9 of 10, the failure a defect of the test's own helper, not of the product, fixed by the step 12c stream | 2026-11-16, #102 |
 | Live checks on the real tenant | reports live check 8 of 8; theme live check 6 of 6, with `LIVE_REFERENCE_SHEET` every compared value `matches: true` and no call over budget | 2026-11-16, #102 |
-| Playwright | 126 of 126 in 19 files (demo, live and pages), one worker, no retries | 2026-11-16, `pnpm verify` on `b8779ab` |
-| Initial JavaScript | 284.2 kB gzipped against the 400 kB budget | 2026-11-16, `pnpm --filter @fnb/web build` |
+| Playwright | live 58 of 58 (the five tests of `e2e/live/exports.spec.ts` included) and demo 173 of 173 on the local stack; earlier 126 of 126 in 19 files (demo, live and pages), one worker, no retries | 2026-11-18, local runs; 2026-11-16, `pnpm verify` on `b8779ab` |
+| Initial JavaScript | 324.7 kB gzipped against the 400 kB budget, after the exports; 284.2 kB at phase 10a's verification | 2026-11-18 and 2026-11-16, `pnpm --filter @fnb/web build` |
 | Lighthouse mobile, demo build | performance 95, accessibility 100, best practices 100, SEO 60 | [status.md](status.md) |
 | Public-safety scan and gitleaks | no findings | 2026-11-16, #102 |
 | Comment scan over the lines 10a added | none | 2026-11-16, #102 |
@@ -838,7 +845,7 @@ Every requirement of [requirements.md](requirements.md) appears once, in that do
 
 | Coverage | Meaning | Where the details are |
 |---|---|---|
-| covered | Tests or check commands in the repository verify the whole acceptance criterion locally. For a requirement in build (step 12b) the tests exist and the step's verification is still running, as its status shows | the test references |
+| covered | Tests or check commands in the repository verify the whole acceptance criterion locally. For a requirement in build (step 12b, phase 11a) the tests exist and the step's verification is still running or still to come, as its status shows | the test references |
 | partial | Tests cover part of the criterion; the rest is a review, a one-off measurement, a cloud step or a screen not built yet | section 9.6: what is missing and the test that closes it |
 | planned | No test exists yet | section 9.5: the planned test |
 | owner check | The criterion is the owner's comparison with the POS or the private figures, or an action only the owner can take | section 9.7 and section 11 |
@@ -847,7 +854,7 @@ Coverage says whether tests exist. Whether they passed is the status column's jo
 
 ### 9.2 Coverage summary
 
-Coverage of the 376 requirements on 2026-11-16, by area.
+Coverage of the 376 requirements on 2026-11-18, by area.
 
 | Area | covered | partial | planned | owner check | Total |
 |---|---:|---:|---:|---:|---:|
@@ -859,39 +866,39 @@ Coverage of the 376 requirements on 2026-11-16, by area.
 | FR-REP | 17 | 2 | – | 2 | 21 |
 | FR-THM | 6 | 3 | – | – | 9 |
 | FR-SET | 7 | 4 | – | – | 11 |
-| FR-EXP | – | 2 | 8 | – | 10 |
-| FR-STR | 1 | – | 9 | – | 10 |
+| FR-EXP | 2 | 5 | 3 | – | 10 |
+| FR-STR | 2 | 2 | 6 | – | 10 |
 | FR-NOT | 26 | 4 | 12 | – | 42 |
 | FR-OPS | 1 | 4 | 8 | 4 | 17 |
 | FR-CMP | 8 | 1 | 8 | 3 | 20 |
 | FR-STF | – | – | 23 | – | 23 |
 | FR-LOY | – | – | 29 | – | 29 |
 | FR-POR | 3 | 2 | 7 | – | 12 |
-| **FR total** | **148** | **26** | **108** | **14** | **296** |
+| **FR total** | **151** | **31** | **100** | **14** | **296** |
 | NFR-SEC | 6 | 6 | 2 | 1 | 15 |
 | NFR-PRV | 5 | 1 | 1 | – | 7 |
 | NFR-PERF | 4 | 4 | 1 | – | 9 |
 | NFR-AVL | 3 | – | – | 1 | 4 |
-| NFR-COST | 2 | 3 | 1 | – | 6 |
+| NFR-COST | 2 | 4 | – | – | 6 |
 | NFR-A11Y | 5 | – | – | – | 5 |
 | NFR-I18N | 5 | 1 | – | – | 6 |
 | NFR-UX | 4 | 2 | 1 | – | 7 |
 | NFR-MNT | 6 | 3 | 2 | – | 11 |
 | NFR-OBS | 3 | 1 | – | – | 4 |
 | NFR-HYG | 4 | 1 | 1 | – | 6 |
-| **NFR total** | **47** | **22** | **9** | **2** | **80** |
-| **All** | **195** | **48** | **117** | **16** | **376** |
+| **NFR total** | **47** | **23** | **8** | **2** | **80** |
+| **All** | **198** | **54** | **108** | **16** | **376** |
 
 ```mermaid
 pie showData
-    title Coverage of the requirements on 2026-11-16
-    "covered" : 195
-    "partial" : 48
-    "planned" : 117
+    title Coverage of the requirements on 2026-11-18
+    "covered" : 198
+    "partial" : 54
+    "planned" : 108
     "owner check" : 16
 ```
 
-Of the 257 requirements that are verified locally, built, in build or waiting for the owner, 195 are covered, 45 partial, 1 planned and 16 owner checks. Of the 119 that are designed or planned, 116 have no test yet and 3 are partly held by tests of the database rules they rest on.
+Of the 267 requirements that are verified locally, built, in build or waiting for the owner, 198 are covered, 52 partial, 1 planned and 16 owner checks. Of the 109 that are designed or planned, 107 have no test yet and 2 are partly held by tests of the database rules they rest on.
 
 ### 9.3 Functional requirements
 
@@ -1027,7 +1034,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | FR-REP-09 | Coverage and young stores | Must | verified locally | `reports:unit/coverage-and-comparison`, `e2e:live/reports`, `e2e:demo/report-year`, `reports:unit/themes/promotions/discount-cost` and `vouchers` (the young store's missing last year, like for like), `e2e:demo/theme-khuyen-mai` (#191), `reports:unit/themes/stores/kpis` and `calls` (the all-stores change like for like over the covered stores, labelled k/N; #193) | covered |
 | FR-REP-10 | Sentences from templates | Must | verified locally | `reports:unit/decomposition-and-narrative`, `web:metrics/sentences`, `web:i18n/wording-sheets`, the Ca & két tiền card tests and smoke test (#155), the Khuyến mãi card tests and `web:i18n/theme-keys` (#191), the Khuyến mãi rule cards in `web:i18n/theme-keys` (#153) | covered |
 | FR-REP-11 | Report card | Must | verified locally | `web:components/report-card/report-card`, `web:components/report-card/report-card-extensions`, `web:themes/theme-param-controls` (the controls slot), `web:components/report-card` and `web:reports/card-adapter` (a signed money headline; #191) | covered |
-| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan`, `web:settings/thresholds/thresholds-form`, `e2e:demo/settings-bao-cao`, phase 10a's verification (#102) (one CSV per theme from the real tenant: BOM, strict UTF-8, Vietnamese headers), `e2e:demo/theme-ca-ket-tien` (every table as UTF-8 CSV with a BOM, and semicolon-separated; #155), `e2e:demo/theme-khuyen-mai` (every table as UTF-8 CSV with a BOM, and semicolon-separated; #191), `e2e:demo/theme-ca-ket-tien` (the cashier card's CSV in both dialects with the BOM; #192), `e2e:demo/theme-khuyen-mai` (all eight tables as CSV in both dialects; #153), `web:settings/manual/cost-import` and `e2e:demo/settings-gia-von` (the cost template with the BOM in the device's dialect; #162) | partial |
+| FR-REP-12 | CSV download | Must | verified locally | `web:components/report-card/report-card`, `web:lib/csv`, `e2e:demo/report-day`, `e2e:demo/theme-doanh-thu`, `e2e:demo/theme-gio-ngay`, `web:lib/csv-parse`, `web:state/preferences`, `e2e:demo/theme-thuc-don`, `e2e:demo/theme-thanh-toan`, `web:settings/thresholds/thresholds-form`, `e2e:demo/settings-bao-cao`, phase 10a's verification (#102) (one CSV per theme from the real tenant: BOM, strict UTF-8, Vietnamese headers), `e2e:demo/theme-ca-ket-tien` (every table as UTF-8 CSV with a BOM, and semicolon-separated; #155), `e2e:demo/theme-khuyen-mai` (every table as UTF-8 CSV with a BOM, and semicolon-separated; #191), `e2e:demo/theme-ca-ket-tien` (the cashier card's CSV in both dialects with the BOM; #192), `e2e:demo/theme-khuyen-mai` (all eight tables as CSV in both dialects; #153), `web:settings/manual/cost-import` and `e2e:demo/settings-gia-von` (the cost template with the BOM in the device's dialect; #162), `web:exports/writers` and `e2e:live/exports` (every exported CSV starts with the BOM in the device's dialect and decodes as strict UTF-8 with names intact; #140, #141) | partial |
 | FR-REP-13 | Print layout | Should | verified locally | `e2e:demo/demo`, `e2e:demo/report-day`, the four theme specs (`expectThemePrintLayout`: the summary line, no buttons, no tabs or pickers), `e2e:demo/theme-ca-ket-tien` (print without controls, Ca n in print; #155), `e2e:demo/theme-khuyen-mai` (print without pickers; #191) | covered |
 | FR-REP-14 | Card loading and errors | Should | built | `e2e:demo/report-day` (cards settle); `web:reports/use-cards-load` (a failed card with its retry, a failed coverage call) | partial |
 | FR-REP-15 | Store and period selection | Must | verified locally | `web:shell/period-picker`, `web:state/preferences`, `pgtap:22_report_functions`, `reports:unit/themes/stores/calls` (one store asks only for coverage; the days call within 900 rows) and `e2e:demo/theme-so-sanh` (one store: every card asks for a second; #193) | covered |
@@ -1072,14 +1079,14 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| FR-EXP-01 | Browser export | Must | designed | planned, `pgtap:40_pack_functions` and `pgtap:41_export_totals` (the pack and export-proof functions; #132) | planned |
-| FR-EXP-02 | Paged, split exports | Must | designed | `web:data/paginate` (keyset paging of Hôm nay); export planned, `pgtap:41_export_totals` (control totals and fingerprints per table and month; #132) | partial |
+| FR-EXP-01 | Browser export | Must | built | `pgtap:40_pack_functions` and `pgtap:41_export_totals` (the pack and export-proof functions; #132); `web:exports/plan`, `web:exports/reader`, `web:exports/totals` (the fingerprints equal the literal hex that `41_export_totals` pins), `web:exports/columns`, `web:exports/writers` (CSV with the BOM, JSON without), `web:exports/archive` and `web:exports/run` (every file proven against `export_control_totals`, the archive and its manifest; #139, #140), `web:pages/exports/exports-page` and `web:pages/exports/export-tab` (#141), `e2e:live/exports` (a seeded month as CSV and as JSON on a fixture tenant: every file verified, the expected paths, the BOM and strict UTF-8 with names intact, the manifest's fingerprints equal to `export_control_totals` read by the same member; passed on the local stack on 2026-11-18), `e2e:demo/datapack` (the demo's notice); not run yet: the real-data comparison of #195 and the owner's Excel check (OC-04, #196) | partial |
+| FR-EXP-02 | Paged, split exports | Must | built | `web:data/paginate` (keyset paging of Hôm nay), `pgtap:41_export_totals` (control totals and fingerprints per table and month; #132), `web:exports/reader` (a fake PostgREST that caps pages at 1,000, 500 and 250 rows and adds and removes rows between pages: no row lost or doubled; 97-row pages give the same rows as 1,000-row pages; #139), `web:exports/totals` and `web:exports/run` (a store-month read again, at most twice, when a sync commits during the read, then marked unverified with its reason), `web:exports/plan` (split by month, at most 12 months), `web:exports/estimate` and `web:pages/exports/export-tab` (the estimate before the export and the bytes received after it; #140, #141), `e2e:live/exports` | covered |
 | FR-EXP-03 | Data pack builder | Must | designed | planned, `datapack:unit` (the package and its frozen interfaces; #129), `pgtap:40_pack_functions` (#132) | planned |
-| FR-EXP-04 | Versioned schema and size budget | Must | designed | planned | planned |
-| FR-EXP-05 | Aggregates only | Must | designed | planned | planned |
-| FR-EXP-06 | Prompt templates | Must | designed | planned | planned |
+| FR-EXP-04 | Versioned schema and size budget | Must | in build | `datapack:pack/schema` (the committed `fnb-datapack-1` and `fnb-plan-1` JSON Schema files equal the generated ones; Ajv 2020 reaches zod's verdict on every fixture), `datapack:pack/budget` (the estimate as ceil(UTF-8 bytes × 5 ÷ 11), small under 15,000, the eight trimming steps in their declared order and `pack_over_budget` after the last), `datapack:pack/invariants` (the budget's limit, steps, estimate and ceiling checked on every validation; #130); packs themselves wait for `buildDataPack` (#134) | partial |
+| FR-EXP-05 | Aggregates only | Must | in build | `datapack:pack/aggregates` (each of the five aggregates-only rules with a fixture that breaks it; identifiers that only look personal pass, the same strings inside an item name are refused), `datapack:pack/invariants` (`validatePack` runs the check, and refuses a row hidden under a `__proto__` key; #130); the pack's tables wait for `buildDataPack` (#134) | covered |
+| FR-EXP-06 | Prompt templates | Must | in build | the KPI front matter (#135): `datapack:plan/front-matter` (`fnb-plan/1` with KPIs keyed by metric ids), `datapack:pack/schema` (`fnb-plan-1.schema.json`), `datapack:plan/lint-codes` (`kpi_unknown` and `kpi_untracked` for an id outside the registry or one KPI follow-up cannot track); the prompt templates are planned (#131) | partial |
 | FR-EXP-07 | Download and copy buttons | Must | designed | planned | planned |
-| FR-EXP-08 | Same pack from the CLI | Must | designed | planned, `datapack:unit` (the frozen contract; #129), `reports:unit/themes/contract` and `reports:unit/source/json-rpc-client` (`createJsonRpcClient`; #133) | planned |
+| FR-EXP-08 | Same pack from the CLI | Must | in build | `datapack:unit` (the frozen contract; #129), `reports:unit/themes/contract` and `reports:unit/source/json-rpc-client` (`createJsonRpcClient`; #133), `datapack:pack/canonical`, `datapack:pack/decimal` and `datapack:pack/hash` (one canonical text, re-serialised byte for byte after a database round trip; `pack_id` blind to `generated_at` and key order), `datapack:pack/invariants` (`comparePackTexts`), `datapack:pack/source-scan` and `datapack:pack/browser-safe` (no locale, system clock, randomness or Node API under `src`; #130); planned: `fnb datapack` (#137) and the byte comparison of browser and command-line packs (#144) | partial |
 | FR-EXP-09 | Built by a data role | Must | designed | `pgtap:08_publisher_role`, `pgtap:17_analytics_access` (publisher reads nothing), `pgtap:40_pack_functions` (`pack_fence`; #132) | partial |
 | FR-EXP-10 | Verification state in the pack | Must | designed | planned | planned |
 
@@ -1087,11 +1094,11 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| FR-STR-01 | Paste a plan | Must | designed | planned | planned |
+| FR-STR-01 | Paste a plan | Must | in build | the plan checks the box will run (#135): `datapack:plan/normalize` (the pasted text normalised as it will be stored), `datapack:plan/lint-codes`, `datapack:plan/plan-record` (a clean plan turned into the arguments of `publish_strategy_plan` with the source `pasted`; a sample pack refused); the paste box (#143) and Kế hoạch are planned | partial |
 | FR-STR-02 | Strategy prompt in the pack | Must | designed | planned | planned |
 | FR-STR-03 | Publish a plan | Must | designed | planned (database rules verified: `pgtap:08_publisher_role`) | planned |
-| FR-STR-04 | Plan validation | Must | designed | planned | planned |
-| FR-STR-05 | Cite-a-number check | Must | designed | planned | planned |
+| FR-STR-04 | Plan validation | Must | in build | the client half (#135): `datapack:plan/lint-codes` (a plan without section 7 refused with `section_missing:7`, an unknown KPI id with `kpi_unknown:net_sales` at the line of its key; one fixture per lint code), `datapack:plan/lint-browser` (the same results under jsdom), `datapack:plan/sections`, `datapack:plan/front-matter`; the database's validation (phase 11b, #170) is planned | partial |
+| FR-STR-05 | Cite-a-number check | Must | in build | `datapack:plan/citations` (an initiative counts as cited only when a written number matches the numeric cell it cites: `initiative_uncited`, `citation_unknown`, `citation_mismatch`), `datapack:plan/numbers` (the number grammar in Vietnamese and English), `datapack:plan/uncited-numbers`, `datapack:plan/lint-codes` (#135) | covered |
 | FR-STR-06 | Kế hoạch tab | Must | designed | planned | planned |
 | FR-STR-07 | KPI follow-up | Must | designed | planned | planned |
 | FR-STR-08 | Plan storage rights | Must | verified locally | `pgtap:05_write_policies`, `pgtap:07_write_scope_and_attribution`, `pgtap:08_publisher_role` | covered |
@@ -1302,7 +1309,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | NFR-PRV-03 | Message content retention | Must | verified locally | `pgtap:28_notify_outbox` | covered |
 | NFR-PRV-04 | Former members redacted | Must | verified locally | `pgtap:28_notify_outbox` | covered |
 | NFR-PRV-05 | No third-party tracking | Must | verified locally | `e2e:demo/report-day`, `e2e:demo/report-year`, `apps/web/index.html`, `e2e:demo/theme-khuyen-mai` (#191) | partial |
-| NFR-PRV-06 | Customer data for data roles only | Must | verified locally | `pgtap:04_tenant_isolation`, `pgtap:06_anon_and_tokens`, `pgtap:08_publisher_role`, `pgtap:39_theme_access_b` (customer and consent counts of `data_quality_summary` for data roles only), `reports:unit/themes/quality/customers` (customer cells are counts only; #158) | covered |
+| NFR-PRV-06 | Customer data for data roles only | Must | verified locally | `pgtap:04_tenant_isolation`, `pgtap:06_anon_and_tokens`, `pgtap:08_publisher_role`, `pgtap:39_theme_access_b` (customer and consent counts of `data_quality_summary` for data roles only), `reports:unit/themes/quality/customers` (customer cells are counts only; #158), `web:exports/columns`, `web:exports/reader` and `web:exports/run` (personal columns and the shift name neither requested nor written unless "Kèm thông tin cá nhân" is ticked for that export; #140), `web:pages/exports/exports-page` (the box offered only to an owner or a manager with every store in scope; #141), `e2e:live/exports` (no personal data by default, a store-limited manager without the box) | covered |
 | NFR-PRV-07 | Minimal Zalo-derived data | Must | planned | planned | planned |
 
 #### NFR-PERF — Performance
@@ -1337,7 +1344,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | NFR-COST-03 | Database size | Must | verified locally | phase 7 verification, `fnb doctor` | covered |
 | NFR-COST-04 | Upgrade trigger | Must | verified locally | `jobs:unit/doctor` | covered |
 | NFR-COST-05 | Function invocations | Should | built | `pgtap:20_incremental_schedule` (store selection) | partial |
-| NFR-COST-06 | Egress budget | Should | designed | planned | planned |
+| NFR-COST-06 | Egress budget | Should | built | `.github/workflows/backup.yml` (the encrypted archive's size in the job summary, read after go-live: OC-09), `web:exports/estimate` (call A's counts × the bytes per row against the Free plan's 5 GB, the question above 100 MB, the device's monthly tally surviving a refused `localStorage`), `web:exports/reader` (the bytes received, measured per page), `web:pages/exports/export-tab` (the estimate and the MB received on screen; #140, #141) | partial |
 
 #### NFR-A11Y — Accessibility
 
@@ -1357,7 +1364,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | NFR-I18N-02 | Formatting by locale and currency | Must | verified locally | `web:lib/format`, `notify:unit/render/format`, `web:settings/number-text`, `web:settings/forms/money-field`, `web:lib/csv`, `web:settings/manual/costs` and `costs-tab` (whole đồng, fractions refused and never rounded, `12.000 ₫`, `30,0%`, dd/MM/yyyy) and `e2e:demo/settings-gia-von` (the numeric keyboard and `50.000`; #161), `web:settings/manual/cost-import` (whole đồng, fractions refused and never rounded, dd/MM/yyyy; #162), `web:settings/manual/targets-tab` and `web:settings/fees/fees-tab` (`1,1%`, `1.000 ₫`, Tháng 11/2026; #163) | covered |
 | NFR-I18N-03 | Registry spelling | Should | verified locally | `web:i18n/i18n` | covered |
 | NFR-I18N-04 | Notification language | Should | in build | `notify:unit/render/templates` | covered |
-| NFR-I18N-05 | Time zones and day starts | Must | verified locally | `core:unit/business-date`, `core:unit/wall-clock`, `sync:unit/incremental-window`, `pgtap:20_incremental_schedule`, `pgtap:27_notify_policy`, `pgtap:30_notify_digests` | covered |
+| NFR-I18N-05 | Time zones and day starts | Must | verified locally | `core:unit/business-date`, `core:unit/wall-clock`, `sync:unit/incremental-window`, `pgtap:20_incremental_schedule`, `pgtap:27_notify_policy`, `pgtap:30_notify_digests`, `web:exports/columns` and `web:exports/reader` (exported local times in each store's zone, shifts cut at the business-day starts of the month; #139, #140), `web:exports/archive` and `web:exports/run` (the same archive bytes in two time zones; #140) | covered |
 | NFR-I18N-06 | Currency-neutral amounts | Should | built | review of the migrations | partial |
 
 #### NFR-UX — Responsive UX
@@ -1376,7 +1383,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-MNT-01 | Typed code | Must | verified locally | CI `code` job, `reports:unit/themes/contract`, `web:settings/supabase-settings-source` (every read parsed by its zod row schema; #105) | covered |
+| NFR-MNT-01 | Typed code | Must | verified locally | CI `code` job, `reports:unit/themes/contract`, `web:settings/supabase-settings-source` (every read parsed by its zod row schema; #105), `datapack:pack/schema` and `datapack:plan/front-matter` (the pack and plan types read from strict zod schemas, from which the JSON Schema files are generated; #130, #135) | covered |
 | NFR-MNT-02 | Lint and format | Must | verified locally | CI `code` job | covered |
 | NFR-MNT-03 | Tests at every layer | Must | verified locally | `pnpm test`, `pnpm exec supabase test db`, `pnpm --filter @fnb/web test:e2e`, `e2e:live/settings-fixture` builds and removes its own tenant (#103) | covered |
 | NFR-MNT-04 | Consistency checks | Must | verified locally | `metrics:consistency/document`, `metrics:consistency/metric-value`, `web:i18n/report-keys`, `web:test/lazy-chunks`, `node scripts/function-imports.mjs --check`, `demo-analytics:parity/*`, `design-tokens:generated`, `web:test/no-raw-colours`, `pnpm docs:check-openapi`, `reports:unit/themes/contract` (argument types), `demo-analytics:unit/report-source` (a handler and a read plan for every function), `demo-analytics:parity/discount-rows` (#151), the promotion ports' parity files (#190), the catalogue, compliance and discount-day parity files (#152), the shift-adjustments parity file (#154), the data-quality parity files (#157), `demo-analytics:unit/report-source` (a handler and a read plan for the phase 11 functions; #133) | covered |
@@ -1404,7 +1411,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 | NFR-HYG-01 | No identifiers in the repository | Must | verified locally | `scripts/check-public-safe.mjs`, CI `secrets` job, the settings fixture's synthetic tenant, `example.com` logins and clean scan (`e2e:live/settings-fixture`, #103) | covered |
 | NFR-HYG-02 | Secret scan over the history | Must | built | CI `secrets` job (`.gitleaks.toml`) | partial |
 | NFR-HYG-03 | Private material ignored | Must | verified locally | `.gitignore` | covered |
-| NFR-HYG-04 | Synthetic fixtures only | Must | verified locally | `scripts/check-public-safe.mjs`, `reports:unit/themes/reference-sheet` (a synthetic reference sheet), the settings fixture's tenant, items and logins are synthetic (`example.com`, #103); the compliance cases rewrite generated sales for parity only (#151) | covered |
+| NFR-HYG-04 | Synthetic fixtures only | Must | verified locally | `scripts/check-public-safe.mjs`, `reports:unit/themes/reference-sheet` (a synthetic reference sheet), the settings fixture's tenant, items and logins are synthetic (`example.com`, #103); the compliance cases rewrite generated sales for parity only (#151); the pack and plan fixtures of `packages/datapack/test` are synthetic, with made-up store UUIDs or `MOCK-S<n>` ids and invented items and figures (#130, #135), and so is the export fixture shared with `pgtap:41_export_totals` (#139) | covered |
 | NFR-HYG-05 | Neutral keys and numbered output | Must | verified locally | `jobs:unit/account-numbers`, `jobs:unit/cli` | covered |
 | NFR-HYG-06 | Preflight log lint | Could | planned | planned (masking covers the risk today, NFR-SEC-07; request R-F03) | planned |
 
@@ -1412,7 +1419,7 @@ Of the 257 requirements that are verified locally, built, in build or waiting fo
 
 Each requirement below has no test yet. They are grouped by the phase that builds them; the planned test is the test design this plan commits to. Phases 10 and 11 follow their roadmap acceptance lines, because their detailed design is pending; Tracks B, C and D are at roadmap level.
 
-118 requirements in 7 groups.
+108 requirements in 6 groups.
 
 #### Open items of phases 1 to 9 (5)
 
@@ -1425,28 +1432,19 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | NFR-HYG-06 | Preflight log lint | P1 | A preflight check that fails a job printing a structured secret; masking at job start covers the risk today (request R-F03). |
 
 
-#### Phase 11: exports, data pack, strategy plans (18)
+#### Phase 11: exports, data pack, strategy plans (9)
 
 | ID | Requirement | Phase | Planned test |
 |---|---|---|---|
-| FR-EXP-01 | Browser export | P11a | A live Playwright test that a month's export of the seeded stack equals the invoices table (row count and net sum), carries the BOM and parses as JSON; owner check in Excel (OC-04). |
 | FR-EXP-03 | Data pack builder | P11a | Unit tests that the pack validates against its schema for every focus and horizon, on the demo engine and on the seeded stack. |
-| FR-EXP-04 | Versioned schema and size budget | P11a | Unit tests of the schema version and of the token estimate within 15,000 to 30,000, on the demo and in a counts-only live check. |
-| FR-EXP-05 | Aggregates only | P11a | A unit test that the schema check refuses fixtures carrying a row-level or personal field. |
-| FR-EXP-06 | Prompt templates | P11a | A unit test that every template section is present and every KPI id exists in the metric registry. |
 | FR-EXP-07 | Download and copy buttons | P11a | A Playwright test that the downloaded file and the copied text equal the built pack. |
-| FR-EXP-08 | Same pack from the CLI | P11a | An integration test that the browser pack and the `fnb datapack` pack for the same inputs differ only in the timestamp, byte for byte. |
 | FR-EXP-10 | Verification state in the pack | P11a | A unit test that a pack whose range holds the seed's unmatched store-day marks that day. |
-| FR-STR-01 | Paste a plan | P11a | A live Playwright test that a pasted plan appears in Kế hoạch with the source `pasted`. |
 | FR-STR-02 | Strategy prompt in the pack | P11b | Owner check: two `/strategy` runs end to end in the owner's own assistant (OC-13); the public-safety scan and a dependency review find no API key or client. |
 | FR-STR-03 | Publish a plan | P11b | An integration test that `fnb publish-plan` inserts as the publisher and reads neither the manager's login nor the secret key; `pgtap:08_publisher_role` already holds the database rule. |
-| FR-STR-04 | Plan validation | P11b | Unit tests: a plan missing a section and a plan with an unknown KPI id are refused with a message that names the problem. |
-| FR-STR-05 | Cite-a-number check | P11b | A unit test that an initiative without a number present in the pack fails the check. |
 | FR-STR-06 | Kế hoạch tab | P11b | A Playwright spec for the list, the Markdown detail, the KPI table and the comparison of two plans, with axe and 360 px. |
 | FR-STR-07 | KPI follow-up | P11b | A live test that each KPI's current value equals `metric_value` for the plan's stores and period. |
 | FR-STR-09 | Monthly routine guide | P11b | Review that the guide exists; the owner's gate G5 decision is recorded. |
 | FR-STR-10 | Prompt-tuning log | P11b | Review of the three logged runs; the public-safety scan stays clean. |
-| NFR-COST-06 | Egress budget | P5, P11a | A unit test that each export shows its egress estimate (11a); the weekly backup size read from the job summary after go-live. |
 
 #### Phase 12: step 12c and the web screens (6)
 
@@ -1564,7 +1562,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 
 ### 9.6 Partial coverage
 
-60 requirements are partly covered. Each row says what the tests do not show yet and which test closes the gap.
+54 requirements are partly covered. Each row says what the tests do not show yet and which test closes the gap.
 
 | ID | Requirement | Status | What is missing | Planned test |
 |---|---|---|---|---|
@@ -1581,8 +1579,13 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-SET-07 | Item-type roles and categories | built | The roles table, the null attach rate without a role and an override read by the next statement in `item_summary`, `menu_engineering` and `item_margins` are tested; the roles screen saves only changed rows, deletes a cleared role and starts the catch-up (unit tests with fakes and the demo store), and the demo spec round-trips Tháng's attach card through the app's own links. The sources of #105 are tested by `web:settings/supabase-settings-source` and `web:settings/demo-settings-source` (items with their POS category and override; overrides upserted and cleared) and `e2e:live/settings-manual` (#105). The category tab (#160) reads Chưa phân loại from `data_quality_items` and saves overrides through the real tables in `e2e:live/settings-phan-loai`. | Roles saved through the real tables from the browser on the fixture tenant (#165). |
 | FR-SET-10 | Legal texts | built | The screens: pgTAP holds drafts, frozen published texts, publication and retirement and one published version per kind and language. The sources of #105 are tested by `web:settings/manual/supabase-manual-source` and `web:settings/manual/demo-manual-source` (drafts inserted or patched, publication and retirement through the two functions, frozen texts), `e2e:live/settings-manual` (#105). The page (#164) is tested by its unit tests, `e2e:demo/settings-phap-ly` and `e2e:live/settings-manual`. | A live Playwright test that staff and viewers see the page read-only (#165); whether managers may publish waits for the owner (R-FX09). |
 | FR-SET-11 | Settings writes tested from the browser | in build | The settings source, the access rules and the thresholds page are held by unit, demo and live specs, and `pgtap:05_write_policies`, `pgtap:07_write_scope_and_attribution` and `pgtap:35_mappings_and_catch_up` hold the database rules; no spec yet writes as each role from the browser. | Live Playwright write tests for every settings form as owner, store-limited manager, staff and viewer on the seeded stack, with the 10b fixture logins (#103, #165). |
-| FR-EXP-02 | Paged, split exports | designed | Keyset paging is tested for Hôm nay only. | A unit test of the export reader under a re-sync between pages (no row lost or repeated) and of the egress estimate (11a). |
+| FR-EXP-01 | Browser export | built | The engine, the screen and `e2e:live/exports` on a fixture tenant show a month's files verified against `export_control_totals`, with the BOM and strict UTF-8 (passed on the local stack on 2026-11-18); the comparison on real data and the opening in Excel are not done. | The 11a-1 acceptance on the real tenant (#195): the export compared with `psql` counts and `app.fingerprint`, printing booleans only; owner check OC-04 in Excel (#196). |
+| FR-EXP-04 | Versioned schema and size budget | in build | The schema files, the estimate and the trimming ladder are unit-tested on fixture packs; no pack is built from data yet. | Unit tests that the packs `buildDataPack` builds for every focus and horizon validate and fit the budget, on the demo engine and the seeded stack (#134), and a counts-only check on the real tenant (#145). |
+| FR-EXP-06 | Prompt templates | in build | The KPI front matter and the check that every KPI id exists in the registry are tested; the prompt templates do not exist. | A unit test that every section of the strategy prompt is present in both languages and that its KPI ids exist in the registry (#131). |
+| FR-EXP-08 | Same pack from the CLI | in build | The canonical text, `pack_id` and the comparison of two pack texts are unit-tested; `fnb datapack` does not exist. | An integration test in CI that the browser pack and the `fnb datapack` pack for the same inputs are identical apart from `generated_at` (#137, #144). |
 | FR-EXP-09 | Built by a data role | designed | The database already gives the publisher no aggregate; the pack builder does not exist. | An integration test that a pack built from a publisher session is refused or empty (11a). |
+| FR-STR-01 | Paste a plan | in build | The normalisation, the lint and the record of a pasted plan are unit-tested; the paste box and Kế hoạch do not exist. | A live Playwright test that a pasted plan appears in Kế hoạch with the source `pasted` (#143, phase 11b). |
+| FR-STR-04 | Plan validation | in build | The client lint refuses both cases, with `section_missing:7` and `kpi_unknown:net_sales`; the database does not validate a plan yet. | pgTAP tests that the SQL validators agree with the lint on the structural codes (phase 11b, #170), and the paste box's messages (#143). |
 | FR-NOT-19 | Digest equals Ngày | in build | Acceptance A1 is shown locally (`--check-ngay`, the live check, the `three nights` scenario); the three real nights on the owner's phone wait for go-live. | Owner check OC-08 after go-live step 8. |
 | FR-NOT-25 | Runner notifications in the outbox | in build | The CLI path is tested; the Edge Function still reports to its log only. | Step 12c: a test that `sync-incremental` writes its notifications to the outbox. |
 | FR-NOT-26 | Job failure alerts | in build | The database path (`fnb notify job-failed`) is tested; the `workflow_run` listener and the database-free fallback do not exist yet. | Step 12c: a unit test of the fallback script (masking, exit codes, counts only) and a probe that the listener fires on a failed run (an owner-run probe on GitHub). |
@@ -1608,6 +1611,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | NFR-COST-01 | Free tiers during build and pilot | built | Checked by review of `docs/go-live.md` and `docs/secrets.md`; usage is watched after go-live. | After go-live, the monthly usage review of the operations calendar. |
 | NFR-COST-02 | No paid AI API | built | Review: no assistant API client or key in the repository or the secrets contract. | A dependency review at each phase verdict. |
 | NFR-COST-05 | Function invocations | built | Store selection is tested; the invocation count is measured only after go-live. | Read the monthly invocation count in the Supabase usage page after go-live. |
+| NFR-COST-06 | Egress budget | built | The export's estimate, its confirmation above 100 MB, the measured bytes and the device's monthly tally are tested; the backup size reaches a job summary only after go-live. | Read the weekly backup size in the summary of "Backup database" after go-live (OC-09). |
 | NFR-I18N-06 | Currency-neutral amounts | built | Review of the migrations only. | A pgTAP assertion that every money column of `public` is `numeric(14,2)`. |
 | NFR-UX-02 | Layout on phones and desktops | built | The 360 px checks run on every page; the navigation placement and the summary button below 1024 px have no assertion. | Playwright assertions of the bottom bar at 360 px, the side rail at 1280 px and the folded controls below 1024 px. |
 | NFR-UX-04 | New version prompt | built | No automated test. | A web unit test that a changed `version.json` on window focus shows "Có phiên bản mới — tải lại". |
@@ -1794,11 +1798,11 @@ Owner inputs for this phase: item costs for the top items of one store, one mont
 
 ### 10.12 Phase 11 — Exports, data pack, strategy plans
 
-State: designed at roadmap level; detailed design pending. A build spec dated 2026-11-12 exists privately; its verification checklist will refine this table when it is final.
+State: 11a in build, 11b designed. The phase 11 build spec is final (private) and verifies 11a in two halves: 11a-1, the exports, by #195, and 11a-2, the pack, the prompt, the plan lint, the command line and the paste box, by #145. Row 11.1 is refined from the 11a-1 acceptance ticket (#195), which follows the build spec's checklist; rows 11.2 to 11.4 still follow the roadmap and are refined with #145 and phase 11b.
 
 | # | Roadmap acceptance | Planned procedure | Who |
 |---|---|---|---|
-| 11.1 | A month's export equals the invoices table and opens in Excel with correct diacritics | Live Playwright: the export's row count and net sum equal the invoices read through RLS; the BOM; then the owner | CI, owner (OC-04) |
+| 11.1 | A month's export equals the invoices table and opens in Excel with correct diacritics | 1. `e2e:live/exports` on a fixture tenant: the month as CSV and as JSON gives only verified files at the expected archive paths, every CSV starts with the BOM and is strict UTF-8 with names unchanged, no JSON file has a BOM, the manifest's fingerprints equal `export_control_totals` read by the same signed-in member, personal columns appear only when ticked, staff and viewers get the explanation and a store-limited manager never sees the box; axe at 360 and 1280 px (passed on the local stack on 2026-11-18). 2. On the real tenant (#195): the real tenant's row counts of `strategy_reports`, `sync_runs` and `analytics_refreshes` recorded before and after; one complete past month of both stores exported as CSV and as JSON, every file `verified: true`; each store's rows per table counted and fingerprinted with `app.fingerprint` as `postgres` in `psql`, and a script kept outside the repository compares them with the manifest and the files, printing only `rows_equal`, `fingerprints_equal`, `daily_summary_equal`, `bom` and `utf8`, true for each store; the export again with 97-row pages gives the same files; the timing budgets of #132 hold; no fixture tenant remains. Not run yet: there is no real data on the build machine. 3. The owner opens the files in Excel (OC-04, #196) | CI, verifier, owner (OC-04) |
 | 11.2 | Browser and CLI packs are byte-identical apart from the timestamp; the pack validates, stays within budget and holds aggregates only | An integration test comparing both packs byte for byte; schema validation for every focus and horizon; the token estimate within 15,000 to 30,000; a refusal test for row-level and personal fields | CI, verifier |
 | 11.3 | `/strategy` runs end to end; every initiative cites a number present in the pack; the plan appears in Kế hoạch; KPI follow-up shows live values | The owner runs `/strategy` twice in their own assistant; a unit test of the cite-a-number check; live Playwright for Kế hoạch; each KPI value equals `metric_value` | owner (OC-13), CI |
 | 11.4 | A plan missing a section or using an unknown KPI id is rejected | Unit tests of the validation behind `fnb publish-plan` and the paste box | CI |

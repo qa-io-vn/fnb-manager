@@ -103,6 +103,7 @@ pnpm --filter @fnb/datapack schemas
 
 ## Read more
 
+- [docs/strategy.md](../../docs/strategy.md): the pack format and the plan format `fnb-plan/1` with every lint code and its level.
 - [docs/architecture.md, 6.5](../../docs/architecture.md#65-data-pack-and-plan-publishing-phase-11): the data pack and plan publishing flow.
 - [docs/decisions.md, ADR-003](../../docs/decisions.md#adr-003--no-paid-ai-api-the-strategy-runs-under-the-owners-own-assistant-subscription): why the pack exists.
 - [docs/security.md, 8.6](../../docs/security.md#86-personal-data-minimisation-in-practice): personal-data minimisation.

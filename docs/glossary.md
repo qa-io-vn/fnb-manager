@@ -2,7 +2,7 @@
 
 This page explains the words that the app, the reports and the technical documents use: the Vietnamese terms of the interface with their English meaning and the code ids behind them, the domain terms of shop analytics, and the technical terms of the platform. It is for the owner, who reads the app in Vietnamese and these documents in English, for a developer taking the work over, for reviewers and testers, and for whoever runs the platform after go-live. The terms come from the i18n message files (`apps/web/src/i18n/messages/`), the metric registry ([`metrics.md`](metrics.md), `packages/metrics`), the report cards (`@fnb/reports`) and the code; where a document and the code differ, the code wins.
 
-Last updated 2026-11-16
+Last updated 2026-11-18
 
 **How to read the code ids.** A route is a hash URL of the web app (`#/bao-cao/ngay`). A key such as `nav.today` is an i18n key in `apps/web/src/i18n/messages/`. A report id (`day`) comes from `reportNames` in `packages/metrics/src/vocabulary.ts`. A card id (`top_items`) is the id of a report card in `@fnb/reports`. A metric id (`avg_ticket`) is a registry metric; a display series id (`cash_to_count`) is a series that only the web app names (`displaySeries` in `apps/web/src/metrics/registry.ts`). Status words are the six that [requirements.md, section 1.5](requirements.md#15-conventions) defines: verified locally, built, in build, designed, planned, waits for owner ([section 7](#status-words)).
 
@@ -30,7 +30,7 @@ Last updated 2026-11-16
 | Chủ đề · Báo cáo chủ đề | Topics · Thematic reports | route `#/chu-de/*`; `nav.topics`; links carry `range=<preset>` or `from=YYYY-MM-DD&to=YYYY-MM-DD`, and `store=<id>,<id>` | one subject over any range of days; four built (10a), four more in 10b ([below](#thematic-reports-phase-10)) |
 | Kế hoạch | Plans | route `#/ke-hoach/*`; `nav.plans` | saved strategy plans, KPI follow-up and the paste box; designed (phase 11b) |
 | Cài đặt | Settings | route `#/cai-dat/*` (`#/cai-dat` opens Cửa hàng); `nav.settings` | in build: the layout, the settings source, Ngưỡng báo cáo, the roles tab of Phân loại and the catch-up line are built (10a); the other pages in 10b and 12 |
-| Xuất dữ liệu | Exports | route `#/xuat-du-lieu` | CSV exports and the aggregate data pack; no navigation item; designed (phase 11a) |
+| Xuất dữ liệu | Exports | route `#/xuat-du-lieu`, tabs `?tab=goi` and `?tab=xuat`; `exports.*` | two tabs: "Gói dữ liệu cho AI" (the aggregate [data pack](#data-pack), the default tab, still pending in 11a-2) and "Xuất dữ liệu" (CSV or JSON files of invoices, lines, payments, shifts and the daily summary by month, each proven equal to the database; built in 11a, [exports.md](exports.md)); owners and managers only; no navigation item |
 | Đăng nhập | Sign in | route `#/dang-nhap`; `auth.login.title` | |
 | Quên mật khẩu? · Đặt lại mật khẩu | Forgot your password? · Reset password | route `#/quen-mat-khau`; `auth.forgot`, `auth.reset.title` | the reset e-mail links back to `#/mat-khau-moi` |
 | Mật khẩu mới | New password | route `#/mat-khau-moi`; `auth.newPassword.title` | |
@@ -228,6 +228,16 @@ Each card has an id in `@fnb/reports` and a title key `report.<report>.<name>.ti
 | Mã liên kết | link code | `FNB-` plus 8 characters (`app.issue_link_code`) | the one-time code a member sends to the Zalo Bot to link their chat, valid 15 minutes; verified locally (step 12a) |
 | Mã xác nhận | confirmation code | 6 digits; `app.confirm_email_link` | the code e-mailed to a member's login address to link it, valid 15 minutes; the member hands it back, and five wrong codes remove the pending destination; in build (step 12b) |
 | ĐỒNG Ý | I agree | the reply a member sends | accepts a linked chat and records the member's consent to notifications |
+
+### Exports (phase 11a)
+
+| Vietnamese | English | Code id | Meaning |
+|---|---|---|---|
+| Kèm thông tin cá nhân | Include personal data | `exports.form.personal` | the box that adds customer names and phone numbers, employee, cashier and shift names, voucher codes, line notes and payment references to one export; unticked every time, and offered only to an owner or a manager who sees every store |
+| Ước tính | Estimate | `exports.form.estimate` | the transfer an export will cause, from the database's row counts, against the Free plan's 5 GB a month |
+| Đã đối chiếu với cơ sở dữ liệu: … — khớp | Checked against the database: … — matched | `exports.result.verified` | a store-month whose files equal the database's counts, sums and fingerprints (`export_control_totals`) |
+| Dữ liệu thay đổi trong lúc xuất | Data changed during the export | `exports.result.changed` | a sync wrote to that store-month while it was read; its files are kept but not verified, and a later export gives verified files |
+| Tổng hợp ngày | Daily summary | `exports.table.daily_summary` | the file of each day's totals, for all chosen stores together and for each store, as the reports compute them |
 
 ## 4. Metric labels
 
@@ -437,7 +447,7 @@ The two ways a table downloads: comma-separated with decimal points (the default
 
 ### Data pack
 
-The versioned, aggregate-only JSON file that the owner gives to their own assistant to draft a store plan (ADR-003): store profile, weekly and monthly totals, heatmap, items, mixes and other figures from the metric registry, with the strategy prompt; no row-level or personal data. Buttons "Tải gói dữ liệu cho AI" and "Sao chép gói + prompt", and `fnb datapack`. Designed (phase 11a; detailed design pending).
+The versioned, aggregate-only JSON file that the owner gives to their own assistant to draft a store plan (ADR-003): store profile, weekly and monthly totals, heatmap, items, mixes and other figures from the metric registry, with the strategy prompt; no row-level or personal data. Buttons "Tải gói dữ liệu cho AI" and "Sao chép gói + prompt", and `fnb datapack`. One canonical text per pack, identified by its `pack_id`, a SHA-256 of that text without its timestamp, so the same data always gives the same pack ([strategy.md](strategy.md)). The format is built (phase 11a, #130); the content, the prompt, the buttons and the command are in build.
 
 ### Data roles
 
@@ -494,6 +504,10 @@ The SQL test framework of the database tests in `supabase/tests/`, run with `pnp
 ### PGlite
 
 Postgres compiled to WebAssembly; the parity suite runs the migrations in it on every test run.
+
+### Plan lint
+
+`lintPlan` in `@fnb/datapack`: the check that a plan written by the owner's assistant has the `fnb-plan/1` front matter, the ten sections, five to seven initiatives with their seven fields and a number from the pack cited in each initiative, all against the exact pack it was written from, named by its `pack_id`. Each problem is a code with a level, such as `section_missing:7` or `kpi_unknown:net_sales`; only a plan without errors is to be stored, while warnings are shown. The paste box and `fnb publish-plan` are to run the same lint ([strategy.md](strategy.md)). Built (phase 11a, #135); the paste box and the command are planned.
 
 ### PostgREST
 

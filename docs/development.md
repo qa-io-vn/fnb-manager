@@ -2,7 +2,7 @@
 
 Purpose and audience: how to set up a machine, run every check, change the code and the database safely, and hand the work on. It is written for a developer who takes the work over on another machine, and for reviewers and testers who need to run the same checks. What is built, what is verified and what comes next lives in [status.md](status.md); what the system must do is in [requirements.md](requirements.md) and how it is tested in [test-plan.md](test-plan.md); this guide says how to work on it.
 
-Last updated 2026-11-12
+Last updated 2026-11-18
 
 ## 1. Set up a machine
 
@@ -99,14 +99,15 @@ The build machine's local stack holds a real tenant loaded with `fnb`. On such a
 | `packages/metrics` | the typed metric registry mirrored from [metrics.md](metrics.md) | [README](../packages/metrics/README.md) |
 | `packages/reports` | the periodic report models and the typed contract of the report SQL functions | [README](../packages/reports/README.md) |
 | `packages/demo-analytics` | the demo's TypeScript port of the report SQL functions, held to the SQL by a parity suite | [README](../packages/demo-analytics/README.md) |
+| `packages/datapack` | the AI data pack and the plan format: canonical text, `pack_id`, JSON Schema files, budget, the aggregates-only check and the plan lint (phase 11a, in build) | [README](../packages/datapack/README.md), [strategy.md](strategy.md) |
 | `packages/notify` | notifications: channels, templates, the outbox dispatcher, digests (phase 12, in build; no README yet) | [status.md](status.md) |
-| `supabase/migrations` | 28 migrations on 2026-11-12 | [schema.md](schema.md) |
-| `supabase/tests` | 31 pgTAP files on 2026-11-12 | [schema.md](schema.md#tests) |
+| `supabase/migrations` | 41 migrations on 2026-11-18 | [schema.md](schema.md) |
+| `supabase/tests` | 40 pgTAP files on 2026-11-18 | [schema.md](schema.md#tests) |
 | `supabase/seed.sql` | the synthetic seed | section 5 |
 | `supabase/functions/sync-incremental` | the Edge Function runner (Deno) | [sync.md](sync.md) |
 | `scripts` | `check-public-safe.mjs`, `function-imports.mjs`, `cron-delay-report.mjs`, `check-api-docs.mjs` | sections 3 and 6 |
 | `.github/workflows` | CI, deployments and scheduled jobs (10 files) | section 7 |
-| `docs` | roadmap, status, decisions, schema, sync, web app, metrics, secrets, go-live, connectors, reports and deep dives; the documentation set of 2026-11-12: [plan.md](plan.md), [requirements.md](requirements.md), [test-plan.md](test-plan.md), [architecture.md](architecture.md), [security.md](security.md), [api.md](api.md), [operations.md](operations.md), this guide, [user-guide.md](user-guide.md) and [glossary.md](glossary.md); `docs/private/` is gitignored | [roadmap.md](roadmap.md) |
+| `docs` | roadmap, status, decisions, schema, sync, web app, metrics, secrets, go-live, connectors, reports, exports ([exports.md](exports.md)), the data pack and plan formats ([strategy.md](strategy.md)) and deep dives; the documentation set of 2026-11-12: [plan.md](plan.md), [requirements.md](requirements.md), [test-plan.md](test-plan.md), [architecture.md](architecture.md), [security.md](security.md), [api.md](api.md), [operations.md](operations.md), this guide, [user-guide.md](user-guide.md) and [glossary.md](glossary.md); `docs/private/` is gitignored | [roadmap.md](roadmap.md) |
 
 Runtime dependencies between the workspace packages (an arrow reads "uses"). Every box except `@fnb/metrics` and the Edge Function also uses `@fnb/core` directly; those arrows are left out, and so are development-only dependencies.
 
@@ -118,6 +119,7 @@ flowchart LR
   notify["@fnb/notify"]
   runner["@fnb/runner"]
   demo["@fnb/demo-analytics"]
+  datapack["@fnb/datapack"]
   reports["@fnb/reports"]
   metrics["@fnb/metrics"]
   sync["@fnb/sync"]
@@ -125,10 +127,12 @@ flowchart LR
   mock["@fnb/connector-mock"]
   ccore["@fnb/connector-core"]
   web --> demo
+  web --> datapack
   web --> reports
   web --> metrics
   web --> mock
   web --> ccore
+  jobs --> datapack
   jobs --> notify
   jobs --> runner
   jobs --> reports
@@ -148,6 +152,8 @@ flowchart LR
   demo --> reports
   demo --> sync
   demo --> mock
+  datapack --> reports
+  datapack --> metrics
   reports --> metrics
   sync --> ccore
   ipos --> ccore
@@ -176,7 +182,7 @@ Run everything from the repository root.
 | Parity on Postgres | `DATABASE_URL=<local database URL> pnpm --filter @fnb/demo-analytics test:parity:postgres` | refuses a database that holds a tenant whose slug does not start with `demo-` or `parity-`; CI runs it on a fresh stack |
 | Playwright, once | `pnpm --filter @fnb/web e2e:install` | installs the Chromium build Playwright needs |
 | Playwright, one spec | `E2E_PORT_OFFSET=10 pnpm --filter @fnb/web exec playwright test --project=demo e2e/demo/report-day.spec.ts` | `--project` starts only that project's server |
-| Playwright, everything | `pnpm --filter @fnb/web test:e2e` | 74 tests in 10 files (listed on 2026-11-14), one worker; long, so prefer one spec on a shared machine |
+| Playwright, everything | `pnpm --filter @fnb/web test:e2e` | 234 tests in 35 files (listed on 2026-11-18), one worker; long, so prefer one spec on a shared machine |
 | User-guide screenshots | `pnpm --filter @fnb/web docs:screenshots` | takes every screenshot of [user-guide.md](user-guide.md) from the demo at a fixed clock into `docs/user-guide/`, and the sign-in screens from a build pointed at an unreachable backend, so no real data can appear; retake them whenever a screen changes |
 | Build every package | `pnpm build` | `tsc -p tsconfig.build.json` into each `dist/` (gitignored), plus the web build; packages are consumed as TypeScript source, so nothing needs building to run |
 | Web build | `pnpm --filter @fnb/web build` | `vite build`, then `scripts/check-bundle.mjs` and `scripts/check-size.mjs` |
@@ -206,6 +212,7 @@ These suites skip unless their variables are set. They read the shell environmen
 | Reports live check, read-only | `DATABASE_URL`; `LIVE_TENANT` (default `live-local`), `LIVE_SEED` (default 20261108) | `pnpm --filter @fnb/reports test:live` (the script sets `LIVE=1`) |
 | Digest equals Ngày, live | `DATABASE_URL` | `pnpm --filter @fnb/notify test:live` (the script sets `LIVE=1`) |
 | Live settings specs (`apps/web/e2e/live/settings-*.spec.ts`) | `apps/web/.env.local`; `E2E_DATABASE_URL` optional (the local stack when unset, loopback only) | `pnpm --filter @fnb/web test:e2e -- --project=live` |
+| Live export spec (`apps/web/e2e/live/exports.spec.ts`) | `apps/web/.env.local`; `E2E_DATABASE_URL` as above for its fixture tenant. With `E2E_LOGIN_EMAIL` and `E2E_LOGIN_PASSWORD`, and `E2E_TENANT_SLUG` for a login with more than one tenant, it signs in as that login instead (`liveLogin()` in `apps/web/e2e/support/local-stack.ts`) and exports the last complete month of its tenant read-only, compared with `export_control_totals`; the personal-data and role tests then skip | `E2E_PORT_OFFSET=110 pnpm --filter @fnb/web exec playwright test --project=live e2e/live/exports.spec.ts` |
 | iPOS live | `POS_ACCOUNTS_JSON` with an application key, from `.env` | `pnpm --filter @fnb/connector-ipos test:live`; prints counts and timings only |
 
 The sync and CLI integration tests create their own tenants (slugs starting `it-`) and delete them at the end.
