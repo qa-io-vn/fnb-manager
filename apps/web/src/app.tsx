@@ -183,7 +183,11 @@ export const routes: RouteObject[] = [
 					},
 					{
 						path: "xuat-du-lieu",
-						element: <PlaceholderPage section="exports" />,
+						hydrateFallbackElement: <ReportRouteLoading />,
+						lazy: () =>
+							import("./pages/exports/exports-page").then((module) => ({
+								Component: module.ExportsPage,
+							})),
 					},
 					...(import.meta.env.DEV
 						? [

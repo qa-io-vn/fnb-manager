@@ -186,15 +186,13 @@ test("Hôm nay passes axe and fits a 360 px phone", async ({ page }) => {
 	await checkPage(page);
 });
 
-for (const hash of ["#/ke-hoach", "#/xuat-du-lieu"]) {
-	test(`the placeholder page ${hash} passes axe and fits a 360 px phone`, async ({
-		page,
-	}) => {
-		await page.goto(`/${hash}`);
-		await expect(page.getByTestId("placeholder-phase")).toBeVisible();
-		await checkPage(page);
-	});
-}
+test("the placeholder page #/ke-hoach passes axe and fits a 360 px phone", async ({
+	page,
+}) => {
+	await page.goto("/#/ke-hoach");
+	await expect(page.getByTestId("placeholder-phase")).toBeVisible();
+	await checkPage(page);
+});
 
 test("at 360 px the store table on Hôm nay scrolls inside its card up to Chênh lệch", async ({
 	page,

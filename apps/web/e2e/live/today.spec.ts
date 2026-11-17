@@ -139,25 +139,17 @@ test("the language toggle switches the visible strings", async ({ page }) => {
 	).toBeVisible();
 });
 
-test("placeholder pages say what is coming and in which phase", async ({
+test("the placeholder page #/ke-hoach says what is coming and in which phase", async ({
 	page,
 }) => {
 	await signIn(page);
-	const pages = [
-		{ hash: "#/ke-hoach", title: "Kế hoạch", phase: "11b" },
-		{ hash: "#/xuat-du-lieu", title: "Xuất dữ liệu", phase: "11a" },
-	];
-	for (const placeholder of pages) {
-		await page.goto(`/${placeholder.hash}`);
-		await expect(
-			page.getByRole("heading", { level: 1, name: placeholder.title }),
-		).toBeVisible();
-		await expect(page.getByTestId("placeholder-phase")).toContainText(
-			placeholder.phase,
-		);
-		await expect(page.getByTestId("period-picker")).toBeVisible();
-		await checkPage(page);
-	}
+	await page.goto("/#/ke-hoach");
+	await expect(
+		page.getByRole("heading", { level: 1, name: "Kế hoạch" }),
+	).toBeVisible();
+	await expect(page.getByTestId("placeholder-phase")).toContainText("11b");
+	await expect(page.getByTestId("period-picker")).toBeVisible();
+	await checkPage(page);
 });
 
 test("Cài đặt opens Cửa hàng on the seeded stack, and a page still to come names its phase", async ({

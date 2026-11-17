@@ -22,6 +22,8 @@ const manifestKeys = [
 	"src/pages/settings/bao-cao-page.tsx",
 	"src/settings/supabase-settings-source.ts",
 	"src/settings/demo-settings-source.ts",
+	"src/pages/exports/exports-page.tsx",
+	"../../node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
 ];
 
 describe("the size check's lazy chunks", () => {
@@ -58,5 +60,17 @@ describe("the size check's lazy chunks", () => {
 		expect(isLazySource("src/settings/thresholds/thresholds-form.tsx")).toBe(
 			false,
 		);
+	});
+
+	it("keeps the export page and the archive library out of the initial JS", () => {
+		expect(isLazySource("src/pages/exports/exports-page.tsx")).toBe(true);
+		expect(isLazySource("src/exports/run.ts")).toBe(false);
+		expect(
+			isLazySource(
+				"../../node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
+			),
+		).toBe(true);
+		expect(isLazySource("node_modules/fflate/esm/browser.js")).toBe(true);
+		expect(isEagerSource("src/pages/exports/exports-page.tsx")).toBe(false);
 	});
 });

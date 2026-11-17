@@ -30,6 +30,24 @@ export const seededLogin = {
 	password: seedConstant("dev_user_password"),
 };
 
+export interface LiveLogin {
+	readonly email: string;
+	readonly password: string;
+	readonly tenantSlug: string | null;
+	readonly external: boolean;
+}
+
+export function liveLogin(
+	environment: Readonly<Record<string, string | undefined>> = process.env,
+): LiveLogin {
+	const email = environment.E2E_LOGIN_EMAIL;
+	const password = environment.E2E_LOGIN_PASSWORD;
+	const tenantSlug = environment.E2E_TENANT_SLUG || null;
+	return email && password
+		? { email, password, tenantSlug, external: true }
+		: { ...seededLogin, tenantSlug, external: false };
+}
+
 export function anonymousClient(): SupabaseClient {
 	return createClient(localStack.url, localStack.publishableKey, {
 		auth: { persistSession: false, autoRefreshToken: false },

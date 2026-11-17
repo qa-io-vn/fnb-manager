@@ -9,6 +9,8 @@ export const lazySources = [
 	/src\/pages\/settings\/[a-z-]+-page\.tsx$/,
 	/src\/settings\/supabase-settings-source\.ts$/,
 	/src\/settings\/demo-settings-source\.ts$/,
+	/src\/pages\/exports\/exports-page\.tsx$/,
+	/node_modules\/fflate\/esm\/browser\.js$/,
 ];
 
 export const eagerSources = [];
