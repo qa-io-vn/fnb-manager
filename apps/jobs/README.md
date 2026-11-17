@@ -24,6 +24,7 @@ node apps/jobs/bin/fnb.mjs <command> [options]
 | `sync window` | Pull a business-date window of sales (`--kind backfill`, `nightly`, `incremental` or `manual`; `--dry-run` writes nothing) | verified locally |
 | `sync incremental` | Check the last three business days of each store against the POS daily totals and pull only the changed days | verified locally |
 | `sync master` | Refresh the stores and the catalogue of an account | verified locally |
+| `bootstrap` | Create the tenant and owner, onboard every account, load the full history month by month (resumable), refresh the analytics and write `apps/web/.env.local` when it is missing; `pnpm db:load-real` runs it with `CI=1` | unit-tested; run end to end with a mock account against the migrations in PGlite, not yet against the Docker stack or the real POS |
 | `status` | The last run per account and the reconciliation state per store | verified locally |
 | `doctor` | The database, migrations, POS logins, sync freshness and free-plan limits | verified locally |
 | `mask-credentials` | Register every credential with the GitHub Actions log masker | verified locally; masking the `NOTIFY_*` secrets is part of step 12b, in build |

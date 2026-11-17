@@ -115,7 +115,7 @@ After both streams, one final pass runs everything CI runs, updates the roadmap 
    - the `.env` file, with the variables listed in `docs/secrets.md`;
    - the whole `docs/private/` folder. `scripts/check-public-safe.mjs` reads the shop identifiers from `docs/private/identifiers.txt` and only checks the generic patterns without it.
 4. Write `apps/web/.env.local` from `pnpm db:status` as `docs/web-app.md` describes, then `pnpm --filter @fnb/web dev`.
-5. To check reports against real numbers, reload the real data. Create a local tenant with `fnb tenant create` and a login with `fnb tenant add-member`. Then run `fnb onboard` for each account in `.env`, and `fnb sync window … --kind backfill` month by month, walking back with `--dry-run` until a month shows no sales. One account-month takes about a minute. `docs/sync.md` has the exact flags.
+5. To check reports against real numbers, reload the real data with `pnpm db:load-real --email <you@example.com>` (`fnb bootstrap`). It creates the tenant and the owner login, onboards each account in `.env`, walks back month by month until two months in a row show no sales, refreshes the analytics and writes `apps/web/.env.local` when it is missing. One account-month takes about a minute; an interrupted run resumes where it stopped. `docs/sync.md`, "Load the full history in one command", has the details and the manual steps it replaces.
 6. Confirm with `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm exec supabase test db` and `CI=1 pnpm --filter @fnb/jobs fnb -- status`.
 
 Rules that keep the work safe:

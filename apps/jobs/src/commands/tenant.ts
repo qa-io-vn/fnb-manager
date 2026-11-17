@@ -23,7 +23,8 @@ import {
 } from "../context.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
 
-const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}$/;
+export const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}$/;
+export const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 function countryFromLocale(locale: string): string {
 	const region = locale.split(/[-_]/)[1];
@@ -35,11 +36,11 @@ function countryFromLocale(locale: string): string {
 	return region.toUpperCase();
 }
 
-function tenantName(context: CommandContext, slug: string): string {
+export function tenantName(context: CommandContext, slug: string): string {
 	return context.output.ci ? "the tenant" : slug;
 }
 
-function tenantInput(values: OptionValues): TenantInput {
+export function tenantInput(values: OptionValues): TenantInput {
 	const slug = requiredString(values, "slug");
 	if (!SLUG_PATTERN.test(slug)) {
 		throw new UsageError(
@@ -127,7 +128,7 @@ async function addMember(
 ): Promise<number> {
 	const slug = requiredString(values, "tenant");
 	const email = requiredString(values, "email").trim();
-	if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+	if (!EMAIL_PATTERN.test(email)) {
 		throw new UsageError("--email is not an e-mail address");
 	}
 	const role = requiredString(values, "role");

@@ -190,6 +190,7 @@ Run everything from the repository root.
 | API in Swagger UI | `pnpm docs:api` | serves `docs/api` at `http://127.0.0.1:5290` |
 | Secret scan, as CI | `docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact --exit-code 1` | |
 | The CLI | `pnpm --filter @fnb/jobs fnb -- --help` | `CI=1 pnpm --filter @fnb/jobs fnb -- status` for shareable output |
+| Load the real history | `pnpm db:load-real --email <you@example.com>` | `fnb bootstrap` with `CI=1`: tenant, owner, every account, all months back to the first sales, the analytics refresh and `apps/web/.env.local` when missing; resumable, never resets the stack ([sync.md](sync.md#load-the-full-history-in-one-command)) |
 
 `pnpm test -- --maxWorkers=2` does not limit the workers: pnpm passes the `--` on, and Vitest 5.1 ignores every argument after `--`. Use the `run test --maxWorkers=2` forms above.
 

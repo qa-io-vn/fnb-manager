@@ -103,6 +103,24 @@ export async function findAuthUserId(
 	return row?.id ?? null;
 }
 
+export async function findMemberRole(
+	sql: Sql,
+	tenantId: string,
+	userId: string,
+): Promise<TenantRole | null> {
+	const [row] = await sql<{ role: TenantRole }[]>`
+		select role::text as role from public.tenant_members where tenant_id = ${tenantId} and user_id = ${userId}
+	`;
+	return row?.role ?? null;
+}
+
+export async function countOwners(sql: Sql, tenantId: string): Promise<number> {
+	const [row] = await sql<{ owners: number }[]>`
+		select count(*)::integer as owners from public.tenant_members where tenant_id = ${tenantId} and role = 'owner'
+	`;
+	return row?.owners ?? 0;
+}
+
 export type MembershipChange = "created" | "updated" | "unchanged";
 
 export async function upsertMember(
@@ -111,10 +129,8 @@ export async function upsertMember(
 	userId: string,
 	role: TenantRole,
 ): Promise<MembershipChange> {
-	const [existing] = await sql<{ role: TenantRole }[]>`
-		select role::text as role from public.tenant_members where tenant_id = ${tenantId} and user_id = ${userId}
-	`;
-	if (existing?.role === role) {
+	const existing = await findMemberRole(sql, tenantId, userId);
+	if (existing === role) {
 		return "unchanged";
 	}
 	await sql`

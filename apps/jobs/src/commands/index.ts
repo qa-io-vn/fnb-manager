@@ -1,3 +1,4 @@
+import { bootstrapCommand } from "./bootstrap.js";
 import { digestCommand } from "./digest.js";
 import { doctorCommand } from "./doctor.js";
 import { maskCommand } from "./mask.js";
@@ -14,6 +15,7 @@ export const COMMANDS: readonly CommandSpec[] = [
 	...tenantCommands,
 	onboardCommand,
 	...syncCommands,
+	bootstrapCommand,
 	statusCommand,
 	doctorCommand,
 	maskCommand,

@@ -43,7 +43,7 @@ import {
 } from "./sync-report.js";
 import { selectedEntries, selectStores } from "./sync-selection.js";
 
-interface WindowRequest {
+export interface WindowRequest {
 	window: { fromDate: string; toDate: string };
 	kind: SyncWindowKind;
 	dryRun: boolean;
@@ -71,19 +71,19 @@ function windowRequest(values: OptionValues): WindowRequest {
 	};
 }
 
-async function syncOneAccount(
+export async function syncAccountWindow(
 	context: CommandContext,
 	request: WindowRequest,
 	entry: AccountEntry,
 	index: number,
-): Promise<boolean> {
+): Promise<WindowSummary | null> {
 	const { output } = context;
 	const label = output.label("account", index, entry.key);
 	const { repository } = context.services.db();
 	const account = await resolveAccount(repository, entry.key, request.tenant);
 	if (account.status === "paused") {
 		output.line(`${label}: paused, skipped`);
-		return true;
+		return null;
 	}
 	const stores = selectStores(
 		await repository.listStores(account.id),
@@ -91,7 +91,7 @@ async function syncOneAccount(
 	);
 	if (stores.length === 0) {
 		output.line(`${label}: no active stores, nothing to sync`);
-		return true;
+		return null;
 	}
 	const configured = accountEntries(context.env);
 	let session: ConnectorSession;
@@ -139,7 +139,17 @@ async function syncOneAccount(
 	if (request.kind === "nightly" && !request.dryRun) {
 		await checkYesterdayFreshness(context, configured, account, stores);
 	}
-	return summary.status === "succeeded";
+	return summary;
+}
+
+async function syncOneAccount(
+	context: CommandContext,
+	request: WindowRequest,
+	entry: AccountEntry,
+	index: number,
+): Promise<boolean> {
+	const summary = await syncAccountWindow(context, request, entry, index);
+	return summary === null || summary.status === "succeeded";
 }
 
 async function syncWindow(
