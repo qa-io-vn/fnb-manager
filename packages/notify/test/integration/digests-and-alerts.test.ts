@@ -313,13 +313,22 @@ describe.skipIf(!ENABLED)("digests and alerts on the local stack", () => {
 			(entry) => entry.channel === "zalo_bot",
 		);
 		expect(secondZalo?.text).not.toContain("chỉ bằng");
-		const without = (text: string | undefined) =>
+		const sectionsWithoutRevenueFinding = (text: string | undefined) =>
 			(text ?? "")
-				.split("\n")
-				.filter(
-					(line) => !line.includes("chỉ bằng") && !line.startsWith("Cần chú ý"),
-				);
-		expect(without(secondZalo?.text)).toEqual(without(zalo?.text));
+				.split("\n\n")
+				.map((section) =>
+					section
+						.split("\n")
+						.filter(
+							(line) =>
+								!line.includes("chỉ bằng") && !line.startsWith("Cần chú ý"),
+						)
+						.join("\n"),
+				)
+				.filter((section) => section !== "");
+		expect(sectionsWithoutRevenueFinding(secondZalo?.text)).toEqual(
+			sectionsWithoutRevenueFinding(zalo?.text),
+		);
 		expect(
 			isEmptyDelta(
 				correctionDelta(
