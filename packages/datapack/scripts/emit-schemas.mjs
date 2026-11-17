@@ -1,45 +1,28 @@
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { z } from "zod";
-import { dataPackSchema, planFrontMatterSchema } from "../src/index.ts";
+import { jsonSchemaDocument, SCHEMA_DOCUMENTS } from "./schema-documents.ts";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryRoot = join(packageRoot, "..", "..");
-
-const outputs = [
-	{
-		file: "fnb-datapack-1.schema.json",
-		id: "urn:fnb:datapack:1",
-		schema: dataPackSchema,
-	},
-	{
-		file: "fnb-plan-1.schema.json",
-		id: "urn:fnb:plan:1",
-		schema: planFrontMatterSchema,
-	},
-];
+const biome = createRequire(join(repositoryRoot, "package.json")).resolve(
+	"@biomejs/biome/bin/biome",
+);
 
 function formatWithBiome(source, path) {
+	const inRepository = relative(repositoryRoot, path).split(sep).join("/");
 	return execFileSync(
-		join(repositoryRoot, "node_modules", ".bin", "biome"),
-		["format", `--stdin-file-path=${relative(repositoryRoot, path)}`],
+		process.execPath,
+		[biome, "format", `--stdin-file-path=${inRepository}`],
 		{ input: source, encoding: "utf8", cwd: repositoryRoot },
 	);
 }
 
-function jsonSchemaText(output) {
-	const generated = z.toJSONSchema(output.schema, {
-		target: "draft-2020-12",
-		io: "input",
-	});
-	const { $schema, ...rest } = generated;
-	return JSON.stringify({ $schema, $id: output.id, ...rest });
-}
-
-for (const output of outputs) {
-	const path = join(packageRoot, "schema", output.file);
-	writeFileSync(path, formatWithBiome(jsonSchemaText(output), path));
-	console.info(`wrote schema/${output.file}`);
+for (const document of SCHEMA_DOCUMENTS) {
+	const path = join(packageRoot, "schema", document.file);
+	const text = JSON.stringify(jsonSchemaDocument(document));
+	writeFileSync(path, formatWithBiome(text, path));
+	console.info(`wrote schema/${document.file}`);
 }

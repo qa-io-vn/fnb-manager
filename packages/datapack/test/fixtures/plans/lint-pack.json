@@ -1,0 +1,208 @@
+{
+	"budget": { "estimated_tokens": 1707, "limit": 30000, "trimmed": [] },
+	"builder_version": "1.0.0",
+	"calendar": {
+		"band": { "from": "2026-08-20", "to": "2026-11-11" },
+		"horizon": { "from": "2026-11-12", "to": "2027-02-09" },
+		"ly28": { "from": "2025-10-16", "to": "2025-11-12" },
+		"month_to_date": { "from": "2026-11-01", "to": "2026-11-11" },
+		"months": { "from": "2024-08-01", "to": "2026-10-31" },
+		"p28": { "from": "2026-09-17", "to": "2026-10-14" },
+		"w28": { "from": "2026-10-15", "to": "2026-11-11" },
+		"w84": { "from": "2026-08-20", "to": "2026-11-11" },
+		"weeks": { "from": "2026-08-10", "to": "2026-11-08" }
+	},
+	"context": {
+		"benchmarks": [
+			["avg_ticket", "45.000–60.000 đ", "2025", "khảo sát tổng hợp"]
+		],
+		"note": "",
+		"rules": []
+	},
+	"format": "fnb-datapack",
+	"generated_at": "2026-11-12T03:00:00Z",
+	"pack_id": "a797a5c812e8280337968934e6f6a6df8cb195ee90cccc10ad6c12132f35004c",
+	"prompt": {
+		"id": "fnb-strategy",
+		"language": "vi",
+		"text": "",
+		"version": "1.0.0"
+	},
+	"request": {
+		"as_of": "2026-11-11",
+		"currency": "VND",
+		"focus": null,
+		"horizon": "90d",
+		"language": "vi",
+		"owner_note": null,
+		"stores": [
+			{ "id": "22222222-2222-4222-8222-000000000001", "label": "S1" },
+			{ "id": "22222222-2222-4222-8222-000000000002", "label": "S2" }
+		]
+	},
+	"sample": false,
+	"schema_version": "1.0.0",
+	"tables": {
+		"kpi": {
+			"title": "KPI",
+			"grain": "metric-window",
+			"window": "w28",
+			"notes": "",
+			"columns": [
+				{ "name": "w28", "unit": "metric" },
+				{ "name": "p28", "unit": "metric" },
+				{ "name": "ly28", "unit": "metric" },
+				{ "name": "p28_change", "unit": "metric_change" },
+				{ "name": "ly28_change", "unit": "metric_change" },
+				{ "name": "lo", "unit": "metric" },
+				{ "name": "hi", "unit": "metric" },
+				{ "name": "n", "unit": "count" }
+			],
+			"rows": {
+				"ALL/net_revenue": [
+					1234567890,
+					1180000000,
+					null,
+					0.0462,
+					null,
+					1100000000,
+					1300000000,
+					8
+				],
+				"ALL/invoices": [23600, 22950, null, 0.0283, null, 21800, 24900, 8],
+				"ALL/avg_ticket": [
+					52314.27,
+					51416.99,
+					null,
+					0.0175,
+					null,
+					49800.5,
+					54100.25,
+					8
+				],
+				"ALL/discount_rate": [
+					0.0425,
+					0.0398,
+					null,
+					0.0027,
+					null,
+					0.031,
+					0.047,
+					8
+				],
+				"ALL/attach_rate_topping": [
+					0.3125,
+					0.3301,
+					null,
+					-0.0176,
+					null,
+					0.29,
+					0.34,
+					8
+				],
+				"ALL/cash_share": [null, null, null, null, null, null, null, 0],
+				"S1/avg_ticket": [
+					55120.4,
+					54380.1,
+					null,
+					0.0136,
+					null,
+					52100,
+					57300.75,
+					8
+				],
+				"S1/invoices": [13200, 12800, null, 0.0313, null, 12100, 14000, 8],
+				"S2/avg_ticket": [
+					48760.9,
+					47890.35,
+					null,
+					0.0182,
+					null,
+					46100,
+					50200.5,
+					8
+				],
+				"S2/invoices": [10400, 10150, null, 0.0246, null, 9600, 11000, 8]
+			}
+		},
+		"weekly": {
+			"title": "Tuần",
+			"grain": "store-week",
+			"window": "weeks",
+			"notes": "",
+			"columns": [
+				{ "name": "net", "unit": "money" },
+				{ "name": "invoices", "unit": "count" },
+				{ "name": "avg_ticket", "unit": "money" },
+				{ "name": "change", "unit": "rel_change" }
+			],
+			"rows": {
+				"ALL/2026-W45": [312450000, 5980, 52249, 0.034],
+				"S1/2026-W45": [181200000, 3290, 55076, 0.041],
+				"S2/2026-W45": [131250000, 2690, 48792, 0.025]
+			}
+		},
+		"monthly": {
+			"title": "Tháng",
+			"grain": "store-month",
+			"window": "months",
+			"notes": "",
+			"columns": [
+				{ "name": "net", "unit": "money_thousands" },
+				{ "name": "invoices", "unit": "count" }
+			],
+			"rows": {
+				"ALL/2026-10": [1287540.5, 24610],
+				"S1/2026-10": [742310.2, 13540],
+				"S2/2026-10": [545230.3, 11070]
+			}
+		},
+		"items": {
+			"title": "Món",
+			"grain": "item-period",
+			"window": "w28",
+			"notes": "",
+			"columns": [
+				{ "name": "name", "unit": "text" },
+				{ "name": "qty", "unit": "quantity" },
+				{ "name": "net", "unit": "money" },
+				{ "name": "share", "unit": "fraction" },
+				{ "name": "change", "unit": "rel_change" },
+				{ "name": "class", "unit": "class" }
+			],
+			"rows": {
+				"ALL/i01": ["Trà sữa trân châu", 3120, 124800000, 0.1011, -0.124, "A"],
+				"ALL/i02": ["Cà phê sữa đá", 2840, 82360000, 0.0667, 0.052, "A"],
+				"ALL/i03": ["Bánh mì que", 410, 6150000, 0.005, null, "C"]
+			}
+		},
+		"payments": {
+			"title": "Thanh toán",
+			"grain": "method-period",
+			"window": "w28",
+			"notes": "",
+			"columns": [
+				{ "name": "share", "unit": "fraction" },
+				{ "name": "share_change", "unit": "pp_change" }
+			],
+			"rows": {
+				"ALL/cash": [0.352, -0.032],
+				"ALL/qr": [0.518, 0.041]
+			}
+		},
+		"stores": {
+			"title": "Cửa hàng",
+			"grain": "store",
+			"window": null,
+			"notes": "",
+			"columns": [
+				{ "name": "opened_on", "unit": "date" },
+				{ "name": "seats", "unit": "count" }
+			],
+			"rows": {
+				"S1": ["2024-03-01", 24],
+				"S2": ["2025-01-15", null]
+			}
+		}
+	}
+}

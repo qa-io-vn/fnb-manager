@@ -1,0 +1,534 @@
+{
+	"citation_mismatch.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "citation_mismatch:kpi:ALL/net_revenue:w28",
+				"level": "error",
+				"line": 21,
+				"detail": "1,32 tỷ đồng"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 18,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "639b17a4d8e53b09039e10365c1e5e9602e1e96c92f24fb3e49f5c2e9f59dc3d"
+	},
+	"citation_unknown.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "citation_unknown:kpi:ALL/avg_ticket:w29",
+				"level": "error",
+				"line": 23,
+				"detail": null
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 18,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "d8d9d19483bc62f6619d67a2822e71e144defdaa525f5c3f1f9392d321891a36"
+	},
+	"clean.en.md": {
+		"ok": true,
+		"issues": [],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 532
+		},
+		"sha256": "0bfebf1402be9164025e08bc5f177023fc516583aaf7814b7fc43df7fd10e081"
+	},
+	"clean.vi.md": {
+		"ok": true,
+		"issues": [],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "a14e02175b08c5d1e4a28f50bcfe449fc9755697dd1b27823930aa9ef74862b5"
+	},
+	"content_too_large.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "content_too_large",
+				"level": "error",
+				"line": null,
+				"detail": "200058"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 29320
+		},
+		"sha256": "78031de879ecb7cb0b1ae6ae52ebcc95c7dacd42e95ff097895e8c8053a9c459"
+	},
+	"front_matter_extra_fields.md": {
+		"ok": true,
+		"issues": [
+			{
+				"code": "front_matter_extra_fields",
+				"level": "warning",
+				"line": 1,
+				"detail": "note"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "8e06593cd46b66151bc6e4038939f8ff0d8242bae13a25276fab5fe2bcdcc083"
+	},
+	"front_matter_invalid.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "front_matter_invalid",
+				"level": "error",
+				"line": 6,
+				"detail": "horizon"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 0,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "5a93b0ea6e7c7d8532b94efa309d79234a9a74738461ac0aa9ea7a12125fc734"
+	},
+	"front_matter_missing.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "front_matter_missing",
+				"level": "error",
+				"line": null,
+				"detail": null
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 0,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "2fef05edb070378e660753702bc1f2056e9c93d8ebea089607debb3d2fa59a8e"
+	},
+	"horizon_mismatch.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "horizon_mismatch",
+				"level": "error",
+				"line": 6,
+				"detail": "30d"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "ff5c0f651d0bb6d7d8be03e9471ee04519a10ddeb97c414a198be903c65ed304"
+	},
+	"initiative_field_missing.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "initiative_field_missing:2:effort",
+				"level": "error",
+				"line": 42,
+				"detail": null
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 656
+		},
+		"sha256": "13f7e6665cb02cc59b32e726c6443aac81a776ac74a94b3058fc9e6ad3f0e62f"
+	},
+	"initiative_number.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "initiative_number:6",
+				"level": "error",
+				"line": 72,
+				"detail": null
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "9cf18cd3a03a9dd94f25c2bf0b42ded8b30ad5719948187a914f62ad1131b8c9"
+	},
+	"initiative_uncited.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "initiative_uncited:3",
+				"level": "error",
+				"line": 52,
+				"detail": null
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 4,
+			"citations": 17,
+			"validCitations": 17,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 654
+		},
+		"sha256": "79fe84e37704aeb0a5761cfc21944bd0a7edc9ba108868d089b752e67042b003"
+	},
+	"initiatives_count.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "initiatives_count:4",
+				"level": "error",
+				"line": 29,
+				"detail": null
+			}
+		],
+		"summary": {
+			"initiatives": 4,
+			"citedInitiatives": 4,
+			"citations": 17,
+			"validCitations": 17,
+			"kpis": 3,
+			"uncitedNumbers": 0,
+			"words": 568
+		},
+		"sha256": "5fb2749cc8abdcf13aa8b897b74181444bf1359d59f5352afa72d5985872d676"
+	},
+	"kpi_baseline_mismatch.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "kpi_baseline_mismatch:avg_ticket",
+				"level": "error",
+				"line": 9,
+				"detail": "52314.27"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "d20934250537ca70298c4cd9f392d29a090fc36a625837eb23d6fbd51961d5d7"
+	},
+	"kpi_initiative_unknown.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "kpi_initiative_unknown:discount_rate",
+				"level": "error",
+				"line": 10,
+				"detail": "7"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "026330b008243485b9dfd034991c0636ea958f0061bb1a593c9ceab61859d22c"
+	},
+	"kpi_initiative_unlinked.md": {
+		"ok": true,
+		"issues": [
+			{
+				"code": "kpi_initiative_unlinked:avg_ticket",
+				"level": "warning",
+				"line": 9,
+				"detail": "3"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "e1bafa1a9ce5a069e07a963b5a785c252643610d4d8b6c157a8067bb0d93c638"
+	},
+	"kpi_scope_unknown.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "kpi_scope_unknown:invoices",
+				"level": "error",
+				"line": 12,
+				"detail": "S3"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "360ad397454d737fd6f776e23cdb880fe00f60a20e34c16f74c46d37ca50534e"
+	},
+	"kpi_target_unchanged.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "kpi_target_unchanged:invoices",
+				"level": "error",
+				"line": 12,
+				"detail": "10400"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "475764376b5d83bd13c68cf283c701a45bf923c71603a6a57621990eaa4792d7"
+	},
+	"kpi_unknown.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "kpi_unknown:net_sales",
+				"level": "error",
+				"line": 9,
+				"detail": null
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "96299b1a3e29702cca9d3300142cbe108bad0547f4f2f3663afef355818a38fe"
+	},
+	"kpi_unmeasured.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "kpi_unmeasured:cash_share",
+				"level": "error",
+				"line": 11,
+				"detail": "ALL"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "b219a0fb4e171e76cbe8c83c63f3a330db7418bb98fae59603bbbce761cb97a7"
+	},
+	"kpi_untracked.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "kpi_untracked:void_rate",
+				"level": "error",
+				"line": 10,
+				"detail": null
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "e00196a068793893f9b8e6179db23e883ba6fc30214ebc11a0a1d735f9c1ef08"
+	},
+	"kpis_count.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "kpis_count:0",
+				"level": "error",
+				"line": 8,
+				"detail": null
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 0,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "492f69fd03e9ea96e6770aa4acac9b52d225690a3540be002f854e1c84ab32f2"
+	},
+	"pack_mismatch.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "pack_mismatch",
+				"level": "error",
+				"line": 4,
+				"detail": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "2dce0f53823d602d782ebeacdffd14a4a9b5538d45874f3dfb68d0b03980a58c"
+	},
+	"preamble_text.md": {
+		"ok": true,
+		"issues": [
+			{
+				"code": "preamble_text",
+				"level": "warning",
+				"line": null,
+				"detail": null
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 660
+		},
+		"sha256": "5c715633bc8554983bf19359386ed20f6252f414683b5293b6d18097971f636a"
+	},
+	"section_missing.md": {
+		"ok": false,
+		"issues": [
+			{
+				"code": "section_missing:7",
+				"level": "error",
+				"line": null,
+				"detail": null
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 0,
+			"words": 646
+		},
+		"sha256": "404f5107c9f2505841cacab3f05bb7d8125e26212af11ada2236f52629ef44bd"
+	},
+	"uncited_numbers.md": {
+		"ok": true,
+		"issues": [
+			{
+				"code": "uncited_numbers:2",
+				"level": "warning",
+				"line": null,
+				"detail": "25:850; 25:120"
+			}
+		],
+		"summary": {
+			"initiatives": 5,
+			"citedInitiatives": 5,
+			"citations": 19,
+			"validCitations": 19,
+			"kpis": 4,
+			"uncitedNumbers": 2,
+			"words": 674
+		},
+		"sha256": "085af2640ecbc6b229f24ff9100fed84b2b3c1e311e5b320d14c6ac6221015ca"
+	}
+}

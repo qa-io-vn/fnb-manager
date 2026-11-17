@@ -17,6 +17,15 @@ export const STORE_LABEL_PATTERN = /^S[0-9]{1,2}$/;
 export const SEMVER_PATTERN = /^[0-9]+\.[0-9]+\.[0-9]+$/;
 export const PACK_ID_PATTERN = /^[0-9a-f]{64}$/;
 export const GENERATED_AT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+export const LIVE_STORE_ID_PATTERN =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+export const SAMPLE_STORE_ID_PATTERN = /^MOCK-S[0-9]{1,2}$/;
+export const ALL_SCOPE = "ALL";
+
+export function rowScope(rowKey: string): string {
+	const slash = rowKey.indexOf("/");
+	return slash === -1 ? rowKey : rowKey.slice(0, slash);
+}
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const semver = z.string().regex(SEMVER_PATTERN);

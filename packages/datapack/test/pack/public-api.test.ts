@@ -233,6 +233,65 @@ describe("the public interface of @fnb/datapack", () => {
 		}
 	});
 
+	it("builds the format functions of the pack", async () => {
+		expect(canonicalJson({ b: 1, a: [true, null, "x"] })).toBe(
+			'{"a":[true,null,"x"],"b":1}\n',
+		);
+		expect(formatDecimal(1.5)).toBe("1.5");
+		expect(estimateTokens("{}")).toBe(1);
+		expect(aggregatesOnlyIssues(minimalPack())).toEqual([]);
+		expect(await sha256Hex("")).toBe(
+			"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		);
+		expect((await parsePack("{}")).valid).toBe(false);
+		expect((await validatePack({})).valid).toBe(false);
+		expect((await comparePackTexts("{}", "{}")).valid).toBe(false);
+	});
+
+	it("builds the plan format and its lint", () => {
+		const pack = minimalPack();
+		expect(normalizePlanText("﻿---\r\n{}\r\n---\r\n\r\n")).toBe(
+			"---\n{}\n---\n",
+		);
+		expect(() => parsePlan("---\n{}\n---\n")).toThrow(
+			/^front_matter_invalid: /,
+		);
+		const empty = lintPlan("---\n{}\n---\n", pack);
+		expect(empty.ok).toBe(false);
+		expect(empty.plan).toBeNull();
+		expect(empty.issues.map((issue) => issue.code)).toContain(
+			"section_missing:7",
+		);
+		const text = `---\n${JSON.stringify({
+			format: PLAN_FORMAT,
+			pack: PACK_ID,
+			title: "Kế hoạch",
+			horizon: "90d",
+			language: "vi",
+			kpis: { avg_ticket: { target: 55000, initiatives: [1] } },
+		})}\n---\n`;
+		const plan = parsePlan(text);
+		const lint = lintPlan(text, pack);
+		expect(lint.plan).toEqual(plan);
+		expect(lint.issues.map((issue) => issue.code)).not.toContain(
+			"pack_mismatch",
+		);
+		expect(planRecord(plan, pack, lint, "pasted").p_kpis.avg_ticket).toEqual({
+			scope: "ALL",
+			store_ids: [STORE_A, STORE_B],
+			baseline: 52314.27,
+			target: 55000,
+			lo: null,
+			hi: null,
+			initiatives: [1],
+			due_on: "2027-02-09",
+			window_days: KPI_WINDOW_DAYS,
+		});
+		expect(() =>
+			planRecord(plan, { ...pack, sample: true }, lint, "pasted"),
+		).toThrow(/^sample_pack_not_publishable: /);
+	});
+
 	it("throws not_implemented from every stub", async () => {
 		const pack = minimalPack();
 		const synchronous: (() => unknown)[] = [
@@ -248,15 +307,8 @@ describe("the public interface of @fnb/datapack", () => {
 					sample: false,
 					currency: "VND",
 				}),
-			() => canonicalJson({}),
-			() => formatDecimal(1.5),
-			() => aggregatesOnlyIssues(pack),
-			() => estimateTokens("{}"),
 			() => chatBundle(pack),
 			() => strategyPrompt("vi"),
-			() => normalizePlanText("---\n{}\n---\n"),
-			() => parsePlan("---\n{}\n---\n"),
-			() => lintPlan("---\n{}\n---\n", pack),
 			() =>
 				kpiStatus({
 					baseline: 1,
@@ -273,20 +325,11 @@ describe("the public interface of @fnb/datapack", () => {
 			expect(call).toThrow(NOT_IMPLEMENTED);
 			expect(call).toThrow(DataPackError);
 		}
-		const plan = undefined as unknown as Parameters<typeof planRecord>[0];
-		const lint = undefined as unknown as Parameters<typeof planRecord>[2];
-		expect(() => planRecord(plan, pack, lint, "pasted")).toThrow(
-			NOT_IMPLEMENTED,
-		);
 		const side = undefined as unknown as Parameters<typeof comparePlans>[0];
 		expect(() =>
 			comparePlans(side, side, { asOf: "2026-11-11", current: new Map() }),
 		).toThrow(NOT_IMPLEMENTED);
 		const asynchronous: (() => Promise<unknown>)[] = [
-			() => sha256Hex(""),
-			() => parsePack("{}"),
-			() => validatePack(pack),
-			() => comparePackTexts("{}", "{}"),
 			() =>
 				buildDataPack(
 					{
