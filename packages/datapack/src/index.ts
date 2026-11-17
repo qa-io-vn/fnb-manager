@@ -66,6 +66,11 @@ export {
 	STORE_ID_PATTERN,
 } from "./pack/schema.js";
 export {
+	type GapSeverity,
+	PACK_GAPS,
+	type PackGapCode,
+} from "./pack/tables/gaps.js";
+export {
 	PACK_GRAINS,
 	PACK_UNITS,
 	type PackGrain,

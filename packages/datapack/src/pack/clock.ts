@@ -1,3 +1,4 @@
+import { wallClockIn } from "@fnb/core";
 import { isValidIsoDate } from "@fnb/reports";
 import { DataPackError } from "./errors.js";
 
@@ -35,4 +36,51 @@ export function fixedClock(instant: string): PackClock {
 		);
 	}
 	return { now: () => new Date(time) };
+}
+
+const TIMESTAMP =
+	/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(?:Z|([+-])(\d{2})(?::?(\d{2}))?)$/;
+const MILLISECONDS_PER_MINUTE = 60_000;
+
+export function instantMilliseconds(timestamp: string | null): number | null {
+	const match = timestamp === null ? null : TIMESTAMP.exec(timestamp);
+	if (match === null) return null;
+	const [
+		,
+		year,
+		month,
+		day,
+		hour,
+		minute,
+		second,
+		fraction,
+		sign,
+		offsetHours,
+		offsetMinutes,
+	] = match;
+	const milliseconds = Number(`${fraction ?? ""}000`.slice(0, 3));
+	const local = Date.UTC(
+		Number(year),
+		Number(month) - 1,
+		Number(day),
+		Number(hour),
+		Number(minute),
+		Number(second ?? "0"),
+		milliseconds,
+	);
+	const offset =
+		sign === undefined
+			? 0
+			: (sign === "-" ? -1 : 1) *
+				(Number(offsetHours) * 60 + Number(offsetMinutes ?? "0"));
+	const time = local - offset * MILLISECONDS_PER_MINUTE;
+	return Number.isFinite(time) ? time : null;
+}
+
+export function localHourOf(
+	timestamp: string | null,
+	timezone: string,
+): number | null {
+	const time = instantMilliseconds(timestamp);
+	return time === null ? null : wallClockIn(new Date(time), timezone).hour;
 }

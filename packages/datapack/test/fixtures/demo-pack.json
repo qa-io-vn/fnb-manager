@@ -1,0 +1,2181 @@
+{
+	"budget": { "estimated_tokens": 21225, "limit": 30000, "trimmed": [] },
+	"builder_version": "1.0.0",
+	"calendar": {
+		"band": { "from": "2026-08-20", "to": "2026-11-11" },
+		"horizon": { "from": "2026-11-12", "to": "2027-02-09" },
+		"ly28": { "from": "2025-10-16", "to": "2025-11-12" },
+		"month_to_date": { "from": "2026-11-01", "to": "2026-11-11" },
+		"months": { "from": "2024-08-01", "to": "2026-10-31" },
+		"p28": { "from": "2026-09-17", "to": "2026-10-14" },
+		"w28": { "from": "2026-10-15", "to": "2026-11-11" },
+		"w84": { "from": "2026-08-20", "to": "2026-11-11" },
+		"weeks": { "from": "2026-08-10", "to": "2026-11-08" }
+	},
+	"context": {
+		"benchmarks": [
+			[
+				"ctx_fnb_revenue_2024",
+				"F&B revenue 688,800 bn VND, +16.6 %; 323,010 outlets",
+				"2024",
+				"iPOS market report 2024 (published 2025-03)"
+			],
+			[
+				"ctx_fnb_revenue_2025",
+				"F&B revenue 726,500 bn VND, +5.5 %; 329,500 outlets",
+				"2025",
+				"iPOS market report 2025 (published 2026-04)"
+			],
+			[
+				"ctx_outlets_h1_2025",
+				"299,900 outlets, −7.1 %; 45.3 % of outlets raised prices 5–10 %",
+				"H1 2025",
+				"iPOS half-year report (published 2025-10)"
+			],
+			[
+				"ctx_drink_price_bands_2024",
+				"preferred drink price bands, 2023 → 2024: under 20k VND 4.3 → 12.3 %; 21–35k 29.6 → 40.0 %; 35–50k 47.7 → 31.5 %; 70k and over 7.3 → 5.1 %; 52.3 % of consumers prefer drinks under 35k",
+				"2024",
+				"iPOS market report 2024"
+			],
+			[
+				"ctx_drink_price_bands_2025",
+				"drinks at 35k VND or more: 57.58 %",
+				"2025",
+				"iPOS market report 2025"
+			],
+			[
+				"ctx_visit_frequency_h1_2024",
+				"41.7 % visit cafés 1–2 times a month, 32.3 % 1–2 times a week; cups over 100k VND fell from 6 % to 1.7 %",
+				"H1 2024",
+				"iPOS half-year report (published 2024-08)"
+			],
+			[
+				"ctx_visit_frequency_2024",
+				"the 3–4 visits a week group grew from 17.4 % to 32.8 %",
+				"2024",
+				"iPOS market report 2024"
+			],
+			[
+				"ctx_chain_daily_sales_2024",
+				"a leading coffee chain: about 850 stores, roughly 15–16 m VND per store per day, same-store sales −3.7 %",
+				"2024",
+				"Jollibee Group annual results, cafef.vn (2025-03)"
+			],
+			[
+				"ctx_chain_daily_sales_2025",
+				"a leading tea chain: 1,891 bn VND revenue, +17 %; like-for-like 22.8 m VND per store per day; delivery over 31 % of retail revenue",
+				"2025",
+				"znews.vn (2026-01), vnexpress.net (2026-10, Q3 2026 like-for-like 24.8 m VND)"
+			],
+			[
+				"ctx_food_delivery_gmv_2025",
+				"food delivery GMV US$2.1 bn, +19 %; two platforms hold about 95 %",
+				"2025",
+				"theinvestor.vn (2026-01)"
+			]
+		],
+		"note": "Bối cảnh thị trường và quy định để tham khảo: không phải số đo của cửa hàng, không dùng làm mục tiêu và không trích dẫn. Quy định ghi theo nguồn tại ngày kiểm tra, không phải tư vấn pháp lý.",
+		"rules": [
+			[
+				"discount_cap",
+				"VN",
+				"2025-07-01",
+				"Mức giảm giá không được vượt quá 50 % giá ngay trước thời gian khuyến mại; chương trình khuyến mại tập trung do cơ quan nhà nước tổ chức được giảm đến 100 %. (Thông tư 39/2025/TT-BCT, Điều 4; nguồn kiểm tra ngày 12/11/2026; không phải tư vấn pháp lý)"
+			],
+			[
+				"lucky_draw_registration",
+				"VN",
+				"2018-05-22",
+				"Chương trình khuyến mại mang tính may rủi phải đăng ký với Sở Công Thương nếu thực hiện trong một tỉnh, hoặc với Bộ Công Thương nếu thực hiện ở nhiều tỉnh. (Nghị định 81/2018/NĐ-CP, Điều 13 và 19; nguồn kiểm tra ngày 12/11/2026; không phải tư vấn pháp lý)"
+			]
+		]
+	},
+	"format": "fnb-datapack",
+	"generated_at": "2026-11-12T03:00:00Z",
+	"pack_id": "6c651066c0a6f07f946ffb4bdfdad800f2f46eb035003e453143d949d5dbfa8c",
+	"prompt": {
+		"id": "fnb-strategy",
+		"language": "vi",
+		"text": "Lời nhắc thay thế cho kiểm thử, đến khi có lời nhắc 1.0.0.",
+		"version": "1.0.0"
+	},
+	"request": {
+		"as_of": "2026-11-11",
+		"currency": "VND",
+		"focus": "Tăng giá trị hóa đơn buổi chiều",
+		"horizon": "90d",
+		"language": "vi",
+		"owner_note": null,
+		"stores": [
+			{ "id": "MOCK-S1", "label": "S1" },
+			{ "id": "MOCK-S2", "label": "S2" }
+		]
+	},
+	"sample": true,
+	"schema_version": "1.0.0",
+	"tables": {
+		"calendar": {
+			"columns": [
+				{ "name": "names", "unit": "text" },
+				{ "name": "kind", "unit": "class" },
+				{ "name": "weekday", "unit": "class" },
+				{ "name": "days_away", "unit": "days" }
+			],
+			"grain": "date",
+			"notes": "Hàng ALL/<ngày> cho ngày lễ, Tết và ngày riêng của cửa hàng trong horizon; các tên cùng ngày được gộp. kind: tet, public hoặc custom; days_away: số ngày sau ngày dữ liệu cuối.",
+			"rows": {
+				"ALL/2027-01-01": ["New Year's Day", "public", "fri", 51],
+				"ALL/2027-02-05": ["Tet, last day of the lunar year", "tet", "fri", 86],
+				"ALL/2027-02-06": ["Tet, day 1", "tet", "sat", 87],
+				"ALL/2027-02-07": ["Tet, day 2", "tet", "sun", 88],
+				"ALL/2027-02-08": ["Tet, day 3", "tet", "mon", 89],
+				"ALL/2027-02-09": ["Tet, day 4", "tet", "tue", 90]
+			},
+			"title": "Ngày lễ trong kỳ kế hoạch",
+			"window": "horizon"
+		},
+		"categories": {
+			"columns": [
+				{ "name": "name", "unit": "text" },
+				{ "name": "items", "unit": "count" },
+				{ "name": "qty", "unit": "quantity" },
+				{ "name": "net", "unit": "money" },
+				{ "name": "share", "unit": "fraction" },
+				{ "name": "net_change", "unit": "rel_change" }
+			],
+			"grain": "category-period",
+			"notes": "Hàng <phạm vi>/r<hạng> theo doanh thu thuần trong w28, tối đa 10 nhóm; nhóm là loại món trên POS hoặc nhóm đã sửa trong cài đặt. items: số món đã bán; share: phần trong doanh thu món; net_change: so với p28.",
+			"rows": {
+				"ALL/r01": ["Matcha", 11, 1520, 84444000, 0.1782, 0.0689],
+				"ALL/r02": ["Trà sữa", 14, 1746, 83158000, 0.1755, 0.0198],
+				"ALL/r03": ["Đá xay", 14, 1539, 82693000, 0.1745, 0.1348],
+				"ALL/r04": ["Cà phê", 11, 1724, 71837000, 0.1516, 0.0573],
+				"ALL/r05": ["Trà trái cây", 14, 1523, 69008000, 0.1457, 0.0886],
+				"ALL/r06": ["Nước ép", 11, 1476, 61994000, 0.1309, -0.0041],
+				"ALL/r07": ["Đồ ăn kèm", 4, 392, 9645000, 0.0204, -0.0031],
+				"ALL/r08": ["Topping", 6, 1036, 9511000, 0.0201, 0.0384],
+				"ALL/r09": [null, 1, 99, 1485000, 0.0031, -0.0388],
+				"ALL/r10": ["Topping tặng", 2, 245, 0, 0, null],
+				"S1/r01": ["Matcha", 11, 913, 51022000, 0.1826, 0.0286],
+				"S1/r02": ["Đá xay", 14, 903, 48868000, 0.1749, 0.0974],
+				"S1/r03": ["Trà sữa", 14, 1004, 48151000, 0.1723, -0.0247],
+				"S1/r04": ["Trà trái cây", 14, 922, 42348000, 0.1515, 0.1012],
+				"S1/r05": ["Cà phê", 11, 973, 40651000, 0.1455, -0.0325],
+				"S1/r06": ["Nước ép", 11, 854, 36133000, 0.1293, -0.0571],
+				"S1/r07": ["Đồ ăn kèm", 4, 240, 5895000, 0.0211, -0.0076],
+				"S1/r08": ["Topping", 6, 590, 5453000, 0.0195, 0.017],
+				"S1/r09": [null, 1, 61, 915000, 0.0033, -0.1159],
+				"S1/r10": ["Topping tặng", 2, 118, 0, 0, null],
+				"S2/r01": ["Trà sữa", 14, 742, 35007000, 0.1801, 0.088],
+				"S2/r02": ["Đá xay", 12, 636, 33825000, 0.1741, 0.1936],
+				"S2/r03": ["Matcha", 11, 607, 33422000, 0.172, 0.1368],
+				"S2/r04": ["Cà phê", 11, 751, 31186000, 0.1605, 0.2028],
+				"S2/r05": ["Trà trái cây", 12, 601, 26660000, 0.1372, 0.0691],
+				"S2/r06": ["Nước ép", 11, 622, 25861000, 0.1331, 0.0808],
+				"S2/r07": ["Topping", 6, 446, 4058000, 0.0209, 0.0687],
+				"S2/r08": ["Đồ ăn kèm", 4, 152, 3750000, 0.0193, 0.004],
+				"S2/r09": [null, 1, 38, 570000, 0.0029, 0.1176],
+				"S2/r10": ["Topping tặng", 2, 127, 0, 0, null]
+			},
+			"title": "Nhóm món",
+			"window": "w28"
+		},
+		"gaps": {
+			"columns": [
+				{ "name": "value", "unit": "count" },
+				{ "name": "severity", "unit": "class" },
+				{ "name": "setting", "unit": "class" }
+			],
+			"grain": "gap",
+			"notes": "Hàng <mã>/<phạm vi>, chỉ có khi điều kiện đúng. value: số đếm của mã (ngày, cửa sổ, món hoặc KPI), trống khi chỉ là thiếu cài đặt; severity: high, medium hoặc low; setting: phần cài đặt sửa được, trống khi không có.",
+			"rows": {
+				"fee_rates/S1": [null, "low", "settings_fees"],
+				"fee_rates/S2": [null, "low", "settings_fees"],
+				"item_costs/S1": [null, "medium", "settings_costs"],
+				"item_costs/S2": [null, "medium", "settings_costs"],
+				"no_customer_identity/ALL": [11, "low", null],
+				"opening_hours/S2": [null, "medium", "settings_store"],
+				"partial_scope_window/ALL": [3, "medium", null],
+				"seat_count/S2": [null, "low", "settings_store"],
+				"short_history/S2": [73, "low", null],
+				"staff_hours/ALL": [null, "low", null],
+				"target/S2": [null, "low", "settings_targets"],
+				"unmeasured_kpi/ALL": [2, "medium", null],
+				"unmeasured_kpi/S2": [2, "medium", null],
+				"unreconciled_days/S1": [1, "high", null],
+				"unreconciled_days/S2": [1, "high", null]
+			},
+			"title": "Dữ liệu còn thiếu",
+			"window": null
+		},
+		"heatmap_invoices": {
+			"columns": [
+				{ "name": "h00", "unit": "ratio" },
+				{ "name": "h07", "unit": "ratio" },
+				{ "name": "h08", "unit": "ratio" },
+				{ "name": "h09", "unit": "ratio" },
+				{ "name": "h10", "unit": "ratio" },
+				{ "name": "h11", "unit": "ratio" },
+				{ "name": "h12", "unit": "ratio" },
+				{ "name": "h13", "unit": "ratio" },
+				{ "name": "h14", "unit": "ratio" },
+				{ "name": "h15", "unit": "ratio" },
+				{ "name": "h16", "unit": "ratio" },
+				{ "name": "h17", "unit": "ratio" },
+				{ "name": "h18", "unit": "ratio" },
+				{ "name": "h19", "unit": "ratio" },
+				{ "name": "h20", "unit": "ratio" },
+				{ "name": "h21", "unit": "ratio" },
+				{ "name": "h22", "unit": "ratio" },
+				{ "name": "h23", "unit": "ratio" }
+			],
+			"grain": "weekday-hour",
+			"notes": "Như heatmap_net; giá trị là số hóa đơn trung bình mỗi ngày.",
+			"rows": {
+				"ALL/fri": [
+					1.75, 2.08, 13.08, 14.75, 11, 7.08, 11.08, 11.08, 8.92, 6.58, 6, 4.83,
+					2.67, 11.83, 44.75, 20.42, 3.67, 1.75
+				],
+				"ALL/mon": [
+					1.92, 1.83, 8.25, 10.58, 6.92, 4.75, 6.67, 7.67, 7.08, 3.67, 3.75,
+					3.5, 1.92, 7.25, 25.42, 13.08, 1.42, 1.92
+				],
+				"ALL/sat": [
+					1.83, 1.83, 12.25, 18.25, 13.67, 7.58, 11.75, 10.58, 11.75, 7.33,
+					5.75, 4.58, 2.58, 12.42, 44.58, 21.75, 3.5, 1.83
+				],
+				"ALL/sun": [
+					1.83, 3.42, 17.67, 23.08, 16, 8.92, 13.5, 17.5, 15.42, 9.92, 7.92,
+					7.67, 4.17, 15.17, 60.67, 26.5, 4.42, 1.83
+				],
+				"ALL/thu": [
+					1.83, 1.08, 10.92, 11.58, 8.17, 5.42, 7.33, 6.83, 8.5, 4.83, 4.17,
+					2.42, 1.75, 8.25, 31.83, 17.42, 1.67, 1.75
+				],
+				"ALL/tue": [
+					1.83, 1, 8.5, 12.5, 8.33, 5, 6.08, 6.58, 7.92, 3.92, 4.33, 2.25, 2.17,
+					8.25, 29.25, 15.67, 2.75, 1.92
+				],
+				"ALL/wed": [
+					1.83, 1.08, 8.92, 11.5, 7.83, 5.17, 5.92, 7.67, 8.92, 4.83, 5.83,
+					3.33, 1.75, 8.25, 28.75, 14.58, 2.42, 1.92
+				],
+				"S1/fri": [
+					0.92, 1.58, 9.17, 10.83, 7.25, 4.92, 6.67, 7.08, 6.33, 4.08, 4, 3,
+					1.83, 7.58, 30.08, 12.92, 2.42, 1
+				],
+				"S1/mon": [
+					1, 1.5, 5.58, 6.5, 4.83, 3.25, 4.5, 5.08, 4.17, 2.33, 2.83, 2, 1.42,
+					4.25, 15.17, 8.5, 0.92, 1
+				],
+				"S1/sat": [
+					1, 1.08, 8, 12.67, 8.67, 5.33, 8.25, 6.25, 7.08, 5.25, 3.75, 3.25,
+					1.92, 8.25, 30, 15.33, 2.5, 1
+				],
+				"S1/sun": [
+					1, 2.58, 11.75, 14.67, 10.58, 5.92, 8.33, 11.92, 10.33, 6.83, 5.08,
+					4.67, 3.08, 9.58, 40.58, 17.33, 2.92, 1
+				],
+				"S1/thu": [
+					1, 0.67, 8.08, 7.92, 5.08, 4, 4.17, 4.75, 6, 3.58, 2.67, 1.58, 1.17,
+					5.5, 21.17, 10.5, 0.92, 0.92
+				],
+				"S1/tue": [
+					0.92, 0.5, 5.75, 8.33, 6, 3.92, 4, 4.17, 5.42, 2.33, 2.83, 1.17, 1.67,
+					5.17, 18.5, 9.08, 1.67, 1
+				],
+				"S1/wed": [
+					0.92, 0.75, 5.17, 7.67, 4.67, 3.58, 3.58, 5.17, 5.58, 3.17, 3.5, 2,
+					1.33, 5.58, 18.67, 8.42, 1.75, 1
+				],
+				"S2/fri": [
+					1, 0.6, 4.7, 4.7, 4.5, 2.6, 5.3, 4.8, 3.1, 3, 2.4, 2.2, 1, 5.1, 17.6,
+					9, 1.5, 0.9
+				],
+				"S2/mon": [
+					1, 0.36, 2.91, 4.45, 2.27, 1.64, 2.36, 2.82, 3.18, 1.45, 1, 1.64,
+					0.55, 3.27, 11.18, 5, 0.55, 1
+				],
+				"S2/sat": [
+					1, 0.9, 5.1, 6.7, 6, 2.7, 4.2, 5.2, 5.6, 2.5, 2.4, 1.6, 0.8, 5, 17.5,
+					7.7, 1.2, 1
+				],
+				"S2/sun": [
+					1, 1, 7.1, 10.1, 6.5, 3.6, 6.2, 6.7, 6.1, 3.7, 3.4, 3.6, 1.3, 6.7,
+					24.1, 11, 1.8, 1
+				],
+				"S2/thu": [
+					1, 0.5, 3.4, 4.4, 3.7, 1.7, 3.8, 2.5, 3, 1.5, 1.8, 1, 0.7, 3.3, 12.8,
+					8.3, 0.9, 1
+				],
+				"S2/tue": [
+					1, 0.55, 3, 4.55, 2.55, 1.18, 2.27, 2.64, 2.73, 1.73, 1.64, 1.18,
+					0.55, 3.36, 11.73, 7.18, 1.18, 1
+				],
+				"S2/wed": [
+					1, 0.36, 4.09, 4.18, 3.45, 1.73, 2.55, 2.73, 3.64, 1.82, 2.55, 1.45,
+					0.45, 2.91, 11, 6.73, 0.73, 1
+				]
+			},
+			"title": "Số hóa đơn trung bình theo giờ",
+			"window": "w84"
+		},
+		"heatmap_net": {
+			"columns": [
+				{ "name": "h00", "unit": "money_thousands" },
+				{ "name": "h07", "unit": "money_thousands" },
+				{ "name": "h08", "unit": "money_thousands" },
+				{ "name": "h09", "unit": "money_thousands" },
+				{ "name": "h10", "unit": "money_thousands" },
+				{ "name": "h11", "unit": "money_thousands" },
+				{ "name": "h12", "unit": "money_thousands" },
+				{ "name": "h13", "unit": "money_thousands" },
+				{ "name": "h14", "unit": "money_thousands" },
+				{ "name": "h15", "unit": "money_thousands" },
+				{ "name": "h16", "unit": "money_thousands" },
+				{ "name": "h17", "unit": "money_thousands" },
+				{ "name": "h18", "unit": "money_thousands" },
+				{ "name": "h19", "unit": "money_thousands" },
+				{ "name": "h20", "unit": "money_thousands" },
+				{ "name": "h21", "unit": "money_thousands" },
+				{ "name": "h22", "unit": "money_thousands" },
+				{ "name": "h23", "unit": "money_thousands" }
+			],
+			"grain": "weekday-hour",
+			"notes": "Hàng <phạm vi>/<thứ>; cột hHH là giờ địa phương kể từ giờ đầu ngày kinh doanh, chỉ những giờ có bán. Giá trị: doanh thu thuần trung bình mỗi ngày của thứ đó trên w84, đơn vị nghìn của tiền tệ trong gói; 0 là thứ đó có bán nhưng giờ đó không.",
+			"rows": {
+				"ALL/fri": [
+					165.8, 169.8, 1201.9, 1380.2, 937.1, 656.9, 1053.2, 1015, 883.3,
+					650.6, 568.7, 431.6, 228.8, 1113.7, 4033.5, 1862.7, 336.2, 132.7
+				],
+				"ALL/mon": [
+					169.2, 147.6, 776, 951.5, 598.7, 435.7, 631.4, 701.9, 692.1, 361.2,
+					331, 271.3, 178, 654.3, 2454.3, 1107.3, 121.3, 178
+				],
+				"ALL/sat": [
+					183.2, 182.1, 1181.6, 1763.3, 1199.3, 675.5, 1105, 1003.1, 1027.8,
+					640.3, 563.3, 433.2, 238.3, 1152.5, 4110, 2080.4, 315.8, 138
+				],
+				"ALL/sun": [
+					163.8, 310.8, 1563.8, 2095, 1516.3, 803, 1274.2, 1588.7, 1402.6,
+					878.9, 692.3, 705.6, 425.9, 1459.8, 5595.2, 2338, 366.7, 160.1
+				],
+				"ALL/thu": [
+					165.8, 91.6, 1023.3, 1038.3, 789.7, 513.8, 646.9, 612.6, 743.9, 416.7,
+					394.4, 234.1, 175, 710.4, 2979.1, 1588.2, 150.9, 150.5
+				],
+				"ALL/tue": [
+					134.5, 72.9, 799, 1054.4, 759.5, 507.3, 551.6, 557, 690.1, 392.8,
+					391.6, 218.9, 178.3, 762.4, 2660.1, 1462.8, 238.1, 171.4
+				],
+				"ALL/wed": [
+					158.7, 129.2, 768.3, 1064.3, 710.9, 442, 574, 682.9, 853.2, 479.8,
+					542.4, 277.3, 142.6, 828.5, 2671.8, 1426.2, 215, 171.6
+				],
+				"S1/fri": [
+					76.9, 130.3, 839.1, 1008.4, 595.3, 455.3, 653.3, 662.7, 625.7, 409.1,
+					373.8, 270.7, 151, 704.6, 2780.9, 1207.2, 204.5, 72.9
+				],
+				"S1/mon": [
+					84.3, 129.6, 496.9, 596.8, 402, 300, 447.3, 469.7, 409.8, 223.9,
+					266.7, 158.8, 125.1, 337.2, 1491.9, 698.4, 78, 103.5
+				],
+				"S1/sat": [
+					103.6, 116.4, 773.9, 1229.9, 745.3, 486.8, 762.5, 629.5, 609.8, 463.7,
+					349.5, 289.3, 171.4, 749.5, 2784.2, 1506.5, 236.7, 73.3
+				],
+				"S1/sun": [
+					74.3, 236.7, 1071.9, 1302, 993.9, 514.3, 812.8, 1106.3, 977.1, 633,
+					463.4, 437.4, 320.5, 916.6, 3739.7, 1520.9, 252.3, 94.9
+				],
+				"S1/thu": [
+					88.8, 49.7, 787.6, 687.8, 521.3, 358.9, 375.4, 425.8, 530.9, 311.7,
+					262.5, 146.8, 108.2, 481.9, 1959.7, 997.3, 81, 68.8
+				],
+				"S1/tue": [
+					73.5, 39.3, 543.4, 659.3, 560.6, 426.9, 385.8, 354.5, 483.2, 236.3,
+					259.6, 94.8, 130, 477.6, 1728.8, 891.1, 134.4, 88
+				],
+				"S1/wed": [
+					84, 94.8, 432.5, 727.3, 407.1, 328, 351.8, 452.4, 524.2, 324.3, 325,
+					160.7, 109, 559, 1717.9, 825.3, 150.5, 78
+				],
+				"S2/fri": [
+					106.6, 47.3, 435.4, 446.1, 410.1, 241.9, 479.8, 422.8, 309.1, 289.8,
+					233.9, 193.1, 93.3, 490.9, 1503.1, 786.6, 158, 71.7
+				],
+				"S2/mon": [
+					92.6, 19.6, 304.5, 387, 214.5, 148, 200.8, 253.4, 307.9, 149.7, 70.2,
+					122.7, 57.7, 346, 1049.9, 446, 47.2, 81.3
+				],
+				"S2/sat": [
+					95.5, 78.8, 489.2, 640.1, 544.7, 226.4, 411, 448.3, 501.6, 212, 256.6,
+					172.6, 80.2, 483.6, 1591, 688.7, 94.9, 77.6
+				],
+				"S2/sun": [
+					107.4, 88.9, 590.3, 951.6, 626.9, 346.4, 553.7, 578.9, 510.6, 295.1,
+					274.6, 321.8, 126.5, 651.8, 2226.6, 980.5, 137.2, 78.2
+				],
+				"S2/thu": [
+					92.3, 50.3, 282.9, 420.5, 322, 185.8, 325.8, 224.2, 255.6, 126, 158.3,
+					104.7, 80.2, 274.2, 1223.3, 709, 83.9, 98.1
+				],
+				"S2/tue": [
+					66.5, 36.6, 278.8, 431.1, 217, 87.6, 180.9, 220.9, 225.7, 170.8, 144,
+					135.4, 52.6, 310.7, 1016, 623.6, 113.1, 91
+				],
+				"S2/wed": [
+					81.5, 37.5, 366.3, 367.6, 331.5, 124.4, 242.4, 251.5, 358.9, 169.6,
+					237.2, 127.2, 36.6, 294, 1040.6, 655.5, 70.4, 102.1
+				]
+			},
+			"title": "Doanh thu trung bình theo giờ",
+			"window": "w84"
+		},
+		"hour_levels": {
+			"columns": [
+				{ "name": "h00", "unit": "class" },
+				{ "name": "h01", "unit": "class" },
+				{ "name": "h02", "unit": "class" },
+				{ "name": "h03", "unit": "class" },
+				{ "name": "h04", "unit": "class" },
+				{ "name": "h05", "unit": "class" },
+				{ "name": "h06", "unit": "class" },
+				{ "name": "h07", "unit": "class" },
+				{ "name": "h08", "unit": "class" },
+				{ "name": "h09", "unit": "class" },
+				{ "name": "h10", "unit": "class" },
+				{ "name": "h11", "unit": "class" },
+				{ "name": "h12", "unit": "class" },
+				{ "name": "h13", "unit": "class" },
+				{ "name": "h14", "unit": "class" },
+				{ "name": "h15", "unit": "class" },
+				{ "name": "h16", "unit": "class" },
+				{ "name": "h17", "unit": "class" },
+				{ "name": "h18", "unit": "class" },
+				{ "name": "h19", "unit": "class" },
+				{ "name": "h20", "unit": "class" },
+				{ "name": "h21", "unit": "class" },
+				{ "name": "h22", "unit": "class" },
+				{ "name": "h23", "unit": "class" },
+				{ "name": "peak_share", "unit": "fraction" },
+				{ "name": "dead_share", "unit": "fraction" }
+			],
+			"grain": "weekday-hour",
+			"notes": "Hàng <phạm vi>/all, /weekdays (thứ hai đến thứ sáu) và /weekend trên w84; cột hHH như heatmap_net. all: peak là các giờ doanh thu lớn nhất, dead là giờ dưới ngưỡng vắng; weekdays, weekend: busy hoặc quiet theo số hóa đơn mỗi ngày; normal là còn lại. peak_share, dead_share: phần doanh thu của giờ peak và giờ dead.",
+			"rows": {
+				"ALL/all": [
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"normal",
+					"peak",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"dead",
+					"normal",
+					"peak",
+					"peak",
+					"dead",
+					"dead",
+					0.4351,
+					0.0634
+				],
+				"ALL/weekdays": [
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"busy",
+					"busy",
+					"busy",
+					"normal",
+					"busy",
+					"busy",
+					"busy",
+					"normal",
+					"normal",
+					"normal",
+					"quiet",
+					"busy",
+					"busy",
+					"busy",
+					"quiet",
+					"quiet",
+					null,
+					null
+				],
+				"ALL/weekend": [
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"busy",
+					"busy",
+					"busy",
+					"normal",
+					"busy",
+					"busy",
+					"busy",
+					"normal",
+					"normal",
+					"normal",
+					"quiet",
+					"busy",
+					"busy",
+					"busy",
+					"quiet",
+					"quiet",
+					null,
+					null
+				],
+				"S1/all": [
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"normal",
+					"peak",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"dead",
+					"normal",
+					"peak",
+					"peak",
+					"dead",
+					"dead",
+					0.4353,
+					0.061
+				],
+				"S1/weekdays": [
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"busy",
+					"busy",
+					"busy",
+					"normal",
+					"normal",
+					"busy",
+					"busy",
+					"normal",
+					"normal",
+					"normal",
+					"quiet",
+					"busy",
+					"busy",
+					"busy",
+					"quiet",
+					"quiet",
+					null,
+					null
+				],
+				"S1/weekend": [
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"busy",
+					"busy",
+					"busy",
+					"normal",
+					"busy",
+					"busy",
+					"busy",
+					"normal",
+					"normal",
+					"normal",
+					"quiet",
+					"busy",
+					"busy",
+					"busy",
+					"quiet",
+					"quiet",
+					null,
+					null
+				],
+				"S2/all": [
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"dead",
+					"normal",
+					"peak",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"normal",
+					"dead",
+					"normal",
+					"peak",
+					"peak",
+					"dead",
+					"dead",
+					0.4345,
+					0.0678
+				],
+				"S2/weekdays": [
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"busy",
+					"busy",
+					"busy",
+					"normal",
+					"busy",
+					"busy",
+					"busy",
+					"normal",
+					"normal",
+					"normal",
+					"quiet",
+					"busy",
+					"busy",
+					"busy",
+					"quiet",
+					"quiet",
+					null,
+					null
+				],
+				"S2/weekend": [
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"quiet",
+					"busy",
+					"busy",
+					"busy",
+					"normal",
+					"busy",
+					"busy",
+					"busy",
+					"normal",
+					"normal",
+					"normal",
+					"quiet",
+					"busy",
+					"busy",
+					"busy",
+					"quiet",
+					"quiet",
+					null,
+					null
+				]
+			},
+			"title": "Mức bận theo giờ",
+			"window": "w84"
+		},
+		"items": {
+			"columns": [
+				{ "name": "name", "unit": "text" },
+				{ "name": "role", "unit": "class" },
+				{ "name": "qty", "unit": "quantity" },
+				{ "name": "net", "unit": "money" },
+				{ "name": "share", "unit": "fraction" },
+				{ "name": "net_change", "unit": "rel_change" },
+				{ "name": "first_sold", "unit": "date" },
+				{ "name": "margin_rate", "unit": "fraction" }
+			],
+			"grain": "item-period",
+			"notes": "Hàng <phạm vi>/r<hạng>: 10 món doanh thu thuần lớn nhất trong w28, xếp theo doanh thu, số lượng, rồi tên. share: phần trong doanh thu món; net_change: so với p28; first_sold: ngày bán đầu tiên ở các cửa hàng của phạm vi; margin_rate: biên lợi nhuận gộp trên phần đã có giá vốn, trống khi chưa có.",
+			"rows": {
+				"ALL/r01": [
+					"Matcha Latte",
+					"drink",
+					270,
+					13415000,
+					0.0283,
+					0.1466,
+					"2024-12-02",
+					null
+				],
+				"ALL/r02": [
+					"Nước ép cần tây",
+					"drink",
+					246,
+					11002000,
+					0.0232,
+					-0.0458,
+					"2024-12-02",
+					null
+				],
+				"ALL/r03": [
+					"Cà phê trứng",
+					"drink",
+					222,
+					9926000,
+					0.021,
+					0.0082,
+					"2024-12-02",
+					null
+				],
+				"ALL/r04": [
+					"Việt quất đá xay (M)",
+					"drink",
+					181,
+					9903000,
+					0.0209,
+					0.103,
+					"2024-12-02",
+					null
+				],
+				"ALL/r05": [
+					"Cà phê sữa",
+					"drink",
+					278,
+					9706000,
+					0.0205,
+					0.2893,
+					"2024-12-02",
+					null
+				],
+				"ALL/r06": [
+					"Matcha đá xay (M)",
+					"drink",
+					173,
+					9462000,
+					0.02,
+					-0.0431,
+					"2024-12-02",
+					null
+				],
+				"ALL/r07": [
+					"Matcha sữa dừa (M)",
+					"drink",
+					182,
+					9434000,
+					0.0199,
+					0.3387,
+					"2024-12-02",
+					null
+				],
+				"ALL/r08": [
+					"Matcha dâu (M)",
+					"drink",
+					170,
+					9314000,
+					0.0197,
+					0.0191,
+					"2024-12-02",
+					null
+				],
+				"ALL/r09": [
+					"Matcha yến mạch (M)",
+					"drink",
+					160,
+					8746000,
+					0.0185,
+					0.0907,
+					"2024-12-02",
+					null
+				],
+				"ALL/r10": [
+					"Socola đá xay (M)",
+					"drink",
+					173,
+					8620000,
+					0.0182,
+					0.0512,
+					"2024-12-02",
+					null
+				],
+				"S1/r01": [
+					"Matcha Latte",
+					"drink",
+					175,
+					8680000,
+					0.0311,
+					0.105,
+					"2024-12-02",
+					null
+				],
+				"S1/r02": [
+					"Nước ép cần tây",
+					"drink",
+					152,
+					6796000,
+					0.0243,
+					0.032,
+					"2024-12-02",
+					null
+				],
+				"S1/r03": [
+					"Cà phê sữa",
+					"drink",
+					165,
+					5763000,
+					0.0206,
+					0.3535,
+					"2024-12-02",
+					null
+				],
+				"S1/r04": [
+					"Việt quất đá xay (M)",
+					"drink",
+					98,
+					5350000,
+					0.0191,
+					0.0421,
+					"2024-12-02",
+					null
+				],
+				"S1/r05": [
+					"Matcha đá xay (M)",
+					"drink",
+					94,
+					5146000,
+					0.0184,
+					-0.0549,
+					"2024-12-02",
+					null
+				],
+				"S1/r06": [
+					"Matcha yến mạch (M)",
+					"drink",
+					91,
+					4981000,
+					0.0178,
+					0.0381,
+					"2024-12-02",
+					null
+				],
+				"S1/r07": [
+					"Matcha sữa dừa (M)",
+					"drink",
+					96,
+					4967000,
+					0.0178,
+					0.2769,
+					"2024-12-02",
+					null
+				],
+				"S1/r08": [
+					"Cà phê trứng",
+					"drink",
+					110,
+					4911000,
+					0.0176,
+					-0.2339,
+					"2024-12-02",
+					null
+				],
+				"S1/r09": [
+					"Matcha dâu (M)",
+					"drink",
+					87,
+					4761000,
+					0.017,
+					-0.1027,
+					"2024-12-02",
+					null
+				],
+				"S1/r10": [
+					"Trà sữa khoai môn (M)",
+					"drink",
+					106,
+					4751000,
+					0.017,
+					0.1407,
+					"2024-12-02",
+					null
+				],
+				"S2/r01": [
+					"Cà phê trứng",
+					"drink",
+					112,
+					5015000,
+					0.0258,
+					0.46,
+					"2026-08-31",
+					null
+				],
+				"S2/r02": [
+					"Matcha Latte",
+					"drink",
+					95,
+					4735000,
+					0.0244,
+					0.2315,
+					"2026-08-31",
+					null
+				],
+				"S2/r03": [
+					"Matcha dâu (M)",
+					"drink",
+					83,
+					4553000,
+					0.0234,
+					0.1878,
+					"2026-09-01",
+					null
+				],
+				"S2/r04": [
+					"Việt quất đá xay (M)",
+					"drink",
+					83,
+					4553000,
+					0.0234,
+					0.1844,
+					"2026-08-31",
+					null
+				],
+				"S2/r05": [
+					"Matcha sữa dừa (M)",
+					"drink",
+					86,
+					4467000,
+					0.023,
+					0.415,
+					"2026-09-01",
+					null
+				],
+				"S2/r06": [
+					"Matcha đá xay (M)",
+					"drink",
+					79,
+					4316000,
+					0.0222,
+					-0.0286,
+					"2026-09-03",
+					null
+				],
+				"S2/r07": [
+					"Nước ép cần tây",
+					"drink",
+					94,
+					4206000,
+					0.0216,
+					-0.1494,
+					"2026-09-01",
+					null
+				],
+				"S2/r08": [
+					"Caramel đá xay (M)",
+					"drink",
+					80,
+					3980000,
+					0.0205,
+					0.1988,
+					"2026-09-01",
+					null
+				],
+				"S2/r09": [
+					"Trà sữa đường đen (M)",
+					"drink",
+					83,
+					3959000,
+					0.0204,
+					0.0337,
+					"2026-08-31",
+					null
+				],
+				"S2/r10": [
+					"Cà phê sữa",
+					"drink",
+					113,
+					3943000,
+					0.0203,
+					0.2058,
+					"2026-08-31",
+					null
+				]
+			},
+			"title": "Món bán chạy",
+			"window": "w28"
+		},
+		"kpi": {
+			"columns": [
+				{ "name": "w28", "unit": "metric" },
+				{ "name": "p28", "unit": "metric" },
+				{ "name": "ly28", "unit": "metric" },
+				{ "name": "p28_change", "unit": "metric_change" },
+				{ "name": "ly28_change", "unit": "metric_change" },
+				{ "name": "lo", "unit": "metric" },
+				{ "name": "hi", "unit": "metric" },
+				{ "name": "n", "unit": "count" }
+			],
+			"grain": "metric-window",
+			"notes": "Hàng <phạm vi>/<mã KPI>; phạm vi ALL gộp mọi cửa hàng. Giá trị đúng như SQL, không làm tròn, theo đơn vị của KPI trong bảng metrics. w28: 28 ngày đến ngày dữ liệu cuối; p28: 28 ngày ngay trước; ly28: w28 lùi 364 ngày. p28_change, ly28_change: thay đổi tương đối, riêng KPI đơn vị fraction là chênh lệch. lo, hi, n: thấp nhất, cao nhất và số cửa sổ có giá trị trong w28 và tám cửa sổ 28 ngày lùi dần 7 ngày (b1 đến b8, cả dải là band). Một cửa sổ để trống cho cả phạm vi khi có cửa hàng của phạm vi chưa có lịch sử ở ngày đầu cửa sổ.",
+			"rows": {
+				"ALL/attach_rate_snack": [
+					0.076863,
+					0.080844,
+					null,
+					-0.003981,
+					null,
+					0.07683,
+					0.082413,
+					7
+				],
+				"ALL/attach_rate_topping": [
+					0.228824,
+					0.239816,
+					null,
+					-0.010992,
+					null,
+					0.228824,
+					0.244145,
+					7
+				],
+				"ALL/avg_item_price": [
+					41252.21,
+					40908.21,
+					null,
+					0.00840906996419545,
+					null,
+					40787.65,
+					41252.21,
+					7
+				],
+				"ALL/avg_ticket": [
+					91401.96,
+					91797.79,
+					null,
+					-0.00431197744520851,
+					null,
+					91397.43,
+					91853.84,
+					7
+				],
+				"ALL/cash_share": [
+					0.258818,
+					0.244586,
+					null,
+					0.014232,
+					null,
+					0.244035,
+					0.259457,
+					7
+				],
+				"ALL/customer_capture_rate": [
+					0.081765,
+					0.017965,
+					null,
+					0.0638,
+					null,
+					0,
+					0.081765,
+					7
+				],
+				"ALL/discount_rate": [
+					0.02052,
+					0.021843,
+					null,
+					-0.001323,
+					null,
+					0.020069,
+					0.022199,
+					7
+				],
+				"ALL/edit_rate": [
+					0.011373,
+					0.009609,
+					null,
+					0.001764,
+					null,
+					0.007512,
+					0.011758,
+					7
+				],
+				"ALL/gross_revenue": [
+					475916000,
+					449249000,
+					null,
+					0.0593590636818335,
+					null,
+					424610000,
+					475916000,
+					7
+				],
+				"ALL/invoices": [
+					5100,
+					4787,
+					null,
+					0.065385418842699,
+					null,
+					4526,
+					5100,
+					7
+				],
+				"ALL/invoices_per_opening_hour": [
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					0
+				],
+				"ALL/items_per_ticket": [
+					2.2157,
+					2.244,
+					null,
+					-0.0126114081996436,
+					null,
+					2.2157,
+					2.2455,
+					7
+				],
+				"ALL/member_invoice_share": [
+					0.081765,
+					0.017965,
+					null,
+					0.0638,
+					null,
+					0,
+					0.081765,
+					7
+				],
+				"ALL/net_revenue": [
+					466150000,
+					439436000,
+					null,
+					0.0607915600906617,
+					null,
+					415184000,
+					466150000,
+					7
+				],
+				"ALL/removed_line_rate": [
+					0.0032,
+					0.002282,
+					null,
+					0.000918,
+					null,
+					0.001674,
+					0.0032,
+					7
+				],
+				"ALL/sales_per_opening_hour": [
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					0
+				],
+				"ALL/size_l_share": [
+					0.345091,
+					0.352731,
+					null,
+					-0.00764,
+					null,
+					0.345091,
+					0.371363,
+					7
+				],
+				"ALL/voucher_invoice_share": [
+					0.093725,
+					0.103823,
+					null,
+					-0.010098,
+					null,
+					0.092043,
+					0.105959,
+					7
+				],
+				"S1/attach_rate_snack": [
+					0.080917, 0.080815, 0.080805, 0.000102, 0.000112, 0.076423, 0.085374,
+					9
+				],
+				"S1/attach_rate_topping": [
+					0.219488, 0.228183, 0.231475, -0.008695, -0.011987, 0.219488,
+					0.238985, 9
+				],
+				"S1/avg_item_price": [
+					41803.74, 41362.01, 41103.85, 0.01067960672124, 0.0170273587510659,
+					41127.19, 41803.74, 9
+				],
+				"S1/avg_ticket": [
+					92712.41, 91600.34, 91620.68, 0.0121404571205741, 0.0119157596298129,
+					91113.19, 92712.41, 9
+				],
+				"S1/cash_share": [
+					0.251541, 0.24725, 0.264326, 0.004291, -0.012785, 0.24725, 0.264529, 9
+				],
+				"S1/customer_capture_rate": [
+					0.083277, 0.017657, 0, 0.06562, 0.083277, 0, 0.083277, 9
+				],
+				"S1/discount_rate": [
+					0.020506, 0.021832, 0.019682, -0.001326, 0.000824, 0.020252, 0.02347,
+					9
+				],
+				"S1/edit_rate": [
+					0.0118, 0.009168, 0.008821, 0.002632, 0.002979, 0.008011, 0.0118, 9
+				],
+				"S1/gross_revenue": [
+					280742000, 275784000, 264866000, 0.017977837728077,
+					0.0599397431153866, 271718000, 290619000, 9
+				],
+				"S1/invoices": [
+					2966, 2945, 2834, 0.00713073005093379, 0.0465772759350741, 2896, 3075,
+					9
+				],
+				"S1/invoices_per_opening_hour": [
+					6.8341, 6.7857, 6.53, 0.00713264659504546, 0.0465696784073507, 6.6728,
+					7.0853, 9
+				],
+				"S1/items_per_ticket": [
+					2.2178, 2.2146, 2.229, 0.00144495619976524, -0.00502467474203683,
+					2.2056, 2.2451, 9
+				],
+				"S1/member_invoice_share": [
+					0.083277, 0.017657, 0, 0.06562, 0.083277, 0, 0.083277, 9
+				],
+				"S1/net_revenue": [
+					274985000, 269763000, 259653000, 0.0193577325281821,
+					0.0590480371880933, 265827000, 283901000, 9
+				],
+				"S1/removed_line_rate": [
+					0.002757, 0.002292, 0.001685, 0.000465, 0.001072, 0.001386, 0.002757,
+					9
+				],
+				"S1/sales_per_opening_hour": [
+					633605.99, 621573.73, 598278.8, 0.0193577357267013,
+					0.0590480391416175, 612504.61, 654149.77, 9
+				],
+				"S1/size_l_share": [
+					0.395725, 0.400965, 0.397847, -0.00524, -0.002122, 0.395725, 0.407194,
+					9
+				],
+				"S1/voucher_invoice_share": [
+					0.092717, 0.101868, 0.092449, -0.009151, 0.000268, 0.091774, 0.112769,
+					9
+				],
+				"S2/attach_rate_snack": [
+					0.071228,
+					0.08089,
+					null,
+					-0.009662,
+					null,
+					0.06971,
+					0.082569,
+					7
+				],
+				"S2/attach_rate_topping": [
+					0.241799,
+					0.258415,
+					null,
+					-0.016616,
+					null,
+					0.241799,
+					0.258415,
+					7
+				],
+				"S2/avg_item_price": [
+					40483.91,
+					40206.87,
+					null,
+					0.0068903647560728,
+					null,
+					40145.28,
+					40494.27,
+					7
+				],
+				"S2/avg_ticket": [
+					89580.6,
+					92113.46,
+					null,
+					-0.0274971757656264,
+					null,
+					89580.6,
+					92113.46,
+					7
+				],
+				"S2/cash_share": [
+					0.269286,
+					0.240351,
+					null,
+					0.028935,
+					null,
+					0.230269,
+					0.270354,
+					7
+				],
+				"S2/customer_capture_rate": [
+					0.079663,
+					0.018458,
+					null,
+					0.061205,
+					null,
+					0,
+					0.079663,
+					7
+				],
+				"S2/discount_rate": [
+					0.020541,
+					0.02186,
+					null,
+					-0.001319,
+					null,
+					0.019807,
+					0.022488,
+					7
+				],
+				"S2/edit_rate": [
+					0.010778,
+					0.010315,
+					null,
+					0.000463,
+					null,
+					0.006536,
+					0.013746,
+					7
+				],
+				"S2/gross_revenue": [
+					195174000,
+					173465000,
+					null,
+					0.125149165537717,
+					null,
+					143320000,
+					195174000,
+					7
+				],
+				"S2/invoices": [
+					2134,
+					1842,
+					null,
+					0.158523344191097,
+					null,
+					1530,
+					2134,
+					7
+				],
+				"S2/invoices_per_opening_hour": [
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					0
+				],
+				"S2/items_per_ticket": [
+					2.2127,
+					2.291,
+					null,
+					-0.0341772151898734,
+					null,
+					2.2127,
+					2.291,
+					7
+				],
+				"S2/member_invoice_share": [
+					0.079663,
+					0.018458,
+					null,
+					0.061205,
+					null,
+					0,
+					0.079663,
+					7
+				],
+				"S2/net_revenue": [
+					191165000,
+					169673000,
+					null,
+					0.126667177453101,
+					null,
+					140097000,
+					191165000,
+					7
+				],
+				"S2/removed_line_rate": [
+					0.003813,
+					0.002267,
+					null,
+					0.001546,
+					null,
+					0.00122,
+					0.004043,
+					7
+				],
+				"S2/sales_per_opening_hour": [
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					0
+				],
+				"S2/size_l_share": [
+					0.273973,
+					0.277432,
+					null,
+					-0.003459,
+					null,
+					0.271371,
+					0.302298,
+					7
+				],
+				"S2/voucher_invoice_share": [
+					0.095127,
+					0.106949,
+					null,
+					-0.011822,
+					null,
+					0.092417,
+					0.109851,
+					7
+				]
+			},
+			"title": "KPI theo cửa sổ 28 ngày",
+			"window": "w28"
+		},
+		"metrics": {
+			"columns": [
+				{ "name": "label", "unit": "text" },
+				{ "name": "unit", "unit": "class" },
+				{ "name": "direction", "unit": "class" },
+				{ "name": "trackable", "unit": "flag" },
+				{ "name": "superseded_by", "unit": "class" },
+				{ "name": "formula", "unit": "text" }
+			],
+			"grain": "metric",
+			"notes": "Hàng <mã chỉ số> cho các chỉ số metric_value tính được. trackable: dùng được làm KPI của kế hoạch; superseded_by: chỉ số thay thế; formula: cách tính (tiếng Anh).",
+			"rows": {
+				"attach_rate_snack": [
+					"Tỷ lệ kèm đồ ăn nhẹ",
+					"fraction",
+					"higher",
+					true,
+					null,
+					"invoices containing a drink and a snack ÷ invoices containing a drink; over a period Σ `snack_invoices` ÷ Σ `drink_invoices` of the measured days"
+				],
+				"attach_rate_topping": [
+					"Tỷ lệ kèm topping",
+					"fraction",
+					"higher",
+					true,
+					null,
+					"invoices containing a drink and a topping ÷ invoices containing a drink; roles from `item_type_roles`; over a period Σ `topping_invoices` ÷ Σ `drink_invoices` of the measured days"
+				],
+				"avg_item_price": [
+					"Giá trung bình mỗi món",
+					"VND",
+					"neutral",
+					true,
+					null,
+					"`net_revenue` ÷ Σ item-line quantity, so that `avg_ticket` = `items_per_ticket` × `avg_item_price` exactly"
+				],
+				"avg_ticket": [
+					"Giá trị trung bình mỗi hóa đơn",
+					"VND",
+					"higher",
+					true,
+					null,
+					"`net_revenue` ÷ `invoices`"
+				],
+				"cash_share": [
+					"Tỷ trọng tiền mặt",
+					"fraction",
+					"neutral",
+					true,
+					null,
+					"Σ tenders whose payment method kind is `cash` ÷ Σ `paid_amount`"
+				],
+				"customer_capture_rate": [
+					"Tỷ lệ hóa đơn định danh khách",
+					"fraction",
+					"higher",
+					true,
+					null,
+					"non-voided invoices with a `customer_phone` or a `customer_id` ÷ `invoices`; an invoice identified by id alone (Zalo identity, phases 16–19) counts"
+				],
+				"dead_hour_share_17_18": [
+					"Tỷ trọng giờ thấp điểm 17–18h",
+					"fraction",
+					"higher",
+					false,
+					"dead_hour_share",
+					"net in local hours 17 and 18 ÷ daily net"
+				],
+				"discount_rate": [
+					"Tỷ lệ giảm giá",
+					"fraction",
+					"lower",
+					true,
+					null,
+					"(item + bill + extra + voucher discounts) ÷ `gross_revenue`. **Convention: the denominator is gross**, never net, so a 10 % promotion reads as 0.10"
+				],
+				"edit_rate": [
+					"Tỷ lệ sửa hóa đơn",
+					"fraction",
+					"lower",
+					true,
+					null,
+					"invoices with status `edited` ÷ non-voided invoices"
+				],
+				"gross_revenue": [
+					"Doanh thu gộp",
+					"VND",
+					"neutral",
+					true,
+					null,
+					"Σ `gross_amount` of non-voided invoices, before every discount"
+				],
+				"invoices": [
+					"Số hóa đơn",
+					"count",
+					"higher",
+					true,
+					null,
+					"count of non-voided invoices"
+				],
+				"invoices_per_opening_hour": [
+					"Hóa đơn mỗi giờ mở cửa",
+					"count / hour",
+					"higher",
+					true,
+					null,
+					"`invoices` ÷ opening hours of the period"
+				],
+				"items_per_ticket": [
+					"Số món mỗi hóa đơn",
+					"items",
+					"higher",
+					true,
+					null,
+					"Σ item-line quantity ÷ `invoices`"
+				],
+				"member_invoice_share": [
+					"Tỷ lệ hóa đơn có thành viên",
+					"fraction",
+					"higher",
+					true,
+					null,
+					"invoices with a `customer_phone` ÷ `invoices`; phone only, the POS member rail (compare `customer_capture_rate`, which also counts invoices identified by `customer_id` alone)"
+				],
+				"net_revenue": [
+					"Doanh thu thuần",
+					"VND",
+					"higher",
+					true,
+					null,
+					"Σ `net_amount` of non-voided invoices"
+				],
+				"peak_share_20_21": [
+					"Tỷ trọng giờ cao điểm 20–21h",
+					"fraction",
+					"neutral",
+					false,
+					"peak_share_top_hours",
+					"net in local hours 20 and 21 ÷ daily net"
+				],
+				"removed_line_rate": [
+					"Tỷ lệ dòng bị xóa",
+					"fraction",
+					"lower",
+					true,
+					null,
+					"`invoice_events` of kind `line_removed` ÷ item lines of the period"
+				],
+				"sales_per_opening_hour": [
+					"Doanh thu mỗi giờ mở cửa",
+					"VND / hour",
+					"higher",
+					true,
+					null,
+					"`net_revenue` ÷ opening hours of the period from `stores.opening_hours`"
+				],
+				"size_l_share": [
+					"Tỷ trọng size L",
+					"fraction",
+					"higher",
+					true,
+					null,
+					"quantity with `size_label` = L ÷ quantity of all sized items"
+				],
+				"void_rate": [
+					"Tỷ lệ hủy hóa đơn",
+					"fraction",
+					"lower",
+					false,
+					null,
+					"voided invoices ÷ (non-voided + voided invoices); the VND figure beside it is Σ `net_amount` of the voided invoices (`voided_amount`)"
+				],
+				"voucher_invoice_share": [
+					"Tỷ lệ hóa đơn dùng voucher",
+					"fraction",
+					"neutral",
+					true,
+					null,
+					"invoices with `voucher_amount` > 0 or a `voucher_code` ÷ `invoices`"
+				]
+			},
+			"title": "Danh mục chỉ số",
+			"window": null
+		},
+		"modifiers": {
+			"columns": [
+				{ "name": "name", "unit": "text" },
+				{ "name": "family", "unit": "class" },
+				{ "name": "lines", "unit": "count" },
+				{ "name": "share", "unit": "fraction" },
+				{ "name": "share_change", "unit": "pp_change" }
+			],
+			"grain": "modifier-period",
+			"notes": "Hàng <phạm vi>/r<hạng>: 10 tùy chọn dùng nhiều nhất trong w28; family: sugar, ice hoặc other. share: phần trong mọi dòng tùy chọn; share_change: chênh lệch so với p28.",
+			"rows": {
+				"ALL/r01": ["0% Đá", "ice", 228, 0.1259, 0.002],
+				"ALL/r02": ["50% Đá", "ice", 223, 0.1231, -0.0051],
+				"ALL/r03": ["70% Đá", "ice", 216, 0.1193, 0.0113],
+				"ALL/r04": ["0% Đường", "sugar", 210, 0.116, 0.0104],
+				"ALL/r05": ["30% Đá", "ice", 206, 0.1137, -0.0083],
+				"ALL/r06": ["70% Đường", "sugar", 200, 0.1104, 0.0074],
+				"ALL/r07": ["50% Đường", "sugar", 194, 0.1071, -0.0015],
+				"ALL/r08": ["30% Đường", "sugar", 185, 0.1022, -0.0009],
+				"ALL/r09": ["100% Đường", "sugar", 149, 0.0823, -0.0153],
+				"S1/r01": ["0% Đá", "ice", 140, 0.1307, 0.0117],
+				"S1/r02": ["50% Đá", "ice", 132, 0.1232, -0.0006],
+				"S1/r03": ["30% Đá", "ice", 129, 0.1204, 0.0044],
+				"S1/r04": ["70% Đá", "ice", 125, 0.1167, 0.0017],
+				"S1/r05": ["70% Đường", "sugar", 122, 0.1139, 0.0087],
+				"S1/r06": ["0% Đường", "sugar", 113, 0.1055, -0.0066],
+				"S1/r07": ["30% Đường", "sugar", 112, 0.1046, 0.0013],
+				"S1/r08": ["50% Đường", "sugar", 110, 0.1027, -0.0094],
+				"S1/r09": ["100% Đường", "sugar", 88, 0.0822, -0.0112],
+				"S2/r01": ["0% Đường", "sugar", 97, 0.1311, 0.0365],
+				"S2/r02": ["50% Đá", "ice", 91, 0.123, -0.0124],
+				"S2/r03": ["70% Đá", "ice", 91, 0.123, 0.0267],
+				"S2/r04": ["0% Đá", "ice", 88, 0.1189, -0.0132],
+				"S2/r05": ["50% Đường", "sugar", 84, 0.1135, 0.0107],
+				"S2/r06": ["70% Đường", "sugar", 78, 0.1054, 0.0059],
+				"S2/r07": ["30% Đá", "ice", 77, 0.1041, -0.0281],
+				"S2/r08": ["30% Đường", "sugar", 73, 0.0986, -0.0041],
+				"S2/r09": ["100% Đường", "sugar", 61, 0.0824, -0.022]
+			},
+			"title": "Tùy chọn món",
+			"window": "w28"
+		},
+		"month_to_date": {
+			"columns": [
+				{ "name": "net", "unit": "money" },
+				{ "name": "invoices", "unit": "count" },
+				{ "name": "elapsed_days", "unit": "days" },
+				{ "name": "remaining_days", "unit": "days" },
+				{ "name": "target", "unit": "money" },
+				{ "name": "target_share", "unit": "fraction" },
+				{ "name": "forecast_profile", "unit": "money" },
+				{ "name": "forecast_naive", "unit": "money" }
+			],
+			"grain": "store-period",
+			"notes": "Một hàng mỗi phạm vi. net, invoices: từ đầu tháng đến ngày dữ liệu cuối; elapsed_days, remaining_days: số ngày đã qua và còn lại; target: mục tiêu tháng đã nhập, cộng các cửa hàng, trống khi có cửa hàng chưa có mục tiêu; target_share: net chia target; forecast_profile, forecast_naive: dự báo cả tháng theo hồ sơ thứ trong tuần và theo cùng thứ tuần trước.",
+			"rows": {
+				"ALL": [184132000, 2029, 11, 19, null, null, 505681971, 513570000],
+				"S1": [
+					108935000, 1180, 11, 19, 309000000, 0.3525, 298974374, 303441000
+				],
+				"S2": [75197000, 849, 11, 19, null, null, 208271636, 210129000]
+			},
+			"title": "Tháng này đến nay",
+			"window": "month_to_date"
+		},
+		"monthly": {
+			"columns": [
+				{ "name": "net", "unit": "money" },
+				{ "name": "invoices", "unit": "count" },
+				{ "name": "avg_ticket", "unit": "money" },
+				{ "name": "store_days", "unit": "days" },
+				{ "name": "holiday_days", "unit": "days" }
+			],
+			"grain": "store-month",
+			"notes": "Hàng <phạm vi>/<năm>-<tháng>, 27 tháng đầy đủ gần nhất; các cột như bảng weekly.",
+			"rows": {
+				"ALL/2024-12": [272315000, 2978, 91442, 30, 0],
+				"ALL/2025-01": [262590000, 2924, 89805, 28, 5],
+				"ALL/2025-02": [243142000, 2632, 92379, 28, 2],
+				"ALL/2025-03": [289917000, 3140, 92330, 31, 0],
+				"ALL/2025-04": [274144000, 3044, 90060, 30, 2],
+				"ALL/2025-05": [316337000, 3448, 91745, 31, 1],
+				"ALL/2025-06": [304639000, 3339, 91237, 30, 0],
+				"ALL/2025-07": [296677000, 3247, 91370, 31, 0],
+				"ALL/2025-08": [315174000, 3428, 91941, 31, 0],
+				"ALL/2025-09": [261974000, 2878, 91026, 30, 2],
+				"ALL/2025-10": [279347000, 3015, 92652, 31, 0],
+				"ALL/2025-11": [299028000, 3251, 91980, 30, 0],
+				"ALL/2025-12": [291256000, 3181, 91561, 31, 0],
+				"ALL/2026-01": [316091000, 3481, 90805, 31, 1],
+				"ALL/2026-02": [241977000, 2611, 92676, 25, 6],
+				"ALL/2026-03": [308236000, 3322, 92786, 31, 0],
+				"ALL/2026-04": [313274000, 3365, 93098, 30, 2],
+				"ALL/2026-05": [343412000, 3717, 92390, 31, 1],
+				"ALL/2026-06": [313663000, 3412, 91929, 30, 0],
+				"ALL/2026-07": [328748000, 3531, 93103, 31, 0],
+				"ALL/2026-08": [327031000, 3500, 93437, 32, 0],
+				"ALL/2026-09": [437380000, 4773, 91636, 60, 2],
+				"ALL/2026-10": [505794000, 5504, 91896, 62, 0],
+				"S1/2024-12": [272315000, 2978, 91442, 30, 0],
+				"S1/2025-01": [262590000, 2924, 89805, 28, 5],
+				"S1/2025-02": [243142000, 2632, 92379, 28, 2],
+				"S1/2025-03": [289917000, 3140, 92330, 31, 0],
+				"S1/2025-04": [274144000, 3044, 90060, 30, 2],
+				"S1/2025-05": [316337000, 3448, 91745, 31, 1],
+				"S1/2025-06": [304639000, 3339, 91237, 30, 0],
+				"S1/2025-07": [296677000, 3247, 91370, 31, 0],
+				"S1/2025-08": [315174000, 3428, 91941, 31, 0],
+				"S1/2025-09": [261974000, 2878, 91026, 30, 2],
+				"S1/2025-10": [279347000, 3015, 92652, 31, 0],
+				"S1/2025-11": [299028000, 3251, 91980, 30, 0],
+				"S1/2025-12": [291256000, 3181, 91561, 31, 0],
+				"S1/2026-01": [316091000, 3481, 90805, 31, 1],
+				"S1/2026-02": [241977000, 2611, 92676, 25, 6],
+				"S1/2026-03": [308236000, 3322, 92786, 31, 0],
+				"S1/2026-04": [313274000, 3365, 93098, 30, 2],
+				"S1/2026-05": [343412000, 3717, 92390, 31, 1],
+				"S1/2026-06": [313663000, 3412, 91929, 30, 0],
+				"S1/2026-07": [328748000, 3531, 93103, 31, 0],
+				"S1/2026-08": [324250000, 3471, 93417, 31, 0],
+				"S1/2026-09": [290514000, 3171, 91616, 30, 2],
+				"S1/2026-10": [298315000, 3232, 92300, 31, 0],
+				"S2/2026-08": [2781000, 29, 95897, 1, 0],
+				"S2/2026-09": [146866000, 1602, 91677, 30, 2],
+				"S2/2026-10": [207479000, 2272, 91320, 31, 0]
+			},
+			"title": "Doanh thu theo tháng",
+			"window": "months"
+		},
+		"pairs": {
+			"columns": [
+				{ "name": "item_a", "unit": "text" },
+				{ "name": "item_b", "unit": "text" },
+				{ "name": "invoices", "unit": "count" },
+				{ "name": "confidence_ab", "unit": "fraction" },
+				{ "name": "confidence_ba", "unit": "fraction" },
+				{ "name": "lift", "unit": "ratio" }
+			],
+			"grain": "pair-period",
+			"notes": "Hàng <phạm vi>/r<hạng>: 8 cặp có nhiều hóa đơn chung nhất trong w28. invoices: số hóa đơn có cả hai món; confidence_ab: phần hóa đơn có item_a cũng có item_b; lift: trên 1 là mua cùng nhiều hơn ngẫu nhiên.",
+			"rows": {
+				"ALL/r01": ["Matcha Latte", "Trân châu trắng", 15, 0.0607, 0.0968, 2],
+				"ALL/r02": [
+					"Trà sữa truyền thống (M)",
+					"Thạch dừa",
+					14,
+					0.0854,
+					0.0824,
+					2.56
+				],
+				"ALL/r03": ["Bạc xỉu (M)", "Trân châu đen", 13, 0.0867, 0.0681, 2.31],
+				"ALL/r04": ["Cà phê trứng", "Trân châu đen", 13, 0.0634, 0.0681, 1.69],
+				"ALL/r05": ["Nước ép cần tây", "Kem cheese", 13, 0.0575, 0.0734, 1.66],
+				"ALL/r06": ["Cà phê đen", "Thạch dừa", 13, 0.0551, 0.0765, 1.65],
+				"ALL/r07": ["Matcha Latte", "Kem cheese", 13, 0.0526, 0.0734, 1.52],
+				"ALL/r08": ["Cà phê đen", "Trân châu đen", 13, 0.0551, 0.0681, 1.47],
+				"S1/r01": [
+					"Socola đá xay (M)",
+					"Pudding trứng",
+					11,
+					0.1325,
+					0.1183,
+					4.23
+				],
+				"S1/r02": ["Cà phê đen", "Trân châu đen", 10, 0.0763, 0.0971, 2.2],
+				"S1/r03": ["Matcha Latte", "Trân châu trắng", 10, 0.0625, 0.1075, 1.99],
+				"S1/r04": ["Nước ép cần tây", "Kem cheese", 9, 0.0652, 0.0874, 1.88],
+				"S1/r05": ["Matcha Latte", "Trân châu đen", 9, 0.0563, 0.0874, 1.62],
+				"S1/r06": ["Cà phê đen", "Matcha Latte", 9, 0.0687, 0.0563, 1.27],
+				"S1/r07": ["Bánh su kem", "Kem cheese", 8, 0.127, 0.0777, 3.66],
+				"S1/r08": ["Cà phê muối (M)", "Trân châu đen", 8, 0.0988, 0.0777, 2.84],
+				"S2/r01": ["Bạc xỉu (M)", "Trân châu đen", 8, 0.1127, 0.0909, 2.73],
+				"S2/r02": ["Nước ép ổi (M)", "Thạch dừa", 8, 0.1, 0.0964, 2.57],
+				"S2/r03": [
+					"Trà sữa truyền thống (M)",
+					"Thạch dừa",
+					8,
+					0.093,
+					0.0964,
+					2.39
+				],
+				"S2/r04": [
+					"Matcha Latte",
+					"Trân châu tặng kèm",
+					7,
+					0.0805,
+					0.1029,
+					2.53
+				],
+				"S2/r05": [
+					"Trân châu tặng kèm",
+					"Trân châu đen",
+					7,
+					0.1029,
+					0.0795,
+					2.5
+				],
+				"S2/r06": [
+					"Trà sữa kem trứng (M)",
+					"Thạch dừa",
+					7,
+					0.0933,
+					0.0843,
+					2.4
+				],
+				"S2/r07": [
+					"Trà sữa đường đen (M)",
+					"Cà phê sữa",
+					7,
+					0.0959,
+					0.068,
+					1.99
+				],
+				"S2/r08": ["Cà phê đen", "Kem cheese", 7, 0.0667, 0.0946, 1.92]
+			},
+			"title": "Cặp món hay mua cùng",
+			"window": "w28"
+		},
+		"payments": {
+			"columns": [
+				{ "name": "name", "unit": "text" },
+				{ "name": "kind", "unit": "class" },
+				{ "name": "invoices", "unit": "count" },
+				{ "name": "amount", "unit": "money" },
+				{ "name": "share", "unit": "fraction" },
+				{ "name": "share_change", "unit": "pp_change" },
+				{ "name": "fee", "unit": "money" }
+			],
+			"grain": "method-period",
+			"notes": "Hàng <phạm vi>/r<hạng> theo số tiền trong w28, tối đa 8. share: phần số tiền; share_change: chênh lệch so với p28; fee: phí ước tính theo biểu phí đã nhập, trống khi có cửa hàng chưa có biểu phí.",
+			"rows": {
+				"ALL/r01": [
+					"Ví điện tử QR",
+					"ewallet",
+					2836,
+					258041000,
+					0.5536,
+					0.0089,
+					null
+				],
+				"ALL/r02": ["Tiền mặt", "cash", 1378, 120648000, 0.2588, 0.0142, null],
+				"ALL/r03": [
+					"Chuyển khoản",
+					"bank_transfer",
+					997,
+					87461000,
+					0.1876,
+					-0.0231,
+					null
+				],
+				"S1/r01": [
+					"Ví điện tử QR",
+					"ewallet",
+					1679,
+					153800000,
+					0.5593,
+					0.0148,
+					null
+				],
+				"S1/r02": ["Tiền mặt", "cash", 777, 69170000, 0.2515, 0.0043, null],
+				"S1/r03": [
+					"Chuyển khoản",
+					"bank_transfer",
+					584,
+					52015000,
+					0.1892,
+					-0.0191,
+					null
+				],
+				"S2/r01": [
+					"Ví điện tử QR",
+					"ewallet",
+					1157,
+					104241000,
+					0.5453,
+					0.0005,
+					null
+				],
+				"S2/r02": ["Tiền mặt", "cash", 601, 51478000, 0.2693, 0.0289, null],
+				"S2/r03": [
+					"Chuyển khoản",
+					"bank_transfer",
+					413,
+					35446000,
+					0.1854,
+					-0.0294,
+					null
+				]
+			},
+			"title": "Phương thức thanh toán",
+			"window": "w28"
+		},
+		"promotions": {
+			"columns": [
+				{ "name": "name", "unit": "text" },
+				{ "name": "kind", "unit": "class" },
+				{ "name": "invoices", "unit": "count" },
+				{ "name": "discount", "unit": "money" },
+				{ "name": "days", "unit": "days" }
+			],
+			"grain": "promotion-period",
+			"notes": "Hàng <phạm vi>/r<hạng>: 8 chương trình giảm nhiều tiền nhất trong w28. kind: item (giảm món), bill (giảm hóa đơn) hoặc voucher; days: số ngày có dùng.",
+			"rows": {
+				"ALL/r01": ["Voucher 20k", "voucher", 160, 3200000, 27],
+				"ALL/r02": ["Voucher 15k", "voucher", 151, 2265000, 28],
+				"ALL/r03": ["Giảm 10% món", "item", 374, 2141000, 28],
+				"ALL/r04": ["Voucher 10k", "voucher", 167, 1670000, 28],
+				"ALL/r05": ["Giảm 5% hóa đơn", "bill", 105, 490000, 28],
+				"S1/r01": ["Voucher 20k", "voucher", 94, 1880000, 27],
+				"S1/r02": ["Giảm 10% món", "item", 225, 1306000, 28],
+				"S1/r03": ["Voucher 15k", "voucher", 86, 1290000, 25],
+				"S1/r04": ["Voucher 10k", "voucher", 95, 950000, 26],
+				"S1/r05": ["Giảm 5% hóa đơn", "bill", 69, 331000, 27],
+				"S2/r01": ["Voucher 20k", "voucher", 66, 1320000, 22],
+				"S2/r02": ["Voucher 15k", "voucher", 65, 975000, 25],
+				"S2/r03": ["Giảm 10% món", "item", 149, 835000, 27],
+				"S2/r04": ["Voucher 10k", "voucher", 72, 720000, 27],
+				"S2/r05": ["Giảm 5% hóa đơn", "bill", 36, 159000, 20]
+			},
+			"title": "Khuyến mãi và giảm giá",
+			"window": "w28"
+		},
+		"shifts": {
+			"columns": [
+				{ "name": "shifts", "unit": "count" },
+				{ "name": "avg_orders", "unit": "ratio" },
+				{ "name": "avg_sales", "unit": "money" },
+				{ "name": "avg_hours", "unit": "hours" },
+				{ "name": "flagged", "unit": "count" },
+				{ "name": "avg_abs_variance", "unit": "money" }
+			],
+			"grain": "store-band",
+			"notes": "Hàng <phạm vi>/<khung giờ mở ca> trong w28, theo giờ địa phương: morning 05–11, midday 11–17, evening 17–23, night 23–05. avg_hours: độ dài trung bình của các ca đã đóng; flagged: số ca có chênh lệch két vượt ngưỡng; avg_abs_variance: chênh lệch két tuyệt đối trung bình.",
+			"rows": {
+				"ALL/evening": [56, 42.02, 3877750, 5.5, 6, 1250],
+				"ALL/midday": [56, 23.2, 2148339, 5.5, 4, 536],
+				"ALL/morning": [56, 25.86, 2298018, 5.5, 5, 1161],
+				"S1/evening": [28, 48.25, 4536750, 5.5, 2, 1607],
+				"S1/midday": [28, 26.5, 2488714, 5.5, 2, 536],
+				"S1/morning": [28, 31.18, 2795429, 5.5, 3, 1429],
+				"S2/evening": [28, 35.79, 3218750, 5.5, 4, 893],
+				"S2/midday": [28, 19.89, 1807964, 5.5, 2, 536],
+				"S2/morning": [28, 20.54, 1800607, 5.5, 2, 893]
+			},
+			"title": "Ca bán hàng",
+			"window": "w28"
+		},
+		"sizes": {
+			"columns": [
+				{ "name": "size", "unit": "text" },
+				{ "name": "qty", "unit": "quantity" },
+				{ "name": "net", "unit": "money" },
+				{ "name": "qty_share", "unit": "fraction" },
+				{ "name": "qty_share_change", "unit": "pp_change" }
+			],
+			"grain": "size-period",
+			"notes": "Hàng <phạm vi>/r<hạng> theo số lượng trong w28, chỉ các món có cỡ. qty_share: phần số lượng trong mọi món có cỡ; qty_share_change: chênh lệch so với p28.",
+			"rows": {
+				"ALL/r01": ["M", 5403, 246807000, 0.6549, 0.0076],
+				"ALL/r02": ["L", 2847, 154445000, 0.3451, -0.0076],
+				"S1/r01": ["M", 2912, 133134000, 0.6043, 0.0052],
+				"S1/r02": ["L", 1907, 103467000, 0.3957, -0.0052],
+				"S2/r01": ["M", 2491, 113673000, 0.726, 0.0035],
+				"S2/r02": ["L", 940, 50978000, 0.274, -0.0035]
+			},
+			"title": "Cỡ món",
+			"window": "w28"
+		},
+		"stores": {
+			"columns": [
+				{ "name": "name", "unit": "text" },
+				{ "name": "opened_on", "unit": "date" },
+				{ "name": "history_start", "unit": "date" },
+				{ "name": "history_days", "unit": "days" },
+				{ "name": "day_start", "unit": "hours" },
+				{ "name": "open_hours_week", "unit": "hours" },
+				{ "name": "seats", "unit": "count" },
+				{ "name": "e_invoice", "unit": "class" },
+				{ "name": "sales_days", "unit": "days" },
+				{ "name": "unmatched_days", "unit": "days" },
+				{ "name": "unchecked_days", "unit": "days" },
+				{ "name": "stale_days", "unit": "days" },
+				{ "name": "verified", "unit": "flag" }
+			],
+			"grain": "store",
+			"notes": "Một hàng mỗi cửa hàng, khóa là nhãn S<n>. history_start: ngày bắt đầu lịch sử, ngày muộn hơn giữa ngày mở cửa và ngày đầu có doanh thu; history_days: số ngày từ đó đến ngày dữ liệu cuối. Các cột số ngày khác tính từ đầu ly28 đến ngày dữ liệu cuối; verified đúng khi không có ngày lệch hay ngày chưa đối soát với POS.",
+			"rows": {
+				"S1": [
+					"Cửa hàng mẫu 1",
+					"2024-12-02",
+					"2024-12-02",
+					710,
+					0,
+					108.5,
+					40,
+					"configured",
+					389,
+					1,
+					0,
+					0,
+					false
+				],
+				"S2": [
+					"Cửa hàng mẫu 2",
+					"2026-08-31",
+					"2026-08-31",
+					73,
+					0,
+					null,
+					null,
+					"not_configured",
+					73,
+					0,
+					1,
+					0,
+					false
+				]
+			},
+			"title": "Cửa hàng",
+			"window": null
+		},
+		"weekday": {
+			"columns": [
+				{ "name": "net", "unit": "money" },
+				{ "name": "invoices", "unit": "count" },
+				{ "name": "avg_ticket", "unit": "money" },
+				{ "name": "store_days", "unit": "days" },
+				{ "name": "share", "unit": "fraction" }
+			],
+			"grain": "store-weekday",
+			"notes": "Hàng <phạm vi>/<thứ> (mon đến sun) trên 84 ngày gần nhất (w84), gồm cả ngày lễ. store_days: số ngày-cửa hàng có doanh thu; share: phần doanh thu thuần của thứ đó trong cả tuần.",
+			"rows": {
+				"ALL/fri": [201855000, 2200, 91752, 22, 0.1601],
+				"ALL/mon": [129128000, 1411, 91515, 23, 0.1024],
+				"ALL/sat": [215911000, 2326, 92825, 22, 0.1712],
+				"ALL/sun": [280085000, 3067, 91322, 22, 0.2221],
+				"ALL/thu": [149100000, 1629, 91529, 22, 0.1182],
+				"ALL/tue": [139231000, 1539, 90468, 23, 0.1104],
+				"ALL/wed": [145662000, 1566, 93015, 23, 0.1155],
+				"S1/fri": [134660000, 1460, 92233, 12, 0.1625],
+				"S1/mon": [81838000, 898, 91134, 12, 0.0988],
+				"S1/sat": [144983000, 1555, 93237, 12, 0.175],
+				"S1/sun": [185615000, 2018, 91980, 12, 0.224],
+				"S1/thu": [98929000, 1076, 91941, 12, 0.1194],
+				"S1/tue": [90803000, 989, 91813, 12, 0.1096],
+				"S1/wed": [91821000, 990, 92748, 12, 0.1108],
+				"S2/fri": [67195000, 740, 90804, 10, 0.1554],
+				"S2/mon": [47290000, 513, 92183, 11, 0.1094],
+				"S2/sat": [70928000, 771, 91995, 10, 0.1641],
+				"S2/sun": [94470000, 1049, 90057, 10, 0.2185],
+				"S2/thu": [50171000, 553, 90725, 10, 0.116],
+				"S2/tue": [48428000, 550, 88051, 11, 0.112],
+				"S2/wed": [53841000, 576, 93474, 11, 0.1245]
+			},
+			"title": "Theo thứ trong tuần",
+			"window": "w84"
+		},
+		"weekly": {
+			"columns": [
+				{ "name": "net", "unit": "money" },
+				{ "name": "invoices", "unit": "count" },
+				{ "name": "avg_ticket", "unit": "money" },
+				{ "name": "store_days", "unit": "days" },
+				{ "name": "holiday_days", "unit": "days" }
+			],
+			"grain": "store-week",
+			"notes": "Hàng <phạm vi>/<năm>-W<tuần ISO>, 13 tuần ISO đầy đủ gần nhất. net: doanh thu thuần; avg_ticket: giá trị trung bình một hóa đơn; store_days: số ngày-cửa hàng có doanh thu; holiday_days: số ngày lễ và Tết.",
+			"rows": {
+				"ALL/2026-W33": [67959000, 717, 94782, 7, 0],
+				"ALL/2026-W34": [74254000, 783, 94833, 7, 0],
+				"ALL/2026-W35": [72882000, 792, 92023, 7, 0],
+				"ALL/2026-W36": [100387000, 1082, 92779, 14, 2],
+				"ALL/2026-W37": [98812000, 1080, 91493, 14, 0],
+				"ALL/2026-W38": [103393000, 1141, 90616, 14, 0],
+				"ALL/2026-W39": [108433000, 1177, 92127, 14, 0],
+				"ALL/2026-W40": [108253000, 1178, 91896, 14, 0],
+				"ALL/2026-W41": [114333000, 1246, 91760, 14, 0],
+				"ALL/2026-W42": [114714000, 1263, 90827, 14, 0],
+				"ALL/2026-W43": [114322000, 1233, 92719, 14, 0],
+				"ALL/2026-W44": [118060000, 1281, 92162, 14, 0],
+				"ALL/2026-W45": [118246000, 1309, 90333, 14, 0],
+				"S1/2026-W33": [67959000, 717, 94782, 7, 0],
+				"S1/2026-W34": [74254000, 783, 94833, 7, 0],
+				"S1/2026-W35": [72882000, 792, 92023, 7, 0],
+				"S1/2026-W36": [70938000, 769, 92247, 7, 2],
+				"S1/2026-W37": [68225000, 741, 92072, 7, 0],
+				"S1/2026-W38": [67853000, 750, 90471, 7, 0],
+				"S1/2026-W39": [68489000, 743, 92179, 7, 0],
+				"S1/2026-W40": [65083000, 712, 91409, 7, 0],
+				"S1/2026-W41": [67035000, 742, 90344, 7, 0],
+				"S1/2026-W42": [67548000, 731, 92405, 7, 0],
+				"S1/2026-W43": [65987000, 712, 92678, 7, 0],
+				"S1/2026-W44": [71707000, 757, 94725, 7, 0],
+				"S1/2026-W45": [69031000, 756, 91311, 7, 0],
+				"S2/2026-W36": [29449000, 313, 94086, 7, 2],
+				"S2/2026-W37": [30587000, 339, 90227, 7, 0],
+				"S2/2026-W38": [35540000, 391, 90895, 7, 0],
+				"S2/2026-W39": [39944000, 434, 92037, 7, 0],
+				"S2/2026-W40": [43170000, 466, 92639, 7, 0],
+				"S2/2026-W41": [47298000, 504, 93845, 7, 0],
+				"S2/2026-W42": [47166000, 532, 88658, 7, 0],
+				"S2/2026-W43": [48335000, 521, 92774, 7, 0],
+				"S2/2026-W44": [46353000, 524, 88460, 7, 0],
+				"S2/2026-W45": [49215000, 553, 88996, 7, 0]
+			},
+			"title": "Doanh thu theo tuần",
+			"window": "weeks"
+		}
+	}
+}

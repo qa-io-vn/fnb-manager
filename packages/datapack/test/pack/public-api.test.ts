@@ -122,6 +122,7 @@ describe("the public interface of @fnb/datapack", () => {
 				"NOT_IMPLEMENTED",
 				"OWNER_NOTE_MAX_LENGTH",
 				"PACK_ERROR_CODES",
+				"PACK_GAPS",
 				"PACK_GRAINS",
 				"PACK_LANGUAGES",
 				"PACK_UNITS",
@@ -248,6 +249,22 @@ describe("the public interface of @fnb/datapack", () => {
 		expect((await comparePackTexts("{}", "{}")).valid).toBe(false);
 	});
 
+	it("derives the calendar and lists the calls, store profiles first", () => {
+		expect(calendarOf("2026-11-11", "90d")).toEqual(minimalPack().calendar);
+		const calls = packCalls({
+			stores: [{ id: STORE_A, label: "S1" }],
+			asOf: "2026-11-11",
+			horizon: "90d",
+			language: "vi",
+			focus: null,
+			ownerNote: null,
+			sample: false,
+			currency: "VND",
+		});
+		expect(calls[0]?.name).toBe("store_profiles");
+		expect(calls.length).toBeGreaterThan(1);
+	});
+
 	it("builds the plan format and its lint", () => {
 		const pack = minimalPack();
 		expect(normalizePlanText("﻿---\r\n{}\r\n---\r\n\r\n")).toBe(
@@ -295,18 +312,6 @@ describe("the public interface of @fnb/datapack", () => {
 	it("throws not_implemented from every stub", async () => {
 		const pack = minimalPack();
 		const synchronous: (() => unknown)[] = [
-			() => calendarOf("2026-11-11", "90d"),
-			() =>
-				packCalls({
-					stores: [{ id: STORE_A, label: "S1" }],
-					asOf: "2026-11-11",
-					horizon: "90d",
-					language: "vi",
-					focus: null,
-					ownerNote: null,
-					sample: false,
-					currency: "VND",
-				}),
 			() => chatBundle(pack),
 			() => strategyPrompt("vi"),
 			() =>
@@ -342,7 +347,7 @@ describe("the public interface of @fnb/datapack", () => {
 						sample: false,
 					},
 					{
-						source: undefined as never,
+						source: { kind: "supabase" } as never,
 						clock: { now: () => new Date(0) },
 						fence: null,
 					},
