@@ -359,7 +359,7 @@ The workflow secrets and variables are listed in [secrets.md](secrets.md). In `s
 - **Database.** `migrate.yml` pushes the migrations to the linked Supabase project.
 - **Edge Function.** `deploy-functions.yml` deploys `sync-incremental`. Its POS secrets and turning on its `pg_cron` schedule are owner steps.
 - **Scheduled jobs.** The nightly sync, the notification ticks and the weekly backup run on GitHub Actions once their secrets exist.
-- **State on 2026-11-12.** No cloud project exists yet: creating it, the GitHub secrets and variables, SMTP and the backup destination wait for the owner ([go-live.md](go-live.md) is the step-by-step list). The last push to `main` is commit `0f8fa1d` of 2026-11-08; everything after it, phase 9 included, is not committed yet, so a Pages deployment can only contain what `0f8fa1d` holds (Hôm nay, with "Sắp có" under Báo cáo).
+- **State on 2026-11-17.** No cloud project exists yet: creating it, the GitHub secrets and variables, SMTP and the backup destination wait for the owner ([go-live.md](go-live.md) is the step-by-step list). All finished work is pushed to `main`, and every push to `main` redeploys the demo to Pages, so the demo shows every page through phase 10b. Unfinished phase 11a and 12c work lives on the `wip/*` branches listed in [status.md](status.md).
 
 ## 9. Troubleshooting
 
