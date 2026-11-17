@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { settingsAccess } from "./access";
+import { type SettingsArea, settingsAccess } from "./access";
 import type { Membership } from "./source";
 
 const store = "11111111-1111-4111-8111-111111111111";
@@ -150,6 +150,137 @@ describe("settingsAccess", () => {
 			).toEqual({ canWrite, reason });
 		},
 	);
+
+	const other = "22222222-2222-4222-8222-222222222222";
+	const logins = {
+		owner: member("owner"),
+		"store-limited owner": member("owner", true),
+		manager: member("manager"),
+		"store-limited manager": member("manager", true),
+		staff: member("staff"),
+		viewer: member("viewer"),
+		publisher: member("publisher"),
+	} as const;
+	type Login = keyof typeof logins;
+	const pages: Readonly<
+		Record<
+			Exclude<SettingsArea, "alertRules" | "alertMutes">,
+			Readonly<Record<Login, string>>
+		>
+	> = {
+		tenantProfile: {
+			owner: "write write write",
+			"store-limited owner": "ownerOnly ownerOnly ownerOnly",
+			manager: "ownerOnly ownerOnly ownerOnly",
+			"store-limited manager": "ownerOnly ownerOnly ownerOnly",
+			staff: "ownerOnly ownerOnly ownerOnly",
+			viewer: "ownerOnly ownerOnly ownerOnly",
+			publisher: "ownerOnly ownerOnly ownerOnly",
+		},
+		storeProfile: {
+			owner: "write write write",
+			"store-limited owner": "scope write scope",
+			manager: "write write write",
+			"store-limited manager": "scope write scope",
+			staff: "role role role",
+			viewer: "role role role",
+			publisher: "role role role",
+		},
+		openingHours: {
+			owner: "write write write",
+			"store-limited owner": "scope write scope",
+			manager: "ownerOnly ownerOnly ownerOnly",
+			"store-limited manager": "scope ownerOnly scope",
+			staff: "role role role",
+			viewer: "role role role",
+			publisher: "role role role",
+		},
+		manualData: {
+			owner: "write write write",
+			"store-limited owner": "scope write scope",
+			manager: "write write write",
+			"store-limited manager": "scope write scope",
+			staff: "role role role",
+			viewer: "role role role",
+			publisher: "role role role",
+		},
+		holidays: {
+			owner: "write write write",
+			"store-limited owner": "scope scope scope",
+			manager: "write write write",
+			"store-limited manager": "scope scope scope",
+			staff: "role role role",
+			viewer: "role role role",
+			publisher: "role role role",
+		},
+		legal: {
+			owner: "write write write",
+			"store-limited owner": "ownerOnly ownerOnly ownerOnly",
+			manager: "ownerOnly ownerOnly ownerOnly",
+			"store-limited manager": "ownerOnly ownerOnly ownerOnly",
+			staff: "ownerOnly ownerOnly ownerOnly",
+			viewer: "ownerOnly ownerOnly ownerOnly",
+			publisher: "ownerOnly ownerOnly ownerOnly",
+		},
+		roles: {
+			owner: "write write write",
+			"store-limited owner": "scope scope scope",
+			manager: "write write write",
+			"store-limited manager": "scope scope scope",
+			staff: "role role role",
+			viewer: "role role role",
+			publisher: "role role role",
+		},
+		thresholds: {
+			owner: "write write write",
+			"store-limited owner": "ownerOnly ownerOnly ownerOnly",
+			manager: "ownerOnly ownerOnly ownerOnly",
+			"store-limited manager": "ownerOnly ownerOnly ownerOnly",
+			staff: "ownerOnly ownerOnly ownerOnly",
+			viewer: "ownerOnly ownerOnly ownerOnly",
+			publisher: "ownerOnly ownerOnly ownerOnly",
+		},
+	};
+
+	it.each(
+		Object.entries(pages).flatMap(([area, byLogin]) =>
+			Object.entries(byLogin).map(
+				([login, outcomes]) =>
+					[area as SettingsArea, login as Login, outcomes] as const,
+			),
+		),
+	)(
+		"on %s, the %s writes or reads with the reason given for all stores, the store in scope and another store: %s",
+		(area, login, outcomes) => {
+			const outcome = (storeId: string | null) => {
+				const access = settingsAccess(area, logins[login], storeId);
+				return access.canWrite ? "write" : access.reason;
+			};
+			expect([outcome(null), outcome(store), outcome(other)].join(" ")).toBe(
+				outcomes,
+			);
+		},
+	);
+
+	it("keeps staff and viewers read-only on every page and every scope, and a manager off opening hours everywhere", () => {
+		for (const area of Object.keys(pages) as SettingsArea[]) {
+			for (const login of ["staff", "viewer"] as const) {
+				for (const storeId of [null, store, other]) {
+					expect(
+						settingsAccess(area, logins[login], storeId).canWrite,
+						`${login} on ${area}`,
+					).toBe(false);
+				}
+			}
+		}
+		for (const login of ["manager", "store-limited manager"] as const) {
+			for (const storeId of [null, store, other]) {
+				expect(
+					settingsAccess("openingHours", logins[login], storeId).canWrite,
+				).toBe(false);
+			}
+		}
+	});
 
 	it("refuses a login without membership and waits while it loads", () => {
 		expect(settingsAccess("roles", null)).toEqual({
