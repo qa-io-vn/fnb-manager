@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "../auth/session";
 import { Button } from "../components/ui/button";
+import { forgetPacks } from "../datapack/pack-cache";
 import { useT } from "../i18n";
 
 export function SignOutButton() {
@@ -13,6 +14,7 @@ export function SignOutButton() {
 	const signOut = async () => {
 		await client.auth.signOut();
 		queryClient.clear();
+		forgetPacks();
 		navigate("/dang-nhap", { replace: true });
 	};
 	return (

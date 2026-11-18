@@ -1,3 +1,4 @@
+import { createDemoReportSource } from "@fnb/demo-analytics";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -36,6 +37,7 @@ const current = vi.hoisted(() => ({
 	membership: null as unknown,
 	failMembership: false,
 	client: null as unknown,
+	analytics: { status: "loading" } as unknown,
 }));
 
 vi.mock("../../app-mode/app-mode", () => ({
@@ -44,6 +46,10 @@ vi.mock("../../app-mode/app-mode", () => ({
 
 vi.mock("../../auth/session", () => ({
 	useSession: () => ({ client: current.client }),
+}));
+
+vi.mock("../../data/analytics-source-context", () => ({
+	useAnalyticsSourceState: () => current.analytics,
 }));
 
 vi.mock("../../state/tenant-scope", () => ({
@@ -78,6 +84,10 @@ function renderPage(
 	current.mode = mode;
 	current.membership = membership;
 	current.failMembership = failMembership;
+	current.analytics = {
+		status: "ready",
+		source: createDemoReportSource({ now: () => new Date() }),
+	};
 	current.client = createFakePostgrest({
 		stores: [STORE_ONE, STORE_TWO],
 		tables: syntheticTables({
@@ -110,7 +120,10 @@ describe("the Xuất dữ liệu page", () => {
 		expect(
 			screen.getByRole("link", { name: "Xuất dữ liệu" }),
 		).not.toHaveAttribute("aria-current");
-		expect(screen.getByTestId("exports-pack-pending")).toBeInTheDocument();
+		expect(await screen.findByTestId("pack-form")).toBeInTheDocument();
+		expect(
+			screen.getByRole("heading", { level: 2, name: "Gói dữ liệu cho AI" }),
+		).toBeInTheDocument();
 		expect(tabOf(null)).toBe("goi");
 		expect(tabOf("xuat")).toBe("xuat");
 		expect(tabOf("other")).toBe("goi");
@@ -186,9 +199,7 @@ describe("the Xuất dữ liệu page", () => {
 		await user.click(
 			screen.getByRole("link", { name: "Xem gói dữ liệu cho AI" }),
 		);
-		expect(
-			await screen.findByTestId("exports-pack-pending"),
-		).toBeInTheDocument();
+		expect(await screen.findByTestId("pack-form")).toBeInTheDocument();
 	});
 
 	it("shows a retry when the membership cannot be read", async () => {

@@ -10,6 +10,7 @@ export const lazySources = [
 	/src\/settings\/supabase-settings-source\.ts$/,
 	/src\/settings\/demo-settings-source\.ts$/,
 	/src\/pages\/exports\/exports-page\.tsx$/,
+	/src\/datapack\/browser-pack\.ts$/,
 	/node_modules\/fflate\/esm\/browser\.js$/,
 ];
 

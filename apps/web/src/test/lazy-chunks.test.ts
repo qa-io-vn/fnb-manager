@@ -23,6 +23,7 @@ const manifestKeys = [
 	"src/settings/supabase-settings-source.ts",
 	"src/settings/demo-settings-source.ts",
 	"src/pages/exports/exports-page.tsx",
+	"src/datapack/browser-pack.ts",
 	"../../node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
 ];
 
@@ -72,5 +73,12 @@ describe("the size check's lazy chunks", () => {
 		).toBe(true);
 		expect(isLazySource("node_modules/fflate/esm/browser.js")).toBe(true);
 		expect(isEagerSource("src/pages/exports/exports-page.tsx")).toBe(false);
+	});
+
+	it("loads the pack builder and its prompt only when a pack is built", () => {
+		expect(isLazySource("src/datapack/browser-pack.ts")).toBe(true);
+		expect(isLazySource("src/datapack/pack-cache.ts")).toBe(false);
+		expect(isLazySource("src/pages/exports/pack-tab.tsx")).toBe(false);
+		expect(isEagerSource("src/datapack/browser-pack.ts")).toBe(false);
 	});
 });

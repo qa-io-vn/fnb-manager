@@ -49,12 +49,12 @@ export interface ExportFormProps {
 	readonly onCancelConfirm: () => void;
 }
 
-const CHECK_ROW =
+export const CHECK_ROW =
 	"flex min-h-11 items-center gap-3 rounded-lg px-2 hover:bg-surface-sunken";
-const CHECKBOX = "size-5 shrink-0 accent-accent";
-const FIELDSET =
+export const CHECKBOX = "size-5 shrink-0 accent-accent";
+export const FIELDSET =
 	"space-y-1 rounded-xl border border-line bg-surface-raised p-4";
-const LEGEND = "px-1 font-semibold";
+export const LEGEND = "px-1 font-semibold";
 
 function toggled<T>(list: readonly T[], item: T, on: boolean): T[] {
 	return on

@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
-import { TextLink } from "../../components/ui/text-link";
 import { useT } from "../../i18n";
 import { useMembership } from "../../settings/queries";
 import type { Membership } from "../../settings/source";
 import { PageHeading } from "../../shell/page-heading";
 import { ExportTab } from "./export-tab";
+import { PackTab } from "./pack-tab";
 import { EXPORT_TAB_PATH, PACK_TAB_PATH } from "./paths";
 
 export type ExportsTab = "goi" | "xuat";
@@ -45,19 +45,6 @@ function ExportsTabs({ current }: { current: ExportsTab }) {
 				))}
 			</ul>
 		</nav>
-	);
-}
-
-function PackTabPending() {
-	const t = useT();
-	return (
-		<div
-			className="space-y-2 rounded-xl border border-dashed border-line bg-surface-raised p-5"
-			data-testid="exports-pack-pending"
-		>
-			<p>{t("exports.pack.pending")}</p>
-			<TextLink to={EXPORT_TAB_PATH}>{t("exports.pack.openExport")}</TextLink>
-		</div>
 	);
 }
 
@@ -117,7 +104,7 @@ export function ExportsPage() {
 								{tabTitle}
 							</h2>
 							{tab === "goi" ? (
-								<PackTabPending />
+								<PackTab />
 							) : (
 								<ExportTab personalAllowed={canIncludePersonal(membership)} />
 							)}
