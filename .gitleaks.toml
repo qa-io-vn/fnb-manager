@@ -15,3 +15,9 @@ regexes = [
 	'''0123456789abcdef0123456789abcdef''',
 	'''f{32}''',
 ]
+
+[[allowlists]]
+description = "The synthetic JWT {\"alg\":\"HS256\"}.{\"sub\":\"1\"}.signature that zalo-config tests offer as a refused secret name"
+regexes = [
+	'''^eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiIxIn0\.c2lnbmF0dXJl$''',
+]
