@@ -1,35 +1,17 @@
 import config from "virtual:mini-app-config";
 import {
-	createStandInSessionClient,
-	fromZmpNativeStorage,
+	STAND_IN_NOTICE,
 	STAND_IN_REJECTED_CODE,
 	type StandInScenario,
 } from "@fnb/zalo-mini";
-import { MAX_TABS, MiniApp, shellProblems } from "@fnb/zalo-mini/react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { MAX_TABS, shellProblems } from "@fnb/zalo-mini/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { getAccessToken, nativeStorage } from "zmp-sdk";
 import { routes, standInMember, standInMemberFrom, tabs } from "./app";
-import { catalogs } from "./i18n/catalog";
+import { renderStaffApp } from "./test/render-app";
 
 function renderApp(scenario: StandInScenario, language: "vi" | "en" = "vi") {
-	nativeStorage.clear();
-	const sessionClient = createStandInSessionClient({
-		settings: { scenario, delayMs: 0 },
-		member: standInMember,
-		storage: fromZmpNativeStorage(nativeStorage),
-		getAccessToken: () => getAccessToken(),
-	});
-	return render(
-		<MiniApp
-			language={language}
-			catalogs={catalogs}
-			sessionClient={sessionClient}
-			routes={routes}
-			tabs={tabs}
-			standInHeader={config.app}
-		/>,
-	);
+	return renderStaffApp({ scenario, language });
 }
 
 describe("staff Mini App shell", () => {
@@ -51,27 +33,33 @@ describe("staff Mini App shell", () => {
 		);
 	});
 
-	it("shows the unpaired instructions, refuses a wrong code and links with a good one", async () => {
+	it("shows an unpaired person only the entry screens until a good code pairs them", async () => {
 		renderApp("unpaired");
+		fireEvent.click(await screen.findByRole("button", { name: "Tiếp tục" }));
 		expect(
 			await screen.findByRole("heading", {
-				name: "Tài khoản chưa được liên kết",
+				level: 1,
+				name: STAND_IN_NOTICE.title,
 			}),
 		).toBeInTheDocument();
-		const input = screen.getByLabelText("Mã liên kết");
-		const link = screen.getByRole("button", { name: "Liên kết" });
-		expect(link).toBeDisabled();
+		expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+		fireEvent.click(screen.getByRole("button", { name: "Đồng ý" }));
+		const input = await screen.findByLabelText("Mã ghép nối");
+		const pair = screen.getByRole("button", { name: "Ghép nối" });
+		expect(pair).toBeDisabled();
 		fireEvent.change(input, { target: { value: STAND_IN_REJECTED_CODE } });
-		fireEvent.click(link);
+		fireEvent.click(pair);
 		expect(await screen.findByRole("alert")).toHaveTextContent(
-			"Mã không đúng hoặc đã hết hiệu lực",
+			"Mã không đúng hoặc đã hết hạn",
 		);
+		expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
 		fireEvent.change(input, { target: { value: "12a3456" } });
 		expect(input).toHaveValue("123456");
-		fireEvent.click(screen.getByRole("button", { name: "Liên kết" }));
+		fireEvent.click(screen.getByRole("button", { name: "Ghép nối" }));
 		expect(
 			await screen.findByRole("heading", { name: "Xin chào, Thành viên thử" }),
 		).toBeInTheDocument();
+		expect(screen.getByRole("navigation")).toBeInTheDocument();
 	});
 
 	it("offers one retry action when the connection fails", async () => {
@@ -84,7 +72,7 @@ describe("staff Mini App shell", () => {
 
 	it("opens the first of at most four tabs and shows a plain state on the others", async () => {
 		renderApp("bound");
-		const navigation = screen.getByRole("navigation", {
+		const navigation = await screen.findByRole("navigation", {
 			name: "Điều hướng chính",
 		});
 		const buttons = within(navigation).getAllByRole("button");

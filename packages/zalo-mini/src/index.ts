@@ -39,6 +39,9 @@ export {
 } from "./session/session-store";
 export {
 	createStandInSessionClient,
+	STAND_IN_CONTACT,
+	STAND_IN_LEGAL_DOCUMENTS,
+	STAND_IN_NEW_NOTICE,
 	STAND_IN_NOTICE,
 	STAND_IN_REJECTED_CODE,
 	STAND_IN_SCENARIOS,
@@ -50,10 +53,14 @@ export {
 	standInSettingsFrom,
 } from "./session/stand-in";
 export {
+	LEGAL_DOCUMENT_KINDS,
+	type LegalDocument,
+	type LegalDocumentKind,
 	MEMBER_ROLES,
 	type MemberProfile,
 	type MemberRole,
 	type NoticeAcceptance,
+	type PublishedTexts,
 	type SessionClient,
 	type SessionFailure,
 	type SessionState,
@@ -64,10 +71,13 @@ export {
 } from "./session/types";
 export {
 	BINDING_CODE_PATTERN,
+	CONTACT_MAX_LENGTH,
 	createZaloSessionClient,
 	NOTICE_VERSION_PATTERN,
 	PAIRING_CODE_PATTERN,
 	parseSessionAnswer,
+	parseTextsAnswer,
+	readLegalDocument,
 	readStaffNotice,
 	type SessionAnswer,
 	type ZaloSessionClientOptions,

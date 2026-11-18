@@ -31,9 +31,11 @@ function tabsFor(paths: readonly string[]): MiniAppTab[] {
 
 const pendingClient: SessionClient = {
 	connect: () => new Promise(() => undefined),
+	start: () => new Promise(() => undefined),
 	bind: () => new Promise(() => undefined),
 	pair: () => new Promise(() => undefined),
 	acceptNotice: () => new Promise(() => undefined),
+	texts: () => new Promise(() => undefined),
 	forget: () => undefined,
 };
 

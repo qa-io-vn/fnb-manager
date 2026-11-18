@@ -44,6 +44,19 @@ function Connecting() {
 	);
 }
 
+function Start() {
+	const { t } = useI18n();
+	const { start } = useSession();
+	return (
+		<Section status="new">
+			<p className="text-base text-ink">{t("session.startBody")}</p>
+			<button type="button" className={primaryButton} onClick={start}>
+				{t("session.start")}
+			</button>
+		</Section>
+	);
+}
+
 function SignedIn({ member }: { readonly member: MemberProfile }) {
 	const { t } = useI18n();
 	return (
@@ -189,6 +202,8 @@ function Failed() {
 export function SessionScreen() {
 	const { state } = useSession();
 	switch (state.status) {
+		case "new":
+			return <Start />;
 		case "connecting":
 			return <Connecting />;
 		case "signed-in":

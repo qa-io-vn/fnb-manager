@@ -5,7 +5,10 @@ import {
 	readStoredSession,
 } from "./session-store";
 import {
+	LEGAL_DOCUMENT_KINDS,
+	type LegalDocument,
 	type NoticeAcceptance,
+	type PublishedTexts,
 	type SessionClient,
 	type SessionState,
 	type StaffNotice,
@@ -20,13 +23,19 @@ export type SessionAnswer =
 			readonly notice?: StaffNotice;
 			readonly reason?: UnpairedReason;
 			readonly retryAfterSeconds?: number;
+			readonly contact?: string;
 	  }
-	| { readonly status: "notice-required"; readonly notice: StaffNotice | null }
+	| {
+			readonly status: "notice-required";
+			readonly notice: StaffNotice | null;
+			readonly contact?: string;
+	  }
 	| { readonly status: "bound"; readonly session: StoredSession };
 
 export const BINDING_CODE_PATTERN = /^\d{6}$/;
 export const PAIRING_CODE_PATTERN = BINDING_CODE_PATTERN;
 export const NOTICE_VERSION_PATTERN = /^[a-z0-9][a-z0-9.-]{0,39}$/;
+export const CONTACT_MAX_LENGTH = 1000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -48,10 +57,60 @@ export function readStaffNotice(value: unknown): StaffNotice | null {
 	};
 }
 
+function readContact(value: unknown): string | undefined | null {
+	if (value === undefined || value === null) return undefined;
+	if (typeof value !== "string") return null;
+	const contact = value.trim();
+	if ([...contact].length > CONTACT_MAX_LENGTH) return null;
+	return contact === "" ? undefined : contact;
+}
+
+export function readLegalDocument(value: unknown): LegalDocument | null {
+	if (!isRecord(value)) return null;
+	const { kind, language, version, title, body_markdown, published_at } = value;
+	const known = LEGAL_DOCUMENT_KINDS.find((name) => name === kind);
+	if (known === undefined) return null;
+	if (language !== "vi" && language !== "en") return null;
+	if (typeof version !== "string" || !NOTICE_VERSION_PATTERN.test(version))
+		return null;
+	if (typeof title !== "string" || title.trim() === "") return null;
+	if (typeof body_markdown !== "string") return null;
+	if (typeof published_at !== "string" || published_at === "") return null;
+	return {
+		kind: known,
+		language,
+		version,
+		title,
+		bodyMarkdown: body_markdown,
+		publishedAt: published_at,
+	};
+}
+
+export function parseTextsAnswer(value: unknown): PublishedTexts | null {
+	if (!isRecord(value) || value.status !== "texts") return null;
+	if (!Array.isArray(value.documents)) return null;
+	const documents: LegalDocument[] = [];
+	for (const row of value.documents) {
+		if (
+			isRecord(row) &&
+			!LEGAL_DOCUMENT_KINDS.some((name) => name === row.kind)
+		)
+			continue;
+		const document = readLegalDocument(row);
+		if (document === null) return null;
+		documents.push(document);
+	}
+	const contact = readContact(value.contact);
+	if (contact === null) return null;
+	return { documents, contact: contact ?? null };
+}
+
 function readUnpaired(value: Record<string, unknown>): SessionAnswer | null {
 	const notice =
 		value.notice === undefined ? undefined : readStaffNotice(value.notice);
 	if (notice === null) return null;
+	const contact = readContact(value.contact);
+	if (contact === null) return null;
 	const reason = UNPAIRED_REASONS.find((name) => name === value.reason);
 	if (value.reason !== undefined && reason === undefined) return null;
 	const retryAfter = value.retry_after;
@@ -67,6 +126,7 @@ function readUnpaired(value: Record<string, unknown>): SessionAnswer | null {
 		...(notice === undefined ? {} : { notice }),
 		...(reason === undefined ? {} : { reason }),
 		...(retryAfter === undefined ? {} : { retryAfterSeconds: retryAfter }),
+		...(contact === undefined ? {} : { contact }),
 	};
 }
 
@@ -74,10 +134,15 @@ export function parseSessionAnswer(value: unknown): SessionAnswer | null {
 	if (!isRecord(value)) return null;
 	if (value.status === "unpaired") return readUnpaired(value);
 	if (value.status === "notice_required") {
+		const contact = readContact(value.contact);
+		if (contact === null) return null;
+		const withContact = contact === undefined ? {} : { contact };
 		if (value.notice === undefined || value.notice === null)
-			return { status: "notice-required", notice: null };
+			return { status: "notice-required", notice: null, ...withContact };
 		const notice = readStaffNotice(value.notice);
-		return notice ? { status: "notice-required", notice } : null;
+		return notice
+			? { status: "notice-required", notice, ...withContact }
+			: null;
 	}
 	if (value.status !== "bound" || !isRecord(value.member)) return null;
 	const session = readStoredSession({
@@ -104,6 +169,7 @@ export interface ZaloSessionClientOptions {
 	readonly getAccessToken: () => Promise<string>;
 	readonly fetch?: typeof fetch;
 	readonly now?: () => number;
+	readonly onboarding?: boolean;
 }
 
 interface SessionStep {
@@ -195,6 +261,7 @@ export function createZaloSessionClient(
 				...(answer.retryAfterSeconds === undefined
 					? {}
 					: { retryAfterSeconds: answer.retryAfterSeconds }),
+				...(answer.contact === undefined ? {} : { contact: answer.contact }),
 			};
 		}
 		if (answer.status === "notice-required") {
@@ -206,19 +273,46 @@ export function createZaloSessionClient(
 	}
 
 	let connecting: Promise<SessionState> | null = null;
+	let started = options.onboarding !== true;
+
+	async function connect(): Promise<SessionState> {
+		const stored = store.read();
+		if (stored && isSessionFresh(stored, now())) {
+			return { status: "signed-in", session: stored };
+		}
+		if (stored === null && !started) return { status: "new" };
+		if (connecting === null) {
+			connecting = mint({}).finally(() => {
+				connecting = null;
+			});
+		}
+		return connecting;
+	}
 
 	return {
-		async connect() {
-			const stored = store.read();
-			if (stored && isSessionFresh(stored, now())) {
-				return { status: "signed-in", session: stored };
-			}
-			if (connecting === null) {
-				connecting = mint({}).finally(() => {
-					connecting = null;
+		connect,
+		async start() {
+			started = true;
+			return connect();
+		},
+		async texts() {
+			try {
+				const response = await send(options.endpoint, {
+					method: "POST",
+					headers: {
+						"content-type": "application/json",
+						apikey: options.publishableKey,
+					},
+					body: JSON.stringify({ brand: options.brandKey, texts: true }),
 				});
+				if (!response.ok) {
+					await response.body?.cancel();
+					return null;
+				}
+				return parseTextsAnswer(await response.json());
+			} catch {
+				return null;
 			}
-			return connecting;
 		},
 		async bind(code) {
 			if (!BINDING_CODE_PATTERN.test(code)) {

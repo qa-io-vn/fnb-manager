@@ -20,12 +20,20 @@ export { I18nProvider, type I18nProviderProps, useI18n } from "./i18n";
 export {
 	MAX_TABS,
 	MiniApp,
+	type MiniAppGate,
 	type MiniAppProps,
 	type MiniAppRoute,
 	type MiniAppTab,
 	PlainState,
 	shellProblems,
 } from "./mini-app-shell";
+export {
+	Popup,
+	type PopupProps,
+	RESULT_MODAL_MS,
+	ResultModal,
+	type ResultModalProps,
+} from "./popup";
 export {
 	SessionProvider,
 	type SessionProviderProps,

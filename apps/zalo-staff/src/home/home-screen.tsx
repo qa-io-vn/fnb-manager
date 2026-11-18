@@ -10,7 +10,14 @@ import {
 	useI18n,
 	useSession,
 } from "@fnb/zalo-mini/react";
-import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
+import {
+	type ReactNode,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { createHomeFormatters, type HomeFormatters } from "./format";
 import { type HomeCard, type HoursToday, homeCards } from "./model";
 import { createSampleHomeSource, sampleSettingsFrom } from "./sample";
@@ -48,6 +55,7 @@ export function homeSourceFor(
 }
 
 const UNAUTHORIZED = 401;
+const FORBIDDEN = 403;
 
 const primaryButton =
 	"min-h-11 w-full rounded-xl bg-accent px-4 text-base font-semibold text-accent-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
@@ -555,7 +563,7 @@ function SignedInHome({
 	readonly sourceFor: HomeSourceFactory;
 }) {
 	const { t } = useI18n();
-	const { retry } = useSession();
+	const { retry, expire } = useSession();
 	const endpoint = useDataEndpoint();
 	const headingId = useId();
 	const member = session.member;
@@ -572,13 +580,15 @@ function SignedInHome({
 		[member],
 	);
 	const { load, reload } = useHomeData(source, query);
-	const expired =
-		load.status === "failed" &&
-		load.httpStatus === UNAUTHORIZED &&
-		!isSessionFresh(session, Date.now());
+	const handled = useRef<unknown>(null);
 	useEffect(() => {
-		if (expired) retry();
-	}, [expired, retry]);
+		if (load.status !== "failed" || handled.current === load) return;
+		if (load.httpStatus !== UNAUTHORIZED && load.httpStatus !== FORBIDDEN)
+			return;
+		handled.current = load;
+		if (isSessionFresh(session, Date.now())) expire();
+		else retry();
+	}, [load, session, retry, expire]);
 	return (
 		<section
 			aria-labelledby={headingId}

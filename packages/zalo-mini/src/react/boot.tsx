@@ -12,7 +12,12 @@ import {
 import type { MemberProfile, SessionClient } from "../session/types";
 import { createZaloSessionClient } from "../session/zalo-session-client";
 import { fromZmpNativeStorage } from "../storage/native-storage";
-import { MiniApp, type MiniAppRoute, type MiniAppTab } from "./mini-app-shell";
+import {
+	MiniApp,
+	type MiniAppGate,
+	type MiniAppRoute,
+	type MiniAppTab,
+} from "./mini-app-shell";
 
 export const MINI_APP_ROOT_ID = "app";
 
@@ -26,6 +31,7 @@ export interface MiniAppEnvironment {
 export function miniAppEnvironment(
 	config: MiniAppBuildConfig,
 	standInMember: MemberProfile,
+	onboarding = false,
 ): MiniAppEnvironment {
 	const storage = fromZmpNativeStorage(nativeStorage);
 	const language = languageFrom(getSystemInfo().zaloLanguage);
@@ -50,6 +56,7 @@ export function miniAppEnvironment(
 				publishableKey,
 				storage,
 				getAccessToken: () => getAccessToken(),
+				onboarding,
 			}),
 		};
 	}
@@ -64,6 +71,7 @@ export function miniAppEnvironment(
 				publishableKey,
 				storage,
 				getAccessToken: () => getAccessToken(),
+				onboarding,
 			}),
 		};
 	}
@@ -76,6 +84,7 @@ export function miniAppEnvironment(
 			member: standInMember,
 			storage,
 			getAccessToken: () => getAccessToken(),
+			onboarding,
 		}),
 	};
 }
@@ -86,13 +95,19 @@ export interface BootOptions {
 	readonly routes: readonly MiniAppRoute[];
 	readonly tabs: readonly MiniAppTab[];
 	readonly standInMember: MemberProfile;
+	readonly onboarding?: boolean;
+	readonly gate?: MiniAppGate;
 }
 
 export function bootMiniApp(options: BootOptions): void {
 	const container = document.getElementById(MINI_APP_ROOT_ID);
 	if (!container)
 		throw new Error(`the page needs <div id="${MINI_APP_ROOT_ID}">`);
-	const environment = miniAppEnvironment(options.config, options.standInMember);
+	const environment = miniAppEnvironment(
+		options.config,
+		options.standInMember,
+		options.onboarding === true,
+	);
 	document.title = options.config.app.title;
 	createRoot(container).render(
 		<StrictMode>
@@ -106,6 +121,7 @@ export function bootMiniApp(options: BootOptions): void {
 					environment.runtime === "browser" ? options.config.app : null
 				}
 				dataEndpoint={environment.dataEndpoint}
+				{...(options.gate === undefined ? {} : { gate: options.gate })}
 			/>
 		</StrictMode>,
 	);

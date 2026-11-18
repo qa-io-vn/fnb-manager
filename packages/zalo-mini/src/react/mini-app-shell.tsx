@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect } from "react";
+import { type ComponentType, type ReactNode, useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { App, BottomNavigation, ZMPRouter } from "zmp-ui";
 import type { AppConfigApp } from "../app-config/index";
@@ -16,6 +16,8 @@ export interface MiniAppRoute {
 	readonly path: string;
 	readonly element: ReactNode;
 }
+
+export type MiniAppGate = ComponentType<{ readonly children: ReactNode }>;
 
 export interface MiniAppTab {
 	readonly path: string;
@@ -72,11 +74,13 @@ function Frame({
 	tabs,
 	standInHeader,
 	scheme,
+	gate: Gate,
 }: {
 	readonly routes: readonly MiniAppRoute[];
 	readonly tabs: readonly MiniAppTab[];
 	readonly standInHeader: AppConfigApp | null;
 	readonly scheme: ColorScheme;
+	readonly gate: MiniAppGate | undefined;
 }) {
 	const { t } = useI18n();
 	const location = useLocation();
@@ -85,11 +89,8 @@ function Frame({
 		tabs.find((tab) => tab.path === location.pathname)?.path ??
 		tabs[0]?.path ??
 		"/";
-	return (
-		<div className="flex min-h-dvh flex-col bg-surface text-ink">
-			{standInHeader ? (
-				<StandInHeader app={standInHeader} scheme={scheme} />
-			) : null}
+	const body = (
+		<>
 			<main
 				className={
 					tabs.length > 0
@@ -121,6 +122,14 @@ function Frame({
 					</BottomNavigation>
 				</nav>
 			) : null}
+		</>
+	);
+	return (
+		<div className="flex min-h-dvh flex-col bg-surface text-ink">
+			{standInHeader ? (
+				<StandInHeader app={standInHeader} scheme={scheme} />
+			) : null}
+			{Gate ? <Gate>{body}</Gate> : body}
 		</div>
 	);
 }
@@ -133,6 +142,7 @@ export interface MiniAppProps {
 	readonly tabs: readonly MiniAppTab[];
 	readonly standInHeader: AppConfigApp | null;
 	readonly dataEndpoint?: DataEndpoint;
+	readonly gate?: MiniAppGate;
 }
 
 export function MiniApp({
@@ -143,6 +153,7 @@ export function MiniApp({
 	tabs,
 	standInHeader,
 	dataEndpoint = STAND_IN_DATA,
+	gate,
 }: MiniAppProps) {
 	const scheme = useColorScheme();
 	useEffect(() => {
@@ -161,6 +172,7 @@ export function MiniApp({
 								tabs={tabs}
 								standInHeader={standInHeader}
 								scheme={scheme}
+								gate={gate}
 							/>
 						</ZMPRouter>
 					</App>

@@ -7,6 +7,7 @@ import {
 } from "../../src/session/session-store";
 import {
 	createStandInSessionClient,
+	STAND_IN_CONTACT,
 	STAND_IN_NOTICE,
 	STAND_IN_REJECTED_CODE,
 	STAND_IN_WAIT_CODE,
@@ -301,11 +302,13 @@ describe("stand-in session", () => {
 			status: "unpaired",
 			codeRejected: false,
 			notice: STAND_IN_NOTICE,
+			contact: STAND_IN_CONTACT,
 		});
 		expect(await standIn.bind(STAND_IN_REJECTED_CODE)).toEqual({
 			status: "unpaired",
 			codeRejected: true,
 			notice: STAND_IN_NOTICE,
+			contact: STAND_IN_CONTACT,
 		});
 		const bound = await standIn.bind("123456");
 		expect(bound.status === "signed-in" && bound.session.member).toEqual(
@@ -538,6 +541,7 @@ describe("the stand-in pairing step", () => {
 		expect(await client.connect()).toEqual({
 			status: "notice-required",
 			notice: STAND_IN_NOTICE,
+			contact: STAND_IN_CONTACT,
 		});
 		expect((await client.acceptNotice(accepted)).status).toBe("signed-in");
 		expect((await client.connect()).status).toBe("signed-in");

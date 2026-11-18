@@ -17,4 +17,12 @@ describe("staff catalogues", () => {
 			empty: [],
 		});
 	});
+
+	it("use the registry's spelling: hóa, hủy and tùy", () => {
+		const older = Object.entries(catalogs.vi).filter(([, message]) =>
+			/(hoá|huỷ|tuỳ)/i.test(message.normalize("NFC")),
+		);
+		expect(older).toEqual([]);
+		expect(catalogs.vi["profile.withdraw.cancel"]).toBe("Hủy");
+	});
 });

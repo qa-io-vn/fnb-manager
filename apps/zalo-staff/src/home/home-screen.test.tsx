@@ -377,6 +377,27 @@ describe("the staff home's loading and errors", () => {
 		);
 	});
 
+	it("drop a fresh session the API refuses, as after a deactivation, instead of an error", async () => {
+		let forgets = 0;
+		renderHome({
+			client: (client) => ({
+				...client,
+				forget: () => {
+					forgets += 1;
+					client.forget();
+				},
+			}),
+			source: { load: () => Promise.reject(new RestError(403)) },
+		});
+		expect(
+			await screen.findByRole("heading", {
+				name: "Tài khoản chưa được liên kết",
+			}),
+		).toBeInTheDocument();
+		expect(forgets).toBe(1);
+		expect(screen.queryByRole("button", { name: "Thử lại" })).toBeNull();
+	});
+
 	it("sign in again when the API refuses an expired session", async () => {
 		const good = fixedSource();
 		let connects = 0;

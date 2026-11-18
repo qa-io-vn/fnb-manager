@@ -9,6 +9,7 @@ import {
 } from "react";
 import type {
 	NoticeAcceptance,
+	PublishedTexts,
 	SessionClient,
 	SessionState,
 } from "../session/types";
@@ -17,9 +18,12 @@ interface SessionValue {
 	readonly state: SessionState;
 	readonly busy: boolean;
 	retry(): void;
+	start(): void;
+	expire(): void;
 	bind(code: string): void;
 	pair(code: string, acceptance: NoticeAcceptance): void;
 	acceptNotice(acceptance: NoticeAcceptance): void;
+	texts(): Promise<PublishedTexts | null>;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -48,6 +52,17 @@ export function SessionProvider({ client, children }: SessionProviderProps) {
 		client.connect().then(setState);
 	}, [client]);
 
+	const start = useCallback(() => {
+		setState({ status: "connecting" });
+		client.start().then(setState);
+	}, [client]);
+
+	const expire = useCallback(() => {
+		client.forget();
+		setState({ status: "connecting" });
+		client.start().then(setState);
+	}, [client]);
+
 	const run = useCallback((step: Promise<SessionState>) => {
 		setBusy(true);
 		step.then((next) => {
@@ -72,9 +87,21 @@ export function SessionProvider({ client, children }: SessionProviderProps) {
 		[client, run],
 	);
 
+	const texts = useCallback(() => client.texts(), [client]);
+
 	const value = useMemo(
-		() => ({ state, busy, retry, bind, pair, acceptNotice }),
-		[state, busy, retry, bind, pair, acceptNotice],
+		() => ({
+			state,
+			busy,
+			retry,
+			start,
+			expire,
+			bind,
+			pair,
+			acceptNotice,
+			texts,
+		}),
+		[state, busy, retry, start, expire, bind, pair, acceptNotice, texts],
 	);
 	return (
 		<SessionContext.Provider value={value}>{children}</SessionContext.Provider>

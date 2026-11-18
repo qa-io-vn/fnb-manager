@@ -19,11 +19,14 @@
 	"session.noticeAccept": "Đồng ý",
 	"session.noticeAccepting": "Đang ghi nhận…",
 	"session.noticeUnavailable": "Chưa có thông báo cho nhân viên. Hãy liên hệ quản lý cửa hàng.",
+	"session.start": "Tiếp tục",
+	"session.startBody": "Ứng dụng dùng tài khoản Zalo của bạn để nhận ra bạn.",
 	"role.owner": "Chủ cửa hàng",
 	"role.manager": "Quản lý",
 	"role.staff": "Nhân viên",
 	"role.viewer": "Người xem",
 	"role.publisher": "Người đăng bài",
 	"shell.mainNavigation": "Điều hướng chính",
-	"shell.plainState": "Chưa có nội dung ở mục này."
+	"shell.plainState": "Chưa có nội dung ở mục này.",
+	"popup.close": "Đóng"
 }

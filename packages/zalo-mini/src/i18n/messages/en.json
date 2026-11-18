@@ -19,11 +19,14 @@
 	"session.noticeAccept": "Agree",
 	"session.noticeAccepting": "Recording…",
 	"session.noticeUnavailable": "There is no staff notice yet. Please contact the store manager.",
+	"session.start": "Continue",
+	"session.startBody": "The app uses your Zalo account to recognise you.",
 	"role.owner": "Owner",
 	"role.manager": "Manager",
 	"role.staff": "Staff",
 	"role.viewer": "Viewer",
 	"role.publisher": "Publisher",
 	"shell.mainNavigation": "Main navigation",
-	"shell.plainState": "Nothing here yet."
+	"shell.plainState": "Nothing here yet.",
+	"popup.close": "Close"
 }

@@ -1,6 +1,6 @@
 import config from "virtual:mini-app-config";
 import { bootMiniApp } from "@fnb/zalo-mini/react";
-import { routes, standInMemberFrom, tabs } from "./app";
+import { EntryGate, routes, standInMemberFrom, tabs } from "./app";
 import { catalogs } from "./i18n/catalog";
 import "./styles.css";
 
@@ -10,4 +10,6 @@ bootMiniApp({
 	routes,
 	tabs,
 	standInMember: standInMemberFrom(window.location.search),
+	onboarding: true,
+	gate: EntryGate,
 });

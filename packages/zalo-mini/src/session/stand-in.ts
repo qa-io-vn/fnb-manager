@@ -1,5 +1,10 @@
 import type { NativeStorage } from "../storage/native-storage";
-import type { MemberProfile, SessionClient, StaffNotice } from "./types";
+import type {
+	LegalDocument,
+	MemberProfile,
+	SessionClient,
+	StaffNotice,
+} from "./types";
 import { createZaloSessionClient } from "./zalo-session-client";
 
 export const STAND_IN_SCENARIOS = [
@@ -20,10 +25,60 @@ export const STAND_IN_NOTICE: StaffNotice = {
 	bodyMarkdown: "Văn bản giữ chỗ của bản thử, không phải văn bản pháp lý.",
 	publishedAt: "2026-11-01T00:00:00+00:00",
 };
+export const STAND_IN_NEW_NOTICE: StaffNotice = {
+	version: "stand-in-notice-2",
+	title: "Thông báo cho nhân viên (bản thử, phiên bản mới)",
+	bodyMarkdown:
+		"Phiên bản mới của văn bản giữ chỗ, không phải văn bản pháp lý.",
+	publishedAt: "2026-11-02T00:00:00+00:00",
+};
+export const STAND_IN_CONTACT =
+	"Văn bản liên hệ giữ chỗ của bản thử: hãy hỏi quản lý cửa hàng tại quầy.";
+
+const STAND_IN_PUBLISHED_AT = "2026-11-01T00:00:00+00:00";
+const STAND_IN_BODY_VI =
+	"Văn bản giữ chỗ của bản thử, không phải văn bản pháp lý.";
+const STAND_IN_BODY_EN = "Placeholder text of the stand-in, not a legal text.";
+
+export const STAND_IN_LEGAL_DOCUMENTS: readonly LegalDocument[] = [
+	{
+		kind: "privacy_notice",
+		language: "vi",
+		version: "stand-in-privacy-1",
+		title: "Chính sách quyền riêng tư (bản thử)",
+		bodyMarkdown: STAND_IN_BODY_VI,
+		publishedAt: STAND_IN_PUBLISHED_AT,
+	},
+	{
+		kind: "privacy_notice",
+		language: "en",
+		version: "stand-in-privacy-1",
+		title: "Privacy notice (stand-in)",
+		bodyMarkdown: STAND_IN_BODY_EN,
+		publishedAt: STAND_IN_PUBLISHED_AT,
+	},
+	{
+		kind: "mini_app_terms",
+		language: "vi",
+		version: "stand-in-terms-1",
+		title: "Điều khoản sử dụng (bản thử)",
+		bodyMarkdown: STAND_IN_BODY_VI,
+		publishedAt: STAND_IN_PUBLISHED_AT,
+	},
+	{
+		kind: "mini_app_terms",
+		language: "en",
+		version: "stand-in-terms-1",
+		title: "Terms of use (stand-in)",
+		bodyMarkdown: STAND_IN_BODY_EN,
+		publishedAt: STAND_IN_PUBLISHED_AT,
+	},
+];
 
 export interface StandInSettings {
 	readonly scenario: StandInScenario;
 	readonly delayMs: number;
+	readonly noticeChange?: boolean;
 }
 
 const MAX_STAND_IN_DELAY_MS = 10_000;
@@ -38,7 +93,11 @@ export function standInSettingsFrom(search: string): StandInSettings {
 		Number.isInteger(delay) && delay > 0
 			? Math.min(delay, MAX_STAND_IN_DELAY_MS)
 			: 0;
-	return { scenario: scenario ?? "bound", delayMs };
+	return {
+		scenario: scenario ?? "bound",
+		delayMs,
+		...(params.get("notice") === "changed" ? { noticeChange: true } : {}),
+	};
 }
 
 export interface StandInSessionOptions {
@@ -47,9 +106,11 @@ export interface StandInSessionOptions {
 	readonly storage: NativeStorage;
 	readonly getAccessToken: () => Promise<string>;
 	readonly now?: () => number;
+	readonly onboarding?: boolean;
 }
 
 interface StandInRequest {
+	readonly texts: boolean;
 	readonly bindingCode: string | null;
 	readonly pairingCode: string | null;
 	readonly noticeVersion: string | null;
@@ -68,10 +129,16 @@ function requestOf(init: RequestInit | undefined): StandInRequest {
 	const body: unknown =
 		typeof init?.body === "string" ? JSON.parse(init.body) : null;
 	if (typeof body !== "object" || body === null) {
-		return { bindingCode: null, pairingCode: null, noticeVersion: null };
+		return {
+			texts: false,
+			bindingCode: null,
+			pairingCode: null,
+			noticeVersion: null,
+		};
 	}
 	const notice = (body as Record<string, unknown>).notice;
 	return {
+		texts: (body as Record<string, unknown>).texts === true,
 		bindingCode: textField(body, "binding_code"),
 		pairingCode: textField(body, "pairing_code"),
 		noticeVersion:
@@ -81,33 +148,50 @@ function requestOf(init: RequestInit | undefined): StandInRequest {
 	};
 }
 
-const noticeAnswer = {
-	version: STAND_IN_NOTICE.version,
-	title: STAND_IN_NOTICE.title,
-	body_markdown: STAND_IN_NOTICE.bodyMarkdown,
-	published_at: STAND_IN_NOTICE.publishedAt,
-};
-
-function unpaired(
-	reason?: string,
-	retryAfter?: number,
-): Record<string, unknown> {
+function noticeAnswer(notice: StaffNotice): Record<string, unknown> {
 	return {
-		status: "unpaired",
-		...(reason === undefined ? {} : { reason }),
-		...(retryAfter === undefined ? {} : { retry_after: retryAfter }),
-		notice: noticeAnswer,
+		version: notice.version,
+		title: notice.title,
+		body_markdown: notice.bodyMarkdown,
+		published_at: notice.publishedAt,
 	};
 }
+
+const textsAnswer = {
+	status: "texts",
+	documents: STAND_IN_LEGAL_DOCUMENTS.map((document) => ({
+		kind: document.kind,
+		language: document.language,
+		version: document.version,
+		title: document.title,
+		body_markdown: document.bodyMarkdown,
+		published_at: document.publishedAt,
+	})),
+	contact: STAND_IN_CONTACT,
+};
 
 export function createStandInSessionClient(
 	options: StandInSessionOptions,
 ): SessionClient {
 	const now = options.now ?? Date.now;
-	let bound =
-		options.settings.scenario === "bound" ||
-		options.settings.scenario === "notice";
-	let noticeAccepted = options.settings.scenario !== "notice";
+	const scenario = options.settings.scenario;
+	let bound = scenario === "bound" || scenario === "notice";
+	let noticeAccepted = scenario !== "notice";
+	let notice = STAND_IN_NOTICE;
+	let noticeChangePending = options.settings.noticeChange === true;
+
+	function unpaired(
+		reason?: string,
+		retryAfter?: number,
+	): Record<string, unknown> {
+		return {
+			status: "unpaired",
+			...(reason === undefined ? {} : { reason }),
+			...(retryAfter === undefined ? {} : { retry_after: retryAfter }),
+			notice: noticeAnswer(notice),
+			contact: STAND_IN_CONTACT,
+		};
+	}
 
 	function boundAnswer(): Record<string, unknown> {
 		return {
@@ -127,15 +211,25 @@ export function createStandInSessionClient(
 	}
 
 	function answerTo(request: StandInRequest): Record<string, unknown> {
-		const accepted = request.noticeVersion === STAND_IN_NOTICE.version;
+		if (request.texts) return textsAnswer;
+		const accepted = request.noticeVersion === notice.version;
 		if (bound) {
 			if (!noticeAccepted && !accepted) {
-				return { status: "notice_required", notice: noticeAnswer };
+				return {
+					status: "notice_required",
+					notice: noticeAnswer(notice),
+					contact: STAND_IN_CONTACT,
+				};
 			}
 			noticeAccepted = true;
 			return boundAnswer();
 		}
 		if (request.pairingCode !== null) {
+			if (accepted && noticeChangePending) {
+				noticeChangePending = false;
+				notice = STAND_IN_NEW_NOTICE;
+				return unpaired("notice_outdated");
+			}
 			if (!accepted) return unpaired("notice_outdated");
 			if (request.pairingCode === STAND_IN_WAIT_CODE)
 				return unpaired("wait", STAND_IN_WAIT_SECONDS);
@@ -157,7 +251,7 @@ export function createStandInSessionClient(
 
 	const standInFetch: typeof fetch = async (_input, init) => {
 		if (options.settings.delayMs > 0) await wait(options.settings.delayMs);
-		if (options.settings.scenario === "failed") {
+		if (scenario === "failed") {
 			throw new TypeError("stand-in network failure");
 		}
 		return new Response(JSON.stringify(answerTo(requestOf(init))), {
@@ -165,7 +259,7 @@ export function createStandInSessionClient(
 			headers: { "content-type": "application/json" },
 		});
 	};
-	return createZaloSessionClient({
+	const client = createZaloSessionClient({
 		endpoint: "stand-in:zalo-session",
 		brandKey: "stand-in",
 		publishableKey: "stand-in",
@@ -173,5 +267,14 @@ export function createStandInSessionClient(
 		getAccessToken: options.getAccessToken,
 		fetch: standInFetch,
 		now,
+		onboarding: options.onboarding === true && scenario === "unpaired",
 	});
+	return {
+		...client,
+		forget() {
+			bound = false;
+			noticeAccepted = false;
+			client.forget();
+		},
+	};
 }

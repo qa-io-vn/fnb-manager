@@ -18,8 +18,11 @@ import {
 	ROLE_LABELS,
 	withoutKey,
 } from "./local-loop";
+import { createPairingFixture, localDatabaseUrl } from "./pairing-fixture";
+import { pairingSummary, pairOnTheLocalStack } from "./pairing-flow";
 
 const LAN_PORT = portOf(5766);
+const LAN_PAIRING_PORT = portOf(5768);
 const TUNNEL_PORT = portOf(5767);
 const WRONG_KEY = "w".repeat(43);
 const OUTSIDE = "203.0.113.9";
@@ -86,6 +89,7 @@ async function signsIn(page: Page, ready: Ready, secure: boolean) {
 			response.request().method() === "POST",
 	);
 	await page.goto(ready.phoneUrl ?? "");
+	await page.getByRole("button", { name: "Tiếp tục" }).click();
 	const answer = await session;
 	expect(answer.status()).toBe(200);
 	const bound = await answer.json();
@@ -206,4 +210,57 @@ test("pnpm zalo:dev --tunnel serves the staff app on a public https link, only w
 			)
 			.not.toBe(403);
 	});
+});
+
+test("pnpm zalo:dev --lan lets an iPhone pair with a real code, on a zalo-it- fixture tenant", async ({
+	page,
+	browserName,
+}) => {
+	test.skip(!(await localStackRuns()) || localDatabaseUrl() === "", STACK_SKIP);
+	const fixture = await createPairingFixture();
+	try {
+		const ready = await loop.start([
+			"--lan",
+			"--tenant",
+			fixture.slug,
+			"--brand",
+			fixture.brandKey,
+			"--member",
+			fixture.ownerEmail,
+			"--mock-user",
+			fixture.mockUser,
+			"--mock-name",
+			fixture.mockName,
+			"--port",
+			LAN_PAIRING_PORT,
+		]);
+		test.skip(ready.phoneUrl === null, "this PC has no LAN IPv4 address");
+		await keyless(async () => {
+			expect(browserName).toBe("webkit");
+			expect(await fixture.unbindMockUser()).toBe(1);
+			await watchMiniAppPage(page);
+			const run = await pairOnTheLocalStack(
+				page,
+				fixture,
+				ready.phoneUrl ?? "",
+				ready.appUrl,
+			);
+			test.info().annotations.push({
+				type: "pairing",
+				description: pairingSummary(run),
+			});
+			expect(run.sessionCallsBeforeContinue).toBe(0);
+			expect(run.answers).toEqual([
+				"unpaired",
+				"unpaired:code_refused",
+				"unpaired:notice_outdated",
+				"bound",
+				"unpaired",
+			]);
+			expect(await loop.stop()).toBe(0);
+		});
+	} finally {
+		await loop.dispose();
+		await fixture.cleanup();
+	}
 });

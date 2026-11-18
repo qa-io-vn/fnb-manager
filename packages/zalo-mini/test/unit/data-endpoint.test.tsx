@@ -14,9 +14,11 @@ import type { SessionClient } from "../../src/session/types";
 
 const pendingClient: SessionClient = {
 	connect: () => new Promise(() => undefined),
+	start: () => new Promise(() => undefined),
 	bind: () => new Promise(() => undefined),
 	pair: () => new Promise(() => undefined),
 	acceptNotice: () => new Promise(() => undefined),
+	texts: () => new Promise(() => undefined),
 	forget: () => undefined,
 };
 

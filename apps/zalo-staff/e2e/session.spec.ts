@@ -25,21 +25,25 @@ test("a bound member sees Đang kết nối…, then the name, role and stores",
 	await checkMiniAppScreen(page);
 });
 
-test("an unpaired member sees the instructions and links with a code", async ({
+test("an unpaired person sees only the entry screens and pairs with a code", async ({
 	page,
 }) => {
 	await page.goto("./?session=unpaired");
 	await expect(
-		page.getByRole("heading", { name: "Tài khoản chưa được liên kết" }),
+		page.getByRole("heading", { name: "Ứng dụng nội bộ cho nhân viên" }),
 	).toBeVisible();
+	await expect(page.getByRole("navigation")).toHaveCount(0);
 	await checkMiniAppScreen(page);
-	const code = page.getByLabel("Mã liên kết");
+	await page.getByRole("button", { name: "Tiếp tục" }).click();
+	await page.getByRole("button", { name: "Đồng ý" }).click();
+	const code = page.getByLabel("Mã ghép nối");
 	await code.fill("000000");
-	await page.getByRole("button", { name: "Liên kết" }).click();
+	await page.getByRole("button", { name: "Ghép nối" }).click();
 	await expect(page.getByRole("alert")).toContainText("Mã không đúng");
+	await expect(page.getByRole("navigation")).toHaveCount(0);
 	await checkMiniAppScreen(page);
 	await code.fill("123456");
-	await page.getByRole("button", { name: "Liên kết" }).click();
+	await page.getByRole("button", { name: "Ghép nối" }).click();
 	await expect(
 		page.getByRole("heading", { name: "Xin chào, Thành viên thử" }),
 	).toBeVisible();
@@ -69,11 +73,14 @@ test("the first of four tabs opens first and the others show a plain state", asy
 	await expect(
 		page.getByRole("heading", { name: "Xin chào, Thành viên thử" }),
 	).toBeVisible();
-	for (const tab of ["Ca làm", "Thông báo", "Cá nhân"]) {
+	for (const tab of ["Ca làm", "Thông báo"]) {
 		await navigation.getByRole("button", { name: tab }).click();
 		await expect(page.getByTestId("plain-state")).toBeVisible();
 		await checkMiniAppScreen(page);
 	}
+	await navigation.getByRole("button", { name: "Cá nhân" }).click();
+	await expect(page.getByTestId("profile")).toBeVisible();
+	await checkMiniAppScreen(page);
 });
 
 test("English follows Zalo's language", async ({ page }) => {

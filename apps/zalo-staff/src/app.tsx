@@ -6,12 +6,15 @@ import {
 } from "@fnb/zalo-mini/react";
 import { HomeScreen } from "./home/home-screen";
 import { HomeIcon, NoticeIcon, ProfileIcon, ShiftIcon } from "./icons";
+import { ProfileScreen } from "./profile/profile-screen";
+
+export { EntryGate } from "./onboarding/entry-gate";
 
 export const routes: readonly MiniAppRoute[] = [
 	{ path: "/", element: <HomeScreen /> },
 	{ path: "/ca-lam", element: <PlainState /> },
 	{ path: "/thong-bao", element: <PlainState /> },
-	{ path: "/ca-nhan", element: <PlainState /> },
+	{ path: "/ca-nhan", element: <ProfileScreen /> },
 ];
 
 export const tabs: readonly MiniAppTab[] = [
@@ -25,6 +28,7 @@ export const standInMember: MemberProfile = {
 	displayName: "Thành viên thử",
 	role: "manager",
 	stores: ["Cửa hàng Mẫu 1", "Cửa hàng Mẫu 2"],
+	tenantId: "stand-in-tenant",
 };
 
 export const STAND_IN_ROLES = ["owner", "manager", "staff"] as const;
