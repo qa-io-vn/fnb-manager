@@ -189,7 +189,9 @@ export function createSnapshotReplay(
 	};
 
 	return async (input, init) => {
-		init?.signal?.throwIfAborted();
+		const signal = (init as { signal?: AbortSignal | null } | undefined)
+			?.signal;
+		signal?.throwIfAborted();
 		const request = describeSnapshotRequest(input, init);
 		return jsonResponse(await answer(request));
 	};
