@@ -6,6 +6,7 @@ import type { BuiltPack } from "../../src/pack/build.js";
 import { canonicalJson } from "../../src/pack/canonical.js";
 import { TOKEN_LIMIT } from "../../src/pack/estimate.js";
 import { parsePack } from "../../src/pack/invariants.js";
+import { strategyPrompt } from "../../src/prompt/prompt.js";
 import {
 	buildGoldenPack,
 	DEMO_STORE_IDS,
@@ -60,6 +61,11 @@ describe("the golden demo pack", () => {
 		expect(pack.generated_at).toBe("2026-11-12T03:00:00Z");
 		const tablesText = JSON.stringify(pack.tables);
 		for (const id of DEMO_STORE_IDS) expect(tablesText).not.toContain(id);
+	});
+
+	it("carries strategy prompt 1.0.0 in Vietnamese", () => {
+		expect(built.pack.prompt).toEqual(strategyPrompt("vi"));
+		expect(built.pack.prompt.version).toBe("1.0.0");
 	});
 
 	it("holds every table of the pack", () => {

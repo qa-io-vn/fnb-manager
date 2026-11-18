@@ -9,7 +9,7 @@ import {
 	type ThemeFunctionName,
 } from "@fnb/reports";
 import { beforeAll, describe, expect, it } from "vitest";
-import { buildDataPack } from "../../src/pack/build.js";
+import { buildDataPack, buildPackWith } from "../../src/pack/build.js";
 import {
 	BROWSER_CONCURRENCY,
 	distinctCallCount,
@@ -21,6 +21,7 @@ import { validatePack } from "../../src/pack/invariants.js";
 import { recordingReportSource } from "../../src/pack/record.js";
 import { HORIZONS, PACK_LANGUAGES } from "../../src/pack/request.js";
 import { ALL_SCOPE } from "../../src/pack/schema.js";
+import { strategyPrompt } from "../../src/prompt/prompt.js";
 import {
 	buildWith,
 	demoRequest,
@@ -72,14 +73,26 @@ describe("buildDataPack", () => {
 		await buildWith(source, demoRequest());
 	});
 
-	it("takes its prompt from strategyPrompt, which is not built yet", async () => {
-		await expect(
-			buildDataPack(demoRequest(), {
+	it("carries strategyPrompt in the pack's language", async () => {
+		for (const language of PACK_LANGUAGES) {
+			const built = await buildDataPack(demoRequest({ language }), {
 				source,
 				clock: fixedClock("2026-11-12T03:00:00Z"),
 				fence: null,
-			}),
-		).rejects.toThrow(/^not_implemented: strategyPrompt/);
+			});
+			expect(built.pack.prompt).toEqual(strategyPrompt(language));
+			expect(built.pack.request.language).toBe(language);
+		}
+	});
+
+	it("refuses a prompt in another language than the pack", async () => {
+		await expect(
+			buildPackWith(
+				demoRequest({ language: "vi" }),
+				{ source, clock: fixedClock("2026-11-12T03:00:00Z"), fence: null },
+				() => strategyPrompt("en"),
+			),
+		).rejects.toThrow(/^pack_invalid: the prompt is in en, the pack in vi/);
 	});
 
 	it("validates for every horizon, in both languages, with and without a focus and an owner note", async () => {

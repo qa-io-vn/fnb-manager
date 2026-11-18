@@ -25,6 +25,8 @@ import {
 	normalizePlanText,
 	PLAN_FORMAT,
 	PLAN_SECTIONS,
+	PROMPT_ID,
+	PROMPT_VERSION,
 	packCalls,
 	parsePack,
 	parsePlan,
@@ -309,11 +311,40 @@ describe("the public interface of @fnb/datapack", () => {
 		).toThrow(/^sample_pack_not_publishable: /);
 	});
 
-	it("throws not_implemented from every stub", async () => {
+	it("builds the prompt and the chat bundle, and checks a request before reading", async () => {
+		for (const language of ["vi", "en"] as const) {
+			const prompt = strategyPrompt(language);
+			expect(prompt.id).toBe(PROMPT_ID);
+			expect(prompt.version).toBe(PROMPT_VERSION);
+			const bundle = chatBundle({ ...minimalPack(), prompt: { ...prompt } });
+			expect(
+				bundle.startsWith(`${prompt.text}\n\n${"`".repeat(3)}json\n`),
+			).toBe(true);
+			expect(bundle).toContain(`"pack_id":"${PACK_ID}"`);
+		}
+		await expect(
+			buildDataPack(
+				{
+					storeIds: [],
+					asOf: null,
+					horizon: "90d",
+					language: "vi",
+					focus: null,
+					ownerNote: null,
+					sample: false,
+				},
+				{
+					source: { kind: "supabase" } as never,
+					clock: { now: () => new Date(0) },
+					fence: null,
+				},
+			),
+		).rejects.toThrow(/^pack_stores_invalid: /);
+	});
+
+	it("throws not_implemented from every stub", () => {
 		const pack = minimalPack();
 		const synchronous: (() => unknown)[] = [
-			() => chatBundle(pack),
-			() => strategyPrompt("vi"),
 			() =>
 				kpiStatus({
 					baseline: 1,
@@ -334,28 +365,6 @@ describe("the public interface of @fnb/datapack", () => {
 		expect(() =>
 			comparePlans(side, side, { asOf: "2026-11-11", current: new Map() }),
 		).toThrow(NOT_IMPLEMENTED);
-		const asynchronous: (() => Promise<unknown>)[] = [
-			() =>
-				buildDataPack(
-					{
-						storeIds: [STORE_A],
-						asOf: null,
-						horizon: "90d",
-						language: "vi",
-						focus: null,
-						ownerNote: null,
-						sample: false,
-					},
-					{
-						source: { kind: "supabase" } as never,
-						clock: { now: () => new Date(0) },
-						fence: null,
-					},
-				),
-		];
-		for (const call of asynchronous) {
-			await expect(call()).rejects.toThrow(NOT_IMPLEMENTED);
-		}
 	});
 });
 
