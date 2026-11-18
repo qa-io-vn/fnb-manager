@@ -1,0 +1,70 @@
+{
+	"name": "@fnb/zalo-mini",
+	"version": "0.1.0",
+	"description": "What the Zalo Mini Apps share: the Native Storage adapter, the session client behind its interface, the React shell, app-config.json generation per brand, the build plugins, the size budgets, the mocked Zalo SDK for browser mode and the Playwright design checks",
+	"license": "MIT",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"import": "./src/index.ts"
+		},
+		"./react": {
+			"types": "./src/react/index.ts",
+			"import": "./src/react/index.ts"
+		},
+		"./app-config": {
+			"types": "./src/app-config/index.ts",
+			"import": "./src/app-config/index.ts"
+		},
+		"./vite": {
+			"types": "./src/vite/index.ts",
+			"import": "./src/vite/index.ts"
+		},
+		"./testing/mock-sdk": {
+			"types": "./src/testing/mock-sdk.ts",
+			"import": "./src/testing/mock-sdk.ts"
+		},
+		"./testing/design-checks": {
+			"types": "./src/testing/design-checks.ts",
+			"import": "./src/testing/design-checks.ts"
+		},
+		"./testing/paint-budget": {
+			"types": "./src/testing/paint-budget.ts",
+			"import": "./src/testing/paint-budget.ts"
+		},
+		"./styles.css": "./src/styles/mini-app.css"
+	},
+	"files": [
+		"src",
+		"scripts",
+		"config"
+	],
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+		"test": "vitest run",
+		"app-config": "tsx src/app-config/cli.ts"
+	},
+	"dependencies": {
+		"react": "^19.3.1",
+		"react-dom": "^19.3.1",
+		"react-router-dom": "^7.18.5",
+		"zmp-sdk": "2.53.3",
+		"zmp-ui": "1.11.15-2"
+	},
+	"devDependencies": {
+		"@axe-core/playwright": "^4.14.0",
+		"@playwright/test": "^1.65.0",
+		"@testing-library/jest-dom": "^7.0.1",
+		"@testing-library/react": "^16.3.3",
+		"@types/node": "^25.0.0",
+		"@types/react": "^19.3.0",
+		"@types/react-dom": "^19.3.0",
+		"jsdom": "^31.0.0",
+		"vite": "^8.3.6",
+		"vitest": "^5.1.0"
+	}
+}

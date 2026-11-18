@@ -1,0 +1,21 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.6.6/schema.json",
+	"root": false,
+	"extends": "//",
+	"linter": {
+		"rules": {
+			"style": {
+				"noRestrictedGlobals": {
+					"level": "error",
+					"options": {
+						"deniedGlobals": {
+							"localStorage": "Mini Apps run without LocalStorage: use Native Storage through @fnb/zalo-mini.",
+							"sessionStorage": "Mini Apps run without SessionStorage: use Native Storage through @fnb/zalo-mini.",
+							"indexedDB": "Mini Apps keep state in Native Storage through @fnb/zalo-mini."
+						}
+					}
+				}
+			}
+		}
+	}
+}

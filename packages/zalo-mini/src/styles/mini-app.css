@@ -1,0 +1,29 @@
+:root {
+	color-scheme: light dark;
+	--zaui-light-body-background-color: var(--surface);
+	--zaui-light-text-color: var(--ink);
+	--zaui-light-bottom-navigation-background-color: var(--surface-raised);
+	--zaui-light-bottom-navigation-color: var(--ink-muted);
+	--zaui-light-bottom-navigation-active-color: var(--accent);
+	--zaui-light-bottom-navigation-divider-color: var(--line);
+	--zaui-dark-body-background-color: var(--surface);
+	--zaui-dark-text-color: var(--ink);
+	--zaui-dark-bottom-navigation-background-color: var(--surface-raised);
+	--zaui-dark-bottom-navigation-color: var(--ink-muted);
+	--zaui-dark-bottom-navigation-active-color: var(--accent);
+	--zaui-dark-bottom-navigation-divider-color: var(--line);
+}
+
+html,
+body {
+	margin: 0;
+	min-height: 100%;
+	background: var(--surface);
+	color: var(--ink);
+	font-family: var(--font-sans);
+	-webkit-text-size-adjust: 100%;
+}
+
+.zaui-bottom-navigation-item {
+	min-height: 48px;
+}

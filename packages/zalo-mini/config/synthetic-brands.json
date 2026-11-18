@@ -1,0 +1,48 @@
+{
+	"mini_apps": [
+		{
+			"brand_key": "brand-1",
+			"kind": "staff",
+			"title": "Nhân viên Quán Mẫu Một",
+			"header_title_vi": "Quán Mẫu Một",
+			"header_title_en": "Sample Shop One",
+			"header_color_light": "#0A6B56",
+			"header_color_dark": "#17161A",
+			"text_color_light": "white",
+			"text_color_dark": "white"
+		},
+		{
+			"brand_key": "brand-1",
+			"kind": "customer",
+			"title": "Thành viên Quán Mẫu Một",
+			"header_title_vi": "Quán Mẫu Một",
+			"header_title_en": "Sample Shop One",
+			"header_color_light": "#0A6B56",
+			"header_color_dark": "#17161A",
+			"text_color_light": "white",
+			"text_color_dark": "white"
+		},
+		{
+			"brand_key": "brand-2",
+			"kind": "staff",
+			"title": "Nhân viên Quán Mẫu Hai",
+			"header_title_vi": "Quán Mẫu Hai",
+			"header_title_en": "Sample Shop Two",
+			"header_color_light": "#F6F4EF",
+			"header_color_dark": "#121114",
+			"text_color_light": "black",
+			"text_color_dark": "white"
+		},
+		{
+			"brand_key": "brand-2",
+			"kind": "customer",
+			"title": "Thành viên Quán Mẫu Hai",
+			"header_title_vi": "Quán Mẫu Hai",
+			"header_title_en": "Sample Shop Two",
+			"header_color_light": "#F6F4EF",
+			"header_color_dark": "#121114",
+			"text_color_light": "black",
+			"text_color_dark": "white"
+		}
+	]
+}

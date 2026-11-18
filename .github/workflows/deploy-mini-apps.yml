@@ -1,0 +1,119 @@
+name: Deploy Mini Apps
+
+on:
+  push:
+    branches: [main]
+    tags: ["mini-v*"]
+    paths:
+      - "apps/zalo-staff/**"
+      - "apps/zalo-customer/**"
+      - "packages/zalo-mini/**"
+      - "packages/design-tokens/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/deploy-mini-apps.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-mini-apps
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build, check and deploy each brand's Mini Apps
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check the configuration and choose the version
+        id: config
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            echo "stage=testing" >> "$GITHUB_OUTPUT"
+          else
+            echo "stage=development" >> "$GITHUB_OUTPUT"
+          fi
+          missing=""
+          [ -n "$SUPABASE_DB_URL" ] || missing="$missing SUPABASE_DB_URL (secret)"
+          [ -n "$SUPABASE_URL" ] || missing="$missing SUPABASE_URL (variable)"
+          [ -n "$SUPABASE_PUBLISHABLE_KEY" ] || missing="$missing SUPABASE_PUBLISHABLE_KEY (variable)"
+          if [ -n "$missing" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Mini App deploys are not configured yet (missing:$missing); nothing was deployed." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.config.outputs.configured == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.config.outputs.configured == 'true'
+      - uses: actions/setup-node@v5
+        if: steps.config.outputs.configured == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - if: steps.config.outputs.configured == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Mask credential fields
+        if: steps.config.outputs.configured == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node apps/jobs/bin/fnb.mjs mask-credentials
+      - name: List the configured Mini Apps
+        id: rows
+        if: steps.config.outputs.configured == 'true'
+        env:
+          CI: "1"
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set +e
+          node apps/jobs/bin/fnb.mjs zalo app-config --list > "$RUNNER_TEMP/mini-apps.txt"
+          status=$?
+          set -e
+          if [ "$status" -eq 2 ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "The fnb zalo commands that read the mini_apps rows are not built yet; nothing was deployed." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$status" -ne 0 ]; then
+            exit "$status"
+          elif [ ! -s "$RUNNER_TEMP/mini-apps.txt" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "No Mini App is configured in the mini_apps rows yet; nothing was deployed." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "count=$(wc -l < "$RUNNER_TEMP/mini-apps.txt")" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build, check the budgets and deploy each Mini App
+        if: steps.config.outputs.configured == 'true' && steps.rows.outputs.ready == 'true'
+        env:
+          CI: "1"
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          STAGE: ${{ steps.config.outputs.stage }}
+          COUNT: ${{ steps.rows.outputs.count }}
+          VERSION_NOTE: ${{ github.ref_name }} ${{ github.sha }}
+        run: |
+          testing_flag=""
+          if [ "$STAGE" = "testing" ]; then testing_flag="--testing"; fi
+          number=0
+          while read -r brand kind; do
+            number=$((number + 1))
+            echo "Mini App $number of $COUNT: $kind, $STAGE build"
+            dir="apps/zalo-$kind"
+            node apps/jobs/bin/fnb.mjs zalo app-config --brand "$brand" --app "$kind" --out "$dir/app-config.json"
+            VITE_ZALO_RUNTIME=zalo VITE_MINI_APP_STAGE="$STAGE" VITE_BRAND_KEY="$brand" pnpm --filter "@fnb/zalo-$kind" build
+            node apps/jobs/bin/fnb.mjs zalo zmp env --brand "$brand" --app "$kind" --out "$dir/.env"
+            set -a
+            . "$dir/.env"
+            set +a
+            (cd "$dir" && npx -y zmp-cli@4.0.5 login --app-id "$APP_ID" --token "$ZMP_TOKEN")
+            (cd "$dir" && npx -y zmp-cli@4.0.5 deploy --existing --passive --outputDir dist --desc "$VERSION_NOTE" $testing_flag)
+            rm -f "$dir/.env" "$dir/app-config.json"
+            unset APP_ID ZMP_TOKEN
+          done < "$RUNNER_TEMP/mini-apps.txt"
+          echo "Deployed $number Mini App build(s) as $STAGE versions. Quotas: 300 Development and 60 Testing deploys per 30 days per Mini App." >> "$GITHUB_STEP_SUMMARY"

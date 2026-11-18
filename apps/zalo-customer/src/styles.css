@@ -1,0 +1,6 @@
+@import "tailwindcss";
+@import "@fnb/design-tokens/tokens.css";
+@import "zmp-ui/zaui.css";
+@import "@fnb/zalo-mini/styles.css";
+
+@source "../../../packages/zalo-mini/src";
