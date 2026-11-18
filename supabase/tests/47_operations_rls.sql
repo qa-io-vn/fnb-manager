@@ -544,13 +544,14 @@ select is(
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname in ('public', 'app') and p.prosecdef and has_function_privilege('authenticated', p.oid, 'execute')
   ),
-  array['app.add_staff', 'app.can_manage_staff', 'app.can_manage_store_scope', 'app.can_publish_store_scope', 'app.can_read_store',
+  array['app.accept_staff_notice', 'app.add_staff', 'app.can_manage_staff', 'app.can_manage_store_scope', 'app.can_publish_store_scope', 'app.can_read_store',
         'app.current_user_channel_ids', 'app.current_user_data_store_ids', 'app.current_user_data_tenant_ids', 'app.current_user_ops_store_ids',
         'app.current_user_revenue_store_ids', 'app.current_user_store_ids', 'app.current_user_tenant_ids', 'app.deactivate_staff', 'app.has_store_scope',
-        'app.has_tenant_role', 'app.ops_can_manage', 'app.ops_can_read', 'app.ops_can_write_own', 'app.reactivate_staff',
-        'app.set_staff_revenue_visibility', 'app.today_store_totals', 'app.update_staff', 'public.oa_event_counts', 'public.publish_legal_document',
-        'public.refresh_my_analytics', 'public.retire_legal_document'],
-  'the only security definer functions a member may call are the membership helpers, the roster, settings and legal functions and today_store_totals, so no other function reads revenue past RLS'
+        'app.has_tenant_role', 'app.issue_pairing_code', 'app.link_my_phone', 'app.my_staff_notice', 'app.ops_can_manage', 'app.ops_can_read',
+        'app.ops_can_write_own', 'app.reactivate_staff', 'app.set_staff_revenue_visibility', 'app.today_store_totals', 'app.update_staff',
+        'app.withdraw_staff_ops_consent', 'public.oa_event_counts', 'public.publish_legal_document', 'public.refresh_my_analytics',
+        'public.retire_legal_document'],
+  'the only security definer functions a member may call are the membership helpers, the roster, pairing, staff notice and phone functions, settings and legal functions and today_store_totals, so no other function reads revenue past RLS'
 );
 select col_type_is('public', 'tenants', 'staff_revenue_visibility', 'text', 'tenants.staff_revenue_visibility is text');
 select col_default_is('public', 'tenants', 'staff_revenue_visibility', 'all', 'staff see their stores'' revenue until the owner restricts it');

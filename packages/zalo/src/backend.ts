@@ -19,6 +19,8 @@ export interface SupabaseBackend {
 	userEmail(userId: string): Promise<string | null | undefined>;
 	mintSession(email: string): Promise<MintedSession>;
 	sessionUser(accessToken: string): Promise<string | null>;
+	createLogin(email: string): Promise<string>;
+	deleteLogin(userId: string): Promise<void>;
 }
 
 export interface SupabaseBackendOptions {
@@ -179,6 +181,33 @@ export function createSupabaseBackend(
 				throw new UpstreamError("supabase", "invalid_answer", status);
 			}
 			return body.id;
+		},
+		async createLogin(email) {
+			const { status, body } = await call(
+				"/auth/v1/admin/users",
+				post({ email, email_confirm: true }),
+			);
+			expectOk(status);
+			if (
+				!isRecord(body) ||
+				typeof body.id !== "string" ||
+				!UUID_PATTERN.test(body.id)
+			) {
+				throw new UpstreamError("supabase", "invalid_answer", status);
+			}
+			return body.id;
+		},
+		async deleteLogin(userId) {
+			if (!UUID_PATTERN.test(userId)) {
+				throw new UpstreamError("supabase", "invalid_answer");
+			}
+			const { status } = await call(`/auth/v1/admin/users/${userId}`, {
+				method: "DELETE",
+				headers: serviceHeaders,
+			});
+			if (status !== 404) {
+				expectOk(status);
+			}
 		},
 	};
 }

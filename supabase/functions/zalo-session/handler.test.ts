@@ -142,6 +142,7 @@ Deno.test("a bound identity gets a genuine session with the member's role and st
 				display_name: ZALO_NAME,
 				role: "manager",
 				stores: ["Cửa hàng Mẫu 1"],
+				tenant_id: TENANT,
 			},
 		},
 		"answer",

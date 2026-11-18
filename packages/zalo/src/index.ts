@@ -42,10 +42,18 @@ export {
 	bearerToken,
 	MEMBER_ROLES,
 	type MemberRole,
+	NOTICE_VERSION_PATTERN,
+	noticeAnswer,
+	PAIRING_CODE_PATTERN,
 	parseBrandApps,
 	parseSignIn,
 	requireBrandApp,
 	type SignInResult,
+	STAFF_LOGIN_DOMAIN,
+	type StaffNotice,
+	staffLoginEmail,
+	UNPAIRED_REASONS,
+	type UnpairedReason,
 } from "./session.js";
 export {
 	isFixtureTenantSlug,

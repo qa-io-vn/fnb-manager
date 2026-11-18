@@ -171,8 +171,8 @@ select ok((select c.relrowsecurity from pg_class c where c.oid = 'public.staff_r
 select policies_are('public', 'staff_roster', array['staff_roster_select_for_managers_or_self'], 'staff_roster has one policy, a read policy');
 select is(
   (select array_agg(t.tgname::text order by t.tgname) from pg_trigger t where t.tgrelid = 'public.staff_roster'::regclass and not t.tgisinternal),
-  array['staff_roster_keep_created_by', 'staff_roster_set_updated_at', 'staff_roster_set_updated_by', 'staff_roster_validate_store_ids'],
-  'staff_roster freezes created_by, stamps updated_at and updated_by and checks its stores'
+  array['staff_roster_drop_pairing_codes', 'staff_roster_keep_created_by', 'staff_roster_set_updated_at', 'staff_roster_set_updated_by', 'staff_roster_validate_store_ids'],
+  'staff_roster freezes created_by, stamps updated_at and updated_by, checks its stores and drops the pairing code of a deactivated row'
 );
 select is(
   (select count(*)::integer from pg_trigger t where t.tgrelid = 'public.tenant_members'::regclass and t.tgname = 'tenant_members_deactivate_staff'),
@@ -401,6 +401,9 @@ insert into public.zalo_identities (tenant_id, zalo_app_id, zalo_user_id, user_i
 select tenant_a, app_1, 'synthetic-roster-zalo-x', staff_x, 'Synthetic X' from fx
 union all
 select tenant_a, app_2, 'synthetic-roster-zalo-x2', staff_x, 'Synthetic X' from fx;
+
+insert into public.consent_records (tenant_id, subject_type, subject_id, purpose, policy_version, channel, granted_at, evidence)
+select tenant_a, 'staff', staff_x, 'staff_ops', 'synthetic-staff-notice-1', 'mini_app', now(), '{"method": "accept_button", "notice_channel": "mini_app"}'::jsonb from fx;
 
 select is(
   (select app.zalo_sign_in(app_1, 'synthetic-roster-zalo-x') ->> 'user_id' from fx) || ':' || (select app.zalo_sign_in(app_2, 'synthetic-roster-zalo-x2') ->> 'user_id' from fx),

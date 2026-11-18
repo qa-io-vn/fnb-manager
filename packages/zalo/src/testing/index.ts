@@ -9,11 +9,16 @@ export {
 } from "./environment.js";
 export {
 	createFakeBackend,
+	FAKE_PAIRING_ATTEMPTS,
+	FAKE_PAIRING_WAIT_SECONDS,
 	type FakeBackend,
 	type FakeBackendCall,
 	type FakeBrandApp,
+	type FakeConsent,
 	type FakeIdentity,
+	type FakeLogin,
 	type FakeMember,
+	type FakeRosterEntry,
 } from "./fake-backend.js";
 export {
 	createMockZalo,

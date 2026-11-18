@@ -11,6 +11,14 @@ import {
 
 export const BRAND_KEY_PATTERN = /^brand-[1-9][0-9]{0,2}$/;
 export const BINDING_CODE_PATTERN = /^[0-9]{6}$/;
+export const PAIRING_CODE_PATTERN = BINDING_CODE_PATTERN;
+export const NOTICE_VERSION_PATTERN = /^[a-z0-9][a-z0-9.-]{0,39}$/;
+export const STAFF_LOGIN_DOMAIN = "zalo-staff.invalid";
+export const UNPAIRED_REASONS = [
+	"code_refused",
+	"wait",
+	"notice_outdated",
+] as const;
 export const MEMBER_ROLES = [
 	"owner",
 	"manager",
@@ -29,8 +37,24 @@ export interface BrandApp {
 	readonly status: string;
 }
 
+export type UnpairedReason = (typeof UNPAIRED_REASONS)[number];
+
+export interface StaffNotice {
+	readonly version: string;
+	readonly title: string;
+	readonly bodyMarkdown: string;
+	readonly publishedAt: string;
+}
+
 export type SignInResult =
-	| { readonly status: "unpaired" }
+	| {
+			readonly status: "unpaired";
+			readonly notice?: StaffNotice;
+			readonly reason?: UnpairedReason;
+			readonly retryAfter?: number;
+	  }
+	| { readonly status: "notice_required"; readonly notice?: StaffNotice }
+	| { readonly status: "login_needed" }
 	| {
 			readonly status: "bound";
 			readonly userId: string;
@@ -119,12 +143,65 @@ export async function requireBrandApp(
 	return app;
 }
 
+function parseNotice(value: unknown): StaffNotice | undefined {
+	if (value === undefined || value === null) {
+		return undefined;
+	}
+	if (
+		!isRecord(value) ||
+		typeof value.version !== "string" ||
+		!NOTICE_VERSION_PATTERN.test(value.version) ||
+		typeof value.body_markdown !== "string"
+	) {
+		throw new UpstreamError("supabase", "invalid_answer");
+	}
+	return {
+		version: value.version,
+		title: text(value.title),
+		bodyMarkdown: value.body_markdown,
+		publishedAt: text(value.published_at),
+	};
+}
+
+function parseUnpaired(value: Readonly<Record<string, unknown>>): SignInResult {
+	const notice = parseNotice(value.notice);
+	const reason = UNPAIRED_REASONS.find((name) => name === value.reason);
+	if (value.reason !== undefined && reason === undefined) {
+		throw new UpstreamError("supabase", "invalid_answer");
+	}
+	const retryAfter = value.retry_after;
+	if (
+		retryAfter !== undefined &&
+		(typeof retryAfter !== "number" ||
+			!Number.isInteger(retryAfter) ||
+			retryAfter < 0)
+	) {
+		throw new UpstreamError("supabase", "invalid_answer");
+	}
+	return {
+		status: "unpaired",
+		...(notice === undefined ? {} : { notice }),
+		...(reason === undefined ? {} : { reason }),
+		...(retryAfter === undefined ? {} : { retryAfter }),
+	};
+}
+
 export function parseSignIn(value: unknown): SignInResult {
 	if (!isRecord(value)) {
 		throw new UpstreamError("supabase", "invalid_answer");
 	}
 	if (value.status === "unpaired") {
-		return { status: "unpaired" };
+		return parseUnpaired(value);
+	}
+	if (value.status === "notice_required") {
+		const notice = parseNotice(value.notice);
+		return {
+			status: "notice_required",
+			...(notice === undefined ? {} : { notice }),
+		};
+	}
+	if (value.status === "login_needed") {
+		return { status: "login_needed" };
 	}
 	if (value.status !== "bound") {
 		throw new UpstreamError("supabase", "invalid_answer");
@@ -145,6 +222,25 @@ export function parseSignIn(value: unknown): SignInResult {
 			typeof displayName === "string" && displayName.trim() !== ""
 				? displayName
 				: null,
+	};
+}
+
+const LOGIN_ID_PATTERN =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+export function staffLoginEmail(loginId: string): string {
+	if (!LOGIN_ID_PATTERN.test(loginId)) {
+		throw new Error("a staff login id is a lower-case UUID");
+	}
+	return `staff-${loginId}@${STAFF_LOGIN_DOMAIN}`;
+}
+
+export function noticeAnswer(notice: StaffNotice): Record<string, string> {
+	return {
+		version: notice.version,
+		title: notice.title,
+		body_markdown: notice.bodyMarkdown,
+		published_at: notice.publishedAt,
 	};
 }
 

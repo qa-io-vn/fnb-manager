@@ -21129,6 +21129,55 @@
 				"tags": ["report_settings"]
 			}
 		},
+		"/rpc/accept_staff_notice": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.accept_staff_notice",
+							"properties": {
+								"p_notice_shown_at": {
+									"format": "timestamp with time zone",
+									"type": "string"
+								},
+								"p_notice_version": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"p_tenant_id",
+								"p_notice_version",
+								"p_notice_shown_at"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.accept_staff_notice",
+				"tags": ["(rpc) accept_staff_notice"]
+			}
+		},
 		"/rpc/add_staff": {
 			"post": {
 				"parameters": [
@@ -22358,6 +22407,43 @@
 				"tags": ["(rpc) hourly_profile"]
 			}
 		},
+		"/rpc/issue_pairing_code": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.issue_pairing_code",
+							"properties": {
+								"p_roster_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_roster_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.issue_pairing_code",
+				"tags": ["(rpc) issue_pairing_code"]
+			}
+		},
 		"/rpc/item_attach": {
 			"get": {
 				"parameters": [
@@ -22848,6 +22934,47 @@
 					}
 				},
 				"tags": ["(rpc) item_velocity"]
+			}
+		},
+		"/rpc/link_my_phone": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.link_my_phone",
+							"properties": {
+								"p_phone": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id", "p_phone"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.link_my_phone",
+				"tags": ["(rpc) link_my_phone"]
 			}
 		},
 		"/rpc/menu_engineering": {
@@ -23514,6 +23641,66 @@
 					}
 				},
 				"tags": ["(rpc) month_pace"]
+			}
+		},
+		"/rpc/my_staff_notice": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_tenant_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.my_staff_notice",
+				"tags": ["(rpc) my_staff_notice"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.my_staff_notice",
+							"properties": {
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.my_staff_notice",
+				"tags": ["(rpc) my_staff_notice"]
 			}
 		},
 		"/rpc/oa_event_counts": {
@@ -25788,6 +25975,43 @@
 					}
 				},
 				"tags": ["(rpc) weekday_profile_forecast"]
+			}
+		},
+		"/rpc/withdraw_staff_ops_consent": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.withdraw_staff_ops_consent",
+							"properties": {
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.withdraw_staff_ops_consent",
+				"tags": ["(rpc) withdraw_staff_ops_consent"]
 			}
 		},
 		"/shifts": {

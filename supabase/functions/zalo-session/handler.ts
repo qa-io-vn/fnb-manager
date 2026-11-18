@@ -5,9 +5,15 @@ import {
 	fetchZaloUser,
 	functionBackend,
 	functionSettings,
+	NOTICE_VERSION_PATTERN,
+	noticeAnswer,
+	PAIRING_CODE_PATTERN,
 	parseSignIn,
 	requireBrandApp,
+	type SignInResult,
 	type SupabaseBackend,
+	staffLoginEmail,
+	UpstreamError,
 	type ZaloFetch,
 } from "@fnb/zalo";
 import {
@@ -23,18 +29,48 @@ import {
 export const FUNCTION_NAME = "zalo-session";
 export const DEFAULT_DISPLAY_NAME = "Thành viên";
 export const ACCESS_TOKEN_MAX_LENGTH = 4096;
+export const SHOWN_AT_MAX_LENGTH = 40;
 
 export interface ZaloSessionDependencies {
 	readonly fetch?: ZaloFetch;
 	readonly backend?: SupabaseBackend;
 	readonly log?: (line: string) => void;
 	readonly requestId?: () => string;
+	readonly newLoginId?: () => string;
+}
+
+interface NoticeAcceptance {
+	readonly version: string;
+	readonly shownAt: string;
 }
 
 interface SessionRequest {
 	readonly accessToken: string;
 	readonly brand: string;
 	readonly bindingCode: string | null;
+	readonly pairingCode: string | null;
+	readonly notice: NoticeAcceptance | null;
+}
+
+function noticeAcceptance(value: unknown): NoticeAcceptance | null {
+	if (value === undefined || value === null) {
+		return null;
+	}
+	if (typeof value !== "object" || Array.isArray(value)) {
+		throw new HttpError(400, "invalid_notice");
+	}
+	const { version, shown_at: shownAt } = value as Record<string, unknown>;
+	if (typeof version !== "string" || !NOTICE_VERSION_PATTERN.test(version)) {
+		throw new HttpError(400, "invalid_notice");
+	}
+	if (
+		typeof shownAt !== "string" ||
+		shownAt.length > SHOWN_AT_MAX_LENGTH ||
+		Number.isNaN(Date.parse(shownAt))
+	) {
+		throw new HttpError(400, "invalid_notice");
+	}
+	return { version, shownAt: new Date(Date.parse(shownAt)).toISOString() };
 }
 
 function sessionRequest(
@@ -60,11 +96,109 @@ function sessionRequest(
 	) {
 		throw new HttpError(400, "invalid_binding_code");
 	}
+	const pairingCode = body.pairing_code;
+	if (
+		pairingCode !== undefined &&
+		pairingCode !== null &&
+		(typeof pairingCode !== "string" ||
+			!PAIRING_CODE_PATTERN.test(pairingCode) ||
+			typeof bindingCode === "string")
+	) {
+		throw new HttpError(400, "invalid_pairing_code");
+	}
 	return {
 		accessToken,
 		brand,
 		bindingCode: typeof bindingCode === "string" ? bindingCode : null,
+		pairingCode: typeof pairingCode === "string" ? pairingCode : null,
+		notice: noticeAcceptance(body.notice),
 	};
+}
+
+function unpairedLog(
+	input: SessionRequest,
+	signIn: Extract<SignInResult, { status: "unpaired" }>,
+): string {
+	switch (signIn.reason) {
+		case "code_refused":
+			return "unpaired: the pairing code was refused";
+		case "wait":
+			return "unpaired: the identity waits after too many wrong codes";
+		case "notice_outdated":
+			return "unpaired: the accepted notice is not the published one";
+		default:
+			return input.bindingCode !== null || input.pairingCode !== null
+				? "unpaired: the binding code was refused"
+				: "unpaired: the identity is not bound to a member";
+	}
+}
+
+async function discardLogin(
+	backend: SupabaseBackend,
+	userId: string,
+	context: RequestContext,
+): Promise<void> {
+	try {
+		await backend.deleteLogin(userId);
+	} catch {
+		context.log("an unused login could not be removed");
+	}
+}
+
+async function signInOrPair(
+	backend: SupabaseBackend,
+	input: SessionRequest,
+	args: Readonly<Record<string, unknown>>,
+	context: RequestContext,
+	newLoginId: () => string,
+): Promise<{ readonly signIn: SignInResult; readonly loginCreated: boolean }> {
+	if (input.pairingCode === null && input.notice === null) {
+		return {
+			signIn: parseSignIn(
+				await backend.rpc("zalo_session_sign_in", {
+					...args,
+					p_binding_code: input.bindingCode,
+				}),
+			),
+			loginCreated: false,
+		};
+	}
+	const pairArgs = {
+		...args,
+		p_code: input.pairingCode ?? input.bindingCode,
+		p_notice_version: input.notice?.version ?? null,
+		p_notice_shown_at: input.notice?.shownAt ?? null,
+		p_new_user_id: null,
+	};
+	const first = parseSignIn(await backend.rpc("zalo_session_pair", pairArgs));
+	if (first.status !== "login_needed") {
+		return { signIn: first, loginCreated: false };
+	}
+	const email = staffLoginEmail(newLoginId());
+	context.protect(email);
+	const created = await backend.createLogin(email);
+	context.protect(created);
+	let second: SignInResult;
+	try {
+		second = parseSignIn(
+			await backend.rpc("zalo_session_pair", {
+				...pairArgs,
+				p_new_user_id: created,
+			}),
+		);
+	} catch (error) {
+		await discardLogin(backend, created, context);
+		throw error;
+	}
+	if (second.status === "login_needed") {
+		await discardLogin(backend, created, context);
+		throw new UpstreamError("supabase", "invalid_answer");
+	}
+	const used = second.status === "bound" && second.userId === created;
+	if (!used) {
+		await discardLogin(backend, created, context);
+	}
+	return { signIn: second, loginCreated: used };
 }
 
 async function zaloSession(
@@ -80,6 +214,9 @@ async function zaloSession(
 		context.protect(input.accessToken);
 		if (input.bindingCode !== null) {
 			context.protect(input.bindingCode);
+		}
+		if (input.pairingCode !== null) {
+			context.protect(input.pairingCode);
 		}
 		const backend =
 			dependencies.backend ??
@@ -101,21 +238,49 @@ async function zaloSession(
 		if (me.value.name !== null) {
 			context.protect(me.value.name);
 		}
-		const signIn = parseSignIn(
-			await backend.rpc("zalo_session_sign_in", {
+		const { signIn, loginCreated } = await signInOrPair(
+			backend,
+			input,
+			{
 				p_zalo_app_id: app.zaloAppId,
 				p_zalo_user_id: me.value.id,
 				p_display_name: me.value.name,
-				p_binding_code: input.bindingCode,
-			}),
+			},
+			context,
+			dependencies.newLoginId ?? (() => crypto.randomUUID()),
 		);
 		if (signIn.status === "unpaired") {
-			context.log(
-				input.bindingCode === null
-					? "unpaired: the identity is not bound to a member"
-					: "unpaired: the binding code was refused",
+			context.log(unpairedLog(input, signIn));
+			return json(
+				{
+					status: "unpaired",
+					...(signIn.reason === undefined ? {} : { reason: signIn.reason }),
+					...(signIn.retryAfter === undefined
+						? {}
+						: { retry_after: signIn.retryAfter }),
+					...(signIn.notice === undefined
+						? {}
+						: { notice: noticeAnswer(signIn.notice) }),
+				},
+				200,
 			);
-			return json({ status: "unpaired" }, 200);
+		}
+		if (signIn.status === "notice_required") {
+			context.log(
+				"notice required: the staff_ops consent is missing or outdated",
+			);
+			return json(
+				{
+					status: "notice_required",
+					...(signIn.notice === undefined
+						? {}
+						: { notice: noticeAnswer(signIn.notice) }),
+				},
+				200,
+			);
+		}
+		if (signIn.status === "login_needed") {
+			throw new UpstreamError("supabase", "invalid_answer");
 		}
 		const email = await backend.userEmail(signIn.userId);
 		if (email === undefined) {
@@ -130,8 +295,14 @@ async function zaloSession(
 		const session = await backend.mintSession(email);
 		context.protect(session.accessToken);
 		context.protect(session.refreshToken);
+		const step =
+			input.pairingCode !== null || input.bindingCode !== null
+				? ", identity bound"
+				: input.notice !== null
+					? ", notice accepted"
+					: "";
 		context.log(
-			`session minted: ${signIn.role}, ${signIn.stores.length} stores${input.bindingCode === null ? "" : ", identity bound"}`,
+			`session minted: ${signIn.role}, ${signIn.stores.length} stores${step}${loginCreated ? ", login created" : ""}`,
 		);
 		return json(
 			{
@@ -143,6 +314,7 @@ async function zaloSession(
 					display_name: signIn.displayName ?? DEFAULT_DISPLAY_NAME,
 					role: signIn.role,
 					stores: [...signIn.stores],
+					tenant_id: signIn.tenantId,
 				},
 			},
 			200,

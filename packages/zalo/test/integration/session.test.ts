@@ -295,6 +295,246 @@ describe.skipIf(!gate.enabled)(
 			});
 		});
 
+		async function rpcAs(
+			accessToken: string,
+			name: string,
+			args: Readonly<Record<string, unknown>>,
+		): Promise<{ readonly status: number; readonly body: unknown }> {
+			const response = await fetch(`${gate.supabaseUrl}/rest/v1/rpc/${name}`, {
+				method: "POST",
+				headers: {
+					apikey: gate.publishableKey,
+					authorization: `Bearer ${accessToken}`,
+					"content-type": "application/json",
+				},
+				body: JSON.stringify(args),
+			});
+			const text = await response.text();
+			return {
+				status: response.status,
+				body: text === "" ? null : JSON.parse(text),
+			};
+		}
+
+		async function passwordSession(login: FixtureLogin): Promise<string> {
+			const response = await fetch(
+				`${gate.supabaseUrl}/auth/v1/token?grant_type=password`,
+				{
+					method: "POST",
+					headers: {
+						apikey: gate.publishableKey,
+						"content-type": "application/json",
+					},
+					body: JSON.stringify({
+						email: login.email,
+						password: login.password,
+					}),
+				},
+			);
+			expect(response.status).toBe(200);
+			const body = (await response.json()) as { access_token: string };
+			protectedValues.push(body.access_token);
+			return body.access_token;
+		}
+
+		const NOTICE_VERSION = "staff-notice-it-1";
+		const staffZaloId = `77${Date.now()}`;
+		let managerToken = "";
+		let rosterId = "";
+		let staffToken = "";
+		let staffSession = "";
+
+		it("a manager adds a person to the roster and issues a pairing code through the Data API", async () => {
+			await fixture.publishStaffNotice(NOTICE_VERSION);
+			managerToken = await passwordSession(manager);
+			const added = await rpcAs(managerToken, "add_staff", {
+				p_tenant_id: fixture.tenantId,
+				p_display_name: "Nhân viên thử",
+				p_role: "staff",
+				p_store_ids: [fixture.storeIds[0]],
+			});
+			expect(added.status).toBe(200);
+			rosterId = String(added.body);
+			const outside = await rpcAs(managerToken, "issue_pairing_code", {
+				p_roster_id: "00000000-0000-4000-8000-000000000000",
+			});
+			expect(outside.status).toBe(403);
+			staffToken = mock.issueAccessToken(APP_SECRET, {
+				id: staffZaloId,
+				name: "Nhân viên Zalo",
+			});
+			protectedValues.push(staffToken, staffZaloId, "Nhân viên Zalo");
+		});
+
+		it("an unpaired person is shown the staff notice, a code without the notice accepted is not checked, and with it the code pairs", async () => {
+			const first = await post(session, {
+				access_token: staffToken,
+				brand: fixture.brandKey,
+			});
+			expect(await first.json()).toMatchObject({
+				status: "unpaired",
+				notice: { version: NOTICE_VERSION, title: "Thông báo cho nhân viên" },
+			});
+			const issued = await rpcAs(managerToken, "issue_pairing_code", {
+				p_roster_id: rosterId,
+			});
+			expect(issued.status).toBe(200);
+			const code = String(issued.body);
+			protectedValues.push(code);
+			const refused = await post(session, {
+				access_token: staffToken,
+				brand: fixture.brandKey,
+				pairing_code: code,
+			});
+			expect(await refused.json()).toMatchObject({
+				status: "unpaired",
+				reason: "notice_outdated",
+			});
+			const [row] = await sql<{ consents: number; status: string }[]>`
+				select r.status,
+					(select count(*)::integer from public.consent_records c where c.tenant_id = r.tenant_id and c.purpose = 'staff_ops') as consents
+				from public.staff_roster r where r.id = ${rosterId}::uuid
+			`;
+			expect(row).toEqual({ consents: 0, status: "invited" });
+			const paired = await post(session, {
+				access_token: staffToken,
+				brand: fixture.brandKey,
+				pairing_code: code,
+				notice: { version: NOTICE_VERSION, shown_at: new Date().toISOString() },
+			});
+			const body = (await paired.json()) as Record<string, unknown>;
+			expect(body).toMatchObject({
+				status: "bound",
+				member: {
+					display_name: "Nhân viên Zalo",
+					role: "staff",
+					stores: ["Cửa hàng thử 1"],
+					tenant_id: fixture.tenantId,
+				},
+			});
+			staffSession = String(body.access_token);
+			protectedValues.push(staffSession, String(body.refresh_token));
+		});
+
+		it("pairing created the login, the membership with the roster role and stores, and the consent", async () => {
+			const [row] = await sql<
+				{
+					status: string;
+					email: string;
+					user_id: string;
+					role: string;
+					stores: string[];
+					consent: string;
+				}[]
+			>`
+				select r.status, u.email, u.id::text as user_id, m.role::text as role,
+					array(select unnest(m.store_ids)::text) as stores,
+					(select c.policy_version from public.consent_records c
+					 where c.tenant_id = r.tenant_id and c.subject_id = r.user_id and c.purpose = 'staff_ops' and c.revoked_at is null) as consent
+				from public.staff_roster r
+				join auth.users u on u.id = r.user_id
+				join public.tenant_members m on m.tenant_id = r.tenant_id and m.user_id = r.user_id
+				where r.id = ${rosterId}::uuid
+			`;
+			expect(row).toMatchObject({
+				status: "active",
+				role: "staff",
+				stores: [fixture.storeIds[0]],
+				consent: NOTICE_VERSION,
+			});
+			expect(row?.email).toMatch(/^staff-[0-9a-f-]{36}@zalo-staff\.invalid$/);
+			protectedValues.push(row?.email ?? "", row?.user_id ?? "");
+			expect(claimsOf(staffSession).sub).toBe(row?.user_id);
+			const [hook] = await sql<{ memberships: unknown }[]>`
+				select app.custom_access_token_claims(
+					jsonb_build_object('user_id', ${row?.user_id ?? ""}::text, 'claims', '{}'::jsonb)
+				) -> 'claims' -> 'memberships' as memberships
+			`;
+			expect(hook?.memberships).toEqual([
+				{
+					tenant_id: fixture.tenantId,
+					role: "staff",
+					store_ids: [fixture.storeIds[0]],
+				},
+			]);
+		});
+
+		it("the new member reads through RLS only their store and their own roster row", async () => {
+			expect(
+				await dataApi(
+					`/rest/v1/stores?select=id&tenant_id=eq.${fixture.tenantId}&order=id`,
+					staffSession,
+				),
+			).toEqual([{ id: fixture.storeIds[0] }]);
+			expect(
+				await dataApi("/rest/v1/staff_roster?select=id,status", staffSession),
+			).toEqual([{ id: rosterId, status: "active" }]);
+			const state = await rpcAs(staffSession, "my_staff_notice", {
+				p_tenant_id: fixture.tenantId,
+			});
+			expect(state.body).toMatchObject({
+				consent: "current",
+				notice: { version: NOTICE_VERSION },
+			});
+			const again = await post(session, {
+				access_token: staffToken,
+				brand: fixture.brandKey,
+			});
+			expect(await again.json()).toMatchObject({
+				status: "bound",
+				member: { role: "staff" },
+			});
+		});
+
+		it("the person links the phone zalo-phone decodes, on their own row only", async () => {
+			const phoneToken = mock.issuePhoneToken(staffToken, NUMBER);
+			protectedValues.push(phoneToken);
+			const decoded = await post(
+				phone,
+				{
+					brand: fixture.brandKey,
+					access_token: staffToken,
+					phone_token: phoneToken,
+				},
+				{ authorization: `Bearer ${staffSession}` },
+			);
+			const { phone_number: number } = (await decoded.json()) as {
+				phone_number: string;
+			};
+			const linked = await rpcAs(staffSession, "link_my_phone", {
+				p_tenant_id: fixture.tenantId,
+				p_phone: number,
+			});
+			expect(linked).toEqual({ status: 200, body: `…${NUMBER.slice(-3)}` });
+			const refused = await rpcAs(managerToken, "link_my_phone", {
+				p_tenant_id: fixture.tenantId,
+				p_phone: number,
+			});
+			expect(refused.status).toBe(403);
+			const [row] = await sql<{ same: boolean }[]>`
+				select r.phone = ${number} as same from public.staff_roster r where r.id = ${rosterId}::uuid
+			`;
+			expect(row?.same).toBe(true);
+		});
+
+		it("deactivating the roster row unpairs the person at their next call and their session reads nothing", async () => {
+			const deactivated = await rpcAs(managerToken, "deactivate_staff", {
+				p_roster_id: rosterId,
+			});
+			expect(deactivated.status).toBe(204);
+			const next = await post(session, {
+				access_token: staffToken,
+				brand: fixture.brandKey,
+			});
+			expect(await next.json()).toMatchObject({ status: "unpaired" });
+			expect(
+				await dataApi(
+					`/rest/v1/stores?select=id&tenant_id=eq.${fixture.tenantId}`,
+					staffSession,
+				),
+			).toEqual([]);
+		});
+
 		it("writes no token, user id, phone number or e-mail in any log line", () => {
 			expect(lines.length).toBeGreaterThan(5);
 			for (const line of lines) {

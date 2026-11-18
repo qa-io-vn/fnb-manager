@@ -5,7 +5,13 @@ import {
 	type ZaloFetch,
 	type ZaloRequestInit,
 } from "../../src/http.js";
-import { parseSignIn, requireBrandApp } from "../../src/session.js";
+import {
+	noticeAnswer,
+	parseSignIn,
+	requireBrandApp,
+	STAFF_LOGIN_DOMAIN,
+	staffLoginEmail,
+} from "../../src/session.js";
 import { zaloSettings } from "../../src/settings.js";
 import { createFakeBackend } from "../../src/testing/fake-backend.js";
 
@@ -180,6 +186,57 @@ describe("Supabase calls of the sign-in functions", () => {
 		});
 	});
 
+	it("creates a confirmed login without a password and removes it again", async () => {
+		const { send, calls } = scripted([
+			Response.json({ id: USER_ID, email: "staff-x@example.com" }),
+			new Response("{}", { status: 200 }),
+			Response.json({ message: "User not found" }, { status: 404 }),
+			Response.json({ message: "denied" }, { status: 403 }),
+		]);
+		const backend = createSupabaseBackend({
+			url: URL_BASE,
+			key: SECRET_KEY,
+			fetch: send,
+		});
+		expect(await backend.createLogin("staff-x@example.com")).toBe(USER_ID);
+		expect(calls[0]?.url).toBe(`${URL_BASE}/auth/v1/admin/users`);
+		expect(calls[0]?.init.method).toBe("POST");
+		expect(JSON.parse(calls[0]?.init.body ?? "")).toEqual({
+			email: "staff-x@example.com",
+			email_confirm: true,
+		});
+		await backend.deleteLogin(USER_ID);
+		expect(calls[1]?.url).toBe(`${URL_BASE}/auth/v1/admin/users/${USER_ID}`);
+		expect(calls[1]?.init.method).toBe("DELETE");
+		expect(calls[1]?.init.body).toBeUndefined();
+		await expect(backend.deleteLogin(USER_ID)).resolves.toBeUndefined();
+		await expect(backend.deleteLogin(USER_ID)).rejects.toMatchObject({
+			failure: "status",
+		});
+		await expect(backend.deleteLogin("not-a-uuid")).rejects.toMatchObject({
+			failure: "invalid_answer",
+		});
+		expect(calls).toHaveLength(4);
+	});
+
+	it("refuses a created login without an id", async () => {
+		const { send } = scripted([
+			Response.json({ email: "staff-x@example.com" }),
+			Response.json({ msg: "email exists" }, { status: 422 }),
+		]);
+		const backend = createSupabaseBackend({
+			url: URL_BASE,
+			key: SECRET_KEY,
+			fetch: send,
+		});
+		await expect(
+			backend.createLogin("staff-x@example.com"),
+		).rejects.toMatchObject({ failure: "invalid_answer" });
+		await expect(
+			backend.createLogin("staff-x@example.com"),
+		).rejects.toMatchObject({ failure: "status" });
+	});
+
 	it("reads the caller of a session and treats a refused token as no session", async () => {
 		const { send, calls } = scripted([
 			Response.json({ id: USER_ID }),
@@ -270,5 +327,77 @@ describe("brand resolution and sign-in answers", () => {
 			UpstreamError,
 		);
 		expect(() => parseSignIn([])).toThrow(UpstreamError);
+	});
+
+	const notice = {
+		version: "staff-notice-2026-01",
+		title: "Thông báo cho nhân viên",
+		body_markdown: "# Thông báo",
+		published_at: "2026-11-01T00:00:00+00:00",
+	};
+	const parsedNotice = {
+		version: "staff-notice-2026-01",
+		title: "Thông báo cho nhân viên",
+		bodyMarkdown: "# Thông báo",
+		publishedAt: "2026-11-01T00:00:00+00:00",
+	};
+
+	it("parses the notice, the reason and the wait of an unpaired answer", () => {
+		expect(parseSignIn({ status: "unpaired", notice })).toEqual({
+			status: "unpaired",
+			notice: parsedNotice,
+		});
+		expect(
+			parseSignIn({
+				status: "unpaired",
+				reason: "wait",
+				retry_after: 900,
+				notice,
+			}),
+		).toEqual({
+			status: "unpaired",
+			notice: parsedNotice,
+			reason: "wait",
+			retryAfter: 900,
+		});
+		expect(parseSignIn({ status: "unpaired", reason: "code_refused" })).toEqual(
+			{ status: "unpaired", reason: "code_refused" },
+		);
+		expect(
+			parseSignIn({ status: "unpaired", reason: "notice_outdated" }),
+		).toEqual({ status: "unpaired", reason: "notice_outdated" });
+		for (const bad of [
+			{ status: "unpaired", reason: "roster_missing" },
+			{ status: "unpaired", retry_after: -1 },
+			{ status: "unpaired", retry_after: 1.5 },
+			{ status: "unpaired", notice: { ...notice, version: "Bad" } },
+			{ status: "unpaired", notice: { ...notice, title: "" } },
+			{ status: "unpaired", notice: "text" },
+		]) {
+			expect(() => parseSignIn(bad)).toThrow(UpstreamError);
+		}
+	});
+
+	it("parses notice_required and login_needed", () => {
+		expect(parseSignIn({ status: "notice_required", notice })).toEqual({
+			status: "notice_required",
+			notice: parsedNotice,
+		});
+		expect(parseSignIn({ status: "notice_required" })).toEqual({
+			status: "notice_required",
+		});
+		expect(parseSignIn({ status: "login_needed" })).toEqual({
+			status: "login_needed",
+		});
+		expect(noticeAnswer(parsedNotice)).toEqual(notice);
+	});
+
+	it("gives a new staff login an e-mail on a reserved domain that can never receive mail", () => {
+		expect(staffLoginEmail(USER_ID)).toBe(
+			`staff-${USER_ID}@${STAFF_LOGIN_DOMAIN}`,
+		);
+		expect(STAFF_LOGIN_DOMAIN.endsWith(".invalid")).toBe(true);
+		expect(() => staffLoginEmail("staff")).toThrow();
+		expect(() => staffLoginEmail(USER_ID.toUpperCase())).toThrow();
 	});
 });

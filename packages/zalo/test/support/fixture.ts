@@ -1,5 +1,6 @@
 import { randomBytes, randomInt, randomUUID } from "node:crypto";
 import type { Sql } from "postgres";
+import { STAFF_LOGIN_DOMAIN } from "../../src/session.js";
 import { ZALO_FIXTURE_SLUG_PREFIX } from "../../src/settings.js";
 
 const AUTH_INSTANCE_ID = "00000000-0000-0000-0000-000000000000";
@@ -24,10 +25,22 @@ export interface ZaloFixture {
 		storeIds: readonly string[] | null,
 	): Promise<FixtureLogin>;
 	issueBindingCode(userId: string): Promise<string>;
+	publishStaffNotice(version: string): Promise<void>;
 	cleanup(): Promise<void>;
 }
 
+const STAFF_LOGIN_PATTERN = `%@${STAFF_LOGIN_DOMAIN}`;
+
 export async function deleteStaleZaloFixtures(sql: Sql): Promise<void> {
+	await sql`
+		delete from auth.users u
+		using public.staff_roster r
+		join public.tenants t on t.id = r.tenant_id
+		where u.id = r.user_id
+			and u.email like ${STAFF_LOGIN_PATTERN}
+			and t.slug like ${`${ZALO_FIXTURE_SLUG_PREFIX}%`}
+			and t.created_at < now() - interval '1 hour'
+	`;
 	await sql`
 		delete from public.tenants
 		where slug like ${`${ZALO_FIXTURE_SLUG_PREFIX}%`} and created_at < now() - interval '1 hour'
@@ -87,7 +100,16 @@ export async function createZaloFixture(sql: Sql): Promise<ZaloFixture> {
 	}
 	const tenantId = tenant.id;
 	const cleanup = async () => {
+		const staffLogins = await sql<{ id: string }[]>`
+			select u.id::text as id
+			from public.staff_roster r
+			join auth.users u on u.id = r.user_id
+			where r.tenant_id = ${tenantId}::uuid and u.email like ${STAFF_LOGIN_PATTERN}
+		`;
 		await sql`delete from public.tenants where id = ${tenantId}::uuid`;
+		for (const login of staffLogins) {
+			await sql`delete from auth.users where id = ${login.id}::uuid`;
+		}
 		if (logins.length > 0) {
 			await sql`
 				delete from auth.users
@@ -156,6 +178,13 @@ export async function createZaloFixture(sql: Sql): Promise<ZaloFixture> {
 					throw new Error("no binding code was issued");
 				}
 				return row.code;
+			},
+			async publishStaffNotice(version) {
+				await sql`
+					insert into public.legal_documents (tenant_id, kind, language, version, title, body_markdown, status, published_at)
+					values (${tenantId}::uuid, 'staff_notice', 'vi', ${version}, 'Thông báo cho nhân viên',
+						'Văn bản thử của bộ kiểm thử.', 'published', now() - interval '1 minute')
+				`;
 			},
 			cleanup,
 		};
