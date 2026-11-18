@@ -11,6 +11,7 @@ export {
 	mergeCatalogs,
 	type Translate,
 } from "./i18n/translate";
+export { ZALO_SESSION_PATH } from "./session/endpoint";
 export {
 	authorizationHeaders,
 	createSessionStore,

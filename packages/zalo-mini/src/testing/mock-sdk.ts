@@ -79,10 +79,18 @@ export const nativeStorage: typeof Sdk.nativeStorage = {
 	}),
 };
 
+export function mockAccessToken(): string {
+	const local = import.meta.env.VITE_ZALO_MOCK_ACCESS_TOKEN;
+	return typeof local === "string" && local !== ""
+		? local
+		: MOCK_ZALO_ACCESS_TOKEN;
+}
+
 export const getAccessToken: typeof Sdk.getAccessToken = async (args) => {
 	record("getAccessToken");
-	args?.success?.(MOCK_ZALO_ACCESS_TOKEN);
-	return MOCK_ZALO_ACCESS_TOKEN;
+	const token = mockAccessToken();
+	args?.success?.(token);
+	return token;
 };
 
 export const getSystemInfo: typeof Sdk.getSystemInfo = () => {

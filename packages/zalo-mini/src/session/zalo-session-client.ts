@@ -94,13 +94,20 @@ export function createZaloSessionClient(
 		return { status: "signed-in", session: answer.session };
 	}
 
+	let connecting: Promise<SessionState> | null = null;
+
 	return {
 		async connect() {
 			const stored = store.read();
 			if (stored && isSessionFresh(stored, now())) {
 				return { status: "signed-in", session: stored };
 			}
-			return mint(null);
+			if (connecting === null) {
+				connecting = mint(null).finally(() => {
+					connecting = null;
+				});
+			}
+			return connecting;
 		},
 		async bind(code) {
 			if (!BINDING_CODE_PATTERN.test(code)) {

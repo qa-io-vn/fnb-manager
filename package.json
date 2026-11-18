@@ -20,6 +20,7 @@
 		"db:reset": "supabase db reset",
 		"db:status": "supabase status",
 		"db:load-real": "node scripts/load-real-data.mjs",
+		"zalo:dev": "node scripts/zalo-dev.mjs",
 		"docs:check-api": "node scripts/check-api-docs.mjs",
 		"verify": "bash scripts/verify.sh",
 		"docs:openapi": "node scripts/export-openapi.mjs",

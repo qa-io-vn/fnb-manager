@@ -370,7 +370,7 @@ Deno.test("the integration switches are refused outside the gate", async () => {
 	assertEquals(
 		test.lines,
 		[
-			"zalo-session request-1: ZALO_GRAPH_BASE_URL is accepted only with ZALO_INTEGRATION=1",
+			"zalo-session request-1: ZALO_GRAPH_BASE_URL is accepted only with ZALO_INTEGRATION=1, or with ZALO_LOCAL_DEV=1 on the local stack",
 		],
 		"log",
 	);
@@ -388,6 +388,99 @@ Deno.test("the integration switches are refused outside the gate", async () => {
 		(await gated.json()).error,
 		"not_configured",
 		"not a fixture tenant",
+	);
+});
+
+const LOCAL_STACK: FunctionEnvironment = {
+	...ENVIRONMENT,
+	ZALO_LOCAL_DEV: "1",
+	ZALO_TENANT_ID: TENANT,
+	ZALO_GRAPH_BASE_URL: "http://127.0.0.1:8788",
+	SUPABASE_URL: "http://127.0.0.1:54321",
+	SUPABASE_DB_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+};
+
+Deno.test("on the local stack ZALO_LOCAL_DEV=1 checks a mock user against the loopback graph", async () => {
+	const test = harness();
+	test.backend.bind(APP, ZALO_USER, MANAGER, null);
+	const urls: string[] = [];
+	const response = await handleZaloSession(
+		new Request(FUNCTION_URL, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ access_token: test.token, brand: "brand-1" }),
+		}),
+		LOCAL_STACK,
+		{
+			fetch: (url, init) => {
+				urls.push(url);
+				return test.zalo.fetch(url, init);
+			},
+			backend: test.backend,
+			log: (line) => test.lines.push(line),
+			requestId: () => "request-1",
+		},
+	);
+	assertEquals(response.status, 200, "status");
+	const body = await response.json();
+	assertEquals(
+		[body.status, body.member.role, body.member.stores],
+		["bound", "manager", ["Cửa hàng Mẫu 1"]],
+		"a session for a tenant that is not a zalo-it- fixture",
+	);
+	assertEquals(
+		urls,
+		["http://127.0.0.1:8788/v2.0/me?fields=id,name"],
+		"the loopback mock graph was asked, never graph.zalo.me",
+	);
+});
+
+Deno.test("a deployed function never meets the local switch: the override is refused before Zalo is called", async () => {
+	const deployed: FunctionEnvironment[] = [
+		{ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co" },
+		{ SUPABASE_URL: "http://kong:8000" },
+		{ SUPABASE_URL: "http://10.0.0.5:54321" },
+		{ SUPABASE_URL: undefined },
+		{
+			SUPABASE_DB_URL:
+				"postgresql://db.abcdefghijklmnopqrst.supabase.co:5432/postgres",
+		},
+		{ SUPABASE_DB_URL: "postgresql://postgres:postgres@db:5432/postgres" },
+		{ SUPABASE_DB_URL: undefined },
+	];
+	for (const overrides of deployed) {
+		const test = harness();
+		test.backend.bind(APP, ZALO_USER, MANAGER, null);
+		const response = await test.send(
+			{ access_token: test.token, brand: "brand-1" },
+			{ environment: { ...LOCAL_STACK, ...overrides } },
+		);
+		const label = Object.keys(overrides).join(", ");
+		assertEquals(
+			[response.status, (await response.json()).error],
+			[500, "not_configured"],
+			label,
+		);
+		assertEquals(test.zalo.requests(), [], `${label}: Zalo was not called`);
+		assertEquals(test.backend.calls(), [], `${label}: no backend call`);
+		assert(
+			test.lines.length === 1 &&
+				test.lines[0]?.includes(
+					"ZALO_LOCAL_DEV=1 runs only on the local stack",
+				),
+			`${label}: the refusal is logged`,
+		);
+		assertNoPersonalData(test.lines, ["supabase.co", test.token]);
+	}
+	const both = harness();
+	const gated = await both.send(
+		{ access_token: both.token, brand: "brand-1" },
+		{ environment: { ...LOCAL_STACK, ZALO_INTEGRATION: "1" } },
+	);
+	assertEquals(
+		[gated.status, (await gated.json()).error],
+		[500, "not_configured"],
+		"the two switches exclude each other",
 	);
 });
 

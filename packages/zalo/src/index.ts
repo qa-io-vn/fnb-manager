@@ -50,9 +50,13 @@ export {
 export {
 	isFixtureTenantSlug,
 	isLoopbackBaseUrl,
+	isLoopbackDatabaseUrl,
+	LOCAL_DATABASE_URL_VARIABLE,
+	LOCAL_SUPABASE_URL_VARIABLE,
 	ZALO_FIXTURE_SLUG_PREFIX,
 	ZALO_GRAPH_BASE_URL_VARIABLE,
 	ZALO_INTEGRATION_VARIABLE,
+	ZALO_LOCAL_DEV_VARIABLE,
 	ZALO_TENANT_VARIABLE,
 	ZaloConfigError,
 	type ZaloEnvironment,

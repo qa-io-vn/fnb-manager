@@ -11,12 +11,20 @@ import {
 	readAppConfig,
 	selectMiniAppRow,
 } from "../app-config/index.ts";
+import { ZALO_SESSION_PATH } from "../session/endpoint.ts";
 
 export const MINI_APP_RUNTIMES = ["browser", "zalo"] as const;
 export type MiniAppRuntime = (typeof MINI_APP_RUNTIMES)[number];
 
 export const MINI_APP_STAGES = ["development", "testing"] as const;
 export type MiniAppStage = (typeof MINI_APP_STAGES)[number];
+
+export const MINI_APP_SESSIONS = ["stand-in", "local"] as const;
+export type MiniAppSession = (typeof MINI_APP_SESSIONS)[number];
+
+export const LOCAL_SESSION_URL_VARIABLE = "ZALO_LOCAL_SESSION_URL";
+export const LOCAL_ACCESS_TOKEN_VARIABLE = "ZALO_LOCAL_ACCESS_TOKEN";
+const LOOPBACK_URL = /^http:\/\/(127\.0\.0\.1|localhost):[0-9]{1,5}$/;
 
 export const VIRTUAL_APP_CONFIG = "virtual:mini-app-config";
 const RESOLVED_VIRTUAL_APP_CONFIG = `\0${VIRTUAL_APP_CONFIG}`;
@@ -39,9 +47,16 @@ export const SYNTHETIC_CONFIGURATION_PATH = join(
 	"synthetic-brands.json",
 );
 
+export interface LocalSessionSettings {
+	readonly functionUrl: string;
+	readonly accessToken: string;
+}
+
 export interface MiniAppSettings {
 	readonly runtime: MiniAppRuntime;
 	readonly stage: MiniAppStage;
+	readonly session: MiniAppSession;
+	readonly local: LocalSessionSettings | null;
 	readonly brand: string;
 	readonly appConfigPath: string;
 }
@@ -83,6 +98,12 @@ export function miniAppSettings(
 		command === "serve" ? "development" : "testing",
 		"VITE_MINI_APP_STAGE",
 	);
+	const session = pick(
+		MINI_APP_SESSIONS,
+		env.VITE_ZALO_SESSION,
+		"stand-in",
+		"VITE_ZALO_SESSION",
+	);
 	const brand = env.VITE_BRAND_KEY?.trim() || "";
 	if (runtime === "zalo") {
 		const missing = [
@@ -97,9 +118,37 @@ export function miniAppSettings(
 	return {
 		runtime,
 		stage,
+		session,
+		local:
+			session === "local" ? localSessionSettings(env, runtime, command) : null,
 		brand: brand || SYNTHETIC_BRAND,
 		appConfigPath: resolve(appRoot, env.MINI_APP_CONFIG || "app-config.json"),
 	};
+}
+
+function localSessionSettings(
+	env: Readonly<Record<string, string | undefined>>,
+	runtime: MiniAppRuntime,
+	command: "build" | "serve",
+): LocalSessionSettings {
+	if (runtime !== "browser" || command !== "serve") {
+		throw new Error(
+			"VITE_ZALO_SESSION=local runs only on the browser dev server, never in a build",
+		);
+	}
+	const functionUrl = env[LOCAL_SESSION_URL_VARIABLE]?.trim() ?? "";
+	if (!LOOPBACK_URL.test(functionUrl)) {
+		throw new Error(
+			`VITE_ZALO_SESSION=local needs ${LOCAL_SESSION_URL_VARIABLE}, the loopback address of the local zalo-session such as http://127.0.0.1:5745`,
+		);
+	}
+	const accessToken = env[LOCAL_ACCESS_TOKEN_VARIABLE]?.trim() ?? "";
+	if (accessToken === "") {
+		throw new Error(
+			`VITE_ZALO_SESSION=local needs ${LOCAL_ACCESS_TOKEN_VARIABLE}, the mock Zalo access token of the local user`,
+		);
+	}
+	return { functionUrl, accessToken };
 }
 
 export function loadMiniAppConfig(
@@ -225,6 +274,19 @@ export function deployedAppConfig(
 	};
 }
 
+export function localSessionProxy(local: LocalSessionSettings): {
+	readonly proxy: Record<
+		string,
+		{ readonly target: string; readonly changeOrigin: true }
+	>;
+} {
+	return {
+		proxy: {
+			[ZALO_SESSION_PATH]: { target: local.functionUrl, changeOrigin: true },
+		},
+	};
+}
+
 export function miniApp(options: MiniAppPluginOptions): Plugin[] {
 	let settings: MiniAppSettings | null = null;
 	let appConfig: AppConfig | null = null;
@@ -249,13 +311,19 @@ export function miniApp(options: MiniAppPluginOptions): Plugin[] {
 				options.appRoot,
 			);
 			appConfig = loadMiniAppConfig(settings, options.kind);
+			const local = settings.local;
 			return {
 				...(env.command === "build" ? { base: "./" } : {}),
 				define: {
 					"import.meta.env.VITE_ZALO_RUNTIME": JSON.stringify(settings.runtime),
 					"import.meta.env.VITE_MINI_APP_STAGE": JSON.stringify(settings.stage),
 					"import.meta.env.VITE_BRAND_KEY": JSON.stringify(settings.brand),
+					"import.meta.env.VITE_ZALO_SESSION": JSON.stringify(settings.session),
+					"import.meta.env.VITE_ZALO_MOCK_ACCESS_TOKEN": JSON.stringify(
+						local?.accessToken ?? "",
+					),
 				},
+				...(local ? { server: localSessionProxy(local) } : {}),
 				resolve:
 					settings.runtime === "browser"
 						? { alias: [{ find: /^zmp-sdk$/, replacement: MOCK_SDK_PATH }] }

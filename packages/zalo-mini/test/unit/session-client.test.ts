@@ -117,6 +117,21 @@ describe("session client", () => {
 		expect(requests).toHaveLength(1);
 	});
 
+	it("shares one sign-in between connects that overlap, as React's StrictMode effects do", async () => {
+		const { sessionClient, requests } = client([
+			boundAnswer(NOW_MS / 1000 + 30),
+			boundAnswer(NOW_MS / 1000 + 3600),
+		]);
+		const [first, second] = await Promise.all([
+			sessionClient.connect(),
+			sessionClient.connect(),
+		]);
+		expect(requests).toHaveLength(1);
+		expect(second).toBe(first);
+		await sessionClient.connect();
+		expect(requests).toHaveLength(2);
+	});
+
 	it("mints again when the stored session is about to expire", async () => {
 		const { sessionClient, requests } = client([
 			boundAnswer(NOW_MS / 1000 + 30),

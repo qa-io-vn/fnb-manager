@@ -9,6 +9,7 @@ import {
 	forbiddenImport,
 	forbidHeavyImports,
 	loadMiniAppConfig,
+	localSessionProxy,
 	MOCK_SDK_PATH,
 	miniAppSettings,
 } from "../../src/vite/index";
@@ -21,6 +22,8 @@ describe("Mini App build settings", () => {
 		expect(miniAppSettings({}, "serve", appRoot)).toEqual({
 			runtime: "browser",
 			stage: "development",
+			session: "stand-in",
+			local: null,
 			brand: "brand-1",
 			appConfigPath: join(appRoot, "app-config.json"),
 		});
@@ -48,6 +51,8 @@ describe("Mini App build settings", () => {
 		expect(settings).toEqual({
 			runtime: "zalo",
 			stage: "development",
+			session: "stand-in",
+			local: null,
 			brand: "brand-2",
 			appConfigPath: join(appRoot, "configs", "brand-2.json"),
 		});
@@ -90,6 +95,77 @@ describe("Mini App build settings", () => {
 			loadMiniAppConfig(miniAppSettings({}, "build", appRoot), "staff"),
 		).toEqual(generated);
 		rmSync(path);
+	});
+
+	it("run the local session only on the browser dev server, against a loopback zalo-session", () => {
+		const local = {
+			VITE_ZALO_SESSION: "local",
+			VITE_BRAND_KEY: "brand-3",
+			ZALO_LOCAL_SESSION_URL: "http://127.0.0.1:5745",
+			ZALO_LOCAL_ACCESS_TOKEN: "mock-zalo-access-local",
+		};
+		const settings = miniAppSettings(local, "serve", appRoot);
+		expect(settings).toMatchObject({
+			runtime: "browser",
+			session: "local",
+			brand: "brand-3",
+			local: {
+				functionUrl: "http://127.0.0.1:5745",
+				accessToken: "mock-zalo-access-local",
+			},
+		});
+		expect(
+			localSessionProxy({
+				functionUrl: "http://127.0.0.1:5745",
+				accessToken: "mock-zalo-access-local",
+			}),
+		).toEqual({
+			proxy: {
+				"/functions/v1/zalo-session": {
+					target: "http://127.0.0.1:5745",
+					changeOrigin: true,
+				},
+			},
+		});
+		expect(() => miniAppSettings(local, "build", appRoot)).toThrow(
+			"VITE_ZALO_SESSION=local runs only on the browser dev server, never in a build",
+		);
+		expect(() =>
+			miniAppSettings(
+				{
+					...local,
+					VITE_ZALO_RUNTIME: "zalo",
+					VITE_SUPABASE_URL: "https://project.example.com",
+					VITE_SUPABASE_PUBLISHABLE_KEY: "publishable-test",
+				},
+				"serve",
+				appRoot,
+			),
+		).toThrow("never in a build");
+		for (const url of [
+			"",
+			"https://project.example.com",
+			"http://10.0.0.5:5745",
+			"http://127.0.0.1:5745/functions/v1",
+		]) {
+			expect(() =>
+				miniAppSettings(
+					{ ...local, ZALO_LOCAL_SESSION_URL: url },
+					"serve",
+					appRoot,
+				),
+			).toThrow("needs ZALO_LOCAL_SESSION_URL");
+		}
+		expect(() =>
+			miniAppSettings(
+				{ ...local, ZALO_LOCAL_ACCESS_TOKEN: " " },
+				"serve",
+				appRoot,
+			),
+		).toThrow("needs ZALO_LOCAL_ACCESS_TOKEN");
+		expect(() =>
+			miniAppSettings({ VITE_ZALO_SESSION: "real" }, "serve", appRoot),
+		).toThrow("VITE_ZALO_SESSION must be one of stand-in, local");
 	});
 
 	it("point zmp-sdk at the mocked SDK in browser mode", () => {

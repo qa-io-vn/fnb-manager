@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { getAccessToken, getSystemInfo, nativeStorage } from "zmp-sdk";
 import type { MiniAppBuildConfig } from "../app-config/index";
 import { type Catalog, type Language, languageFrom } from "../i18n/translate";
+import { ZALO_SESSION_PATH } from "../session/endpoint";
 import {
 	createStandInSessionClient,
 	standInSettingsFrom,
@@ -26,17 +27,31 @@ export function miniAppEnvironment(
 ): MiniAppEnvironment {
 	const storage = fromZmpNativeStorage(nativeStorage);
 	const language = languageFrom(getSystemInfo().zaloLanguage);
+	const publishableKey = String(
+		import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "",
+	);
 	if (import.meta.env.VITE_ZALO_RUNTIME === "zalo") {
 		const supabaseUrl = String(import.meta.env.VITE_SUPABASE_URL ?? "");
 		return {
 			runtime: "zalo",
 			language,
 			sessionClient: createZaloSessionClient({
-				endpoint: `${supabaseUrl.replace(/\/$/, "")}/functions/v1/zalo-session`,
+				endpoint: `${supabaseUrl.replace(/\/$/, "")}${ZALO_SESSION_PATH}`,
 				brandKey: config.brand,
-				publishableKey: String(
-					import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "",
-				),
+				publishableKey,
+				storage,
+				getAccessToken: () => getAccessToken(),
+			}),
+		};
+	}
+	if (import.meta.env.VITE_ZALO_SESSION === "local") {
+		return {
+			runtime: "browser",
+			language,
+			sessionClient: createZaloSessionClient({
+				endpoint: ZALO_SESSION_PATH,
+				brandKey: config.brand,
+				publishableKey,
 				storage,
 				getAccessToken: () => getAccessToken(),
 			}),

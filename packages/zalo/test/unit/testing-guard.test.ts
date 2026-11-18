@@ -29,6 +29,7 @@ describe("the ZALO_INTEGRATION gate", () => {
 	it("runs against the real graph with no variable set", () => {
 		expect(zaloSettings({})).toEqual({
 			integration: false,
+			local: false,
 			tenantId: null,
 			graphBaseUrl: "https://graph.zalo.me",
 		});
@@ -46,6 +47,7 @@ describe("the ZALO_INTEGRATION gate", () => {
 			}),
 		).toEqual({
 			integration: true,
+			local: false,
 			tenantId: FIXTURE_TENANT,
 			graphBaseUrl: "http://127.0.0.1:8788",
 		});
@@ -56,7 +58,7 @@ describe("the ZALO_INTEGRATION gate", () => {
 			refusalOf(() =>
 				zaloSettings({ ZALO_GRAPH_BASE_URL: "http://127.0.0.1:8788" }),
 			),
-		).toContain("only with ZALO_INTEGRATION=1");
+		).toContain("only with ZALO_INTEGRATION=1, or with ZALO_LOCAL_DEV=1");
 		for (const address of [
 			"https://graph.example.test",
 			"http://10.0.0.5:8788",

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	EXTERNAL_OPEN_APIS,
 	getAccessToken,
@@ -7,6 +7,7 @@ import {
 	MOCK_CALLS_GLOBAL,
 	MOCK_PHONE_TOKEN,
 	MOCK_ZALO_ACCESS_TOKEN,
+	mockAccessToken,
 	mockSdkCalls,
 	nativeStorage,
 	openOutApp,
@@ -45,6 +46,17 @@ describe("mocked Zalo SDK", () => {
 			"getAccessToken",
 			"getPhoneNumber",
 		]);
+	});
+
+	it("hands out the local mock user's token when the dev server provides one", async () => {
+		vi.stubEnv("VITE_ZALO_MOCK_ACCESS_TOKEN", "mock-zalo-access-local");
+		try {
+			expect(mockAccessToken()).toBe("mock-zalo-access-local");
+			expect(await getAccessToken()).toBe("mock-zalo-access-local");
+		} finally {
+			vi.unstubAllEnvs();
+		}
+		expect(await getAccessToken()).toBe(MOCK_ZALO_ACCESS_TOKEN);
 	});
 
 	it("keeps Native Storage in memory, with Zalo's empty string for a missing key", () => {
