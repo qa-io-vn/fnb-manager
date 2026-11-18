@@ -677,5 +677,31 @@ cross join (
 ) as r (display_name, role, store_code)
 join seed_stores s on s.code = r.store_code;
 
+with templates as (
+  insert into public.checklist_templates (tenant_id, store_id, shift_phase, title, version, created_by)
+  select c.tenant_id, null::uuid, t.shift_phase, t.title, 1, c.dev_user_id
+  from seed_constants c
+  cross join (
+    values ('opening', 'Mở ca'), ('midshift', 'Giữa ca'), ('closing', 'Đóng ca')
+  ) as t (shift_phase, title)
+  returning id, tenant_id, store_id, shift_phase
+)
+insert into public.checklist_items (tenant_id, store_id, template_id, template_version, position, label, requires_photo, number_unit, created_by)
+select t.tenant_id, t.store_id, t.id, 1, i.position, i.label, i.requires_photo, i.number_unit, c.dev_user_id
+from templates t
+cross join seed_constants c
+join (
+  values
+    ('opening', 1, 'Mở ca trên máy POS', false, null::text),
+    ('opening', 2, 'Vệ sinh quầy pha chế', true, null),
+    ('opening', 3, 'Nhiệt độ tủ mát', false, '°C'),
+    ('midshift', 1, 'Kiểm tra vệ sinh khu khách', false, null),
+    ('midshift', 2, 'Bổ sung ly, ống hút và khăn giấy', false, null),
+    ('closing', 1, 'Kiểm kê và ghi hàng hủy', false, null),
+    ('closing', 2, 'Viết bàn giao ca', false, null),
+    ('closing', 3, 'Ảnh khu pha chế sau khi dọn', true, null),
+    ('closing', 4, 'Kết ca trên máy POS', false, null)
+) as i (shift_phase, position, label, requires_photo, number_unit) on i.shift_phase = t.shift_phase;
+
 select app.refresh_analytics(c.tenant_id, current_date - 7, current_date)
 from seed_constants c;

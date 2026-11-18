@@ -70,7 +70,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,supavisor,postgres-meta
+      - run: pnpm exec supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta
       - run: pnpm exec supabase db reset
       - run: pnpm exec supabase test db
       - name: The OpenAPI description matches the database
@@ -100,7 +100,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @fnb/web exec playwright install --with-deps chromium
-      - run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,supavisor,postgres-meta
+      - run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta
       - run: pnpm exec supabase db reset
       - name: Point the web app at the local stack
         run: |

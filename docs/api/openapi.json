@@ -1105,6 +1105,112 @@
 			],
 			"type": "object"
 		},
+		"cash_counts": {
+			"description": "the cash counted at shift close (FR-STF-16): the counted amount with an optional denomination breakdown, the counter (created_by) and the time; matched to the synced shift of the store whose close is nearest to the count, else waiting as chưa khớp ca; one active count per shift: a manager reopens a count (logged on the row) and the recount replaces it for the same shift; no POS shift name or cashier field is ever copied here",
+			"properties": {
+				"anchor_at": {
+					"description": "the time matched against shift closes: counted_at for a first count, the replaced count's anchor_at for a recount",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"business_date": {
+					"description": "the store's business date at the count, then the matched shift's business date (its opening under the store's day start, as agg_shift_cash)",
+					"format": "date",
+					"type": "string"
+				},
+				"counted_amount": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"counted_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"denominations": {
+					"format": "jsonb"
+				},
+				"evaluated_at": {
+					"description": "when the count was compared with the shift's expected cash under the tenant's thresholds (app.evaluate_cash_count); null while unmatched or while the shift's figures are missing",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"matched_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"note": {
+					"format": "text",
+					"type": "string"
+				},
+				"reopened_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"reopened_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"replaces_id": {
+					"description": "Note:\nThis is a Foreign Key to `cash_counts.id`.<fk table='cash_counts' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"shift_id": {
+					"description": "the synced public.shifts row the count belongs to once matched (app.match_cash_counts), set by the database only\n\nNote:\nThis is a Foreign Key to `shifts.id`.<fk table='shifts' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"status": {
+					"default": "active",
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"business_date",
+				"counted_amount",
+				"counted_at",
+				"anchor_at",
+				"status",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"channel_policies": {
 			"description": "send rules per channel kind and message class: global defaults (tenant_id null) and tenant overrides; the Decree 91/2020 advertising floor and the internal-only channel rule are CHECK constraints, so no writer can store a policy below them",
 			"properties": {
@@ -1240,6 +1346,375 @@
 				"requires_consent",
 				"api_send_allowed",
 				"source_note",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"checklist_answers": {
+			"description": "one row per item of a run, created with the run (created_by is the run's actor); done, number_value and photo_path are written by the actor while the run is open and by managers of the store at any time, each write stamping answered_by and answered_at; a manager's change after the run finished is logged in checklist_corrections",
+			"properties": {
+				"answered_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"answered_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"done": {
+					"default": false,
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"item_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"number_value": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"photo_path": {
+					"description": "the object name in the run's photo_bucket, <tenant>/<store>/run/<run id>/<name>.jpg; kept after the photo is removed",
+					"format": "text",
+					"type": "string"
+				},
+				"photo_removed_at": {
+					"description": "the photo-removed marker: when the housekeeping found the object gone (retention, ops_photo_retention_days)",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"run_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"run_id",
+				"item_id",
+				"done",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"checklist_corrections": {
+			"description": "the correction log: one row per change to an answer of a finished run, with the corrector (created_by), the time and done, number_value and photo_path before and after; written only by trigger",
+			"properties": {
+				"answer_id": {
+					"description": "Note:\nThis is a Foreign Key to `checklist_answers.id`.<fk table='checklist_answers' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"item_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"new_values": {
+					"format": "jsonb"
+				},
+				"old_values": {
+					"format": "jsonb"
+				},
+				"run_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"run_id",
+				"answer_id",
+				"item_id",
+				"old_values",
+				"new_values",
+				"created_at"
+			],
+			"type": "object"
+		},
+		"checklist_items": {
+			"description": "the items of one version of a checklist template, in order; immutable: a change is a new version written by save_checklist_template",
+			"properties": {
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"label": {
+					"format": "text",
+					"type": "string"
+				},
+				"number_unit": {
+					"description": "when set, the item asks for a number in this unit (for example °C) and cannot be marked done without one",
+					"format": "text",
+					"type": "string"
+				},
+				"position": {
+					"format": "int32",
+					"type": "integer"
+				},
+				"requires_photo": {
+					"default": false,
+					"description": "the item cannot be marked done without a photo in the run's path of the brand bucket",
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"store_id": {
+					"description": "the template's store_id, copied so that the read policy needs no join",
+					"format": "uuid",
+					"type": "string"
+				},
+				"template_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"template_version": {
+					"format": "int32",
+					"type": "integer"
+				},
+				"tenant_id": {
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"template_id",
+				"template_version",
+				"position",
+				"label",
+				"requires_photo",
+				"created_at"
+			],
+			"type": "object"
+		},
+		"checklist_runs": {
+			"description": "one run of a checklist at a store by one member (the actor, created_by): the template version, title and shift phase as they were at the start, the business date under the store's day start, the photo bucket and the start and finish times; a finished run is read-only for staff",
+			"properties": {
+				"business_date": {
+					"description": "the store's business date at the start (ADR-007: local time less the day start)",
+					"format": "date",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"finished_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"photo_bucket": {
+					"description": "the brand bucket the run's photos go to (app.ops_photo_bucket at the start); null when no brand covers the store",
+					"format": "text",
+					"type": "string"
+				},
+				"shift_phase": {
+					"format": "text",
+					"type": "string"
+				},
+				"started_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"status": {
+					"default": "open",
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"template_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"template_version": {
+					"format": "int32",
+					"type": "integer"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"title": {
+					"format": "text",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"template_id",
+				"template_version",
+				"title",
+				"shift_phase",
+				"business_date",
+				"status",
+				"started_at",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"checklist_templates": {
+			"description": "checklists defined as data (FR-STF-15): one row per checklist of a store, or of every store of the tenant when store_id is null, and shift phase; version is the current version, whose items a new run reads; written only through save_checklist_template and set_checklist_template_active",
+			"properties": {
+				"active": {
+					"default": true,
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"shift_phase": {
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"description": "the store the checklist belongs to; null for every store of the tenant, which only a member with an unlimited scope edits",
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"title": {
+					"format": "text",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"version": {
+					"default": 1,
+					"description": "the current version: every save_checklist_template call adds one and writes a new set of checklist_items, so earlier runs keep the wording of their version",
+					"format": "int32",
+					"type": "integer"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"shift_phase",
+				"title",
+				"active",
+				"version",
 				"created_at",
 				"updated_at"
 			],
@@ -1857,6 +2332,184 @@
 				"holiday_date",
 				"name",
 				"kind",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"incident_categories": {
+			"description": "categories of incident and stock-out reports: the Vietnamese defaults as global rows (tenant_id null) and a tenant's own rows, which override a default of the same key (label, order, active) or add a key; a tenant's effective list is incident_categories_of; tenant rows written by owners with an unlimited scope",
+			"properties": {
+				"active": {
+					"default": true,
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"key": {
+					"description": "the stable key a report stores in incidents.category_key; never changes once written",
+					"format": "text",
+					"type": "string"
+				},
+				"label": {
+					"format": "text",
+					"type": "string"
+				},
+				"sort_order": {
+					"default": 50,
+					"format": "int32",
+					"type": "integer"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"key",
+				"label",
+				"sort_order",
+				"active",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"incidents": {
+			"description": "incident and stock-out reports (FR-STF-17) with a category, a free-text description, the item for a stock-out and up to three photos in the store's brand bucket; open until a manager of the store other than the reporter acknowledges it (seen), then resolved; the reporter edits it only while open; the description is never copied into a message or a log",
+			"properties": {
+				"acknowledged_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"acknowledged_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"business_date": {
+					"format": "date",
+					"type": "string"
+				},
+				"category_key": {
+					"format": "text",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"description": {
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"item_label": {
+					"format": "text",
+					"type": "string"
+				},
+				"kind": {
+					"format": "text",
+					"type": "string"
+				},
+				"occurred_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"photo_bucket": {
+					"format": "text",
+					"type": "string"
+				},
+				"photo_paths": {
+					"description": "object names in photo_bucket, each <tenant>/<store>/incident/<incident id>/<name>.jpg, added after the report exists",
+					"format": "text[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"photo_removed_at": {
+					"description": "the photo-removed marker: when the housekeeping found every photo of the report gone (retention, ops_photo_retention_days)",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"resolved_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"resolved_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"status": {
+					"default": "open",
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"business_date",
+				"occurred_at",
+				"kind",
+				"category_key",
+				"description",
+				"photo_paths",
+				"status",
 				"created_at",
 				"updated_at"
 			],
@@ -3877,6 +4530,78 @@
 			],
 			"type": "object"
 		},
+		"shift_handovers": {
+			"description": "handover notes (FR-STF-17): from shift Ca {from_shift} to Ca {to_shift} of a store's business date, written by created_by and acknowledged by a manager of the store who is not the writer; the writer edits the note until it is acknowledged; the note is free text that no message or log ever carries",
+			"properties": {
+				"acknowledged_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"acknowledged_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"business_date": {
+					"format": "date",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"from_shift": {
+					"description": "n of the label Ca {n}: shifts are numbered by opening order within the business day",
+					"format": "int32",
+					"type": "integer"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"note": {
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"to_shift": {
+					"format": "int32",
+					"type": "integer"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"business_date",
+				"from_shift",
+				"to_shift",
+				"note",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"shifts": {
 			"properties": {
 				"cash_drawer_amount": {
@@ -4707,6 +5432,12 @@
 					"format": "text",
 					"type": "string"
 				},
+				"ops_photo_retention_days": {
+					"default": 90,
+					"description": "days an operations photo (checklist proof, incident report) is kept in the brand bucket before the housekeeping job removes it; the rows keep a photo-removed marker; written by an owner with an unlimited scope through set_ops_photo_retention_days",
+					"format": "int32",
+					"type": "integer"
+				},
 				"profile_updated_at": {
 					"format": "timestamp with time zone",
 					"type": "string"
@@ -4742,7 +5473,8 @@
 				"created_at",
 				"analytics_inputs_version",
 				"default_language",
-				"staff_revenue_visibility"
+				"staff_revenue_visibility",
+				"ops_photo_retention_days"
 			],
 			"type": "object"
 		},
@@ -5251,6 +5983,15 @@
 				"$ref": "#/definitions/brands"
 			}
 		},
+		"body.cash_counts": {
+			"description": "cash_counts",
+			"in": "body",
+			"name": "cash_counts",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/cash_counts"
+			}
+		},
 		"body.channel_policies": {
 			"description": "channel_policies",
 			"in": "body",
@@ -5258,6 +5999,51 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/channel_policies"
+			}
+		},
+		"body.checklist_answers": {
+			"description": "checklist_answers",
+			"in": "body",
+			"name": "checklist_answers",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/checklist_answers"
+			}
+		},
+		"body.checklist_corrections": {
+			"description": "checklist_corrections",
+			"in": "body",
+			"name": "checklist_corrections",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/checklist_corrections"
+			}
+		},
+		"body.checklist_items": {
+			"description": "checklist_items",
+			"in": "body",
+			"name": "checklist_items",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/checklist_items"
+			}
+		},
+		"body.checklist_runs": {
+			"description": "checklist_runs",
+			"in": "body",
+			"name": "checklist_runs",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/checklist_runs"
+			}
+		},
+		"body.checklist_templates": {
+			"description": "checklist_templates",
+			"in": "body",
+			"name": "checklist_templates",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/checklist_templates"
 			}
 		},
 		"body.consent_records": {
@@ -5339,6 +6125,24 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/holidays"
+			}
+		},
+		"body.incident_categories": {
+			"description": "incident_categories",
+			"in": "body",
+			"name": "incident_categories",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/incident_categories"
+			}
+		},
+		"body.incidents": {
+			"description": "incidents",
+			"in": "body",
+			"name": "incidents",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/incidents"
 			}
 		},
 		"body.invoice_events": {
@@ -5537,6 +6341,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/report_settings"
+			}
+		},
+		"body.shift_handovers": {
+			"description": "shift_handovers",
+			"in": "body",
+			"name": "shift_handovers",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/shift_handovers"
 			}
 		},
 		"body.shifts": {
@@ -6846,6 +7659,124 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.cash_counts.anchor_at": {
+			"description": "the time matched against shift closes: counted_at for a first count, the replaced count's anchor_at for a recount",
+			"in": "query",
+			"name": "anchor_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.business_date": {
+			"description": "the store's business date at the count, then the matched shift's business date (its opening under the store's day start, as agg_shift_cash)",
+			"in": "query",
+			"name": "business_date",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.counted_amount": {
+			"in": "query",
+			"name": "counted_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.counted_at": {
+			"in": "query",
+			"name": "counted_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.denominations": {
+			"in": "query",
+			"name": "denominations",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.evaluated_at": {
+			"description": "when the count was compared with the shift's expected cash under the tenant's thresholds (app.evaluate_cash_count); null while unmatched or while the shift's figures are missing",
+			"in": "query",
+			"name": "evaluated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.matched_at": {
+			"in": "query",
+			"name": "matched_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.note": {
+			"in": "query",
+			"name": "note",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.reopened_at": {
+			"in": "query",
+			"name": "reopened_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.reopened_by": {
+			"in": "query",
+			"name": "reopened_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.replaces_id": {
+			"in": "query",
+			"name": "replaces_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.shift_id": {
+			"description": "the synced public.shifts row the count belongs to once matched (app.match_cash_counts), set by the database only",
+			"in": "query",
+			"name": "shift_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.cash_counts.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.channel_policies.allowed": {
 			"in": "query",
 			"name": "allowed",
@@ -6984,6 +7915,381 @@
 		"rowFilter.channel_policies.window_start": {
 			"in": "query",
 			"name": "window_start",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.answered_at": {
+			"in": "query",
+			"name": "answered_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.answered_by": {
+			"in": "query",
+			"name": "answered_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.done": {
+			"in": "query",
+			"name": "done",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.item_id": {
+			"in": "query",
+			"name": "item_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.number_value": {
+			"in": "query",
+			"name": "number_value",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.photo_path": {
+			"description": "the object name in the run's photo_bucket, <tenant>/<store>/run/<run id>/<name>.jpg; kept after the photo is removed",
+			"in": "query",
+			"name": "photo_path",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.photo_removed_at": {
+			"description": "the photo-removed marker: when the housekeeping found the object gone (retention, ops_photo_retention_days)",
+			"in": "query",
+			"name": "photo_removed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.run_id": {
+			"in": "query",
+			"name": "run_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_answers.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_corrections.answer_id": {
+			"in": "query",
+			"name": "answer_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_corrections.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_corrections.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_corrections.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_corrections.item_id": {
+			"in": "query",
+			"name": "item_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_corrections.new_values": {
+			"in": "query",
+			"name": "new_values",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_corrections.old_values": {
+			"in": "query",
+			"name": "old_values",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_corrections.run_id": {
+			"in": "query",
+			"name": "run_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_corrections.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_corrections.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_items.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_items.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_items.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_items.label": {
+			"in": "query",
+			"name": "label",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_items.number_unit": {
+			"description": "when set, the item asks for a number in this unit (for example °C) and cannot be marked done without one",
+			"in": "query",
+			"name": "number_unit",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_items.position": {
+			"in": "query",
+			"name": "position",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_items.requires_photo": {
+			"description": "the item cannot be marked done without a photo in the run's path of the brand bucket",
+			"in": "query",
+			"name": "requires_photo",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_items.store_id": {
+			"description": "the template's store_id, copied so that the read policy needs no join",
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_items.template_id": {
+			"in": "query",
+			"name": "template_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_items.template_version": {
+			"in": "query",
+			"name": "template_version",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_items.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.business_date": {
+			"description": "the store's business date at the start (ADR-007: local time less the day start)",
+			"in": "query",
+			"name": "business_date",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.finished_at": {
+			"in": "query",
+			"name": "finished_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.photo_bucket": {
+			"description": "the brand bucket the run's photos go to (app.ops_photo_bucket at the start); null when no brand covers the store",
+			"in": "query",
+			"name": "photo_bucket",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.shift_phase": {
+			"in": "query",
+			"name": "shift_phase",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.started_at": {
+			"in": "query",
+			"name": "started_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.template_id": {
+			"in": "query",
+			"name": "template_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.template_version": {
+			"in": "query",
+			"name": "template_version",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.title": {
+			"in": "query",
+			"name": "title",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_runs.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_templates.active": {
+			"in": "query",
+			"name": "active",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_templates.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_templates.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_templates.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_templates.shift_phase": {
+			"in": "query",
+			"name": "shift_phase",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_templates.store_id": {
+			"description": "the store the checklist belongs to; null for every store of the tenant, which only a member with an unlimited scope edits",
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_templates.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_templates.title": {
+			"in": "query",
+			"name": "title",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_templates.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_templates.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.checklist_templates.version": {
+			"description": "the current version: every save_checklist_template call adds one and writes a new set of checklist_items, so earlier runs keep the wording of their version",
+			"in": "query",
+			"name": "version",
 			"required": false,
 			"type": "string"
 		},
@@ -7608,6 +8914,189 @@
 		"rowFilter.holidays.updated_by": {
 			"in": "query",
 			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incident_categories.active": {
+			"in": "query",
+			"name": "active",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incident_categories.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incident_categories.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incident_categories.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incident_categories.key": {
+			"description": "the stable key a report stores in incidents.category_key; never changes once written",
+			"in": "query",
+			"name": "key",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incident_categories.label": {
+			"in": "query",
+			"name": "label",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incident_categories.sort_order": {
+			"in": "query",
+			"name": "sort_order",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incident_categories.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incident_categories.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incident_categories.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.acknowledged_at": {
+			"in": "query",
+			"name": "acknowledged_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.acknowledged_by": {
+			"in": "query",
+			"name": "acknowledged_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.business_date": {
+			"in": "query",
+			"name": "business_date",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.category_key": {
+			"in": "query",
+			"name": "category_key",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.description": {
+			"in": "query",
+			"name": "description",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.item_label": {
+			"in": "query",
+			"name": "item_label",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.kind": {
+			"in": "query",
+			"name": "kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.occurred_at": {
+			"in": "query",
+			"name": "occurred_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.photo_bucket": {
+			"in": "query",
+			"name": "photo_bucket",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.photo_paths": {
+			"description": "object names in photo_bucket, each <tenant>/<store>/incident/<incident id>/<name>.jpg, added after the report exists",
+			"in": "query",
+			"name": "photo_paths",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.photo_removed_at": {
+			"description": "the photo-removed marker: when the housekeeping found every photo of the report gone (retention, ops_photo_retention_days)",
+			"in": "query",
+			"name": "photo_removed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.resolved_at": {
+			"in": "query",
+			"name": "resolved_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.resolved_by": {
+			"in": "query",
+			"name": "resolved_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.incidents.updated_at": {
+			"in": "query",
+			"name": "updated_at",
 			"required": false,
 			"type": "string"
 		},
@@ -9719,6 +11208,79 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.shift_handovers.acknowledged_at": {
+			"in": "query",
+			"name": "acknowledged_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.shift_handovers.acknowledged_by": {
+			"in": "query",
+			"name": "acknowledged_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.shift_handovers.business_date": {
+			"in": "query",
+			"name": "business_date",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.shift_handovers.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.shift_handovers.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.shift_handovers.from_shift": {
+			"description": "n of the label Ca {n}: shifts are numbered by opening order within the business day",
+			"in": "query",
+			"name": "from_shift",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.shift_handovers.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.shift_handovers.note": {
+			"in": "query",
+			"name": "note",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.shift_handovers.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.shift_handovers.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.shift_handovers.to_shift": {
+			"in": "query",
+			"name": "to_shift",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.shift_handovers.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.shifts.cash_drawer_amount": {
 			"in": "query",
 			"name": "cash_drawer_amount",
@@ -10578,6 +12140,13 @@
 		"rowFilter.tenants.name": {
 			"in": "query",
 			"name": "name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.tenants.ops_photo_retention_days": {
+			"description": "days an operations photo (checklist proof, incident report) is kept in the brand bucket before the housekeeping job removes it; the rows keep a photo-removed marker; written by an owner with an unlimited scope through set_ops_photo_retention_days",
+			"in": "query",
+			"name": "ops_photo_retention_days",
 			"required": false,
 			"type": "string"
 		},
@@ -13970,6 +15539,271 @@
 				"tags": ["brands"]
 			}
 		},
+		"/cash_counts": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.shift_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.counted_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.denominations"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.counted_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.anchor_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.replaces_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.reopened_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.reopened_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.matched_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.evaluated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the cash counted at shift close (FR-STF-16): the counted amount with an optional denomination breakdown, the counter (created_by) and the time; matched to the synced shift of the store whose close is nearest to the count, else waiting as chưa khớp ca; one active count per shift: a manager reopens a count (logged on the row) and the recount replaces it for the same shift; no POS shift name or cashier field is ever copied here",
+				"tags": ["cash_counts"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.shift_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.counted_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.denominations"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.counted_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.anchor_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.replaces_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.reopened_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.reopened_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.matched_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.evaluated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/cash_counts"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the cash counted at shift close (FR-STF-16): the counted amount with an optional denomination breakdown, the counter (created_by) and the time; matched to the synced shift of the store whose close is nearest to the count, else waiting as chưa khớp ca; one active count per shift: a manager reopens a count (logged on the row) and the recount replaces it for the same shift; no POS shift name or cashier field is ever copied here",
+				"tags": ["cash_counts"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.shift_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.counted_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.denominations"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.counted_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.anchor_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.replaces_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.reopened_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.reopened_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.matched_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.evaluated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.cash_counts.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.cash_counts"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the cash counted at shift close (FR-STF-16): the counted amount with an optional denomination breakdown, the counter (created_by) and the time; matched to the synced shift of the store whose close is nearest to the count, else waiting as chưa khớp ca; one active count per shift: a manager reopens a count (logged on the row) and the recount replaces it for the same shift; no POS shift name or cashier field is ever copied here",
+				"tags": ["cash_counts"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.cash_counts"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the cash counted at shift close (FR-STF-16): the counted amount with an optional denomination breakdown, the counter (created_by) and the time; matched to the synced shift of the store whose close is nearest to the count, else waiting as chưa khớp ca; one active count per shift: a manager reopens a count (logged on the row) and the recount replaces it for the same shift; no POS shift name or cashier field is ever copied here",
+				"tags": ["cash_counts"]
+			}
+		},
 		"/channel_policies": {
 			"delete": {
 				"parameters": [
@@ -14269,6 +16103,1025 @@
 				},
 				"summary": "send rules per channel kind and message class: global defaults (tenant_id null) and tenant overrides; the Decree 91/2020 advertising floor and the internal-only channel rule are CHECK constraints, so no writer can store a policy below them",
 				"tags": ["channel_policies"]
+			}
+		},
+		"/checklist_answers": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.run_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.item_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.done"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.number_value"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.photo_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.photo_removed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.answered_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.answered_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "one row per item of a run, created with the run (created_by is the run's actor); done, number_value and photo_path are written by the actor while the run is open and by managers of the store at any time, each write stamping answered_by and answered_at; a manager's change after the run finished is logged in checklist_corrections",
+				"tags": ["checklist_answers"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.run_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.item_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.done"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.number_value"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.photo_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.photo_removed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.answered_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.answered_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/checklist_answers"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "one row per item of a run, created with the run (created_by is the run's actor); done, number_value and photo_path are written by the actor while the run is open and by managers of the store at any time, each write stamping answered_by and answered_at; a manager's change after the run finished is logged in checklist_corrections",
+				"tags": ["checklist_answers"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.run_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.item_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.done"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.number_value"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.photo_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.photo_removed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.answered_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.answered_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_answers.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.checklist_answers"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "one row per item of a run, created with the run (created_by is the run's actor); done, number_value and photo_path are written by the actor while the run is open and by managers of the store at any time, each write stamping answered_by and answered_at; a manager's change after the run finished is logged in checklist_corrections",
+				"tags": ["checklist_answers"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.checklist_answers"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "one row per item of a run, created with the run (created_by is the run's actor); done, number_value and photo_path are written by the actor while the run is open and by managers of the store at any time, each write stamping answered_by and answered_at; a manager's change after the run finished is logged in checklist_corrections",
+				"tags": ["checklist_answers"]
+			}
+		},
+		"/checklist_corrections": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.run_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.answer_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.item_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.old_values"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.new_values"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.created_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the correction log: one row per change to an answer of a finished run, with the corrector (created_by), the time and done, number_value and photo_path before and after; written only by trigger",
+				"tags": ["checklist_corrections"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.run_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.answer_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.item_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.old_values"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.new_values"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.created_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/checklist_corrections"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the correction log: one row per change to an answer of a finished run, with the corrector (created_by), the time and done, number_value and photo_path before and after; written only by trigger",
+				"tags": ["checklist_corrections"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.run_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.answer_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.item_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.old_values"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.new_values"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_corrections.created_at"
+					},
+					{
+						"$ref": "#/parameters/body.checklist_corrections"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the correction log: one row per change to an answer of a finished run, with the corrector (created_by), the time and done, number_value and photo_path before and after; written only by trigger",
+				"tags": ["checklist_corrections"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.checklist_corrections"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the correction log: one row per change to an answer of a finished run, with the corrector (created_by), the time and done, number_value and photo_path before and after; written only by trigger",
+				"tags": ["checklist_corrections"]
+			}
+		},
+		"/checklist_items": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.template_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.template_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.position"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.requires_photo"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.number_unit"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.created_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the items of one version of a checklist template, in order; immutable: a change is a new version written by save_checklist_template",
+				"tags": ["checklist_items"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.template_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.template_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.position"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.requires_photo"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.number_unit"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.created_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/checklist_items"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the items of one version of a checklist template, in order; immutable: a change is a new version written by save_checklist_template",
+				"tags": ["checklist_items"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.template_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.template_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.position"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.requires_photo"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.number_unit"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_items.created_at"
+					},
+					{
+						"$ref": "#/parameters/body.checklist_items"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the items of one version of a checklist template, in order; immutable: a change is a new version written by save_checklist_template",
+				"tags": ["checklist_items"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.checklist_items"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the items of one version of a checklist template, in order; immutable: a change is a new version written by save_checklist_template",
+				"tags": ["checklist_items"]
+			}
+		},
+		"/checklist_runs": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.template_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.template_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.shift_phase"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.photo_bucket"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.started_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.finished_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "one run of a checklist at a store by one member (the actor, created_by): the template version, title and shift phase as they were at the start, the business date under the store's day start, the photo bucket and the start and finish times; a finished run is read-only for staff",
+				"tags": ["checklist_runs"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.template_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.template_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.shift_phase"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.photo_bucket"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.started_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.finished_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/checklist_runs"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "one run of a checklist at a store by one member (the actor, created_by): the template version, title and shift phase as they were at the start, the business date under the store's day start, the photo bucket and the start and finish times; a finished run is read-only for staff",
+				"tags": ["checklist_runs"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.template_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.template_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.shift_phase"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.photo_bucket"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.started_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.finished_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_runs.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.checklist_runs"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "one run of a checklist at a store by one member (the actor, created_by): the template version, title and shift phase as they were at the start, the business date under the store's day start, the photo bucket and the start and finish times; a finished run is read-only for staff",
+				"tags": ["checklist_runs"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.checklist_runs"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "one run of a checklist at a store by one member (the actor, created_by): the template version, title and shift phase as they were at the start, the business date under the store's day start, the photo bucket and the start and finish times; a finished run is read-only for staff",
+				"tags": ["checklist_runs"]
+			}
+		},
+		"/checklist_templates": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.shift_phase"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "checklists defined as data (FR-STF-15): one row per checklist of a store, or of every store of the tenant when store_id is null, and shift phase; version is the current version, whose items a new run reads; written only through save_checklist_template and set_checklist_template_active",
+				"tags": ["checklist_templates"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.shift_phase"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/checklist_templates"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "checklists defined as data (FR-STF-15): one row per checklist of a store, or of every store of the tenant when store_id is null, and shift phase; version is the current version, whose items a new run reads; written only through save_checklist_template and set_checklist_template_active",
+				"tags": ["checklist_templates"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.shift_phase"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.checklist_templates.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.checklist_templates"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "checklists defined as data (FR-STF-15): one row per checklist of a store, or of every store of the tenant when store_id is null, and shift phase; version is the current version, whose items a new run reads; written only through save_checklist_template and set_checklist_template_active",
+				"tags": ["checklist_templates"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.checklist_templates"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "checklists defined as data (FR-STF-15): one row per checklist of a store, or of every store of the tenant when store_id is null, and shift phase; version is the current version, whose items a new run reads; written only through save_checklist_template and set_checklist_template_active",
+				"tags": ["checklist_templates"]
 			}
 		},
 		"/consent_records": {
@@ -16014,6 +18867,464 @@
 					}
 				},
 				"tags": ["holidays"]
+			}
+		},
+		"/incident_categories": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.sort_order"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "categories of incident and stock-out reports: the Vietnamese defaults as global rows (tenant_id null) and a tenant's own rows, which override a default of the same key (label, order, active) or add a key; a tenant's effective list is incident_categories_of; tenant rows written by owners with an unlimited scope",
+				"tags": ["incident_categories"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.sort_order"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/incident_categories"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "categories of incident and stock-out reports: the Vietnamese defaults as global rows (tenant_id null) and a tenant's own rows, which override a default of the same key (label, order, active) or add a key; a tenant's effective list is incident_categories_of; tenant rows written by owners with an unlimited scope",
+				"tags": ["incident_categories"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.sort_order"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incident_categories.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.incident_categories"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "categories of incident and stock-out reports: the Vietnamese defaults as global rows (tenant_id null) and a tenant's own rows, which override a default of the same key (label, order, active) or add a key; a tenant's effective list is incident_categories_of; tenant rows written by owners with an unlimited scope",
+				"tags": ["incident_categories"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.incident_categories"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "categories of incident and stock-out reports: the Vietnamese defaults as global rows (tenant_id null) and a tenant's own rows, which override a default of the same key (label, order, active) or add a key; a tenant's effective list is incident_categories_of; tenant rows written by owners with an unlimited scope",
+				"tags": ["incident_categories"]
+			}
+		},
+		"/incidents": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.incidents.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.category_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.description"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.item_label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.photo_bucket"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.photo_paths"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.photo_removed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.acknowledged_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.acknowledged_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.resolved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.resolved_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "incident and stock-out reports (FR-STF-17) with a category, a free-text description, the item for a stock-out and up to three photos in the store's brand bucket; open until a manager of the store other than the reporter acknowledges it (seen), then resolved; the reporter edits it only while open; the description is never copied into a message or a log",
+				"tags": ["incidents"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.incidents.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.category_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.description"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.item_label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.photo_bucket"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.photo_paths"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.photo_removed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.acknowledged_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.acknowledged_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.resolved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.resolved_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/incidents"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "incident and stock-out reports (FR-STF-17) with a category, a free-text description, the item for a stock-out and up to three photos in the store's brand bucket; open until a manager of the store other than the reporter acknowledges it (seen), then resolved; the reporter edits it only while open; the description is never copied into a message or a log",
+				"tags": ["incidents"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.incidents.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.category_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.description"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.item_label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.photo_bucket"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.photo_paths"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.photo_removed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.acknowledged_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.acknowledged_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.resolved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.resolved_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.incidents.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.incidents"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "incident and stock-out reports (FR-STF-17) with a category, a free-text description, the item for a stock-out and up to three photos in the store's brand bucket; open until a manager of the store other than the reporter acknowledges it (seen), then resolved; the reporter edits it only while open; the description is never copied into a message or a log",
+				"tags": ["incidents"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.incidents"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "incident and stock-out reports (FR-STF-17) with a category, a free-text description, the item for a stock-out and up to three photos in the store's brand bucket; open until a manager of the store other than the reporter acknowledges it (seen), then resolved; the reporter edits it only while open; the description is never copied into a message or a log",
+				"tags": ["incidents"]
 			}
 		},
 		"/invoice_events": {
@@ -21178,6 +24489,80 @@
 				"tags": ["(rpc) accept_staff_notice"]
 			}
 		},
+		"/rpc/acknowledge_handover": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.acknowledge_handover",
+							"properties": {
+								"p_handover_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_handover_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.acknowledge_handover",
+				"tags": ["(rpc) acknowledge_handover"]
+			}
+		},
+		"/rpc/acknowledge_incident": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.acknowledge_incident",
+							"properties": {
+								"p_incident_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_incident_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.acknowledge_incident",
+				"tags": ["(rpc) acknowledge_incident"]
+			}
+		},
 		"/rpc/add_staff": {
 			"post": {
 				"parameters": [
@@ -21396,6 +24781,91 @@
 				"tags": ["(rpc) basket_pairs"]
 			}
 		},
+		"/rpc/cash_count_review": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the counted cash per shift for #224 and #225: every synced shift of the stores and dates the caller may read (Ca {n} by opening order, never the POS name or cashier) with its active count, plus counts not matched yet; the expected cash, POS drawer, cash sales, the difference counted minus expected and the flags of the rule of Ca & két tiền under the tenant's thresholds; state no_count, unmatched, recorded (the caller may not read the shift's figures, as staff without revenue visibility all), no_reference, over or within; at most 92 days and 900 rows",
+				"tags": ["(rpc) cash_count_review"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the counted cash per shift for #224 and #225: every synced shift of the stores and dates the caller may read (Ca {n} by opening order, never the POS name or cashier) with its active count, plus counts not matched yet; the expected cash, POS drawer, cash sales, the difference counted minus expected and the flags of the rule of Ca & két tiền under the tenant's thresholds; state no_count, unmatched, recorded (the caller may not read the shift's figures, as staff without revenue visibility all), no_reference, over or within; at most 92 days and 900 rows",
+							"properties": {
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["store_ids", "from_date", "to_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the counted cash per shift for #224 and #225: every synced shift of the stores and dates the caller may read (Ca {n} by opening order, never the POS name or cashier) with its active count, plus counts not matched yet; the expected cash, POS drawer, cash sales, the difference counted minus expected and the flags of the rule of Ca & két tiền under the tenant's thresholds; state no_count, unmatched, recorded (the caller may not read the shift's figures, as staff without revenue visibility all), no_reference, over or within; at most 92 days and 900 rows",
+				"tags": ["(rpc) cash_count_review"]
+			}
+		},
 		"/rpc/cash_variance_flags": {
 			"get": {
 				"parameters": [
@@ -21498,6 +24968,66 @@
 					}
 				},
 				"tags": ["(rpc) cash_variance_flags"]
+			}
+		},
+		"/rpc/checklist_run_detail": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_run_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "a checklist run the caller may read with its items in order, the wording of the run's version, and each answer; null for a run the caller cannot read",
+				"tags": ["(rpc) checklist_run_detail"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "a checklist run the caller may read with its items in order, the wording of the run's version, and each answer; null for a run the caller cannot read",
+							"properties": {
+								"p_run_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_run_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "a checklist run the caller may read with its items in order, the wording of the run's version, and each answer; null for a run the caller cannot read",
+				"tags": ["(rpc) checklist_run_detail"]
 			}
 		},
 		"/rpc/daily_baselines": {
@@ -21876,6 +25406,77 @@
 				"tags": ["(rpc) deactivate_staff"]
 			}
 		},
+		"/rpc/due_checklists": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store_id",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "text",
+						"in": "query",
+						"name": "p_shift_phase",
+						"required": false,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the active checklists of a store in the caller's operations scope, its own and the tenant-wide ones, for one shift phase or all, with the current version's item counts and today's run (an open one first, else the latest) under the store's business date",
+				"tags": ["(rpc) due_checklists"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the active checklists of a store in the caller's operations scope, its own and the tenant-wide ones, for one shift phase or all, with the current version's item counts and today's run (an open one first, else the latest) under the store's business date",
+							"properties": {
+								"p_shift_phase": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the active checklists of a store in the caller's operations scope, its own and the tenant-wide ones, for one shift phase or all, with the current version's item counts and today's run (an open one first, else the latest) under the store's business date",
+				"tags": ["(rpc) due_checklists"]
+			}
+		},
 		"/rpc/export_control_totals": {
 			"get": {
 				"parameters": [
@@ -21959,6 +25560,43 @@
 				},
 				"summary": "per visible store over at most 92 days: counts, sums and SHA-256 fingerprints over canonical lines of invoices, invoice lines (by the invoice's business date), payments (by their own business date) and shifts (by the business date of opened_at in the store's zone after the day start), so an export proves it equals the tables",
 				"tags": ["(rpc) export_control_totals"]
+			}
+		},
+		"/rpc/finish_checklist_run": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "finishes the caller's own open run, stamping finished_at, and returns it; items left undone stay undone and count in items_done; a finished run is returned as it is; 42501 for another member's run or one outside the caller's scope",
+							"properties": {
+								"p_run_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_run_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "finishes the caller's own open run, stamping finished_at, and returns it; items left undone stay undone and count in items_done; a finished run is returned as it is; 42501 for another member's run or one outside the caller's scope",
+				"tags": ["(rpc) finish_checklist_run"]
 			}
 		},
 		"/rpc/forecast_accuracy": {
@@ -22405,6 +26043,66 @@
 					}
 				},
 				"tags": ["(rpc) hourly_profile"]
+			}
+		},
+		"/rpc/incident_categories_of": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_tenant_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the tenant's effective categories: its own rows and the global defaults it does not override, active or not, in order; a caller outside the tenant gets the defaults only",
+				"tags": ["(rpc) incident_categories_of"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the tenant's effective categories: its own rows and the global defaults it does not override, active or not, in order; a caller outside the tenant gets the defaults only",
+							"properties": {
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the tenant's effective categories: its own rows and the global defaults it does not override, active or not, in order; a caller outside the tenant gets the defaults only",
+				"tags": ["(rpc) incident_categories_of"]
 			}
 		},
 		"/rpc/issue_pairing_code": {
@@ -25027,6 +28725,58 @@
 				"tags": ["(rpc) reactivate_staff"]
 			}
 		},
+		"/rpc/record_cash_count": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "records the cash counted at a shift close at a store in the caller's operations scope (42501 otherwise), with an optional breakdown that must add up (23514) and a note; p_replaces_id names the reopened count a recount replaces (22023 when it is not one, 23505 when it already has a recount); the count is matched and evaluated at once; returns {cash_count_id, business_date, counted_at, status, matched} and never the expected cash or the difference",
+							"properties": {
+								"p_counted_amount": {
+									"format": "numeric",
+									"type": "number"
+								},
+								"p_denominations": {
+									"format": "jsonb"
+								},
+								"p_note": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_replaces_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_id", "p_counted_amount"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "records the cash counted at a shift close at a store in the caller's operations scope (42501 otherwise), with an optional breakdown that must add up (23514) and a note; p_replaces_id names the reopened count a recount replaces (22023 when it is not one, 23505 when it already has a recount); the count is matched and evaluated at once; returns {cash_count_id, business_date, counted_at, status, matched} and never the expected cash or the difference",
+				"tags": ["(rpc) record_cash_count"]
+			}
+		},
 		"/rpc/refresh_my_analytics": {
 			"post": {
 				"parameters": [
@@ -25068,6 +28818,105 @@
 					}
 				},
 				"tags": ["(rpc) refresh_my_analytics"]
+			}
+		},
+		"/rpc/reopen_cash_count": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.reopen_cash_count",
+							"properties": {
+								"p_cash_count_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_cash_count_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.reopen_cash_count",
+				"tags": ["(rpc) reopen_cash_count"]
+			}
+		},
+		"/rpc/report_incident": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "reports an incident or a stock-out at a store in the caller's operations scope (42501 otherwise): kind incident or stock_out, an active category key of the tenant, a description and, for a stock-out only, the item (23514 otherwise); returns the id with the bucket and path prefix its photos go to",
+							"properties": {
+								"p_category_key": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_description": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_item_label": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_kind": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_occurred_at": {
+									"format": "timestamp with time zone",
+									"type": "string"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"p_store_id",
+								"p_kind",
+								"p_category_key",
+								"p_description"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "reports an incident or a stock-out at a store in the caller's operations scope (42501 otherwise): kind incident or stock_out, an active category key of the tenant, a description and, for a stock-out only, the item (23514 otherwise); returns the id with the bucket and path prefix its photos go to",
+				"tags": ["(rpc) report_incident"]
 			}
 		},
 		"/rpc/report_settings_of": {
@@ -25128,6 +28977,43 @@
 					}
 				},
 				"tags": ["(rpc) report_settings_of"]
+			}
+		},
+		"/rpc/resolve_incident": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.resolve_incident",
+							"properties": {
+								"p_incident_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_incident_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.resolve_incident",
+				"tags": ["(rpc) resolve_incident"]
 			}
 		},
 		"/rpc/retire_legal_document": {
@@ -25247,6 +29133,117 @@
 				"tags": ["(rpc) same_weekday_baseline"]
 			}
 		},
+		"/rpc/save_checklist_answer": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "replaces done, number and photo path of one answer as the run's actor while the run is open, or as a manager of the store at any time (logged once the run is finished); the photo must already be uploaded into the run's path; returns the answer",
+							"properties": {
+								"p_answer_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_done": {
+									"format": "boolean",
+									"type": "boolean"
+								},
+								"p_number_value": {
+									"format": "numeric",
+									"type": "number"
+								},
+								"p_photo_path": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_answer_id", "p_done"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "replaces done, number and photo path of one answer as the run's actor while the run is open, or as a manager of the store at any time (logged once the run is finished); the photo must already be uploaded into the run's path; returns the answer",
+				"tags": ["(rpc) save_checklist_answer"]
+			}
+		},
+		"/rpc/save_checklist_template": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.save_checklist_template",
+							"properties": {
+								"p_items": {
+									"format": "jsonb"
+								},
+								"p_shift_phase": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_template_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_title": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": [
+								"p_tenant_id",
+								"p_store_id",
+								"p_shift_phase",
+								"p_title",
+								"p_items"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.save_checklist_template",
+				"tags": ["(rpc) save_checklist_template"]
+			}
+		},
 		"/rpc/seasonal_naive_forecast": {
 			"get": {
 				"parameters": [
@@ -25327,6 +29324,88 @@
 					}
 				},
 				"tags": ["(rpc) seasonal_naive_forecast"]
+			}
+		},
+		"/rpc/set_checklist_template_active": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.set_checklist_template_active",
+							"properties": {
+								"p_active": {
+									"format": "boolean",
+									"type": "boolean"
+								},
+								"p_template_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_template_id", "p_active"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.set_checklist_template_active",
+				"tags": ["(rpc) set_checklist_template_active"]
+			}
+		},
+		"/rpc/set_ops_photo_retention_days": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.set_ops_photo_retention_days",
+							"properties": {
+								"p_days": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id", "p_days"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.set_ops_photo_retention_days",
+				"tags": ["(rpc) set_ops_photo_retention_days"]
 			}
 		},
 		"/rpc/set_staff_revenue_visibility": {
@@ -25565,6 +29644,47 @@
 					}
 				},
 				"tags": ["(rpc) shift_review"]
+			}
+		},
+		"/rpc/start_checklist_run": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "starts a run of an active checklist at a store in the caller's operations scope, or returns the caller's open run of it for today; the run reads the template's current version; 42501 outside scope, 55000 for a retired checklist, 23505 while another member has it open today",
+							"properties": {
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_template_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_template_id", "p_store_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "starts a run of an active checklist at a store in the caller's operations scope, or returns the caller's open run of it for today; the run reads the template's current version; 42501 outside scope, 55000 for a retired checklist, 23505 while another member has it open today",
+				"tags": ["(rpc) start_checklist_run"]
 			}
 		},
 		"/rpc/store_coverage": {
@@ -25838,6 +29958,122 @@
 				"tags": ["(rpc) today_store_totals"]
 			}
 		},
+		"/rpc/update_handover": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "replaces the shift labels and the note of the caller's own handover while it is unacknowledged (55000 after, 42501 for someone else's)",
+							"properties": {
+								"p_from_shift": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_handover_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_note": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_to_shift": {
+									"format": "int32",
+									"type": "integer"
+								}
+							},
+							"required": [
+								"p_handover_id",
+								"p_from_shift",
+								"p_to_shift",
+								"p_note"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "replaces the shift labels and the note of the caller's own handover while it is unacknowledged (55000 after, 42501 for someone else's)",
+				"tags": ["(rpc) update_handover"]
+			}
+		},
+		"/rpc/update_incident": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "replaces the category, description, item and photo list of the caller's own report while it is open (55000 after, 42501 for someone else's); every photo must already be uploaded into the report's path (22023)",
+							"properties": {
+								"p_category_key": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_description": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_incident_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_item_label": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_photo_paths": {
+									"format": "text[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": [
+								"p_incident_id",
+								"p_category_key",
+								"p_description",
+								"p_item_label",
+								"p_photo_paths"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "replaces the category, description, item and photo list of the caller's own report while it is open (55000 after, 42501 for someone else's); every photo must already be uploaded into the report's path (22023)",
+				"tags": ["(rpc) update_incident"]
+			}
+		},
 		"/rpc/update_staff": {
 			"post": {
 				"parameters": [
@@ -26012,6 +30248,262 @@
 				},
 				"summary": "RPC: app.withdraw_staff_ops_consent",
 				"tags": ["(rpc) withdraw_staff_ops_consent"]
+			}
+		},
+		"/rpc/write_handover": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "writes a handover note from Ca {p_from_shift} to Ca {p_to_shift} at a store in the caller's operations scope (42501 otherwise); 23514 for a shift outside 1 to 12 or a note outside 1 to 2000 characters; returns {handover_id, business_date}",
+							"properties": {
+								"p_from_shift": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_note": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_to_shift": {
+									"format": "int32",
+									"type": "integer"
+								}
+							},
+							"required": [
+								"p_store_id",
+								"p_from_shift",
+								"p_to_shift",
+								"p_note"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "writes a handover note from Ca {p_from_shift} to Ca {p_to_shift} at a store in the caller's operations scope (42501 otherwise); 23514 for a shift outside 1 to 12 or a note outside 1 to 2000 characters; returns {handover_id, business_date}",
+				"tags": ["(rpc) write_handover"]
+			}
+		},
+		"/shift_handovers": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.from_shift"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.to_shift"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.acknowledged_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.acknowledged_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "handover notes (FR-STF-17): from shift Ca {from_shift} to Ca {to_shift} of a store's business date, written by created_by and acknowledged by a manager of the store who is not the writer; the writer edits the note until it is acknowledged; the note is free text that no message or log ever carries",
+				"tags": ["shift_handovers"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.from_shift"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.to_shift"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.acknowledged_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.acknowledged_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/shift_handovers"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "handover notes (FR-STF-17): from shift Ca {from_shift} to Ca {to_shift} of a store's business date, written by created_by and acknowledged by a manager of the store who is not the writer; the writer edits the note until it is acknowledged; the note is free text that no message or log ever carries",
+				"tags": ["shift_handovers"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.from_shift"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.to_shift"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.acknowledged_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.acknowledged_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.shift_handovers.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.shift_handovers"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "handover notes (FR-STF-17): from shift Ca {from_shift} to Ca {to_shift} of a store's business date, written by created_by and acknowledged by a manager of the store who is not the writer; the writer edits the note until it is acknowledged; the note is free text that no message or log ever carries",
+				"tags": ["shift_handovers"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.shift_handovers"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "handover notes (FR-STF-17): from shift Ca {from_shift} to Ca {to_shift} of a store's business date, written by created_by and acknowledged by a manager of the store who is not the writer; the writer edits the note until it is acknowledged; the note is free text that no message or log ever carries",
+				"tags": ["shift_handovers"]
 			}
 		},
 		"/shifts": {
@@ -28131,6 +32623,9 @@
 						"$ref": "#/parameters/rowFilter.tenants.staff_revenue_visibility"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.tenants.ops_photo_retention_days"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -28190,6 +32685,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.tenants.staff_revenue_visibility"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.ops_photo_retention_days"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -28278,6 +32776,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.tenants.staff_revenue_visibility"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.ops_photo_retention_days"
 					},
 					{
 						"$ref": "#/parameters/body.tenants"

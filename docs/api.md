@@ -729,6 +729,12 @@ Settings are written as rows, not through functions. RLS decides each write. The
 | `alert_rules` | owner with an unlimited scope; a trigger validates the rule and its parameters (`22023`) | the same | the same |
 | `channel_policies` | owner with an unlimited scope, tenant rows only; CHECK constraints keep the legal floors | the same | the same |
 | `brands`, `zalo_apps`, `oas`, `mini_apps`, `zbs_templates`, `gmf_groups` | owner with an unlimited scope, naming themselves as `created_by`; a secret column takes only a `ZALO_` name with its column's prefix and a Mini App title must follow Zalo's naming rules (`23514`); a store of another tenant in `store_ids` gives `23503` | the same | the same; deleting a brand removes everything under it |
+| `checklist_runs` (phase 14b) | `tenant_id`, `store_id` and `template_id` only, as the caller, with the store in their operations scope; a trigger fills the rest (`22023` for another store's checklist, `55000` for a retired one) | `status` only, from `open` to `finished`, by the run's actor (`42501` for anyone else, `55000` backwards) | never |
+| `checklist_answers` (phase 14b) | never (created with the run) | `done`, `number_value` and `photo_path` only: the run's actor while it is open, a manager of the store at any time; the rules of `save_checklist_answer` | never |
+| `shift_handovers` (phase 14b) | `tenant_id`, `store_id`, `from_shift`, `to_shift`, `note`, as the caller, with the store in scope | `from_shift`, `to_shift` and `note`, by the writer until acknowledged | never |
+| `incidents` (phase 14b) | `tenant_id`, `store_id`, `occurred_at`, `kind`, `category_key`, `description`, `item_label`, as the caller, with the store in scope | `occurred_at`, `category_key`, `description`, `item_label` and `photo_paths`, by the reporter while the report is open | never |
+| `cash_counts` (phase 14b) | `tenant_id`, `store_id`, `counted_amount`, `denominations`, `note` and `replaces_id`, as the caller, with the store in scope; matching and evaluation follow at once | never | never |
+| `incident_categories` (phase 14b) | owner with an unlimited scope, tenant rows only, naming themselves as `created_by`; the global defaults are read-only | `label`, `sort_order` and `active` only; a key never changes | the same as insert |
 
 Status: the tables, policies and triggers are verified locally (pgTAP `05_write_policies.sql`, `07_write_scope_and_attribution.sql`, `10_payment_fee_rates.sql`, `11_item_type_roles_and_holidays.sql`, `12_consent_and_legal.sql`, `31_notify_access.sql`, `35_mappings_and_catch_up.sql`). Inserts must name the caller as `created_by`, and a trigger sets `updated_by` to the caller on every insert and update of the manual-input tables, `item_category_overrides`, `report_settings`, `payment_kind_overrides`, `legal_documents` and `holidays`; a member's change of a store or tenant profile column stamps `profile_updated_at` and `profile_updated_by`. The 10b rows are verified by pgTAP `38_settings_writes.sql`. Cài đặt → Ngưỡng báo cáo writes `report_settings` (phase 10a); the other Settings screens are designed for phase 10b, Kế hoạch and `fnb publish-plan` (which will insert plans as the publisher) for 11b, and Settings → Cảnh báo after step 12c. The 10b Settings pages that write the store and tenant profiles (Cửa hàng, #159), the payment-kind overrides (Phân loại, #160) and the legal texts (Pháp lý, #164) are built on these rules. Destinations in `notification_channels` are written only by server code ([section 3.5](#35-notifications)). The Zalo configuration rows are built and tested by pgTAP `42_zalo_config.sql` (#203); no client writes them yet: the brand settings screen belongs to phase 20a, and the `fnb zalo config` command is still to be built.
 
@@ -1168,7 +1174,7 @@ returns uuid
 ```
 
 - **Status:** built (phase 14a, #211).
-- **Who may call:** an owner or a manager of the tenant, for stores within their scope; a store-limited caller cannot grant another store or every store (`22023`), nobody grants `owner` through it (`22023`), a store outside the caller's scope gives `42501` and a store of another tenant `23503`.
+- **Who may call:** an owner or a manager of the tenant, for stores within their scope; a store-limited caller who asks for another store or for every store (`null`) gets `42501`, as does any store outside the caller's scope; nobody grants `owner` through it (`22023`); a store of another tenant gives `23503`.
 - **Notes:** adds a person as `invited` with role `staff` or `manager` and their stores (`null` means every store) and returns the roster id; pairing with the staff app (#213) makes the row `active` and creates the membership.
 
 #### `public.update_staff`
@@ -1285,6 +1291,227 @@ returns text
 - **Who may call:** a paired person on the tenant's roster (an `active` row), for their own row only; anyone else, an owner or manager included, gets `42501`. A number not in international form (`+` and 8 to 15 digits) gives `22023`.
 - **Notes:** stores the number that `zalo-phone` decoded for the caller, with `phone_linked_at`, and returns its hint (`…` and the last three digits); `null` removes it. Optional and separate from pairing: nothing else depends on it. `authenticated` never selects `staff_roster.phone`, only `phone_hint`.
 
+### 3.13 Checklists and operations photos (phase 14b)
+
+Migration `checklists` (#219) adds eight functions a client may call. The checklist editor (`save_checklist_template`, `set_checklist_template_active`) and `set_ops_photo_retention_days` are `security invoker` wrappers of the `app` function of the same name, which is `security definer` with an empty `search_path` and checks the caller's role itself; no client writes `checklist_templates` or `checklist_items` directly. The run functions run as the caller, so the operations policies of [section 4](#operations-phase-14b) and the triggers of the tables apply to them as to a direct write. Photos go to the Storage API, not through a function: a run's photos are uploaded into its `photo_bucket` under its `photo_prefix` (`<tenant>/<store>/run/<run id>/`) with a name of 1 to 64 of `a-z`, `0-9`, `_` and `-` ending in `.jpg`; the bucket is `ops-<brand key>` of the brand that covers the store, private, at most 1 MiB per object and `image/jpeg` only. Only the run's actor uploads, only while the run is open; the store's owners and managers and the actor read; nobody updates or deletes through the API. A store that no brand covers has no bucket, so its photo items cannot be completed. The housekeeping job removes photos older than the tenant's `ops_photo_retention_days` through the Storage API (`app.expired_ops_photos`, then `app.mark_removed_ops_photos`, both for the service role) and the answers keep `photo_path` with `photo_removed_at`. No client calls these functions yet: the checklist editor (#220) and the staff app (#221) will. Tests: pgTAP `51_checklists.sql` and `47_operations_rls.sql`.
+
+#### `public.save_checklist_template`
+
+```sql
+public.save_checklist_template(p_tenant_id uuid, p_store_id uuid, p_shift_phase text, p_title text, p_items jsonb, p_template_id uuid DEFAULT NULL::uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #219).
+- **Who may call:** an owner or a manager of the store, or, for a tenant-wide checklist (`p_store_id` null), an owner or manager with every store; anyone else gets `42501`. A shift phase other than `opening`, `midshift` or `closing`, a title outside 1 to 120 characters, an item list that is not an array of 1 to 60 objects `{"label", "requires_photo", "number_unit"}` (a label of 1 to 200 characters, a boolean, a unit of 1 to 16 characters or null) gives `22023`, and so does a `p_template_id` that is not a checklist of that tenant, store and phase.
+- **Notes:** without `p_template_id` it creates a checklist at version 1; with it, it saves the next version: the title and a new set of items in the given order. Every save is a new version, so a run already started keeps its wording and the next run reads the new one without a redeploy. Returns `{"template_id", "version", "active"}`. The store and phase of a checklist never change: copy it to another store by saving it there without `p_template_id`.
+
+#### `public.set_checklist_template_active`
+
+```sql
+public.set_checklist_template_active(p_template_id uuid, p_active boolean)
+returns boolean
+```
+
+- **Status:** built (phase 14b, #219).
+- **Who may call:** as `save_checklist_template`, for the checklist's store; anyone else, or an unknown id, gets `42501`; a null `p_active` gives `22023`.
+- **Notes:** retires (`false`) or reactivates (`true`) a checklist without a new version and returns the state. A retired checklist starts no run and is not due; a run already open still finishes.
+
+#### `public.due_checklists`
+
+```sql
+public.due_checklists(p_store_id uuid, p_shift_phase text DEFAULT NULL::text)
+returns TABLE(template_id uuid, title text, shift_phase text, template_version integer, every_store boolean, items integer, photo_items integer, business_date date, run_id uuid, run_status text, run_started_by uuid, run_started_at timestamp with time zone, run_finished_at timestamp with time zone)
+```
+
+- **Status:** built (phase 14b, #219).
+- **Who may call:** any member; the rows are those of a store in the caller's operations scope (owners, managers and staff), none otherwise.
+- **Notes:** the active checklists of the store, its own and the tenant-wide ones, for one phase or all (opening, midshift, closing order), with the current version's item and photo-item counts, the store's business date (its time zone and day start) and today's run at the store: an open one first, else the latest. The app chooses the phase from the store's opening hours.
+
+#### `public.start_checklist_run`
+
+```sql
+public.start_checklist_run(p_template_id uuid, p_store_id uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #219).
+- **Who may call:** an owner, manager or staff member with the store in scope, for an active checklist of that store or a tenant-wide one; otherwise `42501`. A retired checklist gives `55000`; another member's open run of the same checklist at the store today gives `23505`.
+- **Notes:** starts a run as the caller, or returns the caller's open run of that checklist for today. The run takes the template's current version, title and phase, the store's business date and its photo bucket, and starts with one open answer per item. Returns the run as `checklist_run_detail` does.
+
+#### `public.checklist_run_detail`
+
+```sql
+public.checklist_run_detail(p_run_id uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #219).
+- **Who may call:** any member; `null` for a run the caller cannot read.
+- **Notes:** `{"run_id", "tenant_id", "store_id", "template_id", "template_version", "title", "shift_phase", "business_date", "status", "started_by", "started_at", "finished_at", "photo_bucket", "photo_prefix", "items_total", "items_done", "items": [{"answer_id", "item_id", "position", "label", "requires_photo", "number_unit", "done", "number_value", "photo_path", "photo_removed", "answered_by", "answered_at"}]}`, the items in order with the wording of the run's version.
+
+#### `public.save_checklist_answer`
+
+```sql
+public.save_checklist_answer(p_answer_id uuid, p_done boolean, p_number_value numeric DEFAULT NULL::numeric, p_photo_path text DEFAULT NULL::text)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #219).
+- **Who may call:** the run's actor while the run is open, or an owner or manager of the store at any time; anyone else gets `42501`, and staff get `55000` once the run is finished. A photo path outside `<tenant>/<store>/run/<run id>/<name>.jpg` of this run, not uploaded yet, or at a store without a bucket gives `22023`; `done` without the photo or the number the item asks for, or a number for an item without a unit, gives `23514`.
+- **Notes:** replaces done, number and photo path together and stamps `answered_by` and `answered_at`; send the current values of the fields that do not change. A manager's change to a finished run is logged in `checklist_corrections`. Returns `{"answer_id", "run_id", "item_id", "done", "number_value", "photo_path", "photo_removed", "answered_by", "answered_at"}`.
+
+#### `public.finish_checklist_run`
+
+```sql
+public.finish_checklist_run(p_run_id uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #219).
+- **Who may call:** the run's actor; another member, a manager included, or a run outside the caller's scope gives `42501`.
+- **Notes:** finishes the run and stamps `finished_at`; items left undone stay undone and show in `items_done`. A finished run is returned as it is and is read-only for staff from then on. Returns the run as `checklist_run_detail` does.
+
+#### `public.set_ops_photo_retention_days`
+
+```sql
+public.set_ops_photo_retention_days(p_tenant_id uuid, p_days integer)
+returns integer
+```
+
+- **Status:** built (phase 14b, #219).
+- **Who may call:** an owner of the tenant with every store; anyone else gets `42501`. A value outside 7 to 730 gives `22023`.
+- **Notes:** sets `tenants.ops_photo_retention_days` (90 by default) and returns it: how long checklist and report photos stay in the brand bucket before the housekeeping job removes them.
+
+### 3.14 Handovers, incidents and stock-outs (phase 14b)
+
+Migration `handovers_and_incidents` (#223) adds eight functions a client may call. `acknowledge_handover`, `acknowledge_incident` and `resolve_incident` are `security invoker` wrappers of the `app` function of the same name, which is `security definer` with an empty `search_path`, checks the caller's role and is the only way to change an acknowledgement or a status; the others run as the caller under the operations policies. Shifts are labelled Ca {n}; a handover stores `n` of its from-shift and to-shift. A report's photos follow the rules of section 3.13 under `<tenant>/<store>/incident/<report id>/`: up to three, uploaded by the reporter while the report is open, after `report_incident` returned its id and prefix. Descriptions, items and notes are free text written by staff; the screens remind them not to write personal details, and no message, alert or log line carries them. No client calls these functions yet: the staff app (#224) and the web log (#225) will. Tests: pgTAP `52_incidents_handover.sql` and `47_operations_rls.sql`.
+
+#### `public.write_handover`
+
+```sql
+public.write_handover(p_store_id uuid, p_from_shift integer, p_to_shift integer, p_note text)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #223).
+- **Who may call:** an owner, manager or staff member with the store in scope; anyone else gets `42501`. A shift outside 1 to 12, or a note outside 1 to 2,000 characters or with control characters other than line breaks and tabs, gives `23514`.
+- **Notes:** writes a handover note from Ca `p_from_shift` to Ca `p_to_shift` on the store's business date and returns `{"handover_id", "business_date"}`.
+
+#### `public.update_handover`
+
+```sql
+public.update_handover(p_handover_id uuid, p_from_shift integer, p_to_shift integer, p_note text)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #223).
+- **Who may call:** the writer, while the handover is unacknowledged (`55000` after); anyone else, a manager included, gets `42501`.
+- **Notes:** replaces the labels and the note; checks as `write_handover`.
+
+#### `public.acknowledge_handover`
+
+```sql
+public.acknowledge_handover(p_handover_id uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #223).
+- **Who may call:** an owner or a manager of the store who did not write the handover; the writer, staff, anyone outside the store or an unknown id gets `42501`.
+- **Notes:** returns `{"handover_id", "acknowledged_by", "acknowledged_at"}`; a second call keeps the first acknowledgement.
+
+#### `public.report_incident`
+
+```sql
+public.report_incident(p_store_id uuid, p_kind text, p_category_key text, p_description text, p_item_label text DEFAULT NULL::text, p_occurred_at timestamp with time zone DEFAULT NULL::timestamp with time zone)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #223).
+- **Who may call:** an owner, manager or staff member with the store in scope; anyone else gets `42501`. A kind other than `incident` or `stock_out`, an item for an incident or none for a stock-out (1 to 120 characters), or a description outside 1 to 1,000 characters gives `23514`; a category key that is not an active category of the tenant, or a time more than 7 days back or in the future, gives `22023`.
+- **Notes:** reports an incident or a stock-out at `p_occurred_at` (now by default) on that time's business date and returns `{"incident_id", "business_date", "status", "photo_bucket", "photo_prefix"}`; the report starts `open`.
+
+#### `public.update_incident`
+
+```sql
+public.update_incident(p_incident_id uuid, p_category_key text, p_description text, p_item_label text, p_photo_paths text[])
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #223).
+- **Who may call:** the reporter, while the report is `open` (`55000` once acknowledged); anyone else, a manager included, gets `42501`.
+- **Notes:** replaces the category, description, item and photo list, with the checks of `report_incident`; every photo must be an uploaded object of the report's path, at most three and none twice (`22023`). Returns `{"incident_id", "status", "photo_paths"}`. The kind and time stay.
+
+#### `public.acknowledge_incident`
+
+```sql
+public.acknowledge_incident(p_incident_id uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #223).
+- **Who may call:** an owner or a manager of the store who is not the reporter; the reporter, staff, anyone outside the store or an unknown id gets `42501`.
+- **Notes:** marks an open report `seen` with `acknowledged_by` and `acknowledged_at`; a seen or resolved report is returned as it is. Returns `{"incident_id", "status", "acknowledged_by", "acknowledged_at", "resolved_by", "resolved_at"}`.
+
+#### `public.resolve_incident`
+
+```sql
+public.resolve_incident(p_incident_id uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #223).
+- **Who may call:** an owner or a manager of the store; anyone else gets `42501`. An open report is acknowledged in the same step, which its reporter may not do (`42501`): another manager marks it seen first, and then the reporter may resolve it.
+- **Notes:** marks the report `resolved` with `resolved_by` and `resolved_at`; a resolved report is returned as it is. Returns the same object as `acknowledge_incident`.
+
+#### `public.incident_categories_of`
+
+```sql
+public.incident_categories_of(p_tenant_id uuid)
+returns TABLE(key text, label text, sort_order smallint, active boolean, tenant_row boolean)
+```
+
+- **Status:** built (phase 14b, #223).
+- **Who may call:** any member; a caller outside the tenant gets the defaults only.
+- **Notes:** the tenant's effective categories in order: the Vietnamese defaults (`thiet_bi` Thiết bị, `ve_sinh` Vệ sinh, `khach_hang` Khách hàng, `nhan_su` Nhân sự, `khac` Khác) and the tenant's own rows, which override a default of the same key or add one (`tenant_row`); retired ones come with `active` false for the labels of older reports. Owners with every store write their rows in `incident_categories` directly (section 4).
+
+### 3.15 Cash count at shift close (phase 14b)
+
+Migration `cash_counts` (#222) adds three functions a client may call and the immediate rule `cash_count_variance` (warning, to the store's managers and the owner). `reopen_cash_count` is a `security invoker` wrapper of the `app` function of the same name, which is `security definer` with an empty `search_path` and checks the caller's role itself; the other two run as the caller. A count is matched to the synced shift of its store whose close is nearest to the count, within the rule's `match_window_minutes` (60 by default), and takes that shift's business date; a count saved before the close is synced waits unmatched (chưa khớp ca) and is matched by the refresh of the sync that brings the close. A matched count is compared with the shift's expected cash (opening float plus cash payments) under the tenant's report settings with the rule of Ca & két tiền (`app.cash_variance_test`): absolute and relative tests strictly greater than their thresholds, and the z-score over the store's drawer variances of the 56 business days before. Over a threshold it opens or repeats the shift's episode, with count-only facts (`shift_number`, `over_abs`, `over_rel`, `over_z`, `shortfall`, `recounts`); within, it clears it. No POS shift name or cashier field is stored, returned or sent. No client calls these functions yet: the staff app (#224) and the web page (#225) will. Tests: pgTAP `53_cash_counts.sql`, `26_notify_schema.sql` and `47_operations_rls.sql`.
+
+#### `public.record_cash_count`
+
+```sql
+public.record_cash_count(p_store_id uuid, p_counted_amount numeric, p_denominations jsonb DEFAULT NULL::jsonb, p_note text DEFAULT NULL::text, p_replaces_id uuid DEFAULT NULL::uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #222).
+- **Who may call:** an owner, manager or staff member with the store in scope; anyone else gets `42501`. A negative amount, a breakdown that is not `{"<face value>": <whole count>, …}` with 1 to 30 entries or does not add up to the amount, or a note outside 1 to 500 characters gives `23514`. `p_replaces_id` names the reopened count a recount replaces: anything else gives `22023`, and a second recount of it `23505`.
+- **Notes:** records the cash counted at a shift close as the caller, matches and evaluates it at once, and returns `{"cash_count_id", "business_date", "counted_at", "status", "matched"}`, never the expected cash or the difference. A recount keeps the shift of the count it replaces. A fresh count whose nearest shift already has a count stays unmatched: one count per shift unless a manager reopens it.
+
+#### `public.reopen_cash_count`
+
+```sql
+public.reopen_cash_count(p_cash_count_id uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 14b, #222).
+- **Who may call:** an owner or a manager of the store; anyone else, or an unknown id, gets `42501`.
+- **Notes:** reopens an active count, logged on the row (`reopened_by`, `reopened_at`), so one recount may replace it; the shift's open episode stays until the recount is evaluated. Returns `{"cash_count_id", "status", "shift_id", "reopened_by", "reopened_at"}`; a reopened count is returned as it is.
+
+#### `public.cash_count_review`
+
+```sql
+public.cash_count_review(store_ids uuid[], from_date date, to_date date)
+returns TABLE(store_id uuid, business_date date, shift_id uuid, shift_number integer, opened_at timestamp with time zone, closed_at timestamp with time zone, cash_count_id uuid, counted_amount numeric, counted_by uuid, counted_at timestamp with time zone, recounts integer, expected_cash_amount numeric, drawer_amount numeric, cash_sales_amount numeric, variance_amount numeric, drawer_variance_amount numeric, trailing_shifts integer, z_score numeric, over_abs_threshold boolean, over_rel_threshold boolean, over_z_threshold boolean, reasons text[], state text)
+```
+
+- **Status:** built (phase 14b, #222).
+- **Who may call:** any member, with the rules of the report functions: at most 50 stores and 92 days (`22023`), at most 900 rows. RLS shapes the result: the shifts come from `agg_shift_cash`, so staff see them only when their tenant's `staff_revenue_visibility` is `all`; the counts come from `cash_counts`, so staff without it see only their own counts, and viewers see the shifts without counts.
+- **Notes:** one row per synced shift of the stores and dates (`shift_number` is Ca {n} by opening order within the business day) with its active count, plus every count not matched yet; `variance_amount` is counted minus expected, `drawer_variance_amount` the POS drawer's own variance as in Ca & két tiền, `recounts` the reopenings before the active count. `state` is `no_count` (a shift without a count; Chất lượng dữ liệu flags a closed one), `unmatched` (chưa khớp ca), `recorded` (matched, but the caller may not read the shift's figures or they are not refreshed yet: the staff app shows Đã ghi nhận), `no_reference` (the POS gave no expected cash), `over` or `within`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -1365,7 +1592,7 @@ Step 12a verified locally; step 12b in build. No screen reads them yet; the Cả
 
 | Relation | Purpose | Who reads | Client writes | Read by a client today |
 |---|---|---|---|---|
-| `alert_rule_catalog` | the 16 alert and digest rules with defaults and the parameter schema, `zalo_webhook_unverified` included (#207) | every signed-in user | none | none |
+| `alert_rule_catalog` | the 19 alert and digest rules with defaults and the parameter schema, `zalo_webhook_unverified` (#207), `zalo_token_failed` and `oa_package_expiring` (#206) and `cash_count_variance` (#222) included | every signed-in user | none | none |
 | `alert_rules` | tenant and store overrides of the catalogue | owners and managers; store rows in scope | [owners](#writes-through-tables) | none |
 | `channel_policies` | send rules per channel kind and message class: 27 global defaults and tenant overrides | global rows: every signed-in user; tenant rows: owners and managers | [owners](#writes-through-tables) | none |
 | `notification_channels` | destinations: member, kind, provider, label, status and health | owners and managers with an unlimited scope read every destination; every member reads their own; 20 columns only, never the address, secret name or configuration | none (server code only) | none |
@@ -1386,14 +1613,30 @@ Built (migration `zalo_configuration`, pgTAP `42_zalo_config.sql`, #203); every 
 | `zbs_templates` | ZBS templates of an OA: id, tag, purpose, approval state | the same | the same | none |
 | `gmf_groups` | the OA's staff groups and the stores each serves | the same | the same | none |
 | `zalo_identities` | a Zalo user id per Zalo App bound to an Auth user, with the display name only | the same | none (`zalo-session` writes it through `zalo_session_sign_in` when a binding code is used, #205, and through `zalo_session_pair` at a pairing, #213; `withdraw_staff_ops_consent` and `deactivate_staff` delete the person's rows) | none |
-| `zalo_tokens` | the OA and Mini App developer token pairs of a brand | nobody (no grant, no policy) | none (the token jobs, #206) | none |
+| `zalo_tokens` | the OA and Mini App developer token pairs of a brand | nobody (no grant, no policy) | none (written as `postgres` by `zalo-oauth` and `fnb zalo oa` and `zmp`, #206) | none |
 | `oa_events` | the OA webhook's event log: event id, OA, event name, OA user id, times and signature outcome, never a text; kept 90 days | nobody (no grant, no policy); owners read the day counts through [`oa_event_counts`](#publicoa_event_counts) | none (`oa-webhook` writes it as `postgres`, #207) | none |
+
+### Operations (phase 14b)
+
+Built (migrations `checklists`, `handovers_and_incidents` and `cash_counts`; pgTAP `51_checklists.sql`, `52_incidents_handover.sql`, `53_cash_counts.sql` and `47_operations_rls.sql`; #219, #223, #222). Every table but `incident_categories` carries the operations template: read by owners, managers and staff with the store in scope (a tenant-wide checklist by every owner, manager and staff member of the tenant), insert of the caller's own rows, update of their own rows or of any row of a store they manage, delete by managers; viewers, the publisher and `anon` read none of them. Table privileges narrow the writes to the columns of [Writes through tables](#writes-through-tables), and no client deletes an operations row. Photos live in the private Storage buckets `ops-<brand key>`, not in a table ([section 3.13](#313-checklists-and-operations-photos-phase-14b)).
+
+| Relation | Purpose | Who reads | Client writes | Read by a client today |
+|---|---|---|---|---|
+| `checklist_templates` | a checklist of a store, or of every store of the tenant (`store_id` null), and shift phase: title, `active`, current `version` | the operations scope | none ([`save_checklist_template`](#publicsave_checklist_template), [`set_checklist_template_active`](#publicset_checklist_template_active)) | none |
+| `checklist_items` | the items of one version in order: label, `requires_photo`, `number_unit`; immutable | the same | none | none |
+| `checklist_runs` | one run by its actor (`created_by`): version, title and phase as started, business date, photo bucket, start and finish | the operations scope | [the actor](#writes-through-tables) | none |
+| `checklist_answers` | one row per item of a run: done, number, photo path, photo-removed marker, last actor and time | the same | [the actor, managers](#writes-through-tables) | none |
+| `checklist_corrections` | the log of answers changed after a run finished: values before and after, who, when | the same | none (trigger) | none |
+| `shift_handovers` | a note from Ca {n} to Ca {m} on a business date, its writer and acknowledgement | the same | [the writer](#writes-through-tables) | none |
+| `incidents` | incident and stock-out reports: time, business date, kind, category key, description, item, up to three photo paths, status (`open`, `seen`, `resolved`) with who and when | the same | [the reporter](#writes-through-tables) | none |
+| `incident_categories` | the five Vietnamese default categories (global rows) and a tenant's overrides and additions | global rows: every signed-in user; tenant rows: owners, managers and staff of the tenant | [owners with an unlimited scope](#writes-through-tables) | none |
+| `cash_counts` | the cash counted at a shift close: amount, breakdown, note, counter, time, matched shift (`shift_id`), business date, `active` or `reopened` with who and when, the count it replaces | owners and managers of the store; staff their own counts, and every count of their stores when the tenant's `staff_revenue_visibility` is `all` | [the counter](#writes-through-tables) | none |
 
 ## 5. Edge Function endpoints
 
 ### Shared rules of the Zalo functions
 
-Built in `supabase/functions/_shared` (`cors.ts`, `http.ts`; 30 Deno tests in `cors.test.ts` and `http.test.ts`, #204). The four Zalo functions below are built on `serveFunction` and enabled in `supabase/config.toml`: `zalo-session` with `verify_jwt = false`, `zalo-phone` with `verify_jwt = true`, `oa-webhook` and `bot-webhook` with `verify_jwt = false`. None is deployed yet; they run on the local stack and against a mock of Zalo (`@fnb/zalo/testing`). Each follows these rules, and its own section gives its body and codes.
+Built in `supabase/functions/_shared` (`cors.ts`, `http.ts`; 30 Deno tests in `cors.test.ts` and `http.test.ts`, #204). The five Zalo functions below are built on `serveFunction` and enabled in `supabase/config.toml`: `zalo-session` with `verify_jwt = false`, `zalo-phone` with `verify_jwt = true`, `oa-webhook`, `bot-webhook` and `zalo-oauth` (#206) with `verify_jwt = false`. None is deployed yet; they run on the local stack and against a mock of Zalo (`@fnb/zalo/testing`). Each follows these rules, and its own section gives its body and codes.
 
 - **CORS.** The answer names exactly one origin, and only a Mini App origin: when the request's `Origin` is `https://h5.zdn.vn` or `zbrowser://h5.zdn.vn`, the response carries `Access-Control-Allow-Origin` with that origin; any other origin, or none, gets no `Access-Control-*` header at all. Every response carries `Vary: Origin`, added to any `Vary` the handler set. Any CORS header a handler set itself is replaced, and no `Access-Control-Allow-Credentials` is sent.
 - **Preflight.** `OPTIONS` never reaches the handler: it answers 204 with no body; for a Mini App origin it adds `Access-Control-Allow-Methods: GET, POST, OPTIONS`, `Access-Control-Allow-Headers: authorization, apikey, content-type, x-client-info` and `Access-Control-Max-Age: 600`. The recipe to check it locally is in [`development.md`](development.md), section 6.
@@ -1511,6 +1754,31 @@ Built against fake Bot updates (#207; Deno 12 tests in `handler.test.ts`, and th
 
 A bot is in webhook mode once `app.set_bot_webhook(<secret name>, <SHA-256 of the secret token>, now())` has stored the token's hash; from then on the poller's lease (`app.take_poll_lease`) is refused for it, because Zalo treats polling and a webhook as exclusive. Only `postgres` may run that function, and no `fnb` command calls the Bot's `setWebhook` yet, so every bot is still polled by `fnb notify tick` until an operator sets both. A missing Bot token secret leaves a stop recorded without its confirmation.
 
+### `zalo-oauth`
+
+Built against a mock of Zalo's OAuth server (#206; Deno 11 tests in `handler.test.ts`, and the gated integration suite `packages/zalo/test/integration/token-jobs.test.ts`, which runs the handler and its Postgres adapter against the local stack). It connects to Postgres as `postgres` with `FNB_DB_URL` or the injected `SUPABASE_DB_URL`, like `oa-webhook`, sends no CORS header to any origin, and adds `referrer-policy: no-referrer` to the callback's answers, because the callback URL carries the code.
+
+- **URL:** `<SUPABASE_URL>/functions/v1/zalo-oauth`, registered as the callback URL of each brand's Zalo App (#210). **Methods:** `GET` (the OA permission callback) and `POST` (a scheduled ticket).
+- **Authorization:** none at the gateway (`verify_jwt = false`). A callback is accepted only with the `state` of a pending authorisation started by `fnb zalo oa authorize`; a ticket only when it is live in `app.zalo_token_tickets` (ADR-028).
+- **Callback (`GET`):** `?code=<code>&state=<state>&oa_id=<OA id>`, each given at most once. The function claims the pending row by the state's SHA-256 (`app.claim_oa_authorization`; single use, 10 minutes), checks that `oa_id`, when present, is the brand's OA, reads the App secret named by `zalo_apps.secret_name` (`ZALO_APP_SECRET_<BRAND>`), exchanges the code once with the PKCE verifier at `POST https://oauth.zaloapp.com/v4/oa/access_token` (`secret_key` header; `app_id`, `code`, `grant_type=authorization_code`, `code_verifier`) and stores the pair in `zalo_tokens` (`app.save_zalo_tokens`), which also resolves an open `zalo_token_failed` episode of the brand's OA pair.
+- **Ticket (`POST`):** `{"ticket": "<uuid>"}`, at most 1,024 bytes. Once `select app.enable_zalo_token_jobs('<function URL>');` has run, `pg_cron` runs `app.dispatch_zalo_tokens()` hourly at minute 41: it checks the OA package expiries and issues one ticket per stored pair past its refresh age (11 hours for the OA pair, 20 hours for the developer pair) that has none waiting. The function claims the ticket (`app.claim_zalo_token_ticket`) before anything else and refreshes that pair as `fnb zalo oa refresh` does, under the same lock, raising alerts with the source `scheduler`. An operator issues a manual ticket as `postgres` with `select app.issue_zalo_token_ticket('<brand id>', 'oa');`.
+
+| Status | Body | When |
+|---|---|---|
+| 200 | `{"ok": true, "brand": "brand-1"}` | callback: the pair is stored |
+| 400 | `invalid_state`, `expired_state` | callback: no pending authorisation has this state (wrong, used or purged), or its 10 minutes are over; the row is deleted either way |
+| 400 | `invalid_code`, `wrong_oa`, `invalid_callback`, `declined` | callback: no usable code, an `oa_id` of another OA, a parameter given twice, or `error` without a code |
+| 502 | `refused` with `zalo_error`, `unanswered` | callback: Zalo refused the code, or did not answer in 10 seconds |
+| 200 | `{"outcome": "refreshed", "version": n}`, `{"outcome": "fresh", "version": n, "age_seconds": s}`, `{"outcome": "missing"}` | ticket: refreshed, younger than its refresh age, or no pair stored (or the brand left the jobs) |
+| 502 | `{"outcome": "refused", "zalo_error": n, "alert": "opened"}`, `{"outcome": "uncertain", "failure": "timeout", "alert": "none"}` | ticket: Zalo refused the refresh, or its answer was lost; a lost answer is never retried with the same refresh token |
+| 500 | `{"outcome": "not_configured", "alert": "opened"}` | ticket: the App secret is not set |
+| 400 | `invalid_ticket`, `invalid_json` | the ticket is not a UUID, or the body is not a JSON object |
+| 401 | `invalid_ticket` | the claim found no live ticket, or (with `ZALO_INTEGRATION=1`) the ticket's tenant is not the fixture named by `ZALO_TENANT_ID` |
+| 405 | `method_not_allowed` | neither `GET` nor `POST` |
+| 500 | `not_configured` | the database URL is missing or would allow plaintext, or `ZALO_OAUTH_BASE_URL` is set outside an integration run |
+
+Its log lines hold outcomes and Zalo error codes only; the code, the state, the tokens and the App secret are added to the redactor before anything is logged. **Open until #210:** the exact answer and error shapes of Zalo's OAuth endpoints and the path, credentials and answer of the developer-token refresh (built against `POST https://oauth.zaloapp.com/v4/access_token` with the brand's App secret) are confirmed on the real accounts.
+
 ### `sync-incremental`
 
 Verified locally (phase 7); the deploy to the cloud project waits for owner. Engine, schedule and runbook: [`sync.md`](sync.md#edge-function-sync-incremental).
@@ -1540,7 +1808,7 @@ Planned for step 12c; the function does not exist yet. Its database side is in p
 
 ## 6. Command line
 
-The `fnb` CLI talks to Postgres directly as `postgres`, not through this API. Its reference is in [`sync.md`, CLI reference](sync.md#cli-reference) and in [the README](../README.md#the-fnb-cli). Both still lack the commands of phase 12 (`digest`, `notify tick`, `notify status`, `notify test`, `notify link`, `notify unlink`, `notify job-failed`). Until they catch up, `pnpm --filter @fnb/jobs fnb -- <command> --help` gives the authoritative usage. The Zalo commands of phase 13 (#205) are `fnb zalo config set --tenant <slug> (--file <brand.json> | --brand <key> …)`, which writes a brand's Zalo App, OA and Mini App rows from flags or from a JSON file kept outside the repository (secret columns take a `ZALO_` name, never a value; a re-run with the same values changes nothing, different values for a stored row are refused), `fnb zalo config show --tenant <slug>` (with `CI` set, brands are numbered and only their states printed), and `fnb zalo bind --tenant <slug> --member <login e-mail> --brand <key>`, which prints a member's one-time binding code (refused in CI; a publisher login cannot be bound). `fnb datapack`, which reads the report functions as a member inside one snapshot, is described in [strategy.md, section 8](strategy.md#8-building-and-checking-a-pack-from-the-command-line).
+The `fnb` CLI talks to Postgres directly as `postgres`, not through this API. Its reference is in [`sync.md`, CLI reference](sync.md#cli-reference) and in [the README](../README.md#the-fnb-cli). Both still lack the commands of phase 12 (`digest`, `notify tick`, `notify status`, `notify test`, `notify link`, `notify unlink`, `notify job-failed`). Until they catch up, `pnpm --filter @fnb/jobs fnb -- <command> --help` gives the authoritative usage. The Zalo commands of phase 13 (#205) are `fnb zalo config set --tenant <slug> (--file <brand.json> | --brand <key> …)`, which writes a brand's Zalo App, OA and Mini App rows from flags or from a JSON file kept outside the repository (secret columns take a `ZALO_` name, never a value; a re-run with the same values changes nothing, different values for a stored row are refused), `fnb zalo config show --tenant <slug>` (with `CI` set, brands are numbered and only their states printed), and `fnb zalo bind --tenant <slug> --member <login e-mail> --brand <key>`, which prints a member's one-time binding code (refused in CI; a publisher login cannot be bound). The token jobs of #206 add five: `fnb zalo oa authorize --tenant <slug> --brand <key> [--redirect-uri <zalo-oauth URL>]` keeps a PKCE verifier and the state's hash for 10 minutes and prints the OA permission URL (refused in CI; the callback is `zalo-oauth`, by default `<SUPABASE_URL>/functions/v1/zalo-oauth`); `fnb zalo oa refresh [--tenant <slug>] [--brand <key>]` refreshes every OA pair older than 11 hours under its single-row lock, so a concurrent run reports the pair fresh and exits 0, and raises `oa_package_expiring` 30 and 7 days before a package ends; `fnb zalo zmp rotate [--tenant <slug>] [--brand <key>] [--force]` rotates every Mini App developer pair older than 20 hours; `ZALO_ZMP_REFRESH_TOKEN=<token> fnb zalo zmp seed --tenant <slug> --brand <key>` stores a brand's first developer pair by rotating that token once; `fnb zalo status [--tenant <slug>]` prints per brand the token ages, refreshes since stored, next refresh, package expiry, webhook mode and open `zalo_token_failed` episodes (numbered with `CI` set). Each reads the brand's App secret from `ZALO_APP_SECRET_<BRAND>`, registers every `ZALO_` secret value with `::add-mask::` first on GitHub Actions, never prints a token, and exits 1 when a brand's refresh failed, which also raises `zalo_token_failed`. `fnb datapack`, which reads the report functions as a member inside one snapshot, is described in [strategy.md, section 8](strategy.md#8-building-and-checking-a-pack-from-the-command-line).
 
 ## 7. Keeping this page current
 

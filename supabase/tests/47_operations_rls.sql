@@ -544,14 +544,17 @@ select is(
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname in ('public', 'app') and p.prosecdef and has_function_privilege('authenticated', p.oid, 'execute')
   ),
-  array['app.accept_staff_notice', 'app.add_staff', 'app.can_manage_staff', 'app.can_manage_store_scope', 'app.can_publish_store_scope', 'app.can_read_store',
+  array['app.accept_staff_notice', 'app.acknowledge_handover', 'app.acknowledge_incident', 'app.add_staff', 'app.can_manage_staff',
+        'app.can_manage_store_scope', 'app.can_publish_store_scope', 'app.can_read_store',
         'app.current_user_channel_ids', 'app.current_user_data_store_ids', 'app.current_user_data_tenant_ids', 'app.current_user_ops_store_ids',
         'app.current_user_revenue_store_ids', 'app.current_user_store_ids', 'app.current_user_tenant_ids', 'app.deactivate_staff', 'app.has_store_scope',
         'app.has_tenant_role', 'app.issue_pairing_code', 'app.link_my_phone', 'app.my_staff_notice', 'app.ops_can_manage', 'app.ops_can_read',
-        'app.ops_can_write_own', 'app.reactivate_staff', 'app.set_staff_revenue_visibility', 'app.today_store_totals', 'app.update_staff',
+        'app.ops_can_write_own', 'app.ops_photo_readable', 'app.ops_photo_writable', 'app.reactivate_staff', 'app.reopen_cash_count',
+        'app.resolve_incident', 'app.save_checklist_template', 'app.set_checklist_template_active', 'app.set_ops_photo_retention_days',
+        'app.set_staff_revenue_visibility', 'app.today_store_totals', 'app.update_staff',
         'app.withdraw_staff_ops_consent', 'public.oa_event_counts', 'public.publish_legal_document', 'public.refresh_my_analytics',
         'public.retire_legal_document'],
-  'the only security definer functions a member may call are the membership helpers, the roster, pairing, staff notice and phone functions, settings and legal functions and today_store_totals, so no other function reads revenue past RLS'
+  'the only security definer functions a member may call are the membership helpers, the roster, pairing, staff notice and phone functions, settings and legal functions, today_store_totals and the phase 14b checklist editor, acknowledgement, reopening, photo retention and photo policy functions, so no other function reads revenue past RLS'
 );
 select col_type_is('public', 'tenants', 'staff_revenue_visibility', 'text', 'tenants.staff_revenue_visibility is text');
 select col_default_is('public', 'tenants', 'staff_revenue_visibility', 'all', 'staff see their stores'' revenue until the owner restricts it');
@@ -570,8 +573,8 @@ select is(
   (select array_agg(p.tablename::text || ':' || p.cmd order by p.tablename collate "C") from pg_policies p where p.schemaname = 'public' and p.qual like '%current_user_revenue_store_ids%'),
   array['agg_attach_daily:SELECT', 'agg_basket_pairs_28d:SELECT', 'agg_category_daily:SELECT', 'agg_daily_sales:SELECT', 'agg_hourly_sales:SELECT',
         'agg_item_daily:SELECT', 'agg_modifier_prefs_daily:SELECT', 'agg_payment_daily:SELECT', 'agg_shift_cash:SELECT', 'agg_size_mix_daily:SELECT',
-        'invoice_events:SELECT', 'invoice_lines:SELECT', 'invoice_payments:SELECT', 'invoices:SELECT', 'shifts:SELECT', 'sync_checks:SELECT'],
-  'the sales facts, shifts, sync checks and every aggregate are read through current_user_revenue_store_ids'
+        'cash_counts:SELECT', 'invoice_events:SELECT', 'invoice_lines:SELECT', 'invoice_payments:SELECT', 'invoices:SELECT', 'shifts:SELECT', 'sync_checks:SELECT'],
+  'the sales facts, shifts, sync checks, every aggregate and the counts of other members in cash_counts are read through current_user_revenue_store_ids'
 );
 select is(
   (select count(*)::integer from pg_policies p
@@ -692,7 +695,7 @@ reset role;
 select is(
   (select array_agg(distinct p.tablename::text) from pg_policies p
    where p.schemaname = 'public' and (coalesce(p.qual, '') || coalesce(p.with_check, '')) ~ '(ops_can_|current_user_ops_store_ids)'),
-  array['ops_template_pgtap'],
+  array['cash_counts', 'checklist_answers', 'checklist_corrections', 'checklist_items', 'checklist_runs', 'checklist_templates', 'incidents', 'ops_template_pgtap', 'shift_handovers'],
   'the operations tables: 14b and 15 add each of theirs here'
 );
 select is(
