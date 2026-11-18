@@ -26,7 +26,8 @@
 		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
 		"test": "vitest run",
 		"schemas": "node --import tsx scripts/emit-schemas.mjs",
-		"golden": "node --import tsx scripts/emit-demo-pack.ts"
+		"golden": "node --import tsx scripts/emit-demo-pack.ts",
+		"fixtures": "node --import tsx scripts/emit-plan-fixtures.ts"
 	},
 	"dependencies": {
 		"@fnb/core": "workspace:^",

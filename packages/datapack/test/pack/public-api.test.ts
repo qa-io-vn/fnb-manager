@@ -342,8 +342,13 @@ describe("the public interface of @fnb/datapack", () => {
 		).rejects.toThrow(/^pack_stores_invalid: /);
 	});
 
+	it("builds the sample plan and the mini pack of the testing entry", () => {
+		const pack = testing.miniPack();
+		expect(pack.sample).toBe(false);
+		expect(lintPlan(testing.samplePlan(pack), pack).ok).toBe(true);
+	});
+
 	it("throws not_implemented from every stub", () => {
-		const pack = minimalPack();
 		const synchronous: (() => unknown)[] = [
 			() =>
 				kpiStatus({
@@ -354,8 +359,6 @@ describe("the public interface of @fnb/datapack", () => {
 					horizonDays: 90,
 					band: null,
 				}),
-			() => testing.samplePlan(pack),
-			() => testing.miniPack(),
 		];
 		for (const call of synchronous) {
 			expect(call).toThrow(NOT_IMPLEMENTED);

@@ -6,7 +6,7 @@ export function generalHelp(): string {
 		...COMMANDS.map((command) => command.path.join(" ").length),
 	);
 	return [
-		"fnb — onboarding, POS sync, health checks, daily digests and alerts for FNB Manager",
+		"fnb — onboarding, POS sync, health checks, daily digests, alerts and AI data packs for FNB Manager",
 		"",
 		"Usage: fnb <command> [options]",
 		"",
@@ -19,6 +19,7 @@ export function generalHelp(): string {
 		"Run fnb <command> --help for the options of one command.",
 		"Configuration comes from the environment and the repository's .env (see docs/secrets.md and docs/sync.md).",
 		"In CI (CI or GITHUB_ACTIONS set) credentials are masked first and output names no shop: stores are numbered, accounts are called by their position in POS_ACCOUNTS_JSON (account 1 is the first entry) and onboarded accounts missing from it other 1, other 2 and so on.",
+		"fnb datapack writes packs only outside the repository or into folders below docs/private/ that git ignores.",
 	].join("\n");
 }
 

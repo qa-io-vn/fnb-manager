@@ -1,4 +1,5 @@
 import { bootstrapCommand } from "./bootstrap.js";
+import { datapackCommand } from "./datapack.js";
 import { digestCommand } from "./digest.js";
 import { doctorCommand } from "./doctor.js";
 import { maskCommand } from "./mask.js";
@@ -24,6 +25,7 @@ export const COMMANDS: readonly CommandSpec[] = [
 	notifyLinkCommand,
 	notifyUnlinkCommand,
 	notifyJobFailedCommand,
+	datapackCommand,
 ];
 
 export function findCommand(words: readonly string[]): CommandSpec | undefined {

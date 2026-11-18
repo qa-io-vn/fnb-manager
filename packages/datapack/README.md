@@ -12,11 +12,11 @@ Last updated 2026-11-18
 | Canonical text and hash | `canonicalJson`, `formatDecimal`, `sha256Hex` |
 | Reading and comparing packs | `parsePack`, `validatePack`, `comparePackTexts`, `aggregatesOnlyIssues` |
 | Budget | `estimateTokens`, `TOKEN_LIMIT` (30,000), `TOKEN_FLOOR` (15,000) |
-| Building | `buildDataPack` (`BuildDataPackOptions`, `BuiltPack`), `packCalls`, `calendarOf` and `PACK_WINDOWS`, `trackableMetricIds`, `KPI_EXCLUDED_METRIC_IDS` and `KPI_WINDOW_DAYS`, `PACK_GAPS` (`PackGapCode`, `GapSeverity`), `PackClock`, the request types and limits (`DataPackRequest`, `HORIZONS`, `HORIZON_DAYS`, `DEFAULT_HORIZON`, `PACK_LANGUAGES`, `MAX_PACK_STORES`, `FOCUS_MAX_LENGTH`, `OWNER_NOTE_MAX_LENGTH`), `DataPackError` and `PACK_ERROR_CODES`. `buildDataPack` answers `not_implemented` until `strategyPrompt` exists (#131) |
-| Prompt | `strategyPrompt`, `PROMPT_ID`, `PROMPT_VERSION`, `chatBundle` (in progress, #131) |
-| Plans | `PLAN_FORMAT` (`fnb-plan/1`), `PLAN_SECTIONS`, `INITIATIVE_FIELDS`, `planFrontMatterSchema`, `normalizePlanText`, `parsePlan`, `lintPlan`, `planRecord`, `kpiStatus`, `comparePlans` (in progress) |
+| Building | `buildDataPack` (`BuildDataPackOptions`, `BuiltPack`), `packCalls`, `calendarOf` and `PACK_WINDOWS`, `trackableMetricIds`, `KPI_EXCLUDED_METRIC_IDS` and `KPI_WINDOW_DAYS`, `PACK_GAPS` (`PackGapCode`, `GapSeverity`), `PackClock`, the request types and limits (`DataPackRequest`, `HORIZONS`, `HORIZON_DAYS`, `DEFAULT_HORIZON`, `PACK_LANGUAGES`, `MAX_PACK_STORES`, `FOCUS_MAX_LENGTH`, `OWNER_NOTE_MAX_LENGTH`), `DataPackError` and `PACK_ERROR_CODES`. |
+| Prompt | `strategyPrompt`, `PROMPT_ID`, `PROMPT_VERSION`, `chatBundle` (prompt 1.0.0, #131) |
+| Plans | `PLAN_FORMAT` (`fnb-plan/1`), `PLAN_SECTIONS`, `INITIATIVE_FIELDS`, `planFrontMatterSchema`, `normalizePlanText`, `parsePlan`, `lintPlan`, `planRecord`, `kpiStatus`, `comparePlans` (phase 11b, #171) |
 
-`./testing` holds the sample pack and plan for other packages' tests. The package is marked `sideEffects: false` and uses no Node API under `src/`, so the browser and the command line run the same code. Runtime dependencies: `@fnb/core`, `@fnb/metrics`, `@fnb/reports` and `zod`; zod is the only validator shipped, and Ajv is a dev dependency used only to check the published schema files.
+`./testing` (`@fnb/datapack/testing`) holds `samplePlan(pack)` and `miniPack()` for other packages' tests (see [The sample plan and the plan fixtures](#the-sample-plan-and-the-plan-fixtures)). The package is marked `sideEffects: false` and uses no Node API under `src/`, so the browser and the command line run the same code. Runtime dependencies: `@fnb/core`, `@fnb/metrics`, `@fnb/reports` and `zod`; zod is the only validator shipped, and Ajv is a dev dependency used only to check the published schema files.
 
 ## The pack document
 
@@ -98,7 +98,16 @@ Identifiers, dates, `pack_id`, `prompt`, `context` and the top-level calendar ar
 - **Context.** The 10 dated benchmark entries as the registry writes them, and the promotion rules in force in the tenant's country on the as-of day, each as a sentence in the pack's language; it sits outside `tables`, so a plan cannot cite it.
 - **Build.** Check the request, take the prompt, read the fence, the store profiles and the other calls, read the fence again (up to three attempts, then `pack_data_changed`), then the aggregates-only check (`pack_not_aggregate`), `sealPack` and `validatePack`.
 
-`test/fixtures/demo-pack.json` is the golden demo pack: the demo's two stores at the fixed clock `2026-11-12T03:00:00Z`, 21,225 estimated tokens, built with a stand-in prompt until prompt 1.0.0 exists. `pnpm --filter @fnb/datapack golden` writes it again.
+`test/fixtures/demo-pack.json` is the golden demo pack: the demo's two stores at the fixed clock `2026-11-12T03:00:00Z`, built with prompt 1.0.0, 24,968 estimated tokens. `pnpm --filter @fnb/datapack golden` writes it again.
+
+## The sample plan and the plan fixtures
+
+- **`samplePlan(pack)`** (`src/testing/sample-plan.ts`) writes a deterministic plan from the pack's own cells, in the pack's language, titled "Kế hoạch mẫu, tạo tự động để minh họa" ("Sample plan, generated automatically to illustrate"). Its KPIs are the first three ids of a fixed list (`avg_ticket`, `attach_rate_topping`, `discount_rate`, `items_per_ticket`, `size_l_share`, `invoices`, `net_revenue`, all trackable) whose `ALL` row has a `w28`; each target is the baseline 5 % up or down by the metric's direction, rounded to the metric unit's digits (the currency's minor units for VND amounts, 0 for counts, 2 for items per ticket, 4 for fractions) and moved one unit when rounding gives the baseline back. Sections 1 and 2 cite `kpi` cells (`w28`, `p28_change`, `lo`, `hi`); the five initiatives link to the KPIs in turn and each Evidence field cites one detail cell (the leading item's net, the quietest weekday's share, the leading payment method's and category's shares, the month-to-date net), falling back to another detail cell and then to the KPI's `w28` when a table is empty. Numbers are written in the language's grammar (`91.402 đ`, `22,88%`, `1,1 điểm`; `91,402 VND`, `22.88%`, `1.1 points`), and an item name appears only when it is plain text. It refuses (`pack_invalid`) a pack that measures none of the listed ids.
+- **`miniPack()`** returns `test/fixtures/plans/mini-pack.json` read through `dataPackSchema`, a fresh copy on every call: a hand-written, live-shaped pack (`sample` false, the seed's synthetic store ids `22222222-…-000000000001` and `…002`, all twenty tables, every trackable id per scope, the real prompt 1.0.0 in Vietnamese), valid and aggregate-only, 17,978 estimated tokens. Every plan fixture that reaches SQL is built on it.
+- **`test/fixtures/plans/prompt-example.md`**: a five-initiative plan written as the prompt asks, against the mini pack: the prompt's front matter and citation style, a target on each KPI line and worked "ước tính" arithmetic in each expected-impact field. It lints with no issue.
+- **`missing-section.md`** and **`unknown-kpi.md`**: the sample plan of the golden demo pack without section 7 (`section_missing:7`), and with its first KPI renamed `net_sales` in the front matter and in the KPI fields of its initiatives (`kpi_unknown:net_sales`).
+
+`pnpm --filter @fnb/datapack fixtures` (`scripts/emit-plan-fixtures.ts`) seals `mini-pack.json` again after a hand edit (estimate and `pack_id`, formatted by Biome), writes the new id into `prompt-example.md` and regenerates the two rejection fixtures from the golden pack; run it after editing the mini pack or regenerating the golden pack. `test/plan/fixtures.test.ts` fails when a file differs from what the script would write.
 
 ## Who uses it
 
@@ -111,9 +120,10 @@ pnpm --filter @fnb/datapack test
 pnpm --filter @fnb/datapack typecheck
 pnpm --filter @fnb/datapack schemas
 pnpm --filter @fnb/datapack golden
+pnpm --filter @fnb/datapack fixtures
 ```
 
-437 tests in 39 files at `4e21657`.
+539 tests in 44 files pass and 1 is skipped with `CI=1` (the private-list scan of #131, which needs `docs/private/`).
 
 - `test/pack/canonical.test.ts`, `decimal.test.ts`, `hash.test.ts`: the canonical text, decimals and units, the hash, `pack_id` and the clock.
 - `test/pack/schema.test.ts`: the committed schema files equal the generated ones; Ajv and zod agree.
@@ -123,6 +133,8 @@ pnpm --filter @fnb/datapack golden
 - `test/pack/coverage.test.ts`, `kpi-ids.test.ts`, `gaps.test.ts`, `context.test.ts`: the coverage rule per scope, the trackable KPI ids, each gap exactly when its condition holds, the rules in force in both languages.
 - `test/pack/tables/*.test.ts`: provenance of every cell, the declared orders under shuffled rows, labels, empty tables, items, hour columns, shift bands, holiday dates.
 - `test/pack/build.test.ts`, `golden.test.ts`, `transport-equivalence.test.ts`, `environment.test.ts`: the build with its fence and refusals, the golden pack byte for byte, two row shapes giving the same bytes, and the same bytes under three process time zones.
+- `test/plan/sample-plan.test.ts`: the KPI list held to the trackable ids, the targets and their rounding, and `samplePlan` of demo packs on 30 days in a row in both languages (and of one store) linting with no issue; Evidence citing detail cells and sections 1 and 2 citing `kpi` cells; the fallbacks.
+- `test/plan/fixtures.test.ts`: the mini pack valid and live-shaped, `prompt-example.md` with no issue, `missing-section.md` and `unknown-kpi.md` giving exactly their codes, and every fixture equal to what `pnpm --filter @fnb/datapack fixtures` writes.
 
 ## Read more
 
