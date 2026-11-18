@@ -12,6 +12,7 @@ import type { CommandSpec } from "./spec.js";
 import { statusCommand } from "./status.js";
 import { syncCommands } from "./sync.js";
 import { tenantCommands } from "./tenant.js";
+import { zaloCommands } from "./zalo.js";
 
 export const COMMANDS: readonly CommandSpec[] = [
 	...tenantCommands,
@@ -28,6 +29,7 @@ export const COMMANDS: readonly CommandSpec[] = [
 	notifyUnlinkCommand,
 	notifyJobFailedCommand,
 	datapackCommand,
+	...zaloCommands,
 ];
 
 export function findCommand(words: readonly string[]): CommandSpec | undefined {
