@@ -1,20 +1,24 @@
 # Data pack and plan format
 
-Purpose and audience: the formats of phase 11's strategy path. The AI data pack is one aggregate-only, versioned JSON document that the owner hands to their own assistant (ADR-003); the plan is the Markdown the assistant writes back, checked against that exact pack before it can be stored. This page states the pack format (canonical text, `pack_id`, units and digits, the aggregates-only rules, the budget and its trimming ladder, the JSON Schema files), the pack's content (the request, the calendar and the KPI windows, the report calls, coverage per scope, the twenty tables, the gaps, the context, the build and the golden pack) and the plan format `fnb-plan/1` with its lint (sections, initiative fields, citations, the number grammar and every lint code). It is for developers of the pack, the prompt, the command line and the paste box, for reviewers who check that nothing row-level or personal leaves in a pack, and for testers. The code is `packages/datapack` ([README](../packages/datapack/README.md)); where this page and the code differ, the code wins. Requirements: FR-EXP-03, FR-EXP-04, FR-EXP-05, FR-EXP-06, FR-EXP-08, FR-EXP-10, FR-STR-01, FR-STR-04, FR-STR-05.
+Purpose and audience: the formats of phase 11's strategy path. The AI data pack is one aggregate-only, versioned JSON document that the owner hands to their own assistant (ADR-003); the plan is the Markdown the assistant writes back, checked against that exact pack before it can be stored. This page states the pack format (canonical text, `pack_id`, units and digits, the aggregates-only rules, the budget and its trimming ladder, the JSON Schema files), the pack's content (the request, the calendar and the KPI windows, the report calls, coverage per scope, the twenty tables, the gaps, the context, the build, the golden pack, the strategy prompt and the chat bundle), the plan format `fnb-plan/1` with its lint (sections, initiative fields, citations, the number grammar and every lint code), the sample plan and the plan fixtures, and how a pack is built in the browser and checked and built with `fnb datapack`. It is for developers of the pack, the prompt, the command line and the paste box, for reviewers who check that nothing row-level or personal leaves in a pack, and for testers. The code is `packages/datapack` ([README](../packages/datapack/README.md)), with the pack tab in `apps/web` and the command in `apps/jobs`; where this page and the code differ, the code wins. Requirements: FR-EXP-03 to FR-EXP-10, FR-STR-01, FR-STR-02, FR-STR-04, FR-STR-05.
 
 Last updated 2026-11-18
 
 ## 1. Where the formats fit
 
-By design, the owner, or a manager, builds a pack in the browser ("Tải gói dữ liệu cho AI", "Sao chép gói + prompt") or with `fnb datapack`, always as a data role, never as the publisher, which reads no aggregate (FR-EXP-09). Both use the same code of `@fnb/datapack`, so the same data gives the same bytes. The assistant answers with a plan whose front matter names the pack's `pack_id`; the "Dán kế hoạch" box and `fnb publish-plan` are to run the same lint against that pack, and only a plan without errors becomes the arguments of `publish_strategy_plan` ([architecture.md, 6.5](architecture.md#65-data-pack-and-plan-publishing-phase-11)).
+The owner, or a manager, builds a pack in the browser on Xuất dữ liệu ("Tải gói dữ liệu cho AI", "Sao chép gói + prompt"; section 7) or with `fnb datapack` (section 8), always as a member with a data role, never as the publisher, which reads no aggregate (FR-EXP-09). Both run `buildDataPack` of `@fnb/datapack`, so the same data gives the same bytes: on the local stack the browser's pack and the command line's for the same member were identical apart from `generated_at`, with the same `pack_id`, and since `8c1b490` the live pack spec compares the two in CI's `e2e` job (#144). The assistant answers with a plan whose front matter names the pack's `pack_id`; the "Dán kế hoạch" box and `fnb publish-plan` are to run the same lint against that pack, and only a plan without errors becomes the arguments of `publish_strategy_plan` ([architecture.md, 6.5](architecture.md#65-data-pack-and-plan-publishing-phase-11)).
 
 | Part | Code | State on 2026-11-18 |
 |---|---|---|
 | The pack format: canonical text, `pack_id`, units, the schema and its JSON Schema files, validation, the aggregates-only check, the estimate and the budget | `src/pack/` | built (#130) |
-| The pack's content: the request, the report calls, the calendar and KPI windows, coverage per scope, the tables, the gaps and the context (`buildDataPack`, `packCalls`, `calendarOf`, `PACK_GAPS`) | `src/pack/build.ts`, `resolve.ts`, `calls.ts`, `calendar.ts`, `coverage.ts`, `context.ts`, `tables/` | built (#134); `buildDataPack` waits for the prompt (#131) |
-| The strategy prompt and the chat bundle (`strategyPrompt`, `chatBundle`) | `src/prompt/`, `src/pack/bundle.ts` | planned (#131) |
+| The pack's content: the request, the report calls, the calendar and KPI windows, coverage per scope, the tables, the gaps and the context (`buildDataPack`, `packCalls`, `calendarOf`, `PACK_GAPS`) | `src/pack/build.ts`, `resolve.ts`, `calls.ts`, `calendar.ts`, `coverage.ts`, `context.ts`, `tables/` | built (#134) |
+| The strategy prompt 1.0.0 and the chat bundle (`strategyPrompt`, `chatBundle`) | `src/prompt/`, `src/pack/bundle.ts` | built (#131) |
 | The plan format and its lint (`normalizePlanText`, `parsePlan`, `lintPlan`, `planRecord`) | `src/plan/` | built (#135) |
-| `fnb datapack`, `fnb publish-plan --check`, the pack buttons, the paste box, the byte identity of browser and command-line packs in CI | `apps/jobs`, `apps/web` | planned (#137, #138, #142, #143, #144) |
+| The sample plan and the plan fixtures (`samplePlan`, `miniPack` in `@fnb/datapack/testing`) | `src/testing/`, `test/fixtures/plans/`, `scripts/emit-plan-fixtures.ts` | built (#136) |
+| `fnb datapack`: build, check and compare packs as a member, written only to private places | `apps/jobs/src/commands/datapack.ts`, `apps/jobs/src/datapack/` | built (#137) |
+| The pack tab "Gói dữ liệu cho AI": the form, the build, the summary, "Tải gói dữ liệu cho AI" and "Sao chép gói + prompt" | `apps/web/src/pages/exports/pack-*`, `apps/web/src/datapack/` | built (#142) |
+| `fnb publish-plan --check` and the paste box "Dán kế hoạch": the lint of a pasted plan against its pack, offline and in the browser | `apps/jobs/src/commands/publish-plan.ts`, `apps/web/src/pages/plans/`, `apps/web/src/plans/` | built in `8c1b490` (#138, #143); their sections of this page are still to write |
+| The byte identity of browser and command-line packs in CI, then the acceptance of 11a-2 | `apps/web/e2e/live/datapack.spec.ts`, CI | in build (#144: the browser half is in `8c1b490`, the gated integration suite is next), then #145 |
 | KPI status and the comparison of two plans (`kpiStatus`, `comparePlans`) | `src/plan/status.ts`, `compare.ts` | phase 11b (#171) |
 
 ## 2. The pack
@@ -133,7 +137,7 @@ Nothing in the format reads the environment. Source-scan tests refuse `Intl.`, `
 
 ## 3. The pack's content
 
-`buildDataPack(request, options)` (`src/pack/build.ts`, #134) fills the format of section 2 from the report functions of `@fnb/reports`: it checks the request, reads the store profiles, derives the calendar from the as-of day, plans every call up front, reads them through the report source it is given, builds twenty tables and the context, and seals the pack. The same code builds a sample pack from the demo engine, a live pack in the browser through PostgREST and, for `fnb datapack` (#137), a pack read over Postgres. `buildDataPack` takes its prompt from `strategyPrompt`, which answers `not_implemented` until prompt 1.0.0 exists (#131). Until then the tests and the golden pack build through the same function, `buildPackWith`, with a stand-in prompt, and the golden pack is regenerated when the prompt lands.
+`buildDataPack(request, options)` (`src/pack/build.ts`, #134) fills the format of section 2 from the report functions of `@fnb/reports`: it checks the request, reads the store profiles, derives the calendar from the as-of day, plans every call up front, reads them through the report source it is given, builds twenty tables and the context, and seals the pack. The same code builds a sample pack from the demo engine, a live pack in the browser through PostgREST (section 7) and, for `fnb datapack`, a pack read over Postgres inside one snapshot (section 8). `buildDataPack` takes its prompt from `strategyPrompt` in the request's language (section 3.10).
 
 ### 3.1 The request
 
@@ -262,8 +266,8 @@ A plan cites cells of `tables` only: a citation of `context` is `citation_unknow
 
 `buildPackWith(request, options, promptOf)`, which `buildDataPack` calls with `strategyPrompt`, runs these stages:
 
-1. Check the request (section 3.1) before anything is read, and take the prompt in the request's language.
-2. Read the fence (`options.fence`): the browser passes `pack_fence` of the stores (#142); where nothing can change during the read, as inside one read-only transaction, the fence is null.
+1. Check the request (section 3.1) before anything is read, and take the prompt in the request's language; a prompt in another language is refused (`pack_invalid`).
+2. Read the fence (`options.fence`): the pack tab passes a call of `pack_fence` over the pack's stores (section 7); the demo, whose numbers cannot change during a build, and `fnb datapack`, which reads inside one read-only repeatable-read transaction (section 8), pass none.
 3. Read `store_profiles` and resolve the request: labels, currency, country and the default as-of day.
 4. Read every other call of `packCalls` (section 3.3).
 5. Read the fence again. If it moved, a sync or a refresh committed during the read, and the build starts again at stage 2; after three attempts (`PACK_ATTEMPTS`) it fails with `pack_data_changed`.
@@ -276,17 +280,39 @@ The result, `BuiltPack`, holds the pack, its canonical text, `pack_id`, the esti
 
 ### 3.9 The golden pack and the measured sizes
 
-`test/fixtures/demo-pack.json` is the golden demo pack: a sample pack of the demo engine's two stores (`MOCK-S1`, `MOCK-S2`) built at the fixed clock `2026-11-12T03:00:00Z`, so the as-of day is 2026-11-11, with the horizon `90d`, Vietnamese, the focus "Tăng giá trị hóa đơn buổi chiều" and the stand-in prompt. Every figure in it is synthetic, so it is safe to commit. The file holds the pack's canonical text formatted by Biome. `test/pack/golden.test.ts` builds the pack again and requires the file's canonical text byte for byte, a valid pack within the budget with nothing trimmed and with aggregates only, and no store id outside `request.stores`. `pnpm --filter @fnb/datapack golden` (`scripts/emit-demo-pack.ts`) writes the file again and prints its estimate and the first eight digits of its `pack_id`; run it when the content changes on purpose, and when prompt 1.0.0 replaces the stand-in (#131).
+`test/fixtures/demo-pack.json` is the golden demo pack: a sample pack of the demo engine's two stores (`MOCK-S1`, `MOCK-S2`) built at the fixed clock `2026-11-12T03:00:00Z`, so the as-of day is 2026-11-11, with the horizon `90d`, Vietnamese, the focus "Tăng giá trị hóa đơn buổi chiều" and prompt 1.0.0. Every figure in it is synthetic, so it is safe to commit. The file holds the pack's canonical text formatted by Biome. `test/pack/golden.test.ts` builds the pack again and requires the file's canonical text byte for byte, a valid pack within the budget with nothing trimmed and with aggregates only, and no store id outside `request.stores`. `pnpm --filter @fnb/datapack golden` (`scripts/emit-demo-pack.ts`) writes the file again and prints its estimate and the first eight digits of its `pack_id`; run it when the content or the prompt changes on purpose, then `pnpm --filter @fnb/datapack fixtures`, since two plan fixtures derive from the golden pack (section 6).
 
-Sizes measured when the content was built, with the stand-in prompt:
+Sizes with prompt 1.0.0, whose text adds 3,779 estimated tokens to a Vietnamese pack and 3,378 to an English one:
 
 | Pack | Estimated tokens |
 |---|---|
-| The golden demo pack, two stores | 21,225 of 30,000, nothing trimmed |
-| The seed's two stores on the local stack | 16,092; the browser-shaped path through PostgREST and the snapshot path over JSON RPC in a read-only transaction gave the same `pack_id` and the same rows for all 38 calls |
-| Ten stores | still above 30,000 after all eight steps of the ladder: `pack_over_budget` |
+| The golden demo pack, two stores | 24,968 of 30,000, nothing trimmed |
+| The seed's two stores on the local stack, as-of day 2026-11-17, Vietnamese, `90d` (`fnb datapack --tenant demo-fnb`) | 19,817, nothing trimmed; for the same requests the command line's pack and the browser path's were identical apart from `generated_at`, with the same `pack_id` |
+| The mini pack, `test/fixtures/plans/mini-pack.json` (section 6) | 17,978 |
+| One to four stores of the demo, the third and fourth made of copied store rows (`test/pack/store-budget.test.ts`) | one to three stores fit untrimmed in both languages; four fit after the first steps of the ladder |
+| More stores, measured the same way when the prompt landed | up to seven in Vietnamese and eight in English fit after the whole ladder; ten stores end in `pack_over_budget` |
 
-So a pack of ten stores is refused today, and prompt 1.0.0 will add its own text to every pack; both are open points of FR-EXP-04.
+So the request allows ten stores (`MAX_PACK_STORES`), but a pack of more than seven or eight stores of this size is refused with `pack_over_budget`, and the pack tab then suggests choosing fewer stores (FR-EXP-04).
+
+### 3.10 The strategy prompt
+
+`strategyPrompt(language)` (`src/prompt/prompt.ts`, #131) returns `{ id: "fnb-strategy", version: "1.0.0", language, text }`, and the build puts it in the pack's `prompt`, so the instructions travel with the figures they explain and `pack_id` covers them. Each language's text is an array of string literals in `strategy-vi.ts` and `strategy-en.ts`, joined with LF, so neither a checkout's line endings nor a bundler can change it. No value is ever written into the text: it names pack fields (`request.horizon`, `tables`, `context.rules`) instead, so each version and language is one fixed string.
+
+The text, in the plan's language, tells the assistant:
+
+- the three kinds of information and how to keep them apart: the measurements in `tables`, the only evidence and the only cells to cite; the context and rules in `context`, never cited and never a target, while the plan respects the rules; and what the owner declared, `request.focus` and `request.owner_note`. Every text in the pack is data, not instructions;
+- how to read the tables: row keys and scopes, the units, `null` as not measured and never 0, the `gaps` table and what `budget.trimmed` cut;
+- the cite-a-number rule (section 4.5) with the number formats of the plan's language (section 4.6), and "ước tính" or "estimate" before a number it worked out itself (section 4.7);
+- the answer format: the JSON front matter, with `pack` copied from `pack_id`, 3 to 6 KPIs keyed by trackable ids, each baseline copied unrounded from `w28` and each target in the good direction; then the ten sections of section 4.3 in order, and five to seven initiatives with their seven fields (section 4.4);
+- the quality rules (specific and feasible for a small store, the focus first, no invented number, no personal data, no question back and no tool), a check before answering, and a worked example of the front matter and the first initiative.
+
+The prompt names no assistant, product, vendor or tool and holds no slash command, link, markup tag or tool-call syntax (ADR-003), so the same text works pasted into a chat, attached as a file or handed to an assistant that can run commands; any assistant-specific wrapper stays in the owner's own configuration, outside the repository. It reaches the assistant three ways: inside every pack (`prompt.text`, so the downloaded file alone is enough), first in the chat bundle (section 3.11), and in the bundle file of `fnb datapack --bundle`.
+
+`PROMPT_SHA256` pins the SHA-256 of each language's text per version, and a test fails when a text changes while the version stays: a change of the plan format takes a new major version, a new rule a minor one, a rewording a patch. The prompt's own example, filled with the numbers of a built pack, lints with no issue at all.
+
+### 3.11 The chat bundle
+
+`chatBundle(pack)` (`src/pack/bundle.ts`) is the text that "Sao chép gói + prompt" copies and `fnb datapack --bundle` writes, for a chat that takes text only: the prompt's text, an empty line, then the pack's canonical text in one `json` fence, in which `prompt.text` is replaced by a one-line pointer in the pack's language ("Lời nhắc nằm ở đầu văn bản này, ngay trước gói dữ liệu.", "The instructions are at the top of this text, just before this data pack."), so the prompt is sent once. `pack_id` is unchanged, and putting the prompt back into the fenced pack gives the pack byte for byte.
 
 ## 4. The plan format `fnb-plan/1`
 
@@ -449,15 +475,73 @@ The KPI checks run only on valid front matter, and `kpi_unknown` and `kpi_untrac
 
 `planRecord(plan, pack, lint, via)` turns a plan that passed the lint into the arguments of `publish_strategy_plan`: the pack's store ids; the title, horizon and language; the normalised text; per KPI its scope, the store ids of that scope, the baseline copied exactly from `w28` whatever the front matter wrote, the target, `lo` and `hi` from the pack (null when missing), its initiatives, `due_on` at the end of the pack's horizon and `window_days` 28; the as-of date, `pack_id`, prompt version and the pack itself; the lint summary with its warning codes; and how the plan came (`skill`, `routine` or `pasted`). It refuses a sample pack (`sample_pack_not_publishable`), a plan written from another pack (`pack_id_mismatch`) and a KPI without a store or a baseline in the pack (`front_matter_invalid`).
 
-## 6. Tests
+## 6. The sample plan and the plan fixtures
+
+`@fnb/datapack/testing` (`src/testing/`, #136) holds two helpers for the tests of every package that handles plans, such as those of `fnb datapack`; no shipped code imports it.
+
+- **`samplePlan(pack)`** writes a deterministic plan from the pack's own cells, in the pack's language, titled "Kế hoạch mẫu, tạo tự động để minh họa" ("Sample plan, generated automatically to illustrate"). Its KPIs are the first three ids of a fixed list (`avg_ticket`, `attach_rate_topping`, `discount_rate`, `items_per_ticket`, `size_l_share`, `invoices`, `net_revenue`, all trackable) whose `ALL` row of the `kpi` table has a `w28`. Each target is the baseline moved 5 % in the metric's good direction, rounded to the digits of the metric's unit and moved one more unit when rounding gives the baseline back. Sections 1 and 2 cite `kpi` cells; the five initiatives take the KPIs in turn, and each Evidence field cites one detail cell (the leading item's net, the quietest weekday's share, the leading payment method's and category's shares, the month-to-date net), falling back to another detail cell and then to the KPI's `w28` when a table is empty. Numbers follow the language's grammar (`91.402 đ`, `22,88%`, `1,1 điểm`; `91,402 VND`, `22.88%`, `1.1 points`). A pack that measures none of the listed ids is refused (`pack_invalid`). For demo packs on 30 days in a row, in both languages, the sample plan lints with no error and no uncited number.
+- **`miniPack()`** returns `test/fixtures/plans/mini-pack.json`, a fresh copy on every call: a small, hand-written pack shaped like a live one (`sample` false, the seed's synthetic store ids, all twenty tables, every trackable id per scope, prompt 1.0.0 in Vietnamese), valid and aggregate-only, 17,978 estimated tokens. Every plan fixture that reaches SQL is built on it, since a sample pack can never be published.
+
+The plan fixtures, in `test/fixtures/plans/` beside the one-fixture-per-code folder `lint/` of section 5:
+
+| File | What it is | Lint against its pack |
+|---|---|---|
+| `mini-pack.json` | the mini pack | a valid pack |
+| `prompt-example.md` | a five-initiative plan written as the prompt asks, against the mini pack: the prompt's citation style, a target on each KPI line and worked "ước tính" arithmetic in each expected-impact field | no issue |
+| `missing-section.md` | the sample plan of the golden demo pack without section 7 | `section_missing:7` |
+| `unknown-kpi.md` | the same plan with its first KPI renamed `net_sales`, in the front matter and in the KPI field of its initiatives | `kpi_unknown:net_sales` |
+
+`pnpm --filter @fnb/datapack fixtures` (`scripts/emit-plan-fixtures.ts`) writes them again: it seals `mini-pack.json` after a hand edit (its estimate and `pack_id`, formatted by Biome), writes the new `pack_id` into `prompt-example.md`, and regenerates the two rejection fixtures from the golden pack. Run it after editing the mini pack or regenerating the golden pack; `test/plan/fixtures.test.ts` fails when a committed file differs from what the script would write. `fnb publish-plan --check` (#138) and the paste box (#143) are tested with the same files, and so are to be the tests of phase 11b. Every fixture is synthetic.
+
+## 7. Building a pack in the browser
+
+The tab "Gói dữ liệu cho AI" of `#/xuat-du-lieu` (#142; the page's default tab, for owners and managers; [web-app.md](web-app.md#phase-11-decisions)) builds the pack in the member's browser through the page's report source: the signed-in member's session through PostgREST, so row-level security decides every row, or in the demo the demo engine, which builds a sample pack of its stores and sends no request outside its origin.
+
+- The builder is a lazy chunk (`apps/web/src/datapack/browser-pack.ts`, about 27 kB gzipped), loaded at the first "Tạo gói", so the page's first load does not carry `@fnb/datapack`.
+- The request comes from the form: the stores chosen in the top bar (1 to 10), "Dữ liệu đến hết ngày" (the as-of day, by default and at the latest the last complete day), "Kỳ kế hoạch", "Trọng tâm", "Ghi chú của chủ quán" and "Ngôn ngữ kế hoạch". The address parameters `asOf`, `horizon`, `lang` and `focus` fill it, as the byte-identity check of #144 needs.
+- The fence is `pack_fence` over the pack's stores, read before and after the calls (section 3.8). After the build the tab validates the pack once more (`validatePack`) and keeps its canonical text: "Tải gói dữ liệu cho AI" saves that text byte for byte as `goi-du-lieu_<as_of>_<tat-ca|s1-s2…>_<8 hex>.json`, and "Sao chép gói + prompt" copies the chat bundle (section 3.11).
+- `pack_id` needs Web Crypto's SHA-256, which a browser offers only to a page opened over https or on the same computer (`localhost`); anywhere else the tab says so instead of showing the form.
+- Up to five packs stay on the device, 14 days at most, as `fnb.pack.<pack_id>` in `localStorage`, and sign-out removes them.
+
+On the local stack the pack built in the browser and a pack built in Node with `buildDataPack` for the same login were identical apart from `generated_at`, with the same `pack_id` (`apps/web/e2e/live/datapack.spec.ts`). Since `8c1b490` the same spec also builds the request with `fnb datapack` as a child process and requires `--check --against` to report the two identical apart from `generated_at`; it needs `DATABASE_URL`, which CI's `e2e` job sets (#144).
+
+## 8. Building and checking a pack from the command line
+
+`fnb datapack` (`apps/jobs/src/commands/datapack.ts`, #137) builds the browser's pack on the owner's machine:
+
+```sh
+pnpm --filter @fnb/jobs fnb -- datapack --tenant <slug> [--store <S1|store id>]... [--member <login e-mail>] [--as-of YYYY-MM-DD] [--horizon 30d|90d|180d|12m] [--language vi|en] [--focus <text>] [--note-file <path>] [--out <file>] [--bundle <file>] [--json]
+pnpm --filter @fnb/jobs fnb -- datapack --check <file> [--against <file>] [--json]
+pnpm --filter @fnb/jobs fnb -- datapack --tenant <slug> --list-stores [--member <login e-mail>]
+```
+
+- **As a member.** The command connects with the database URL (`DATABASE_URL` locally, `SUPABASE_DB_URL` first in CI) and needs no POS credential and no secret key. It builds as `--member`, a login of the tenant with the owner, manager, staff or viewer role, or else as the tenant's first owner whose scope covers every store; a publisher and a login that is not a member are refused. Without `--store` the pack covers every active store the member sees; `--store` takes a label (`S1`) or a store id, up to ten. The defaults are Vietnamese, `90d` and the last complete day; `--note-file` reads the owner note from a file.
+- **One read-only snapshot.** `withReportSnapshot(sql, memberUserId, run)` (`apps/jobs/src/datapack/snapshot.ts`) opens one transaction `isolation level repeatable read read only`, sets `role authenticated`, the time zone `UTC` and the member's claims ([api.md](api.md#calling-a-function-as-a-member-from-a-server)), and runs the builder on `createRpcReportSource(createJsonRpcClient(transaction), "postgres")`, one call at a time. Row-level security applies exactly as in the browser and the service role is never used; nothing can change during the read, so no fence is needed.
+- **Private files only.** A relative path starts from the folder where the command was typed (`INIT_CWD`, which pnpm sets, else the working directory). The default file is `docs/private/strategy/packs/<as_of>_<tat-ca|s1-s2…>_<8 hex>.json` under the repository root, with its folders created; `--out` names another file, and `--bundle` writes the chat bundle too. A file may go anywhere outside the repository, or below the root's `docs/private/` when `git check-ignore` confirms that git ignores it. Real paths are resolved first, so a symbolic link from `docs/private/` into a tracked folder is refused; so are a `docs/private/` folder elsewhere (git ignores none under `apps/jobs`, for example), any other folder of the repository, and any path when git cannot answer. The pack holds the shop's real figures, so it lands only where a commit cannot pick it up.
+- **Output.** The command reads the written file back, then prints where it wrote (a path from the repository root), `valid`, `aggregates_only`, the `pack_id`, the as-of day, the horizon, the language, the store labels, the member, the estimate and the trimming steps; `--json` prints them as one JSON object. With `CI` or `GITHUB_ACTIONS` set, the output names no tenant, store name, member, e-mail, path or amount: stores by label, files by base name, the member by role, the `pack_id` as its first eight characters, and `--list-stores`, which prints store names and ids, is refused.
+- **Checking files.** `--check <file>` opens no connection and needs no variable: it prints `valid`, `aggregates_only`, the `pack_id`, the estimate and each issue of `parsePack`. With `--against <file>` it compares two packs (`comparePackTexts`, section 2.7) and prints `valid`, `identical_apart_from_generated_at`, `pack_id_equal` and `tables_differing`.
+
+| Exit code | Meaning |
+|---|---|
+| 0 | success; with `--against`, two valid packs identical apart from `generated_at` |
+| 1 | failure, such as a publisher or a login that is not a member, an unknown tenant or a database error; with `--against`, two valid packs that differ |
+| 2 | usage: a wrong flag, a refused path, `--list-stores` in CI, or a request the builder refuses (the stores, a later as-of day, contact details in the focus or note, a text too long) |
+| 4 | the pack is invalid, over budget or not aggregate-only |
+
+On the seed tenant the command's pack equalled the browser path's for two requests, apart from `generated_at`; on the real tenant one pack was built, valid and aggregate-only, and deleted.
+
+## 9. Tests
 
 ```sh
 pnpm --filter @fnb/datapack test
 pnpm --filter @fnb/datapack schemas
 pnpm --filter @fnb/datapack golden
+pnpm --filter @fnb/datapack fixtures
+pnpm --filter @fnb/jobs exec vitest run test/unit/datapack.test.ts test/unit/datapack-files.test.ts
+pnpm --filter @fnb/web exec vitest run src/pages/exports/pack-tab.test.tsx src/datapack
 ```
 
-At `4e21657`, 437 tests in 39 files pass. The tests of the pack's content build packs from the demo engine (`@fnb/demo-analytics`, a development dependency) through `buildPackWith` with the stand-in prompt, so they need no database.
+At `70e5c86`, 539 tests in 44 files pass and 1 is skipped with `CI=1`: the scan against the private identifier list, which needs `docs/private/`. The tests of the pack's content build packs from the demo engine (`@fnb/demo-analytics`, a development dependency) through `buildDataPack` with prompt 1.0.0, so they need no database.
 
 | Test | Proves |
 |---|---|
@@ -468,8 +552,10 @@ At `4e21657`, 437 tests in 39 files pass. The tests of the pack's content build 
 | `test/pack/tables/provenance.test.ts`, `order.test.ts`, `labels.test.ts`, `empty.test.ts` | every numeric cell from a recorded source value, the KPI cells exact and the others rounded to their unit, a store-day without a matched check in `stores`; the same rank keys and bytes from shuffled source rows, ranks from `r01` without a gap; labels from SQL as the only store names in the tables; every table built and valid without sales |
 | `test/pack/tables/items.test.ts`, `hours.test.ts`, `shifts.test.ts`, `holidays.test.ts` | the items kept and their ties, categories over every item, sizes of sized items only; hour columns from a 05:00 day start and 0 for an hour without sales; the shift bands, the night band across midnight, instants with `Z`, an offset or microseconds read alike, no shift or cashier name; one row per holiday date over the horizon |
 | `test/pack/gaps.test.ts`, `context.test.ts` | each gap code with its severity and setting, present exactly when its condition holds; the rules in force on the as-of day, the 120-day limit not sent after its reported repeal, every rule sentence in both languages, the benchmarks apart in registry order |
-| `test/pack/build.test.ts` | `buildDataPack` waiting for `strategyPrompt`; packs valid for every horizon, in both languages, with and without a focus and an owner note; every call recorded, duplicates shared, progress up to the distinct calls, 4 calls at a time in the browser and 1 over Postgres; the fence read before and after, a rebuild when it moved and `pack_data_changed` after three attempts; a till text that looks like a phone number refused; a focus with an e-mail address refused before any read, a store the session cannot see after the store profiles alone, and a later as-of day refused |
-| `test/pack/golden.test.ts`, `transport-equivalence.test.ts`, `environment.test.ts` | the golden demo pack byte for byte, valid, within the budget and aggregates only; the same bytes and `pack_id` from rows shaped as PostgREST and as `to_jsonb` return them, with store ids only in `request.stores`; the same bytes in child processes under three process time zones |
+| `test/pack/build.test.ts` | `buildDataPack` carrying `strategyPrompt` in the pack's language and refusing a prompt in another language; packs valid for every horizon, in both languages, with and without a focus and an owner note; every call recorded, duplicates shared, progress up to the distinct calls, 4 calls at a time in the browser and 1 over Postgres; the fence read before and after, a rebuild when it moved and `pack_data_changed` after three attempts; a till text that looks like a phone number refused; a focus with an e-mail address refused before any read, a store the session cannot see after the store profiles alone, and a later as-of day refused |
+| `test/pack/prompt.test.ts` | `fnb-strategy` 1.0.0 in each language, each text equal to its pinned SHA-256 and a changed text failing the pin; one fixed text per language (NFC, LF only, a title and a version line); the ten sections and seven fields in order; no tool, slash command, link, markup tag or tool-call syntax; the prompt's example citing cells a built pack holds and linting with no issue, and refused against other numbers; the scan of the prompts, the golden pack and the package's file names against the private identifier list, naming only file and line (skipped in CI) |
+| `test/pack/bundle.test.ts`, `store-budget.test.ts` | the chat bundle starting with the prompt, one `json` fence with the pointer in the pack's language, the same `pack_id`, and the pack back byte for byte once the prompt is put back; one to three stores untrimmed and four after trimming, in both languages |
+| `test/pack/golden.test.ts`, `transport-equivalence.test.ts`, `environment.test.ts` | the golden demo pack with prompt 1.0.0 byte for byte, valid, within the budget and aggregates only; the same bytes and `pack_id` from rows shaped as PostgREST and as `to_jsonb` return them, with store ids only in `request.stores`; the same bytes in child processes under three process time zones |
 | `test/pack/canonical.test.ts`, `decimal.test.ts` | the golden canonical text, code-unit key order, byte-for-byte re-serialisation after a simulated jsonb round trip, refused values; decimals at scales 0 to 6, `-0`, 10¹⁴ đồng, `toPrecision` ties, no exponent; each unit's digits and rounding |
 | `test/pack/hash.test.ts` | published SHA-256 digests, the pinned `pack_id` of the fixture pack, `pack_id` blind to `generated_at` and key order, the clock read once and only zoned instants on real dates, `sealPack` |
 | `test/pack/schema.test.ts` | the committed JSON Schema files equal the generated ones; Ajv 2020 and zod agree on every pack and plan fixture, valid or not |
@@ -480,8 +566,15 @@ At `4e21657`, 437 tests in 39 files pass. The tests of the pack's content build 
 | `test/plan/lint-codes.test.ts`, `lint-browser.test.ts` | one fixture per code under `test/fixtures/plans/lint/` (the oversized plan is built in the test), clean plans in Vietnamese and English with no issue at all, `section_missing:7` and `kpi_unknown:net_sales`, the recorded results, the same results under jsdom |
 | `test/plan/plan-record.test.ts` | scopes mapped to store ids, the baseline copied exactly, the due date, the refused sample pack |
 | `test/plan/source-scan.test.ts` | no locale, clock, randomness, browser global or Unicode normalisation outside `normalize.ts` in `src/plan` |
+| `test/plan/sample-plan.test.ts` | every KPI id the sample plan may choose is trackable; the targets and their rounding; `samplePlan` of demo packs on 30 days in a row, in both languages and for one store, linting with no issue; Evidence citing detail cells and sections 1 and 2 citing `kpi` cells; the fallbacks |
+| `test/plan/fixtures.test.ts` | the mini pack valid, aggregate-only and live-shaped; `prompt-example.md` with no issue; `missing-section.md` and `unknown-kpi.md` giving exactly their codes; every fixture equal to what `pnpm --filter @fnb/datapack fixtures` writes |
+| `apps/jobs/test/unit/datapack.test.ts` | the flags and their refusals, the member rules, numbered and masked output under `CI`, `--list-stores` refused in CI, the usage, failure and invalid-pack exit codes, `--check` and `--against` (#137) |
+| `apps/jobs/test/unit/datapack-files.test.ts` | relative paths from `INIT_CWD` and without it, the default paths, a path outside the repository allowed, `docs/private/` allowed only where git ignores it, a `docs/private/` folder under `apps/jobs`, a tracked folder and a symbolic link into one refused, and a machine without `git` (#137) |
+| `apps/web/src/pages/exports/pack-tab.test.tsx`, `apps/web/src/datapack/browser-pack.test.ts` | the form, the build, the summary and each error code with its retry; the copy and its manual dialog; the device cache's five packs, 14 days and sign-out; the remembered owner note; role gating; the browser's build equal to the package's byte for byte, the gaps high first, the fence read before and after the calls, `pack_data_changed`, stopping, and the file names (#142) |
 
-Every fixture is synthetic: the lint pack's stores have made-up UUIDs, the sample pack uses `MOCK-S<n>`, and the items and figures are invented.
+The pack tab's end-to-end specs are `apps/web/e2e/demo/datapack.spec.ts` (the demo's sample pack downloaded and parsed, the copied bundle, the manual-copy dialog with the clipboard permission denied, English, axe at 360 and 1280 px) and `apps/web/e2e/live/datapack.spec.ts` (section 7).
+
+Every fixture is synthetic: the lint pack's stores have made-up UUIDs, the mini pack uses the seed's synthetic ids, the sample pack uses `MOCK-S<n>`, and the items and figures are invented.
 
 ## Read more
 

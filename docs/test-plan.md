@@ -89,7 +89,7 @@ Out of scope:
 
 - **Status** uses the words of [requirements.md](requirements.md): verified locally, built, in build, designed, planned, waits for owner.
 - **Coverage** uses four words, defined in section 9.1: covered, partial, planned, owner check.
-- **Test references** are written `<suite>:<path>` as in [requirements.md, section 1.5](requirements.md#15-conventions): `pgtap:04_tenant_isolation` is `supabase/tests/04_tenant_isolation.sql`, `sync:unit/checks` is `packages/sync/test/unit/checks.test.ts`, `jobs:integration/local-stack` is `apps/jobs/test/integration/local-stack.test.ts`, `web:lib/format` is `apps/web/src/lib/format.test.ts`, `e2e:demo/report-day` is `apps/web/e2e/demo/report-day.spec.ts`.
+- **Test references** are written `<suite>:<path>` as in [requirements.md, section 1.5](requirements.md#15-conventions): `pgtap:04_tenant_isolation` is `supabase/tests/04_tenant_isolation.sql`, `sync:unit/checks` is `packages/sync/test/unit/checks.test.ts`, `jobs:integration/local-stack` is `apps/jobs/test/integration/local-stack.test.ts`, `web:lib/format` is `apps/web/src/lib/format.test.ts`, `e2e:demo/report-day` is `apps/web/e2e/demo/report-day.spec.ts`; for the Mini Apps `zalo-mini:unit/app-config` is `packages/zalo-mini/test/unit/app-config.test.ts`, `zalo-staff:app` is `apps/zalo-staff/src/app.test.tsx` and `zalo-staff:e2e/session` is `apps/zalo-staff/e2e/session.spec.ts` (likewise `zalo-customer:`), and the Deno test `functions:_shared/cors` is `supabase/functions/_shared/cors.test.ts`.
 - **Roles** are those of [plan.md, section 5](plan.md#5-roles-and-responsibilities): owner, designer, builder, reviewer, verifier, operator.
 - **The build machine** is the one machine where the work is built and verified. Its local Supabase stack holds **the real tenant**: the shops' real sales, loaded with `fnb`. Test defaults call that tenant `live-local` (`LIVE_TENANT`). No value from it appears in this or any other tracked file.
 - **Dates** are absolute. Counts carry the date and time they were taken, because step 12b is still adding tests on 2026-11-12.
@@ -137,7 +137,7 @@ Each risk is something that could go wrong for the owner. The last column names 
 | Database | Schema, RLS, grants, functions and their numbers | pgTAP through `supabase test db` | Local stack; CI's fresh stack | Every database change; every push | Builder, verifier, CI |
 | Parity | The browser port equals the SQL, row by row | Vitest with PGlite, or Postgres | PGlite anywhere; Postgres in CI | Every run (PGlite); every push (Postgres) | Builder, verifier, CI |
 | Integration | The CLI, the sync repository and the notification dispatcher against a real database | Vitest with `DATABASE_URL`, mock providers | Local stack | Every verification | Verifier |
-| End-to-end | The web app in a browser: pages, numbers, accessibility, layout, print, CSV | Playwright 1.65 with axe | Local stack (live), Vite (demo, pages); CI | Every web change; every push | Builder, verifier, CI |
+| End-to-end | The web app in a browser: pages, numbers, accessibility, layout, print, CSV; the Mini Apps in a browser with a mocked Zalo SDK: first screens, Zalo's design rules, paint budget | Playwright 1.65 with axe | Local stack (live), Vite (demo, pages, Mini Apps); CI | Every web or Mini App change; every push | Builder, verifier, CI |
 | Live checks | The reports, the digest and the connector against real data | Vitest with `LIVE=1`, read-only | Build machine only | Every verification that touches them | Verifier |
 | Performance and budgets | Bundle size, page speed, query time, run and cycle budgets, database size | Build checks, Lighthouse, Playwright with CPU throttling, live timings, `fnb doctor` | Local; partly CI | Every web build; each verification | Verifier |
 | Security and privacy | RLS, grants, secrets, redaction, consent, retention | pgTAP, unit tests, scans | Local; CI | Every run | Verifier, CI |
@@ -174,8 +174,9 @@ flowchart LR
 |---|---|---|---|
 | Lint and format | `pnpm lint` (`biome check .`) | Biome 2.6.6 recommended rules, formatting, import order; Markdown is excluded | yes, `code` job |
 | Types | `pnpm typecheck` | Strict TypeScript in every package, sources and tests (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`) | yes |
-| Edge Function types | `deno check index.ts` in `supabase/functions/sync-incremental` | The function under Deno v2.7.3 | yes |
-| Edge Function import map | `node scripts/function-imports.mjs --check` | A `deno.json` import map that no longer matches the import graph | yes |
+| Edge Function types and Deno tests | `deno check index.ts` and `deno test --permit-no-files` in each folder of `supabase/functions` except `_shared`; `deno test` in `_shared` | Every function and the shared helpers under Deno v2.7.3 (on 2026-11-18: 30 tests in `_shared`, 12 in `zalo-session`, 7 in `zalo-phone`, 24 in `oa-webhook` and 12 in `bot-webhook`; `sync-incremental` has none yet). The webhooks' integration tests skip there: they need `ZALO_INTEGRATION=1`, a database and Deno's environment permission | yes, a loop in the `code` job |
+| Edge Function import maps | `node scripts/function-imports.mjs --check` | A `deno.json` import map of any function or of `_shared` that no longer matches the import graph | yes |
+| Mini App web storage | Biome's `noRestrictedGlobals` in `apps/zalo-staff` and `apps/zalo-customer` (part of `pnpm lint`) and `zalo-mini:unit/no-web-storage` | LocalStorage, SessionStorage, IndexedDB or a cookie in a Mini App | yes |
 | Public-safety scan | `node scripts/check-public-safe.mjs` | In tracked and untracked, non-ignored files: e-mail addresses (except `example.com`, `example.org`, `users.noreply.github.com`, `email.com`), non-synthetic UUIDs, JWTs, secret prefixes, 32-hex keys, `+84` phone numbers, and every entry of `docs/private/identifiers.txt` when that file exists. Exit 1 on any finding | yes, without the private list |
 | Secret scan over the history | `docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact --exit-code 1` | Secret-shaped strings anywhere in the git history (rules of `.gitleaks.toml`) | yes, `secrets` job |
 | API reference check | `pnpm docs:check-api` | A `public` function that `authenticated` may execute and whose signature in [api.md](api.md) differs or is missing; it reads the catalogue in a read-only transaction. On 2026-11-12: 25 functions, 25 documented | no (request R-AP01) |
@@ -194,17 +195,23 @@ Every package runs `vitest run` on its `test/` folder (`test/unit`, plus the gat
 | `@fnb/core` | Business date and day start, wall-clock conversion across daylight saving, size suffixes, payment kinds with overrides, money rounding and tolerance, adjustment keys, the Vietnamese holiday calendar |
 | `@fnb/connector-core` | The registry and capability gating, the conformance checks (including the business-date rule a wrong time zone breaks), window helpers |
 | `@fnb/connector-mock` | Deterministic data for a seed, conformance, a rejected login |
-| `@fnb/connector-ipos` | Login and token cache, headers, both pagination styles, retries and non-retries, schema errors, master data, the CMS reports, the daily summary, time windows, the golden normalisation cases, adjustments, conformance offline |
+| `@fnb/connector-ipos` | Login and token cache, headers, both pagination styles, retries and non-retries, schema errors, master data, the CMS reports, the daily summary, time windows, the golden normalisation cases, adjustments, conformance offline; the iPOS snapshot (`@fnb/connector-ipos/snapshot`): every answer recorded and replayed without `fetch`, the keys, no header, token or password stored |
 | `@fnb/sync` | Mapping, business dates, reconciliation tolerance, change detection, voids and edits, robustness (repeats, overlaps, NUL characters), the incremental run, the run guard, payload documents, run bookkeeping, TLS rules, redaction |
-| `@fnb/runner` | Account entries, budgets, the dead-man's switch, the incremental run with a rejected login, the Notifier |
+| `@fnb/runner` | Account entries, budgets, the dead-man's switch, the incremental run with a rejected login, the Notifier; `IPOS_REAL_API` read once (`iposApiMode`), the real or replayed iPOS source, the snapshot folder rules, the Edge Function refusing `off` before it claims a ticket |
 | `@fnb/metrics` | The registry; consistency with [metrics.md](metrics.md) and with the latest `metric_value` migration |
 | `@fnb/design-tokens` | The token files: the same tokens in every theme, components equal to the hex form, WCAG 2.2 AA contrast of the text and focus pairs in the light, dark and print themes; the generated CSS and palette equal to a fresh build |
 | `@fnb/reports` | Periods and ISO weeks, the as-of rule, coverage and like-for-like comparisons, the exact decomposition, the narrative, the RPC source (errors, truncation guard), each card of Ngày, Tuần, Tháng and Năm |
 | `@fnb/demo-analytics` | The demo calendar, generated days, ingest, Postgres-exact numerics, the source; plus the parity suite (2.6) and a smoke run of each report on the demo engine |
-| `@fnb/datapack` | The pack format ([strategy.md](strategy.md)): the canonical text, decimals and units, the hash, `pack_id` and the clock, the committed JSON Schema files with Ajv against zod, every invariant, each aggregates-only rule with a fixture that breaks it, the estimate and the trimming ladder; the pack's content, built on the demo engine: the request's checks, the calendar and the KPI windows, the planned calls and their concurrency, coverage per scope, the trackable KPI ids, every table's provenance, order under shuffled rows, labels and limits, the gaps, the context, the build with its fence, the golden demo pack byte for byte, two transports giving the same bytes, and the same bytes under three process time zones; the plan lint: normalisation, front matter, sections and fields, the number grammar in both languages, citations, one fixture per lint code, the same results under jsdom, `planRecord`; source scans for locale, clock, randomness and Node APIs |
+| `@fnb/datapack` | The pack format ([strategy.md](strategy.md)): the canonical text, decimals and units, the hash, `pack_id` and the clock, the committed JSON Schema files with Ajv against zod, every invariant, each aggregates-only rule with a fixture that breaks it, the estimate and the trimming ladder; the pack's content, built on the demo engine: the request's checks, the calendar and the KPI windows, the planned calls and their concurrency, coverage per scope, the trackable KPI ids, every table's provenance, order under shuffled rows, labels and limits, the gaps, the context, the build with its fence, the golden demo pack byte for byte, two transports giving the same bytes, and the same bytes under three process time zones; the plan lint: normalisation, front matter, sections and fields, the number grammar in both languages, citations, one fixture per lint code, the same results under jsdom, `planRecord`; source scans for locale, clock, randomness and Node APIs; strategy prompt 1.0.0 (pinned per language, no tool syntax, its example linting clean) and the chat bundle; the budget with the prompt for one to four stores; the sample plan over 30 days in both languages and the plan fixtures equal to what their script writes |
 | `@fnb/notify` | Channel adapters (Zalo Bot, Brevo), secret resolution, timed fetch, rendering and truncation, templates, the digest model and fingerprint, the digest-line rules, the dispatch cycle, link parsing, the outbox notifier, the tenant-filter guard and the synthetic-environment guard |
-| `@fnb/jobs` | The CLI and its help, configuration and masking, numbered output in CI, `doctor`, the status window, the incremental checks, `notify` and `digest` commands |
-| `@fnb/web` | The report card and its extensions, keyset paging, the demo row source, i18n completeness and key parity, CSV, formatting, the Hôm nay metrics, verification and sentences, the web registry, the card adapter, the period navigator and picker, report routes, install assets (their colours equal to the design tokens), preferences, the lazy-chunk patterns, no raw colour outside the token package; the export engine (the month plan, the keyset reader against a fake PostgREST, the fingerprints shared with pgTAP, columns, writers, the archive, the estimate, the run) and the Xuất dữ liệu page ([exports.md](exports.md)) |
+| `@fnb/jobs` | The CLI and its help, configuration and masking, numbered output in CI, `doctor`, the status window, the incremental checks, `notify` and `digest` commands; `datapack` (the flags, the member rules, private paths with and without `INIT_CWD` and through symbolic links, `--check` and `--against`, the exit codes, CI output), `publish-plan --check` (#138), `zalo config` and `zalo bind` (#205), and the iPOS mode in `bootstrap` |
+| `@fnb/zalo-mini` | The Native Storage adapter, the session client (binding, unpaired, refused, a stored session reused while fresh and minted again before it expires, network and Zalo failures) and its stand-in, the mocked SDK's recorded calls, the tab rules of the shell, the translator and catalogue parity, `app-config.json` per brand with Zalo's title, colour and contrast rules, the Vite plugin (variables, the mocked SDK in browser mode, refused ECharts imports, Development-only screens refused in a Testing build, the deployed `app-config.json`), the size and paint budgets with throwaway fixtures, and no web storage in any shipped Mini App file |
+| `@fnb/zalo-staff`, `@fnb/zalo-customer` | The first screens and sign-in states, the four tabs of the staff app, the customer app's session check, the Development-only phone-consent probe, English, and key parity of each app's catalogue |
+| Deno: `supabase/functions/_shared` | CORS for both Mini App origins, a foreign origin and none, preflights and `Vary`; JSON answers, error codes, body limits, the request id, a missing secret answered without its name, and redacted logs |
+| Deno: `zalo-session`, `zalo-phone` | Every request field and its refusal code, the Graph's refusal, an unknown brand and a disabled app, a missing secret, bound and unpaired answers, the session minted for the bound login, the phone exchange with 409 for a used token and 422 for a refused one, the probe mode, and no token, user id, code or phone number in a log line (#205) |
+| Deno: `oa-webhook`, `bot-webhook` | The signature over the raw and the compact body, a missing or malformed header, the event id, observe and enforce answers, an unrouted OA, the answer within the deadline with the store after it, and the follow-up; the Bot's secret token by its hash, link codes, "ĐỒNG Ý", "DỪNG" and "DUNG" with their confirmation, dropped updates, updates wrapped in `result` or bare, and no chat id, text or token in a log line (#207) |
+| `@fnb/zalo` | The app-secret proof against known HMAC vectors, the timed HTTP client (timeout, base-URL override, no secret in errors), the Graph clients and the international phone form, the Supabase backend calls (the RPCs, the login's e-mail, the session minted through `generate_link` and `verify`), and the synthetic-environment guard and the `ZALO_INTEGRATION` gate with its tenant filter (#205) |
+| `@fnb/web` | The report card and its extensions, keyset paging, the demo row source, i18n completeness and key parity, CSV, formatting, the Hôm nay metrics, verification and sentences, the web registry, the card adapter, the period navigator and picker, report routes, install assets (their colours equal to the design tokens), preferences, the lazy-chunk patterns, no raw colour outside the token package; the export engine (the month plan, the keyset reader against a fake PostgREST, the fingerprints shared with pgTAP, columns, writers, the archive, the estimate, the run) and the Xuất dữ liệu page ([exports.md](exports.md)); the pack tab (the form and its limits, the lazy build with its fence and stop, each error code, the result and its gaps, the copy with its manual dialog, the device cache and the remembered owner note) and the browser pack ([strategy.md](strategy.md), section 7); the paste page "Dán kế hoạch" (#143) |
 
 ### 2.5 Database tests (pgTAP)
 
@@ -214,7 +221,7 @@ Every package runs `vitest run` on its `test/` folder (`test/unit`, plus the gat
 |---|---|---|
 | `01_schema.sql` | 2 (extended in 12a) | Schemas, helper functions, enums and labels, tables and key columns |
 | `02_unique_keys.sql` | 2 | Natural keys and tenant-consistent composite foreign keys |
-| `03_rls_enabled.sql` | 2 (extended in 12a) | RLS on every `public` table (52), the allow-lists of write policies and grants, default privileges, nothing for `anon` |
+| `03_rls_enabled.sql` | 2 (extended in 12a, 10a, 10b and 13) | RLS on every `public` table (65), no policy on the two token caches and the OA event log, the allow-lists of write policies and grants, default privileges, nothing for `anon` |
 | `04_tenant_isolation.sql` | 2 | Two-tenant isolation of reads |
 | `05_write_policies.sql` | 2 | Who may write the manual-input tables |
 | `06_anon_and_tokens.sql` | 2 | `anon` reads nothing; the token cache is closed to API roles |
@@ -237,12 +244,16 @@ Every package runs `vitest run` on its `test/` folder (`test/unit`, plus the gat
 | `23_report_access.sql` | 9 | Report access: isolation, store scope, the publisher's empty results, a viewer, `anon` refused, grants |
 | `24_vn_public_holidays.sql` | 9 | The 61 global holiday rows and the Tết windows |
 | `25_live_half_lateral.sql` | 9 | The lateral live half of `app.daily_sales_facts` against the previous body, and its index use |
-| `26_notify_schema.sql` | 12a | The phase 12 schema, the 15 rules and 27 policies, every advertising floor refused for every writer, the outbox state machine |
+| `26_notify_schema.sql` | 12a | The phase 12 schema, the 16 rules (the 16th, `zalo_webhook_unverified`, from #207) and 27 policies, every advertising floor refused for every writer, the outbox state machine |
 | `27_notify_policy.sql` | 12a | Allowed windows across time zones and daylight saving, every step of the send decision, caps, consent revoked while held, acceptance A4 |
 | `28_notify_outbox.sql` | 12a | Enqueue, claim, send and finish; back-off and retries; lease recovery; expiry; housekeeping and redaction; linking and consent; tickets |
 | `29_notify_alerts.sql` | 12b | Alert episodes, destinations, runner notifications, imported sync alerts, reconciliation, channel health, job events, the rule toggle of A2, the database half of A3 |
 | `30_notify_digests.sql` | 12b | Close times, the settle rule, due digests, building and failing digests |
 | `31_notify_access.sql` | 12a | Notification access for every role, hidden destination columns, function privileges, owner-only rule writes |
+| `42_zalo_config.sql` | 13 | The Zalo configuration: RLS for every role and two tenants, the token store closed to every API role, the secret-name and title checks, composite keys and store lists refusing another tenant, frozen `created_by`, the token version ([schema.md](schema.md#tests)) |
+| `43_ipos_sources.sql` | the iPOS switch | The recorded iPOS source per tenant and its claim, closed to every API role |
+| `44_zalo_identity.sql` | 13 | The Mini App sign-in (#205): the access-token hook and its `memberships` claim for every kind of membership, brand keys resolved per tenant, binding codes stored as hashes, valid 10 minutes, five wrong attempts tolerated and the sixth burning them, identities per Zalo App, the two RPCs closed to `authenticated` and `anon` |
+| `45_zalo_events.sql` | 13 | The inbound events (#207): `oa_events` and its day counts closed to every API role, observe and enforce, duplicates, interactions and unfollows, the alert at the eleventh unverified call of a day, 90-day retention, a Zalo Bot in webhook mode with polling refused, "DỪNG", `oa_event_counts` for owners only |
 
 [schema.md, Tests](schema.md#tests) describes each file in full.
 
@@ -261,11 +272,18 @@ Integration tests run real code against the local database. They read the shell 
 |---|---|---|---|
 | `sync:integration/postgres-repository` | `DATABASE_URL` | Edits, voids and adjustments applied transactionally and idempotently; overlapping runs serialised on one store; text with NUL characters stored | Tenants `it-repo-…` and `it-overlap-…`, deleted at the end |
 | `jobs:integration/local-stack` | `DATABASE_URL`; one test also `SUPABASE_URL` and `SUPABASE_SECRET_KEY` | Onboard a mock account, reconcile a week, re-run without changes; create a login and a membership idempotently through the Auth admin API | Tenant `it-sync-…` and a mock account, deleted at the end |
+| `jobs:integration/ipos-snapshot-bootstrap` | `DATABASE_URL` | `fnb bootstrap` with `IPOS_REAL_API=off` loads a throwaway tenant from a synthetic snapshot without the network, and the source guard keeps it apart from a tenant marked as real | Tenants `it-snap-…` and `it-real-…` with a snapshot in a temporary folder, deleted at the end |
+| `jobs:integration/ipos-snapshot-fidelity` | `DATABASE_URL` and a `live-local` tenant (skips without one) | Read-only: the snapshot rebuilt from `live-local` and replayed through the real connector reproduces every stored invoice, line, payment and store-day control total | The real tenant, read only; counts only in the output |
 | `notify:integration/dispatch` | `NOTIFY_INTEGRATION=1` and `DATABASE_URL` | Held until the window opens (A4); a crash between send and record stays `uncertain` and is never resent; a connection lost after acceptance; concurrent dispatchers never exceed a cap; linking with the member's own "ĐỒNG Ý" | Fixture tenant `notify-it-…` |
 | `notify:integration/digests-and-alerts` | the same | Three nights (A1); low revenue (A2); a stale store not repeated; channel failure; stores with different close times | the same |
 | `jobs:integration/notify-cli` | the same | Link a Zalo Bot chat and send a test; link a login e-mail with its code; the held decision and status without names in CI; unlink and withdraw; job failed; credential failure (A3) | the same |
+| `zalo:integration/session` | `ZALO_INTEGRATION=1` with `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `SUPABASE_PUBLISHABLE_KEY` of the local stack, whose Auth has loaded the access-token hook | `zalo-session` and `zalo-phone` run in Node against the local stack and the mock Zalo: unpaired for an unbound identity; binding with a code and a real session that the Data API scopes to the member's stores; a second sign-in without a code, and a spent code binding nobody else; a wrong proof, an expired token and a brand outside the fixture tenant refused; a phone number decoded once and the second use refused; no token, user id, phone number or e-mail in any log line (6 tests) | Fixture tenant `zalo-it-…`, synthetic `ZALO_APP_SECRET_IT_…` secrets, removed at the end |
+| `jobs:integration/zalo-cli` | `ZALO_INTEGRATION=1` and `DATABASE_URL` | `fnb zalo config set` from a file twice changes nothing, a conflicting run is refused, a second synthetic brand from flags and a secret value refused, `config show` numbered with states only in CI, a binding code stored only as its hash, a publisher, an unknown login and a brand without a Zalo App refused (6 tests) | Fixture tenants `zalo-it-…`, removed at the end |
+| `functions:oa-webhook/integration`, `functions:bot-webhook/integration` (Deno) | `ZALO_INTEGRATION=1` and a local `DATABASE_URL`, run with Deno's environment and network permissions | The two webhooks against the real tables: events stored, duplicated, refused in enforce mode, followed up and counted, the alert; a bot in webhook mode completing a link, an acceptance and a stop (one Deno test each; the build reported 25 and 13 checks passing on 2026-11-18) | Fixture tenants `zalo-it-oa-webhook` and the like, removed at the end |
 
 The notification suites carry three guards ([section 4.3](#43-fixture-tenants)): every scanning call needs a tenant filter while a test switch is on, the CLI runs with a synthetic environment that cannot inherit `.env`, and fixture destinations use secret names ending in `_IT` that no real destination uses. A local mock of the Zalo Bot and Brevo APIs (`packages/notify/src/testing/mock-providers.ts`, standalone as `node packages/notify/scripts/mock-providers.mjs`, port 8787 by default, bound to 127.0.0.1) answers instead of the providers.
+
+The Zalo suites carry the same kind of guards (#205): with `ZALO_INTEGRATION=1` the functions serve only tenants whose slug starts with `zalo-it-` and need `ZALO_TENANT_ID`, the Graph base URL may only be a loopback address, and the suites refuse an environment holding anything but the synthetic list (`assertSyntheticZaloEnvironment` of `@fnb/zalo/testing`). The mock Zalo Graph of `@fnb/zalo/testing` answers `me` and `me/info` on 127.0.0.1.
 
 None of these suites runs in CI today (section 7.3).
 
@@ -275,8 +293,8 @@ Playwright (`@playwright/test` ^1.65.0 with `@axe-core/playwright`) drives Chrom
 
 | Project | Server | What it covers | Skips when |
 |---|---|---|---|
-| `live` (port 5191) | Vite against the local stack, from `apps/web/.env.local` | Sign-in and sign-out, password-reset mail in the mail catcher, an expired recovery link, the demo offered from the login page, zero rows for a client without a session, Hôm nay on the seed for all stores and per store with its verification state, the language toggle, the placeholder page `#/ke-hoach`, the four reports on the seed, Hôm nay's yesterday equal to Ngày, the settings fixture's five logins, the settings sources' writes through PostgREST, every settings write of the write table as the five fixture logins and `anon` with every settings page read-only where a login cannot write (#165), the Cửa hàng page under row-level security (#159), Phân loại's category and payment-kind tabs through the real tables with the catch-up (#160), and Xuất dữ liệu (#141): a month of a fixture tenant exported as CSV and as JSON, every file verified, the BOM and strict UTF-8, the manifest's fingerprints equal to `export_control_totals` read by the same member, personal data only when ticked, staff and viewers gated and a store-limited manager without the personal-data box | `VITE_SUPABASE_URL` or `VITE_SUPABASE_PUBLISHABLE_KEY` is empty (normally read from `apps/web/.env.local`) |
-| `demo` (port 5192) | Vite with empty Supabase variables | The demo banner and numbers, every demo page with axe at 360 px, the store table inside its card, print, favicon and manifest, no login route without a backend, the nine, eight, ten and seven cards of the reports, deep links, the as-of rule, the young store's states, CSV with a BOM, no request outside the origin, English, the design catalogue with axe and its popover, focus never hidden under the top bar, the Settings pages: Cửa hàng, Ngưỡng báo cáo and Phân loại, and Xuất dữ liệu's two tabs with the demo's notice | never |
+| `live` (port 5191) | Vite against the local stack, from `apps/web/.env.local` | Sign-in and sign-out, password-reset mail in the mail catcher, an expired recovery link, the demo offered from the login page, zero rows for a client without a session, Hôm nay on the seed for all stores and per store with its verification state, the language toggle, the placeholder page `#/ke-hoach`, the four reports on the seed, Hôm nay's yesterday equal to Ngày, the settings fixture's five logins, the settings sources' writes through PostgREST, every settings write of the write table as the five fixture logins and `anon` with every settings page read-only where a login cannot write (#165), the Cửa hàng page under row-level security (#159), Phân loại's category and payment-kind tabs through the real tables with the catch-up (#160), and Xuất dữ liệu (#141): a month of a fixture tenant exported as CSV and as JSON, every file verified, the BOM and strict UTF-8, the manifest's fingerprints equal to `export_control_totals` read by the same member, personal data only when ticked, staff and viewers gated and a store-limited manager without the personal-data box; the pack tab (#142, #144's browser half): the owner's browser pack equal to a Node build in the same session and, with `DATABASE_URL`, to the pack of `fnb datapack` run as a child process (`--check --against`), a publisher refused by the command and reading no sales row, a store-limited manager's pack of that store alone, staff gated | `VITE_SUPABASE_URL` or `VITE_SUPABASE_PUBLISHABLE_KEY` is empty (normally read from `apps/web/.env.local`) |
+| `demo` (port 5192) | Vite with empty Supabase variables | The demo banner and numbers, every demo page with axe at 360 px, the store table inside its card, print, favicon and manifest, no login route without a backend, the nine, eight, ten and seven cards of the reports, deep links, the as-of rule, the young store's states, CSV with a BOM, no request outside the origin, English, the design catalogue with axe and its popover, focus never hidden under the top bar, the Settings pages: Cửa hàng, Ngưỡng báo cáo and Phân loại, and Xuất dữ liệu's two tabs with the demo's notice; the pack tab building the demo's sample pack from the address, its download parsed byte for byte, the copied bundle, the manual-copy dialog with the clipboard permission denied through CDP, English, a phone number in the focus refused; Kế hoạch's interim page and "Dán kế hoạch" refusing the two rejection fixtures and accepting a sample plan of a pack built on the pack tab (#143) | never |
 | `pages` (port 5193) | `vite build` under `/fnb-manager/`, then `vite preview` | Icons and manifest under the Pages base path, Năm within 8 seconds on a CPU four times slower in the production build, and no design catalogue in the production build | never |
 
 Common rules:
@@ -286,6 +304,15 @@ Common rules:
 - `watchConsoleErrors` (`apps/web/e2e/support/reports.ts`) fails a spec on any console error or page error once the cards have settled and after printing.
 - Clocks are fixed: the demo specs set the browser clock (`page.clock.setFixedTime`), and the live specs set it just after the newest seeded date (`clockAfterSeed` in `apps/web/e2e/support/local-stack.ts`), so the results do not move with the calendar.
 - The live specs sign in with the seed's development login, read from `supabase/seed.sql`, and compute their expected numbers from the invoices they can read through RLS. The settings and export specs build their own fixture tenant instead (section 4.3); the export spec can also run read-only on another login's tenant (section 5.3).
+
+The Mini Apps have their own Playwright configurations, `apps/zalo-staff/playwright.config.ts` and `apps/zalo-customer/playwright.config.ts` (#208). Each builds the Testing stage in browser mode (the mocked Zalo SDK and a stand-in session), serves it with `vite preview` on 5742 (staff) or 5752 (customer) plus `E2E_PORT_OFFSET`, and runs Chromium as a phone at 360 × 800 px with one worker, no retries and the same timeouts, locale and time zone as the web app. 1280 px does not apply, because Mini Apps run inside the Zalo phone app.
+
+| Project | What it covers |
+|---|---|
+| `phone-light`, `phone-dark` | `e2e/session.spec.ts` in each colour scheme. Staff: "Đang kết nối…" then a bound member's name, role and stores, the unpaired instructions and the code entry, one retry after a failed connection, the first of four tabs and the plain states, English. Customer: the owner's session, the unpaired state, and no probe screen in a Testing build. Every screen goes through `checkMiniAppScreen` of `@fnb/zalo-mini/testing/design-checks`: at most 4 bottom tabs, every target at least 44 × 44 CSS px, no outbound link and no external-open SDK call, no LocalStorage, SessionStorage or cookie, no serious or critical axe violation (the WCAG tags of `checkPage`), no console or page error |
+| `budget` | `e2e/budget.spec.ts`: the first screen on a throttled phone (section 2.10) |
+
+On 2026-11-18: staff 11 tests and customer 7, in two files each. They run in CI's `mini-apps` job (section 7.1); the simulator and the real phone are checked at the first submission (#210, #232).
 
 ### 2.9 Live data checks
 
@@ -304,7 +331,7 @@ Live checks read the real tenant on the build machine. They are opt-in (`LIVE=1`
 
 | Budget | Check | Where | Latest result |
 |---|---|---|---|
-| Initial JavaScript at or under 400 kB gzipped; ECharts, the demo modules, the four report pages and the live analytics source loaded lazily | `apps/web/scripts/check-size.mjs` after every `vite build`; `web:test/lazy-chunks` | every `pnpm --filter @fnb/web build` and every Pages deploy; not in CI | 284.2 kB at phase 10a's verification on 2026-11-16; about 215 kB at phase 6 ([roadmap](roadmap.md), phase 6) |
+| Initial JavaScript at or under 400 kB gzipped; ECharts, the demo modules, the four report pages and the live analytics source loaded lazily | `apps/web/scripts/check-size.mjs` after every `vite build`; `web:test/lazy-chunks` | every `pnpm --filter @fnb/web build` and every Pages deploy; not in CI | 333.8 kB in the builder's build at `8c1b490` (the pack builder and the paste page in lazy chunks); 284.2 kB at phase 10a's verification on 2026-11-16; about 215 kB at phase 6 ([roadmap](roadmap.md), phase 6) |
 | Lighthouse mobile: performance at least 85, accessibility at least 90 | The recipe in [apps/web/README.md](../apps/web/README.md) (Lighthouse 13.5.0 through `pnpm dlx`, Playwright's Chromium) | manual, by the verifier | demo build: 95 performance, 100 accessibility, 100 best practices, 60 SEO because of the deliberate `noindex` |
 | Năm settles within 8 seconds on a CPU four times slower | `e2e:pages/report-year-performance` on the production build with Chrome DevTools CPU throttling | every end-to-end run | passing at the phase 9 verification |
 | Report-sized SQL calls under 1.5 seconds | `reports:live/live-check` check 6 (slowest call per report on the real tenant) | each verification of report work | passing; phase 8 measured well under a second on a synthetic tenant of 54,000 invoices |
@@ -314,6 +341,8 @@ Live checks read the real tenant on the build machine. They are opt-in (`LIVE=1`
 | Notification cycle: 90 s, 4 digests, 30 sends on Supabase; 120 s, 50 digests, 500 sends from the CLI | `notify:unit/dispatch/cycle` | every run | passing |
 | At most 400 connector calls per run | `sync:unit/run-bookkeeping` | every run | passing |
 | Digest text within 1,900 units for 50 stores and 20 findings | `notify:unit/render/digest` | every run | in build (12b) |
+| Mini App sizes: every file at most 3 MB and each version at most 10 MB (Zalo's limits, decimal megabytes), and no `echarts` or `zrender` in an app's runtime dependency graph (NFR-PERF-09) | `packages/zalo-mini/scripts/check-budget.mjs` after every Mini App build; the build itself refuses an ECharts import; `zalo-mini:unit/budget` with throwaway fixtures | every `pnpm --filter @fnb/zalo-<app> build`, CI's `mini-apps` job for two synthetic brands, and `deploy-mini-apps.yml` before every deploy | about 0.42 MB a browser build and 0.67 MB a Zalo-runtime build on 2026-11-18 (#208) |
+| Mini App first screen: largest contentful paint under 2.5 s and page load under 1.5 s, with four times CPU throttling and a mobile network profile (150 ms latency, about 1.6 Mbit/s down) on the production build in browser mode | `zalo-staff:e2e/budget`, `zalo-customer:e2e/budget` (`@fnb/zalo-mini/testing/paint-budget`) | CI's `mini-apps` job; the simulator and a mid-range phone at the first submission (#232) | passing on 2026-11-18 (#208) |
 | Database under 300 MB with the full history | `fnb doctor` after `vacuum (full, analyze)` on the fact and aggregate tables | each phase verification | 288 MB after compaction at phase 10a's verification on 2026-11-16 (308 MB with the fact tables alone); 285 MiB at the phase 7 verification |
 
 ### 2.11 Security and privacy tests
@@ -396,10 +425,11 @@ Phase 20b adds a staging project (the second free Supabase project), seeded with
 |---|---|---|
 | Chromium through Playwright (Desktop Chrome profile) at 1280 × 800 and 360 × 800, light and dark, `vi-VN`, Asia/Ho_Chi_Minh | Every end-to-end run | in use |
 | The same with four times CPU throttling | The Năm budget | in use |
+| Chromium through Playwright as a phone (360 × 800, touch, device scale 2), light and dark, `vi-VN`, Asia/Ho_Chi_Minh; the paint budget with four times CPU throttling and a mobile network profile | The Mini Apps in browser mode with the mocked Zalo SDK | in use (#208) |
 | Lighthouse mobile emulation with Playwright's Chromium | Performance and accessibility scores | manual |
 | The owner's phone | Sign-in, password reset and invitation on the deployed site; reading the digest | after go-live (OC-06, OC-08) |
 | Safari or WebKit, Firefox, automated real devices | – | not tested (risk T-08) |
-| The Zalo Mini App simulator and devices inside Zalo | Tracks B and C | planned (phases 13 to 19) |
+| The Zalo Mini App simulator and devices inside Zalo | Tracks B and C: a Development build on the owner's phone (#210), the simulator gates at the first submission (#232) | planned; waits for the owner's Zalo accounts (#8) |
 
 ## 4. Test data
 
@@ -483,9 +513,10 @@ The phase 9 browser pass and the phase 12 `--check-ngay` demonstration also use 
 | Vitest | 5.1.0 | root `devDependencies`, lockfile |
 | Supabase CLI | 3.0.0, run as `pnpm exec supabase` | root `devDependencies`, lockfile |
 | PostgreSQL and pgTAP | 17, through `supabase test db` | `supabase/config.toml` |
-| Playwright and axe | `@playwright/test` ^1.65.0, `@axe-core/playwright` ^4.14.0, Chromium | `apps/web/package.json`; `pnpm --filter @fnb/web e2e:install` |
+| Playwright and axe | `@playwright/test` ^1.65.0, `@axe-core/playwright` ^4.14.0, Chromium | `apps/web/package.json`, `apps/zalo-staff/package.json`, `apps/zalo-customer/package.json` (all three resolve 1.65.0); `pnpm --filter @fnb/web e2e:install` |
 | PGlite | 0.3.16 | `packages/demo-analytics/package.json` |
 | Deno | v2.7.3 (CI) | `.github/workflows/ci.yml` |
+| zmp-sdk and zmp-ui | 2.53.3 and 1.11.15-2, exact; the tests use the mocked SDK of `@fnb/zalo-mini` in their place | the Mini Apps' `package.json` |
 | gitleaks | v8.30.1 (Docker image) | `.github/workflows/ci.yml` |
 | Lighthouse | 13.5.0 through `pnpm dlx` | [apps/web/README.md](../apps/web/README.md) |
 
@@ -505,10 +536,13 @@ Run from the repository root. `<db>` stands for the local database URL, `postgre
 | Parity, Postgres | `DATABASE_URL=<db> pnpm --filter @fnb/demo-analytics test:parity:postgres` (a stack without real tenants only) | – | – |
 | Integration, sync and CLI | `DATABASE_URL=<db> pnpm --filter @fnb/sync test` and `DATABASE_URL=<db> pnpm --filter @fnb/jobs test` | – | `DATABASE_URL=<db> pnpm --filter @fnb/sync exec vitest run test/integration/postgres-repository.test.ts` |
 | Integration, notifications | `NOTIFY_INTEGRATION=1 DATABASE_URL=<db> pnpm --filter @fnb/notify test:integration`, then `NOTIFY_INTEGRATION=1 DATABASE_URL=<db> pnpm --filter @fnb/jobs exec vitest run test/integration/notify-cli.test.ts` | – | `NOTIFY_INTEGRATION=1 DATABASE_URL=<db> pnpm --filter @fnb/notify test:integration -t "three nights"` |
-| End-to-end | `pnpm --filter @fnb/web test:e2e` (63 tests; long) | `E2E_PORT_OFFSET=10 pnpm --filter @fnb/web exec playwright test --project=demo e2e/demo/report-day.spec.ts` | add `-g "<title>"`; `--list` lists without running |
+| Integration, Zalo | `ZALO_INTEGRATION=1 DATABASE_URL=<db> SUPABASE_URL=<url> SUPABASE_SECRET_KEY=<key> SUPABASE_PUBLISHABLE_KEY=<key> pnpm --filter @fnb/zalo test:integration`; `ZALO_INTEGRATION=1 DATABASE_URL=<db> pnpm --filter @fnb/jobs exec vitest run test/integration/zalo-cli.test.ts`; in `supabase/functions/oa-webhook` and `bot-webhook`, `ZALO_INTEGRATION=1 DATABASE_URL=<db> deno test -A integration.test.ts` | – | add `-t "<test name>"` (Vitest) or `--filter "<name>"` (Deno) |
+| End-to-end | `pnpm --filter @fnb/web test:e2e` (273 tests at `8c1b490`; long) | `E2E_PORT_OFFSET=10 pnpm --filter @fnb/web exec playwright test --project=demo e2e/demo/report-day.spec.ts` | add `-g "<title>"`; `--list` lists without running |
 | Live checks | `DATABASE_URL=<db> pnpm --filter @fnb/reports test:live`; `DATABASE_URL=<db> pnpm --filter @fnb/notify test:live`; `pnpm --filter @fnb/connector-ipos test:live` (each script sets `LIVE=1`) | add `LIVE_ACCEPTANCE=<private file>` for check 7 and `LIVE_REFERENCE_SHEET=<private sheet>` for the theme check's A1 and menu checks | add `-t "<test name>"` |
 | Web build checks | `pnpm --filter @fnb/web build` | `pnpm --filter @fnb/web check:bundle`, `check:size` on an existing `dist` | – |
 | Scans | `node scripts/check-public-safe.mjs`; the gitleaks command of section 2.3 | – | – |
+| Mini App end-to-end | `pnpm --filter @fnb/zalo-staff test:e2e`, `pnpm --filter @fnb/zalo-customer test:e2e` | `E2E_PORT_OFFSET=10 pnpm --filter @fnb/zalo-staff exec playwright test --project=phone-dark` | add `-g "<title>"` |
+| Edge Functions (Deno) | in each folder of `supabase/functions`: `deno check index.ts` and `deno test --permit-no-files`; in `_shared`: `deno test` | `deno test cors.test.ts` in `supabase/functions/_shared` | add `--filter "<name>"` |
 | Documents and imports | `pnpm docs:check-api`; `node scripts/function-imports.mjs --check` | – | – |
 | Database advisors | `pnpm exec supabase db advisors --type security` | `--level warn` | – |
 | Lighthouse | the recipe in [apps/web/README.md](../apps/web/README.md) | – | – |
@@ -520,9 +554,10 @@ Run from the repository root. `<db>` stands for the local database URL, `postgre
 
 | Switch | Turns on | Notes |
 |---|---|---|
-| `DATABASE_URL` | `sync:integration/postgres-repository`, `jobs:integration/local-stack` | Shell only; the tests do not read `.env` |
+| `DATABASE_URL` | `sync:integration/postgres-repository`, `jobs:integration/local-stack`, `jobs:integration/ipos-snapshot-bootstrap` and, with a `live-local` tenant, `jobs:integration/ipos-snapshot-fidelity`; the comparison with `fnb datapack` in `e2e:live/datapack`, which stops instead of skipping without it | Shell only; the tests do not read `.env`. `e2e:live/datapack` accepts only the local stack on a loopback host |
 | `SUPABASE_URL` and `SUPABASE_SECRET_KEY` | the Auth admin test of `jobs:integration/local-stack` | `SUPABASE_SERVICE_ROLE_KEY` is accepted locally when the secret key is empty |
 | `NOTIFY_INTEGRATION=1` with `DATABASE_URL` | the three notification integration files | Fixture tenants and synthetic secrets only |
+| `ZALO_INTEGRATION=1` with `DATABASE_URL` | `jobs:integration/zalo-cli` and the two Deno webhook suites; with `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `SUPABASE_PUBLISHABLE_KEY` too, `zalo:integration/session`, which also needs a stack started after migration `zalo_sign_in` so Auth runs the access-token hook | `zalo-it-` fixture tenants only; the functions refuse any other tenant and any Graph URL that is not a loopback address while it is on, and the suites refuse an environment beyond their synthetic list (#205, #207) |
 | `LIVE=1` with `DATABASE_URL` | the reports, theme and digest live checks | Set by the `test:live` scripts; `LIVE_TENANT`, `LIVE_SEED`, `LIVE_ACCEPTANCE`; `LIVE_REFERENCE_SHEET` names the private sheet for the theme check (unset: `owner check pending`). The reports script runs its files one after the other with the default reporter |
 | `LIVE=1` with `POS_ACCOUNTS_JSON` (and `IPOS_APP_KEY`) | the iPOS live suites | Read from `.env` by the suite itself |
 | `PARITY_DATABASE=postgres` with `DATABASE_URL` | the Postgres parity mode | Set by `test:parity:postgres`; refuses real tenants |
@@ -639,8 +674,9 @@ CI runs on every push to `main` and every pull request. Runs of the same ref sha
 | Job | Steps | Fails when | What a failure means |
 |---|---|---|---|
 | `secrets` (Secret and identifier scan) | Checkout of the full history; gitleaks v8.30.1 over the history with `.gitleaks.toml`; Node from `.nvmrc`; `node scripts/check-public-safe.mjs` | A secret-shaped string anywhere in the history; an e-mail address, non-synthetic UUID, JWT, key prefix, 32-hex key or `+84` number in the tree | A blocker. If the string is real, rotate it first. CI has no identifier list, so the local scan with `docs/private/identifiers.txt` stays the commit gate |
-| `code` (Lint, typecheck, unit tests) | `pnpm install --frozen-lockfile`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `node scripts/function-imports.mjs --check`; `deno check index.ts` of `sync-incremental` with Deno v2.7.3 | A lockfile out of date, a lint or type error, a failing unit, consistency or PGlite parity test, a stale import map, a Deno type error | A code defect, or a document out of step (for example the metric registry against [metrics.md](metrics.md)). The gated suites skip here: the job has no `DATABASE_URL` |
+| `code` (Lint, typecheck, unit tests) | `pnpm install --frozen-lockfile`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `node scripts/function-imports.mjs --check`; with Deno v2.7.3, a loop over every folder of `supabase/functions` except `_shared` running `deno check index.ts` and `deno test --permit-no-files`, then `deno test` in `_shared` | A lockfile out of date, a lint or type error, a failing unit, consistency or PGlite parity test, a stale import map of any function, a Deno type error or a failing Deno test | A code defect, or a document out of step (for example the metric registry against [metrics.md](metrics.md)). The gated suites skip here: the job has no `DATABASE_URL` |
 | `database` (Migrations and pgTAP tests) | The Supabase stack without Studio, the mail catcher, the Edge Runtime and the other services it does not need; `supabase db reset`; `supabase test db`; the Postgres parity suite with `DATABASE_URL`; `supabase stop --no-backup` | A migration that fails on an empty database, a pgTAP test, a parity mismatch | A schema or SQL defect, a migration that relied on local state, or a port that diverged from the SQL |
+| `mini-apps` (Mini App builds, budgets and browser checks, 20-minute limit) | `pnpm install --frozen-lockfile`; for each app and each of the two synthetic brands of `packages/zalo-mini/config/synthetic-brands.json`, `app-config` writes the brand's file and a Testing build is made from it; `app-config --compare` on the two brands' files; `check-budget.mjs` on both builds; a Development build of the customer app must contain `phone-probe`; Playwright's Chromium; both apps' `test:e2e`; the traces of a failed run kept 7 days | Two brands' files that differ outside the configured fields, a file over 3 MB or a version over 10 MB, ECharts in the dependency graph or an import, a Development-only screen in a Testing build or none in the Development build, a failing Mini App spec, the paint budget | A Mini App that would breach Zalo's limits or design rules, or a brand that needs more than configuration |
 | `e2e` (Web end-to-end tests, 30-minute limit) | Playwright's Chromium; the stack with the mail catcher; `supabase db reset`; `apps/web/.env.local` written from `supabase status -o env`; `pnpm --filter @fnb/web test:e2e`; stop | A spec fails: numbers, axe, layout, a console error, sign-in, the mail catcher, the time limit | A user-visible regression, or a test that relied on the build machine's dates or data |
 
 ### 7.2 Other workflows
@@ -649,8 +685,9 @@ CI runs on every push to `main` and every pull request. Runs of the same ref sha
 |---|---|---|---|
 | `sync.yml` (Sync) | 03:23 Asia/Ho_Chi_Minh; dispatch with account number, dates, kind and dry run | Skips with a note without `SUPABASE_DB_URL` and `POS_ACCOUNTS_JSON`; masks credentials; the nightly window (14 business dates ending yesterday) or the dispatched one; then, even after a failure, `fnb digest --due`, `fnb notify tick` and `fnb status` | A failed or partial sync: [operations.md, section 4.1](operations.md#41-a-failed-or-partial-sync-run) |
 | `notify.yml` (Notify) | 06:07, 07:07 and 08:07 Asia/Ho_Chi_Minh; dispatch | `fnb notify tick --skip-if-scheduler-healthy --budget-seconds 300`; skips without `SUPABASE_DB_URL` | Messages not sent: [operations.md, section 3.6](operations.md#36-alerts-and-the-daily-digest-phase-12) |
-| `deploy-web.yml` | Push to `main` touching `apps/web`, `packages` or the workflow; dispatch | `pnpm --filter @fnb/web build` (with the bundle and size checks) under the Pages base path, then the Pages deploy; the demo while the repository variables are empty | The site was not updated: [operations.md, section 4.11](operations.md#411-a-failed-pages-or-function-deploy) |
-| `deploy-functions.yml` | Push to `main` touching the function or what it imports; dispatch | The import-map check, then `supabase functions deploy sync-incremental`; skips without its secrets | The function was not updated: the same runbook |
+| `deploy-web.yml` | Push to `main` touching `apps/web`, `packages` or the workflow; dispatch | `pnpm --filter @fnb/web build` (with the bundle and size checks) under the Pages base path, then the Pages deploy; the demo while the repository variables are empty | The site was not updated: [operations.md, section 4.11](operations.md#411-a-failed-pages-function-or-mini-app-deploy) |
+| `deploy-functions.yml` | Push to `main` touching `supabase/functions`, `supabase/config.toml`, any package's `src/` or `package.json`, the lockfile or the import-map script; dispatch | The import-map check, then `function-imports.mjs --affected` on the push's changed paths and `supabase functions deploy` for each affected function (every function on a dispatch), going on after a failure and failing at the end; skips without its secrets | A function was not updated: the same runbook |
+| `deploy-mini-apps.yml` | Push to `main` touching the Mini Apps, `packages/zalo-mini`, `packages/design-tokens`, the lockfile or the workflow (Development); a `mini-v*` tag (Testing); dispatch | For each configured Mini App, `app-config.json` from the `mini_apps` rows, a Zalo build with the budget check, and `zmp-cli` deploy; skips with a note without `SUPABASE_DB_URL` and the two variables, while the `fnb zalo` commands are missing and while no row exists; it has never deployed | A Mini App version was not updated: [operations.md, section 4.17](operations.md#417-mini-app-deploys) |
 | `migrate.yml` | Push to `main` touching migrations or `supabase/config.toml`; pull requests from this repository touching migrations; dispatch | `supabase db push --dry-run` on pull requests, `supabase db push` on `main`; skips without `SUPABASE_PROJECT_ID` | The cloud schema is behind or a migration failed on it |
 | `backup.yml` | Monday 02:23 in Vietnam (Sunday 19:23 UTC); dispatch | `supabase db dump` of schema, data, roles and auth, encrypted with `age`, copied to the private bucket; skips until configured | No fresh off-site backup this week |
 | `cron-probe-peak.yml`, `cron-probe-offpeak.yml` | Minutes 0 and 30, and 7 and 37, of every hour (UTC) | Record when each scheduled run started | Nothing for users; read with the GitHub API ([operations.md, section 2.3](operations.md#23-how-late-github-starts-scheduled-runs)) |
@@ -668,7 +705,8 @@ CI runs on every push to `main` and every pull request. Runs of the same ref sha
 | The database advisors | A function without a pinned `search_path` is not caught | Locally | R-T01 |
 | The live checks | They need the real data, which exists only on the build machine | The build machine | By design |
 | Lighthouse | Scores are measured by hand | Locally; the live app after go-live | – |
-| The Edge Function served by the Edge Runtime | Its HTTP answers are not exercised automatically | Served locally at a verification | FR-SYNC-17 gap |
+| The Edge Function served by the Edge Runtime | Its HTTP answers are not exercised automatically; the shared helpers' Deno tests call the handlers directly, not through a served function | Served locally at a verification ([development.md](development.md), "Serve a function and send a preflight") | FR-SYNC-17 gap |
+| A Mini App inside Zalo | The CI checks run in a browser with a mocked SDK; the Zalo runtime, the simulator and a real phone are not exercised | The owner's phone at #210 and the first submission (#232) | FR-STF-06, NFR-PERF-09 |
 | Schema-diff and type drift checks, the column-name lint, a preflight log lint, a reset guard | Promised by the roadmap and ADR-023; not built | – | R-F03, R-Q01; owner decision D4 in [plan.md](plan.md) |
 
 ### 7.4 State on GitHub on 2026-11-12
@@ -705,11 +743,13 @@ From the run of 2026-11-16 at phase 10a's verification (#102), every package wit
 
 `packages/runner/test/integration` exists but holds no test.
 
-Later runs, one package at a time, on 2026-11-18 after the exports (#139 to #141) and the pack format and plan lint (#130, #135): `@fnb/datapack`, new since the run above, 338 of 338 in 20 files; `@fnb/web` 1,420 passed and 4 failed, the four also failing on the commit before the exports: two `web:i18n/wording-sheets` tests that fail only on a working copy whose documents have CRLF line ends, and two `web:pages/settings/cua-hang-page` cases that fail only just after local midnight. Then, at `8f749b7` (#165), `web:settings/access` 129 of 129, and at `4e21657` (#134), `@fnb/datapack` 437 of 437 in 39 files.
+Phase 13's packages, on 2026-11-18: `@fnb/zalo` 36 unit tests passed and 6 skipped (the gated sign-in suite), in 6 files, at `3d9bcf4`, where `@fnb/jobs` passed 174 with its 15 `zalo-config` unit tests; the Deno tests of the four Zalo functions are counted in section 8.4.
+
+Later runs, one package at a time, on 2026-11-18 after the exports (#139 to #141) and the pack format and plan lint (#130, #135): `@fnb/datapack`, new since the run above, 338 of 338 in 20 files; `@fnb/web` 1,420 passed and 4 failed, the four also failing on the commit before the exports: two `web:i18n/wording-sheets` tests that fail only on a working copy whose documents have CRLF line ends, and two `web:pages/settings/cua-hang-page` cases that fail only just after local midnight. Then, at `8f749b7` (#165), `web:settings/access` 129 of 129, and at `4e21657` (#134), `@fnb/datapack` 437 of 437 in 39 files. The builders' runs since, as their commits record: at `70e5c86` (#136, #137) `@fnb/datapack` 539 passed and 1 skipped with `CI=1` in 44 files, and `@fnb/jobs` 139 passed and 9 skipped (database-gated); at `667ac66` (`IPOS_REAL_API`) `@fnb/connector-ipos` 164 and `@fnb/runner` 49 passed, and `@fnb/jobs` 144 passed against the local stack; at `66f4ec8` `@fnb/demo-analytics` 457 of 457 in 51 files; at `f325380` (#142) `@fnb/web` 1,524 passed, the two `web:i18n/wording-sheets` failures of a CRLF working copy aside, `pack-tab.test.tsx` 33 of them; at `8c1b490` (#138, #143) `@fnb/datapack` 540 with `CI=1`.
 
 ### 8.2 pgTAP files
 
-Planned tests per file, read from each file's `select plan(…)` on 2026-11-16 after migration `settings_writes_and_legal` (#104). Files 33 to 35 are phase 10a's, files 36 to 39 phase 10b's.
+Planned tests per file, read from each file's `select plan(…)` at `f325380` on 2026-11-18 (the files of 2026-11-16 unchanged since migration `settings_writes_and_legal`, #104). Files 33 to 35 are phase 10a's, files 36 to 39 phase 10b's, 40 and 41 phase 11's, 42, 44 and 45 phase 13's (#203, #205, #207), and 43 belongs to the switch between the real iPOS API and the snapshot. 44 and 45 came after `f325380` (at `080f4e5`); the other files are unchanged by them.
 
 | File | Plan | File | Plan |
 |---|---:|---|---:|
@@ -736,19 +776,26 @@ Planned tests per file, read from each file's `select plan(…)` on 2026-11-16 a
 | | | `39_theme_access_b.sql` | 16 |
 | | | `40_pack_functions.sql` | 43 |
 | | | `41_export_totals.sql` | 20 |
-| | | **40 files** | **2,159** |
+| | | `42_zalo_config.sql` | 125 |
+| | | `43_ipos_sources.sql` | 14 |
+| | | `44_zalo_identity.sql` | 67 |
+| | | `45_zalo_events.sql` | 87 |
+| | | **44 files** | **2,452** |
 
-By phase (files grouped by the phase that created them; 01, 03 and 12 were extended in 12a, 01 and 03 again in 10a and 10b): phase 2, 409; phase 7, 153; phase 8, 291; phase 9, 143; phase 10a, 183; phase 10b, 210; phase 12, 694.
+By phase (files grouped by the phase that created them, each with its current plan; 01, 03 and 12 were extended in 12a, 01 and 03 again in 10a and 10b, and 03 in 13), at `f325380`: phase 2, 420; phase 7, 153; phase 8, 291; phase 9, 143; phase 10a, 183; phase 10b, 212; phase 11, 63; phase 12, 694; phase 13, 279; the iPOS source guard, 14.
+
+Full run on 2026-11-18 at `080f4e5` on the local stack: 2,452 of 2,452 in 44 files.
 
 Full run on 2026-11-18 on the local stack after the exports and the pack format: 2,159 of 2,159 in 40 files, `40_pack_functions.sql` and `41_export_totals.sql` included. Earlier: 2,159 of 2,159 in 40 files on 2026-11-16 after migration `fee_and_target_limits`; 2,153 of 2,153 in 40 files after migration `pack_and_export_functions`; 2,090 of 2,090 in 38 files after migration `item_costs_amount_whole_dong`; 2,085 of 2,085 in 38 files after migration `data_quality_payments_account_order`; 2,083 of 2,083 in 38 files after migration `data_quality_functions`; 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`. Earlier full runs: 1,849 of 1,849 at phase 10a's verification; 1,845 of 1,845 on 2026-11-14; 357 tests in 12 files at the end of phase 2; 675 of 675 in 19 files at the `0f8fa1d` verification; 934 of 934 in 25 files at the phase 7 verification.
 
 ### 8.3 Playwright specs
 
-Listed with `playwright test --list` on 2026-11-18 after #165: 262 tests in 36 files.
+Listed with `playwright test --list` on 2026-11-18 at `8c1b490`: 273 tests in 38 files.
 
 | Project | File | Tests |
 |---|---|---:|
 | `live` | `e2e/live/auth.spec.ts` | 6 |
+| `live` | `e2e/live/datapack.spec.ts` | 5 |
 | `live` | `e2e/live/exports.spec.ts` | 5 |
 | `live` | `e2e/live/reports.spec.ts` | 4 |
 | `live` | `e2e/live/settings-fixture.spec.ts` | 9 |
@@ -759,7 +806,8 @@ Listed with `playwright test --list` on 2026-11-18 after #165: 262 tests in 36 f
 | `live` | `e2e/live/themes.spec.ts` | 3 |
 | `live` | `e2e/live/today.spec.ts` | 7 |
 | `demo` | `e2e/demo/demo.spec.ts` | 12 |
-| `demo` | `e2e/demo/datapack.spec.ts` | 2 |
+| `demo` | `e2e/demo/datapack.spec.ts` | 5 |
+| `demo` | `e2e/demo/plans.spec.ts` | 3 |
 | `demo` | `e2e/demo/report-day.spec.ts` | 12 |
 | `demo` | `e2e/demo/report-week.spec.ts` | 8 |
 | `demo` | `e2e/demo/report-month.spec.ts` | 13 |
@@ -784,9 +832,19 @@ Listed with `playwright test --list` on 2026-11-18 after #165: 262 tests in 36 f
 | `demo` | `e2e/demo/theme-navigation.spec.ts` | 4 |
 | `pages` | `e2e/pages/install.spec.ts` | 2 |
 | `pages` | `e2e/pages/report-year-performance.spec.ts` | 1 |
-| | **Total** | **262** (live 86, demo 173, pages 3) |
+| | **Total** | **273** (live 91, demo 179, pages 3) |
 
 At phase 10a's verification the list held 126 tests in 19 files and all 126 passed with one worker and no retries; the phase 9 verification had 63 and phase 6 had 20.
+
+The Mini Apps' own Playwright configurations (section 2.8), listed with `playwright test --list` on 2026-11-18:
+
+| App | File | Projects | Tests |
+|---|---|---|---:|
+| `apps/zalo-staff` | `e2e/session.spec.ts` | `phone-light`, `phone-dark` | 10 |
+| `apps/zalo-staff` | `e2e/budget.spec.ts` | `budget` | 1 |
+| `apps/zalo-customer` | `e2e/session.spec.ts` | `phone-light`, `phone-dark` | 6 |
+| `apps/zalo-customer` | `e2e/budget.spec.ts` | `budget` | 1 |
+| | | **Total** | **18** (staff 11, customer 7) |
 
 ### 8.4 Parity, smoke, consistency, live and integration suites
 
@@ -805,6 +863,11 @@ At phase 10a's verification the list held 126 tests in 19 files and all 126 pass
 | Notification dispatch | `packages/notify/test/integration/dispatch.test.ts` | 5 | `NOTIFY_INTEGRATION=1`, `DATABASE_URL` |
 | Digests and alerts | `packages/notify/test/integration/digests-and-alerts.test.ts` | 5 | the same |
 | Notification CLI | `apps/jobs/test/integration/notify-cli.test.ts` | 6 | the same |
+| Edge Function helpers (Deno) | `supabase/functions/_shared/cors.test.ts`, `http.test.ts` | 10 and 20 | none; Deno v2.7.3 |
+| Zalo functions (Deno) | `supabase/functions/zalo-session/handler.test.ts`, `zalo-phone/handler.test.ts`, `oa-webhook/handler.test.ts` and `signature.test.ts`, `bot-webhook/handler.test.ts` | 12, 7, 24 and 12 | none; Deno v2.7.3 |
+| Zalo webhooks on the local stack (Deno) | `supabase/functions/oa-webhook/integration.test.ts`, `bot-webhook/integration.test.ts` | 1 and 1 | `ZALO_INTEGRATION=1`, a local `DATABASE_URL`, Deno's environment permission |
+| Mini App sign-in on the local stack | `packages/zalo/test/integration/session.test.ts` | 6 | `ZALO_INTEGRATION=1`, `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_PUBLISHABLE_KEY` |
+| `fnb zalo` on the local stack | `apps/jobs/test/integration/zalo-cli.test.ts` | 6 | `ZALO_INTEGRATION=1`, `DATABASE_URL` |
 
 ### 8.5 Build checks and scans
 
@@ -814,7 +877,9 @@ At phase 10a's verification the list held 126 tests in 19 files and all 126 pass
 | Size check | `apps/web/scripts/check-size.mjs` with `scripts/lazy-chunks.mjs` | the same |
 | Public-safety scan | `scripts/check-public-safe.mjs` | CI `secrets` job; before every commit |
 | Secret scan | gitleaks with `.gitleaks.toml` | CI `secrets` job |
-| Import map | `scripts/function-imports.mjs --check` | CI `code` job; `deploy-functions.yml` |
+| Import maps | `scripts/function-imports.mjs --check` | CI `code` job; `deploy-functions.yml` |
+| Mini App size budgets | `packages/zalo-mini/scripts/check-budget.mjs` | after every Mini App build; CI `mini-apps` job; `deploy-mini-apps.yml` |
+| Mini App configuration differences | `pnpm --filter @fnb/zalo-mini app-config --compare` | CI `mini-apps` job |
 | API reference | `scripts/check-api-docs.mjs` (`pnpm docs:check-api`) | locally |
 
 ### 8.6 Latest results
@@ -822,19 +887,22 @@ At phase 10a's verification the list held 126 tests in 19 files and all 126 pass
 | Check | Result | Date and source |
 |---|---|---|
 | Unit tests | 2,375 passed, 39 skipped (gated), 232 files, 13 packages; since then `@fnb/datapack` 338 of 338 in 20 files, and `@fnb/web` 1,420 passed with 4 known failures that also fail on the commit before (section 8.1); at `8f749b7` `web:settings/access` 129 of 129, and at `4e21657` `@fnb/datapack` 437 of 437 in 39 files | 2026-11-16, phase 10a's verification (#102); 2026-11-18, local runs |
-| pgTAP | `38_settings_writes.sql` 106 of 106 at `8f749b7` (#165); 2,159 of 2,159 in 40 files on 2026-11-18 after the exports and the pack format; 2,159 of 2,159 in 40 files after migration `fee_and_target_limits`; 2,153 of 2,153 in 40 files after migration `pack_and_export_functions`; 2,090 of 2,090 in 38 files after migration `item_costs_amount_whole_dong`; 2,085 of 2,085 in 38 files after migration `data_quality_payments_account_order`; 2,083 of 2,083 in 38 files after migration `data_quality_functions`; 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`; 1,849 of 1,849 in 34 files at phase 10a's verification; `20_incremental_schedule.sql` unedited | 2026-11-16, #104 and #102 |
+| pgTAP | builders' runs on the local stack: 2,452 of 2,452 in 44 files at `080f4e5` (67 new in `44_zalo_identity.sql` at `3d9bcf4`, 87 in `45_zalo_events.sql`); 2,298 of 2,298 in 42 files at `667ac66` (14 new in `43_ipos_sources.sql`), after 2,284 of 2,284 in 41 files at `293b0be` (125 new in `42_zalo_config.sql`); `38_settings_writes.sql` 106 of 106 at `8f749b7` (#165); 2,159 of 2,159 in 40 files on 2026-11-18 after the exports and the pack format; 2,159 of 2,159 in 40 files after migration `fee_and_target_limits`; 2,153 of 2,153 in 40 files after migration `pack_and_export_functions`; 2,090 of 2,090 in 38 files after migration `item_costs_amount_whole_dong`; 2,085 of 2,085 in 38 files after migration `data_quality_payments_account_order`; 2,083 of 2,083 in 38 files after migration `data_quality_functions`; 2,053 of 2,053 in 37 files after migration `promotion_and_shift_functions`; 1,979 of 1,979 in 35 files after migrations `settings_writes_and_legal` and `settings_writes_hardening`; 1,849 of 1,849 in 34 files at phase 10a's verification; `20_incremental_schedule.sql` unedited | 2026-11-16, #104 and #102 |
 | Parity in Postgres | every parity file green in CI's `database` job on `b8779ab` | 2026-11-16, #102 |
 | Integration suites on the local stack | sync 100 of 100; jobs 64, 6 gated; notification CLI 6 of 6; notification digests and alerts 9 of 10, the failure a defect of the test's own helper, not of the product, fixed by the step 12c stream | 2026-11-16, #102 |
 | Live checks on the real tenant | reports live check 8 of 8; theme live check 6 of 6, with `LIVE_REFERENCE_SHEET` every compared value `matches: true` and no call over budget | 2026-11-16, #102 |
 | Live checks on the real tenant, quiet machine | reports live check 8 of 8; theme live check 26 of 26, every identity true and every budget held (slowest call 101 ms); notify live 1 of 1; tenant row counts unchanged; one store with history from September 2026 only, A1 and reports check 7 pending without `docs/private` | 2026-11-18, #166 |
 | Export acceptance on the real tenant | October 2026: browser and engine exports in CSV and JSON at 1,000- and 97-row pages, rows and fingerprints equal to the database, data files identical across page sizes; #132's budgets held | 2026-11-18, #195 |
-| Playwright | live 86 of 86 at `8f749b7` (the 28 tests of `e2e/live/settings-roles.spec.ts` included), after live 58 of 58 with the five tests of `e2e/live/exports.spec.ts`, and demo 173 of 173 on the local stack; earlier 126 of 126 in 19 files (demo, live and pages), one worker, no retries | 2026-11-18, local runs; 2026-11-16, `pnpm verify` on `b8779ab` |
-| Initial JavaScript | 324.7 kB gzipped against the 400 kB budget, after the exports; 284.2 kB at phase 10a's verification | 2026-11-18 and 2026-11-16, `pnpm --filter @fnb/web build` |
+| Playwright | builders' runs: demo 179 of 179 and live 91 of 91 with `DATABASE_URL` at `8c1b490`, after demo 176 of 176 and live 89 of 89 at `f325380` (#142); live 86 of 86 at `8f749b7` (the 28 tests of `e2e/live/settings-roles.spec.ts` included), after live 58 of 58 with the five tests of `e2e/live/exports.spec.ts`, and demo 173 of 173 on the local stack; earlier 126 of 126 in 19 files (demo, live and pages), one worker, no retries | 2026-11-18, local runs; 2026-11-16, `pnpm verify` on `b8779ab` |
+| Initial JavaScript | 333.8 kB gzipped against the 400 kB budget at `8c1b490`, with the paste page in an 11.4 kB lazy chunk; 330.3 kB at `f325380`, with the pack builder in a 26.7 kB lazy chunk; 324.7 kB after the exports; 284.2 kB at phase 10a's verification | 2026-11-18 and 2026-11-16, `pnpm --filter @fnb/web build` |
 | Lighthouse mobile, demo build | performance 95, accessibility 100, best practices 100, SEO 60 | [status.md](status.md) |
 | Public-safety scan and gitleaks | no findings | 2026-11-16, #102 |
 | Comment scan over the lines 10a added | none | 2026-11-16, #102 |
 | API reference check | 35 functions, 35 documented | 2026-11-16, #102 |
 | Import map | up to date | 2026-11-16, CI `code` job |
+| Mini Apps | unit: `@fnb/zalo-mini` 73 of 73 in 9 files, `@fnb/zalo-staff` 7 of 7 in 2, `@fnb/zalo-customer` 8 of 8 in 3; Playwright: staff 11 of 11, customer 7 of 7; builds 0.42 MB in browser mode and 0.67 MB for the Zalo runtime, within 10 MB and 3 MB a file | 2026-11-18, `ef8ef24` (#208); unit tests and sizes rerun at `f325380` |
+| Edge Function helpers (Deno) | 30 of 30 under Deno 2.7.3, with `deno check` of every function | 2026-11-18, `293b0be` and `ac35cbf` |
+| Zalo functions (Deno) | `zalo-session` 12 and `zalo-phone` 7 (#205); `oa-webhook` 24 and `bot-webhook` 12, with their gated integration suites 25 and 13 against the local stack (#207); `@fnb/zalo` 36 unit and 6 gated integration; jobs `zalo-config` 15 unit and 6 gated integration | 2026-11-18, `3d9bcf4` and `080f4e5`, builders' runs |
 | Database advisors (security) | no table without RLS, no materialised view; one warning (`app.data_roles` without a pinned `search_path`) | 2026-11-12 |
 | Store-days equal to the POS control totals | all, both stores, from each store's first sales day; check 1 and 2 of the reports live check on 2026-11-16 | [status.md](status.md) |
 | Database size with the full history | 288 MB after compacting the fact and aggregate tables | 2026-11-16, #102 |
@@ -869,39 +937,39 @@ Coverage of the 376 requirements on 2026-11-18, by area.
 | FR-REP | 17 | 2 | – | 2 | 21 |
 | FR-THM | 6 | 3 | – | – | 9 |
 | FR-SET | 7 | 4 | – | – | 11 |
-| FR-EXP | 3 | 6 | 1 | – | 10 |
-| FR-STR | 2 | 2 | 6 | – | 10 |
-| FR-NOT | 26 | 4 | 12 | – | 42 |
+| FR-EXP | 7 | 3 | – | – | 10 |
+| FR-STR | 2 | 3 | 5 | – | 10 |
+| FR-NOT | 26 | 5 | 11 | – | 42 |
 | FR-OPS | 1 | 4 | 8 | 4 | 17 |
 | FR-CMP | 8 | 1 | 8 | 3 | 20 |
-| FR-STF | – | – | 23 | – | 23 |
+| FR-STF | 2 | 6 | 15 | – | 23 |
 | FR-LOY | – | – | 29 | – | 29 |
-| FR-POR | 3 | 2 | 7 | – | 12 |
-| **FR total** | **152** | **32** | **98** | **14** | **296** |
-| NFR-SEC | 6 | 6 | 2 | 1 | 15 |
-| NFR-PRV | 5 | 1 | 1 | – | 7 |
-| NFR-PERF | 4 | 4 | 1 | – | 9 |
+| FR-POR | 3 | 3 | 6 | – | 12 |
+| **FR total** | **158** | **38** | **86** | **14** | **296** |
+| NFR-SEC | 6 | 7 | 1 | 1 | 15 |
+| NFR-PRV | 6 | 1 | – | – | 7 |
+| NFR-PERF | 4 | 5 | – | – | 9 |
 | NFR-AVL | 3 | – | – | 1 | 4 |
 | NFR-COST | 2 | 4 | – | – | 6 |
 | NFR-A11Y | 5 | – | – | – | 5 |
 | NFR-I18N | 5 | 1 | – | – | 6 |
-| NFR-UX | 4 | 2 | 1 | – | 7 |
+| NFR-UX | 4 | 3 | – | – | 7 |
 | NFR-MNT | 6 | 3 | 2 | – | 11 |
 | NFR-OBS | 3 | 1 | – | – | 4 |
 | NFR-HYG | 4 | 1 | 1 | – | 6 |
-| **NFR total** | **47** | **23** | **8** | **2** | **80** |
-| **All** | **199** | **55** | **106** | **16** | **376** |
+| **NFR total** | **48** | **26** | **4** | **2** | **80** |
+| **All** | **206** | **64** | **90** | **16** | **376** |
 
 ```mermaid
 pie showData
     title Coverage of the requirements on 2026-11-18
-    "covered" : 199
-    "partial" : 55
-    "planned" : 106
+    "covered" : 206
+    "partial" : 64
+    "planned" : 90
     "owner check" : 16
 ```
 
-Of the 269 requirements that are verified locally, built, in build or waiting for the owner, 199 are covered, 53 partial, 1 planned and 16 owner checks. Of the 107 that are designed or planned, 105 have no test yet and 2 are partly held by tests of the database rules they rest on.
+Of the 286 requirements that are verified locally, built, in build or waiting for the owner, 206 are covered, 63 partial, 1 planned and 16 owner checks. Of the 90 that are designed or planned, 89 have no test yet and 1 is partly held by tests of the database rules it rests on.
 
 ### 9.3 Functional requirements
 
@@ -909,15 +977,15 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| FR-TEN-01 | Tenant on every row | Must | verified locally | `pgtap:02_unique_keys` | covered |
-| FR-TEN-02 | Membership roles and store scope | Must | verified locally | `pgtap:01_schema`, `pgtap:07_write_scope_and_attribution`, `e2e:live/settings-fixture` (five roles of one tenant, a store-limited manager reading one store) | covered |
-| FR-TEN-03 | Two-tenant isolation | Must | verified locally | `pgtap:04_tenant_isolation`, `pgtap:17_analytics_access`, `pgtap:23_report_access`, `pgtap:31_notify_access`, `pgtap:39_theme_access_b` (another tenant's owner reads only their own store in every 10b function), `pgtap:40_pack_functions` and `pgtap:41_export_totals` (scoped to the member's visible stores; #132) | covered |
+| FR-TEN-01 | Tenant on every row | Must | verified locally | `pgtap:02_unique_keys`, `pgtap:42_zalo_config` (every Zalo table references its parent with the tenant; a parent or a store list of another tenant is refused, also for the service role; #203) | covered |
+| FR-TEN-02 | Membership roles and store scope | Must | verified locally | `pgtap:01_schema`, `pgtap:07_write_scope_and_attribution`, `e2e:live/settings-fixture` (five roles of one tenant, a store-limited manager reading one store); `pgtap:44_zalo_identity` (the access-token hook's `memberships` claim carries each membership's role and store scope, null for every store; #205) | covered |
+| FR-TEN-03 | Two-tenant isolation | Must | verified locally | `pgtap:04_tenant_isolation`, `pgtap:17_analytics_access`, `pgtap:23_report_access`, `pgtap:31_notify_access`, `pgtap:39_theme_access_b` (another tenant's owner reads only their own store in every 10b function), `pgtap:40_pack_functions` and `pgtap:41_export_totals` (scoped to the member's visible stores; #132), `pgtap:42_zalo_config` (a member of one tenant reads no Zalo configuration of the other; #203); `pgtap:44_zalo_identity` (a member of two tenants gets one claim entry per tenant; brand keys resolved within one tenant), `pgtap:45_zalo_events` (an owner of another tenant reads no OA webhook counts; #207) | covered |
 | FR-TEN-04 | Store scope on reads and writes | Must | verified locally | `pgtap:07_write_scope_and_attribution`, `pgtap:17_analytics_access`, `pgtap:21_sync_freshness`, `pgtap:38_settings_writes`, `pgtap:39_theme_access_b` (a store-limited manager in every 10b function), `e2e:live/settings-roles` (a manager limited to store 1 saves 5 of 27 settings writes through PostgREST: store 2's rows give no row or `42501`, every tenant-wide setting `42501` or no row, while the catch-up refresh of the whole tenant is allowed, as for every manager; the pages show store 1 alone; #165) | covered |
-| FR-TEN-05 | Nothing for callers without a session | Must | verified locally | `pgtap:03_rls_enabled`, `pgtap:06_anon_and_tokens`, `e2e:live/auth`, `pgtap:39_theme_access_b` (anon runs no 10b function), `e2e:live/settings-roles` (all 27 settings writes refused to `anon` with `42501`; #165) | covered |
+| FR-TEN-05 | Nothing for callers without a session | Must | verified locally | `pgtap:03_rls_enabled`, `pgtap:06_anon_and_tokens`, `e2e:live/auth`, `pgtap:39_theme_access_b` (anon runs no 10b function), `e2e:live/settings-roles` (all 27 settings writes refused to `anon` with `42501`; #165), `pgtap:42_zalo_config` (`anon` reads and writes none of the eight Zalo tables; #203) | covered |
 | FR-TEN-06 | Publisher reads no sales | Must | verified locally | `pgtap:08_publisher_role`, `pgtap:17_analytics_access`, `pgtap:23_report_access`, `pgtap:39_theme_access_b` (the publisher gets no 10b row and empty data-quality counts) | covered |
 | FR-TEN-07 | Staff and viewer are read-only | Must | verified locally | `pgtap:05_write_policies`, `pgtap:31_notify_access`, `pgtap:38_settings_writes`, `e2e:live/settings-roles` (staff and the viewer save none of 27 settings writes through PostgREST, and see every settings page, tab and scope read-only in the browser; #165) | covered |
 | FR-TEN-08 | Who writes manual data | Must | verified locally | `pgtap:05_write_policies`, `pgtap:07_write_scope_and_attribution`, `pgtap:10_payment_fee_rates`, `pgtap:11_item_type_roles_and_holidays`, `web:pages/settings/phan-loai-page` (staff and a store-limited manager read the roles), `pgtap:38_settings_writes`, `web:settings/access` (`manualData`), `web:settings/manual/costs-tab` and `e2e:live/settings-manual` (a store-limited manager writes their store's costs and reads the all-store costs without a control; #161), `web:settings/manual/costs-tab` and `e2e:live/settings-manual` (staff download only; rows for a store outside the scope refused; #162), `e2e:live/settings-roles` (costs, fee rates and targets for all stores, store 1 and store 2, roles, overrides and days off, as five logins and `anon`; #165) | covered |
-| FR-TEN-09 | Frozen attribution | Must | verified locally | `pgtap:07_write_scope_and_attribution`, `pgtap:26_notify_schema`, `pgtap:38_settings_writes`, `e2e:live/settings-manual` (the cost, profile and override writes come back with the caller as author; #105), `e2e:live/settings` (a holiday's `created_by` and `updated_by` are the caller; an insert naming another member refused with `42501`; #106), `e2e:live/settings-manual` (the cost page's audit line, the manager's row read by the owner with its author role; #161) | covered |
+| FR-TEN-09 | Frozen attribution | Must | verified locally | `pgtap:07_write_scope_and_attribution`, `pgtap:26_notify_schema`, `pgtap:38_settings_writes`, `e2e:live/settings-manual` (the cost, profile and override writes come back with the caller as author; #105), `e2e:live/settings` (a holiday's `created_by` and `updated_by` are the caller; an insert naming another member refused with `42501`; #106), `e2e:live/settings-manual` (the cost page's audit line, the manager's row read by the owner with its author role; #161), `pgtap:42_zalo_config` (`created_by` frozen and `updated_by` stamped on the Zalo configuration; #203) | covered |
 | FR-TEN-10 | Create a tenant | Must | verified locally | `jobs:integration/local-stack` | covered |
 | FR-TEN-11 | Add a member | Must | verified locally | `jobs:integration/local-stack` | covered |
 | FR-TEN-12 | No self sign-up | Must | waits for owner | `supabase/config.toml`; owner check (`docs/go-live.md` step 1) | owner check |
@@ -1084,24 +1152,24 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 |---|---|---|---|---|---|
 | FR-EXP-01 | Browser export | Must | built | `pgtap:40_pack_functions` and `pgtap:41_export_totals` (the pack and export-proof functions; #132); `web:exports/plan`, `web:exports/reader`, `web:exports/totals` (the fingerprints equal the literal hex that `41_export_totals` pins), `web:exports/columns`, `web:exports/writers` (CSV with the BOM, JSON without), `web:exports/archive` and `web:exports/run` (every file proven against `export_control_totals`, the archive and its manifest; #139, #140), `web:pages/exports/exports-page` and `web:pages/exports/export-tab` (#141), `e2e:live/exports` (a seeded month as CSV and as JSON on a fixture tenant: every file verified, the expected paths, the BOM and strict UTF-8 with names intact, the manifest's fingerprints equal to `export_control_totals` read by the same member; passed on the local stack on 2026-11-18), `e2e:demo/datapack` (the demo's notice); not run yet: the real-data comparison of #195 and the owner's Excel check (OC-04, #196) | partial |
 | FR-EXP-02 | Paged, split exports | Must | built | `web:data/paginate` (keyset paging of Hôm nay), `pgtap:41_export_totals` (control totals and fingerprints per table and month; #132), `web:exports/reader` (a fake PostgREST that caps pages at 1,000, 500 and 250 rows and adds and removes rows between pages: no row lost or doubled; 97-row pages give the same rows as 1,000-row pages; #139), `web:exports/totals` and `web:exports/run` (a store-month read again, at most twice, when a sync commits during the read, then marked unverified with its reason), `web:exports/plan` (split by month, at most 12 months), `web:exports/estimate` and `web:pages/exports/export-tab` (the estimate before the export and the bytes received after it; #140, #141), `e2e:live/exports` | covered |
-| FR-EXP-03 | Data pack builder | Must | in build | `datapack:unit` (the package and its frozen interfaces; #129), `pgtap:40_pack_functions` (#132); the pack's content (#134): `datapack:pack/build` (demo packs valid for every horizon, in both languages, with and without a focus and an owner note; every planned call recorded, duplicates shared, the fence and `pack_data_changed`), `datapack:pack/request`, `datapack:pack/calendar`, `datapack:pack/calls`, `datapack:pack/coverage`, `datapack:pack/kpi-ids`, `datapack:pack/tables/provenance`, `order`, `labels`, `items`, `hours`, `shifts`, `holidays` and `empty` (every cell from a recorded source value, rank keys stable under shuffled rows, store labels from SQL, the twenty tables), `datapack:pack/golden` (the golden demo pack byte for byte); `buildDataPack` itself waits for the prompt (#131) | partial |
-| FR-EXP-04 | Versioned schema and size budget | Must | in build | `datapack:pack/schema` (the committed `fnb-datapack-1` and `fnb-plan-1` JSON Schema files equal the generated ones; Ajv 2020 reaches zod's verdict on every fixture), `datapack:pack/budget` (the estimate as ceil(UTF-8 bytes × 5 ÷ 11), small under 15,000, the eight trimming steps in their declared order and `pack_over_budget` after the last), `datapack:pack/invariants` (the budget's limit, steps, estimate and ceiling checked on every validation; #130); `datapack:pack/golden` (the golden demo pack of two stores within the budget, 21,225 estimated tokens, nothing trimmed) and `datapack:pack/build` (every horizon and language; #134); a pack of ten stores ends in `pack_over_budget` with the stand-in prompt, and the real prompt (#131) adds its own text | partial |
-| FR-EXP-05 | Aggregates only | Must | built | `datapack:pack/aggregates` (each of the five aggregates-only rules with a fixture that breaks it; identifiers that only look personal pass, the same strings inside an item name are refused), `datapack:pack/invariants` (`validatePack` runs the check, and refuses a row hidden under a `__proto__` key; #130); the pack's tables (#134): `datapack:pack/build` (the check runs before sealing, and a till text that looks like a phone number gives `pack_not_aggregate`), `datapack:pack/request` (a focus or note holding an e-mail address or a phone number refused with `pack_text_contact_details`), `datapack:pack/tables/shifts` (no shift or cashier name), `datapack:pack/tables/labels` and `datapack:pack/transport-equivalence` (store ids only in `request.stores`), `datapack:pack/golden` (the golden pack holds aggregates only) | covered |
-| FR-EXP-06 | Prompt templates | Must | in build | the KPI front matter (#135): `datapack:plan/front-matter` (`fnb-plan/1` with KPIs keyed by metric ids), `datapack:pack/schema` (`fnb-plan-1.schema.json`), `datapack:plan/lint-codes` (`kpi_unknown` and `kpi_untracked` for an id outside the registry or one KPI follow-up cannot track); the prompt templates are planned (#131) | partial |
-| FR-EXP-07 | Download and copy buttons | Must | designed | planned | planned |
-| FR-EXP-08 | Same pack from the CLI | Must | in build | `datapack:unit` (the frozen contract; #129), `reports:unit/themes/contract` and `reports:unit/source/json-rpc-client` (`createJsonRpcClient`; #133), `datapack:pack/canonical`, `datapack:pack/decimal` and `datapack:pack/hash` (one canonical text, re-serialised byte for byte after a database round trip; `pack_id` blind to `generated_at` and key order), `datapack:pack/invariants` (`comparePackTexts`), `datapack:pack/source-scan` and `datapack:pack/browser-safe` (no locale, system clock, randomness or Node API under `src`; #130), `datapack:pack/transport-equivalence` (rows shaped as PostgREST and as `to_jsonb` return them, keys in another order and `1.50` for `1.5`, give the same bytes and `pack_id`) and `datapack:pack/environment` (the golden pack's bytes in child processes under three process time zones; #134); planned: `fnb datapack` (#137) and the byte comparison of browser and command-line packs (#144) | partial |
-| FR-EXP-09 | Built by a data role | Must | designed | `pgtap:08_publisher_role`, `pgtap:17_analytics_access` (publisher reads nothing), `pgtap:40_pack_functions` (`pack_fence`; #132) | partial |
-| FR-EXP-10 | Verification state in the pack | Must | built | `datapack:pack/tables/provenance` (a store-day without a matched check counted in the `stores` table's `unmatched_days`, with `verified` false), `datapack:pack/gaps` (`unreconciled_days` and `stale_aggregates` per store, each exactly when its condition holds; #134) | covered |
+| FR-EXP-03 | Data pack builder | Must | built | `datapack:unit` (the package and its frozen interfaces; #129), `pgtap:40_pack_functions` (#132); the pack's content (#134): `datapack:pack/build` (demo packs valid for every horizon, in both languages, with and without a focus and an owner note; every planned call recorded, duplicates shared, the fence and `pack_data_changed`), `datapack:pack/request`, `datapack:pack/calendar`, `datapack:pack/calls`, `datapack:pack/coverage`, `datapack:pack/kpi-ids`, `datapack:pack/tables/provenance`, `order`, `labels`, `items`, `hours`, `shifts`, `holidays` and `empty` (every cell from a recorded source value, rank keys stable under shuffled rows, store labels from SQL, the twenty tables), `datapack:pack/golden` (the golden demo pack byte for byte); with prompt 1.0.0 (#131), `datapack:pack/build` builds through `buildDataPack` itself; the builder runs in the browser (#142): `web:datapack/browser-pack` (the browser's build byte for byte the package's own, the fence read before and after the calls), `e2e:demo/datapack` (the demo's sample pack built from the address and summarised with its missing inputs), `e2e:live/datapack` (a live pack on the settings fixture tenant equal to a Node build of the same login apart from `generated_at`) | covered |
+| FR-EXP-04 | Versioned schema and size budget | Must | built | `datapack:pack/schema` (the committed `fnb-datapack-1` and `fnb-plan-1` JSON Schema files equal the generated ones; Ajv 2020 reaches zod's verdict on every fixture), `datapack:pack/budget` (the estimate as ceil(UTF-8 bytes × 5 ÷ 11), small under 15,000, the eight trimming steps in their declared order and `pack_over_budget` after the last), `datapack:pack/invariants` (the budget's limit, steps, estimate and ceiling checked on every validation; #130); `datapack:pack/golden` (the golden demo pack of two stores within the budget, 24,968 estimated tokens with prompt 1.0.0, nothing trimmed; #131) and `datapack:pack/build` (every horizon and language; #134); `datapack:pack/store-budget` (with prompt 1.0.0, one to three stores untrimmed and four after trimming, in both languages; #131); a pack of ten stores still ends in `pack_over_budget` | partial |
+| FR-EXP-05 | Aggregates only | Must | built | `datapack:pack/aggregates` (each of the five aggregates-only rules with a fixture that breaks it; identifiers that only look personal pass, the same strings inside an item name are refused), `datapack:pack/invariants` (`validatePack` runs the check, and refuses a row hidden under a `__proto__` key; #130); the pack's tables (#134): `datapack:pack/build` (the check runs before sealing, and a till text that looks like a phone number gives `pack_not_aggregate`), `datapack:pack/request` (a focus or note holding an e-mail address or a phone number refused with `pack_text_contact_details`), `datapack:pack/tables/shifts` (no shift or cashier name), `datapack:pack/tables/labels` and `datapack:pack/transport-equivalence` (store ids only in `request.stores`), `datapack:pack/golden` (the golden pack holds aggregates only); `jobs:unit/datapack` (`fnb datapack` prints `aggregates_only` of the written file and exits 4 for a pack that is not; #137) | covered |
+| FR-EXP-06 | Prompt templates | Must | built | the KPI front matter (#135): `datapack:plan/front-matter` (`fnb-plan/1` with KPIs keyed by metric ids), `datapack:pack/schema` (`fnb-plan-1.schema.json`), `datapack:plan/lint-codes` (`kpi_unknown` and `kpi_untracked` for an id outside the registry or one KPI follow-up cannot track); the prompt templates (#131): `datapack:pack/prompt` (prompt 1.0.0 in Vietnamese and English pinned by SHA-256, the ten sections and seven fields in order, no tool syntax, its example citing cells of a built pack and linting with no issue), `datapack:pack/bundle` (the chat bundle: the prompt first, then the pack in one fence, the same `pack_id`) | covered |
+| FR-EXP-07 | Download and copy buttons | Must | built | `e2e:demo/datapack` (the demo's sample pack downloaded byte for byte and accepted by `parsePack`, the copied text equal to `chatBundle` of the same pack, the manual-copy dialog and its download with the clipboard permission denied), `e2e:live/datapack` (the downloaded file equal to a Node build of the same login apart from `generated_at`, the copy carrying that pack), `web:pages/exports/pack-tab` (the copy, its fallback dialog, the file names), `datapack:pack/bundle` (#142) | covered |
+| FR-EXP-08 | Same pack from the CLI | Must | in build | `datapack:unit` (the frozen contract; #129), `reports:unit/themes/contract` and `reports:unit/source/json-rpc-client` (`createJsonRpcClient`; #133), `datapack:pack/canonical`, `datapack:pack/decimal` and `datapack:pack/hash` (one canonical text, re-serialised byte for byte after a database round trip; `pack_id` blind to `generated_at` and key order), `datapack:pack/invariants` (`comparePackTexts`), `datapack:pack/source-scan` and `datapack:pack/browser-safe` (no locale, system clock, randomness or Node API under `src`; #130), `datapack:pack/transport-equivalence` (rows shaped as PostgREST and as `to_jsonb` return them, keys in another order and `1.50` for `1.5`, give the same bytes and `pack_id`) and `datapack:pack/environment` (the golden pack's bytes in child processes under three process time zones; #134); `fnb datapack` (#137): `jobs:unit/datapack` (the build inside one snapshot as the member, `--check` and `--against` with `identical_apart_from_generated_at`), `jobs:unit/datapack-files`; `e2e:live/datapack` (the browser's pack equal to a Node build of the same login apart from `generated_at`, same `pack_id`, #142; since `8c1b490` the browser's download and the pack of `fnb datapack` for the same owner and request identical apart from `generated_at`, as `--check --against` reports; a publisher refused with exit 1; #144's browser half, run by CI's `e2e` job); planned: the gated integration suite of #144 | partial |
+| FR-EXP-09 | Built by a data role | Must | built | `pgtap:08_publisher_role`, `pgtap:17_analytics_access` (publisher reads nothing), `pgtap:40_pack_functions` (`pack_fence`; #132); `jobs:unit/datapack` (`fnb datapack` builds as an owner, manager, staff or viewer login and refuses a publisher and a non-member, exit 1; #137), `web:pages/exports/pack-tab` and `e2e:live/datapack` (staff and viewers get the explanation, the publisher nothing; #142) | covered |
+| FR-EXP-10 | Verification state in the pack | Must | built | `datapack:pack/tables/provenance` (a store-day without a matched check counted in the `stores` table's `unmatched_days`, with `verified` false), `datapack:pack/gaps` (`unreconciled_days` and `stale_aggregates` per store, each exactly when its condition holds; #134); `web:datapack/browser-pack` and `e2e:demo/datapack` (the pack tab lists each gap, high impact first, with the settings page that fixes it; #142) | covered |
 
 #### FR-STR — Strategy plans
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| FR-STR-01 | Paste a plan | Must | in build | the plan checks the box will run (#135): `datapack:plan/normalize` (the pasted text normalised as it will be stored), `datapack:plan/lint-codes`, `datapack:plan/plan-record` (a clean plan turned into the arguments of `publish_strategy_plan` with the source `pasted`; a sample pack refused); the paste box (#143) and Kế hoạch are planned | partial |
-| FR-STR-02 | Strategy prompt in the pack | Must | designed | planned | planned |
+| FR-STR-01 | Paste a plan | Must | in build | the plan checks the box will run (#135): `datapack:plan/normalize` (the pasted text normalised as it will be stored), `datapack:plan/lint-codes`, `datapack:plan/plan-record` (a clean plan turned into the arguments of `publish_strategy_plan` with the source `pasted`; a sample pack refused); `datapack:plan/fixtures` (the shared plan fixtures the box will paste; #136); the paste box (#143, `8c1b490`): `web:pages/plans/paste-page`, `e2e:demo/plans` (a pasted plan linted on the device against its pack; saving waits for phase 11b); Kế hoạch is planned | partial |
+| FR-STR-02 | Strategy prompt in the pack | Must | in build | the prompt inside the pack (#131): `datapack:pack/prompt` (versioned `fnb-strategy` 1.0.0 pinned by SHA-256 per language; no product, tool, slash command or tool-call syntax), `datapack:pack/build` (every pack carries the prompt in its language), `datapack:pack/bundle`; the `/strategy` runs in the owner's own assistant are the owner check OC-13 (phase 11b) | partial |
 | FR-STR-03 | Publish a plan | Must | designed | planned (database rules verified: `pgtap:08_publisher_role`) | planned |
-| FR-STR-04 | Plan validation | Must | in build | the client half (#135): `datapack:plan/lint-codes` (a plan without section 7 refused with `section_missing:7`, an unknown KPI id with `kpi_unknown:net_sales` at the line of its key; one fixture per lint code), `datapack:plan/lint-browser` (the same results under jsdom), `datapack:plan/sections`, `datapack:plan/front-matter`; the database's validation (phase 11b, #170) is planned | partial |
-| FR-STR-05 | Cite-a-number check | Must | in build | `datapack:plan/citations` (an initiative counts as cited only when a written number matches the numeric cell it cites: `initiative_uncited`, `citation_unknown`, `citation_mismatch`), `datapack:plan/numbers` (the number grammar in Vietnamese and English), `datapack:plan/uncited-numbers`, `datapack:plan/lint-codes` (#135) | covered |
+| FR-STR-04 | Plan validation | Must | in build | the client half (#135): `datapack:plan/lint-codes` (a plan without section 7 refused with `section_missing:7`, an unknown KPI id with `kpi_unknown:net_sales` at the line of its key; one fixture per lint code), `datapack:plan/lint-browser` (the same results under jsdom), `datapack:plan/sections`, `datapack:plan/front-matter`, `datapack:plan/fixtures` (`missing-section.md` and `unknown-kpi.md` from the sample plan of the golden pack give exactly `section_missing:7` and `kpi_unknown:net_sales`; #136); `jobs:unit/publish-plan-check` (`fnb publish-plan --check`, offline, exit 3 on lint errors; #138, `8c1b490`), `web:pages/plans/paste-page` (each issue's message in both languages; #143); the database's validation (phase 11b, #170) is planned | partial |
+| FR-STR-05 | Cite-a-number check | Must | in build | `datapack:plan/citations` (an initiative counts as cited only when a written number matches the numeric cell it cites: `initiative_uncited`, `citation_unknown`, `citation_mismatch`), `datapack:plan/numbers` (the number grammar in Vietnamese and English), `datapack:plan/uncited-numbers`, `datapack:plan/lint-codes` (#135); `datapack:plan/sample-plan` (the sample plan of demo packs on 30 days in a row, in both languages, with every initiative cited and no uncited number; #136), `datapack:pack/prompt` (the prompt states the rule, and its example lints with no issue; #131) | covered |
 | FR-STR-06 | Kế hoạch tab | Must | designed | planned | planned |
 | FR-STR-07 | KPI follow-up | Must | designed | planned | planned |
 | FR-STR-08 | Plan storage rights | Must | verified locally | `pgtap:05_write_policies`, `pgtap:07_write_scope_and_attribution`, `pgtap:08_publisher_role` | covered |
@@ -1115,21 +1183,21 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 | FR-NOT-01 | Destinations | Must | verified locally | `pgtap:26_notify_schema` | covered |
 | FR-NOT-02 | Channel kinds | Must | verified locally | `pgtap:26_notify_schema`, `notify:unit/channels/secrets` | covered |
 | FR-NOT-03 | Credentials by reference | Must | verified locally | `pgtap:26_notify_schema`, `pgtap:31_notify_access`, `notify:unit/channels/secrets` | covered |
-| FR-NOT-04 | Rule catalogue | Must | verified locally | `pgtap:26_notify_schema` | covered |
+| FR-NOT-04 | Rule catalogue | Must | built | `pgtap:26_notify_schema` (the 15 rules of 12a verified locally; the 16th counted since #207), `pgtap:45_zalo_events` (`zalo_webhook_unverified`: its threshold range and its alert at the eleventh unverified call of a day; #207) | covered |
 | FR-NOT-05 | Rule overrides by owners | Must | verified locally | `pgtap:26_notify_schema`, `pgtap:31_notify_access` | covered |
 | FR-NOT-06 | Channel policies | Must | verified locally | `pgtap:26_notify_schema`, `pgtap:27_notify_policy` | covered |
 | FR-NOT-07 | One outbox | Must | verified locally | `pgtap:26_notify_schema`, `pgtap:28_notify_outbox` | covered |
 | FR-NOT-08 | Send decision at claim time | Must | verified locally | `pgtap:27_notify_policy`, `notify:integration/dispatch` | covered |
 | FR-NOT-09 | Caps | Must | verified locally | `pgtap:27_notify_policy`, `notify:integration/dispatch` | covered |
-| FR-NOT-10 | Member consent before messages | Must | verified locally | `pgtap:12_consent_and_legal`, `pgtap:28_notify_outbox`, `pgtap:31_notify_access`, `notify:unit/links` | covered |
-| FR-NOT-11 | Link a Zalo Bot chat | Must | verified locally | `jobs:integration/notify-cli`, `jobs:unit/notify`, `pgtap:28_notify_outbox` | covered |
+| FR-NOT-10 | Member consent before messages | Must | verified locally | `pgtap:12_consent_and_legal`, `pgtap:28_notify_outbox`, `pgtap:31_notify_access`, `notify:unit/links`; `functions:bot-webhook/integration` ("ĐỒNG Ý" through the webhook records the consent, built; #207) | covered |
+| FR-NOT-11 | Link a Zalo Bot chat | Must | verified locally | `jobs:integration/notify-cli`, `jobs:unit/notify`, `pgtap:28_notify_outbox`; `functions:bot-webhook/handler` and `functions:bot-webhook/integration` (a link code completed through the webhook, built; #207) | covered |
 | FR-NOT-12 | Link a login e-mail | Must | in build | `jobs:integration/notify-cli`, `pgtap:28_notify_outbox` | covered |
 | FR-NOT-13 | Zalo Bot channel | Must | verified locally | `notify:unit/channels/zalo-bot`, `notify:unit/channels/timed-fetch`, `notify:integration/dispatch` | covered |
 | FR-NOT-14 | E-mail channel | Must | in build | `notify:unit/channels/brevo` | covered |
 | FR-NOT-15 | Resend, Telegram and webhook | Could | planned | planned | planned |
 | FR-NOT-16 | Test message | Must | verified locally | `jobs:integration/notify-cli` | covered |
 | FR-NOT-17 | Notification status | Should | verified locally | `jobs:integration/notify-cli`, `jobs:unit/notify` | covered |
-| FR-NOT-18 | Unlink and withdraw | Must | in build | `jobs:integration/notify-cli`, `pgtap:26_notify_schema` | covered |
+| FR-NOT-18 | Unlink and withdraw | Must | in build | `jobs:integration/notify-cli`, `pgtap:26_notify_schema`; `pgtap:45_zalo_events` and `functions:bot-webhook/handler` (a "DỪNG" reply in a linked chat withdraws the consent, cancels the waiting messages, disables every destination of the member and is confirmed once; #207) | covered |
 | FR-NOT-19 | Digest equals Ngày | Must | in build | `notify:unit/digest/model`, `notify:live/digest-equals-ngay`, `notify:integration/digests-and-alerts` | partial |
 | FR-NOT-20 | When the digest goes out | Must | in build | `pgtap:30_notify_digests`, `notify:integration/digests-and-alerts` | covered |
 | FR-NOT-21 | Digest command and schedule | Must | in build | `jobs:unit/digest-and-alerts`, `pgtap:30_notify_digests` | covered |
@@ -1146,7 +1214,7 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 | FR-NOT-32 | Digest corrections | Should | planned | `notify:unit/digest/model` (fingerprint); correction planned | partial |
 | FR-NOT-33 | Cảnh báo settings and Bản tin panel | Must | designed | planned | planned |
 | FR-NOT-34 | Message content | Must | in build | `notify:unit/render/digest`, `notify:unit/render/templates`, `notify:unit/render/format`, `notify:unit/render/alert` | covered |
-| FR-NOT-35 | Zalo OA and group channels | Should | planned | planned | planned |
+| FR-NOT-35 | Zalo OA and group channels | Should | in build | `functions:bot-webhook/handler` and `functions:bot-webhook/integration` (the Bot's updates through a webhook: link codes, "ĐỒNG Ý" and "DỪNG"), `pgtap:45_zalo_events` (a Zalo Bot in webhook mode with polling refused; the rule `zalo_webhook_unverified`; #207); the `zalo_oa` and `zalo_gmf` channels and an OA test message are planned | partial |
 | FR-NOT-36 | Staff alert rules | Should | planned | planned | planned |
 | FR-NOT-37 | Free channels first | Must | planned | planned | planned |
 | FR-NOT-38 | Activity monitors | Should | planned | planned | planned |
@@ -1159,10 +1227,10 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| FR-OPS-01 | Continuous integration | Must | verified locally | `.github/workflows/ci.yml`, verification commands in `docs/status.md` | partial |
+| FR-OPS-01 | Continuous integration | Must | verified locally | `.github/workflows/ci.yml`, verification commands in `docs/status.md`, the `code` job's Deno loop over every Edge Function and the `mini-apps` job (#204, #208) | partial |
 | FR-OPS-02 | Migrations by workflow | Must | waits for owner | `.github/workflows/migrate.yml`; owner run | owner check |
 | FR-OPS-03 | Web deploy | Must | built | `.github/workflows/deploy-web.yml`, `e2e:pages/install` | partial |
-| FR-OPS-04 | Edge Function deploy | Must | waits for owner | `.github/workflows/deploy-functions.yml`, `node scripts/function-imports.mjs --check` | owner check |
+| FR-OPS-04 | Edge Function deploy | Must | waits for owner | `.github/workflows/deploy-functions.yml`, `node scripts/function-imports.mjs --check`, `node scripts/function-imports.mjs --affected` (only the functions a change affects are deployed, and a failed one does not stop the others; #204) | owner check |
 | FR-OPS-05 | Encrypted weekly backups | Must | waits for owner | `.github/workflows/backup.yml`; owner run | owner check |
 | FR-OPS-06 | Guard against a linked reset | Must | planned | planned (no guard in the repository; request R-Q01) | planned |
 | FR-OPS-07 | Restore drill | Must | planned | planned | planned |
@@ -1206,20 +1274,20 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| FR-STF-01 | Brand configuration | Must | planned | planned | planned |
-| FR-STF-02 | Mini App session | Must | planned | planned | planned |
-| FR-STF-03 | Phone-number token | Must | planned | planned | planned |
-| FR-STF-04 | OA webhook | Must | planned | planned | planned |
+| FR-STF-01 | Brand configuration | Must | built | `pgtap:42_zalo_config` (the six configuration tables per tenant, a second brand added as rows, secret columns that take only `ZALO_` names and refuse a value, Mini App titles by Zalo's rules; #203), `scripts/check-public-safe.mjs`, `jobs:unit/zalo-config` (flags and file parsing, a value refused where a secret name belongs, numbered output in CI) and `jobs:integration/zalo-cli` (a brand set from a file twice changes nothing, a conflicting run refused, a second synthetic brand from flags with no source change; #205) | covered |
+| FR-STF-02 | Mini App session | Must | in build | `functions:zalo-session/handler` (every refusal code, bound and unpaired answers, a session minted for the bound login), `zalo:unit/proof` (the app-secret proof against known HMAC vectors), `zalo:unit/backend` (the session minted through `generate_link` and `verify`), `zalo:integration/session` (binding with a code and a real session that the Data API scopes to the member's stores, a second sign-in without a code), `pgtap:44_zalo_identity` (the access-token hook's `memberships` claim, binding codes, identities; #205); the Development build on the owner's phone waits for owner (#210) | partial |
+| FR-STF-03 | Phone-number token | Must | in build | `functions:zalo-phone/handler` (the exchange, 409 for a used token, 422 for a refused one, 502 when the Graph does not answer), `zalo:unit/graph` (the international phone form), `zalo:integration/session` (a number decoded once for the caller's session and the second use refused; #205); the real error codes and an expired token on a real phone wait for #210 | partial |
+| FR-STF-04 | OA webhook | Must | in build | `functions:oa-webhook/handler` (200 within the deadline and the store after it, 401 in enforce mode, an unrouted OA, the follow-up), `functions:oa-webhook/signature` (SHA-256 of the app id, body, timestamp and OA secret over the raw and the compact body, a missing or malformed header, the event id), `functions:oa-webhook/integration` (events stored, de-duplicated, refused and followed up on the local stack), `pgtap:45_zalo_events` (observe and enforce, interactions and unfollows, the day counts; #207); an OA test message on the owner's accounts waits for #210 | partial |
 | FR-STF-05 | Token jobs | Must | planned | planned | planned |
-| FR-STF-06 | CORS and API domain | Must | planned | planned | planned |
-| FR-STF-07 | Mini App builds per tenant | Must | planned | planned | planned |
-| FR-STF-08 | Phone-consent probe | Should | planned | planned | planned |
+| FR-STF-06 | CORS and API domain | Must | in build | `functions:_shared/cors` (both Mini App origins reflected, a foreign origin and none answered without a CORS header, the preflight, `Vary: Origin`; #204) | partial |
+| FR-STF-07 | Mini App builds per tenant | Must | built | CI `mini-apps` job (both apps built for two synthetic brands from their `app-config.json`, `app-config --compare`), `zalo-mini:unit/app-config`, `zalo-mini:unit/vite-plugin` (ECharts refused), `zalo-mini:unit/budget`, `pgtap:42_zalo_config` (the staff app never browsable, the customer app browsable; #203, #208) | covered |
+| FR-STF-08 | Phone-consent probe | Should | in build | `functions:zalo-phone/handler` (the probe mode records consent, exchange and error code, never the number; #205), `zalo-customer:probe/probe` (the probe screen of Development builds only; #208); the probe on a real phone and its recorded result wait for owner (#210) | partial |
 | FR-STF-09 | Staff roster | Must | planned | planned | planned |
 | FR-STF-10 | Pairing | Must | planned | planned | planned |
 | FR-STF-11 | Onboarding and refusal | Must | planned | planned | planned |
 | FR-STF-12 | Operations RLS | Must | planned | planned | planned |
 | FR-STF-13 | Role-scoped home | Must | planned | planned | planned |
-| FR-STF-14 | No outbound links | Must | planned | planned | planned |
+| FR-STF-14 | No outbound links | Must | in build | `zalo-staff:e2e/session`, `zalo-customer:e2e/session` (`checkMiniAppScreen`: no outbound link and no external-open SDK call on the first screens; #208) | partial |
 | FR-STF-15 | Checklists | Must | planned | planned | planned |
 | FR-STF-16 | Cash count at close | Must | planned | planned | planned |
 | FR-STF-17 | Handover and incidents | Should | planned | planned | planned |
@@ -1279,7 +1347,7 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 | FR-POR-09 | Deploy-your-own guides | Must | planned | planned | planned |
 | FR-POR-10 | Base path by configuration | Must | verified locally | `e2e:pages/install`, `web:shell/install-assets` | covered |
 | FR-POR-11 | Scheduler and host by choice | Should | built | `runner:unit/incremental-run`, `jobs:unit/incremental-checks` | partial |
-| FR-POR-12 | Brands by configuration | Should | planned | planned | planned |
+| FR-POR-12 | Brands by configuration | Should | in build | CI `mini-apps` job (a second synthetic brand built from configuration only, its files differing only in configured fields), `pgtap:42_zalo_config` (a second brand added as rows; #203, #208); `jobs:integration/zalo-cli` (a second synthetic brand added from flags with no source change; #205) | partial |
 
 ### 9.4 Non-functional requirements
 
@@ -1287,39 +1355,39 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-SEC-01 | RLS on every table | Must | verified locally | `pgtap:03_rls_enabled` (56 tables) | partial |
+| NFR-SEC-01 | RLS on every table | Must | verified locally | `pgtap:03_rls_enabled` (56 tables in phase 10b, 64 since #203, 65 since #207) | partial |
 | NFR-SEC-02 | Only the publishable key in the browser | Must | verified locally | `apps/web/scripts/check-bundle.mjs` | covered |
-| NFR-SEC-03 | Credentials outside the database | Must | verified locally | `pgtap:06_anon_and_tokens`, `pgtap:19_sale_payloads`, `pgtap:26_notify_schema` | covered |
+| NFR-SEC-03 | Credentials outside the database | Must | verified locally | `pgtap:06_anon_and_tokens`, `pgtap:19_sale_payloads`, `pgtap:26_notify_schema`, `pgtap:42_zalo_config` (the Zalo configuration names secrets only, and `zalo_tokens` has no policy and no privilege for an API role; #203) | covered |
 | NFR-SEC-04 | Single-use tickets for scheduled calls | Must | verified locally | `pgtap:20_incremental_schedule` | covered |
 | NFR-SEC-05 | TLS to the database | Must | built | `sync:unit/postgres-client` (the rule; the Edge Function applies it); the CLI refusal is open (requests R-AS06, R-T02) | partial |
-| NFR-SEC-06 | Redaction | Must | verified locally | `sync:unit/helpers`, `sync:unit/run-bookkeeping`, `runner:unit/notifier` | covered |
-| NFR-SEC-07 | Masking on GitHub Actions | Must | in build | `jobs:unit/config`, `jobs:unit/cli` (the POS entries, `IPOS_APP_KEY`, the secret key and the database URL, verified locally since phase 5); `jobs:unit/digest-and-alerts` (the `NOTIFY_*` credentials and the fallback targets, step 12b, in build) | covered |
-| NFR-SEC-08 | Secrets only on the steps that need them | Must | built | review of the two workflow files | partial |
+| NFR-SEC-06 | Redaction | Must | verified locally | `sync:unit/helpers`, `sync:unit/run-bookkeeping`, `runner:unit/notifier`, `functions:_shared/http` (every log line of a Zalo function passes the redactor, and a missing secret is answered without its name; #204); `functions:zalo-session/handler`, `functions:zalo-phone/handler` and `zalo:integration/session` (no token, Zalo user id, code, e-mail or phone number in a log line; #205) | covered |
+| NFR-SEC-07 | Masking on GitHub Actions | Must | in build | `jobs:unit/config`, `jobs:unit/cli` (the POS entries, `IPOS_APP_KEY`, the secret key and the database URL, verified locally since phase 5); `jobs:unit/digest-and-alerts` (the `NOTIFY_*` credentials and the fallback targets, step 12b, in build); `jobs:unit/datapack` (`fnb datapack` masks the credentials before any other output on GitHub Actions; #137) | covered |
+| NFR-SEC-08 | Secrets only on the steps that need them | Must | built | review of the two workflow files, review of `deploy-functions.yml` and `deploy-mini-apps.yml` (secrets on the configuration check, the `fnb` steps and the deploy only; #204, #208) | partial |
 | NFR-SEC-09 | Hardened database functions | Must | built | `pgtap:06_anon_and_tokens`, `pgtap:23_report_access`, `pgtap:31_notify_access` (grants); `pgtap:13_analytics_schema`, `pgtap:18_metric_value`, `pgtap:19_sale_payloads`, `pgtap:22_report_functions` (definer and `search_path` of their own functions); a read-only catalogue query and `supabase db advisors` on 2026-11-12; no pgTAP audit covers every function yet (request R-T01), `pgtap:34_theme_access`, `pgtap:38_settings_writes`, `pgtap:37_shift_and_quality_functions` (the data-quality functions' signatures and settings), `pgtap:40_pack_functions` (security invoker, empty search path, grants; #132) | partial |
 | NFR-SEC-10 | No reliance on HTTP security headers | Should | built | ADR-023, `apps/web/scripts/check-bundle.mjs` | partial |
 | NFR-SEC-11 | SMTP and SSL on the cloud project | Must | waits for owner | owner check | owner check |
 | NFR-SEC-12 | Key rotation | Must | planned | planned | planned |
-| NFR-SEC-13 | Signed inbound calls | Must | planned | planned | planned |
-| NFR-SEC-14 | Refused in CI | Must | in build | `jobs:unit/cli`, `jobs:unit/notify` (verified locally); `jobs:unit/digest-and-alerts` (`digest --show-text`, step 12b, in build) | covered |
+| NFR-SEC-13 | Signed inbound calls | Must | in build | `functions:oa-webhook/signature` (the OA signature over the raw and the compact body, missing and malformed headers, the hex comparison), `functions:oa-webhook/handler` (401 and nothing stored in enforce mode), `pgtap:45_zalo_events` (observe stores with the outcome, enforce refuses and counts, `zalo_webhook_unverified` at the eleventh unverified call of a day), `functions:bot-webhook/handler` (the Bot's secret token checked by its SHA-256 before the body is read; #207); failing closed on real events waits for the device check (#210); the voucher callback is planned (phase 16b) | partial |
+| NFR-SEC-14 | Refused in CI | Must | in build | `jobs:unit/cli`, `jobs:unit/notify` (verified locally); `jobs:unit/digest-and-alerts` (`digest --show-text`, step 12b, in build); `jobs:unit/datapack` (`datapack --list-stores`, which prints store names and ids, refused in CI; #137, built) | covered |
 | NFR-SEC-15 | New key scheme | Should | built | `docs/secrets.md`, `apps/jobs/src/config/config.ts` | partial |
 
 #### NFR-PRV — Privacy
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-PRV-01 | Counts-only output | Must | verified locally | `jobs:unit/account-numbers`, `jobs:unit/cli`, `runner:unit/incremental-run`, `runner:unit/notifier`, `notify:unit/outbox`, `reports:live/theme-live-check` (booleans, counts and durations only), `reports:live/theme-live-check` (booleans, counts and durations only, stores by position; #166) | covered |
-| NFR-PRV-02 | Opaque recipients, count-only facts | Must | verified locally | `pgtap:26_notify_schema`, `pgtap:29_notify_alerts` | covered |
+| NFR-PRV-01 | Counts-only output | Must | verified locally | `jobs:unit/account-numbers`, `jobs:unit/cli`, `runner:unit/incremental-run`, `runner:unit/notifier`, `notify:unit/outbox`, `reports:live/theme-live-check` (booleans, counts and durations only), `reports:live/theme-live-check` (booleans, counts and durations only, stores by position; #166); `jobs:unit/datapack` (`fnb datapack` in CI: stores by label, files by base name, the member by role, pack ids as 8-character prefixes, no amount; #137, built) | covered |
+| NFR-PRV-02 | Opaque recipients, count-only facts | Must | verified locally | `pgtap:26_notify_schema`, `pgtap:29_notify_alerts`; `pgtap:45_zalo_events` (the webhook alert's facts count-only; the stop confirmation logged with the recipient `channel:<id>` and no text; #207) | covered |
 | NFR-PRV-03 | Message content retention | Must | verified locally | `pgtap:28_notify_outbox` | covered |
 | NFR-PRV-04 | Former members redacted | Must | verified locally | `pgtap:28_notify_outbox` | covered |
-| NFR-PRV-05 | No third-party tracking | Must | verified locally | `e2e:demo/report-day`, `e2e:demo/report-year`, `apps/web/index.html`, `e2e:demo/theme-khuyen-mai` (#191) | partial |
+| NFR-PRV-05 | No third-party tracking | Must | verified locally | `e2e:demo/report-day`, `e2e:demo/report-year`, `apps/web/index.html`, `e2e:demo/theme-khuyen-mai` (#191); `e2e:demo/datapack` (opening the page and building the demo's sample pack send no request outside the origin; #142) | partial |
 | NFR-PRV-06 | Customer data for data roles only | Must | verified locally | `pgtap:04_tenant_isolation`, `pgtap:06_anon_and_tokens`, `pgtap:08_publisher_role`, `pgtap:39_theme_access_b` (customer and consent counts of `data_quality_summary` for data roles only), `reports:unit/themes/quality/customers` (customer cells are counts only; #158), `web:exports/columns`, `web:exports/reader` and `web:exports/run` (personal columns and the shift name neither requested nor written unless "Kèm thông tin cá nhân" is ticked for that export; #140), `web:pages/exports/exports-page` (the box offered only to an owner or a manager with every store in scope; #141), `e2e:live/exports` (no personal data by default, a store-limited manager without the box) | covered |
-| NFR-PRV-07 | Minimal Zalo-derived data | Must | planned | planned | planned |
+| NFR-PRV-07 | Minimal Zalo-derived data | Must | built | `pgtap:42_zalo_config` (`zalo_identities` holds only the per-app user id, the display name and the Auth user link; no Zalo table has a phone, avatar, location, address, e-mail, birth date or gender column; #203); `pgtap:44_zalo_identity` (an identity keeps only its per-app id and display name; a display name with control characters is ignored; #205), `functions:zalo-phone/handler` (the phone number returned to the caller, never stored or logged), `pgtap:45_zalo_events` (`oa_events` holds no text; #207) | covered |
 
 #### NFR-PERF — Performance
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-PERF-01 | Initial bundle | Must | verified locally | `apps/web/scripts/check-size.mjs`, `web:test/lazy-chunks` | covered |
+| NFR-PERF-01 | Initial bundle | Must | verified locally | `apps/web/scripts/check-size.mjs`, `web:test/lazy-chunks`; the pack builder in a lazy chunk of 26.7 kB with the initial JavaScript at 330.3 kB (#142, `web:test/lazy-chunks`) | covered |
 | NFR-PERF-02 | Lighthouse performance | Must | verified locally | Lighthouse recipe in `apps/web/README.md` | partial |
 | NFR-PERF-03 | Largest contentful paint recorded | Should | built | Lighthouse recipe in `apps/web/README.md` | partial |
 | NFR-PERF-04 | Report query time | Must | verified locally | phase 8 and 9 measurements (`docs/schema.md`); `reports:live/theme-live-check` check 1 (theme budgets); the 10b promotion and shift functions timed warm on the local tenant within their budgets (#150); the data-quality functions within their budgets (#156), `reports:live/theme-live-check` check 1 and `reports:unit/themes/live-checks` (each of the eight theme pages at its default and longest range timed alone after the queue is idle, every planned function timed, the 10b call budgets of the build spec, the page's 600 ms and any call's 1,500 ms; #166) | covered |
@@ -1327,7 +1395,7 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 | NFR-PERF-06 | Slow phones | Should | verified locally | `e2e:pages/report-year-performance` | covered |
 | NFR-PERF-07 | Incremental run within the Free plan | Must | verified locally | `sync:unit/run-guard`, `runner:unit/budget` | partial |
 | NFR-PERF-08 | Notification cycle budgets | Must | verified locally | `notify:unit/dispatch/cycle` | covered |
-| NFR-PERF-09 | Mini App budgets | Must | planned | planned | planned |
+| NFR-PERF-09 | Mini App budgets | Must | in build | `zalo-mini:unit/budget`, `packages/zalo-mini/scripts/check-budget.mjs` in CI's `mini-apps` job, `zalo-staff:e2e/budget`, `zalo-customer:e2e/budget` (LCP under 2.5 s and load under 1.5 s on a throttled phone in browser mode; #208) | partial |
 
 #### NFR-AVL — Availability and data freshness
 
@@ -1343,17 +1411,17 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
 | NFR-COST-01 | Free tiers during build and pilot | Must | built | `docs/go-live.md`, `docs/secrets.md` | partial |
-| NFR-COST-02 | No paid AI API | Must | built | `docs/secrets.md`; review | partial |
+| NFR-COST-02 | No paid AI API | Must | built | `docs/secrets.md`; review; `datapack:pack/prompt` (the strategy prompt names no assistant, vendor or tool; #131) | partial |
 | NFR-COST-03 | Database size | Must | verified locally | phase 7 verification, `fnb doctor` | covered |
 | NFR-COST-04 | Upgrade trigger | Must | verified locally | `jobs:unit/doctor` | covered |
-| NFR-COST-05 | Function invocations | Should | built | `pgtap:20_incremental_schedule` (store selection) | partial |
+| NFR-COST-05 | Function invocations | Should | built | `pgtap:20_incremental_schedule` (store selection); `functions:oa-webhook/handler` and `functions:bot-webhook/handler` (one invocation per Zalo event, the follow-up inside it after the answer; #207) | partial |
 | NFR-COST-06 | Egress budget | Should | built | `.github/workflows/backup.yml` (the encrypted archive's size in the job summary, read after go-live: OC-09), `web:exports/estimate` (call A's counts × the bytes per row against the Free plan's 5 GB, the question above 100 MB, the device's monthly tally surviving a refused `localStorage`), `web:exports/reader` (the bytes received, measured per page), `web:pages/exports/export-tab` (the estimate and the MB received on screen; #140, #141) | partial |
 
 #### NFR-A11Y — Accessibility
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/settings-phan-loai` (the Nhóm của món and Loại thanh toán tabs at 360 and 1280 px; #160), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-so-sanh` (#193), `e2e:demo/settings-ngay-le` (Ngày lễ and both slots at 360 and 1280 px, light and dark; #106), `e2e:demo/theme-ca-ket-tien` (the cashier card at 360 and 1280 px, light and dark; #192), `e2e:demo/theme-chat-luong` (#158), `e2e:demo/theme-khuyen-mai` (the rule cards and the lucky-draw warning at 360 and 1280 px, light and dark; #153), `e2e:demo/settings-phap-ly` (#164), `e2e:live/settings-roles` (every settings page read-only at 360 and 1280 px on the live stack, as staff, the viewer and the other logins where they cannot write; #165) | covered |
+| NFR-A11Y-01 | No serious axe violations | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-day`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/settings-phan-loai` (the Nhóm của món and Loại thanh toán tabs at 360 and 1280 px; #160), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-so-sanh` (#193), `e2e:demo/settings-ngay-le` (Ngày lễ and both slots at 360 and 1280 px, light and dark; #106), `e2e:demo/theme-ca-ket-tien` (the cashier card at 360 and 1280 px, light and dark; #192), `e2e:demo/theme-chat-luong` (#158), `e2e:demo/theme-khuyen-mai` (the rule cards and the lucky-draw warning at 360 and 1280 px, light and dark; #153), `e2e:demo/settings-phap-ly` (#164), `e2e:live/settings-roles` (every settings page read-only at 360 and 1280 px on the live stack, as staff, the viewer and the other logins where they cannot write; #165), `zalo-staff:e2e/session` and `zalo-customer:e2e/session` (`checkMiniAppScreen` at 360 px, light and dark; 1280 px does not apply to a Mini App; #208); `e2e:demo/datapack` (the pack tab, its result and the manual-copy dialog at 360 and 1280 px; #142) | covered |
 | NFR-A11Y-02 | Lighthouse accessibility | Must | verified locally | Lighthouse recipe in `apps/web/README.md` | covered |
 | NFR-A11Y-03 | Contrast | Must | verified locally | `apps/web/e2e/support/checks.ts`, `design-tokens:tokens` | covered |
 | NFR-A11Y-04 | Charts have tables | Must | verified locally | `web:components/report-card/report-card`, `e2e:demo/theme-so-sanh` (#193) | covered |
@@ -1363,7 +1431,7 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-I18N-01 | Vietnamese first, English second | Must | verified locally | `web:i18n/i18n`, `web:i18n/report-keys`, `web:i18n/theme-keys`, `web:i18n/wording-sheets`, `e2e:live/today`, `e2e:demo/demo`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-chat-luong` (#158), `e2e:demo/settings-phap-ly` (#164) | covered |
+| NFR-I18N-01 | Vietnamese first, English second | Must | verified locally | `web:i18n/i18n`, `web:i18n/report-keys`, `web:i18n/theme-keys`, `web:i18n/wording-sheets`, `e2e:live/today`, `e2e:demo/demo`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-chat-luong` (#158), `e2e:demo/settings-phap-ly` (#164); `e2e:demo/datapack` (the pack tab in English without raw keys, building an English pack; #142) | covered |
 | NFR-I18N-02 | Formatting by locale and currency | Must | verified locally | `web:lib/format`, `notify:unit/render/format`, `web:settings/number-text`, `web:settings/forms/money-field`, `web:lib/csv`, `web:settings/manual/costs` and `costs-tab` (whole đồng, fractions refused and never rounded, `12.000 ₫`, `30,0%`, dd/MM/yyyy) and `e2e:demo/settings-gia-von` (the numeric keyboard and `50.000`; #161), `web:settings/manual/cost-import` (whole đồng, fractions refused and never rounded, dd/MM/yyyy; #162), `web:settings/manual/targets-tab` and `web:settings/fees/fees-tab` (`1,1%`, `1.000 ₫`, Tháng 11/2026; #163) | covered |
 | NFR-I18N-03 | Registry spelling | Should | verified locally | `web:i18n/i18n` | covered |
 | NFR-I18N-04 | Notification language | Should | in build | `notify:unit/render/templates` | covered |
@@ -1374,22 +1442,22 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-so-sanh` (#193), `e2e:demo/theme-chat-luong` and `web:components/report-card` (long text wraps in wide cards; #158) | covered |
+| NFR-UX-01 | Phone first | Must | verified locally | `apps/web/e2e/support/checks.ts`, `e2e:demo/demo`, `e2e:demo/report-month`, `web:components/report-card/table-scroller`, `web:settings/forms/save-bar`, `e2e:demo/settings-bao-cao`, `e2e:demo/settings-phan-loai`, `e2e:demo/settings-cua-hang` (#159), `e2e:demo/theme-ca-ket-tien` (#155), `e2e:demo/theme-khuyen-mai` (#191), `e2e:demo/theme-so-sanh` (#193), `e2e:demo/theme-chat-luong` and `web:components/report-card` (long text wraps in wide cards; #158); `e2e:demo/datapack` (the pack tab at 360 px, controls of at least 44 px; #142) | covered |
 | NFR-UX-02 | Layout on phones and desktops | Should | built | `e2e:demo/demo` (360 px) | partial |
 | NFR-UX-03 | Installable | Should | verified locally | `e2e:demo/demo`, `e2e:pages/install`, `web:shell/install-assets` | covered |
 | NFR-UX-04 | New version prompt | Should | built | no automated test | partial |
-| NFR-UX-05 | Demo always labelled | Must | verified locally | `e2e:demo/demo`, `web:settings/demo-settings-source` and `web:settings/manual/demo-manual-source` (the demo's settings writes stay in the session's store; #105) | covered |
+| NFR-UX-05 | Demo always labelled | Must | verified locally | `e2e:demo/demo`, `web:settings/demo-settings-source` and `web:settings/manual/demo-manual-source` (the demo's settings writes stay in the session's store; #105); `e2e:demo/datapack` (the demo's pack summary reads "dữ liệu mẫu"; #142) | covered |
 | NFR-UX-06 | Plain states instead of zeros | Must | verified locally | `e2e:demo/report-day`, `e2e:demo/report-month`, `web:settings/catch-up/catch-up-banner`, `web:pages/settings/settings-layout`, the So sánh card tests (no sales, no common day, no complete week, stores about even; #193), the Chất lượng dữ liệu card tests' no-data cases (#158) | covered |
-| NFR-UX-07 | Mini App design rules | Must | planned | planned | planned |
+| NFR-UX-07 | Mini App design rules | Must | in build | `zalo-staff:e2e/session`, `zalo-customer:e2e/session` (`checkMiniAppScreen`: at most 4 bottom tabs, every target at least 44 × 44 CSS px), `zalo-mini:unit/shell` (#208) | partial |
 
 #### NFR-MNT — Maintainability
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-MNT-01 | Typed code | Must | verified locally | CI `code` job, `reports:unit/themes/contract`, `web:settings/supabase-settings-source` (every read parsed by its zod row schema; #105), `datapack:pack/schema` and `datapack:plan/front-matter` (the pack and plan types read from strict zod schemas, from which the JSON Schema files are generated; #130, #135) | covered |
+| NFR-MNT-01 | Typed code | Must | verified locally | CI `code` job, `reports:unit/themes/contract`, `web:settings/supabase-settings-source` (every read parsed by its zod row schema; #105), `datapack:pack/schema` and `datapack:plan/front-matter` (the pack and plan types read from strict zod schemas, from which the JSON Schema files are generated; #130, #135), the `code` job's `deno check` of every Edge Function and the Deno tests of the shared helpers (#204) | covered |
 | NFR-MNT-02 | Lint and format | Must | verified locally | CI `code` job | covered |
 | NFR-MNT-03 | Tests at every layer | Must | verified locally | `pnpm test`, `pnpm exec supabase test db`, `pnpm --filter @fnb/web test:e2e`, `e2e:live/settings-fixture` builds and removes its own tenant (#103) | covered |
-| NFR-MNT-04 | Consistency checks | Must | verified locally | `metrics:consistency/document`, `metrics:consistency/metric-value`, `web:i18n/report-keys`, `web:test/lazy-chunks`, `node scripts/function-imports.mjs --check`, `demo-analytics:parity/*`, `design-tokens:generated`, `web:test/no-raw-colours`, `pnpm docs:check-openapi`, `reports:unit/themes/contract` (argument types), `demo-analytics:unit/report-source` (a handler and a read plan for every function), `demo-analytics:parity/discount-rows` (#151), the promotion ports' parity files (#190), the catalogue, compliance and discount-day parity files (#152), the shift-adjustments parity file (#154), the data-quality parity files (#157), `demo-analytics:unit/report-source` (a handler and a read plan for the phase 11 functions; #133) | covered |
+| NFR-MNT-04 | Consistency checks | Must | verified locally | `metrics:consistency/document`, `metrics:consistency/metric-value`, `web:i18n/report-keys`, `web:test/lazy-chunks`, `node scripts/function-imports.mjs --check`, `demo-analytics:parity/*`, `design-tokens:generated`, `web:test/no-raw-colours`, `pnpm docs:check-openapi`, `reports:unit/themes/contract` (argument types), `demo-analytics:unit/report-source` (a handler and a read plan for every function), `demo-analytics:parity/discount-rows` (#151), the promotion ports' parity files (#190), the catalogue, compliance and discount-day parity files (#152), the shift-adjustments parity file (#154), the data-quality parity files (#157), `demo-analytics:unit/report-source` (a handler and a read plan for the phase 11 functions; #133), `node scripts/function-imports.mjs --check` over the import map of every function and of `_shared` (#204), `zalo-staff:i18n/catalog` and `zalo-customer:i18n/catalog` (the Mini Apps' key parity; #208) | covered |
 | NFR-MNT-05 | No code comments | Should | built | review | partial |
 | NFR-MNT-06 | Schema drift checks | Should | planned | planned (request R-F03) | planned |
 | NFR-MNT-07 | Canonical column-name lint | Should | planned | planned (request R-F03) | planned |
@@ -1403,26 +1471,26 @@ Of the 269 requirements that are verified locally, built, in build or waiting fo
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
 | NFR-OBS-01 | Job summaries | Must | built | `.github/workflows/*.yml`, `jobs:unit/account-numbers` | partial |
-| NFR-OBS-02 | Logs in our own tables | Must | verified locally | `pgtap:01_schema`, `pgtap:20_incremental_schedule`, `pgtap:28_notify_outbox` | covered |
+| NFR-OBS-02 | Logs in our own tables | Must | verified locally | `pgtap:01_schema`, `pgtap:20_incremental_schedule`, `pgtap:28_notify_outbox`; `pgtap:45_zalo_events` (`oa_events` kept 90 days by the housekeeping, the day counts kept in `app.oa_event_days`; #207) | covered |
 | NFR-OBS-03 | Notification observability | Should | verified locally | `pgtap:28_notify_outbox`, `jobs:integration/notify-cli` | covered |
-| NFR-OBS-04 | Browser errors fail tests | Should | verified locally | `apps/web/e2e/support/reports.ts`, `e2e:demo/theme-ca-ket-tien` and `e2e:demo/theme-thanh-toan` (every test ends on the console check; #155), `e2e:demo/theme-khuyen-mai` (#191) | covered |
+| NFR-OBS-04 | Browser errors fail tests | Should | verified locally | `apps/web/e2e/support/reports.ts`, `e2e:demo/theme-ca-ket-tien` and `e2e:demo/theme-thanh-toan` (every test ends on the console check; #155), `e2e:demo/theme-khuyen-mai` (#191), `zalo-staff:e2e/session` and `zalo-customer:e2e/session` (a console or page error fails `checkMiniAppScreen`; #208) | covered |
 
 #### NFR-HYG — Public-repository hygiene
 
 | ID | Requirement | Priority | Status | Verified by today | Coverage |
 |---|---|---|---|---|---|
-| NFR-HYG-01 | No identifiers in the repository | Must | verified locally | `scripts/check-public-safe.mjs`, CI `secrets` job, the settings fixture's synthetic tenant, `example.com` logins and clean scan (`e2e:live/settings-fixture`, #103) | covered |
+| NFR-HYG-01 | No identifiers in the repository | Must | verified locally | `scripts/check-public-safe.mjs`, CI `secrets` job, the settings fixture's synthetic tenant, `example.com` logins and clean scan (`e2e:live/settings-fixture`, #103), `zalo-mini:unit/app-config` (the Mini Apps' CI configuration holds no Mini App id; #208); `datapack:pack/prompt` (the prompts, the golden pack and the package's file names scanned against `docs/private/identifiers.txt`, naming only file and line; skipped in CI; #131) | covered |
 | NFR-HYG-02 | Secret scan over the history | Must | built | CI `secrets` job (`.gitleaks.toml`) | partial |
-| NFR-HYG-03 | Private material ignored | Must | verified locally | `.gitignore` | covered |
-| NFR-HYG-04 | Synthetic fixtures only | Must | verified locally | `scripts/check-public-safe.mjs`, `reports:unit/themes/reference-sheet` (a synthetic reference sheet), the settings fixture's tenant, items and logins are synthetic (`example.com`, #103); the compliance cases rewrite generated sales for parity only (#151); the pack and plan fixtures of `packages/datapack/test` are synthetic, with made-up store UUIDs or `MOCK-S<n>` ids and invented items and figures (#130, #135), and so is the export fixture shared with `pgtap:41_export_totals` (#139) | covered |
-| NFR-HYG-05 | Neutral keys and numbered output | Must | verified locally | `jobs:unit/account-numbers`, `jobs:unit/cli` | covered |
+| NFR-HYG-03 | Private material ignored | Must | verified locally | `.gitignore`; `jobs:unit/datapack-files` (`fnb datapack` writes inside the repository only below `docs/private/` where git ignores the path, real paths resolved; #137, built) | covered |
+| NFR-HYG-04 | Synthetic fixtures only | Must | verified locally | `scripts/check-public-safe.mjs`, `reports:unit/themes/reference-sheet` (a synthetic reference sheet), the settings fixture's tenant, items and logins are synthetic (`example.com`, #103); the compliance cases rewrite generated sales for parity only (#151); the pack and plan fixtures of `packages/datapack/test` are synthetic, with made-up store UUIDs or `MOCK-S<n>` ids and invented items and figures (#130, #135), and so is the export fixture shared with `pgtap:41_export_totals` (#139); the Zalo pgTAP fixtures (`zalo-it-pgtap-…` tenants, synthetic secret names) and the Mini Apps' two synthetic brands of `packages/zalo-mini/config/synthetic-brands.json` (#203, #208); the Zalo integration suites use `zalo-it-` fixture tenants, `ZALO_…_IT_` secret names with `synthetic-` values and a mock Zalo on 127.0.0.1, behind a synthetic-environment guard (`zalo:unit/testing-guard`; #205, #207); the mini pack and the plan fixtures of `packages/datapack/test/fixtures/plans` (#136) | covered |
+| NFR-HYG-05 | Neutral keys and numbered output | Must | verified locally | `jobs:unit/account-numbers`, `jobs:unit/cli`; `jobs:unit/datapack` (stores by label and output numbered in CI; #137, built) | covered |
 | NFR-HYG-06 | Preflight log lint | Could | planned | planned (masking covers the risk today, NFR-SEC-07; request R-F03) | planned |
 
 ### 9.5 Requirements without coverage
 
 Each requirement below has no test yet. They are grouped by the phase that builds them; the planned test is the test design this plan commits to. Phases 10 and 11 follow their roadmap acceptance lines, because their detailed design is pending; Tracks B, C and D are at roadmap level.
 
-106 requirements in 6 groups.
+90 requirements in 6 groups.
 
 #### Open items of phases 1 to 9 (5)
 
@@ -1435,12 +1503,10 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | NFR-HYG-06 | Preflight log lint | P1 | A preflight check that fails a job printing a structured secret; masking at job start covers the risk today (request R-F03). |
 
 
-#### Phase 11: exports, data pack, strategy plans (7)
+#### Phase 11: exports, data pack, strategy plans (5)
 
 | ID | Requirement | Phase | Planned test |
 |---|---|---|---|
-| FR-EXP-07 | Download and copy buttons | P11a | A Playwright test that the downloaded file and the copied text equal the built pack. |
-| FR-STR-02 | Strategy prompt in the pack | P11b | Owner check: two `/strategy` runs end to end in the owner's own assistant (OC-13); the public-safety scan and a dependency review find no API key or client. |
 | FR-STR-03 | Publish a plan | P11b | An integration test that `fnb publish-plan` inserts as the publisher and reads neither the manager's login nor the secret key; `pgtap:08_publisher_role` already holds the database rule. |
 | FR-STR-06 | Kế hoạch tab | P11b | A Playwright spec for the list, the Markdown detail, the KPI table and the comparison of two plans, with axe and 360 px. |
 | FR-STR-07 | KPI follow-up | P11b | A live test that each KPI's current value equals `metric_value` for the plan's stores and period. |
@@ -1458,29 +1524,20 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-NOT-42 | Notification operations commands | P12 (12c) | Step 12c: CLI tests that `notify resend` creates one new row pointing at the original, that `notify check` turns red when no dispatcher ran within its schedule, and that `notify setup` records the web address. |
 | FR-OPS-12 | Notification go-live step | P12 (12c) | Owner check after step 12c writes go-live step 8: the owner follows it and receives a test message (`fnb notify test` exits 0) (OC-08). |
 
-#### Track B: phases 13 to 15 (32)
+#### Track B: phases 13 to 15 (18)
 
 | ID | Requirement | Phase | Planned test |
 |---|---|---|---|
-| FR-NOT-35 | Zalo OA and group channels | P13 | Integration tests against a mock OA API and a live OA test message delivered under its policy. |
 | FR-NOT-36 | Staff alert rules | P15 | pgTAP and integration tests: each staff rule fires on a synthetic case and reaches the staff destination. |
 | FR-NOT-37 | Free channels first | P15 | An integration test that a closed window falls back to the Bot without a paid message; owner check that the digest reaches the group and the Bot chat three nights running; the follow-only probe recorded. |
 | FR-NOT-38 | Activity monitors | P15 | pgTAP: each activity monitor fires on a synthetic case. |
 | FR-CMP-18 | Staff notice and consent | P14a | pgTAP: pairing is refused without a `staff_ops` consent. |
-| FR-STF-01 | Brand configuration | P13 | pgTAP on the brand configuration tables (RLS, no secret column) and the public-safety scan finding no Zalo identifier. |
-| FR-STF-02 | Mini App session | P13 | Deno tests of `zalo-session` with a stubbed Zalo graph; a device check that a Development build gets a session with the right claims on the owner's phone. |
-| FR-STF-03 | Phone-number token | P13 | A Deno test: a token inside its 2-minute life decodes, an expired one is refused. |
-| FR-STF-04 | OA webhook | P13 | Deno tests of the signature check in observe and fail-closed modes and of the answer within 2 seconds; a live OA test message verified and logged. |
 | FR-STF-05 | Token jobs | P13 | pgTAP or unit tests of the single-row refresh lock; two automatic refreshes and one developer-token rotation observed on the real accounts. |
-| FR-STF-06 | CORS and API domain | P13 | An integration check of the CORS answer for `https://h5.zdn.vn` and a real-device check inside Zalo. |
-| FR-STF-07 | Mini App builds per tenant | P13 | CI builds one Mini App per brand from configuration; a check that no ECharts is bundled and that the browsable flags are right. |
-| FR-STF-08 | Phone-consent probe | P13 | The probe result recorded with a test user before phase 18a starts. |
 | FR-STF-09 | Staff roster | P14a | A Playwright test of the admin page: a manager adds and deactivates a staff member. |
 | FR-STF-10 | Pairing | P14a | A Mini App test in browser mode with a mocked Zalo SDK (code valid 10 minutes; an unpaired user sees only onboarding) and pgTAP on the pairing function. |
 | FR-STF-11 | Onboarding and refusal | P14a | A Mini App test: refusing leaves a usable screen with the contact instructions. |
 | FR-STF-12 | Operations RLS | P14a | A pgTAP RLS suite for the operations tables: no cross-store or cross-role read. |
 | FR-STF-13 | Role-scoped home | P14a | A Mini App test: a manager sees revenue cards; staff see only what the owner allows. |
-| FR-STF-14 | No outbound links | P14a, P18a | A link scan of every Mini App screen that finds no outbound link. |
 | FR-STF-15 | Checklists | P14b | An integration test that a checklist item changed in the dashboard appears in the app without a redeploy; a unit test of the photo resize. |
 | FR-STF-16 | Cash count at close | P14b | An integration test that a deliberate 50,000 ₫ variance alerts the manager within one sync cycle. |
 | FR-STF-17 | Handover and incidents | P14b | A Mini App test: a report is acknowledged and appears in the incident log. |
@@ -1489,11 +1546,6 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-STF-20 | Approval queue | P15 | A Mini App and pgTAP test: a request is approved or refused from the queue and the requester sees the result. |
 | FR-STF-21 | First review and permissions | P15 | Owner check in the Zalo console: the review passed and the approved permissions are confirmed there. |
 | FR-STF-22 | Internal publish | P15 | A device check: the app cannot be found by search and opens from the QR. |
-| FR-POR-12 | Brands by configuration | P13 | CI builds a second brand's Mini App from configuration only. |
-| NFR-SEC-13 | Signed inbound calls | P13, P16b | Deno tests: an unsigned or wrongly signed OA event is refused after the observe period; the voucher callback refuses a wrong path, a replayed transaction id and an amount out of range. |
-| NFR-PRV-07 | Minimal Zalo-derived data | P13 | pgTAP on the Zalo-derived columns (Zalo id, display name, phone only) and a schema review. |
-| NFR-PERF-09 | Mini App budgets | P13, P18a | A CI budget check that fails a Mini App build over any budget, and the simulator gates for LCP and page load. |
-| NFR-UX-07 | Mini App design rules | P14a | A design review of every screen at the first Testing submission, and Mini App tests in browser mode for the tab count and touch-target sizes. |
 
 #### Track C: phases 16 to 19 (42)
 
@@ -1563,7 +1615,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 
 ### 9.6 Partial coverage
 
-55 requirements are partly covered. Each row says what the tests do not show yet and which test closes the gap.
+64 requirements are partly covered. Each row says what the tests do not show yet and which test closes the gap.
 
 | ID | Requirement | Status | What is missing | Planned test |
 |---|---|---|---|---|
@@ -1581,12 +1633,10 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-SET-10 | Legal texts | built | The screens: pgTAP holds drafts, frozen published texts, publication and retirement and one published version per kind and language. The sources of #105 are tested by `web:settings/manual/supabase-manual-source` and `web:settings/manual/demo-manual-source` (drafts inserted or patched, publication and retirement through the two functions, frozen texts), `e2e:live/settings-manual` (#105). The page (#164) is tested by its unit tests, `e2e:demo/settings-phap-ly` and `e2e:live/settings-manual`; `e2e:live/settings-roles` (#165) shows it read-only to staff, the viewer and both managers and refuses their drafts, edits, publications and retirements. The acceptance says managers publish too, while the database and the page let only owners with an unlimited scope do it. | The owner's decision whether managers may publish (R-FX09), then the write table and the page following it. |
 | FR-SET-11 | Settings writes tested from the browser | built | `e2e:live/settings-roles` (#165) attempts all 27 settings writes as the owner, both managers, staff, the viewer and `anon` through supabase-js and PostgREST on the fixture tenant, each saved or refused as the write table says, and shows every settings page, tab and scope in the browser with write controls exactly where the database saves; `web:settings/access` holds the access rules. The owner's saves through the pages themselves on the live stack are tested for Cửa hàng, Ngày lễ, the three Dữ liệu nhập tay tabs, Pháp lý, Nhóm của món and Loại thanh toán; Ngưỡng báo cáo and the Vai trò tab save in the browser on the demo only. The 10b verification (#168) has not run. | A live save of Ngưỡng báo cáo and of the Vai trò tab as the owner on the fixture tenant; the spec rerun in the 10b verification (#168). |
 | FR-EXP-01 | Browser export | built | The engine, the screen and `e2e:live/exports` on a fixture tenant show a month's files verified against `export_control_totals`, with the BOM and strict UTF-8 (passed on the local stack on 2026-11-18); the comparison on real data and the opening in Excel are not done. | The 11a-1 acceptance on the real tenant (#195): the export compared with `psql` counts and `app.fingerprint`, printing booleans only; owner check OC-04 in Excel (#196). |
-| FR-EXP-03 | Data pack builder | in build | Packs built from the demo engine through the builder with a stand-in prompt validate for every horizon, in both languages, with and without a focus and an owner note, and the golden demo pack is reproduced byte for byte (#134). `buildDataPack` itself answers `not_implemented` until the prompt exists (#131); the seeded stack's pack was built and compared across transports in a one-off run, not by a committed test. | The golden pack regenerated with prompt 1.0.0 and `buildDataPack` validating for every focus and horizon (#131); the live pack spec on the seeded stack and the byte identity in CI (#144); the 11a-2 acceptance (#145). |
-| FR-EXP-04 | Versioned schema and size budget | in build | The schema files, the estimate and the trimming ladder are unit-tested on fixture packs, and the golden demo pack of two stores fits with 21,225 estimated tokens and nothing trimmed (#134). With the stand-in prompt a pack of ten stores still ends in `pack_over_budget` after the whole ladder, and the prompt of #131 adds its text to every pack. | The estimate of packs with prompt 1.0.0 for one, two and ten stores against the budget (#131), and a counts-only check on the real tenant (#145). |
-| FR-EXP-06 | Prompt templates | in build | The KPI front matter and the check that every KPI id exists in the registry are tested; the prompt templates do not exist. | A unit test that every section of the strategy prompt is present in both languages and that its KPI ids exist in the registry (#131). |
-| FR-EXP-08 | Same pack from the CLI | in build | The canonical text, `pack_id` and the comparison of two pack texts are unit-tested; rows shaped as PostgREST and as `to_jsonb` return them give the same pack, and so do three process time zones (#134); `fnb datapack` does not exist. | An integration test in CI that the browser pack and the `fnb datapack` pack for the same inputs are identical apart from `generated_at` (#137, #144). |
-| FR-EXP-09 | Built by a data role | designed | The database already gives the publisher no aggregate; the pack builder does not exist. | An integration test that a pack built from a publisher session is refused or empty (11a). |
-| FR-STR-01 | Paste a plan | in build | The normalisation, the lint and the record of a pasted plan are unit-tested; the paste box and Kế hoạch do not exist. | A live Playwright test that a pasted plan appears in Kế hoạch with the source `pasted` (#143, phase 11b). |
+| FR-EXP-04 | Versioned schema and size budget | built | The schema files, the estimate and the trimming ladder are unit-tested; with prompt 1.0.0 the golden demo pack of two stores fits with 24,968 estimated tokens, one to three stores fit untrimmed and four after trimming (#131). A pack of more than seven or eight stores of the demo's size still ends in `pack_over_budget`, and no test measures a pack of the real tenant. | A counts-only check of the real tenant's pack against the budget in the 11a-2 acceptance (#145). |
+| FR-EXP-08 | Same pack from the CLI | in build | The canonical text, `pack_id` and the comparison of two pack texts are unit-tested, and so are two transports and three process time zones (#134). `fnb datapack` builds inside one snapshot as a member (#137), and the live spec shows the browser's pack equal to a Node build of the same login apart from `generated_at` (#142) and, since `8c1b490`, equal to the pack of `fnb datapack` for the same owner and request as `--check --against` reports, in CI's `e2e` job too (#144's browser half). | The gated integration suite of #144 and its CI step, then the 11a-2 acceptance (#145). |
+| FR-STR-01 | Paste a plan | in build | The normalisation, the lint and the record of a pasted plan are unit-tested, and the plan fixtures exist (#136); the paste box and Kế hoạch do not exist. | A live Playwright test that a pasted plan appears in Kế hoạch with the source `pasted` (#143, phase 11b). |
+| FR-STR-02 | Strategy prompt in the pack | in build | Prompt 1.0.0 ships inside every pack in the pack's language, pinned by its SHA-256, names no assistant or tool, and its example lints with no issue (#131); nothing runs it in an assistant yet. | Owner check: two `/strategy` runs end to end in the owner's own assistant (OC-13, phase 11b); the public-safety scan and a dependency review find no API key or client. |
 | FR-STR-04 | Plan validation | in build | The client lint refuses both cases, with `section_missing:7` and `kpi_unknown:net_sales`; the database does not validate a plan yet. | pgTAP tests that the SQL validators agree with the lint on the structural codes (phase 11b, #170), and the paste box's messages (#143). |
 | FR-NOT-19 | Digest equals Ngày | in build | Acceptance A1 is shown locally (`--check-ngay`, the live check, the `three nights` scenario); the three real nights on the owner's phone wait for go-live. | Owner check OC-08 after go-live step 8. |
 | FR-NOT-25 | Runner notifications in the outbox | in build | The CLI path is tested; the Edge Function still reports to its log only. | Step 12c: a test that `sync-incremental` writes its notifications to the outbox. |
@@ -1597,19 +1647,29 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | FR-OPS-09 | Scheduled workflows kept active | built | The workflow exists but failed on its first scheduled run on 2026-11-09 (request R-P01). | After the fix, dispatch it once and confirm it is green; then check it weekly (operations calendar). |
 | FR-OPS-10 | Cron delay probes | built | The probes run; `scripts/cron-delay-report.mjs` misattributes late runs (request R-P03), so the measured delays come from the GitHub API ([operations.md](operations.md) section 2.3). | Re-run the report after its fix and compare it with section 2.3 of operations.md. |
 | FR-CMP-12 | Discount caps | in build | `core:unit/promotion-rules` and `reports:unit/themes/rules` hold the dated cap and day-limit rules and their helpers; pgTAP 36 checks `promotion_compliance` and `item_discount_days` against hand counts (#150), and their demo ports equal the SQL, the parity-only 60 % and gift cases included (#152). | pgTAP or unit tests that a promotion or coupon above the cap cannot be saved and that the discount-day count per item equals a hand count (phase 18b); the cards of #153 show the cap, vouchers apart and the discount days. |
+| FR-NOT-35 | Zalo OA and group channels | in build | `bot-webhook` receives a Zalo Bot's updates and the rule `zalo_webhook_unverified` exists, tested in Deno and pgTAP against fakes (#207); the `zalo_oa` and `zalo_gmf` channels are not built, no command sets the Bot's webhook, and no OA message has been sent. | The `zalo_oa` and `zalo_gmf` channel tests with a mock OA API, and a live OA test message delivered under its policy (#209, #210). |
+| FR-STF-02 | Mini App session | in build | `zalo-session`, the binding codes and the access-token hook are tested in Deno, pgTAP and an integration suite against the local stack and a mock Zalo (#205); no real Zalo App or phone has been used. | The device check: a Development build gets a session with the right claims on the owner's phone (#210). |
+| FR-STF-03 | Phone-number token | in build | `zalo-phone` is tested against the mock Graph, where 119 means a used token and the expiry is the mock's (#205); the real error codes are unconfirmed. | The exchange on a real phone, a token used twice and one used after two minutes (#210). |
+| FR-STF-04 | OA webhook | in build | `oa-webhook` is tested in Deno, in its integration suite and in pgTAP with fake events signed as the documents describe (#207); the bytes Zalo really signs, the menu-tap event names and the 2-second answer on the cloud are unproven. | A live OA test message verified and logged in observe mode, then the switch to `enforce` (#210). |
+| FR-STF-08 | Phone-consent probe | in build | The probe screen (Development builds) and `zalo-phone`'s probe mode exist and are tested (#205, #208); no probe has run with a test user. | The probe result recorded with a test user before phase 18a starts (#210). |
+| FR-STF-06 | CORS and API domain | in build | The shared CORS answer is tested on its own, and `zalo-session` and `zalo-phone` are built on it (#205); the API domain is not declared, and neither the functions' answer nor the Data API's own CORS has been seen from inside Zalo. | The owner's real-phone check inside Zalo (#210). |
+| FR-STF-14 | No outbound links | in build | The scan runs on the two first screens; the in-app Privacy and Terms popups do not exist, and every later screen must pass the same check. | `checkMiniAppScreen` on every screen of phases 14a and 18a, with the popups. |
 | FR-POR-03 | Another POS | built | The conformance suite runs on the two built connectors; the third connector that proves the claim (CSV) does not exist. | FR-CON-17 and FR-POR-05 (20a). |
 | FR-POR-11 | Scheduler and host by choice | built | The same incremental run serves the Edge Function and the CLI; Actions as the incremental scheduler and Cloudflare Pages as the host are not exercised. | Exercise one alternative scheduler and host in the 20a portability proof. |
-| NFR-SEC-01 | RLS on every table | verified locally | `pgtap:03_rls_enabled` checks RLS on all 52 tables and the grants; no test asserts that no materialised view exists (none does on 2026-11-12, and `supabase db advisors` reports none). | An assertion in `03_rls_enabled.sql` that `pg_matviews` is empty in `public` and `app`, and `supabase db advisors --type security` in the verification (request R-T01). |
+| FR-POR-12 | Brands by configuration | in build | Two synthetic brands build from configuration only and the brand rows exist; the loyalty programme as configuration and a real second brand with its own OA and Zalo App are not built. | The loyalty configuration of Track C, and the second brand's builds once its rows exist (#210). |
+| NFR-SEC-01 | RLS on every table | verified locally | `pgtap:03_rls_enabled` checks RLS on all 65 tables and the grants; no test asserts that no materialised view exists (none does on 2026-11-12, and `supabase db advisors` reports none). | An assertion in `03_rls_enabled.sql` that `pg_matviews` is empty in `public` and `app`, and `supabase db advisors --type security` in the verification (request R-T01). |
 | NFR-SEC-05 | TLS to the database | built | The rule (`enforcedSsl`) is unit-tested and the Edge Function applies it; the CLI still connects to a remote host whose URL asks for `sslmode=disable`, `allow` or `prefer` (request R-AS06). | A CLI unit test that such a URL is refused, once the CLI applies the rule (request R-T02). |
-| NFR-SEC-08 | Secrets only on the steps that need them | built | Review of the workflow files only. | A workflow lint script that fails when a secret is set at job level or on a checkout, setup or install step of `sync.yml` and `notify.yml`. |
+| NFR-SEC-08 | Secrets only on the steps that need them | built | Review of the workflow files only. | A workflow lint script that fails when a secret is set at job level or on a checkout, setup or install step of `sync.yml`, `notify.yml`, `deploy-functions.yml` and `deploy-mini-apps.yml`. |
 | NFR-SEC-09 | Hardened database functions | built | Grants and the empty `search_path` are asserted for the report functions, `metric_value` and the payload functions; no test covers every function, and `supabase db advisors` reports one function without a pinned `search_path` (`app.data_roles`). | A pgTAP audit of `proconfig` for every function in `public` and `app`, with any documented exception, plus the advisors run in the verification (request R-T01). |
 | NFR-SEC-10 | No reliance on HTTP security headers | built | Covered through NFR-SEC-02 and the recorded limitation; a `meta` Content Security Policy is still being evaluated (request R-AS11). | If a `meta` policy is adopted, a Playwright check that the demo and a live build load without policy errors. |
+| NFR-SEC-13 | Signed inbound calls | in build | The OA signature check, observe and enforce, and the Bot's secret token are tested against fake events (#207); real events have not been checked, so every OA stays in `observe` mode, and the voucher callback is not built. | The first real OA events matching their signatures, then `enforce` (#210); the voucher callback's tests (phase 16b). |
 | NFR-SEC-15 | New key scheme | built | The secrets contract and `apps/jobs/src/config/config.ts` use the new names; no test covers the fallback order. | A `jobs:unit/config` case: the secret key wins, and the legacy key is read only when the secret key is empty. |
 | NFR-PRV-05 | No third-party tracking | verified locally | Requests outside the origin are tested on the demo; the live build and the `noindex` tag have no test. | A live Playwright check that requests go only to the origin and the configured Supabase URL, and a check that `index.html` carries the robots `noindex` tag. |
 | NFR-PERF-02 | Lighthouse performance | verified locally | 95 on the demo build with the recipe of `apps/web/README.md`; the live app is measured after go-live. | The same recipe against the live app after go-live (OC-10). |
 | NFR-PERF-03 | Largest contentful paint recorded | built | The largest contentful paint is reported with each run (2.3 s on the demo); no target is set. | The owner sets a target (requirements section 9.3); then the recipe compares each run with it. |
 | NFR-PERF-05 | Refresh time on production | waits for owner | `pgtap:14_analytics_refresh` asserts the demo range refreshes in under ten seconds locally; the production timing waits for the cloud project. | Time a refresh on the cloud project after go-live and record it in `docs/status.md` (OC-10). |
 | NFR-PERF-07 | Incremental run within the Free plan | verified locally | The guard is unit-tested and the runs fit locally; the cloud confirmation waits for go-live. | Read the run timings of the first cloud incremental runs (`sync_runs`) after go-live step 6 (OC-10). |
+| NFR-PERF-09 | Mini App budgets | in build | The sizes, ECharts and the paint budget are checked in CI in a browser with a mocked SDK; the Zalo runtime, the simulator gates and a mid-range phone are not measured. | The simulator gates and a mid-range Android phone at the first Testing submission (#232). |
 | NFR-COST-01 | Free tiers during build and pilot | built | Checked by review of `docs/go-live.md` and `docs/secrets.md`; usage is watched after go-live. | After go-live, the monthly usage review of the operations calendar. |
 | NFR-COST-02 | No paid AI API | built | Review: no assistant API client or key in the repository or the secrets contract. | A dependency review at each phase verdict. |
 | NFR-COST-05 | Function invocations | built | Store selection is tested; the invocation count is measured only after go-live. | Read the monthly invocation count in the Supabase usage page after go-live. |
@@ -1617,6 +1677,7 @@ Each requirement below has no test yet. They are grouped by the phase that build
 | NFR-I18N-06 | Currency-neutral amounts | built | Review of the migrations only. | A pgTAP assertion that every money column of `public` is `numeric(14,2)`. |
 | NFR-UX-02 | Layout on phones and desktops | built | The 360 px checks run on every page; the navigation placement and the summary button below 1024 px have no assertion. | Playwright assertions of the bottom bar at 360 px, the side rail at 1280 px and the folded controls below 1024 px. |
 | NFR-UX-04 | New version prompt | built | No automated test. | A web unit test that a changed `version.json` on window focus shows "Có phiên bản mới — tải lại". |
+| NFR-UX-07 | Mini App design rules | in build | The tab count and the 44 px targets are checked automatically on the first screens; one primary action per screen, loading feedback within 300 ms and result modals that close after 1.5 s have no test yet. | A design review of every screen at the first Testing submission, and browser-mode tests of the loading feedback and the result modals when phase 14a builds them. |
 | NFR-MNT-05 | No code comments | built | Review at each phase; builders and the verifier scan the added lines of changed files for comment markers. | An automated scan of changed files for comment markers in CI. |
 | NFR-MNT-10 | Documents follow the code | built | Only `docs/api.md` (`pnpm docs:check-api`, not in CI) and the two wording sheets (`web:i18n/wording-sheets`, in every unit run) have automated checks; every other document relies on the documentation pass of each phase and the correction requests of 2026-11-12. | The final integration pass checks every document against the code (plan WP-FP); `pnpm docs:check-api` runs in CI once request R-AP01 is applied. |
 | NFR-MNT-11 | POS details stay in their package | built | Review of package dependencies only. | An import-boundary check that fails when code outside the connector packages, the runner, the demo code and the notification test helpers imports a connector package. |
@@ -1679,7 +1740,7 @@ State: complete.
 | 2.2 | A member of tenant A reads zero rows of tenant B everywhere; `anon` reads nothing; a publisher reads zero invoices but can insert a plan | `pgtap:04_tenant_isolation`, `06_anon_and_tokens`, `08_publisher_role`, and for later tables `17_analytics_access`, `23_report_access`, `31_notify_access`; `e2e:live/auth` (a client with only the publishable key reads zero invoices) | CI, verifier | verified locally |
 | 2.3 | Re-upserting the same day changes nothing | `sync:unit/window-mock`, `sync:integration/postgres-repository`, `jobs:integration/local-stack` (a re-run writes nothing) | verifier | verified locally |
 | 2.4 | The business-date helper handles 23:59:59, 00:00:30 and a 05:00 day start | `core:unit/business-date`, `sync:unit/business-date` | CI | verified locally |
-| 2.5 | The database linter reports no exposed materialised view and no table without RLS | `pgtap:03_rls_enabled` (RLS on all 52 tables); `pnpm exec supabase db advisors --type security` | verifier | on 2026-11-12: no materialised view and no table without RLS; one warning on `app.data_roles` (request R-T01) |
+| 2.5 | The database linter reports no exposed materialised view and no table without RLS | `pgtap:03_rls_enabled` (RLS on every `public` table: 52 then, 65 on 2026-11-18); `pnpm exec supabase db advisors --type security` | verifier | on 2026-11-12: no materialised view and no table without RLS; one warning on `app.data_roles` (request R-T01) |
 | 2.6 | Lint passes | `pnpm lint` | CI | verified |
 
 The phase 2 deliverable "column-name lint" was not built (NFR-MNT-07, owner decision D4).

@@ -627,11 +627,42 @@ This page keeps the business's legal texts as numbered versions. A version that 
 
 ## Xuất dữ liệu (Exports)
 
-This page takes your sales data out of the app as files: the invoices, their lines, the payments, the shifts and the daily summary, month by month, in one ZIP file. Every file is checked against the database before you download it, so what you open in Excel or a script is exactly what the app holds. It was built on 2026-11-18 and checked on the build machine's test data; the check on real data and the owner's check in Excel are still to come. [exports.md](exports.md) describes the files and the check in full.
+This page has two tabs. **Gói dữ liệu cho AI** (AI data pack) builds one file of your stores' summary figures for your own AI assistant to write a business plan from; the next section explains it. **Xuất dữ liệu** (Export data) takes your sales data out of the app as files: the invoices, their lines, the payments, the shifts and the daily summary, month by month, in one ZIP file. Every exported file is checked against the database before you download it, so what you open in Excel or a script is exactly what the app holds. Both tabs were built on 2026-11-18; the exports were also checked on real data that day, and the owner's check in Excel is still to come. [exports.md](exports.md) describes the files and the check in full, [strategy.md](strategy.md) the data pack.
 
-- **Opening it.** The page has no item in the navigation yet. Add `#/xuat-du-lieu?tab=xuat` after the app's address, for example `http://localhost:5173/#/xuat-du-lieu?tab=xuat` on the local app. The page has two tabs: **Gói dữ liệu cho AI** (the AI data pack, which comes in the next step; for now the tab says so and links to the other one) and **Xuất dữ liệu**.
-- **Who can use it.** Owners and managers. Staff and viewers read "Chỉ chủ quán và quản lý xuất được dữ liệu." Every file holds only the rows you can already see in the app.
-- **In the demo** the tab says "Bản demo không có dữ liệu hóa đơn thật để xuất." and links to the pack tab. For the same reason this section has no screenshots yet: screenshots come from the demo, never from real data.
+- **Opening it.** The page has no item in the navigation yet. Add `#/xuat-du-lieu` after the app's address, for example `http://localhost:5173/#/xuat-du-lieu` on the local app: it opens on **Gói dữ liệu cho AI**. `#/xuat-du-lieu?tab=xuat` opens **Xuất dữ liệu** directly.
+- **Who can use it.** Owners and managers. Staff and viewers read "Chỉ chủ quán và quản lý xuất được dữ liệu." Every pack and every file holds only figures and rows you can already see in the app.
+- **In the demo** the pack tab builds a sample pack from the demo's numbers, and the export tab says "Bản demo không có dữ liệu hóa đơn thật để xuất." and links to the pack tab. This section has no screenshots yet.
+
+### Gói dữ liệu cho AI (AI data pack)
+
+The data pack is one file of summary figures for the stores you choose: weekly and monthly totals, the busy and quiet hours, the best-selling items, categories and sizes, items bought together, sugar and ice choices, the payment and discount mix, shifts by time of day, this month's pace, the coming holidays, and the KPIs of the last four weeks with their comparisons. It holds no invoice, no customer or staff name and no phone number. It also carries the instructions (the prompt) that ask an AI assistant to write a business plan from it in a fixed form, with every number it takes from the pack marked with where it came from, so the app can check the plan later. The app sends the pack nowhere: you download or copy it and give it to the assistant you use yourself.
+
+| Field | What to do |
+|---|---|
+| **Cửa hàng** | The stores chosen in the top bar, at most ten. To change them, choose again in the top bar. |
+| **Dữ liệu đến hết ngày** | The last day of figures in the pack. The last day with complete figures is chosen at first; an earlier day is allowed, a later one is not. |
+| **Kỳ kế hoạch** | How far ahead the plan looks: 30 ngày, 90 ngày (chosen at first), 6 tháng or 12 tháng. |
+| **Trọng tâm** | Optional, up to 280 characters: what the plan should put first. The four suggestions under it, such as "Tăng giá trị trung bình mỗi hóa đơn", fill it with one tap. |
+| **Ghi chú của chủ quán** | Optional, up to 1,000 characters: what the figures do not show, such as a renovation or new opening hours. This phone or computer remembers the note for your business. Do not write people's names or phone numbers: a focus or note that holds an e-mail address, a phone number or a long run of digits is refused. |
+| **Ngôn ngữ kế hoạch** | The language the plan is to be written in, Tiếng Việt or Tiếng Anh; the app's language at first. |
+
+1. Press **Tạo gói**. "Đang tạo gói 12/38" counts the figures read so far; **Dừng** stops at once, and no file is made.
+2. "Gói dữ liệu đã sẵn sàng" then shows the pack's size ("khoảng … / 30.000 token": the assistant's measure of text, and the pack always stays within 30,000), its id (**Mã gói**), the stores, the last day, the plan period and language, and the tables with their rows. If the pack had to be shortened to fit, a line lists what was left out, for example "bỏ bảng số hóa đơn theo giờ".
+3. If the pack cannot be built, a message says why and what to do, with an error code and **Thử lại**: choose fewer stores when the pack is too large, wait about a minute when a sync was running ("Số liệu thay đổi trong lúc tạo gói…"), or fix on the POS an item name that looks like a phone number.
+
+**Dữ liệu còn thiếu** (Missing data) lists what the plan would be better with, the most important first, each with its impact ("Mức ảnh hưởng: cao", "vừa" or "thấp"). Where you can fill a gap yourself, its line links to the settings page for it: opening hours and seat counts on Cài đặt › Cửa hàng, item-type roles on Cài đặt › Phân loại, item costs, payment fees and the monthly target on Cài đặt › Dữ liệu nhập tay. The other gaps only say how things stand: a new store with fewer than 28 days of figures, less than a year of history (so no comparison with last year), days not yet matched with the POS, figures still being refreshed, and what the app does not record yet, such as customers and staff hours. The pack tells the assistant about every gap, so the plan can allow for it; fill in what you can and build the pack again for a closer plan. "Gói không thiếu dữ liệu đầu vào nào." means nothing is missing.
+
+Taking the pack to your assistant, in the three steps the page lists:
+
+1. **Tải gói dữ liệu cho AI** downloads the file `goi-du-lieu_<day>_<stores>_<8 characters>.json`. Or press **Sao chép gói + prompt** to copy the instructions and the pack as one text ("Đã sao chép lời nhắc và gói dữ liệu…"). On a phone that can share files, **Chia sẻ** sends the file to another app.
+2. Open your AI assistant. Attach the file with its paperclip or + button and send it, or paste the copied text into the chat and send it. The file already holds the instructions, so nothing else needs to be typed.
+3. When the assistant has written the plan (ten sections, five to seven initiatives, KPIs with targets), copy its whole answer and paste it into **Dán kế hoạch** (`#/ke-hoach/dan`), then press **Kiểm tra**. The plan is checked on your phone or computer against the pack it names at its top: the app finds that pack among the packs kept here, or asks you to attach the pack file you downloaded. It lists every problem with its line, so you can send the list back to the assistant and paste its corrected answer. **Lưu kế hoạch** comes in a later step of the roadmap.
+
+- **When copying is not allowed.** Some browsers refuse to copy on their own. A box "Sao chép thủ công" then opens with the text already selected: on a computer press Ctrl+C (or ⌘+C), on a phone hold your finger on the text and choose Copy. **Tải văn bản này** downloads the same text as a file instead.
+- **https or this computer only.** The browser builds a pack only when the app is opened over https, or on the computer that runs it (`localhost`). Elsewhere the tab says "Trình duyệt chỉ tạo được gói dữ liệu khi ứng dụng mở qua https hoặc trên chính máy này (localhost)."
+- **On this phone or computer.** The app keeps your last five packs here for up to 14 days, so that a plan pasted back can be checked against its pack, and removes them when you sign out. The owner's note stays until you empty it.
+- **In the demo** the summary says "Nguồn số liệu: dữ liệu mẫu của bản demo" and "Gói mẫu chỉ để thử trợ lý: kế hoạch viết từ gói này không lưu được.": a sample pack is for trying out an assistant, and a plan written from it is never saved.
+- Whoever runs the system can build the same pack on their computer with `fnb datapack` ([strategy.md](strategy.md#8-building-and-checking-a-pack-from-the-command-line)).
 
 ### Choosing what to export
 
@@ -711,8 +742,9 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 ![The Kế hoạch page saying Sắp có and naming the roadmap phase that brings it](user-guide/coming-soon.png)
 
 - **The daily digest and alerts** (phase 12; the first part is verified locally, the second is being built). The digest ("Bản tin") is a short message in a Zalo Bot chat or by e-mail, built once every store has closed its day, or at a morning deadline (06:30 by default) if one has not: yesterday's Ngày numbers (net revenue, invoices, average ticket, payments, hours, top items), with a line when something looks off, such as revenue well below the usual level, a falling average ticket, a drawer variance, a day that did not reconcile or a day without sales. Alerts arrive on their own when the sync fails, a POS login stops working, the data goes stale or a scheduled job fails. By default the digest goes to owners and managers and the alerts about the sync and the jobs to the owner. Messages respect each channel's allowed hours. A settings page "Cài đặt → Cảnh báo" with a test button and a Bản tin panel in the app are designed; more channels come later.
+  - **Stopping the Zalo Bot messages.** Whoever runs the system links your Zalo chat to the Bot with a one-time code, and you accept by replying "ĐỒNG Ý". To stop, reply "DỪNG" in that chat (or "DUNG"; upper or lower case does not matter). The Bot then confirms once: "Đã dừng: bạn sẽ không nhận bản tin và cảnh báo qua Zalo này nữa. Muốn nhận lại, hãy nhờ chủ cửa hàng tạo mã liên kết mới." Your agreement to receive the messages is withdrawn, the messages still waiting for you are cancelled, and you stop receiving the digest and alerts everywhere, by e-mail too; to receive them again, ask the owner for a new link code. The reply is built and works once the Bot receives its messages through the new webhook (phase 13, not live yet).
 - **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Dữ liệu nhập tay (item costs, monthly targets and payment fees), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (your own days off), Ngưỡng báo cáo and Pháp lý (the legal texts) are open (see above). Target progress waits for a monthly target. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
-- **The AI data pack and plans** ("Gói dữ liệu cho AI" on Xuất dữ liệu, and "Kế hoạch", phase 11; the exports are open, see [Xuất dữ liệu](#xuất-dữ-liệu-exports)): a data pack of summary numbers, with no individual sale, for the owner's own assistant to turn into a store plan; and the plan pasted back into "Kế hoạch", where its KPIs are followed with live values.
+- **Saved plans** ("Kế hoạch", phase 11b; the data pack, the plan check of "Dán kế hoạch" and the exports are open, see [Xuất dữ liệu](#xuất-dữ-liệu-exports)): saving a checked plan and keeping it in "Kế hoạch", where its KPIs are followed with live values.
 - **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).
 
 ## Words you will see
@@ -749,5 +781,9 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 | Giá vốn, Áp dụng từ ngày | Item cost, Applies from | what one item sold costs you, and the first day that cost counts |
 | Tất cả cửa hàng, theo Tất cả cửa hàng | All stores, from All stores | a cost shared by every store, and a store using that shared cost because it has none of its own |
 | Xuất dữ liệu | Export data | take the sales data out as files, each checked against the database |
+| Gói dữ liệu cho AI | AI data pack | one file of summary figures with the instructions for your own AI assistant to write a business plan; no invoice or personal data |
+| Lời nhắc (prompt) | Instructions | the text inside the pack that tells the assistant how to write the plan |
+| Mã gói | Pack id | the pack's fingerprint: the same figures always give the same id, and a plan names the pack it was written from by it |
+
 | Kèm thông tin cá nhân | Include personal data | add the columns that name or reach a person to one export |
 | Đã đối chiếu với cơ sở dữ liệu: … — khớp | Checked against the database: … — matched | an exported month's files equal the database |

@@ -117,7 +117,7 @@ flowchart LR
     ownercli["fnb CLI on the owner's machine"]
     subgraph gha["GitHub Actions"]
         jobs["fnb CLI jobs<br/>sync.yml, notify.yml"]
-        ops["ci.yml, migrate.yml, backup.yml,<br/>deploy-web.yml, deploy-functions.yml"]
+        ops["ci.yml, migrate.yml, backup.yml,<br/>deploy-web.yml, deploy-functions.yml,<br/>deploy-mini-apps.yml"]
     end
     subgraph supa["Supabase"]
         auth["Auth<br/>e-mail and password, PKCE"]
@@ -148,14 +148,18 @@ flowchart LR
 | Container | Technology | Responsibilities | Connects as | Status |
 |---|---|---|---|---|
 | SPA (`apps/web`) | React 19, Vite 8, `createHashRouter`, supabase-js, TanStack Query, ECharts loaded lazily, Tailwind CSS | Login and password reset; Hôm nay from fact rows; Ngày, Tuần, Tháng, Năm and the thematic reports (`#/chu-de/*`) from the report functions; Settings (`#/cai-dat/*`: Ngưỡng báo cáo, Phân loại and the catch-up after a mapping change); demo mode; print and CSV in two formats | the signed-in member, through RLS; the bundle holds only the publishable key and the project URL | verified locally (phases 6 and 9); thematic reports and settings built (10a) |
-| Supabase Auth | Supabase Auth with PKCE and persisted sessions | E-mail and password logins; sign-ups disabled; members are created or invited by `fnb tenant add-member` | issues the JWT that PostgREST turns into role `authenticated` | verified locally; cloud settings wait for owner |
-| Data API (PostgREST) and RPC | PostgREST over `public` (`max_rows = 1000`) | Table reads under RLS; the report and settings functions through `supabase.rpc()` (35 that `authenticated` may execute, listed in [api.md](api.md)); owner and manager writes to the manual-input and settings tables | role `authenticated` (or `anon`, which may read and execute nothing) | verified locally |
+| Supabase Auth | Supabase Auth with PKCE and persisted sessions | E-mail and password logins; sign-ups disabled; members are created or invited by `fnb tenant add-member`; from #205 the access-token hook `app.custom_access_token_claims` adds the `memberships` claim to every token, and `zalo-session` mints Mini App sessions through the Auth admin API (ADR-037) | issues the JWT that PostgREST turns into role `authenticated`; runs the hook as `supabase_auth_admin` | verified locally; the hook built (#205), active on the local stack after a restart; cloud settings and the hook's registration wait for owner (#210) |
+| Data API (PostgREST) and RPC | PostgREST over `public` (`max_rows = 1000`) | Table reads under RLS; the report and settings functions through `supabase.rpc()` (52 that `authenticated` may execute, listed in [api.md](api.md)); owner and manager writes to the manual-input and settings tables; two RPCs of the Zalo sign-in for `service_role` only | role `authenticated` (or `anon`, which may read and execute nothing) | verified locally |
 | Postgres | PostgreSQL 17 with `pg_cron` 1.6.4, `pg_net` 0.20.4, `pgcrypto`, `supabase_vault` | The canonical model, payload documents, aggregates, report functions, legal ledgers, the notification outbox and rules, the incremental schedule | owner of every table is `postgres` | verified locally |
 | Edge Function `sync-incremental` | Supabase Edge Runtime (Deno 2), `verify_jwt = false` | Claims a single-use ticket, then runs the incremental sync of one store with `@fnb/runner` | `postgres` through the injected `SUPABASE_DB_URL` (or `FNB_DB_URL`), TLS for any non-local host | verified locally; deploy waits for owner |
 | Edge Function `notify` | Deno | Runs the notification cycle on single-use tickets, like the CLI | `postgres` | planned (12c) |
+| Shared code of the Zalo functions (`supabase/functions/_shared`) | Deno; `@fnb/sync` for the redactor | CORS for exactly the Mini App origins `https://h5.zdn.vn` and `zbrowser://h5.zdn.vn`, JSON answers and errors with a request id, bounded bodies, secrets read by name, redacted logs; `serveFunction` puts them around a handler ([api.md](api.md), section 5) | not applicable; the four Zalo functions below use it | built (#204) |
+| Edge Functions `zalo-session` and `zalo-phone` | Deno; `@fnb/zalo` for the Graph clients, the app-secret proof and the backend calls | `zalo-session` (`verify_jwt = false`): checks a Mini App's Zalo access token with the Graph and mints a session of the bound member's login; `zalo-phone` (`verify_jwt = true`): exchanges a phone-number token once for the number, or answers the consent probe ([api.md](api.md), section 5) | the injected secret key: two `service_role` RPCs and the Auth admin API | built against a mock of Zalo (#205); not deployed; the device check waits for owner (#210) |
+| Edge Functions `oa-webhook` and `bot-webhook` | Deno; `@fnb/sync` for the Postgres client, `@fnb/notify` for the Bot's updates | `oa-webhook`: checks the OA event's signature, stores the event without text and follows it up after a 200 within 1.5 seconds; `bot-webhook`: checks the Bot's secret token and completes links, acceptances and "DỪNG" after its 200 | `postgres` through the injected `SUPABASE_DB_URL` (or `FNB_DB_URL`), like `sync-incremental` | built against fake events (#207); not deployed; no command sets the Bot's webhook yet |
+| Staff and customer Mini Apps (`apps/zalo-staff`, `apps/zalo-customer`, sharing `@fnb/zalo-mini`) | zmp-ui on zmp-sdk, React 19, Vite 8 with the Mini App plugin, Tailwind CSS on the design tokens, memory routing; one build per brand from its `app-config.json` | The staff app's four tabs and sign-in states, the customer app's session check and its Development-only phone-consent probe; Native Storage only; in a browser with a mocked Zalo SDK and a stand-in session | exchange the Zalo access token for a Supabase session at `zalo-session`, whose answers the session client reads unchanged, and then read through RLS as `authenticated` (#205) | built as scaffolds (#208), tested in a browser; no Zalo build deployed; the real runtime waits for owner (#8) |
 | `pg_cron` and `pg_net` | Postgres extensions | Job `sync-incremental` every 30 minutes, created only by `app.enable_incremental_sync`; a notification schedule in 12c | jobs run as `postgres` | built; no job is scheduled until the owner enables it |
-| `fnb` CLI (`apps/jobs`) | Node 22 through tsx, postgres.js, supabase-js for the Auth admin API only | 16 commands: tenants, members, onboarding, sync windows and incremental runs, status, doctor, masking, digests, notifications ([sync.md](sync.md)) | `postgres` through `DATABASE_URL` locally or `SUPABASE_DB_URL` in CI; the secret key only for `tenant add-member` | verified locally (phases 5 and 7); `digest` and the 12b `notify` commands in build |
-| Actions jobs | GitHub-hosted Ubuntu runners | CI; nightly sync with digests, ticks and status; extra notification ticks; weekly encrypted backup; migrations; Pages and Edge Function deploys; keep-alive check; cron-delay probes | the secrets of each workflow ([secrets.md](secrets.md)) | CI built; the rest skip until their secrets exist |
+| `fnb` CLI (`apps/jobs`) | Node 22 through tsx, postgres.js, supabase-js for the Auth admin API only | 23 commands at `8c1b490` on 2026-11-18: tenants, members, onboarding, sync windows and incremental runs, the full history (`bootstrap`), the iPOS snapshot, status, doctor, masking, digests, notifications, the AI data pack, `publish-plan`, and the Zalo configuration and binding codes (`zalo config set`, `zalo config show`, `zalo bind`, #205) ([sync.md](sync.md)) | `postgres` through `DATABASE_URL` locally or `SUPABASE_DB_URL` in CI; the secret key only for `tenant add-member` | verified locally (phases 5 and 7); `digest` and the 12b `notify` commands in build |
+| Actions jobs | GitHub-hosted Ubuntu runners | CI; nightly sync with digests, ticks and status; extra notification ticks; weekly encrypted backup; migrations; Pages, Edge Function and Mini App deploys; keep-alive check; cron-delay probes | the secrets of each workflow ([secrets.md](secrets.md)) | CI built; the rest skip until their secrets exist |
 
 Supabase Storage, Realtime and Vault are installed with the platform but hold nothing of ours today: the schedule deliberately keeps no credential in Vault (ADR-028), and Storage is planned for staff photos (phase 14b).
 
@@ -300,7 +304,7 @@ Every POS detail stays inside its connector package. Connectors emit canonical r
 - Every row of a tenant carries `tenant_id`; store rows carry `store_id`; account rows carry `pos_account_id`. Composite foreign keys reference the pair (`tenant_id`, `store_id`) or (`tenant_id`, `pos_account_id`), so the database refuses a row that names tenant A with a store of tenant B, whoever writes it.
 - Access is a row in `tenant_members`: a login, a role (`owner`, `manager`, `staff`, `viewer`, `publisher`) and an optional store scope (`store_ids`, null for every store).
 - `owner`, `manager`, `staff` and `viewer` are the data roles. `publisher` sits outside them on purpose and reads no sale and no aggregate (ADR-013).
-- RLS is on for all 52 `public` tables, with 80 policies on 50 of them; the payload documents and the POS token cache have no policy and no grant, so no API role reaches them. `anon` holds no privilege on any table and may execute no function.
+- RLS is on for all 65 `public` tables, with 123 policies on 61 of them (2026-11-18); the payload documents, the POS and Zalo token caches and the OA webhook's event log `oa_events` have no policy and no grant, so no API role reaches them. `anon` holds no privilege on any table and may execute no function.
 - The policy helpers live in schema `app`, which the Data API does not expose; the membership helpers are `security definer` with an empty `search_path`, and policies call them as `(select app.helper())` so they run once per statement.
 - Default privileges make a future table read-only for `authenticated` and invisible to `anon` until a migration grants more.
 
@@ -336,7 +340,7 @@ The full backfill of both shops put the database at about 850 MB, two thirds of 
 
 ### 5.9 Notification data (phase 12)
 
-`outbound_messages`, the message log since phase 2, is now also the outbox: queue rows with a state machine enforced by a trigger and a dedupe key, kept at least one year (400 days by default). The alert catalogue holds 15 rules with tenant and store overrides in `alert_rules`; `channel_policies` holds 27 global send rules (one per channel kind and message class) with tenant overrides that CHECK constraints keep above the legal floor; `notification_channels` holds destinations that name an environment variable, never a credential; `alert_events` holds alert episodes and `digests` the daily digests. Every send decision is taken in SQL when a dispatcher claims a message. [schema.md](schema.md), "Notifications and alerts (phase 12)", is the reference.
+`outbound_messages`, the message log since phase 2, is now also the outbox: queue rows with a state machine enforced by a trigger and a dedupe key, kept at least one year (400 days by default). The alert catalogue holds 16 rules (the 16th, `zalo_webhook_unverified`, from #207) with tenant and store overrides in `alert_rules`; `channel_policies` holds 27 global send rules (one per channel kind and message class) with tenant overrides that CHECK constraints keep above the legal floor; `notification_channels` holds destinations that name an environment variable, never a credential; `alert_events` holds alert episodes and `digests` the daily digests. Every send decision is taken in SQL when a dispatcher claims a message. [schema.md](schema.md), "Notifications and alerts (phase 12)", is the reference.
 
 ### 5.10 Database inventory on 2026-11-12
 
@@ -526,11 +530,11 @@ flowchart LR
     class efn,listener,edgewire later
 ```
 
-Rules that fire today: `auth_failed`, `sync_failed`, `sync_stale`, `sync_dispatch_failed`, `job_failed`, `channel_failed`, `digest_failed`, and the five digest lines `revenue_below_baseline`, `ticket_drop`, `drawer_variance`, `unverified_day`, `zero_sales_day`. `zero_sales_open` and `nightly_missing` are in the catalogue and resolved by `app.reconcile_alerts`, but nothing raises them until step 12c. Episode facts and message parameters are count-only (`app.facts_are_count_only`), so no error text, name, address or URL reaches an alert.
+Rules that fire today: `auth_failed`, `sync_failed`, `sync_stale`, `sync_dispatch_failed`, `job_failed`, `channel_failed`, `digest_failed`, and the five digest lines `revenue_below_baseline`, `ticket_drop`, `drawer_variance`, `unverified_day`, `zero_sales_day`. `zero_sales_open` and `nightly_missing` are in the catalogue and resolved by `app.reconcile_alerts`, but nothing raises them until step 12c. Episode facts and message parameters are count-only (`app.facts_are_count_only`), so no error text, name, address or URL reaches an alert. Phase 13 adds two inbound paths (#207, built against fakes, not deployed): `oa-webhook` raises the sixteenth rule, `zalo_webhook_unverified`, when an OA's unsigned or wrongly signed calls of a day pass `max_per_day`, and `bot-webhook` can receive a Zalo Bot's updates instead of the poller once the bot is in webhook mode (`app.set_bot_webhook`; no command sets it yet), completing links and acceptances as the poller does and answering a member's "DỪNG" by withdrawing their consent, cancelling their waiting messages and confirming once.
 
 ### 6.5 Data pack and plan publishing (phase 11)
 
-Status: phase 11a in build, 11b designed. The diagram follows the roadmap (phases 11a and 11b) and ADR-003 and ADR-013. The pack and plan formats, with the lint that every plan passes before it is stored, are in [strategy.md](strategy.md); the row-level exports of the same page are in [exports.md](exports.md).
+Status: phase 11a in build, 11b designed. The diagram follows the roadmap (phases 11a and 11b) and ADR-003 and ADR-013. The pack and plan formats, with the lint that every plan passes before it is stored, and how the browser and `fnb datapack` build a pack are in [strategy.md](strategy.md); the row-level exports of the same page are in [exports.md](exports.md).
 
 ```mermaid
 sequenceDiagram
@@ -540,9 +544,14 @@ sequenceDiagram
     participant CLI as fnb datapack and fnb publish-plan
     participant DB as Supabase with RLS
     participant Asst as Owner's own assistant
-    Owner->>App: Tải gói dữ liệu cho AI
-    App->>DB: read aggregates and registry metrics as the owner
+    Owner->>App: Tạo gói, then Tải gói dữ liệu cho AI or Sao chép gói + prompt
+    App->>DB: pack_fence, the report functions as the owner or manager, pack_fence again
     App-->>Owner: versioned JSON pack with the strategy prompt, aggregates only
+    opt on the owner's machine
+        Owner->>CLI: fnb datapack
+        CLI->>DB: the same report functions as a member, in one read-only snapshot
+        CLI-->>Owner: the same pack, written below docs/private/ or outside the repository
+    end
     Owner->>Asst: run the strategy command with the pack, or paste it
     Asst-->>Owner: plan in Markdown with KPI front matter keyed by metric ids
     alt publish from the owner's machine
@@ -555,17 +564,55 @@ sequenceDiagram
     App->>DB: Kế hoạch lists plans and reads live KPI values
 ```
 
-What exists already: `strategy_reports` with RLS (owners, managers and publishers in scope insert, owners and managers update and delete), the `publisher` role, the aggregates, the registry's `data_pack` mapping, the pack and export functions of migration `pack_and_export_functions` (#132), the route `#/xuat-du-lieu` with its export tab (#139 to #141; the pack tab says the pack comes in the next step), the placeholder route `#/ke-hoach/*`, and `@fnb/datapack` with its frozen interfaces (#129), the pack format (#130), the plan lint (#135) and the pack's content (#134: the calls, the calendar and KPI windows, coverage per scope, the tables, the gaps and the context, built through `buildDataPack`, which waits for the prompt). What does not exist yet: the strategy prompt (#131), `fnb datapack`, `fnb publish-plan`, the pack buttons and the paste box. One design point is open: the publisher reads no aggregate, so the pack must be built by an owner or manager session or by the CLI's own connection, not by the publisher (a correction of the ADR-013 wording, which says the publisher reads aggregates, has been requested). The pack and the prompt stay the same if an API key is ever added (ADR-003).
+What exists already: `strategy_reports` with RLS (owners, managers and publishers in scope insert, owners and managers update and delete), the `publisher` role, the aggregates, the registry's `data_pack` mapping, the pack and export functions of migration `pack_and_export_functions` (#132), the route `#/xuat-du-lieu` with its export tab (#139 to #141) and its pack tab (#142), the placeholder route `#/ke-hoach/*`, and `@fnb/datapack` with its frozen interfaces (#129), the pack format (#130), the plan lint (#135), the pack's content (#134), strategy prompt 1.0.0 and the chat bundle (#131), and the sample plan and plan fixtures (#136); `fnb datapack` (#137) builds the same pack from the owner's machine. Both builders read as a member with a data role: the pack tab through the member's own session, with `pack_fence` read before and after its calls so that a sync committing meanwhile makes it build again, and `fnb datapack` inside one read-only repeatable-read transaction switched to the member's role and claims (`withReportSnapshot`), never as the service role. On the local stack the two packs of one login were identical apart from `generated_at`. What does not exist yet: `fnb publish-plan` (with `--check`, #138), the paste box (#143), the byte comparison of both packs in CI (#144) and 11b. The open design point is settled in the code: the publisher reads no aggregate, so a pack is built only by an owner, manager, staff or viewer login, and the command refuses the publisher (a correction of the ADR-013 wording, which says the publisher reads aggregates, has been requested). The pack and the prompt stay the same if an API key is ever added (ADR-003).
+
+### 6.6 Mini App sign-in (phase 13)
+
+Status: built against a mock of Zalo (#205); the real Zalo App, the device and the hook's registration on the cloud project wait for the owner (#8, #210). The decision is ADR-037; the endpoints are in [api.md](api.md), section 5.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Owner
+    participant CLI as fnb zalo bind
+    actor Member
+    participant Mini as Staff Mini App
+    participant Fn as zalo-session
+    participant Graph as Zalo Graph
+    participant DB as Postgres
+    participant Auth as Supabase Auth
+    Owner->>CLI: --tenant, --member, --brand
+    CLI->>DB: app.issue_zalo_binding_code
+    CLI-->>Owner: 6-digit code, valid 10 minutes
+    Owner-->>Member: the code, by hand
+    Member->>Mini: opens the app, enters the code once
+    Mini->>Fn: POST access_token, brand, binding_code
+    Fn->>DB: zalo_session_app (service_role): the brand's Zalo App and the name of its secret
+    Fn->>Graph: GET /v2.0/me with the token and the app-secret proof
+    Graph-->>Fn: Zalo user id and display name
+    Fn->>DB: zalo_session_sign_in: find the bound member, or bind with the code
+    alt bound
+        Fn->>Auth: admin: the member's e-mail, generate_link (magic link), verify
+        Auth->>DB: access-token hook adds memberships
+        Auth-->>Fn: access and refresh tokens
+        Fn-->>Mini: status bound, the session, display name, role and stores
+        Mini->>DB: reads through the Data API as authenticated, under RLS
+    else not bound, or a wrong code
+        Fn-->>Mini: status unpaired
+    end
+```
+
+A later sign-in sends no code: the Zalo user id is already bound, so steps 6 to 15 repeat without the owner. The Mini App keeps the session in Zalo's Native Storage and sends it in the Authorization header; `zalo-phone` takes that session plus the Zalo access token when a flow needs the phone number. Five wrong codes are tolerated per Zalo App and the sixth burns its live codes.
 
 ## 7. Deployment and environments
 
 | Environment | What runs | Data | Where its configuration lives | Status |
 |---|---|---|---|---|
 | Local stack (developer machine) | Supabase in Docker: Postgres 17, Auth, PostgREST, Studio, a mail catcher; ports 54321 (API), 54322 (database), 54323 (Studio), 54324 (mail catcher); Vite on 5173; `supabase functions serve` for the Edge Function; the `fnb` CLI | the synthetic seed (tenant `demo-fnb`, stores `TEA` and `COF`); on the build machine also a real tenant loaded with the CLI, so `supabase db reset` is never run there | `.env` and `apps/web/.env.local`, both gitignored | in use |
-| CI (GitHub-hosted runners) | `ci.yml`: secret scans; lint, typecheck, unit tests, the import-map check and `deno check`; a Supabase stack with most services excluded, `db reset`, pgTAP and the parity suite on Postgres; Playwright against a fresh stack | synthetic seed and fixture tenants only | no secrets | built; runs on every push to `main` and every pull request |
+| CI (GitHub-hosted runners) | `ci.yml`: secret scans; lint, typecheck, unit tests, the import-map check, and `deno check` and `deno test` of every Edge Function and the shared helpers; a Supabase stack with most services excluded, `db reset`, pgTAP and the parity suite on Postgres; Playwright against a fresh stack; the Mini Apps built for two synthetic brands within their budgets and tested in a browser | synthetic seed and fixture tenants only | no secrets | built; runs on every push to `main` and every pull request |
 | Cloud project (Supabase Free, Singapore region) | Postgres, Auth, Data API, the `sync-incremental` Edge Function, `pg_cron` and `pg_net` | real tenants | the dashboard settings, Edge Function secrets, the database password | waits for owner ([go-live.md](go-live.md)) |
 | GitHub Pages | The static SPA built by `deploy-web.yml` under the base path that `configure-pages` reports (`/fnb-manager/` for this project site) | none: the demo generates its numbers in the browser, the live build reads through the user's session | repository variables `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, public by design | built; serves the demo until the variables exist |
-| Scheduled and deploy jobs on Actions | `sync.yml`, `notify.yml`, `backup.yml`, `migrate.yml`, `deploy-functions.yml`, `deploy-web.yml`, `workflows-active.yml`, two cron probes | the cloud database | GitHub secrets: given to single steps in `sync.yml`, `notify.yml` and `deploy-functions.yml`, to the whole job in `migrate.yml` and `backup.yml` | built; the jobs that need secrets skip with a note until they exist |
+| Scheduled and deploy jobs on Actions | `sync.yml`, `notify.yml`, `backup.yml`, `migrate.yml`, `deploy-functions.yml`, `deploy-mini-apps.yml`, `deploy-web.yml`, `workflows-active.yml`, two cron probes | the cloud database | GitHub secrets: given to single steps in `sync.yml`, `notify.yml`, `deploy-functions.yml` and `deploy-mini-apps.yml`, to the whole job in `migrate.yml` and `backup.yml` | built; the jobs that need secrets skip with a note until they exist, and the Mini App deploys also until the Zalo configuration exists |
 | Owner's machine against the cloud | `fnb tenant add-member`, `onboard`, backfills, `notify link`; `supabase secrets set` | the cloud database | the owner's `.env` | waits for owner |
 
 ```mermaid
@@ -604,14 +651,15 @@ Credentials live in three places only: the owner's local `.env`, GitHub Actions 
 | Secret or variable | Local `.env` | GitHub | Supabase | Used by |
 |---|---|---|---|---|
 | `POS_ACCOUNTS_JSON`, `IPOS_APP_KEY` | yes | secrets | Edge Function secrets | the CLI and `sync-incremental` |
-| `DATABASE_URL` (local), `SUPABASE_DB_URL` (cloud session pooler) | yes | secret `SUPABASE_DB_URL` | injected `SUPABASE_DB_URL`; optional `FNB_DB_URL`, `FNB_DB_CA_CERT` | the CLI; the Edge Function |
+| `DATABASE_URL` (local), `SUPABASE_DB_URL` (cloud session pooler) | yes | secret `SUPABASE_DB_URL` | injected `SUPABASE_DB_URL`; optional `FNB_DB_URL`, `FNB_DB_CA_CERT` | the CLI, also in `deploy-mini-apps.yml`; the Edge Function |
 | `SUPABASE_SECRET_KEY` | yes | documented secret; no workflow reads it | injected | `fnb tenant add-member` only (Auth admin API) |
 | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID` | yes, for the owner's own CLI steps | secrets | not applicable | `migrate.yml`, `backup.yml`, `deploy-functions.yml` |
-| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | yes | variables, public by design | not applicable | the web build (as `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`) |
+| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | yes | variables, public by design | not applicable | the web build and the Zalo builds of the Mini Apps (as `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`) |
 | `BACKUP_AGE_RECIPIENT`, `BACKUP_S3_ENDPOINT`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY` | no | secrets; the `age` private key stays offline with the owner | not applicable | `backup.yml` |
 | `NOTIFY_ZALO_BOT_TOKEN`, `NOTIFY_EMAIL_API_KEY`, `NOTIFY_EMAIL_FROM`, `NOTIFY_EMAIL_FROM_NAME`, `NOTIFY_TELEGRAM_BOT_TOKEN`, `NOTIFY_WEBHOOK_SECRET` | optional | secrets read by `sync.yml` and `notify.yml` | function secrets once the `notify` function exists (12c) | the notification dispatchers; rows store only the name |
 | `FNB_INCREMENTAL_WALL_MS`, `FNB_INCREMENTAL_CPU_MS` | no | no | optional function secrets | the incremental guard |
-| Zalo secrets per brand (`ZALO_APP_SECRET_<brand>`, `ZALO_OA_SECRET_<brand>`, `ZALO_OA_REFRESH_TOKEN_<brand>`), `ZMP_DEVELOPER_REFRESH_TOKEN`, `VOUCHER_CALLBACK_PATH_SECRET` | no | not yet | planned function secrets | Tracks B and C |
+| Zalo secrets per brand (`ZALO_APP_SECRET_<BRAND>`, `ZALO_OA_SECRET_<BRAND>`), `VOUCHER_CALLBACK_PATH_SECRET` | no | no | function secrets, named in `zalo_apps.secret_name` and `oas.secret_name` | the Zalo functions of phase 13 (#205, #207) and the voucher callback of phase 16b |
+| The OA and Mini App developer token pairs | no | no | rows of `zalo_tokens`, closed to every API role, because their refresh tokens are single-use | the token jobs (#206) and `deploy-mini-apps.yml` |
 | Publisher login for `fnb publish-plan` | planned | no | no | phase 11b |
 
 `docs/secrets.md` still names the Zalo Bot secret `ZALO_BOT_TOKEN` and omits four `NOTIFY_*` names; the code and workflows use the names above. A correction has been requested; the update is scheduled for step 12c.
@@ -696,7 +744,7 @@ Versions are the ranges in the `package.json` files; `pnpm-lock.yaml` fixes the 
 | Extensions | `pg_cron` 1.6.4, `pg_net` 0.20.4, `pgcrypto` 1.3, `uuid-ossp` 1.1, `supabase_vault` 0.3.1, `pg_stat_statements` 1.11 | as listed | catalogue |
 | Supabase CLI | `supabase` npm package, run as `pnpm exec supabase` | ^3.0.0, locked 3.0.0 | root devDependencies |
 | Database tests | pgTAP through `supabase test db` | bundled with the CLI | `supabase/tests/` |
-| Edge Functions | Supabase Edge Runtime (Deno 2); CI type-check with Deno | runtime 1.77.9 measured locally; Deno v2.7.3 in CI | [sync.md](sync.md), `ci.yml` |
+| Edge Functions | Supabase Edge Runtime (Deno 2); CI type-checks and tests every function and the shared helpers with Deno | runtime 1.77.9 measured locally; Deno v2.7.3 in CI | [sync.md](sync.md), `ci.yml` |
 | Database driver | postgres.js | ^4.1.0; the Edge Function pins 4.1.0 | package manifests, `deno.json` |
 | Validation | zod | ^4.6.7; the Edge Function pins 4.6.7 | package manifests |
 | API client | `@supabase/supabase-js` | ^2.119.0 | `apps/web`, `apps/jobs` |
@@ -704,7 +752,9 @@ Versions are the ranges in the `package.json` files; `pnpm-lock.yaml` fixes the 
 | Web build | Vite with `@vitejs/plugin-react` | ^8.3.6; ^6.2.1 | `apps/web/package.json` |
 | Styling | Tailwind CSS with `@tailwindcss/vite` | ^4.3.5 | `apps/web/package.json` |
 | Charts | ECharts, a lazy chunk | ^6.1.0 | `apps/web/package.json` |
-| End-to-end tests | Playwright with `@axe-core/playwright` | ^1.65.0; ^4.14.0 | `apps/web/package.json` |
+| End-to-end tests | Playwright with `@axe-core/playwright` | ^1.65.0; ^4.14.0 | `apps/web/package.json`, `apps/zalo-*/package.json` |
+| Mini App framework | zmp-sdk and zmp-ui (ZaUI), pinned exactly; React and React DOM; `react-router-dom` under zmp-ui's memory router; Vite with `@vitejs/plugin-react` and Tailwind CSS | 2.53.3; 1.11.15-2; ^19.3.1; ^7.18.5; ^8.3.6 | `apps/zalo-staff/package.json`, `apps/zalo-customer/package.json`, `packages/zalo-mini/package.json` |
+| Mini App deploys | zmp-cli through `npx`, not a dependency | 4.0.5 | `deploy-mini-apps.yml` |
 | Parity tests | PGlite | 0.3.16 (exact) | `packages/demo-analytics/package.json` |
 | Performance audit | Lighthouse, not a dependency | 13.5.0 through `pnpm dlx` | [apps/web/README.md](../apps/web/README.md) |
 | Secret scan | gitleaks Docker image | v8.30.1 | `ci.yml` |
@@ -714,7 +764,7 @@ Versions are the ranges in the `package.json` files; `pnpm-lock.yaml` fixes the 
 
 ## 10. Architecture decisions
 
-The records are in [decisions.md](decisions.md). ADR-001 to ADR-026 are dated 2026-11-07 and ADR-027 to ADR-029 2026-11-08. ADR-030 to ADR-033 are reserved for the phase 12 decisions and will be written in step 12c; the design they record is already described in [schema.md](schema.md), "Notifications and alerts (phase 12)". ADR-034 (the design system) and ADR-035 and ADR-036 (thematic reports, report settings and mappings) are dated 2026-11-14; ADR-035 and ADR-036 were amended on 2026-11-16.
+The records are in [decisions.md](decisions.md). ADR-001 to ADR-026 are dated 2026-11-07 and ADR-027 to ADR-029 2026-11-08. ADR-030 to ADR-033 are reserved for the phase 12 decisions and will be written in step 12c; the design they record is already described in [schema.md](schema.md), "Notifications and alerts (phase 12)". ADR-034 (the design system) and ADR-035 and ADR-036 (thematic reports, report settings and mappings) are dated 2026-11-14; ADR-035 and ADR-036 were amended on 2026-11-16. ADR-037 (Mini App sessions, #205) is dated 2026-11-18.
 
 | ADR | Title | Status | Effect on the architecture |
 |---|---|---|---|
@@ -750,10 +800,11 @@ The records are in [decisions.md](decisions.md). ADR-001 to ADR-026 are dated 20
 | 034 | One token source in the DTCG format; accessible primitives in the shadcn pattern; WCAG 2.2 AA | accepted | `@fnb/design-tokens` feeds the web app's styles; a catalogue page and axe checks hold accessibility |
 | 035 | Thematic reports run on date ranges over the phase 9 card model, and every report function has a parity-tested port | accepted, amended | A second registry (`themeFunctions`) beside phase 9's, `ReportSource` with `callTheme`, ranges of at most 400 days; the parity suite covers every new report function |
 | 036 | Report thresholds are tenant rows that SQL reads; category overrides apply at query time; a tracked catch-up keeps aggregates honest | accepted, amended | `report_settings`, the mapping tables and the tenant's pending range in the database; the web app's catch-up runner and the cache drop after a settings write |
+| 037 | Mini App sessions are minted through the Auth admin API (generate_link + verify) | accepted | `zalo-session` mints a session of the member's existing login; every token carries `memberships` from the access-token hook; RLS still reads `tenant_members` |
 
 ## 11. Future architecture: Tracks B and C
 
-Tracks B (staff on Zalo, phases 13 to 15) and C (customer loyalty on Zalo, phases 16 to 19) reuse the platform: the same Supabase project, the same RLS model, the same outbox and the invoice stream as proof of purchase. Everything below is planned and waits for the owner's Track Z paperwork (Zalo accounts and verification, legal form, e-invoice status, privacy notice). It is drawn from the roadmap and the deep dives [zalo-integration-architecture.md](deep-dives/zalo-integration-architecture.md), [zalo-mini-app-platform.md](deep-dives/zalo-mini-app-platform.md), [zalo-oa-and-messaging.md](deep-dives/zalo-oa-and-messaging.md), [staff-app-on-zalo.md](deep-dives/staff-app-on-zalo.md), [loyalty-programme-design.md](deep-dives/loyalty-programme-design.md) and [ipos-loyalty-integration-design.md](deep-dives/ipos-loyalty-integration-design.md). Those deep dives use the earlier phase numbering, two higher than the roadmap, and call two functions `zalo-auth` and `zalo-oa-webhook`; the roadmap names them `zalo-session` and `oa-webhook` ([roadmap.md](roadmap.md), companion documents).
+Tracks B (staff on Zalo, phases 13 to 15) and C (customer loyalty on Zalo, phases 16 to 19) reuse the platform: the same Supabase project, the same RLS model, the same outbox and the invoice stream as proof of purchase. The parts of phase 13 that need no Zalo account are built against stand-ins (#203, #204, #205, #207, #208; the last column of the table below); everything else is planned, and everything real waits for the owner's Track Z paperwork (Zalo accounts and verification, legal form, e-invoice status, privacy notice; #8). It is drawn from the roadmap and the deep dives [zalo-integration-architecture.md](deep-dives/zalo-integration-architecture.md), [zalo-mini-app-platform.md](deep-dives/zalo-mini-app-platform.md), [zalo-oa-and-messaging.md](deep-dives/zalo-oa-and-messaging.md), [staff-app-on-zalo.md](deep-dives/staff-app-on-zalo.md), [loyalty-programme-design.md](deep-dives/loyalty-programme-design.md) and [ipos-loyalty-integration-design.md](deep-dives/ipos-loyalty-integration-design.md). Those deep dives use the earlier phase numbering, two higher than the roadmap, and call two functions `zalo-auth` and `zalo-oa-webhook`; the roadmap names them `zalo-session` and `oa-webhook` ([roadmap.md](roadmap.md), companion documents).
 
 ```mermaid
 flowchart LR
@@ -802,22 +853,23 @@ flowchart LR
     gha --> cma
 
     classDef later stroke-dasharray: 5 4
-    class sma,cma,oa,bot,zbs,zs,zp,oaw,bw,nt,vc,crm,gha later
+    class sma,cma,oa,bot,zbs,nt,vc,crm,gha later
 ```
 
-| Concern | Planned design | Phase |
-|---|---|---|
-| Identity | The Mini App's access token is verified server-side with the app-secret proof; because Supabase trusts only its own sessions, `zalo-session` finds or creates an Auth user through the admin API and returns a real session; a custom access-token hook adds tenant, store scope and role claims for RLS. Staff pair their first device with a 6-digit manager-issued code valid 10 minutes, never a password | 13, 14a |
-| Phone numbers | The single-use phone token (valid 2 minutes) is decoded once by `zalo-phone`, only at the step that needs it, after a purpose screen; the phone in international form is the join key to synced invoices | 13, 18a |
-| Client storage | Mini Apps run on `https://h5.zdn.vn` without LocalStorage or cookies; sessions go in Native Storage with an Authorization header; every function answers CORS for that single origin | 13 |
-| Configuration | Per-brand rows (`brands`, `zalo_apps`, `oas`, `mini_apps`, `zbs_templates`, `gmf_groups`) and per-brand secrets; `app-config.json` generated per tenant in CI, so one codebase builds one Mini App per brand | 13 |
-| Webhooks | `oa-webhook` and `bot-webhook` run with JWT verification off, verify the provider's signature on the raw body, answer 200 within 2 seconds, de-duplicate and finish in `waitUntil`; signature checks start in observe mode and then fail closed | 13 |
-| Tokens | The OA access token lasts 25 hours and its refresh token is single-use, so exactly one job refreshes it every 12 hours under a row lock; a second job rotates the Mini App deploy token (one-month life) | 13 |
-| Messaging | The phase 12 outbox gains the `zalo_oa`, `zalo_gmf` and `zalo_zbs` kinds already declared in `channel_kind`: in-app first, free consultation messages inside the 48-hour window, paid ZBS templates last, marketing consent checked before any promotional send (ADR-018) | 13, 15, 19a |
-| Staff operations | Roster, checklists with photos in per-brand Storage buckets, cash count against the synced drawer total, handover notes, incidents, approvals, read receipts | 14, 15 |
-| Loyalty ledger | `memberships`, an append-only `loyalty_ledger`, `stamps`, `pending_checkins`, `receipt_claims`, `coupons`, `coupon_codes`, `redemptions`; reconciliation after each sync through four earning paths in precision order; clawback on voided or edited invoices; anti-fraud rules as configuration | 17a |
-| Coupon rails | Per store: a CRM code pool, a CRM validation callback answered by `voucher-callback` (idempotent on the sale id), or a POS payment-discount entry verified by staff | 16b, 18b |
-| Compliance | Consent with evidence at join, a never pre-ticked marketing toggle, data-subject tooling with cascading deletion, the 72-hour breach runbook, the cross-border dossier or exemption (gate G3), Supabase Pro before public launch (gate G4) | 17a, 19b |
+| Concern | Design | Phase | State on 2026-11-18 |
+|---|---|---|---|
+| Identity | The Mini App's access token is verified server-side with the app-secret proof; because Supabase trusts only its own sessions, `zalo-session` mints a real session for the member's existing login through the Auth admin API (ADR-037); the access-token hook adds `memberships` (tenant, role, store scope) to every token, while RLS keeps reading `tenant_members`. A member binds a Zalo account once with a 6-digit code valid 10 minutes (`fnb zalo bind` now, manager-issued codes in 14a), never a password | 13, 14a | built against a mock (#205): `zalo-session`, the binding codes, `zalo_identities` filled at binding, the hook (section 6.6); the Mini Apps' session client reads its answers unchanged (#208). The real Zalo App and a phone wait for owner (#210) |
+| Phone numbers | The single-use phone token (valid 2 minutes) is decoded once by `zalo-phone`, only at the step that needs it, after a purpose screen; the phone in international form is the join key to synced invoices | 13, 18a | built against a mock (#205): `zalo-phone` returns the number and stores nothing, and its probe mode records only whether consent and exchange worked; the customer app's probe screen exists in Development builds only (#208); the real error codes are confirmed in #210 |
+| Client storage | Mini Apps run on `https://h5.zdn.vn` without LocalStorage or cookies; sessions go in Native Storage with an Authorization header; every function answers CORS for that single origin | 13 | built: the Native Storage adapter and the Authorization header in `@fnb/zalo-mini`, with a lint rule and a test refusing web storage (#208); the shared CORS answer for `https://h5.zdn.vn` and `zbrowser://h5.zdn.vn` in `supabase/functions/_shared` (#204). The Data API's own CORS answer from inside Zalo is checked on a phone (#210) |
+| Configuration | Per-brand rows (`brands`, `zalo_apps`, `oas`, `mini_apps`, `zbs_templates`, `gmf_groups`) and per-brand secrets; `app-config.json` generated per tenant in CI, so one codebase builds one Mini App per brand | 13 | built: the tables, the identities and the token store of migration `zalo_configuration` (#203), and the `app-config.json` generator that CI runs for two synthetic brands (#208); `fnb zalo config set` and `show` write and read the rows (#205) |
+| Mini App builds | Two apps on one shared package, built per brand from configuration and held in CI to 3 MB a file, 10 MB a version, no ECharts, and an LCP under 2.5 s and a load under 1.5 s on a throttled 360 px phone; Development versions from `main`, Testing versions from `mini-v*` tags | 13 | built (#208): the `mini-apps` CI job and `deploy-mini-apps.yml`, which skips until the configuration exists and has never deployed |
+| Webhooks | `oa-webhook` and `bot-webhook` run with JWT verification off, verify the provider's signature on the raw body, answer 200 within 2 seconds, de-duplicate and finish in `waitUntil`; signature checks start in observe mode and then fail closed | 13 | built against fake events (#207): `oa-webhook` with the signature over the raw and the compact body, observe and enforce decided in SQL per OA (`oas.webhook_mode`, `observe` by default), `oa_events` without text kept 90 days and the rule `zalo_webhook_unverified`; `bot-webhook` with the Bot's secret token stored as a hash and "DỪNG"; both enabled in `supabase/config.toml`, not deployed. The signed bytes, the menu-tap event names and the Bot's body shape are confirmed in #210 |
+| Tokens | The OA access token lasts 25 hours and its refresh token is single-use, so exactly one job refreshes it every 12 hours under a row lock; a second job rotates the Mini App deploy token (one-month life) | 13 | the token store `zalo_tokens` built, with a version that moves on every update (#203); the jobs planned (#206) |
+| Messaging | The phase 12 outbox gains the `zalo_oa`, `zalo_gmf` and `zalo_zbs` kinds already declared in `channel_kind`: in-app first, free consultation messages inside the 48-hour window, paid ZBS templates last, marketing consent checked before any promotional send (ADR-018) | 13, 15, 19a | planned |
+| Staff operations | Roster, checklists with photos in per-brand Storage buckets, cash count against the synced drawer total, handover notes, incidents, approvals, read receipts | 14, 15 | planned |
+| Loyalty ledger | `memberships`, an append-only `loyalty_ledger`, `stamps`, `pending_checkins`, `receipt_claims`, `coupons`, `coupon_codes`, `redemptions`; reconciliation after each sync through four earning paths in precision order; clawback on voided or edited invoices; anti-fraud rules as configuration | 17a | planned |
+| Coupon rails | Per store: a CRM code pool, a CRM validation callback answered by `voucher-callback` (idempotent on the sale id), or a POS payment-discount entry verified by staff | 16b, 18b | planned |
+| Compliance | Consent with evidence at join, a never pre-ticked marketing toggle, data-subject tooling with cascading deletion, the 72-hour breach runbook, the cross-border dossier or exemption (gate G3), Supabase Pro before public launch (gate G4) | 17a, 19b | planned |
 
 ## 12. Known risks and technical debt
 

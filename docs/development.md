@@ -13,7 +13,9 @@ Last updated 2026-11-18
 | Docker | a current release with at least 8 GB of memory for the containers | runs the local Supabase stack |
 | git | any current release | |
 | Supabase CLI | 3.0.0 | the `supabase` devDependency (locked in `pnpm-lock.yaml`); run it as `pnpm exec supabase` so every machine uses the same version |
-| Deno (optional) | 2.x; CI uses v2.7.3 | only to type-check the Edge Function locally |
+| Deno (optional) | 2.x; CI uses v2.7.3 | only to type-check and test the Edge Functions and `supabase/functions/_shared` locally |
+| Chromium for Playwright | the build of Playwright 1.65.0 | `pnpm --filter @fnb/web e2e:install`; the web app and both Mini Apps resolve the same Playwright, so one install serves the three (`pnpm --filter @fnb/zalo-staff e2e:install` does the same) |
+| zmp-cli | none locally | the Zalo Mini App CLI is not a dependency: the Mini Apps build with Vite and run in a browser with a mocked Zalo SDK, and only the deploy job runs `zmp-cli@4.0.5`, through `npx` |
 
 First run:
 
@@ -53,6 +55,8 @@ Ports come from `supabase/config.toml` (`project_id = "FNB_Managment"`) and the 
 | Web dev server | `http://localhost:5173` | Vite; the local auth allow-list holds `http://127.0.0.1:5173` and `http://localhost:5173` |
 | `vite preview` | `4173` | the Lighthouse recipe in [apps/web/README.md](../apps/web/README.md) |
 | Playwright servers | live `5191`, demo `5192`, pages `5193` | each plus `E2E_PORT_OFFSET` |
+| Mini App dev servers | staff `http://127.0.0.1:5741`, customer `http://127.0.0.1:5751` | Vite in browser mode with the mocked Zalo SDK; `vite preview` on 5744 and 5754 |
+| Mini App Playwright servers | staff `5742`, customer `5752` | each plus `E2E_PORT_OFFSET` |
 | Notification mock providers | `127.0.0.1:8787` | `node packages/notify/scripts/mock-providers.mjs` (phase 12, in build) |
 
 Local auth has sign-up turned off (`enable_signup = false`) and e-mail confirmations off. Logins are created with `fnb tenant add-member`, or by the seed.
@@ -92,7 +96,9 @@ The build machine's local stack holds a real tenant loaded with `fnb`. On such a
 | Path | What it holds | Read more |
 |---|---|---|
 | `apps/web` | `@fnb/web`: the React single-page app for managers (Vite, Tailwind CSS, ECharts), deployed to GitHub Pages; a build without Supabase variables is the demo | [apps/web/README.md](../apps/web/README.md), [web-app.md](web-app.md) |
-| `apps/jobs` | `@fnb/jobs`: the `fnb` CLI for tenants, onboarding, sync, status, doctor, digests and notifications | [apps/jobs/README.md](../apps/jobs/README.md) |
+| `apps/jobs` | `@fnb/jobs`: the `fnb` CLI for tenants, onboarding, sync, the full history, the iPOS snapshot, status, doctor, digests, notifications and the AI data pack | [apps/jobs/README.md](../apps/jobs/README.md) |
+| `apps/zalo-staff` | `@fnb/zalo-staff`: the staff Zalo Mini App (zmp-ui, React, Vite), one build per brand from configuration: four tabs and the sign-in states, in the browser against a stand-in session whose answers match `zalo-session` (phase 13 scaffold) | [README](../apps/zalo-staff/README.md) |
+| `apps/zalo-customer` | `@fnb/zalo-customer`: the customer Zalo Mini App; for now only the session check and the phone-consent probe of Development builds (phase 13 scaffold) | [README](../apps/zalo-customer/README.md) |
 | `packages/core` | canonical POS-agnostic model and shared business rules | [README](../packages/core/README.md) |
 | `packages/connector-core` | the `PosConnector` contract, registry, errors and conformance suite | [README](../packages/connector-core/README.md) |
 | `packages/connector-mock` | seeded synthetic connector for tests, demos and end-to-end runs | [README](../packages/connector-mock/README.md) |
@@ -102,17 +108,22 @@ The build machine's local stack holds a real tenant loaded with `fnb`. On such a
 | `packages/metrics` | the typed metric registry mirrored from [metrics.md](metrics.md) | [README](../packages/metrics/README.md) |
 | `packages/reports` | the periodic report models and the typed contract of the report SQL functions | [README](../packages/reports/README.md) |
 | `packages/demo-analytics` | the demo's TypeScript port of the report SQL functions, held to the SQL by a parity suite | [README](../packages/demo-analytics/README.md) |
-| `packages/datapack` | the AI data pack and the plan format: canonical text, `pack_id`, JSON Schema files, budget, the aggregates-only check and the plan lint (phase 11a, in build) | [README](../packages/datapack/README.md), [strategy.md](strategy.md) |
+| `packages/datapack` | the AI data pack and the plan format: canonical text, `pack_id`, the pack's content and its builder, the strategy prompt and the chat bundle, JSON Schema files, budget, the aggregates-only check, the plan lint and the sample plan (phase 11a, in build) | [README](../packages/datapack/README.md), [strategy.md](strategy.md) |
+| `packages/zalo` | `@fnb/zalo`, the server side of Zalo, Web Crypto only so it runs under Deno and Node: the app-secret proof, a timed HTTP client (10 seconds), the Graph `me` and `me/info` clients, the Supabase calls of the sign-in functions, the refusal codes, and in `./testing` a local mock of the Zalo Graph and the `ZALO_INTEGRATION` gate with its synthetic-environment guard (#205) | [api.md, section 5](api.md#zalo-session) |
+| `packages/zalo-mini` | what both Mini Apps share: the Native Storage adapter, the session client and its stand-in, the React shell on zmp-ui, `app-config.json` per brand, the Vite plugin, the size budgets, the mocked Zalo SDK and the Playwright design checks | [README](../packages/zalo-mini/README.md) |
 | `packages/notify` | notifications: channels, templates, the outbox dispatcher, digests (phase 12, in build; no README yet) | [status.md](status.md) |
-| `supabase/migrations` | 41 migrations on 2026-11-18 | [schema.md](schema.md) |
-| `supabase/tests` | 40 pgTAP files on 2026-11-18 | [schema.md](schema.md#tests) |
+| `supabase/migrations` | 45 migrations on 2026-11-18 | [schema.md](schema.md) |
+| `supabase/tests` | 44 pgTAP files on 2026-11-18 | [schema.md](schema.md#tests) |
 | `supabase/seed.sql` | the synthetic seed | section 5 |
 | `supabase/functions/sync-incremental` | the Edge Function runner (Deno) | [sync.md](sync.md) |
+| `supabase/functions/_shared` | what the Zalo functions share, not deployed itself: CORS for the Mini App origins, JSON answers and errors, bounded bodies, the request id, redacted logs, secrets read by name and `serveFunction`, with their Deno tests. The four Zalo functions use it | [api.md, section 5](api.md#5-edge-function-endpoints) |
+| `supabase/functions/zalo-session`, `zalo-phone` | the Mini App sign-in and the phone-number exchange (#205), on `@fnb/zalo` | [api.md, section 5](api.md#zalo-session) |
+| `supabase/functions/oa-webhook`, `bot-webhook` | the OA's signed events and the Zalo Bot's updates (#207), connecting as `postgres` like `sync-incremental` | [api.md, section 5](api.md#oa-webhook) |
 | `scripts` | `check-public-safe.mjs`, `function-imports.mjs`, `cron-delay-report.mjs`, `check-api-docs.mjs` | sections 3 and 6 |
-| `.github/workflows` | CI, deployments and scheduled jobs (10 files) | section 7 |
+| `.github/workflows` | CI, deployments and scheduled jobs (11 files) | section 7 |
 | `docs` | roadmap, status, decisions, schema, sync, web app, metrics, secrets, go-live, connectors, reports, exports ([exports.md](exports.md)), the data pack and plan formats ([strategy.md](strategy.md)) and deep dives; the documentation set of 2026-11-12: [plan.md](plan.md), [requirements.md](requirements.md), [test-plan.md](test-plan.md), [architecture.md](architecture.md), [security.md](security.md), [api.md](api.md), [operations.md](operations.md), this guide, [user-guide.md](user-guide.md) and [glossary.md](glossary.md); `docs/private/` is gitignored | [roadmap.md](roadmap.md) |
 
-Runtime dependencies between the workspace packages (an arrow reads "uses"). Every box except `@fnb/metrics` and the Edge Function also uses `@fnb/core` directly; those arrows are left out, and so are development-only dependencies.
+Runtime dependencies between the workspace packages (an arrow reads "uses"). Every box except `@fnb/metrics`, `@fnb/zalo`, the three Edge Function boxes and the three Mini App boxes also uses `@fnb/core` directly; those arrows are left out, and so are `@fnb/design-tokens` (used by the web app and both Mini Apps) and development-only dependencies. `supabase/functions/_shared` uses `@fnb/sync` for its redactor.
 
 ```mermaid
 flowchart LR
@@ -129,6 +140,17 @@ flowchart LR
   ipos["@fnb/connector-ipos"]
   mock["@fnb/connector-mock"]
   ccore["@fnb/connector-core"]
+  staff["apps/zalo-staff"]
+  customer["apps/zalo-customer"]
+  zmini["@fnb/zalo-mini"]
+  zfn["Edge Functions zalo-session, zalo-phone"]
+  zalo["@fnb/zalo"]
+  whk["Edge Functions oa-webhook, bot-webhook"]
+  staff --> zmini
+  customer --> zmini
+  zfn --> zalo
+  whk --> sync
+  whk --> notify
   web --> demo
   web --> datapack
   web --> reports
@@ -171,7 +193,7 @@ Run everything from the repository root.
 
 | What | Command | Notes |
 |---|---|---|
-| Every check before a push | `pnpm verify` | `scripts/verify.sh` runs, in order and stopping at the first failure, every check of [plan.md](plan.md) section 2.4 that the build machine allows: lint, typecheck, unit tests, the import map and Deno checks, the API reference, pgTAP, the OpenAPI description, the web build, every end-to-end project, gitleaks and the public-safety scan. It needs the local stack running and never resets it. Set `E2E_PORT_OFFSET` when another run uses the default ports |
+| Every check before a push | `pnpm verify` | `scripts/verify.sh` runs, in order and stopping at the first failure, every check of [plan.md](plan.md) section 2.4 that the build machine allows: lint, typecheck, unit tests, the import map and Deno checks, the API reference, pgTAP, the OpenAPI description, the web build, every end-to-end project, gitleaks and the public-safety scan. It needs the local stack running and never resets it. Set `E2E_PORT_OFFSET` when another run uses the default ports. On 2026-11-18 its Deno step type-checks `sync-incremental` only and it runs neither the Deno tests nor the Mini App builds and browser tests, which CI's `code` and `mini-apps` jobs run (section 7); run those yourself when they are touched |
 | Install | `pnpm install` | CI uses `pnpm install --frozen-lockfile` |
 | Lint | `pnpm lint` | `biome check .`; Markdown is not linted |
 | Format | `pnpm format` | `biome format --write .`; `pnpm exec biome check --write .` also applies safe lint fixes and sorts imports |
@@ -185,14 +207,20 @@ Run everything from the repository root.
 | Parity on Postgres | `DATABASE_URL=<local database URL> pnpm --filter @fnb/demo-analytics test:parity:postgres` | refuses a database that holds a tenant whose slug does not start with `demo-` or `parity-`; CI runs it on a fresh stack |
 | Playwright, once | `pnpm --filter @fnb/web e2e:install` | installs the Chromium build Playwright needs |
 | Playwright, one spec | `E2E_PORT_OFFSET=10 pnpm --filter @fnb/web exec playwright test --project=demo e2e/demo/report-day.spec.ts` | `--project` starts only that project's server |
-| Playwright, everything | `pnpm --filter @fnb/web test:e2e` | 262 tests in 36 files (listed on 2026-11-18), one worker; long, so prefer one spec on a shared machine |
+| Playwright, everything | `pnpm --filter @fnb/web test:e2e` | 268 tests in 37 files (listed on 2026-11-18 at `f325380`), one worker; long, so prefer one spec on a shared machine |
 | User-guide screenshots | `pnpm --filter @fnb/web docs:screenshots` | takes every screenshot of [user-guide.md](user-guide.md) from the demo at a fixed clock into `docs/user-guide/`, and the sign-in screens from a build pointed at an unreachable backend, so no real data can appear; retake them whenever a screen changes |
+| A Mini App in the browser | `pnpm --filter @fnb/zalo-staff dev` (or `@fnb/zalo-customer`) | Vite in browser mode on 5741 (customer 5751): the mocked Zalo SDK, the synthetic `brand-1` configuration and a stand-in session. `?session=unpaired` or `?session=failed` shows the other sign-in states, `&delay=<ms>` (at most 10,000) holds "Đang kết nối…", and the stand-in refuses the code `000000`. The dev server builds the Development stage, so the customer app also shows its probe entry |
+| A Mini App build | `pnpm --filter @fnb/zalo-staff build` | `vite build`, then the size budgets of `packages/zalo-mini/scripts/check-budget.mjs`: at most 3 MB a file and 10 MB a version, and no `echarts` or `zrender` in the dependency graph. Every build targets ES2015 and writes `dist/app-config.json`. Variables: `VITE_ZALO_RUNTIME` (`browser`, the default, mocks `zmp-sdk`; `zalo` builds for the Zalo runtime and also needs `VITE_BRAND_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` and a generated `app-config.json`), `VITE_MINI_APP_STAGE` (`testing` for a build by default, `development` for the dev server; a Testing build fails when it still contains a Development-only screen), `VITE_BRAND_KEY`, and `MINI_APP_CONFIG`, the `app-config.json` to build from (without it a browser build uses the synthetic `brand-1`) |
+| Mini App tests | `pnpm --filter @fnb/zalo-staff test`; `pnpm --filter @fnb/zalo-staff test:e2e` | Vitest; Playwright builds the Testing stage in browser mode, serves it on 5742 (customer 5752) plus `E2E_PORT_OFFSET` and runs the projects `phone-light`, `phone-dark` and `budget` at 360 × 800 px (staff 11 tests, customer 7, listed on 2026-11-18) |
+| A Mini App's `app-config.json` | `pnpm --filter @fnb/zalo-mini app-config --config <file> --brand <key> --app <staff or customer> --out <path>` | writes one brand's file from a configuration file shaped as the `mini_apps` rows (`packages/zalo-mini/config/synthetic-brands.json` holds two synthetic brands); `--config <file> --list` prints `<brand> <kind>` per row, and `--compare <first> <second>` fails when two files differ outside the configured fields. Exit 0, 1 on an invalid configuration, 2 on a usage error. The generated file is gitignored. `fnb zalo app-config`, which the deploy workflow calls to read the rows from the database, is not built yet |
+| Data pack files | `pnpm --filter @fnb/datapack schemas`, `golden` or `fixtures` | regenerate the JSON Schema files, the golden demo pack or the plan fixtures; commit what they write ([strategy.md](strategy.md)) |
+| Build an AI data pack | `pnpm --filter @fnb/jobs fnb -- datapack --tenant <slug>` | as a member of the tenant inside one read-only snapshot; files go only outside the repository or below `docs/private/`; `--check <file>` checks a pack file without a database ([strategy.md](strategy.md)) |
 | Build every package | `pnpm build` | `tsc -p tsconfig.build.json` into each `dist/` (gitignored), plus the web build; packages are consumed as TypeScript source, so nothing needs building to run |
 | Web build | `pnpm --filter @fnb/web build` | `vite build`, then `scripts/check-bundle.mjs` and `scripts/check-size.mjs` |
 | Pages demo build | `VITE_BASE_PATH=/fnb-manager/ VITE_SUPABASE_URL= VITE_SUPABASE_PUBLISHABLE_KEY= pnpm --filter @fnb/web build` | empty variables in the environment win over `apps/web/.env.local`; rebuild the default `dist` afterwards |
 | Design tokens | `pnpm --filter @fnb/design-tokens build` | regenerates `tokens.css` and `palette.ts` in `packages/design-tokens/src/generated/` from the DTCG files in `packages/design-tokens/tokens/`; commit both; the package's tests fail while they are stale ([design-system.md](design-system.md)) |
-| Edge Function import map | `node scripts/function-imports.mjs` | writes `supabase/functions/sync-incremental/deno.json`; `--check` only reports |
-| Edge Function type-check | `deno check index.ts` in `supabase/functions/sync-incremental` | as CI does |
+| Edge Function import maps | `node scripts/function-imports.mjs` | writes the `deno.json` of every folder of `supabase/functions` that has one (each function and `_shared`), or only of the folders named after it; `--check` only reports; `--affected` reads changed paths on standard input and prints the functions they affect (section 6) |
+| Edge Function checks | `deno check index.ts` and `deno test --permit-no-files` in each function's folder; `deno test` in `supabase/functions/_shared` | as CI does (section 7) |
 | Public-safety scan | `node scripts/check-public-safe.mjs` | prints `public-safe scan: no findings` and exits 0 when clean |
 | API reference check | `DATABASE_URL=<local database URL> pnpm docs:check-api` | compares [api.md](api.md) with the functions in `public` that `authenticated` may execute, in a read-only transaction; without `DATABASE_URL` it reads the local container read-only. Exit 0 in step, 1 out of step, 2 on a usage or connection error |
 | OpenAPI description | `pnpm docs:openapi` | regenerates `docs/api/openapi.json` from the local stack as the role `authenticated`; `pnpm docs:check-openapi` only reports; see [api.md](api.md) section 8 |
@@ -212,6 +240,9 @@ These suites skip unless their variables are set. They read the shell environmen
 | Sync Postgres repository (`packages/sync/test/integration`) | `DATABASE_URL` | `pnpm --filter @fnb/sync test` |
 | CLI on the local stack (`apps/jobs/test/integration/local-stack.test.ts`) | `DATABASE_URL`; one test also `SUPABASE_URL` and `SUPABASE_SECRET_KEY` | `pnpm --filter @fnb/jobs test` |
 | Notifications (`packages/notify/test/integration`, `apps/jobs/test/integration/notify-cli.test.ts`) | `NOTIFY_INTEGRATION=1` and `DATABASE_URL`; fixture tenants `notify-it-…` and synthetic `_IT` secrets | `pnpm --filter @fnb/notify test:integration` |
+| Mini App sign-in (`packages/zalo/test/integration/session.test.ts`): `zalo-session` and `zalo-phone` against the local stack and the mock Zalo | `ZALO_INTEGRATION=1` with `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `SUPABASE_PUBLISHABLE_KEY` of the local stack, after a restart that loaded the access-token hook; fixture tenants `zalo-it-…` | `pnpm --filter @fnb/zalo test:integration` |
+| `fnb zalo` on the local stack (`apps/jobs/test/integration/zalo-cli.test.ts`) | `ZALO_INTEGRATION=1` and `DATABASE_URL` | `pnpm --filter @fnb/jobs test` |
+| The webhooks on the local stack (`supabase/functions/oa-webhook/integration.test.ts`, `bot-webhook/integration.test.ts`) | `ZALO_INTEGRATION=1` and a local `DATABASE_URL`, with Deno's environment and network permissions | `deno test -A integration.test.ts` in the function's folder |
 | Reports live check, read-only | `DATABASE_URL`; `LIVE_TENANT` (default `live-local`), `LIVE_SEED` (default 20261108) | `pnpm --filter @fnb/reports test:live` (the script sets `LIVE=1`) |
 | Digest equals Ngày, live | `DATABASE_URL` | `pnpm --filter @fnb/notify test:live` (the script sets `LIVE=1`) |
 | Live settings specs (`apps/web/e2e/live/settings-*.spec.ts`) | `apps/web/.env.local`; `E2E_DATABASE_URL` optional (the local stack when unset, loopback only) | `pnpm --filter @fnb/web test:e2e -- --project=live` |
@@ -238,14 +269,14 @@ node scripts/check-public-safe.mjs
 CI=1 pnpm --filter @fnb/jobs fnb -- status
 ```
 
-CI adds the Postgres parity run and the web end-to-end suite on a freshly reset stack. CI does not run the web build with its bundle and size checks (the end-to-end `pages` project builds with plain `vite build`); only `deploy-web.yml` runs it, on `main`, so run it yourself before handing over. CI does not run `pnpm docs:check-api` either (request R-AP01). Every phase so far was closed the same way: build, an independent review, fixes, then an independent verification that reruns what CI runs plus checks against real data on the local stack ([status.md](status.md)).
+CI adds the Postgres parity run and the web end-to-end suite on a freshly reset stack, the Deno checks and tests of every function, and the Mini App job (section 7). CI does not run the web build with its bundle and size checks (the end-to-end `pages` project builds with plain `vite build`); only `deploy-web.yml` runs it, on `main`, so run it yourself before handing over. CI does not run `pnpm docs:check-api` either (request R-AP01). Every phase so far was closed the same way: build, an independent review, fixes, then an independent verification that reruns what CI runs plus checks against real data on the local stack ([status.md](status.md)).
 
 ## 4. Conventions
 
 ### Code
 
 - TypeScript everywhere (ADR-002). `tsconfig.base.json` sets `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax` and `NodeNext` modules; relative imports end in `.js`.
-- Packages export their TypeScript source (`exports` points at `./src/index.ts`). The CLI runs it through tsx (`apps/jobs/bin/fnb.mjs`), the web app bundles it with Vite, and the Edge Function reaches the same files through its generated import map.
+- Packages export their TypeScript source (`exports` points at `./src/index.ts`). The CLI runs it through tsx (`apps/jobs/bin/fnb.mjs`), the web app and the Mini Apps bundle it with Vite, and the Edge Functions reach the same files through their generated import maps.
 - Biome 2.6.6: tabs, double quotes, the recommended rules, sorted imports.
 - No comments in code. Names, small functions and test titles carry the explanation; the reasoning goes into the commit message, the pull request or the docs. Only comments a machine reads (pragmas, generated files) are allowed.
 - Inputs from outside (POS responses, environment variables, RPC rows) are parsed with zod schemas at the edge.
@@ -274,7 +305,7 @@ CI adds the Postgres parity run and the web end-to-end suite on a freshly reset 
 1. `pnpm exec supabase migration new <snake_case_name>` creates `supabase/migrations/<timestamp>_<name>.sql`. Do not edit a migration that has been applied anywhere; write a new one that alters or redefines.
 2. Write the SQL by the conventions in section 4. A new `public` table gets row-level security, its policies and its grants in the same migration.
 3. `pnpm exec supabase migration up` applies the pending migrations to the local database and keeps the data.
-4. Add or extend pgTAP files. A new `public` table also changes `01_schema.sql` and the table count in `03_rls_enabled.sql` (52 tables on 2026-11-12); new grants change the access tests.
+4. Add or extend pgTAP files. A new `public` table also changes `01_schema.sql` and the table count in `03_rls_enabled.sql` (65 tables on 2026-11-18); new grants change the access tests.
 5. Run `pnpm exec supabase test db`.
 6. If a function in `public` or its grants changed, run `pnpm docs:check-api` and update [api.md](api.md) until it passes.
 7. Describe the change in [schema.md](schema.md).
@@ -291,9 +322,9 @@ CI adds the Postgres parity run and the web end-to-end suite on a freshly reset 
 
 ### pgTAP files
 
-- Files are `supabase/tests/NN_<area>.sql`, two-digit numbers from `01` to `31` on 2026-11-12, grouped roughly by phase ([schema.md](schema.md#tests) describes each). A new area takes the next free number; agree it with anyone adding tests at the same time.
+- Files are `supabase/tests/NN_<area>.sql`, two-digit numbers from `01` to `43` on 2026-11-18 (`32` is held by phase 12c's branch), grouped roughly by phase ([schema.md](schema.md#tests) describes each). A new area takes the next free number; agree it with anyone adding tests at the same time.
 - Every file opens with `begin;` and `select plan(<n>);` with the exact number of tests, and ends with `select * from finish();` and `rollback;`. Fixture tenants, users and rows are created inside that transaction.
-- The notification files use tenants named `notify-it-pgtap-…`, secret names ending in `_IT`, and a tenant filter on every scanning function.
+- The notification files use tenants named `notify-it-pgtap-…`, secret names ending in `_IT`, and a tenant filter on every scanning function. The Zalo files use tenants named `zalo-it-pgtap-…` and synthetic secret names such as `ZALO_APP_SECRET_BRAND_1`; the Zalo integration suites, gated by `ZALO_INTEGRATION=1`, use `zalo-it-…` tenants, `_IT` secret names with `synthetic-` values and a mock Zalo on 127.0.0.1 ([test-plan.md](test-plan.md), section 2.7).
 - Anchor dates on the seeded data, not on today. `15_analytics_queries.sql` to `17_analytics_access.sql` take the demo tenant's newest invoice date plus one day: `select max(business_date) + 1 from public.invoices where tenant_id = '11111111-1111-4111-8111-111111111111'`. A test that compares seeded rows with `current_date` passes on a fresh stack, as in CI, and fails days later on a long-lived one. The live Playwright specs follow the same rule: they fix the browser clock just after the newest seeded date (`clockAfterSeed` in `apps/web/e2e/support/local-stack.ts`).
 
 ## 6. Recipes
@@ -306,7 +337,7 @@ The contract, the capability matrix and the conformance options are in [connecto
 2. Implement `PosConnector`: `describe()` with a complete capability map and a credentials schema that rejects `{}`; methods behind a capability declared `false` throw `ConnectorCapabilityError` (`assertCapability` does this). Keep every vendor row in `raw`, emit `DataQualityFlag`s instead of guessing, and export a `ConnectorFactory` (`{ id, create(options) }`).
 3. Test with synthetic fixtures and run the conformance suite from `@fnb/connector-core/conformance` (`runConnectorConformanceSuite`), as `packages/connector-mock/test/unit/conformance.test.ts` and `packages/connector-ipos/test/unit/connector-conformance.test.ts` do. Live checks are opt-in (`LIVE=1`) and print counts only.
 4. Wire it into the runners in `@fnb/runner`: an entry schema in the `accountEntrySchema` union (`packages/runner/src/accounts.ts`), credential fields in `CREDENTIAL_FIELDS` so they are masked and redacted, the factory in `createConnectorRegistry`, the entry-to-credentials mapping in `credentialsFor` and any transport options in `connectAccount` (`packages/runner/src/connectors.ts`), and the package in `packages/runner/package.json`.
-5. The Edge Function imports `@fnb/runner`, so run `node scripts/function-imports.mjs`. The path filter of `.github/workflows/deploy-functions.yml` lists the packages the function imports; the new package belongs there too.
+5. The Edge Function imports `@fnb/runner`, so run `node scripts/function-imports.mjs`. `.github/workflows/deploy-functions.yml` already watches the `src/` folder and `package.json` of every package and deploys the functions whose import graph holds a changed file, so the workflow needs no change.
 6. `pos_accounts.connector` is free text, so the database needs no migration. Document the entry shape in [secrets.md](secrets.md) and the connector in [connectors.md](connectors.md) (capability matrix) and `docs/connectors/<vendor>.md`.
 
 ### Add a metric
@@ -332,15 +363,46 @@ The phase 9 pattern: every number comes from SQL; TypeScript adds only what sits
 
 Follow section 5. Before writing it, check [status.md](status.md) for work in progress that adds migrations at the same time.
 
-### Add or move a file the Edge Function imports
+### Add or move a file an Edge Function imports
 
-`supabase/functions/sync-incremental` imports `@fnb/runner`, `@fnb/runner/postgres`, `@fnb/sync` and `@fnb/sync/postgres`, and through them `@fnb/core`, `@fnb/connector-core`, `@fnb/connector-ipos` and `@fnb/connector-mock`. Deno reads them through the generated `deno.json` import map: each workspace import maps to its source file, each relative `.js` import to its `.ts` file, and each npm package to `npm:<name>@<installed version>`.
+Each folder of `supabase/functions` that holds a `deno.json` and an `index.ts` is a function; `_shared` holds what the Zalo functions share and is never deployed on its own. `sync-incremental` imports `@fnb/runner`, `@fnb/runner/postgres`, `@fnb/sync` and `@fnb/sync/postgres`, and through them `@fnb/core`, `@fnb/connector-core`, `@fnb/connector-ipos` and `@fnb/connector-mock`; `_shared/http.ts` imports `@fnb/sync` for its redactor. Deno reads them through each folder's generated `deno.json` import map: each workspace import maps to its source file, each relative `.js` import to its `.ts` file, and each npm package to `npm:<name>@<installed version>`. The script follows relative imports out of a function's folder, so a function that imports `../_shared/http.ts` gets `_shared`'s imports in its own map.
 
-1. After adding, renaming or moving a file in those packages, or adding an import to one, run `node scripts/function-imports.mjs` and keep the regenerated `supabase/functions/sync-incremental/deno.json` in the change.
-2. CI runs `node scripts/function-imports.mjs --check` and `deno check index.ts` (Deno v2.7.3); `deploy-functions.yml` runs the check before every deploy.
+1. After adding, renaming or moving a file in a package a function imports, adding an import to one, or adding a function, run `node scripts/function-imports.mjs` and keep every regenerated `deno.json` in the change. `node scripts/function-imports.mjs <folder>…` writes only the named folders.
+2. CI runs `node scripts/function-imports.mjs --check`, which fails on any stale map, then in each function's folder `deno check index.ts` and `deno test --permit-no-files`, and `deno test` in `_shared` (Deno v2.7.3); `deploy-functions.yml` runs the check before every deploy.
 3. The script refuses a subpath import of an npm package (`name/sub`) until it learns that import, and an npm package that resolves to two versions in different packages.
-4. A push to `main` that touches those packages' `src/` redeploys the function (`deploy-functions.yml`).
-5. The local stack mounts each file of the import map when it starts, so a file added to the graph later is missing from the served function (`Module not found` at boot) until `pnpm db:stop` and `pnpm db:start` restart the stack; both keep the data.
+4. `--affected` reads changed paths, one per line, on standard input and prints the functions whose folder or import graph holds one of them; a change to `supabase/config.toml` or to the script itself affects every function. For example `git diff --name-only HEAD~1 | node scripts/function-imports.mjs --affected`. On a push to `main`, `deploy-functions.yml` deploys exactly those functions (section 7; a manual dispatch deploys every function).
+5. A new function also gets its `[functions.<name>]` entry in `supabase/config.toml` with `enabled`, `verify_jwt`, `import_map` and `entrypoint`, as the four Zalo entries have (all enabled since #205 and #207).
+6. The local stack mounts each file of the import map when it starts, so a file added to the graph later is missing from the served function (`Module not found` at boot) until `pnpm db:stop` and `pnpm db:start` restart the stack; both keep the data.
+7. The access-token hook (`[auth.hook.custom_access_token]`, #205) is read by Supabase Auth when the stack starts: a stack that was running before the migration `zalo_sign_in` issues tokens without the `memberships` claim until `pnpm db:stop` and `pnpm db:start` restart it, which keeps the data. The cloud project registers the hook in its dashboard ([go-live.md](go-live.md)).
+
+### Serve a function and send a preflight
+
+The shared helpers of `supabase/functions/_shared` answer CORS for the Mini App origins only ([api.md, section 5](api.md#5-edge-function-endpoints)). To check a function built on `serveFunction` locally:
+
+1. Give its `[functions.<name>]` entry `enabled = true`. The running stack serves every enabled function at `http://127.0.0.1:54321/functions/v1/<name>` once restarted (`pnpm db:stop`, `pnpm db:start`); `pnpm exec supabase functions serve` serves them with reloading instead and reads the function secrets from `supabase/functions/.env` or `--env-file <file>`, a file git ignores like every `.env`.
+2. Send a preflight from the Mini App origin:
+
+```sh
+curl -si -X OPTIONS http://127.0.0.1:54321/functions/v1/<name> \
+  -H 'Origin: https://h5.zdn.vn' \
+  -H 'Access-Control-Request-Method: POST' \
+  -H 'Access-Control-Request-Headers: authorization, apikey, content-type'
+```
+
+3. Expect `204` with `access-control-allow-origin: https://h5.zdn.vn`, `vary: Origin`, `access-control-allow-methods: GET, POST, OPTIONS`, `access-control-allow-headers: authorization, apikey, content-type, x-client-info` and `access-control-max-age: 600`. With `Origin: zbrowser://h5.zdn.vn` the answer names that origin instead; with any other origin it is `204` with `vary: Origin` and no `access-control-*` header.
+4. A request (`curl -si -X POST … -H 'Origin: https://h5.zdn.vn' -H 'content-type: application/json' -d '{}'`) answers with the same `access-control-allow-origin`, `vary: Origin` and an `x-request-id`; an error body is `{"error": "<code>", "request_id": "<id>"}`. A function with `verify_jwt = true`, such as `zalo-phone`, also needs `-H 'Authorization: Bearer <session token>'` on the request.
+
+### Add a Mini App screen
+
+The Mini Apps share their shell, sign-in, storage and checks through `@fnb/zalo-mini` ([packages/zalo-mini/README.md](../packages/zalo-mini/README.md)); an app holds only its screens, routes, tabs and strings.
+
+1. Write the screen as a React component under `apps/zalo-<staff or customer>/src/`, with zmp-ui components and Tailwind classes on the design-token variables; read strings through `t` of `useI18n()`.
+2. Add a route (`{ path, element }`) to `routes` in `src/app.tsx`, and for a bottom tab a `{ path, labelKey, icon }` to `tabs`. The shell refuses more than four tabs, a single tab, a tab without a route and a first tab that does not open `/`, and opens the first tab first. Routing stays in memory (`ZMPRouter`), so the address never changes.
+3. Add its strings to `src/i18n/vi.json` and `src/i18n/en.json` with the same keys (the app's `catalog.test.ts` fails otherwise); strings both apps use go to `packages/zalo-mini/src/i18n/messages/`.
+4. Keep state in Native Storage through `@fnb/zalo-mini`, never in LocalStorage, SessionStorage, IndexedDB or cookies: Biome's `noRestrictedGlobals` rule in each app and `zalo-mini:unit/no-web-storage` refuse them. Open no link outside the Mini App, call no external-open SDK function (`openWebview`, `openOutApp` and the like), and keep every target at least 44 × 44 CSS px.
+5. A screen meant for Development builds only, such as the customer app's phone-consent probe, is imported lazily behind `import.meta.env.VITE_MINI_APP_STAGE === "development"`, and a string it contains goes into `developmentOnlyMarkers` in the app's `vite.config.ts`, so a Testing build that still holds it fails.
+6. Test it: a Vitest case next to the app (`src/app.test.tsx`), and a Playwright case in `e2e/session.spec.ts` that calls `watchMiniAppPage(page)` before opening the page and `checkMiniAppScreen(page)` on the screen, which checks the tab count, the 44 px targets, outbound links and external-open calls, web storage and cookies, serious or critical axe violations and console errors. The projects run it at 360 × 800 px in light and dark.
+7. `pnpm --filter @fnb/zalo-<staff or customer> build` then checks the size budgets; `echarts` and `zrender` are refused by the build and by the budget check.
 
 ### Add a CLI command
 
@@ -355,23 +417,25 @@ Follow section 5. Before writing it, check [status.md](status.md) for work in pr
 
 | Workflow | Runs on | What it checks or does |
 |---|---|---|
-| `ci.yml` (CI) | every push to `main` and every pull request | `secrets`: gitleaks v8.30.1 over the history and the public-safety scan. `code`: frozen install, `pnpm lint`, `pnpm typecheck`, `pnpm test`, the import-map check and `deno check` of `sync-incremental`. `database`: the Supabase stack with most services left out, `supabase db reset`, `supabase test db`, parity on Postgres. `e2e`: Chromium, the stack with the mail catcher, `db reset`, `apps/web/.env.local` written from `supabase status -o env`, then `test:e2e` (30-minute limit) |
+| `ci.yml` (CI) | every push to `main` and every pull request | `secrets`: gitleaks v8.30.1 over the history and the public-safety scan. `code`: frozen install, `pnpm lint`, `pnpm typecheck`, `pnpm test`, the import-map check, then a loop over every folder of `supabase/functions` except `_shared` running `deno check index.ts` and `deno test --permit-no-files`, and `deno test` in `_shared`. `database`: the Supabase stack with most services left out, `supabase db reset`, `supabase test db`, parity on Postgres. `e2e`: Chromium, the stack with the mail catcher, `db reset`, `apps/web/.env.local` written from `supabase status -o env`, then `test:e2e` (30-minute limit). `mini-apps` (20-minute limit): builds both Mini Apps for the two synthetic brands of `packages/zalo-mini/config/synthetic-brands.json` from their generated `app-config.json` as Testing builds, checks that each pair of files differs only in configured fields and that every build keeps the size budgets, builds a Development customer app and checks it carries the probe screen, then runs both apps' Playwright projects (360 px in light and dark, and the paint budget on a throttled phone); a failed run keeps its traces for 7 days |
 | `deploy-web.yml` | push to `main` touching `apps/web/**`, `packages/**` or the workflow; manual | builds the web app (a live build when the repository variables `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` exist, the demo otherwise) under the Pages base path and deploys it to GitHub Pages |
 | `migrate.yml` | push to `main` touching `supabase/migrations/**` or `supabase/config.toml`; pull requests from this repository touching migrations; manual | `supabase db push --dry-run` on pull requests, `supabase db push` on `main`; skips until `SUPABASE_PROJECT_ID` exists |
-| `deploy-functions.yml` | push to `main` touching the function, `supabase/config.toml`, the `src/` of the packages it imports or `scripts/function-imports.mjs`; manual | import-map check, then `supabase functions deploy sync-incremental`; skips until `SUPABASE_PROJECT_ID` and `SUPABASE_ACCESS_TOKEN` exist |
+| `deploy-functions.yml` | push to `main` touching `supabase/functions/**`, `supabase/config.toml`, the `src/` or `package.json` of any package, `pnpm-lock.yaml` or `scripts/function-imports.mjs`; manual | import-map check, then `function-imports.mjs --affected` on the push's changed paths, then `supabase functions deploy` for each affected function; a manual run deploys every function. A failed deploy does not stop the others, and the job fails at the end naming the failed ones ([operations.md, 4.11](operations.md#411-a-failed-pages-function-or-mini-app-deploy)). Skips until `SUPABASE_PROJECT_ID` and `SUPABASE_ACCESS_TOKEN` exist |
+| `deploy-mini-apps.yml` | push to `main` touching `apps/zalo-staff`, `apps/zalo-customer`, `packages/zalo-mini`, `packages/design-tokens`, `pnpm-lock.yaml` or the workflow (a Development version); a `mini-v*` tag (a Testing version); manual (Development) | for each configured Mini App, numbered in the log: `fnb zalo app-config` writes its `app-config.json` from the `mini_apps` rows, a Zalo build with the budget check, `fnb zalo zmp env` for its id and developer token, then `zmp-cli@4.0.5 login` and `deploy`. Skips with a note until `SUPABASE_DB_URL`, `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` exist, while the `fnb zalo` commands are not built, and while no Mini App row exists; it has never deployed ([operations.md, 4.17](operations.md#417-mini-app-deploys)) |
 | `sync.yml` (Sync) | 03:23 Asia/Ho_Chi_Minh every night; manual with account number, dates, kind and dry run | the nightly window (14 business dates ending yesterday) or the dispatched one, then `fnb digest --due`, `fnb notify tick` and `fnb status`; skips until `SUPABASE_DB_URL` and `POS_ACCOUNTS_JSON` exist |
 | `notify.yml` (Notify) | 06:07, 07:07 and 08:07 Asia/Ho_Chi_Minh; manual | `fnb notify tick --skip-if-scheduler-healthy --budget-seconds 300` (phase 12, in build); skips until `SUPABASE_DB_URL` exists |
 | `backup.yml` | Sunday 19:23 UTC (Monday 02:23 in Vietnam); manual | `supabase db dump` of schema, data, roles and auth, encrypted with `age` and copied to S3-compatible storage; skips until configured |
 | `cron-probe-peak.yml`, `cron-probe-offpeak.yml` | minutes 0 and 30, and 7 and 37, of every hour (UTC) | record when each scheduled run actually started; `node scripts/cron-delay-report.mjs` reads them through `gh api` |
 | `workflows-active.yml` | Monday 02:17 UTC (09:17 in Vietnam); manual | re-enables scheduled workflows that GitHub disabled for inactivity |
 
-The workflow secrets and variables are listed in [secrets.md](secrets.md). In `sync.yml` and `notify.yml` the secrets are set only on the steps that need them, never on the job, and the first `fnb` step (`fnb mask-credentials`) masks the credential fields before any other `fnb` output.
+The workflow secrets and variables are listed in [secrets.md](secrets.md). In `sync.yml`, `notify.yml`, `deploy-functions.yml` and `deploy-mini-apps.yml` the secrets are set only on the steps that need them, never on the job, and in the jobs that run `fnb` the first `fnb` step (`fnb mask-credentials`) masks the credential fields before any other `fnb` output.
 
 ## 8. Deployment
 
 - **Web app.** `deploy-web.yml` publishes to GitHub Pages under `/<repository>/` (`/fnb-manager/`). Without the two repository variables the build is the demo; with them it is the live app behind login. A new build makes the app offer "Có phiên bản mới — tải lại".
 - **Database.** `migrate.yml` pushes the migrations to the linked Supabase project.
-- **Edge Function.** `deploy-functions.yml` deploys `sync-incremental`. Its POS secrets and turning on its `pg_cron` schedule are owner steps.
+- **Edge Functions.** `deploy-functions.yml` deploys the functions a push affects; today that is `sync-incremental`, the only deployable function. Its POS secrets and turning on its `pg_cron` schedule are owner steps.
+- **Mini Apps.** `deploy-mini-apps.yml` deploys each brand's staff and customer Mini Apps with `zmp-cli`: a Development version from `main`, a Testing version from a `mini-v*` tag. It needs the owner's Zalo accounts (#8), the `mini_apps` rows, the developer token and the `fnb zalo` commands, so it has never deployed.
 - **Scheduled jobs.** The nightly sync, the notification ticks and the weekly backup run on GitHub Actions once their secrets exist.
 - **State on 2026-11-17.** No cloud project exists yet: creating it, the GitHub secrets and variables, SMTP and the backup destination wait for the owner ([go-live.md](go-live.md) is the step-by-step list). All finished work is pushed to `main`, and every push to `main` redeploys the demo to Pages, so the demo shows every page through phase 10b. Unfinished phase 11a and 12c work lives on the `wip/*` branches listed in [status.md](status.md).
 
@@ -408,7 +472,7 @@ The workflow secrets and variables are listed in [secrets.md](secrets.md). In `s
 
 ### Other checks that fail
 
-- **Integration tests skipped.** The tests read the shell environment, not `.env`; set `DATABASE_URL` (and `NOTIFY_INTEGRATION=1` for notifications) on the command line.
+- **Integration tests skipped.** The tests read the shell environment, not `.env`; set `DATABASE_URL` (and `NOTIFY_INTEGRATION=1` for notifications, `ZALO_INTEGRATION=1` for the Zalo suites) on the command line.
 - **Postgres parity refuses.** The database holds a tenant whose slug does not start with `demo-` or `parity-`. Run it in CI or on a stack without real data; the PGlite parity inside `pnpm test` runs anywhere.
 - **Import map out of date.** Run `node scripts/function-imports.mjs` and keep the regenerated `deno.json`.
 - **Web size check.** The initial JavaScript must stay at or under 400 kB gzipped, and each lazy pattern in `apps/web/scripts/lazy-chunks.mjs` must match a chunk; load new heavy code through a dynamic import.

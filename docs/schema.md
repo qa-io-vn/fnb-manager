@@ -5,7 +5,7 @@ Field dictionary for the canonical, POS-agnostic schema in `supabase/migrations/
 Two schemas exist:
 
 - `public` holds every table, enum, view and query function and is exposed through the Data API to the `authenticated` and `service_role` roles. `anon` holds no privilege on it.
-- `app` holds helper functions used by row-level-security policies and triggers, the fact-reading functions behind the analytics views, the analytics refresh, and the incremental sync schedule (its settings row, its dispatch tickets and their functions). It is not exposed through the API; `authenticated` may execute the helpers it needs, `service_role` alone may run the refresh, and only `postgres` (the role of the jobs, the Edge Function and `pg_cron`) reaches the schedule. The notification dispatcher's tables (link codes, bot polling state, its settings row and its tickets) and its functions live there too, reachable by `postgres` only (see "Notifications and alerts (phase 12)").
+- `app` holds helper functions used by row-level-security policies and triggers, the fact-reading functions behind the analytics views, the analytics refresh, and the incremental sync schedule (its settings row, its dispatch tickets and their functions). It is not exposed through the API; `authenticated` may execute the helpers it needs, `service_role` alone may run the refresh, and only `postgres` (the role of the jobs, the Edge Functions `sync-incremental`, `oa-webhook` and `bot-webhook`, and `pg_cron`) reaches the schedule. The notification dispatcher's tables (link codes, bot polling state, its settings row and its tickets) and its functions live there too, reachable by `postgres` only (see "Notifications and alerts (phase 12)"), and so do the Zalo binding codes, the OA webhook's day counts and the functions of the Mini App sign-in and the webhooks (see "Zalo configuration (phase 13)").
 
 ## Conventions
 
@@ -15,7 +15,7 @@ Two schemas exist:
 - Timestamps are `timestamptz`. Calendar days are `date`. Money is `numeric(14,2)` in the tenant's currency. Quantities are `numeric(12,3)`. Percentages (`_pct` columns) are `numeric(6,3)` where `1.100` means 1.1 %. Rates and shares in the aggregate tables and query functions are fractions where `0.250` means 25 %.
 - Master-data tables carry `active`, `first_seen_at` and `last_seen_at`, maintained by the sync: a row disappearing from the POS catalogue is marked inactive, never deleted.
 - Manual-input tables carry `created_by` (defaults to `auth.uid()`, frozen by a trigger on update), `created_at` and `updated_at` (set by a trigger). The trigger `app.keep_created_by()` lets only the foreign key's own action set `created_by` to null, so removing a login keeps the rows it wrote and drops its name from them (migration `settings_writes_hardening`).
-- No table is ever written by the browser except the manual-input tables, `strategy_reports`, the two legal ledgers `consent_records` and `data_subject_requests` (a `notifications` consent excepted), the notification settings `alert_rules` and `channel_policies` (owners with an unlimited scope only), the settings of phase 10 (`report_settings`, `item_category_overrides`, `payment_kind_overrides`, `legal_documents`) and, through column grants, the profile columns of `stores` and `tenants` ("Who can write what"); every other write comes from the sync jobs and the messaging jobs running as `service_role`. The aggregate tables (`agg_*`) are written only by `app.refresh_analytics()`, which the sync jobs call and which an owner or manager may trigger through `refresh_my_analytics()`.
+- No table is ever written by the browser except the manual-input tables, `strategy_reports`, the two legal ledgers `consent_records` and `data_subject_requests` (a `notifications` consent excepted), the notification settings `alert_rules` and `channel_policies` (owners with an unlimited scope only), the settings of phase 10 (`report_settings`, `item_category_overrides`, `payment_kind_overrides`, `legal_documents`), the Zalo configuration of phase 13 (`brands`, `zalo_apps`, `oas`, `mini_apps`, `zbs_templates`, `gmf_groups`; owners with an unlimited scope only) and, through column grants, the profile columns of `stores` and `tenants` ("Who can write what"); every other write comes from the sync jobs and the messaging jobs running as `service_role`. The aggregate tables (`agg_*`) are written only by `app.refresh_analytics()`, which the sync jobs call and which an owner or manager may trigger through `refresh_my_analytics()`.
 
 ## Enums
 
@@ -426,6 +426,10 @@ Per store-day reconciliation of our totals against the POS totals. Unique on (`s
 | `is_matched` | boolean | no | True when both pairs agree within tolerance |
 | `checked_at` | timestamptz | no | Time of the check |
 
+### `app.tenant_ipos_sources`
+
+Where a tenant's iPOS data comes from (migration `tenant_ipos_sources`): one row per tenant with `source` `api`, written by a run with `IPOS_REAL_API=on`, or `snapshot`, written by a run that replayed the local iPOS snapshot with `IPOS_REAL_API=off`, and `recorded_at`. `app.claim_ipos_source(p_tenant_id, p_source)` records the source at the tenant's first write and returns the recorded one, which the runners compare with their own before they write anything, so replayed data never mixes with real data ([sync.md](sync.md#real-or-fake-ipos)); any other source is refused with `22023`. The migration marked every tenant that already had an `ipos-fabi` account as `api`. The table and the function are revoked from `public`, `anon`, `authenticated` and `service_role`, so only `postgres`, the role of the CLI and the Edge Function, reaches them; the function is `security invoker` with an empty `search_path`.
+
 ### Incremental schedule
 
 Migration `20261108084100_incremental_sync_schedule.sql` installs `pg_cron` (in `pg_catalog`) and `pg_net` (in `extensions`) and keeps the schedule of the `sync-incremental` Edge Function in `app`. `anon`, `authenticated` and `service_role` hold no privilege on these tables and may execute none of these functions; `postgres` owns them, and the `pg_cron` job runs as `postgres`. `docs/sync.md` ("Incremental runner") describes how they work together.
@@ -641,7 +645,7 @@ An item moved to another POS item type of the same account, for reports only; th
 
 | Name | On | Behaviour |
 | --- | --- | --- |
-| `<table>_set_updated_by` → `app.set_updated_by()` | before insert or update on `item_costs`, `payment_fee_rates`, `item_type_roles`, `targets`, `report_settings`, `item_category_overrides`, `payment_kind_overrides`, `legal_documents`, `holidays` | Sets `updated_by` to `auth.uid()`, whatever the request carries |
+| `<table>_set_updated_by` → `app.set_updated_by()` | before insert or update on `item_costs`, `payment_fee_rates`, `item_type_roles`, `targets`, `report_settings`, `item_category_overrides`, `payment_kind_overrides`, `legal_documents`, `holidays`, and the six Zalo configuration tables of phase 13 | Sets `updated_by` to `auth.uid()`, whatever the request carries |
 | `<table>_touch_analytics_inputs` → `app.touch_analytics_inputs()` | after insert, update or delete, per row, on `item_type_roles`, `item_category_overrides`, `payment_fee_rates`, `payment_kind_overrides` | Moves the tenant's `analytics_inputs_version`, stamps `analytics_inputs_changed_at` and marks 2023-01-01 to `current_date + 1` pending; `security definer`, executable by no API role |
 | `app.opening_hours_present(jsonb)` | function | The body of phase 7's private `app.opening_hours_known`, executable by `authenticated` and `service_role` |
 | `app.store_report_settings(store_ids)` | function | One row per visible store in `store_ids` order: the tenant's settings or the defaults, and `z_threshold` 2 |
@@ -1010,7 +1014,7 @@ Roadmap phase 12. Digests and alerts reach the owner and managers through one Po
 
 ### `alert_rule_catalog`
 
-Global, read-only list of the 15 rules with their defaults; a tenant works with no override at all. Every authenticated role reads it.
+Global, read-only list of the 16 rules with their defaults; a tenant works with no override at all. Every authenticated role reads it.
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
@@ -1028,7 +1032,7 @@ Global, read-only list of the 15 rules with their defaults; a tenant works with 
 | `store_scoped` | boolean | no | Whether a store override is accepted |
 | `sort_order` | integer | no | Unique display order |
 
-Seeded rules, in order: `daily_digest`, `revenue_below_baseline`, `ticket_drop`, `drawer_variance`, `unverified_day`, `zero_sales_day` (digest lines; `daily_digest` holds `deadline_local` 06:30, `settle_grace_minutes` 30, `skip_closed_days` and `corrections`), then the immediate rules `zero_sales_open` (24 h cool-down), `sync_failed` (6 h), `auth_failed` (critical, 1 h, resolution notice), `sync_stale` (critical, threshold 90 minutes, 2 h cool-down, reminder every 24 h, resolution notice), `sync_dispatch_failed` (6 h), `nightly_missing` (30 hours, 24 h, resolution notice), `job_failed` (12 h), `channel_failed` (24 h) and `digest_failed` (24 h). Digest rules go to owners and managers, the sync and operations rules to owners. Every default passes its own schema.
+Seeded rules, in order: `daily_digest`, `revenue_below_baseline`, `ticket_drop`, `drawer_variance`, `unverified_day`, `zero_sales_day` (digest lines; `daily_digest` holds `deadline_local` 06:30, `settle_grace_minutes` 30, `skip_closed_days` and `corrections`), then the immediate rules `zero_sales_open` (24 h cool-down), `sync_failed` (6 h), `auth_failed` (critical, 1 h, resolution notice), `sync_stale` (critical, threshold 90 minutes, 2 h cool-down, reminder every 24 h, resolution notice), `sync_dispatch_failed` (6 h), `nightly_missing` (30 hours, 24 h, resolution notice), `job_failed` (12 h), `channel_failed` (24 h), `digest_failed` (24 h) and, from migration `zalo_inbound_events` (#207), `zalo_webhook_unverified` (category `channel`, warning, owners, `max_per_day` 10 from 0 to 1,000, 24 h): an OA whose webhook calls of one tenant-local day failed the signature check more than `max_per_day` times. Digest rules go to owners and managers, the sync and operations rules to owners. Every default passes its own schema.
 
 `app.alert_rule_params_valid(p_rule_key, p_params)` (stable, executable by `authenticated` and `service_role`) checks that every key of `p_params` is a parameter of the rule's schema and that its value has the type and range; a `time` is `HH:MM`.
 
@@ -1091,14 +1095,15 @@ Destinations: one row per place a message can go.
 | `linked_at`, `last_ok_at`, `last_error_at` | timestamptz | yes | Link and health |
 | `last_error_code` | text | yes | Short code `^[a-z0-9_]{1,40}$` |
 | `consecutive_failures` | integer | no | Default 0 |
-| `disabled_reason` | text | yes | `blocked_by_user`, `member_request`, `owner_request` or `consent_withdrawn` |
+| `last_interaction_at` | timestamptz | yes | For a `zalo_oa` destination, when its OA user last followed the OA, messaged it or tapped a menu or button that sends a message, as `oa-webhook` reports (#207); only moves forward; the send decision reads it against the interaction window of the `zalo_oa` policies; not selectable by `authenticated` |
+| `disabled_reason` | text | yes | `blocked_by_user` (also set when the OA user unfollows, #207), `member_request`, `owner_request` or `consent_withdrawn` |
 | `created_by`, `created_at`, `updated_at` | | | Attribution |
 
 Unique indexes: one destination per (`tenant_id`, `user_id`, `kind`, `secret_name`) and per (`tenant_id`, `kind`, `secret_name`, `address`). Triggers: `notification_channels_validate` (`22023` for an unknown IANA zone, a store outside the tenant or a muted key outside the catalogue), `notification_channels_cancel_open_messages` (before delete: its `queued` and `held` messages become `cancelled` with `decision = 'destination_removed'`; a message in `sending` keeps sending without a destination), `set_updated_at` and `keep_created_by`. `authenticated` holds column-level `SELECT` without `address`, `secret_name` and `config`, so a browser query must name its columns (`select *` fails with `42501`); only service-side code and `security definer` functions write the table.
 
 ### `alert_events`
 
-Alert episodes: one open row per (`tenant_id`, `dedupe_key`) (partial unique index `alert_events_one_open_key`), with `rule_key`, the subject (`store_id`, `pos_account_id`, `channel_id`, each a composite foreign key to its tenant's row with cascade), `business_date`, `severity`, `state` (`open` or `resolved`, with `resolved_at` and `resolution` set together), `opened_at`, `last_seen_at`, `occurrences`, `folded_occurrences`, `last_notified_at` (the stored cool-down), `notifications`, `suppressed_reason` (`cool_down`, `no_destination`, `root_cause_open`), `source` and count-only `facts` (`app.facts_are_count_only`). Episodes are opened by `app.raise_alert` and resolved by `app.reconcile_alerts` (see "Episodes and alerts" below).
+Alert episodes: one open row per (`tenant_id`, `dedupe_key`) (partial unique index `alert_events_one_open_key`), with `rule_key`, the subject (`store_id`, `pos_account_id`, `channel_id`, each a composite foreign key to its tenant's row with cascade), `business_date`, `severity`, `state` (`open` or `resolved`, with `resolved_at` and `resolution` set together), `opened_at`, `last_seen_at`, `occurrences`, `folded_occurrences`, `last_notified_at` (the stored cool-down), `notifications`, `suppressed_reason` (`cool_down`, `no_destination`, `root_cause_open`), `source` (`incremental`, `nightly`, `cli`, `scheduler`, `notify`, `actions`, or `webhook` for the OA webhook's alert, #207) and count-only `facts` (`app.facts_are_count_only`). Episodes are opened by `app.raise_alert` and resolved by `app.reconcile_alerts` (see "Episodes and alerts" below).
 
 ### `digests`
 
@@ -1129,7 +1134,7 @@ The read policy `outbound_messages_select_for_managers_or_recipient` replaced th
 | Table | Holds |
 | --- | --- |
 | `app.notification_link_codes` | One pending code or acceptance per destination, stored only as a hash: `sha256(secret_name:CODE)` for a bot code (`bot_link`, 15 minutes), `sha256(channel_id:code)` for an e-mail code (`email_confirm`, 15 minutes, at most 5 attempts), `sha256(secret_name:chat id)` for an acceptance waiting 24 hours (`bot_consent`, keeping the code's issue time); `notice_sent_at` records when the notice reached the member |
-| `app.bot_poll_state` | Per bot secret name: the Telegram offset, the bot's display name, and the polling lease (`poller`, `poll_lease_until`); no update content |
+| `app.bot_poll_state` | Per bot secret name: the Telegram offset, the bot's display name, the polling lease (`poller`, `poll_lease_until`), and for a Zalo Bot in webhook mode (#207) `webhook_secret_sha256`, the SHA-256 of the secret token `bot-webhook` checks (unique; the token itself is never stored), with `webhook_set_at`, both set together and only for `zalo_bot`; `app.set_bot_webhook` sets them and `app.take_poll_lease` then refuses the bot; no update content |
 | `app.notify_settings` | Single row: the schedule (`enabled` false until enabled, `function_url`, `request_timeout_ms`, `ticket_lifetime`), `app_base_url`, `retention_days` (default 400, 366 to 1,100), `body_retention_days` (default 90, 31 to 400), the last tick and its count-only summary, the last dispatch and the `NOTIFY_` names (never values) each runtime reported, unclaimed-ticket counters, `last_housekeeping_at` |
 | `app.notify_tickets` | ADR-028 single-use tickets for the `notify` Edge Function (`schedule`, `kick`, `continue`, `manual`), with the `pg_net` request id once posted |
 
@@ -1238,10 +1243,197 @@ The partial index `outbound_messages_channel_digest_date_idx` (`channel_id`, `bu
 | Pending bot destinations with a chat id but no acceptance | deleted, chat id included, once the 24-hour acceptance lapsed |
 | A former member's rows | redacted at removal; housekeeping redacts any row that was being sent at the time |
 | `cron.job_run_details` | 7 days (unscoped runs only) |
+| `oa_events` (#207) | 90 days after `received_at`; the day counts in `app.oa_event_days` stay |
+
+## Zalo configuration (phase 13)
+
+Roadmap phase 13, built before the owner's Zalo accounts exist (#8). Migration `zalo_configuration` holds each brand's Zalo App, Official Account, Mini Apps, message templates and staff groups as rows, so a new brand is a configuration insert with no code change (FR-STF-01, FR-POR-12). Every Zalo identifier lives in these rows and never in the repository, and every Zalo secret is referenced by its name, never stored. The tables are empty until the owner enters the real ids with `fnb zalo config set` (#205), which writes them as `postgres` from flags or a JSON file kept outside the repository; the brand settings screen belongs to phase 20a. Migrations `zalo_sign_in` (#205) and `zalo_inbound_events` (#207) add the binding codes, the Mini App sign-in, the access-token hook and the OA webhook's event log, described after the tables.
+
+Rules shared by the six configuration tables (`brands`, `zalo_apps`, `oas`, `mini_apps`, `zbs_templates`, `gmf_groups`):
+
+- Every row carries `tenant_id` and references its parent through the pair (`tenant_id`, parent id), so a row can never hang off another tenant's brand or OA, even when the service role writes it. Deleting a brand removes its Zalo App, OA, Mini Apps, templates, staff groups, identities and tokens, and leaves the tenant's other brands.
+- `created_by` defaults to `auth.uid()`, must equal the caller on an insert from the browser and is frozen by `app.keep_created_by()`; `updated_by` is set to the caller by `app.set_updated_by()` on every insert and update, and `updated_at` by `app.set_updated_at()`.
+- An id that Zalo assigns (`external_id`) is 1 to 64 letters, digits, `_` or `-`.
+- A secret column holds the name of an Edge Function secret, never its value. `app.zalo_secret_name_valid(name, prefix)` accepts a name that matches `^ZALO_[A-Z0-9_]{1,60}$`, starts with its column's prefix and adds something after it, and refuses any segment between underscores that is shaped like a value: longer than 16 characters, or longer than 8 with a digit in it. A pasted secret, token, JWT, URL or numeric id therefore fails the CHECK (`23514`).
+
+### `brands`
+
+One row per brand of a tenant. Every Zalo row hangs off it.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | Primary key; also unique together with `tenant_id` |
+| `tenant_id` | uuid | no | Tenant (cascade delete) |
+| `brand_key` | text | no | The neutral key used in secret names, flags and logs: `brand-1` to `brand-999`; unique in the tenant |
+| `display_name` | text | no | 1 to 80 characters without control characters |
+| `store_ids` | uuid[] | no | The stores the brand covers: 1 to 50, no null. The trigger `app.validate_zalo_store_ids()` refuses a store listed twice (`22023`) and a store of another tenant (`23503`), the array form of the tenant-consistent foreign key |
+| `created_by`, `updated_by` | uuid | yes | The author and the last writer (`on delete set null`) |
+| `created_at`, `updated_at` | timestamptz | no | Row creation and last change |
+
+### `zalo_apps`
+
+The brand's Zalo App (ADR-017: one per brand, holding both Mini Apps). Besides the columns below, every configuration table has `id`, `tenant_id` and the four attribution columns of `brands`.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `brand_id` | uuid | no | The brand; unique, so a brand has one Zalo App |
+| `external_id` | text | no | The Zalo App id from the Zalo developer console; unique in the tenant |
+| `secret_name` | text | no | The function secret holding the App secret: `ZALO_APP_SECRET_<BRAND>`, such as `ZALO_APP_SECRET_BRAND_1`; the OA prefix is refused here |
+| `status` | text | no | `active` (default) or `disabled`, which tells the sign-in function (#205) to refuse every Mini App sign-in of the brand |
+
+### `oas`
+
+The brand's Official Account (ADR-017: one per brand).
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `brand_id` | uuid | no | The brand; unique, so a brand has one OA |
+| `external_id` | text | no | The OA id; unique in the tenant |
+| `package_tier` | text | no | `co_ban` (Cơ bản, the default), `tieu_chuan` (Tiêu chuẩn), `tang_truong` (Tăng trưởng) or `toan_dien` (Toàn diện); the Open API needs `tang_truong` or `toan_dien` |
+| `package_expires_on` | date | yes | When the package ends |
+| `verified` | boolean | no | Whether the OA is verified; default false |
+| `secret_name` | text | no | The function secret holding the OA secret key that signs webhooks: `ZALO_OA_SECRET_<BRAND>`; the App prefix is refused here |
+| `webhook_mode` | text | no | `observe` (default): a signature mismatch is recorded and the event accepted; `enforce`: the event is refused (#207) |
+
+### `mini_apps`
+
+The brand's staff and customer Mini Apps, with the inputs of each one's `app-config.json`.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `brand_id` | uuid | no | The brand; unique together with `kind`, so a brand has one Mini App of each kind |
+| `kind` | text | no | `staff` or `customer` |
+| `external_id` | text | no | The Mini App id; unique in the tenant |
+| `browsable` | boolean | no | False for the staff app (hidden, opened by link or QR code), true for the customer app; a CHECK ties it to `kind` |
+| `title` | text | no | The Mini App title, checked by `app.mini_app_title_valid()` against Zalo's naming rules (ADR-022): 3 to 50 characters, no leading or trailing space and no control character, not written in capitals only, no "Zalo" anywhere and no "App" or "Apps" as a word (so "Mini App" is refused while a word that only contains the letters passes) |
+| `header_title_vi`, `header_title_en` | text | no | The header title in Vietnamese and in English, 1 to 50 characters |
+| `header_color_light`, `header_color_dark` | text | no | The header colour of each theme, `#RRGGBB` |
+| `text_color_light`, `text_color_dark` | text | no | The colour of the header title and icons in each theme: `black` or `white`, the only two Zalo allows |
+
+`@fnb/zalo-mini` turns such a row into `app-config.json` and also asks for a contrast of at least 4.5:1 between each header colour and its text colour ([packages/zalo-mini/README.md](../packages/zalo-mini/README.md)). The command that reads these rows from the database for a deploy is still to be built.
+
+### `zbs_templates`
+
+The ZBS template messages of an OA. Rows arrive in phase 19a (#35).
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `oa_id` | uuid | no | The OA; (`tenant_id`, `oa_id`) references `oas` |
+| `external_id` | text | no | The template id; unique per OA |
+| `tag` | text | no | `transaction`, `customer_care` or `promotion` (Zalo's tags 1, 2 and 3) |
+| `purpose` | text | no | What the template is for, a lowercase key (`^[a-z][a-z0-9_]{0,40}$`) |
+| `approval_state` | text | no | `draft` (default), `pending_review`, `approved`, `rejected` or `disabled` |
+
+### `gmf_groups`
+
+The OA's staff groups.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `oa_id` | uuid | no | The OA; (`tenant_id`, `oa_id`) references `oas` |
+| `external_id` | text | no | The group id; unique per OA |
+| `store_ids` | uuid[] | no | The stores the group serves, with the checks of `brands.store_ids` |
+| `purpose` | text | no | `staff`, the only value |
+
+### `zalo_identities`
+
+A Zalo user as one Zalo App sees them, bound to an Auth user. `app.zalo_sign_in` writes it when a binding code is used, reached by `zalo-session` through `public.zalo_session_sign_in` as `service_role` (#205); a later code for the same Zalo user id moves it to the code's member, and a later sign-in updates `display_name` when Zalo reports another one (a name over 100 characters or with a control character is ignored). No API role may write it. It holds no phone, avatar, location or other Zalo-derived field (NFR-PRV-07), and pgTAP checks that no Zalo table has such a column.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | Primary key |
+| `tenant_id` | uuid | no | Tenant (cascade delete) |
+| `zalo_app_id` | uuid | no | The Zalo App; (`tenant_id`, `zalo_app_id`) references `zalo_apps` |
+| `zalo_user_id` | text | no | The user id that Zalo gives this app, 1 to 64 letters, digits, `_` or `-`; unique per Zalo App, so the same person under another brand's app is another identity |
+| `user_id` | uuid | no | The Auth user (cascade delete); indexed |
+| `display_name` | text | yes | The Zalo display name, at most 100 characters |
+| `created_at`, `updated_at` | timestamptz | no | Row creation and last change |
+
+### `zalo_tokens`
+
+A rotating token cache, service role only: RLS on, no policy and no privilege for `anon` or `authenticated`, like `pos_account_tokens`. The refresh tokens are single-use and change at every refresh, so they live here and not in function secrets (ADR-006 allows a service-role-only token cache). The token jobs (#206) are still to be built.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | Primary key |
+| `tenant_id`, `brand_id` | uuid | no | The brand, through (`tenant_id`, `brand_id`); unique together with `kind` |
+| `kind` | text | no | `oa`: the OA token pair (access about 25 hours, refresh 3 months); `developer`: the Mini App developer token pair of the deploys (access about 60 minutes, refresh one month) |
+| `access_token`, `refresh_token` | text | no | 1 to 4,096 characters each |
+| `access_expires_at` | timestamptz | no | When the access token stops working |
+| `refresh_expires_at` | timestamptz | yes | When the refresh token stops working |
+| `refreshed_at` | timestamptz | no | Default `now()` |
+| `version` | bigint | no | Starts at 1 and moves by exactly one on every update (`app.bump_zalo_token_version()`, which also sets `updated_at`), whatever the update says, so a refresh that read an older version can tell its row was rewritten; read under the single-row lock of #206 |
+| `updated_at` | timestamptz | no | Last change |
+
+### `app.zalo_binding_codes`
+
+One-time codes that bind a Zalo identity to an existing member until the staff roster of phase 14 exists (#205). `fnb zalo bind` issues one through `app.issue_zalo_binding_code` and prints it once.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | Primary key |
+| `tenant_id`, `zalo_app_id` | uuid | no | The Zalo App, through (`tenant_id`, `zalo_app_id`) to `zalo_apps` (cascade) |
+| `user_id` | uuid | no | The member, through (`tenant_id`, `user_id`) to `tenant_members` (cascade); one live code per member and Zalo App |
+| `code_sha256` | text | no | `app.zalo_binding_code_hash(zalo_app_id, code)`, the SHA-256 of the app id and the six digits; unique per Zalo App; no column holds the code |
+| `issued_at`, `expires_at` | timestamptz | no | Valid at most 10 minutes |
+| `failed_attempts` | smallint | no | Wrong codes sent to the app while this code was live, 0 to 5 |
+
+A wrong code counts against every live code of the Zalo App. At five wrong attempts the next wrong one deletes the codes, so five are tolerated and the sixth burns them; an expired code is deleted when the app is next asked. No API role, `service_role` included, may read the table.
+
+### Sign-in functions and the access-token hook
+
+Migration `zalo_sign_in` (#205). Every function sets an empty `search_path`.
+
+| Function | Security | Executable by | What it does |
+| --- | --- | --- | --- |
+| `app.issue_zalo_binding_code(tenant_id, user_id, zalo_app_id, at default now())` | definer, volatile | `postgres` only | Issues a member's six-digit code for an active Zalo App of the tenant and returns it once, replacing the member's previous code and dropping expired ones; refuses a publisher, a login that is not a member, an app of another tenant and a disabled app (`22023`) |
+| `app.zalo_resolve_app(brand_key, tenant_id default null)` | definer, stable | `service_role` | The Zalo App of a brand key, optionally within one tenant: tenant, tenant slug, app id, the name of its App secret and its status; at most two rows, so a key shared by two tenants shows as ambiguous |
+| `app.zalo_sign_in(zalo_app_id, zalo_user_id, display_name, binding_code, at)` | definer, volatile | `service_role` | `bound` with the member's profile for a Zalo user id already bound to a current member of the app's tenant; otherwise a valid code binds the identity once and answers `bound`; anything else answers `unpaired` without saying why. `22023` for an unknown or disabled app, a malformed user id or a code that is not six digits |
+| `app.zalo_member_profile(zalo_app_id, user_id)` | definer, stable | `postgres` only | The profile a Mini App shows: role, store scope and the names of the brand's stores within that scope; null when the login is no longer a member |
+| `public.zalo_session_app(p_brand_key, p_tenant_id default null)`, `public.zalo_session_sign_in(p_zalo_app_id, p_zalo_user_id, p_display_name default null, p_binding_code default null)` | invoker | `service_role` only | The two RPCs of `zalo-session` and `zalo-phone` over the two functions above, at the current time; `authenticated` and `anon` get `42501` |
+| `app.custom_access_token_claims(event jsonb)` | definer, stable | `supabase_auth_admin` only | The access-token hook, registered under `[auth.hook.custom_access_token]` in `supabase/config.toml`: keeps every claim and sets `memberships` to one `{tenant_id, role, store_ids}` per tenant of the login, in tenant order (`store_ids` null for every store, an empty list without a membership or a user id); RLS still reads `tenant_members`. The migration grants `supabase_auth_admin` `USAGE` on `app` and the hook only |
+
+### `oa_events` and `app.oa_event_days`
+
+Migration `zalo_inbound_events` (#207). `public.oa_events` is the OA webhook's event log, kept 90 days by the notify housekeeping. It holds no text: no message, no attachment and no other field of the event.
+
+| Column | Type | Null | Meaning |
+| --- | --- | --- | --- |
+| `id` | uuid | no | Primary key |
+| `tenant_id`, `oa_id` | uuid | no | The OA, through (`tenant_id`, `oa_id`) to `oas` (cascade) |
+| `event_id` | text | no | SHA-256 hex of the app id, OA id, event name, user id, timestamp and message id; unique per OA, so a second delivery changes nothing |
+| `event_name` | text | no | Zalo's event name, `^[a-z][a-z0-9_.]{0,63}$` |
+| `oa_user_id` | text | yes | The OA user the event concerns (the follower, the sender, or the recipient of an `oa_send_` event), never the per-app user id of `zalo_identities` |
+| `occurred_at`, `received_at` | timestamptz | no | The event's time, never later than its arrival |
+| `signature` | text | no | `raw` or `compact` (which serialisation of the body matched `X-ZEvent-Signature`), or `mismatch` or `missing`, kept only while the OA is in `observe` mode |
+| `processed_at` | timestamptz | yes | When the follow-up ran |
+
+RLS is on with no policy, and `anon` and `authenticated` hold no privilege on it. `app.oa_event_days` keeps the count-only facts per OA, tenant-local day and outcome (`raw`, `compact`, `mismatch`, `missing`, or `refused` for a call refused in `enforce` mode), with the same composite key to `oas`; it outlives the events and no API role reads it. Owners read it through `public.oa_event_counts(p_tenant_id, p_from, p_to)` (`security definer`, at most 400 days, `42501` for anyone but an owner of the tenant).
+
+Webhook functions in `app`, executable by `postgres` only (the role `oa-webhook` and `bot-webhook` connect with):
+
+| Function | What it does |
+| --- | --- |
+| `oa_webhook_target(app_external_id, oa_external_id)` | The OA rows an event names: OA, tenant, secret name and webhook mode; more than one row means the ids are configured in several tenants, which the function refuses to guess between |
+| `receive_oa_event(oa_id, event_id, event_name, oa_user_id, occurred_at, signature, at)` | The decision against the OA's current `webhook_mode`: a matching signature is stored; a mismatch or missing signature is stored in `observe` mode and refused in `enforce` mode, where only the day's `refused` count moves; a stored event id is a duplicate; returns `recorded`, `duplicate` or `refused`, the new row and, for an unverified call, the day's unverified count. Unverified calls of one OA and day take an advisory lock, so their count is exact |
+| `apply_oa_event(event_row, at)` | The follow-up, once per event: a follow or any `user_send_` event (a message, or a menu or button tap that Zalo delivers as the user's message; `oa_event_is_interaction`) moves `last_interaction_at` of the tenant's `zalo_oa` destinations of that OA user forward; an `unfollow` disables them as `blocked_by_user`; anything else changes nothing |
+| `raise_oa_webhook_alert(oa_id, unverified, at)` | Raises `zalo_webhook_unverified` once the day's unverified calls (`oa_unverified_on`) reach `max_per_day` + 1, as an instant episode under `oa:<OA row id>` with count-only facts and the source `webhook` |
+| `set_bot_webhook(secret_name, secret_sha256, at)`, `bot_webhook_target(secret_sha256)` | Put a Zalo Bot in webhook mode after its `setWebhook` succeeded, and find the bot whose secret token hashes to a value |
+| `stop_bot_chat(kind, secret_name, address, at)` | A member's "DỪNG" in a linked bot chat: for each member whose active or failing destination is that chat, `app.withdraw_notifications` (consent revoked, waiting messages cancelled, destinations disabled as `consent_withdrawn`); returns the destinations, so the caller confirms once |
+| `record_bot_reply(channel_ids, template, status, error_code, provider_message_id, at)` | Logs a reply sent straight to a chat outside the outbox (the stop confirmation, `stop_confirmation.v1`) as one `outbound_messages` row per destination, with the opaque recipient `channel:<id>` and never the text |
+
+`app.take_poll_lease` now refuses a bot in webhook mode, and `app.notify_housekeeping` also deletes `oa_events` older than 90 days and reports `oa_events_deleted`.
+
+**Open until #210.** The exact bytes and header form Zalo signs, the event names of menu and button taps and the Zalo Bot's webhook body and token format are taken from Zalo's documents and checked against fakes only; the device check of #210 confirms them on the owner's accounts, and the owner then switches the OA from `observe` to `enforce` ([`operations.md`](operations.md)).
+
+### Access and functions
+
+- `authenticated` reads the six configuration tables and `zalo_identities` through RLS and holds `INSERT`, `UPDATE` and `DELETE` on the six configuration tables only; it holds no privilege on `zalo_tokens` or `oa_events`, and `anon` none on any of the nine tables. The policies are in "Row-level security" below.
+- `app.zalo_secret_name_valid(text, text)` and `app.mini_app_title_valid(text)` are immutable checks called by the CHECK constraints; `authenticated` and `service_role` may execute them, `anon` may not. The trigger functions `app.validate_zalo_store_ids()` and `app.bump_zalo_token_version()` are executable by no API role. All four run as the caller with an empty `search_path`.
 
 ## Row-level security
 
-Every table in `public` has RLS enabled. `anon` holds no privilege on any table. `authenticated` holds `SELECT` on every table except `pos_account_tokens`, `INSERT`, `UPDATE`, `DELETE` only on the manual-input tables (`item_costs`, `payment_fee_rates`, `item_type_roles`, `holidays`, `targets`), the report settings and mappings (`report_settings`, `item_category_overrides`) and `strategy_reports`, `INSERT`, `UPDATE` without `DELETE` on the legal ledgers `consent_records` and `data_subject_requests`, and `INSERT`, `UPDATE`, `DELETE` on the notification settings `alert_rules` and `channel_policies`. On `notification_channels` it holds column-level `SELECT` only, without `address`, `secret_name` and `config`. Default privileges are set so that a future table created by the migration role starts read-only for `authenticated` and invisible to `anon`. The sync jobs run as `service_role`, which bypasses RLS.
+Every table in `public` has RLS enabled. `anon` holds no privilege on any table. `authenticated` holds `SELECT` on every table except the token caches `pos_account_tokens` and `zalo_tokens` and the OA webhook's event log `oa_events`, `INSERT`, `UPDATE`, `DELETE` only on the manual-input tables (`item_costs`, `payment_fee_rates`, `item_type_roles`, `holidays`, `targets`), the report settings and mappings (`report_settings`, `item_category_overrides`) and `strategy_reports`, `INSERT`, `UPDATE` without `DELETE` on the legal ledgers `consent_records` and `data_subject_requests`, `INSERT`, `UPDATE`, `DELETE` on the notification settings `alert_rules` and `channel_policies`, and `INSERT`, `UPDATE`, `DELETE` on the six Zalo configuration tables (`brands`, `zalo_apps`, `oas`, `mini_apps`, `zbs_templates`, `gmf_groups`). On `notification_channels` it holds column-level `SELECT` only, without `address`, `secret_name` and `config`. Default privileges are set so that a future table created by the migration role starts read-only for `authenticated` and invisible to `anon`. The sync jobs run as `service_role`, which bypasses RLS.
 
 ### Roles
 
@@ -1254,6 +1446,8 @@ Every table in `public` has RLS enabled. `anon` holds no privilege on any table.
 | `publisher` | Service identity used by the plan-publishing skill or routine | `tenants`, `stores`, `strategy_reports`, `holidays`, `dim_calendar` only; no aggregate table, refresh log or live view | Insert into `strategy_reports` |
 
 For the notification tables: every authenticated role reads `alert_rule_catalog` and the global `channel_policies`; owners and managers read `alert_rules` (a store-limited manager the tenant rows and those of their stores), the tenant's policy overrides, every destination of the tenant when their scope is unlimited and otherwise their own, the episodes and messages of their stores, and the digests whose stores are all in their scope; staff, viewers and publishers read nothing else; `anon` reads nothing.
+
+For the Zalo configuration of phase 13: owners and managers of the tenant, whatever their store scope, read the six configuration tables and `zalo_identities` (`app.has_tenant_role`); only owners with an unlimited scope write the six configuration tables; staff, viewers and publishers read none of them, not even their own identity; nobody but the service role reaches `zalo_tokens`, and no API role reads `oa_events`, whose day counts owners read through `oa_event_counts`.
 
 `owner`, `manager`, `staff` and `viewer` are the data roles. `publisher` is deliberately outside them so that a leaked publisher credential cannot read a single sale.
 
@@ -1293,6 +1487,11 @@ Every helper sets an empty `search_path`. The membership helpers (`data_roles()`
 | `channel_kind_available(kind)`, `notify_secret_name_valid(kind, name)`, `facts_are_count_only(jsonb)` | Check helpers of the notification tables | CHECK constraints; executable by `authenticated` and `service_role` |
 | `alert_rule_params_valid(rule_key, params)` | The parameters match the catalogue schema | The invoker trigger on `alert_rules`; executable by `authenticated` and `service_role` |
 | `current_user_channel_ids()` | The caller's own destinations | `outbound_messages` read policy; `security definer` |
+| `zalo_secret_name_valid(name, prefix)`, `mini_app_title_valid(title)` | Check helpers of the Zalo configuration tables | CHECK constraints; executable by `authenticated` and `service_role` |
+| `validate_zalo_store_ids()`, `bump_zalo_token_version()` | Trigger | `brands` and `gmf_groups` (a store listed twice or of another tenant); `zalo_tokens` (the version moves on every update); executable by no API role |
+| `claim_ipos_source(tenant_id, source)` | The tenant's recorded iPOS source, `api` or `snapshot`, recorded at the first claim | The runners before they write iPOS data; `postgres` only |
+| `custom_access_token_claims(event)` | The token's claims with `memberships` | Supabase Auth's access-token hook; `security definer`, executable by `supabase_auth_admin` only (#205) |
+| `zalo_binding_code_hash(zalo_app_id, code)` | The stored form of a binding code | The binding-code and sign-in functions, which run as its owner; executable by no API role |
 
 Policies call the array-returning helpers as `(select app.helper())` so Postgres evaluates them once per statement, not once per row.
 
@@ -1316,6 +1515,10 @@ Policies call the array-returning helpers as `(select app.helper())` so Postgres
 | `alert_rules` | `has_store_scope(tenant_id, null, owner)` and `created_by = auth.uid()`: owners with an unlimited scope, tenant and store rows; the validation trigger runs as the writer | Same rule; managers write nothing |
 | `channel_policies` | `tenant_id` not null and `has_store_scope(tenant_id, null, owner)` and `created_by = auth.uid()`; global rows are service-role only; the floor CHECKs bind the browser too | Same rule |
 | `notification_channels` | Through `security definer` functions only | Same |
+| `brands`, `zalo_apps`, `oas`, `mini_apps`, `zbs_templates`, `gmf_groups` | `has_store_scope(tenant_id, null, owner)` and `created_by = auth.uid()`: owners with an unlimited scope; the CHECKs on secret names and titles and the store-list trigger bind every writer | `has_store_scope(tenant_id, null, owner)`; managers and store-limited owners write nothing |
+| `zalo_identities` | `app.zalo_sign_in` only, reached through `zalo_session_sign_in` by `service_role` (#205) | The same; owners and managers read |
+| `oa_events` | `oa-webhook` as `postgres` (#207); no policy and no grant to an API role | The same |
+| `zalo_tokens` | Service role only (the token jobs); no policy and no grant to an API role | Service role only |
 | `consent_records` with purpose `notifications` | Never from the browser (restrictive policy) | Never from the browser (restrictive policy) |
 | Every other table | Service role only | Service role only |
 
@@ -1349,7 +1552,7 @@ A row that carries both `tenant_id` and a reference to a child of the tenant (a 
 
 `stores` and `pos_accounts` declare `unique (tenant_id, id)`; every store-scoped table declares `foreign key (tenant_id, store_id) references stores (tenant_id, id)` and every account-scoped table declares `foreign key (tenant_id, pos_account_id) references pos_accounts (tenant_id, id)`.
 
-The database therefore refuses a row that names tenant A together with a store of tenant B, even when written by the service role or by a bug in a policy. Tables that follow the pattern: `stores`, every catalogue table, `store_items`, `devices`, `invoices`, `invoice_lines`, `invoice_payments`, `invoice_events`, `sale_payloads`, `shifts`, `sync_runs`, `sync_checks`, `item_costs`, `payment_fee_rates`, `item_type_roles`, `targets`, `strategy_reports`, every `agg_*` aggregate table, `alert_rules`, `alert_events` (store, account and destination), `notification_channels` (its member, as (`tenant_id`, `user_id`) to `tenant_members`) and `outbound_messages` (destination, store and digest, each `on delete set null` of the column only). `invoice_events.invoice_id` references `invoices.id` alone with `on delete set null`, because the event must outlive the invoice; its `store_id` and `invoice_external_id` keep it attributable. The legal tables carry `tenant_id` and no store; `consent_records.subject_id` and `data_subject_requests.subject_id` deliberately have no foreign key (see the consent model), and `outbound_messages.consent_record_id` references `consent_records.id` alone with `on delete set null`.
+The database therefore refuses a row that names tenant A together with a store of tenant B, even when written by the service role or by a bug in a policy. Tables that follow the pattern: `stores`, every catalogue table, `store_items`, `devices`, `invoices`, `invoice_lines`, `invoice_payments`, `invoice_events`, `sale_payloads`, `shifts`, `sync_runs`, `sync_checks`, `item_costs`, `payment_fee_rates`, `item_type_roles`, `targets`, `strategy_reports`, every `agg_*` aggregate table, `alert_rules`, `alert_events` (store, account and destination), `notification_channels` (its member, as (`tenant_id`, `user_id`) to `tenant_members`), `outbound_messages` (destination, store and digest, each `on delete set null` of the column only), and the Zalo tables of phase 13: `zalo_apps`, `oas`, `mini_apps` and `zalo_tokens` to `brands`, `zbs_templates` and `gmf_groups` to `oas`, and `zalo_identities` to `zalo_apps`, each declaring `unique (tenant_id, id)` in turn where another table references it; `app.zalo_binding_codes` to `zalo_apps` and to `tenant_members`, and `oa_events` and `app.oa_event_days` to `oas` (#205, #207). The store lists `brands.store_ids` and `gmf_groups.store_ids` are arrays, which a foreign key cannot check, so the trigger `app.validate_zalo_store_ids()` refuses a store of another tenant with `23503`, as a foreign key would, also for the service role. `invoice_events.invoice_id` references `invoices.id` alone with `on delete set null`, because the event must outlive the invoice; its `store_id` and `invoice_external_id` keep it attributable. The legal tables carry `tenant_id` and no store; `consent_records.subject_id` and `data_subject_requests.subject_id` deliberately have no foreign key (see the consent model), and `outbound_messages.consent_record_id` references `consent_records.id` alone with `on delete set null`.
 
 ## Tests
 
@@ -1359,7 +1562,7 @@ The database therefore refuses a row that names tenant A together with a store o
 | --- | --- |
 | `01_schema.sql` | Schemas, helper functions, enums with their labels (the phase 12 enums and the `notifications` purpose included), tables and key columns |
 | `02_unique_keys.sql` | Unique natural keys and the tenant-consistent composite foreign keys |
-| `03_rls_enabled.sql` | RLS on every table of `public` with the expected table count (54), write policies and grants audited (`alert_rules`, `channel_policies`, `report_settings` and `item_category_overrides` on the allow-lists), default privileges for future tables, no privilege for `anon` |
+| `03_rls_enabled.sql` | RLS on every table of `public` with the expected table count (65), no policy on the token caches `pos_account_tokens` and `zalo_tokens` and on the event log `oa_events`, write policies and grants audited (`alert_rules`, `channel_policies`, `report_settings`, `item_category_overrides` and the six Zalo configuration tables on the allow-lists), default privileges for future tables, no privilege for `anon` |
 | `04_tenant_isolation.sql` | Two-tenant isolation of reads |
 | `05_write_policies.sql` | Who may write the manual-input tables |
 | `06_anon_and_tokens.sql` | `anon` reads nothing; the token cache is service-role only |
@@ -1382,7 +1585,7 @@ The database therefore refuses a row that names tenant A together with a store o
 | `23_report_access.sql` | Report access: two-tenant isolation for each of the 12 functions, store scope, the publisher's null totals and empty rows, a viewer, `anon` refused, grants of the functions and the app helpers |
 | `24_vn_public_holidays.sql` | The calendar of migration `vn_public_holidays`: 61 global rows, 30 public days and 31 Tết days, each year's calendar, the Tết 2026 window, no repeated key, global rows only, exclusion for any Vietnamese tenant |
 | `25_live_half_lateral.sql` | The lateral live half: the store, tenant and unscoped branches of `app.daily_sales_facts` against the previous hash-join body on the demo seed and on a fixture with modifiers, services, voids, multi-tender cash, unknown methods and empty invoices; a refresh re-run leaves `agg_daily_sales` unchanged; the store branch reads lines through `invoice_lines_invoice_id_idx` |
-| `26_notify_schema.sql` | Phase 12 schema: enums, tables, columns, composite keys, the secret-name and count-only helpers, the parameter check, the webhook URL and destination CHECKs, the validation triggers, the 15 catalogue rows and the 27 global policies, every advertising floor violation refused as `postgres` and as `service_role` and a lawful tightening accepted, the member consent floor refused as both and a member channel switched off or a webhook accepted without consent, the outbox state machine (each allowed transition, refused ones, frozen finished rows), the seed rows, deleting a destination with waiting, sending and sent messages, deleting an episode, redacting a sent row |
+| `26_notify_schema.sql` | Phase 12 schema: enums, tables, columns, composite keys, the secret-name and count-only helpers, the parameter check, the webhook URL and destination CHECKs, the validation triggers, the 16 catalogue rows (the 16th from #207) and the 27 global policies, every advertising floor violation refused as `postgres` and as `service_role` and a lawful tightening accepted, the member consent floor refused as both and a member channel switched off or a webhook accepted without consent, the outbox state machine (each allowed transition, refused ones, frozen finished rows), the seed rows, deleting a destination with waiting, sending and sent messages, deleting an episode, redacting a sent row |
 | `27_notify_policy.sql` | `next_window_start` in Ho Chi Minh City, Tokyo and Berlin (spring gap, autumn overlap), across midnight, `24:00`, no window; every step of `message_decision`; daily caps per local day and rolling 24 hours with their exact release, the monthly cap, `critical_bypass`; a consent revoked while a message is held; acceptance A4 (held at 00:30 local until exactly 06:00 local) |
 | `28_notify_outbox.sql` | Enqueue idempotency; claims (one row, not yet due, holds and cancels on the way, a due message behind more than 20 held ones, secret list, tenant filter); `begin_send` storing the render once; `finish_send` for every outcome and scope with destination health, a vanished destination, a late success; back-off, jitter and retry-after; exhaustion after five attempts; lease recovery in its four cases; expiry and `no_dispatcher_secret`; `record_dispatch`; redaction and a member's removal; housekeeping (retention minimum, purge, bodies after 90 days, uncertain and waiting rows kept, a resend surviving its purged original, an unaccepted bot destination deleted after 24 hours, a former member's row redacted later); bot linking with code, notice and acceptance, a code without acceptance, an expired code, e-mail codes and five wrong codes; the polling lease; tickets; `kick_notify` while disabled; the tick and its rules hook returning a count-only object |
 | `29_notify_alerts.sql` | Episodes: the M4 functions run as `postgres` only; `alert_destinations` by role, store scope, account scope, tenant scope, muted rules, webhooks with and without `store_ids`, failing destinations and the failing member's other destinations; `raise_alert` opening (key, severity, source, messages, template, dedupe key, expiry, count-only params), repeating, reminding at +24 hours, the cool-down (a silent episode keeping the last notice, and notifying again after it), `no_destination`, a disabled rule, refused input; folding under an open `auth_failed` and one resolved less than 30 minutes earlier; `record_runner_notification` for every kind and scope, the consecutive-incremental threshold and a success restarting it, window runs by facts and by run, the tenant's raised `sync_stale` threshold, covered and uncovered previous-day readings, dropped error text, refused input; `import_sync_alerts` (threshold, `notified_at`, no second raise for one reading, a newer reading, the runner and scheduler sharing one episode, a newer successful sync, a gap back within the threshold, a tenant without destinations, `sync_dispatch_failed`); `reconcile_alerts` for each rule, resolution notices only where the opening message was delivered, a waiting opening cancelled at claim, `schedule_disabled`, reminders and no reminder under an open root cause; `evaluate_channel_health` once per failure, a blocked destination, recovery and the cool-down; `record_job_event` (instant episodes without the run id, the 12-hour cool-down, critical migrations, the tenant filter, `root_cause_open` for an open `auth_failed` and for a sync episode seen since the run started); the rule toggle of acceptance A2 through RLS; the tick reconciling before it imports; the database half of acceptance A3; after a fixed credential failure the previous-day readings of the account's stores are covered (alert and recovery only), a later day is not; a failure inside the cool-down after a delivered or still waiting recovery notice alerts again, one after an undelivered episode stays silent; a paused account, an opted-out store, a paused store account and a restarted watch end their episodes as `superseded` without a recovery notice |
@@ -1397,5 +1600,9 @@ The database therefore refuses a row that names tenant A together with a store o
 | `39_theme_access_b.sql` | Every 10b report function for an owner, a store-limited manager, a viewer, staff, the publisher and another tenant's owner (only their own stores), `anon` without the execute privilege and refused; the legal functions refused to every role but an unlimited owner, who publishes and retires, and to `anon` |
 | `40_pack_functions.sql` | The data pack functions on a two-store fixture with 70 days of sales: catalogue checks of the five phase 11 functions; no function the pack calls takes or returns `double precision`; `metric_windows` equal to `metric_value` for the 18 trackable ids over three ranges in range and id order, its refusals (26 ids, 13 ranges, unequal lists, a reversed range, 401 days, an unknown and a null id) and an empty store list; labels by `first_seen_at` with an inactive store kept; `holiday_calendar` with global, own-tenant, other-country and other-tenant rows, byte order and the global calendar of a year; `pack_fence` equal across two calls and moved by a live invoice and its upsert, a refresh, a sync check, a cost, a target, a role mapping, a tenant holiday, report settings and opening hours; a store-limited manager, the publisher, another tenant's owner and `anon` |
 | `41_export_totals.sql` | `export_control_totals`: the helpers' properties and values; the pinned counts, sums and fingerprints of the tiny fixture; payments by their own date and lines by their invoice's; counts, sums and fingerprints against the tables over a month; shift business dates equal to `agg_shift_cash` with a 05:00 day start and in `America/Los_Angeles` across both clock changes; the 92-day limit; order, isolation, a store-limited manager, the publisher's zeros and `anon` |
+| `42_zalo_config.sql` | The Zalo configuration (125 tests): the eight tables with RLS; `zalo_identities` holding only the per-app user id, the display name and the Auth user link, and no Zalo table with a phone, avatar, location, address, e-mail, birth date or gender column; the two secret-name columns as the only secret columns; the composite keys; `zalo_tokens` closed to `anon` and `authenticated` (no privilege, no column privilege, no policy) and open to `service_role`; the grants, policies and function privileges; reads and writes for an unlimited owner, an unlimited manager, a store-limited owner and manager, staff, a viewer, the publisher, another tenant's owner and `anon`; frozen `created_by` and stamped `updated_by`; the token version moved by one on every update and never set; one Zalo App, one OA and one Mini App of each kind per brand; an identity once per Zalo App; every cross-tenant reference refused, store lists included; the secret-name, title, colour, tag, tier, mode and key checks; the cascade from a brand and the removal of an author |
+| `43_ipos_sources.sql` | `app.tenant_ipos_sources` and `app.claim_ipos_source` (14 tests): one source per tenant, the first claim recorded and a later claim of the other kind answered with the recorded one, unknown sources refused, the cascade from the tenant, no API role reading, writing or claiming, the function running as the caller with an empty `search_path` |
+| `44_zalo_identity.sql` | The Mini App sign-in (67 tests): the access-token hook executed by `supabase_auth_admin` only, its claims for an owner, a store-limited manager, staff, a member of two tenants and a login without membership, other claims kept and a forged `memberships` replaced; brand keys resolved within or across tenants; unpaired without a code; codes stored only as a hash, valid 10 minutes, one per member, bound once; five wrong codes tolerated and the sixth burning them; expired codes; no code for a publisher, a non-member or a disabled app; identities per Zalo App with the display name kept or ignored; the RPCs closed to `authenticated` and `anon` |
+| `45_zalo_events.sql` | The inbound events (87 tests): `oa_events` and the day counts closed to every API role; `last_interaction_at` hidden from `authenticated`; observe and enforce decisions, duplicates and refused counts; interactions, unfollows and events that change nothing; the alert at the eleventh unverified call of a day and not again; 90-day retention; a Zalo Bot in webhook mode, its hash only, polling refused; the "DỪNG" stop; `oa_event_counts` for owners only, at most 400 days |
 
-The notification tests (26 to 32) build their own fixture tenants (`notify-it-pgtap-…`), the phase 10 tests (33 to 39) theirs (`theme-pgtap-…`), the phase 11 tests (40 onwards) theirs (`pack-pgtap…`, `export-pgtap…`), and destinations on `_IT` secret names and pass a tenant filter to every scanning function. The analytics tests scope every count to the demo tenant, and the report tests to their own fixture tenants (and the demo tenant where they compare with the seed), so further tenants in the database do not change their outcome. The seed is synthetic and the tests create their own fixture users and tenants inside a rolled-back transaction.
+The notification tests (26 to 32) build their own fixture tenants (`notify-it-pgtap-…`), the phase 10 tests (33 to 39) theirs (`theme-pgtap-…`), the phase 11 tests (40 and 41) theirs (`pack-pgtap…`, `export-pgtap…`), the Zalo configuration test (42) `zalo-it-pgtap-a` and `zalo-it-pgtap-b`, the iPOS source test (43) `ipos-source-…`, the Zalo identity and events tests (44, 45) `zalo-it-pgtap-identity-…` and `zalo-it-pgtap-events-…`, and destinations on `_IT` secret names and pass a tenant filter to every scanning function. The analytics tests scope every count to the demo tenant, and the report tests to their own fixture tenants (and the demo tenant where they compare with the seed), so further tenants in the database do not change their outcome. The seed is synthetic and the tests create their own fixture users and tenants inside a rolled-back transaction.

@@ -30,7 +30,7 @@ Last updated 2026-11-18
 | Chủ đề · Báo cáo chủ đề | Topics · Thematic reports | route `#/chu-de/*`; `nav.topics`; links carry `range=<preset>` or `from=YYYY-MM-DD&to=YYYY-MM-DD`, and `store=<id>,<id>` | one subject over any range of days; four built (10a), four more in 10b ([below](#thematic-reports-phase-10)) |
 | Kế hoạch | Plans | route `#/ke-hoach/*`; `nav.plans` | saved strategy plans, KPI follow-up and the paste box; designed (phase 11b) |
 | Cài đặt | Settings | route `#/cai-dat/*` (`#/cai-dat` opens Cửa hàng); `nav.settings` | in build: the layout, the settings source, Ngưỡng báo cáo, the roles tab of Phân loại and the catch-up line are built (10a); the other pages in 10b and 12 |
-| Xuất dữ liệu | Exports | route `#/xuat-du-lieu`, tabs `?tab=goi` and `?tab=xuat`; `exports.*` | two tabs: "Gói dữ liệu cho AI" (the aggregate [data pack](#data-pack), the default tab, still pending in 11a-2) and "Xuất dữ liệu" (CSV or JSON files of invoices, lines, payments, shifts and the daily summary by month, each proven equal to the database; built in 11a, [exports.md](exports.md)); owners and managers only; no navigation item |
+| Xuất dữ liệu | Exports | route `#/xuat-du-lieu`, tabs `?tab=goi` and `?tab=xuat`; `exports.*` | two tabs: "Gói dữ liệu cho AI" (the aggregate [data pack](#data-pack), the default tab, built in the browser and downloaded or copied with its prompt; built in 11a, #142) and "Xuất dữ liệu" (CSV or JSON files of invoices, lines, payments, shifts and the daily summary by month, each proven equal to the database; built in 11a, [exports.md](exports.md)); owners and managers only; no navigation item |
 | Đăng nhập | Sign in | route `#/dang-nhap`; `auth.login.title` | |
 | Quên mật khẩu? · Đặt lại mật khẩu | Forgot your password? · Reset password | route `#/quen-mat-khau`; `auth.forgot`, `auth.reset.title` | the reset e-mail links back to `#/mat-khau-moi` |
 | Mật khẩu mới | New password | route `#/mat-khau-moi`; `auth.newPassword.title` | |
@@ -228,6 +228,8 @@ Each card has an id in `@fnb/reports` and a title key `report.<report>.<name>.ti
 | Mã liên kết | link code | `FNB-` plus 8 characters (`app.issue_link_code`) | the one-time code a member sends to the Zalo Bot to link their chat, valid 15 minutes; verified locally (step 12a) |
 | Mã xác nhận | confirmation code | 6 digits; `app.confirm_email_link` | the code e-mailed to a member's login address to link it, valid 15 minutes; the member hands it back, and five wrong codes remove the pending destination; in build (step 12b) |
 | ĐỒNG Ý | I agree | the reply a member sends | accepts a linked chat and records the member's consent to notifications |
+| DỪNG | stop | the reply a member sends (also "DUNG", any case) | in a linked Zalo Bot chat: withdraws the member's consent to notifications, cancels their waiting messages, disables all their destinations (e-mail included) and confirms once; handled by `bot-webhook` once the bot is in webhook mode (#207, built) |
+| Mã liên kết (in a Mini App) | binding code | 6 digits; `fnb zalo bind`, `app.zalo_binding_codes` | the code a member enters once in a Mini App, then "Liên kết", to bind their Zalo account; see [Binding code](#binding-code) (#205, built) |
 
 ### Exports (phase 11a)
 
@@ -413,6 +415,10 @@ How unusual a shift's drawer variance is: (variance − the mean of the store's 
 
 ## 6. Technical terms
 
+### Access-token hook
+
+A Postgres function that Supabase Auth calls every time it issues an access token, to add claims of its own. Here it is `app.custom_access_token_claims` (#205), registered under `[auth.hook.custom_access_token]` in `supabase/config.toml` and executable by Supabase Auth's role only: it adds `memberships`, one `{tenant_id, role, store_ids}` per tenant of the login (`store_ids` null for every store), to the web app's tokens and the Mini Apps' alike. Row-level security does not trust the claim and keeps reading `tenant_members`. The local stack loads it at its next start; the cloud project registers it at go-live (#210) ([`api.md`](api.md#2-authentication-and-roles)).
+
 ### Aggregate refresh
 
 `app.refresh_analytics(tenant, from, to)` rebuilds the `agg_*` tables of a tenant for a date range from the sales rows; the sync jobs call it, and an owner or manager may call `refresh_my_analytics`. Days from yesterday on are read live, so a report never waits for a refresh ([`schema.md`](schema.md#hot-and-cold-rule)).
@@ -424,6 +430,10 @@ One open row in `alert_events` per rule and subject (a dedupe key such as the st
 ### As-of day
 
 The last complete business day of the selected stores: the earliest store-local business date of now, minus one. Reports end there; Hôm nay owns the running day.
+
+### Binding code
+
+The one-time, six-digit code that ties a member's Zalo account to their existing login for one brand's Mini Apps (#205). `fnb zalo bind --tenant <slug> --member <login e-mail> --brand <key>` prints it; the member enters it once in the Mini App, and from then on `zalo-session` signs that Zalo account in as the member. It is valid 10 minutes and stored only as a hash; a wrong code counts against every live code of the brand's Zalo App, and the sixth wrong attempt burns them. A publisher login cannot be bound. Not to be confused with the Zalo Bot's link code (`FNB-…`), which links a chat for notifications ([`security.md`](security.md), section 4.3).
 
 ### Capability
 
@@ -447,7 +457,7 @@ The two ways a table downloads: comma-separated with decimal points (the default
 
 ### Data pack
 
-The versioned, aggregate-only JSON file that the owner gives to their own assistant to draft a store plan (ADR-003): store profile, weekly and monthly totals, heatmap, items, mixes and other figures from the metric registry, with the strategy prompt; no row-level or personal data. Buttons "Tải gói dữ liệu cho AI" and "Sao chép gói + prompt", and `fnb datapack`. One canonical text per pack, identified by its `pack_id`, a SHA-256 of that text without its timestamp, so the same data always gives the same pack ([strategy.md](strategy.md)). The format and the content are built (phase 11a, #130, #134); the prompt, the buttons and the command are in build.
+The versioned, aggregate-only JSON file that the owner gives to their own assistant to draft a store plan (ADR-003): store profile, weekly and monthly totals, heatmap, items, mixes and other figures from the metric registry, with the strategy prompt; no row-level or personal data. Buttons "Tải gói dữ liệu cho AI" and "Sao chép gói + prompt", and `fnb datapack`. One canonical text per pack, identified by its `pack_id`, a SHA-256 of that text without its timestamp, so the same data always gives the same pack ([strategy.md](strategy.md)). The browser reads `pack_fence`, a hash of what moves the pack's numbers, before and after its report calls and builds again when it moved; `fnb datapack` reads inside one read-only snapshot as a member and needs no fence. "Sao chép gói + prompt" copies the chat bundle: the prompt, then the pack in one fence. The format, the content, strategy prompt 1.0.0, the buttons and the command are built (phase 11a, #130, #131, #134, #137, #142).
 
 ### Data roles
 
@@ -467,11 +477,11 @@ The daily summary message for a member: the Ngày report built as that member an
 
 ### Edge Function
 
-A small Deno program that Supabase hosts and runs on request. `sync-incremental` (`supabase/functions/sync-incremental`) is built and verified locally; `notify` is planned for step 12c ([`api.md`](api.md#5-edge-function-endpoints)).
+A small Deno program that Supabase hosts and runs on request. `sync-incremental` (`supabase/functions/sync-incremental`) is built and verified locally; `notify` is planned for step 12c; the four Zalo functions of phase 13, `zalo-session` and `zalo-phone` (#205) and `oa-webhook` and `bot-webhook` (#207), are built against a mock of Zalo, enabled in `supabase/config.toml` and not deployed, and share the CORS, error and logging helpers of `supabase/functions/_shared` ([`api.md`](api.md#5-edge-function-endpoints)).
 
 ### Fixture tenant
 
-A tenant that a test builds for itself, so its counts never depend on the real tenant or the seed. Notification tests use slugs that start with `notify-it-` and synthetic `_IT` secret names; pgTAP files run in a rolled-back transaction, and integration runs delete fixture tenants older than an hour.
+A tenant that a test builds for itself, so its counts never depend on the real tenant or the seed. Notification tests use slugs that start with `notify-it-` and synthetic `_IT` secret names, and the Zalo tests slugs that start with `zalo-it-` (the pgTAP files `zalo-it-pgtap-…`; with `ZALO_INTEGRATION=1` the Zalo functions serve no other tenant); pgTAP files run in a rolled-back transaction, and integration runs delete fixture tenants older than an hour.
 
 ### Hot and cold rule
 
@@ -480,6 +490,10 @@ Business days before yesterday are read from the aggregate tables; yesterday and
 ### i18n key
 
 The name of a user-facing text, such as `nav.today`; every key exists in Vietnamese and English (`apps/web/src/i18n/messages/<area>.vi.json` and `.en.json`).
+
+### Mini App
+
+A web app that runs inside the Zalo phone app on zmp-sdk and zmp-ui, served from `https://h5.zdn.vn`, without LocalStorage or cookies. Phase 13 built two scaffolds, the staff app (`apps/zalo-staff`, hidden from search) and the customer app (`apps/zalo-customer`, listed), each built per brand from its `app-config.json`; until the owner's Zalo accounts exist they run in a browser with a mocked Zalo SDK ([development.md](development.md), section 6).
 
 ### Outbox
 
@@ -507,7 +521,7 @@ Postgres compiled to WebAssembly; the parity suite runs the migrations in it on 
 
 ### Plan lint
 
-`lintPlan` in `@fnb/datapack`: the check that a plan written by the owner's assistant has the `fnb-plan/1` front matter, the ten sections, five to seven initiatives with their seven fields and a number from the pack cited in each initiative, all against the exact pack it was written from, named by its `pack_id`. Each problem is a code with a level, such as `section_missing:7` or `kpi_unknown:net_sales`; only a plan without errors is to be stored, while warnings are shown. The paste box and `fnb publish-plan` are to run the same lint ([strategy.md](strategy.md)). Built (phase 11a, #135); the paste box and the command are planned.
+`lintPlan` in `@fnb/datapack`: the check that a plan written by the owner's assistant has the `fnb-plan/1` front matter, the ten sections, five to seven initiatives with their seven fields and a number from the pack cited in each initiative, all against the exact pack it was written from, named by its `pack_id`. Each problem is a code with a level, such as `section_missing:7` or `kpi_unknown:net_sales`; only a plan without errors is to be stored, while warnings are shown. The paste box "Dán kế hoạch" and `fnb publish-plan --check` run the same lint ([strategy.md](strategy.md)). Built (phase 11a, #135; the paste box and the check, #143 and #138); publishing a plan comes in 11b.
 
 ### PostgREST
 

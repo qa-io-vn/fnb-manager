@@ -10,7 +10,7 @@ Nothing sensitive is committed. Credentials live in three places only: the owner
 | `SUPABASE_DB_PASSWORD` | migrate, backup | the project's database password |
 | `SUPABASE_PROJECT_ID` | migrate, backup, function deploys | the project reference |
 | `SUPABASE_SECRET_KEY` | `fnb tenant add-member`, digests | the project's secret API key (`sb_secret_…`); replaces the legacy service-role JWT. `sync.yml` does not pass it: `sync window` and `status` never call the Auth admin API |
-| `SUPABASE_DB_URL` | sync (`sync.yml`), `fnb` in CI | the **session-pooler** connection string with TLS required (`postgresql://postgres.<ref>:<password>@<pooler-host>:5432/postgres?sslmode=require`); GitHub runners have no IPv6 and the direct database host is IPv6-only on the Free plan. `fnb` asks for TLS on any host that is not local even without the suffix. The user and the password inside it are masked at job start |
+| `SUPABASE_DB_URL` | sync (`sync.yml`), Mini App deploys (`deploy-mini-apps.yml`), `fnb` in CI | the **session-pooler** connection string with TLS required (`postgresql://postgres.<ref>:<password>@<pooler-host>:5432/postgres?sslmode=require`); GitHub runners have no IPv6 and the direct database host is IPv6-only on the Free plan. `fnb` asks for TLS on any host that is not local even without the suffix. The user and the password inside it are masked at job start |
 | `POS_ACCOUNTS_JSON` | sync, onboarding; the same value is an Edge Function secret | JSON array of POS accounts: `[{"key":"account-1","connector":"ipos-fabi","email":"…","password":"…"}]` (optionally `"appAccessToken"`; `{"key":"account-2","connector":"mock","seed":1}` for a synthetic account); every credential field and every key is masked at job start. Use neutral keys that name no shop: the key is stored in `pos_accounts.account_key` and typed in commands, and CI output refers to accounts only by their position in this array |
 | `IPOS_APP_KEY` | sync, onboarding; the same value is an Edge Function secret | the constant application key the iPOS CMS sends in its `access_token` header; obtained from the owner's CMS session, not committed. An account entry may carry its own `appAccessToken` instead |
 | `BACKUP_AGE_RECIPIENT` | backup | the `age` public key; the private key stays offline with the owner |
@@ -22,10 +22,12 @@ Nothing sensitive is committed. Credentials live in three places only: the owner
 
 | Variable | Used by | Content |
 |---|---|---|
-| `SUPABASE_URL` | web build, `fnb tenant add-member` | the project's API URL |
-| `SUPABASE_PUBLISHABLE_KEY` | web build | the publishable API key (`sb_publishable_…`); safe in the browser, row-level security carries the protection |
+| `SUPABASE_URL` | web build, Mini App builds, `fnb tenant add-member` | the project's API URL |
+| `SUPABASE_PUBLISHABLE_KEY` | web build, Mini App builds | the publishable API key (`sb_publishable_…`); safe in the browser, row-level security carries the protection |
 
 The web build's base path is not a variable: `deploy-web.yml` sets `VITE_BASE_PATH` from the GitHub Pages configuration (`/<repository>/` for a project site, `/` for a custom domain).
+
+`deploy-mini-apps.yml` needs the secret `SUPABASE_DB_URL` and the variables `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, which a Zalo build of a Mini App receives as `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`; it skips with a note while one of the three is missing. It holds no Zalo credential of its own: for each Mini App it reads the Mini App id from the `mini_apps` rows and the developer token from `zalo_tokens` through `fnb zalo` commands, writes them to a `.env` in the app's folder for one `zmp-cli` login and deletes the file after the deploy. Those commands (`fnb zalo app-config --list`, `fnb zalo zmp env`) are not built yet, so on 2026-11-18 the workflow ends with a note and deploys nothing. As in `sync.yml`, the secret is set only on the configuration check and the steps that run `fnb` or the deploy, and `fnb mask-credentials` runs first.
 
 ## What each `fnb` command needs
 
@@ -41,6 +43,7 @@ The CLI (`docs/sync.md`) talks to Postgres directly with the database URL and us
 | `bootstrap` (`pnpm db:load-real`) | yes | `SUPABASE_URL` with `SUPABASE_PUBLISHABLE_KEY` to write a missing `apps/web/.env.local`, and `SUPABASE_SECRET_KEY` with `FNB_MEMBER_PASSWORD` only when the owner login has to be created | every entry |
 | `status` | yes | no | optional; when present, accounts are numbered by their position in it, as in `sync window` |
 | `doctor` | yes | no | every entry (each one logs in once) |
+| `datapack` | yes, to build a pack or list stores (`SUPABASE_DB_URL` first in CI); `--check` and `--against` read files only and need nothing | no | no; it reads the database as a member and never reaches the POS |
 | `mask-credentials`, `--help` | no | no | no |
 
 In `sync.yml` the secrets are set on the `fnb` steps only (mask, sync, status), not on the job, so checkout, the setup actions and `pnpm install` with its lifecycle scripts run without them. The job gets `SUPABASE_DB_URL`, `POS_ACCOUNTS_JSON` and `IPOS_APP_KEY`; nothing in it needs `SUPABASE_SECRET_KEY`.
@@ -58,14 +61,23 @@ On GitHub Actions every `fnb` run first prints `::add-mask::` for the key, e-mai
 | `POS_ACCOUNTS_JSON` | `sync-incremental`: the same JSON array as the GitHub secret; the function picks the entry whose key is the store's `pos_accounts.account_key` |
 | `IPOS_APP_KEY` | `sync-incremental`, unless every entry carries `appAccessToken` |
 | `IPOS_REAL_API` | `sync-incremental`: leave it unset or `on`; the function keeps no iPOS snapshot and answers 500 to every ticket while it is `off` |
-| `FNB_DB_URL` | `sync-incremental`, optional: overrides the injected `SUPABASE_DB_URL` (the direct connection) with another session-mode string, such as the session pooler with `?sslmode=require`; never the transaction pooler, because the store lock is a session lock. The function speaks TLS to any host that is not local and refuses a URL whose `sslmode` would allow plaintext |
-| `FNB_DB_CA_CERT` | `sync-incremental`, optional: the PEM of the certificate authority of the database's TLS certificate (Project settings → Database → SSL configuration), needed only if the runtime does not trust it already. It spans several lines, so set it on its own: `pnpm exec supabase secrets set FNB_DB_CA_CERT="$(cat <ca file>)" --remote=<project ref>` |
+| `FNB_DB_URL` | `sync-incremental`, and from #207 `oa-webhook` and `bot-webhook`, optional: overrides the injected `SUPABASE_DB_URL` (the direct connection) with another session-mode string, such as the session pooler with `?sslmode=require`; never the transaction pooler, because the store lock is a session lock. The function speaks TLS to any host that is not local and refuses a URL whose `sslmode` would allow plaintext |
+| `FNB_DB_CA_CERT` | `sync-incremental`, `oa-webhook` and `bot-webhook`, optional: the PEM of the certificate authority of the database's TLS certificate (Project settings → Database → SSL configuration), needed only if the runtime does not trust it already. It spans several lines, so set it on its own: `pnpm exec supabase secrets set FNB_DB_CA_CERT="$(cat <ca file>)" --remote=<project ref>` |
 | `FNB_INCREMENTAL_WALL_MS`, `FNB_INCREMENTAL_CPU_MS` | `sync-incremental`, optional: the run's wall-clock and estimated-CPU budget in milliseconds, default 105000 and 1200 for the Free plan; at most 390000 (paid plans allow 400 s of wall clock) and 2000 (the CPU limit on every plan) |
-| `ZALO_APP_SECRET_<brand>` | Mini App session verification, phone-number token decoding |
-| `ZALO_OA_SECRET_<brand>` | webhook signature verification |
-| `ZALO_OA_REFRESH_TOKEN_<brand>` | OA token refresh job (single-use; rotated by the job) |
-| `ZMP_DEVELOPER_REFRESH_TOKEN` | Mini App deploys (one-month life; rotated by its job) |
-| `VOUCHER_CALLBACK_PATH_SECRET` | the iPOS CRM voucher-validation callback URL |
+| `ZALO_APP_SECRET_<BRAND>` | `zalo-session` and `zalo-phone` (#205): the App secret of the brand's Zalo App, for the app-secret proof of the Mini App access token and for exchanging the phone-number token. `<BRAND>` is by convention the brand key in capitals (`ZALO_APP_SECRET_BRAND_1` for `brand-1`); `zalo_apps.secret_name` names it, so the database decides which secret a brand uses |
+| `ZALO_OA_SECRET_<BRAND>` | `oa-webhook` (#207): the OA secret key with which it checks the signature of the brand's OA events; `oas.secret_name` names it. While it is missing, the function answers 500 `not_configured` and stores nothing |
+| `NOTIFY_ZALO_BOT_TOKEN…` | `bot-webhook` (#207): the Zalo Bot token the poller already uses, named by the destination's `secret_name`, to send the one confirmation after a "DỪNG"; without it the stop is recorded and the confirmation logged as failed |
+| `VOUCHER_CALLBACK_PATH_SECRET` | the iPOS CRM voucher-validation callback URL (phase 16b) |
+
+These two are the only `ZALO_` values kept as function secrets. The OA access and refresh tokens and the Mini App developer token pair are not secrets to set: their refresh tokens are single-use and change at every refresh, so they live in the table `zalo_tokens`, one row per brand and kind, which no API role can read ([schema.md](schema.md), "Zalo configuration"); the token jobs (#206) are to write them. The configuration rows name a secret only by a `ZALO_` name, and a CHECK refuses a value pasted in its place. The shared code of the Zalo functions (`supabase/functions/_shared/http.ts`) reads a secret by its name, answers 500 `not_configured` without naming it when it is missing, and removes every `ZALO_` secret value from its logs. A Zalo Bot in webhook mode has one more secret, the token Zalo sends in `X-Bot-Api-Secret-Token`: it is not a function secret, and the database keeps only its SHA-256 (`app.bot_poll_state.webhook_secret_sha256`).
+
+`zalo-session` and `zalo-phone` also use what Supabase injects: `SUPABASE_URL` and the secret key, read from `SUPABASE_SECRET_KEYS` (a JSON dictionary of the project's secret keys; its `default` entry, else the first) or else from the legacy `SUPABASE_SERVICE_ROLE_KEY`, for the two service-role RPCs and the Auth admin API. Nothing needs to be set for them. Three more variables are for tests only and must stay unset on the cloud project:
+
+| Variable | What it does |
+|---|---|
+| `ZALO_INTEGRATION` | `1` turns on the Zalo integration suites (with `DATABASE_URL` of the local stack, and for the sign-in suite of `@fnb/zalo` also its `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `SUPABASE_PUBLISHABLE_KEY`; [test-plan.md](test-plan.md), section 5.3); in a function it allows only tenants whose slug starts with `zalo-it-`; `0` or unset is off, anything else is a configuration error |
+| `ZALO_TENANT_ID` | the id of the one tenant whose brand keys the functions resolve; required with `ZALO_INTEGRATION=1`, and otherwise needed only if two tenants use the same brand key |
+| `ZALO_GRAPH_BASE_URL` | a loopback address (`http://127.0.0.1:<port>`) of the mock Zalo Graph of `@fnb/zalo/testing`; accepted only with `ZALO_INTEGRATION=1` |
 
 Edge Function secret names may not start with `SUPABASE_`. Supabase injects `SUPABASE_URL`, `SUPABASE_DB_URL`, the API keys and `SUPABASE_JWKS` into every function itself ([supabase.com/docs/guides/functions/secrets](https://supabase.com/docs/guides/functions/secrets)). Set the function's secrets from a file outside the repository, each value in single quotes (`POS_ACCOUNTS_JSON='[…]'`; unquoted, ` #` inside a value starts a comment and the rest is dropped): `pnpm exec supabase secrets set --env-file <file> --remote=<project ref>`; a change takes effect without a redeploy. Locally, `supabase functions serve --env-file <file>` reads the same variables, from a file that is not in the repository either.
 

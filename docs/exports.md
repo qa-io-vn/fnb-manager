@@ -6,7 +6,7 @@ How the web app exports invoices, invoice lines, payments, shifts and the daily 
 
 - Owners and managers get the form. Staff, viewers and a login with no membership read "Chỉ chủ quán và quản lý xuất được dữ liệu"; a publisher login gets nothing below the page heading. The role and the store scope come from the settings source's `membership(tenantId)`, the same query the settings pages use; no second membership query exists.
 - This is a deliberate-use gate, not a security boundary. Every read runs as the signed-in member through row-level security, so a member can never export a row they could not already read.
-- The demo has no real invoices; its tab says "Bản demo không có dữ liệu hóa đơn thật để xuất" and links to the pack tab.
+- The demo has no real invoices; its tab says "Bản demo không có dữ liệu hóa đơn thật để xuất" and links to the pack tab, which in the demo builds a sample pack from the demo engine ([strategy.md, section 7](strategy.md#7-building-a-pack-in-the-browser)).
 
 ## What the form asks
 
@@ -152,8 +152,9 @@ One fixture with fixed UUIDs and amounts, store T of `supabase/tests/41_export_t
 | `apps/web/src/exports/columns.test.ts`, `writers.test.ts` | no personal column or shift name by default, local times, the byte order mark and CRLF, both CSV formats, formula guards, JSON without a byte order mark |
 | `apps/web/src/exports/archive.test.ts`, `run.test.ts` | entry order and time, the same bytes in two time zones, every manifest field, re-reads, unverified reasons, a lagging daily summary, at most two requests in flight, stopping |
 | `apps/web/src/exports/estimate.test.ts` | the estimate arithmetic, the 100 MB threshold, the monthly tally when storage refuses |
-| `apps/web/src/pages/exports/*.test.tsx` | role gating (nothing for the publisher), the personal box by role and scope, form validation and the 12-month message, estimate, confirmation, result states, stopping, the demo notice |
+| `apps/web/src/pages/exports/exports-page.test.tsx`, `export-tab.test.tsx` | the tabs, role gating (nothing for the publisher), the personal box by role and scope, form validation and the 12-month message, estimate, confirmation, result states, stopping, the demo notice; the pack tab's own tests (`pack-tab.test.tsx`) are listed in [strategy.md, section 9](strategy.md#9-tests) |
 | `apps/web/e2e/live/exports.spec.ts` | a month exported as CSV and JSON on a fixture tenant: every file verified, the expected paths, the byte order mark and strict UTF-8 with names intact, manifest fingerprints equal to `export_control_totals` read by the same signed-in member, personal data only when ticked, staff and viewers gated, a store-limited manager without the box; axe at 360 and 1280 px, light and dark |
-| `apps/web/e2e/demo/datapack.spec.ts` | the page's tabs and the demo notice, no request leaving the origin, English without raw keys, axe |
+| `apps/web/e2e/demo/datapack.spec.ts` | the page opening on the pack tab, the export tab's demo notice, no request leaving the origin, English without raw keys, links of at least 44 px, axe at 360 and 1280 px; its other three tests build, download and copy the demo's sample pack (#142) |
+| `apps/web/e2e/live/datapack.spec.ts` | the pack tab on the settings fixture tenant: the owner's browser pack equal to the package's own build in the same session apart from `generated_at`, with the copy carrying that pack; a manager limited to one store; staff gated (#142) |
 
 The live spec creates its own fixture tenant (`e2e/support/settings-fixture.ts`) and deletes it afterwards. With `E2E_LOGIN_EMAIL`, `E2E_LOGIN_PASSWORD` and optionally `E2E_TENANT_SLUG` set (read by `liveLogin()` in `e2e/support/local-stack.ts`, which falls back to the seeded login) it instead exports the last complete month of that login's tenant, read-only, and compares it with `export_control_totals` read by the same login; the personal-data and role tests then skip.

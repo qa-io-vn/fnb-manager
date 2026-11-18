@@ -2,7 +2,7 @@
 
 This page is the reference for anyone who builds a client of the FNB Manager database. It covers how to call the database, how sign-in and roles decide what a caller sees, every function in the `public` schema that a signed-in user may execute, the tables and views that PostgREST serves, and the Edge Function endpoints. It is written for a developer taking the work over, for reviewers and testers, and for whoever runs the platform after go-live. The owner needs only [Authentication and roles](#2-authentication-and-roles). Column meanings and computation rules stay in [`schema.md`](schema.md), metric definitions in [`metrics.md`](metrics.md) and the numbered requirements in [`requirements.md`](requirements.md); this page says how to call them.
 
-Last updated 2026-11-12
+Last updated 2026-11-18
 
 **Status on 2026-11-12.** The 25 functions on this page and the tables of phases 2, 7, 8 and 9 are verified locally on the Supabase stack (pgTAP, the parity suite and the end-to-end tests). The notification tables of phase 12 are verified locally for step 12a and in build for step 12b. The functions for the Settings → Cảnh báo screen and the Bản tin panel are planned for step 12c. Those of phases 10 and 11 are designed at roadmap level; their detailed design is pending. No cloud project exists yet, so every cloud endpoint below waits for owner ([`go-live.md`](go-live.md)). `pnpm docs:check-api` compares every signature on this page with the database ([section 7](#7-keeping-this-page-current)).
 
@@ -26,6 +26,10 @@ flowchart LR
   J["fnb CLI and<br/>GitHub Actions jobs"] -- "DATABASE_URL or<br/>SUPABASE_DB_URL as postgres" --> D
   S["pg_cron and pg_net"] -- "POST ticket" --> E["Edge Function<br/>sync-incremental"]
   E -- "SUPABASE_DB_URL<br/>as postgres" --> D
+  M["Mini Apps<br/>(phase 13)"] -- "Zalo access token" --> Z["Edge Functions<br/>zalo-session, zalo-phone"]
+  Z -- "secret key: two RPCs<br/>and the Auth admin API" --> P
+  O["Zalo OA and Bot"] -- "signed events" --> W2["Edge Functions<br/>oa-webhook, bot-webhook"]
+  W2 -- "SUPABASE_DB_URL<br/>as postgres" --> D
 ```
 
 | Endpoint | Path | Local stack (`supabase/config.toml`) |
@@ -92,7 +96,7 @@ select * from public.hourly_profile('{11111111-1111-4111-8111-111111111111}', '2
 
 Inside that transaction `auth.uid()` returns the member, and every policy applies as it does in the browser.
 
-To call report functions in such a transaction, `@fnb/reports` exports `createJsonRpcClient(queryable)` (`packages/reports/src/source/json-rpc-client.ts`), an `rpc(fn, args)` client for any object with an `unsafe(query, params)` method, such as a postgres.js transaction. It accepts every function of `analyticsFunctions` and `themeFunctions`, binds each argument by name with its type from `ARGUMENT_SQL_TYPES` (arrays as quoted array literals), and runs one statement that returns the rows as JSON produced by Postgres, in the function's order: `select coalesce(jsonb_agg(to_jsonb(r) - 'ordinality' order by r.ordinality), '[]'::jsonb) as rows from public.<fn>(<arg> => $1::<type>, …) with ordinality as r`. An unknown function or argument answers `invalid_call` without touching the database; a database error keeps its SQLSTATE, and its message only for `22023`. `createRpcReportSource(createJsonRpcClient(transaction), "postgres")` then gives the same `ReportSource` the browser uses, which is how the data pack command reads in one snapshot (phase 11). Phase 12's digest keeps its own client for the report registry.
+To call report functions in such a transaction, `@fnb/reports` exports `createJsonRpcClient(queryable)` (`packages/reports/src/source/json-rpc-client.ts`), an `rpc(fn, args)` client for any object with an `unsafe(query, params)` method, such as a postgres.js transaction. It accepts every function of `analyticsFunctions` and `themeFunctions`, binds each argument by name with its type from `ARGUMENT_SQL_TYPES` (arrays as quoted array literals), and runs one statement that returns the rows as JSON produced by Postgres, in the function's order: `select coalesce(jsonb_agg(to_jsonb(r) - 'ordinality' order by r.ordinality), '[]'::jsonb) as rows from public.<fn>(<arg> => $1::<type>, …) with ordinality as r`. An unknown function or argument answers `invalid_call` without touching the database; a database error keeps its SQLSTATE, and its message only for `22023`. `createRpcReportSource(createJsonRpcClient(transaction), "postgres")` then gives the same `ReportSource` the browser uses. `fnb datapack` (#137) reads the whole data pack that way: `withReportSnapshot(sql, memberUserId, run)` in `apps/jobs/src/datapack/snapshot.ts` opens one `repeatable read read only` transaction, switches to the member as above (the claims from `memberClaims` of `@fnb/notify/postgres`) and hands `run` that source, so every report call of the pack sees one snapshot and the same rows the member's browser would ([strategy.md, section 8](strategy.md#8-building-and-checking-a-pack-from-the-command-line)). Phase 12's digest keeps its own client for the report registry.
 
 ### The 1,000-row cap
 
@@ -124,15 +128,18 @@ An update or a delete that matches no row the caller may see changes nothing and
 - The browser uses the PKCE flow, keeps the session in browser storage and refreshes it. A password reset (`#/quen-mat-khau`) sends an e-mail link that returns to `#/mat-khau-moi`.
 - The browser holds only the publishable key (`sb_publishable_…`), which is public by design and grants nothing by itself. The secret key (`sb_secret_…`) bypasses RLS and never reaches a client ([`secrets.md`](secrets.md)).
 - A login without a membership reads nothing. The web app then says "Tài khoản này chưa thuộc chủ sở hữu nào. Liên hệ người quản trị để được cấp quyền." (`shell.noMembership`).
+- **The `memberships` claim.** Every access token Supabase Auth issues, in the browser or a Mini App, carries a claim `memberships` added by the access-token hook `app.custom_access_token_claims` (migration `zalo_sign_in`, registered under `[auth.hook.custom_access_token]` in `supabase/config.toml`, #205): one entry `{"tenant_id", "role", "store_ids"}` per tenant the login belongs to, in tenant order, `store_ids` null for every store of the tenant, and an empty list for a login without a membership. The hook keeps every other claim and replaces a `memberships` claim the request already carried. The claim is for clients to read their role without a query; row-level security never trusts it and still reads `tenant_members`, so a membership changed after the token was issued applies to the next query, and the claim follows when the token is refreshed. The local stack picks the hook up at its next start; the cloud project registers it at go-live (#210, [`go-live.md`](go-live.md)).
+- **Mini App sessions.** A Mini App has no password: it posts the Zalo access token to `zalo-session` (section 5), which answers with a session of the member's existing login once that Zalo identity is bound to it, minted through the Auth admin API (ADR-037). The session is a normal Supabase session with the same claims and policies as the web app's.
 
 ### Database roles
 
 | Role | Who uses it | What it reaches |
 |---|---|---|
 | `anon` | a request without a session | nothing: no privilege on any table or view, and no `EXECUTE` on any function in `public` or `app` |
-| `authenticated` | a signed-in login: the web app, or server code acting as a member | `SELECT` on every table and view in `public` except `pos_account_tokens` and `sale_payloads`, and on 20 columns of `notification_channels` only; the writes under [Writes through tables](#writes-through-tables); `EXECUTE` on the 25 functions below; always filtered by RLS |
-| `service_role` | the secret key | bypasses RLS; no client reads data with it, and `fnb tenant add-member` uses it only to create logins through the Auth admin API |
-| `postgres` | `DATABASE_URL` or `SUPABASE_DB_URL`: the `fnb` CLI, the GitHub Actions jobs, the Edge Function and `pg_cron` | owns every table and function and bypasses RLS; the only role that may run the schedule and notification functions in `app` |
+| `authenticated` | a signed-in login: the web app, a Mini App, or server code acting as a member | `SELECT` on every table and view in `public` except `pos_account_tokens`, `zalo_tokens`, `oa_events` and `sale_payloads`, and on 20 columns of `notification_channels` only; the writes under [Writes through tables](#writes-through-tables); `EXECUTE` on the 52 functions of section 3; always filtered by RLS |
+| `service_role` | the secret key | bypasses RLS; no client holds it. `fnb tenant add-member` uses it to create logins through the Auth admin API, and the Edge Functions `zalo-session` and `zalo-phone` (#205) use it for exactly two RPCs that only `service_role` may execute, `zalo_session_app` and `zalo_session_sign_in` (section 3.10), for the Auth admin API (a bound member's e-mail and the magic-link token that mints the session, ADR-037) and to check a caller's session |
+| `postgres` | `DATABASE_URL` or `SUPABASE_DB_URL`: the `fnb` CLI, the GitHub Actions jobs, the Edge Functions `sync-incremental`, `oa-webhook` and `bot-webhook`, and `pg_cron` | owns every table and function and bypasses RLS; the only role that may run the schedule, notification and webhook functions in `app` |
+| `supabase_auth_admin` | Supabase Auth itself | executes the access-token hook `app.custom_access_token_claims` (with `USAGE` on schema `app`), nothing else of this project; no API role may execute the hook |
 
 ### Tenant roles
 
@@ -152,18 +159,18 @@ A login holds one role per tenant in `tenant_members`, with an optional store sc
 
 ### How RLS shapes function results
 
-- 24 of the 25 functions are `security invoker`: every table they read applies the caller's policies. The `store_ids` a caller passes are a request, not a grant. A store the caller may not read adds nothing, and no error says so.
+- 48 of the 52 functions are `security invoker`: every table they read applies the caller's policies. The `store_ids` a caller passes are a request, not a grant. A store the caller may not read adds nothing, and no error says so.
 - The report functions return per-store rows only for stores that the caller sees in `stores`, once each, in the order of their first position in `store_ids`. A publisher, who sees stores but no sale, gets those rows with null totals and no item, payment, promotion or shift row.
 - A total is null, not 0, when its range holds no data that the caller may read.
-- `refresh_my_analytics` is the only `security definer` function. It checks the caller's role itself.
+- `refresh_my_analytics`, `publish_legal_document`, `retire_legal_document` and `oa_event_counts` are `security definer`. Each checks the caller's role itself.
 
 ## 3. Functions in `public`
 
-The schema `public` holds 51 functions. `authenticated` may execute all of them and `service_role` every one but the two legal-text functions, which act only for a signed-in owner; `anon` may execute none. 48 are `security invoker` and `stable`; `refresh_my_analytics`, `publish_legal_document` and `retire_legal_document` are `security definer` and `volatile`. All of them set an empty `search_path`. No name is overloaded.
+The schema `public` holds 54 functions. `authenticated` may execute 52 of them, all but the two RPCs of the Zalo sign-in (`zalo_session_app`, `zalo_session_sign_in`), which only `service_role` may execute (section 3.10); `service_role` may execute every one but the two legal-text functions and `oa_event_counts`, which act only for a signed-in owner; `anon` may execute none. Of the 52, 48 are `security invoker` and `stable`; `refresh_my_analytics`, `publish_legal_document` and `retire_legal_document` are `security definer` and `volatile`, and `oa_event_counts` is `security definer` and `stable`. All of them set an empty `search_path`. No name is overloaded.
 
 Each entry gives the signature exactly as Postgres prints it (`pg_get_function_arguments` and `pg_get_function_result`), then what calls it today, its status and notes. Column meanings and computation rules are in [`schema.md`](schema.md), sections "Query functions" and "Report functions (phase 9)"; report rules are in [`metrics.md`](metrics.md#report-conventions).
 
-**Who may call.** Any signed-in member may call the 34 invoker functions. The numbers cover only the stores that the caller's data role reads, so a publisher gets nulls or no rows (see [How RLS shapes function results](#how-rls-shapes-function-results)). `refresh_my_analytics` has its own rule.
+**Who may call.** Any signed-in member may call the 48 invoker functions. The numbers cover only the stores that the caller's data role reads, so a publisher gets nulls or no rows (see [How RLS shapes function results](#how-rls-shapes-function-results)). `refresh_my_analytics`, the two legal-text functions and `oa_event_counts` have their own rules.
 
 **Callers named below.**
 
@@ -220,11 +227,12 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`data_quality_items`](#publicdata_quality_items) | themes | invoker, stable | rows per item | web theme Chất lượng dữ liệu (#158), Cài đặt → Phân loại → Nhóm của món (#160) | built (phase 10b) |
 | [`data_quality_summary`](#publicdata_quality_summary) | themes | invoker, stable | a row for all stores, then one per store | web theme Chất lượng dữ liệu (#158), Cài đặt → Cửa hàng's receipt suggestion (#159) | built (phase 10b) |
 | [`data_quality_payments`](#publicdata_quality_payments) | themes | invoker, stable | rows per payment method | web theme Chất lượng dữ liệu (#158) | built (phase 10b) |
-| [`store_profiles`](#publicstore_profiles) | data pack | invoker, stable | rows per store | the data pack builder's first call (`packCalls`, #134) | built (phase 11a) |
-| [`metric_windows`](#publicmetric_windows) | data pack | invoker, stable | up to 300 rows | the data pack's KPI table (`packCalls`, #134) | built (phase 11a) |
-| [`holiday_calendar`](#publicholiday_calendar) | data pack | invoker, stable | rows per date and name | the data pack's calendar of the horizon (`packCalls`, #134) | built (phase 11a) |
-| [`pack_fence`](#publicpack_fence) | data pack | invoker, stable | `text` | no caller yet (the browser pack build, #142) | built (phase 11a) |
-| [`export_control_totals`](#publicexport_control_totals) | exports | invoker, stable | rows per store | no caller yet (the export proof, #139) | built (phase 11a) |
+| [`store_profiles`](#publicstore_profiles) | data pack | invoker, stable | rows per store | the data pack builder's first call (`packCalls`, #134), in the pack tab (#142) and `fnb datapack` (#137); the exports' store labels (#139) | built (phase 11a) |
+| [`metric_windows`](#publicmetric_windows) | data pack | invoker, stable | up to 300 rows | the data pack's KPI table (`packCalls`, #134), in the pack tab and `fnb datapack` | built (phase 11a) |
+| [`holiday_calendar`](#publicholiday_calendar) | data pack | invoker, stable | rows per date and name | the data pack's calendar of the horizon (`packCalls`, #134), in the pack tab and `fnb datapack` | built (phase 11a) |
+| [`pack_fence`](#publicpack_fence) | data pack | invoker, stable | `text` | the pack tab's build in the browser, before and after its report calls (#142) | built (phase 11a) |
+| [`export_control_totals`](#publicexport_control_totals) | exports | invoker, stable | rows per store | the export proof of Xuất dữ liệu (#139 to #141) | built (phase 11a) |
+| [`oa_event_counts`](#publicoa_event_counts) | Zalo | definer, stable | rows per OA, day and signature outcome | no caller yet (the OA webhook's health for owners) | built (phase 13, #207) |
 
 ### 3.1 Analytics
 
@@ -720,8 +728,9 @@ Settings are written as rows, not through functions. RLS decides each write. The
 | `data_subject_requests` | owner or manager with an unlimited scope; a trigger fills the deadlines | the same | never |
 | `alert_rules` | owner with an unlimited scope; a trigger validates the rule and its parameters (`22023`) | the same | the same |
 | `channel_policies` | owner with an unlimited scope, tenant rows only; CHECK constraints keep the legal floors | the same | the same |
+| `brands`, `zalo_apps`, `oas`, `mini_apps`, `zbs_templates`, `gmf_groups` | owner with an unlimited scope, naming themselves as `created_by`; a secret column takes only a `ZALO_` name with its column's prefix and a Mini App title must follow Zalo's naming rules (`23514`); a store of another tenant in `store_ids` gives `23503` | the same | the same; deleting a brand removes everything under it |
 
-Status: the tables, policies and triggers are verified locally (pgTAP `05_write_policies.sql`, `07_write_scope_and_attribution.sql`, `10_payment_fee_rates.sql`, `11_item_type_roles_and_holidays.sql`, `12_consent_and_legal.sql`, `31_notify_access.sql`, `35_mappings_and_catch_up.sql`). Inserts must name the caller as `created_by`, and a trigger sets `updated_by` to the caller on every insert and update of the manual-input tables, `item_category_overrides`, `report_settings`, `payment_kind_overrides`, `legal_documents` and `holidays`; a member's change of a store or tenant profile column stamps `profile_updated_at` and `profile_updated_by`. The 10b rows are verified by pgTAP `38_settings_writes.sql`. Cài đặt → Ngưỡng báo cáo writes `report_settings` (phase 10a); the other Settings screens are designed for phase 10b, Kế hoạch and `fnb publish-plan` (which will insert plans as the publisher) for 11b, and Settings → Cảnh báo after step 12c. The 10b Settings pages that write the store and tenant profiles (Cửa hàng, #159), the payment-kind overrides (Phân loại, #160) and the legal texts (Pháp lý, #164) are built on these rules. Destinations in `notification_channels` are written only by server code ([section 3.5](#35-notifications)).
+Status: the tables, policies and triggers are verified locally (pgTAP `05_write_policies.sql`, `07_write_scope_and_attribution.sql`, `10_payment_fee_rates.sql`, `11_item_type_roles_and_holidays.sql`, `12_consent_and_legal.sql`, `31_notify_access.sql`, `35_mappings_and_catch_up.sql`). Inserts must name the caller as `created_by`, and a trigger sets `updated_by` to the caller on every insert and update of the manual-input tables, `item_category_overrides`, `report_settings`, `payment_kind_overrides`, `legal_documents` and `holidays`; a member's change of a store or tenant profile column stamps `profile_updated_at` and `profile_updated_by`. The 10b rows are verified by pgTAP `38_settings_writes.sql`. Cài đặt → Ngưỡng báo cáo writes `report_settings` (phase 10a); the other Settings screens are designed for phase 10b, Kế hoạch and `fnb publish-plan` (which will insert plans as the publisher) for 11b, and Settings → Cảnh báo after step 12c. The 10b Settings pages that write the store and tenant profiles (Cửa hàng, #159), the payment-kind overrides (Phân loại, #160) and the legal texts (Pháp lý, #164) are built on these rules. Destinations in `notification_channels` are written only by server code ([section 3.5](#35-notifications)). The Zalo configuration rows are built and tested by pgTAP `42_zalo_config.sql` (#203); no client writes them yet: the brand settings screen belongs to phase 20a, and the `fnb zalo config` command is still to be built.
 
 ### 3.5 Notifications
 
@@ -1078,7 +1087,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** the data pack builder of `@fnb/datapack` (#134), as its first call: labels, currency, country and the default as-of day.
+- **Called by:** the data pack builder of `@fnb/datapack` (#134), as its first call: labels, currency, country and the default as-of day; it runs in the pack tab (#142) and in `fnb datapack` (#137). The browser export reads its store labels from it too (#139).
 - **Status:** built (phase 11a; pgTAP `40_pack_functions.sql`; parity `store-profiles.parity.test.ts`).
 - **Notes:** one row per visible store in the order asked. `label` is `S<n>`, the store's rank among the tenant's stores the caller can see, by `first_seen_at` then `id`; an inactive store keeps its place, so for an owner a label means the same store in every pack. No address, store code or POS id. A publisher reads the profiles, as it reads `stores`.
 
@@ -1111,7 +1120,7 @@ public.pack_fence(store_ids uuid[])
 returns text
 ```
 
-- **Called by:** no caller yet; `buildDataPack` (#134) reads a fence before and after its calls and rebuilds when they differ, up to three times, and the browser's pack build (#142) will pass this function as that fence.
+- **Called by:** the pack tab of Xuất dữ liệu (#142, `packFence` in `apps/web/src/datapack/browser-pack.ts`, through `supabase.rpc()`): `buildDataPack` (#134) reads the fence before and after its report calls and builds again when the two differ, up to three times, then fails with `pack_data_changed`. `fnb datapack` needs no fence, since it reads inside one read-only snapshot, and the demo passes none.
 - **Status:** built (phase 11a; pgTAP `40_pack_functions.sql`).
 - **Notes:** a lowercase hex SHA-256 over what moves the pack's numbers for the visible stores: the refresh log, `synced_at` of invoices of the last live days, sync checks, the tenants' analytics-input version and stamp, item costs, targets, tenant holidays, report settings and the store profiles. It is not part of the pack.
 
@@ -1127,9 +1136,25 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet; the browser export proves each file against it.
+- **Called by:** the browser export of Xuất dữ liệu (#139 to #141), which proves each file against it.
 - **Status:** built (phase 11a; pgTAP `41_export_totals.sql`).
 - **Notes:** per visible store over at most 92 days: counts, sums and SHA-256 fingerprints of invoices, lines (by their invoice's business date), payments (by their own business date) and shifts (by the business date of `opened_at` in the store's zone after the day start). [`schema.md`](schema.md#data-pack-and-export-functions-phase-11) gives the canonical lines. A publisher gets zero counts, zero sums and the fingerprint of the empty text.
+
+### 3.10 Zalo (phase 13)
+
+Migration `zalo_inbound_events` (#207) adds one function a client may call. Migration `zalo_sign_in` (#205) adds two more to `public`, `zalo_session_app(p_brand_key text, p_tenant_id uuid default null)` and `zalo_session_sign_in(p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text default null, p_binding_code text default null)`. They are the database half of `zalo-session` and `zalo-phone` (section 5): `security invoker` wrappers of `app.zalo_resolve_app` and `app.zalo_sign_in` that only `service_role` may execute, so `authenticated` and `anon` get `42501` and no client calls them; they are not part of this page's check. Tests: pgTAP `44_zalo_identity.sql` and `45_zalo_events.sql`.
+
+#### `public.oa_event_counts`
+
+```sql
+public.oa_event_counts(p_tenant_id uuid, p_from date, p_to date)
+returns TABLE(oa_id uuid, day date, signature text, events integer)
+```
+
+- **Called by:** no caller yet; a view of the OA webhook's health for owners is planned with the Zalo settings.
+- **Status:** built (phase 13, #207; pgTAP `45_zalo_events.sql`).
+- **Who may call:** an owner of the tenant, whatever the store scope; anyone else, a manager included, gets `42501`. It is `security definer` because the counts sit in `app.oa_event_days`, which no API role reads.
+- **Notes:** the count-only facts of the tenant's OA webhook from `p_from` to `p_to`, at most 400 days (`22023` beyond, or for a reversed or missing bound): per OA, tenant-local day and signature outcome (`raw`, `compact`, `mismatch`, `missing`, or `refused` for a call refused in enforce mode), the number of events, ordered by day, OA and outcome. Never an event, a user id or a text. The counts outlive the 90 days for which `oa_events` keeps the events.
 
 ## 4. Tables and views
 
@@ -1211,7 +1236,7 @@ Step 12a verified locally; step 12b in build. No screen reads them yet; the Cả
 
 | Relation | Purpose | Who reads | Client writes | Read by a client today |
 |---|---|---|---|---|
-| `alert_rule_catalog` | the 15 alert and digest rules with defaults and the parameter schema | every signed-in user | none | none |
+| `alert_rule_catalog` | the 16 alert and digest rules with defaults and the parameter schema, `zalo_webhook_unverified` included (#207) | every signed-in user | none | none |
 | `alert_rules` | tenant and store overrides of the catalogue | owners and managers; store rows in scope | [owners](#writes-through-tables) | none |
 | `channel_policies` | send rules per channel kind and message class: 27 global defaults and tenant overrides | global rows: every signed-in user; tenant rows: owners and managers | [owners](#writes-through-tables) | none |
 | `notification_channels` | destinations: member, kind, provider, label, status and health | owners and managers with an unlimited scope read every destination; every member reads their own; 20 columns only, never the address, secret name or configuration | none (server code only) | none |
@@ -1219,7 +1244,133 @@ Step 12a verified locally; step 12b in build. No screen reads them yet; the Cả
 | `digests` | one daily digest per tenant, business date and store scope, built from the Ngày report | owners and managers whose data stores include every store of the digest | none | none |
 | `outbound_messages` | the outbox and the one-year log of every message sent | owners and managers with an unlimited scope or covering the message's store; the recipient of a message to their own destination | none | none |
 
+### Zalo configuration (phase 13)
+
+Built (migration `zalo_configuration`, pgTAP `42_zalo_config.sql`, #203); every table is empty until the owner's Zalo accounts exist (#8). Owners and managers of the tenant read the configuration whatever their store scope; staff, viewers, the publisher and `anon` read none of it. Columns and checks: [`schema.md`](schema.md), "Zalo configuration".
+
+| Relation | Purpose | Who reads | Client writes | Read by a client today |
+|---|---|---|---|---|
+| `brands` | one row per brand: the neutral key (`brand-1`), the display name, the stores it covers | owners and managers of the tenant | [owners with an unlimited scope](#writes-through-tables) | none |
+| `zalo_apps` | the brand's Zalo App: its id, the name of its secret (`ZALO_APP_SECRET_<BRAND>`), `active` or `disabled` | the same | the same | none |
+| `oas` | the brand's Official Account: its id, package tier and expiry, verification, the name of its secret (`ZALO_OA_SECRET_<BRAND>`), the webhook mode (`observe` or `enforce`) | the same | the same | none |
+| `mini_apps` | the brand's staff and customer Mini Apps: id, `browsable`, title, header titles and colours, the inputs of `app-config.json` | the same | the same | none |
+| `zbs_templates` | ZBS templates of an OA: id, tag, purpose, approval state | the same | the same | none |
+| `gmf_groups` | the OA's staff groups and the stores each serves | the same | the same | none |
+| `zalo_identities` | a Zalo user id per Zalo App bound to an Auth user, with the display name only | the same | none (`zalo-session` writes it through `zalo_session_sign_in` when a binding code is used, #205) | none |
+| `zalo_tokens` | the OA and Mini App developer token pairs of a brand | nobody (no grant, no policy) | none (the token jobs, #206) | none |
+| `oa_events` | the OA webhook's event log: event id, OA, event name, OA user id, times and signature outcome, never a text; kept 90 days | nobody (no grant, no policy); owners read the day counts through [`oa_event_counts`](#publicoa_event_counts) | none (`oa-webhook` writes it as `postgres`, #207) | none |
+
 ## 5. Edge Function endpoints
+
+### Shared rules of the Zalo functions
+
+Built in `supabase/functions/_shared` (`cors.ts`, `http.ts`; 30 Deno tests in `cors.test.ts` and `http.test.ts`, #204). The four Zalo functions below are built on `serveFunction` and enabled in `supabase/config.toml`: `zalo-session` with `verify_jwt = false`, `zalo-phone` with `verify_jwt = true`, `oa-webhook` and `bot-webhook` with `verify_jwt = false`. None is deployed yet; they run on the local stack and against a mock of Zalo (`@fnb/zalo/testing`). Each follows these rules, and its own section gives its body and codes.
+
+- **CORS.** The answer names exactly one origin, and only a Mini App origin: when the request's `Origin` is `https://h5.zdn.vn` or `zbrowser://h5.zdn.vn`, the response carries `Access-Control-Allow-Origin` with that origin; any other origin, or none, gets no `Access-Control-*` header at all. Every response carries `Vary: Origin`, added to any `Vary` the handler set. Any CORS header a handler set itself is replaced, and no `Access-Control-Allow-Credentials` is sent.
+- **Preflight.** `OPTIONS` never reaches the handler: it answers 204 with no body; for a Mini App origin it adds `Access-Control-Allow-Methods: GET, POST, OPTIONS`, `Access-Control-Allow-Headers: authorization, apikey, content-type, x-client-info` and `Access-Control-Max-Age: 600`. The recipe to check it locally is in [`development.md`](development.md), section 6.
+- **Request id.** Every other response carries `x-request-id`, a fresh UUID per request, which also starts each of the function's log lines (`<name> <request id>: …`). Quote it when reporting a failure.
+- **Responses.** JSON with `content-type: application/json; charset=utf-8` and `cache-control: no-store`.
+- **Errors.** The body is `{"error": "<code>", "request_id": "<id>"}`; a code is a lowercase word (`^[a-z][a-z0-9_]{0,40}$`, otherwise sent as `request_refused`). The shared codes:
+
+| Status | `error` | When |
+|---|---|---|
+| 400 | `invalid_body` | the body is not valid UTF-8 |
+| 400 | `invalid_json` | the body is not a JSON object |
+| 405 | `method_not_allowed` | the function does not take this method |
+| 413 | `body_too_large` | the body is over the function's limit, 16,384 bytes by default, by its `Content-Length` or while it is read |
+| 500 | `not_configured` | a function secret is missing or empty; the answer does not name it, the log names the secret but never a value |
+| 500 | `internal_error` | anything unexpected; the log line carries the redacted error |
+
+- **Secrets and logs.** A function reads a secret only by its name through the request context. Every log line passes the redactor, which knows the values of the `ZALO_` secret variables (all but `ZALO_INTEGRATION`, `ZALO_TENANT_ID` and the `_BASE_URL` overrides), the Supabase keys and JWT secret, the database URLs with their user and password, and every secret the function read; line breaks become spaces. `zalo-session` and `zalo-phone` also add every token, code, Zalo user id, display name, e-mail and phone number of the request to the redactor before they log, and the log lines of all four hold outcomes and counts only.
+
+**Open until #210.** These functions are built against a mock of Zalo, because the owner's Zalo accounts do not exist yet (#8). The device check #210 confirms on a real phone and the real accounts: the Graph's real error codes (only 119, a phone token already used, is assumed by number), the exact bytes and header form Zalo signs for `X-ZEvent-Signature`, the event names of menu and button taps, the body shape and token format of the Zalo Bot's webhook, and the domain verification of the function URLs in the Zalo console. Until then the sections below describe what the code accepts, not what Zalo has been seen to send.
+
+### `zalo-session`
+
+Built against the mock (#205; Deno 12 tests in `handler.test.ts`, and the gated integration suite of `@fnb/zalo`). The Mini Apps' session client (#208) reads its answers unchanged.
+
+- **URL:** `<SUPABASE_URL>/functions/v1/zalo-session`. **Method:** `POST`; `OPTIONS` answers the preflight of a Mini App origin.
+- **Authorization:** none at the gateway (`verify_jwt = false`); the Zalo access token in the body is the credential.
+- **Body:** `{"access_token": "<the Mini App's Zalo access token>", "brand": "brand-1", "binding_code": "123456"}`; `binding_code` is optional and sent once, when the member first binds the Zalo account.
+- **What it does:** finds the brand's Zalo App through `zalo_session_app` (one app, `active`), reads the App secret named by `zalo_apps.secret_name`, and asks the Zalo Graph `GET /v2.0/me?fields=id,name` with the access token and its app-secret proof (HMAC-SHA256 of the access token keyed with the App secret), 10 seconds at most. `zalo_session_sign_in` then answers `bound` for a Zalo user id already bound to a current member of the app's tenant, binds it first when a valid binding code comes with it, and answers `unpaired` otherwise. For `bound` the function reads the member's login e-mail through the Auth admin API and mints a session for that existing login (ADR-037).
+
+| Status | Body | When |
+|---|---|---|
+| 200 | `{"status": "bound", "access_token", "refresh_token", "expires_at", "member": {"display_name", "role", "stores"}}` | the Zalo identity is bound to a member, now or before; `stores` are the names of the brand's stores within the member's scope, `display_name` the Zalo name or "Thành viên" |
+| 200 | `{"status": "unpaired"}` | no binding and no code; a wrong, expired or burnt code; or a bound login that no longer exists. It never says which |
+| 400 | `invalid_access_token` | the token is missing, empty or over 4,096 characters |
+| 400 | `invalid_brand` | `brand` is not a brand key (`brand-<n>`, `n` from 1 to 999) |
+| 400 | `invalid_binding_code` | `binding_code` is present but not six digits |
+| 400 | `invalid_json`, `invalid_body` | the shared body errors |
+| 401 | `zalo_token_refused` | the Graph answered an error for the token or its proof |
+| 403 | `app_disabled` | the brand's Zalo App is `disabled` |
+| 404 | `unknown_brand` | no Zalo App is configured for the brand key |
+| 500 | `not_configured` | the App secret is not set; `SUPABASE_URL` or the service key is missing; the brand key names Zalo Apps of two tenants and `ZALO_TENANT_ID` does not choose; an invalid `ZALO_INTEGRATION`, `ZALO_TENANT_ID` or `ZALO_GRAPH_BASE_URL`; or, with `ZALO_INTEGRATION=1`, a tenant that is not a `zalo-it-` fixture |
+| 500 | `session_unavailable` | the bound login has no e-mail to mint a session for |
+| 502 | `zalo_unavailable` | the Graph did not answer in time, or answered something unreadable |
+| 503 | `backend_unavailable` | PostgREST or Supabase Auth did not answer, refused, or answered something unreadable |
+
+Binding codes come from `fnb zalo bind` (section 6): six digits, valid 10 minutes, stored only as a hash. A wrong code counts against every live code of the brand's Zalo App; five wrong attempts are tolerated and the sixth burns them all, so guessing gains nothing ([`security.md`](security.md), section 4.3).
+
+### `zalo-phone`
+
+Built against the mock (#205; Deno 7 tests in `handler.test.ts`, and the gated integration suite).
+
+- **URL:** `<SUPABASE_URL>/functions/v1/zalo-phone`. **Method:** `POST`.
+- **Authorization:** `Authorization: Bearer <the caller's Supabase session>`; the gateway verifies it (`verify_jwt = true`) and the function checks it again with Supabase Auth.
+- **Body:** `{"brand": "brand-1", "access_token": "<Zalo access token>", "phone_token": "<the token of the phone-number consent>", "mode": "number"}`. `mode` is `number` (the default) or `probe`; in `probe` mode `phone_token` may be null, when the member declined, and `consent_error_code` may carry the SDK's error number.
+- **What it does:** exchanges the phone token once, within its two-minute life, at the Graph `GET /v2.0/me/info` with the access token and the App secret, and answers the number in international form (`+84…`). It stores nothing; the number goes only to the caller. The probe mode (the phone-consent probe screen of a Development build, #208 and #210) answers whether the consent and the exchange succeeded and the error number, never the number, and logs counts only.
+
+| Status | Body | When |
+|---|---|---|
+| 200 | `{"phone_number": "+84…"}` | `number` mode, the token exchanged |
+| 200 | `{"probe": {"consent": true or false, "exchange": "ok", "refused", "unavailable" or "skipped", "error_code": <number or null>}}` | `probe` mode |
+| 400 | `invalid_brand`, `invalid_access_token`, `invalid_phone_token`, `invalid_mode`, `invalid_consent_error_code` | a malformed field; `consent_error_code` only in `probe` mode |
+| 401 | `session_required` | no bearer session, or one Supabase Auth does not accept |
+| 403, 404 | `app_disabled`, `unknown_brand` | as for `zalo-session` |
+| 409 | `phone_token_used` | the Graph says the token was already used (error 119) |
+| 422 | `phone_token_refused` | any other Graph error: expired, invalid, or a proof that fails |
+| 500 | `not_configured` | as for `zalo-session` |
+| 502 | `zalo_unavailable` | the Graph did not answer; the token may be spent |
+| 503 | `backend_unavailable` | Supabase did not answer |
+
+### `oa-webhook`
+
+Built against fake Zalo events (#207; Deno 24 tests in `handler.test.ts` and `signature.test.ts`, and the gated integration suite `integration.test.ts`). It connects to Postgres as `postgres` with `FNB_DB_URL` or the injected `SUPABASE_DB_URL`, like `sync-incremental`, and sends no CORS header to any origin.
+
+- **URL:** `<SUPABASE_URL>/functions/v1/oa-webhook`, set as the webhook URL in the Zalo developer console (#210). **Method:** `POST`.
+- **Authorization:** none at the gateway (`verify_jwt = false`); the event is signed. `X-ZEvent-Signature` (64 hex digits, optionally after `mac=`) must equal SHA-256 of the app id, the body, the event's `timestamp` and the OA secret key (`ZALO_OA_SECRET_<BRAND>`, named by `oas.secret_name`), concatenated. The body is tried as received and re-serialised without spaces, and the outcome is `raw`, `compact`, `mismatch` or `missing`.
+- **Body:** a Zalo OA event of at most 65,536 bytes. The function reads `app_id`, `event_name`, the OA id (`oa_id`, else the sender or the recipient by the event's direction), the OA user id (the follower, sender or recipient), `timestamp` in milliseconds and `message.msg_id`; it never keeps the message text or any other field. The event id, the key that drops a second delivery, is SHA-256 of the app id, OA id, event name, user id, timestamp and message id.
+- **What it does:** finds the OA by the app id and the OA id (`app.oa_webhook_target`), checks the signature, and lets `app.receive_oa_event` decide against the OA's current `webhook_mode`: a matching signature is stored; a mismatch or a missing signature is stored with its outcome in `observe` mode (the default) and refused in `enforce` mode, where only the day's `refused` count moves. It answers within 1.5 seconds: when the database is slower it answers 200 and stores after the answer. The follow-up runs after the answer: a follow, a message or a menu tap that sends a message moves `last_interaction_at` of that OA user's `zalo_oa` destinations forward, an unfollow disables them (`blocked_by_user`), and the day's unverified calls above `max_per_day` raise `zalo_webhook_unverified`.
+
+| Status | Body | When |
+|---|---|---|
+| 200 | `{"ok": true}` | stored, a duplicate, a body without an app id, OA id or event name, an OA that no row (or more than one tenant's rows) matches, which stores nothing, or an answer sent before the store finished |
+| 401 | `invalid_signature` | `enforce` mode and the signature is missing or wrong |
+| 400 | `invalid_json`, `invalid_body` | the body is not a JSON object in UTF-8 |
+| 405 | `method_not_allowed` | not `POST` |
+| 413 | `body_too_large` | over 65,536 bytes |
+| 500 | `not_configured` | the OA secret is not set, or the database URL is missing or would allow plaintext |
+
+Zalo retries only failed connections and disables a webhook that keeps failing, so the function answers 200 to everything it cannot use and keeps its work after the answer ([`operations.md`](operations.md), "Zalo disabled the webhook, or signatures do not match").
+
+### `bot-webhook`
+
+Built against fake Bot updates (#207; Deno 12 tests in `handler.test.ts`, and the gated integration suite). It connects to Postgres as `postgres` like `oa-webhook`.
+
+- **URL:** `<SUPABASE_URL>/functions/v1/bot-webhook`. **Method:** `POST`.
+- **Authorization:** none at the gateway (`verify_jwt = false`). `X-Bot-Api-Secret-Token` (8 to 256 letters, digits, `_` or `-`) must hash, by SHA-256, to the secret of a Zalo Bot in webhook mode (`app.bot_poll_state.webhook_secret_sha256`); the token itself is never stored. The header is checked before the body is read.
+- **Body:** the Bot's update, or a `result` holding updates, at most 65,536 bytes; at most 20 updates are read per call.
+- **What it does:** answers 200 at once and handles the text updates after the answer, as the phase 12 poller does: a link code completes a pending link (`app.complete_channel_link`); "ĐỒNG Ý" accepts it and records the member's consent (`app.accept_channel_link`); "DỪNG" or "DUNG" (any case, surrounding punctuation ignored) from a linked chat withdraws the member's `notifications` consent, cancels their waiting messages and disables all their destinations of the tenant, e-mail included (`app.stop_bot_chat`), and sends one confirmation, logged in `outbound_messages` as `stop_confirmation.v1` without its text. Anything else is dropped and never stored.
+
+| Status | Body | When |
+|---|---|---|
+| 200 | `{"ok": true}` | updates accepted, or none to handle |
+| 401 | `invalid_secret_token` | the header is missing, malformed, or matches no bot in webhook mode |
+| 400, 405, 413 | the shared codes | as for `oa-webhook` |
+| 500 | `not_configured` | no database URL, or one that would allow plaintext |
+
+A bot is in webhook mode once `app.set_bot_webhook(<secret name>, <SHA-256 of the secret token>, now())` has stored the token's hash; from then on the poller's lease (`app.take_poll_lease`) is refused for it, because Zalo treats polling and a webhook as exclusive. Only `postgres` may run that function, and no `fnb` command calls the Bot's `setWebhook` yet, so every bot is still polled by `fnb notify tick` until an operator sets both. A missing Bot token secret leaves a stop recorded without its confirmation.
 
 ### `sync-incremental`
 
@@ -1250,7 +1401,7 @@ Planned for step 12c; the function does not exist yet. Its database side is in p
 
 ## 6. Command line
 
-The `fnb` CLI talks to Postgres directly as `postgres`, not through this API. Its reference is in [`sync.md`, CLI reference](sync.md#cli-reference) and in [the README](../README.md#the-fnb-cli). Both still lack the commands of phase 12 (`digest`, `notify tick`, `notify status`, `notify test`, `notify link`, `notify unlink`, `notify job-failed`). Until they catch up, `pnpm --filter @fnb/jobs fnb -- <command> --help` gives the authoritative usage.
+The `fnb` CLI talks to Postgres directly as `postgres`, not through this API. Its reference is in [`sync.md`, CLI reference](sync.md#cli-reference) and in [the README](../README.md#the-fnb-cli). Both still lack the commands of phase 12 (`digest`, `notify tick`, `notify status`, `notify test`, `notify link`, `notify unlink`, `notify job-failed`). Until they catch up, `pnpm --filter @fnb/jobs fnb -- <command> --help` gives the authoritative usage. The Zalo commands of phase 13 (#205) are `fnb zalo config set --tenant <slug> (--file <brand.json> | --brand <key> …)`, which writes a brand's Zalo App, OA and Mini App rows from flags or from a JSON file kept outside the repository (secret columns take a `ZALO_` name, never a value; a re-run with the same values changes nothing, different values for a stored row are refused), `fnb zalo config show --tenant <slug>` (with `CI` set, brands are numbered and only their states printed), and `fnb zalo bind --tenant <slug> --member <login e-mail> --brand <key>`, which prints a member's one-time binding code (refused in CI; a publisher login cannot be bound). `fnb datapack`, which reads the report functions as a member inside one snapshot, is described in [strategy.md, section 8](strategy.md#8-building-and-checking-a-pack-from-the-command-line).
 
 ## 7. Keeping this page current
 
@@ -1269,7 +1420,7 @@ CI does not run the check yet.
 
 ## 8. OpenAPI (Swagger) description
 
-`docs/api/openapi.json` is PostgREST's own OpenAPI 2.0 (Swagger) description of `/rest/v1` as the role `authenticated` sees it: the functions of section 3 as `/rpc/<name>` and the tables and views of section 4, with their parameters, columns and types (25 functions and 52 tables and views on 2026-11-14). It holds the schema only, never data. It does not describe the Edge Function endpoints (section 5), the auth endpoints (`/auth/v1`) or the row-level security, which this page explains.
+`docs/api/openapi.json` is PostgREST's own OpenAPI 2.0 (Swagger) description of `/rest/v1` as the role `authenticated` sees it: the functions of section 3 as `/rpc/<name>` and the tables and views of section 4, with their parameters, columns and types (52 functions and 63 tables and views on 2026-11-18, after the seven Zalo tables that `authenticated` can read and `oa_event_counts`). It holds the schema only, never data. It does not describe the Edge Function endpoints (section 5), the auth endpoints (`/auth/v1`) or the row-level security, which this page explains.
 
 | What | Command |
 |---|---|

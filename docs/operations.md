@@ -2,12 +2,13 @@
 
 This runbook is for whoever runs FNB Manager day to day: the owner, a manager the owner trusts with operations, and the developer on call. It lists the environments and who holds which credential, what runs when, how to see that everything is healthy, what to do when something breaks, the maintenance calendar and whom to call. It builds on [sync.md](sync.md) (sync engine and CLI reference), [go-live.md](go-live.md) (first deployment) and [secrets.md](secrets.md) (secrets contract); [security.md](security.md) describes the threats and controls, [development.md](development.md) the local setup and checks, and [requirements.md](requirements.md) the operational requirements behind this runbook (FR-OPS, NFR-AVL and NFR-OBS). Phase 12 parts are marked as verified locally (12a), in build (12b) or planned (12c).
 
-Last updated 2026-11-16
+Last updated 2026-11-18
 
 ## 0. Read first: the state on 2026-11-12
 
 - **No cloud project exists yet.** Gate G1 waits for the owner ([go-live.md](go-live.md)). The workflows that need the cloud ("Sync", "Backup database", "Migrate database") skip themselves with a note in their summary, and nothing syncs in the cloud. The local stack on the build machine holds a tenant loaded with real data, for verification only.
-- **GitHub runs the workflows of commit `0f8fa1d`.** There, `sync.yml` has no digest or notification steps, and `deploy-functions.yml` and `notify.yml` do not exist yet. Pages serves the `0f8fa1d` demo build (Hôm nay on generated numbers).
+- **GitHub runs the workflows on `main` (checked 2026-11-18).** All eleven workflow files are on GitHub, `deploy-functions.yml`, `notify.yml` and `deploy-mini-apps.yml` included; every one that needs the cloud project, its secrets or the Zalo configuration skips itself with a note in its summary. Pages serves the demo build that `deploy-web.yml` made from `main`.
+- **Phase 13 groundwork is built and not live.** The Zalo configuration tables with `fnb zalo config` and `fnb zalo bind`, the shared helpers of the Zalo Edge Functions, the Mini App sign-in (`zalo-session`, `zalo-phone`, the access-token hook), the two webhooks (`oa-webhook`, `bot-webhook`) and the two Mini App scaffolds exist (#203, #204, #205, #207, #208), tested against a mock of Zalo. No Zalo function is deployed, no token job runs (#206), and "Deploy Mini Apps" has never deployed. Everything real waits for the owner's Zalo accounts (#8) and the device check (#210).
 - **Phase 12:** step 12a (outbox, Zalo Bot channel, `fnb notify tick`, `status`, `link`, `test`) is verified locally; step 12b (`fnb digest`, the alert rules, Brevo e-mail, `notify unlink`, `notify job-failed`, the Actions steps) is in build; step 12c (the Supabase dispatcher, the failure listener, Telegram, Resend and webhook, `docs/notifications.md`) is planned.
 - Known issues are in section 3.8.
 
@@ -35,14 +36,16 @@ The owner holds every production credential. The operator needs none for the dai
 | `SUPABASE_ACCESS_TOKEN` | GitHub secret; the owner's `.env` or `supabase login` | owner | `migrate.yml`, `backup.yml`, `deploy-functions.yml`; setting function secrets |
 | `SUPABASE_DB_PASSWORD` | GitHub secret; `.env` | owner | `migrate.yml`, `backup.yml` |
 | `SUPABASE_PROJECT_ID` | GitHub secret; `.env` | owner | `migrate.yml`, `backup.yml`, `deploy-functions.yml` |
-| `SUPABASE_DB_URL` (session pooler; contains the database password) | GitHub secret; `.env` | owner | `sync.yml`, `notify.yml`; the CLI against the cloud |
+| `SUPABASE_DB_URL` (session pooler; contains the database password) | GitHub secret; `.env` | owner | `sync.yml`, `notify.yml`, `deploy-mini-apps.yml`; the CLI against the cloud |
 | `SUPABASE_SECRET_KEY` | the owner's `.env` only; no workflow reads it | owner | `fnb tenant add-member` when it creates a login |
 | `POS_ACCOUNTS_JSON`, `IPOS_APP_KEY` | GitHub secrets; Edge Function secrets; `.env` | owner; the build machine keeps a copy for the local tenant | sync, onboarding, `fnb doctor`, live tests, `sync-incremental` |
 | `FNB_DB_URL`, `FNB_DB_CA_CERT`, `FNB_INCREMENTAL_WALL_MS`, `FNB_INCREMENTAL_CPU_MS` (optional) | Edge Function secrets | owner | `sync-incremental` |
 | `BACKUP_AGE_RECIPIENT`, `BACKUP_S3_ENDPOINT`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY` | GitHub secrets | owner | `backup.yml` |
 | The `age` private key | offline with the owner, never in GitHub or Supabase | owner | restoring a backup |
 | `NOTIFY_ZALO_BOT_TOKEN`, `NOTIFY_EMAIL_API_KEY`, `NOTIFY_EMAIL_FROM`, `NOTIFY_EMAIL_FROM_NAME`, `NOTIFY_TELEGRAM_BOT_TOKEN`, `NOTIFY_WEBHOOK_SECRET` | GitHub secrets; `.env`; Edge Function secrets from 12c | owner | the notification steps of `sync.yml` and `notify.yml` (in build); `fnb notify …` |
-| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | GitHub variables, public by design | – | the web build; `SUPABASE_URL` also in `sync.yml` |
+| `ZALO_APP_SECRET_<BRAND>`, `ZALO_OA_SECRET_<BRAND>` (phase 13) | Edge Function secrets, named by `zalo_apps.secret_name` and `oas.secret_name` | owner | `zalo-session` and `zalo-phone` (the App secret, #205) and `oa-webhook` (the OA secret key, #207); built, not deployed |
+| The OA and Mini App developer token pairs (phase 13) | the `zalo_tokens` table, closed to every API role; not a secret anyone sets by hand | the token jobs (#206, not built yet) | the OA messages and `deploy-mini-apps.yml` |
+| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | GitHub variables, public by design | – | the web build and the Mini App builds; `SUPABASE_URL` also in `sync.yml` |
 | Member logins (e-mail and password) | Supabase Auth | each member: owner, manager, staff, viewer; the publisher login from phase 11 | the web app, under row-level security |
 | Local stack keys | printed by `pnpm db:start`; `.env`, `apps/web/.env.local` | builder, local only | development and tests |
 | `docs/private/` | the build machine; copied between machines through a private channel | owner and delivery team | acceptance figures, build specs, the identifier list of the public-safety scan |
@@ -79,12 +82,11 @@ Times are Asia/Ho_Chi_Minh (UTC+7). GitHub starts scheduled runs late, often by 
 
 | Workflow | Runs on | Does | Secrets |
 |---|---|---|---|
-| "CI" (`ci.yml`) | push to `main`, every pull request | secret and identifier scan; lint, typecheck, unit tests, Edge Function checks; migrations, pgTAP and the Postgres parity suite on a fresh stack; web end-to-end tests | none |
+| "CI" (`ci.yml`) | push to `main`, every pull request | secret and identifier scan; lint, typecheck, unit tests, the import maps and the Deno checks and tests of every Edge Function; migrations, pgTAP and the Postgres parity suite on a fresh stack; web end-to-end tests; the Mini App builds for two synthetic brands with their size budgets and browser checks | none |
 | "Migrate database" (`migrate.yml`) | push to `main` touching `supabase/migrations/**` or `supabase/config.toml`; pull requests touching migrations (dry run); manual dispatch | `supabase link`, then `supabase db push`; skips without `SUPABASE_PROJECT_ID` | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID` |
 | "Deploy web app" (`deploy-web.yml`) | push to `main` touching `apps/web/**`, `packages/**` or the workflow; manual dispatch | builds the web app (the demo while the two variables are empty) and deploys it to Pages | none; variables `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` |
-| "Deploy Edge Functions" (`deploy-functions.yml`) | push to `main` touching the function or the packages it imports; manual dispatch | checks the import map, deploys `sync-incremental`; skips without its two secrets | `SUPABASE_PROJECT_ID`, `SUPABASE_ACCESS_TOKEN` |
-
-`deploy-functions.yml` is not on GitHub yet (it arrives with the owner's next commit).
+| "Deploy Edge Functions" (`deploy-functions.yml`) | push to `main` touching `supabase/functions`, `supabase/config.toml`, any package's `src/` or `package.json`, the lockfile or the import-map script; manual dispatch | checks the import maps, then deploys each function the push affects (every function on a manual run), keeps going after a failed one and fails at the end; skips without its two secrets, and deploys nothing when no function imports a changed file | `SUPABASE_PROJECT_ID`, `SUPABASE_ACCESS_TOKEN` |
+| "Deploy Mini Apps" (`deploy-mini-apps.yml`) | push to `main` touching the two Mini Apps, `packages/zalo-mini`, `packages/design-tokens`, the lockfile or the workflow (a Development version); a `mini-v*` tag (a Testing version); manual dispatch (Development) | builds each brand's staff and customer Mini Apps from the `mini_apps` rows, checks the size budgets and deploys them with `zmp-cli`; skips with a note until it is configured (4.17) and has never deployed | `SUPABASE_DB_URL`; variables `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` |
 
 ### 2.3 How late GitHub starts scheduled runs
 
@@ -190,6 +192,7 @@ Unknown opening hours count every minute. A store that is inactive, belongs to a
 ### 3.6 Alerts and the daily digest (phase 12)
 
 - **Destinations** are linked per member with `fnb notify link`: the Zalo Bot (12a, verified locally) and e-mail through Brevo (12b, in build). Telegram, Resend and a signed webhook arrive in 12c (planned). `fnb notify status` shows every destination and the outbox; `fnb notify test` sends one test message per active destination.
+- **The Zalo Bot's replies** reach the platform through the poller of `fnb notify tick` today. `bot-webhook` (#207, built, not deployed) can take them instead once a bot is in webhook mode: the bot's secret token is stored only as its SHA-256 (`app.set_bot_webhook`, run as `postgres` after the Bot's `setWebhook` succeeded; no `fnb` command does both yet), and from then on the poller leaves that bot alone, because Zalo treats polling and a webhook as exclusive. Either path completes a member's link code and their "ĐỒNG Ý". Through the webhook a member can also reply "DỪNG" (or "DUNG"): their consent to notifications is withdrawn, their waiting messages are cancelled, all their destinations of the tenant (e-mail included) are disabled as `consent_withdrawn`, and the chat gets one confirmation, logged as `stop_confirmation.v1` without its text. To receive messages again they need a new link from the owner.
 - **Quiet hours:** operational messages on the Zalo Bot, Telegram and e-mail go out between 06:00 and 24:00 in the reader's time zone, at most 20 per local day (the seeded `channel_policies`). A message outside that window is held until it opens. Critical alerts are held too, unless the owner sets `critical_bypass` on the tenant's policy.
 - **The daily digest** is the Ngày report built as its recipient, so its numbers equal Ngày. It is due when every store of its scope has settled the day (no open shift, and a successful sync at least 30 minutes after the close and the last shift close), or at the 06:30 deadline the next morning. `fnb digest` queues it; `fnb notify tick` sends it. Until 12c only the Actions path sends, so GitHub's delays (2.3) apply.
 - **Alert rules** (the catalogue `alert_rule_catalog`; owners override them per tenant or store):
@@ -211,6 +214,7 @@ Unknown opening hours count every minute. A store that is inactive, belongs to a
 | `job_failed` | immediate | warning | owner | 12 h | `fnb notify job-failed` (12b); the listener workflow is planned (12c) |
 | `channel_failed` | immediate | warning | owner | 24 h | a destination that keeps failing (12b) |
 | `digest_failed` | immediate | warning | owner | 24 h | a digest that could not be built (12b) |
+| `zalo_webhook_unverified` | immediate | warning | owner | 24 h | `oa-webhook` (#207, built): more OA calls in one tenant-local day than `max_per_day` (default 10) whose signature was missing or wrong, counted whether observe mode stored them or enforce mode refused them; raised once, at the first call over the limit (runbook 4.18) |
 
 ```sh
 CI=1 pnpm --filter @fnb/jobs fnb -- notify status --tenant <tenant-slug>
@@ -485,7 +489,7 @@ Use the drill project's session-pooler string with `?sslmode=require`, as in go-
 
 **Verify.** The counts match the moment of the backup. For a real recovery, the new project then needs the GitHub secrets and variables of section 1.2 updated, the functions deployed, their secrets set and the schedules enabled again (go-live steps 2, 3 and 6).
 
-### 4.11 A failed Pages or function deploy
+### 4.11 A failed Pages, function or Mini App deploy
 
 **Pages ("Deploy web app" red).**
 
@@ -496,11 +500,14 @@ Use the drill project's session-pooler string with `?sslmode=require`, as in go-
 
 **Functions ("Deploy Edge Functions" red).**
 
-- A stale import map: `node scripts/function-imports.mjs --check` fails. Regenerate it with `node scripts/function-imports.mjs`, then let the owner commit the new `deno.json`.
-- A type error: run `deno check index.ts` in `supabase/functions/sync-incremental`.
+- Which function: the job deploys the functions the push affects one after the other and does not stop at a failure. The summary has a line per function, "Deployed <name>." or "Deploying <name> failed; the functions deployed before it keep their new version.", and the job then fails naming every failed function. The functions deployed in the same run keep their new version, so only the failed ones need a second deploy, and nothing has to be rolled back.
+- A stale import map: `node scripts/function-imports.mjs --check` fails. Regenerate the maps with `node scripts/function-imports.mjs`, then let the owner commit the new `deno.json` files.
+- A type error or a failing Deno test: run `deno check index.ts` and `deno test --permit-no-files` in the function's folder under `supabase/functions` (CI's `code` job runs both for every function).
 - A refused token: the access token lacks `edge_functions_write`, `edge_functions_read` or `projects_read` ([secrets.md](secrets.md)).
-- A manual deploy from the owner's machine: `pnpm exec supabase functions deploy sync-incremental --remote=<project ref> --yes`.
+- A manual deploy from the owner's machine: `pnpm exec supabase functions deploy <name> --remote=<project ref> --yes`; to redeploy everything, dispatch "Deploy Edge Functions" from the Actions tab, which deploys every function.
 - **Verify:** a manual ticket with `"wait": true` answers 200 with counts (4.3).
+
+**Mini Apps ("Deploy Mini Apps" red).** The build of one Mini App failed its size budgets or its build, or `zmp-cli` refused the login or the deploy. The loop stops at the first failure: the Mini Apps listed before it keep their new version, the ones after it keep their old one. Read the step's log, which numbers the Mini Apps ("Mini App 2 of 4: customer, development build") and names no brand; fix the cause, then re-run the workflow, which deploys every Mini App again and spends one more deploy of each from the quota (4.17).
 
 ### 4.12 A paused Free project
 
@@ -625,6 +632,31 @@ A breach is any unauthorised access to, loss of or disclosure of personal data: 
 5. **Record** the breach, the timeline and the actions privately (never in this repository) and keep the record 5 years.
 6. **Follow up:** fix the cause, add a test or a scan rule, update this runbook or an ADR, and add any new identifier to the private identifier list of the public-safety scan.
 
+### 4.17 Mini App deploys
+
+`deploy-mini-apps.yml` (phase 13, #208) builds and deploys each brand's staff and customer Mini Apps. On 2026-11-18 it has never deployed: it needs the owner's Zalo accounts and Mini App ids (#8), the `mini_apps` rows, the developer token in `zalo_tokens` (#206) and the `fnb zalo app-config` and `fnb zalo zmp env` commands, which are not built yet.
+
+- **Which version.** A push to `main` that touches `apps/zalo-staff`, `apps/zalo-customer`, `packages/zalo-mini`, `packages/design-tokens`, `pnpm-lock.yaml` or the workflow deploys a Development version of every configured Mini App; a manual dispatch does the same. A tag `mini-v<version>` (for example `mini-v0.1.0`) deploys a Testing version, the one a Zalo review or a tester opens. Each version's description is the branch or tag and the commit.
+- **What a run does.** It masks the credential fields, lists the configured Mini Apps with `fnb zalo app-config --list`, then for each one, numbered in the log: writes its `app-config.json` from the `mini_apps` row, builds it for the Zalo runtime with the size budgets (3 MB a file, 10 MB a version, no ECharts), gets its Mini App id and developer token from `fnb zalo zmp env` into a `.env` that it deletes afterwards, and runs `zmp-cli@4.0.5 login` and `deploy`. The summary ends with how many builds were deployed and at which stage.
+- **Quotas.** Zalo allows 300 Development and 60 Testing deploys per Mini App in 30 days. Every push to `main` that touches the paths above spends one Development deploy of each Mini App of every brand, and every tag one Testing deploy of each; a re-run spends them again. Keep Testing tags for real submissions, and group Mini App changes into fewer pushes when a month is busy.
+- **A skipped run is green and deploys nothing.** Its summary says why: "Mini App deploys are not configured yet (missing: …)" names the missing secret `SUPABASE_DB_URL` or variable `SUPABASE_URL` or `SUPABASE_PUBLISHABLE_KEY`; "The fnb zalo commands that read the mini_apps rows are not built yet" means the CLI lacks them (they are still to be built in phase 13); "No Mini App is configured in the mini_apps rows yet" means the owner's rows are missing. None of them is a failure.
+- **Before a tag.** Run CI's checks locally on the commit: `pnpm --filter @fnb/zalo-staff build`, `pnpm --filter @fnb/zalo-customer build` and both apps' `test:e2e` ([development.md](development.md), section 3). A Testing build refuses the Development-only probe screen, so a probe left in the code fails the build, not the review.
+- **Verify:** the summary counts the deployed builds and names their stage, and the Development build of each Mini App opens on the owner's phone (#210).
+
+### 4.18 Zalo disabled the webhook, or signatures do not match
+
+`oa-webhook` (#207) receives each brand's OA events. It is built against fake events and not deployed; the steps below apply once the owner's Zalo accounts exist and the function is deployed (#8, #210). Zalo retries a webhook only when the connection fails and disables a webhook that keeps failing, so the function answers 200 within 1.5 seconds to everything it can parse, stores after the answer when the database is slow, and answers 401 only in `enforce` mode. Each OA has a mode, `oas.webhook_mode`: `observe` (the default) stores every event with its signature outcome, `enforce` refuses a missing or wrong signature and stores only the day's count.
+
+- **Symptoms.** `zalo_webhook_unverified` reaches the owner: more than `max_per_day` calls of one OA in a day failed the signature check. Or no OA event arrives at all, `last_interaction_at` stops moving, and the Zalo developer console shows the webhook disabled. Or `oa-webhook` logs `invalid_signature` 401s, or 500 `not_configured`.
+- **Look first.** In the SQL editor, `select day, signature, events from app.oa_event_days where oa_id = '<OA row id>' order by day desc limit 14;` gives the count per outcome: `raw` or `compact` matched, `mismatch` and `missing` failed and were stored (observe mode), `refused` failed in enforce mode. An owner reads the same counts through `public.oa_event_counts`. The function's log lines (Edge Functions → `oa-webhook` → Logs) carry the event name, the outcome, the mode and the follow-up, never the user or the text, each line starting with the request id.
+- **500 `not_configured`.** The secret that `oas.secret_name` names is not set, or the database URL is missing or allows plaintext: set the secret from a file outside the repository ([secrets.md](secrets.md)); no redeploy is needed.
+- **Every call `mismatch`.** The OA secret key is wrong or was regenerated in the Zalo console, or the rows name another brand's secret: compare `oas.secret_name` with the secret you set, set the current OA secret key, and watch the next events turn `raw` or `compact`. Until #210 confirms the exact bytes Zalo signs, a whole day of `mismatch` with the right key means the signed bytes differ from the two forms the function tries; keep the OA in `observe` and report it.
+- **Every call `missing`.** The events come without `X-ZEvent-Signature`: check that the console sends to `oa-webhook` of this project and not to another URL in front of it.
+- **Some calls fail, most match.** Calls from someone other than Zalo. In `observe` mode they are stored with their outcome and followed up like real events, so a forged follow or message moves `last_interaction_at` and a forged unfollow disables a destination; switch to `enforce` once the real events match.
+- **The webhook was disabled.** Check that the function is deployed and answers (an empty `POST` with `{}` gets 200 `{"ok": true}` and stores nothing), that the project is not paused (4.12) and that `oa-webhook` is in `supabase/config.toml` with `verify_jwt = false`. Then re-enable the webhook in the Zalo developer console. Events Zalo sent while it was disabled are not replayed; a member who wrote to the OA meanwhile counts as interacting again at their next message.
+- **Switch an OA from `observe` to `enforce`.** Do it once the first real events of the OA match (#210): a day or more of `raw` or `compact` and no `mismatch` or `missing`. As an owner through the API, or as `postgres` in the SQL editor: `update public.oas set webhook_mode = 'enforce' where external_id = '<OA id>';`. The function reads the mode at every call, so the next call follows it; nothing to redeploy. `fnb zalo config set` refuses to change a stored row, so it cannot switch the mode. Switch back the same way if real events start failing.
+- **Verify:** the day's counts show `raw` or `compact` only, no `zalo_webhook_unverified` episode stays open, and a follow or a message to the OA moves the member's `last_interaction_at`.
+
 ## 5. Maintenance calendar
 
 | When | Task | Who | How |
@@ -637,10 +669,12 @@ A breach is any unauthorised access to, loss of or disclosure of personal data: 
 | Weekly | `fnb status`: `unmatched 14d` 0 and `checked 14d` 14 for every store | operator | 3.1 |
 | Weekly, once phase 12 runs | `fnb notify status`: no `uncertain` message, no failing destination | operator | 3.6 |
 | Weekly | "Scheduled workflows active" green | operator | 3.8 |
+| Weekly, once an OA webhook is live | The OA webhook's day counts show matching signatures only, and the webhook is still enabled in the Zalo console | operator | 4.18 |
 | Monthly | Database size trend against 400 MiB; egress against 5 GB in the Supabase usage page | operator | 3.2, 3.7 |
 | Monthly | Compare last month's totals privately with the POS monthly report | owner | ADR-014 |
 | Monthly | Open data-subject requests and their deadlines | owner | 4.15 |
 | Monthly | Zalo Bot messages this month against the 3,000 allowed | operator | `fnb notify status` |
+| Monthly, once Mini Apps deploy | Mini App deploys in the last 30 days against 300 Development and 60 Testing per Mini App | operator | "Deploy Mini Apps" runs in the Actions tab; 4.17 |
 | Monthly | At least one commit, so GitHub's 60-day inactivity rule never disables the schedules | owner | – |
 | Quarterly | Restore drill | operator, with the verifier | 4.10 |
 | Quarterly | Review who has access (members, GitHub collaborators, the Supabase team); rotate after anyone left | owner | 4.8, 4.14 |
