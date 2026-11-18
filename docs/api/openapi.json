@@ -3027,6 +3027,11 @@
 					"format": "text",
 					"type": "string"
 				},
+				"last_interaction_at": {
+					"description": "for a zalo_oa destination, when its OA user last messaged the OA, tapped a menu or button that sends a message, or followed it, as reported by oa-webhook; only moves forward; the send decision reads it against the interaction window of the zalo_oa policies; not selectable by authenticated",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
 				"last_ok_at": {
 					"format": "timestamp with time zone",
 					"type": "string"
@@ -8736,6 +8741,13 @@
 		"rowFilter.notification_channels.last_error_code": {
 			"in": "query",
 			"name": "last_error_code",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.notification_channels.last_interaction_at": {
+			"description": "for a zalo_oa destination, when its OA user last messaged the OA, tapped a menu or button that sends a message, or followed it, as reported by oa-webhook; only moves forward; the send decision reads it against the interaction window of the zalo_oa policies; not selectable by authenticated",
+			"in": "query",
+			"name": "last_interaction_at",
 			"required": false,
 			"type": "string"
 		},
@@ -18664,6 +18676,9 @@
 						"$ref": "#/parameters/rowFilter.notification_channels.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.notification_channels.last_interaction_at"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -18751,6 +18766,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.notification_channels.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.notification_channels.last_interaction_at"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -18867,6 +18885,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.notification_channels.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.notification_channels.last_interaction_at"
 					},
 					{
 						"$ref": "#/parameters/body.notification_channels"
@@ -23173,6 +23194,88 @@
 					}
 				},
 				"tags": ["(rpc) month_pace"]
+			}
+		},
+		"/rpc/oa_event_counts": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_tenant_id",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_from",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_to",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the OA webhook's count-only facts of one tenant for the owners: per OA, tenant-local day and signature outcome (raw, compact, mismatch, missing, refused), the number of events; never an event, user id or text; 42501 for anyone but an owner of the tenant, 22023 for a range over 400 days",
+				"tags": ["(rpc) oa_event_counts"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the OA webhook's count-only facts of one tenant for the owners: per OA, tenant-local day and signature outcome (raw, compact, mismatch, missing, refused), the number of events; never an event, user id or text; 42501 for anyone but an owner of the tenant, 22023 for a range over 400 days",
+							"properties": {
+								"p_from": {
+									"format": "date",
+									"type": "string"
+								},
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_to": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id", "p_from", "p_to"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the OA webhook's count-only facts of one tenant for the owners: per OA, tenant-local day and signature outcome (raw, compact, mismatch, missing, refused), the number of events; never an event, user id or text; 42501 for anyone but an owner of the tenant, 22023 for a range over 400 days",
+				"tags": ["(rpc) oa_event_counts"]
 			}
 		},
 		"/rpc/opening_productivity": {

@@ -238,28 +238,28 @@ reset role;
 set local role authenticated;
 
 select pg_temp.act_as((select owner_a from fx));
-select is(pg_temp.visible(), array[15, 3, 28, 3, 3, 2, 4], 'owner: catalogue, rules, policies, destinations, episodes, digests and messages of the own tenant');
+select is(pg_temp.visible(), array[16, 3, 28, 3, 3, 2, 4], 'owner: catalogue, rules, policies, destinations, episodes, digests and messages of the own tenant');
 select throws_ok($$ select address from public.notification_channels $$, '42501', null, 'owner cannot select a destination''s address');
 select throws_ok($$ select * from public.notification_channels $$, '42501', null, 'select * on notification_channels fails for the browser');
 select lives_ok($$ select id, kind, label, address_hint, status from public.notification_channels $$, 'named columns of notification_channels are readable');
 
 select pg_temp.act_as((select manager_a from fx));
-select is(pg_temp.visible(), array[15, 3, 28, 3, 3, 2, 4], 'unlimited manager: the same rows as the owner');
+select is(pg_temp.visible(), array[16, 3, 28, 3, 3, 2, 4], 'unlimited manager: the same rows as the owner');
 
 select pg_temp.act_as((select store_manager_a from fx));
-select is(pg_temp.visible(), array[15, 2, 28, 1, 1, 1, 2], 'store-limited manager: tenant and own-store rules, own destination, own store''s episode, digest and messages, and own messages');
+select is(pg_temp.visible(), array[16, 2, 28, 1, 1, 1, 2], 'store-limited manager: tenant and own-store rules, own destination, own store''s episode, digest and messages, and own messages');
 
 select pg_temp.act_as((select staff_a from fx));
-select is(pg_temp.visible(), array[15, 0, 27, 0, 0, 0, 0], 'staff: the catalogue and the global policies only');
+select is(pg_temp.visible(), array[16, 0, 27, 0, 0, 0, 0], 'staff: the catalogue and the global policies only');
 
 select pg_temp.act_as((select viewer_a from fx));
-select is(pg_temp.visible(), array[15, 0, 27, 0, 0, 0, 0], 'viewer: the catalogue and the global policies only');
+select is(pg_temp.visible(), array[16, 0, 27, 0, 0, 0, 0], 'viewer: the catalogue and the global policies only');
 
 select pg_temp.act_as((select publisher_a from fx));
-select is(pg_temp.visible(), array[15, 0, 27, 0, 0, 0, 0], 'publisher: the catalogue and the global policies only');
+select is(pg_temp.visible(), array[16, 0, 27, 0, 0, 0, 0], 'publisher: the catalogue and the global policies only');
 
 select pg_temp.act_as((select owner_b from fx));
-select is(pg_temp.visible(), array[15, 1, 28, 1, 1, 1, 1], 'owner of another tenant: only that tenant''s rows');
+select is(pg_temp.visible(), array[16, 1, 28, 1, 1, 1, 1], 'owner of another tenant: only that tenant''s rows');
 
 select pg_temp.act_as((select demo_owner_id from fx));
 select is((select count(*)::integer from public.outbound_messages), 2, 'the seed owner still reads the two seed messages');

@@ -16,14 +16,14 @@ select is(
 
 select is(
   (select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r', 'p')),
-  64,
-  'public holds the 64 expected tables'
+  65,
+  'public holds the 65 expected tables'
 );
 
 select is(
-  (select count(*)::int from pg_policies where schemaname = 'public' and tablename in ('pos_account_tokens', 'zalo_tokens')),
+  (select count(*)::int from pg_policies where schemaname = 'public' and tablename in ('pos_account_tokens', 'zalo_tokens', 'oa_events')),
   0,
-  'the token caches pos_account_tokens and zalo_tokens have no policies'
+  'the token caches pos_account_tokens and zalo_tokens and the event log oa_events have no policies'
 );
 
 select is(

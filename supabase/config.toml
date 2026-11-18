@@ -403,13 +403,13 @@ import_map = "./functions/zalo-phone/deno.json"
 entrypoint = "./functions/zalo-phone/index.ts"
 
 [functions.oa-webhook]
-enabled = false
+enabled = true
 verify_jwt = false
 import_map = "./functions/oa-webhook/deno.json"
 entrypoint = "./functions/oa-webhook/index.ts"
 
 [functions.bot-webhook]
-enabled = false
+enabled = true
 verify_jwt = false
 import_map = "./functions/bot-webhook/deno.json"
 entrypoint = "./functions/bot-webhook/index.ts"

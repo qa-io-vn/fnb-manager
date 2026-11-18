@@ -202,10 +202,10 @@ select ok(not app.alert_rule_params_valid('daily_digest', '{"corrections": "yes"
 select ok(not app.alert_rule_params_valid('sync_stale', '{"threshold": 120}'::jsonb), 'an unknown parameter is refused');
 select ok(not app.alert_rule_params_valid('not_a_rule', '{}'::jsonb), 'an unknown rule is refused');
 
-select is((select count(*)::integer from public.alert_rule_catalog), 15, 'the catalogue holds the 15 rules');
+select is((select count(*)::integer from public.alert_rule_catalog), 16, 'the catalogue holds the 16 rules');
 select is(
   (select array_agg(rule_key order by sort_order) from public.alert_rule_catalog),
-  array['daily_digest', 'revenue_below_baseline', 'ticket_drop', 'drawer_variance', 'unverified_day', 'zero_sales_day', 'zero_sales_open', 'sync_failed', 'auth_failed', 'sync_stale', 'sync_dispatch_failed', 'nightly_missing', 'job_failed', 'channel_failed', 'digest_failed'],
+  array['daily_digest', 'revenue_below_baseline', 'ticket_drop', 'drawer_variance', 'unverified_day', 'zero_sales_day', 'zero_sales_open', 'sync_failed', 'auth_failed', 'sync_stale', 'sync_dispatch_failed', 'nightly_missing', 'job_failed', 'channel_failed', 'digest_failed', 'zalo_webhook_unverified'],
   'the catalogue rules in their order'
 );
 select ok((select bool_and(app.alert_rule_params_valid(rule_key, default_params)) from public.alert_rule_catalog), 'every catalogue default passes its own parameter schema');
