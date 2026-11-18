@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { type SettingsArea, settingsAccess } from "./access";
+import {
+	type SettingsArea,
+	settingsAccess,
+	staffPageAccess,
+	staffRowAccess,
+} from "./access";
 import type { Membership } from "./source";
 
 const store = "11111111-1111-4111-8111-111111111111";
@@ -240,6 +245,24 @@ describe("settingsAccess", () => {
 			viewer: "ownerOnly ownerOnly ownerOnly",
 			publisher: "ownerOnly ownerOnly ownerOnly",
 		},
+		staff: {
+			owner: "write write write",
+			"store-limited owner": "scope write scope",
+			manager: "write write write",
+			"store-limited manager": "scope write scope",
+			staff: "role role role",
+			viewer: "role role role",
+			publisher: "role role role",
+		},
+		staffRevenue: {
+			owner: "write write write",
+			"store-limited owner": "ownerOnly ownerOnly ownerOnly",
+			manager: "ownerOnly ownerOnly ownerOnly",
+			"store-limited manager": "ownerOnly ownerOnly ownerOnly",
+			staff: "ownerOnly ownerOnly ownerOnly",
+			viewer: "ownerOnly ownerOnly ownerOnly",
+			publisher: "ownerOnly ownerOnly ownerOnly",
+		},
 	};
 
 	it.each(
@@ -280,6 +303,52 @@ describe("settingsAccess", () => {
 				).toBe(false);
 			}
 		}
+	});
+
+	it.each([
+		["owner", "write"],
+		["store-limited owner", "write"],
+		["manager", "write"],
+		["store-limited manager", "write"],
+		["staff", "role"],
+		["viewer", "role"],
+		["publisher", "role"],
+	] as const)("opens the Nhân viên page to the %s: %s", (login, outcome) => {
+		const access = staffPageAccess(logins[login]);
+		expect(access.canWrite ? "write" : access.reason).toBe(outcome);
+	});
+
+	it.each([
+		["owner", null, "write"],
+		["owner", [store, other], "write"],
+		["store-limited owner", [store], "write"],
+		["store-limited owner", null, "scope"],
+		["manager", null, "write"],
+		["store-limited manager", [store], "write"],
+		["store-limited manager", [store, other], "scope"],
+		["store-limited manager", [other], "scope"],
+		["store-limited manager", null, "scope"],
+		["store-limited manager", [], "scope"],
+		["staff", [store], "role"],
+		["viewer", null, "role"],
+		["publisher", [store], "role"],
+	] as const)(
+		"lets the %s change a roster row of the stores %j: %s",
+		(login, storeIds, outcome) => {
+			const access = staffRowAccess(logins[login], storeIds);
+			expect(access.canWrite ? "write" : access.reason).toBe(outcome);
+		},
+	);
+
+	it("keeps the Nhân viên page from a login without membership and while it loads", () => {
+		expect(staffPageAccess(null)).toEqual({
+			canWrite: false,
+			reason: "notMember",
+		});
+		expect(staffRowAccess(undefined, [store])).toEqual({
+			canWrite: false,
+			reason: "unknown",
+		});
 	});
 
 	it("refuses a login without membership and waits while it loads", () => {

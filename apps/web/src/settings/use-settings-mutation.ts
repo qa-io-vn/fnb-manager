@@ -16,12 +16,14 @@ import {
 	SettingsWriteError,
 	writeCodeOf,
 } from "./source";
+import type { StaffSettingsSource } from "./staff/source";
 
 export type SettingsWrite<Args> = (
 	source: SettingsSource,
 	tenantId: string,
 	args: Args,
 	manual: ManualSettingsSource,
+	staff: StaffSettingsSource,
 ) => Promise<unknown>;
 
 export const WRITE_ERROR_KEYS: Readonly<Record<SettingsWriteCode, MessageKey>> =
@@ -81,7 +83,7 @@ export function useSettingsMutation<Args>(
 		mutationFn: async (args) => {
 			lastArgs.current = { args };
 			if (state.status !== "ready") throw new SettingsWriteError("network");
-			await write(state.source, tenant.id, args, state.manual);
+			await write(state.source, tenant.id, args, state.manual, state.staff);
 		},
 		onSuccess: async () => {
 			await Promise.all([

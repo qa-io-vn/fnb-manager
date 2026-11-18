@@ -10,6 +10,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { useAppMode } from "../../app-mode/app-mode";
 import { useT } from "../../i18n";
 import { translateKey } from "../../reports/typed-values";
+import { staffPageAccess } from "../../settings/access";
 import { TenantCatchUpBanner } from "../../settings/catch-up/catch-up-banner";
 import {
 	DEFAULT_SETTINGS_SLUG,
@@ -17,10 +18,20 @@ import {
 	type SettingsPageEntry,
 	settingsPageOf,
 } from "../../settings/pages";
+import { useMembership } from "../../settings/queries";
 import { PageHeading } from "../../shell/page-heading";
+
+function useListedPages(): readonly SettingsPageEntry[] {
+	const membership = useMembership();
+	const managesStaff = staffPageAccess(
+		membership.status === "success" ? membership.data : undefined,
+	).canWrite;
+	return SETTINGS_PAGES.filter((page) => !page.managersOnly || managesStaff);
+}
 
 function SettingsNav({ current }: { current: SettingsPageEntry }) {
 	const t = useT();
+	const pages = useListedPages();
 	const active = useRef<HTMLAnchorElement | null>(null);
 	useEffect(() => {
 		active.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -32,7 +43,7 @@ function SettingsNav({ current }: { current: SettingsPageEntry }) {
 			data-testid="settings-nav"
 		>
 			<ul className="flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface-raised p-1 lg:flex-col lg:overflow-visible">
-				{SETTINGS_PAGES.map((page) => {
+				{pages.map((page) => {
 					const isCurrent = page.slug === current.slug;
 					return (
 						<li key={page.slug} className="shrink-0">

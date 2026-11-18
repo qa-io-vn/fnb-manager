@@ -4,6 +4,7 @@ import { useReadyTenantScope } from "../state/tenant-scope";
 import type { ManualSettingsSource } from "./manual/source";
 import { useSettingsSourceState } from "./settings-source-context";
 import type { CatchUpStatus, SettingsSource } from "./source";
+import type { StaffSettingsSource } from "./staff/source";
 
 export const SETTINGS_QUERY_ROOT = "settings";
 
@@ -21,7 +22,10 @@ export type SettingsRead =
 	| "holidays"
 	| "itemCosts"
 	| "targets"
-	| "legalDocuments";
+	| "legalDocuments"
+	| "staffRoster"
+	| "staffRevenue"
+	| "staffApps";
 
 export function settingsQueryKey(
 	sourceKind: SettingsSource["kind"],
@@ -52,6 +56,7 @@ type SettingsLoad<T> = (
 	source: SettingsSource,
 	tenantId: string,
 	manual: ManualSettingsSource,
+	staff: StaffSettingsSource,
 ) => Promise<T>;
 
 function useSettingsRead<T>(
@@ -73,7 +78,7 @@ function useSettingsRead<T>(
 		),
 		queryFn: () => {
 			if (ready === null) throw new Error("settings source not ready");
-			return load(ready.source, tenant.id, ready.manual);
+			return load(ready.source, tenant.id, ready.manual, ready.staff);
 		},
 		enabled: ready !== null,
 		refetchInterval: (query) =>
@@ -154,6 +159,24 @@ export function useTargets() {
 export function useLegalDocuments() {
 	return useSettingsRead("legalDocuments", (_source, tenantId, manual) =>
 		manual.legalDocuments(tenantId),
+	);
+}
+
+export function useStaffRoster() {
+	return useSettingsRead("staffRoster", (_source, tenantId, _manual, staff) =>
+		staff.roster(tenantId),
+	);
+}
+
+export function useStaffRevenueVisibility() {
+	return useSettingsRead("staffRevenue", (_source, tenantId, _manual, staff) =>
+		staff.staffRevenueVisibility(tenantId),
+	);
+}
+
+export function useStaffApps() {
+	return useSettingsRead("staffApps", (_source, tenantId, _manual, staff) =>
+		staff.staffApps(tenantId),
 	);
 }
 

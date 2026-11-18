@@ -14,7 +14,17 @@ const PENDING: CatchUpStatus = {
 	canRefresh: false,
 };
 
-const current = vi.hoisted(() => ({ pendingDays: 0 }));
+const current = vi.hoisted(() => ({
+	pendingDays: 0,
+	membership: {
+		status: "success",
+		data: { role: "owner", storeIds: null },
+	} as unknown,
+}));
+
+vi.mock("../../settings/queries", () => ({
+	useMembership: () => current.membership,
+}));
 
 vi.mock("../../app-mode/app-mode", () => ({
 	useAppMode: () => ({ mode: "live" }),
@@ -64,6 +74,10 @@ describe("SettingsLayout", () => {
 
 	beforeEach(() => {
 		current.pendingDays = 0;
+		current.membership = {
+			status: "success",
+			data: { role: "owner", storeIds: null },
+		};
 	});
 
 	it("opens the built page of the address, loading it lazily, with its place in the sub-navigation", () => {
@@ -105,6 +119,50 @@ describe("SettingsLayout", () => {
 			);
 		},
 	);
+
+	it.each([
+		["owner", null, true],
+		["manager", ["store-1"], true],
+		["staff", null, false],
+		["viewer", null, false],
+		["publisher", null, false],
+	])("lists Nhân viên for the %s (stores %j): %s", (role, storeIds, listed) => {
+		current.membership = { status: "success", data: { role, storeIds } };
+		renderSettings("/cai-dat/cua-hang");
+		const nav = screen.getByTestId("settings-nav");
+		expect(nav.querySelector('a[href$="/cai-dat/nhan-vien"]') !== null).toBe(
+			listed,
+		);
+		expect(nav.querySelector('a[href$="/cai-dat/phap-ly"]')).not.toBeNull();
+	});
+
+	it("leaves Nhân viên out of the sub-navigation while the membership loads or could not be read, and for a login that is not a member", () => {
+		for (const membership of [
+			{ status: "pending", data: undefined },
+			{ status: "error", data: undefined },
+			{ status: "success", data: null },
+		]) {
+			current.membership = membership;
+			const { unmount } = renderSettings("/cai-dat/cua-hang");
+			expect(screen.queryByRole("link", { name: "Nhân viên" })).toBeNull();
+			unmount();
+		}
+	});
+
+	it("opens Nhân viên inside the settings layout for a manager", () => {
+		current.membership = {
+			status: "success",
+			data: { role: "manager", storeIds: null },
+		};
+		renderSettings("/cai-dat/nhan-vien");
+		expect(
+			screen.getByRole("heading", { level: 2, name: "Nhân viên" }),
+		).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "Nhân viên" })).toHaveAttribute(
+			"aria-current",
+			"page",
+		);
+	});
 
 	it("makes each page's lazy component once, so a move between two built pages can finish", () => {
 		const thresholds = settingsPageOf("bao-cao");

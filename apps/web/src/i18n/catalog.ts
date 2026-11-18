@@ -28,6 +28,8 @@ import settingsManualEn from "./messages/settings-manual.en.json";
 import settingsManualVi from "./messages/settings-manual.vi.json";
 import settingsMappingEn from "./messages/settings-mapping.en.json";
 import settingsMappingVi from "./messages/settings-mapping.vi.json";
+import settingsStaffEn from "./messages/settings-staff.en.json";
+import settingsStaffVi from "./messages/settings-staff.vi.json";
 import settingsStoreEn from "./messages/settings-store.en.json";
 import settingsStoreVi from "./messages/settings-store.vi.json";
 import settingsTargetsEn from "./messages/settings-targets.en.json";
@@ -70,6 +72,7 @@ export type MessageKey =
 	| keyof typeof settingsLegalVi
 	| keyof typeof settingsTargetsVi
 	| keyof typeof settingsFeesVi
+	| keyof typeof settingsStaffVi
 	| keyof typeof themesVi
 	| keyof typeof themeRevenueVi
 	| keyof typeof themeHoursVi
@@ -104,6 +107,7 @@ const settingsFilePrefixes = [
 	"settings.legal.",
 	"settings.targets.",
 	"settings.fees.",
+	"settings.staff.",
 ] as const;
 
 const reportFilePrefixes = [
@@ -295,6 +299,13 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: settingsFeesVi,
 		en: settingsFeesEn,
+	},
+	{
+		name: "settings-staff",
+		prefix: "settings.staff.",
+		excludedPrefixes: [],
+		vi: settingsStaffVi,
+		en: settingsStaffEn,
 	},
 	{
 		name: "exports",

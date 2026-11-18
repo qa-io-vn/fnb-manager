@@ -10,7 +10,9 @@ export type SettingsArea =
 	| "alertRules"
 	| "alertMutes"
 	| "manualData"
-	| "legal";
+	| "legal"
+	| "staff"
+	| "staffRevenue";
 
 export type ReadOnlyReason =
 	| "notMember"
@@ -95,6 +97,8 @@ const AREA_ACCESS: Readonly<
 	alertMutes: ownDestinationsAccess,
 	manualData: manualDataAccess,
 	legal: unlimitedOwnerAccess,
+	staff: manualDataAccess,
+	staffRevenue: unlimitedOwnerAccess,
 };
 
 export function settingsAccess(
@@ -105,4 +109,27 @@ export function settingsAccess(
 	if (membership === undefined) return denied("unknown");
 	if (membership === null) return denied("notMember");
 	return AREA_ACCESS[area](membership, storeId);
+}
+
+export function staffPageAccess(
+	membership: Membership | null | undefined,
+): SettingsAccess {
+	if (membership === undefined) return denied("unknown");
+	if (membership === null) return denied("notMember");
+	return managesData(membership) ? ALLOWED : denied("role");
+}
+
+export function staffRowAccess(
+	membership: Membership | null | undefined,
+	storeIds: readonly string[] | null,
+): SettingsAccess {
+	if (storeIds === null) return settingsAccess("staff", membership, null);
+	const page = staffPageAccess(membership);
+	if (!page.canWrite) return page;
+	if (storeIds.length === 0) return denied("scope");
+	for (const storeId of storeIds) {
+		const store = settingsAccess("staff", membership, storeId);
+		if (!store.canWrite) return store;
+	}
+	return ALLOWED;
 }

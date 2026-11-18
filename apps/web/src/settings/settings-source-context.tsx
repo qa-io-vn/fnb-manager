@@ -13,10 +13,12 @@ import { useAppMode } from "../app-mode/app-mode";
 import { useSession } from "../auth/session";
 import type { ManualSettingsSource } from "./manual/source";
 import type { SettingsSource } from "./source";
+import type { StaffSettingsSource } from "./staff/source";
 
 export interface SettingsSources {
 	readonly source: SettingsSource;
 	readonly manual: ManualSettingsSource;
+	readonly staff: StaffSettingsSource;
 }
 
 export type SettingsSourceState =
@@ -37,28 +39,32 @@ const SettingsSourceContext = createContext<SettingsSourceHandle>({
 });
 
 export async function loadDemoSettingsSource(): Promise<SettingsSources> {
-	const [demo, manual, store] = await Promise.all([
+	const [demo, manual, staff, store] = await Promise.all([
 		import("./demo-settings-source"),
 		import("./manual/demo-manual-source"),
+		import("./staff/demo-staff-source"),
 		import("../demo/demo-settings"),
 	]);
 	const settings = store.sharedDemoSettings();
 	return {
 		source: demo.createDemoSettingsSource(settings),
 		manual: manual.createDemoManualSource(settings),
+		staff: staff.createDemoStaffSource(settings),
 	};
 }
 
 export async function loadSupabaseSettingsSource(
 	client: SupabaseClient,
 ): Promise<SettingsSources> {
-	const [live, manual] = await Promise.all([
+	const [live, manual, staff] = await Promise.all([
 		import("./supabase-settings-source"),
 		import("./manual/supabase-manual-source"),
+		import("./staff/supabase-staff-source"),
 	]);
 	return {
 		source: live.createSupabaseSettingsSource(client),
 		manual: manual.createSupabaseManualSource(client),
+		staff: staff.createSupabaseStaffSource(client),
 	};
 }
 

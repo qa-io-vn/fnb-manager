@@ -7,6 +7,7 @@ export type SettingsPageId =
 	| "holidays"
 	| "thresholds"
 	| "legal"
+	| "staff"
 	| "alerts"
 	| "digests";
 
@@ -18,6 +19,7 @@ export interface SettingsPageEntry {
 	readonly status: "built" | "planned" | "slot";
 	readonly load: (() => Promise<{ default: ComponentType }>) | null;
 	readonly slotKey?: string;
+	readonly managersOnly?: boolean;
 }
 
 export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
@@ -68,6 +70,15 @@ export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
 		phase: "10b",
 		status: "built",
 		load: () => import("../pages/settings/phap-ly-page"),
+	},
+	{
+		id: "staff",
+		slug: "nhan-vien",
+		titleKey: "settings.staff.title",
+		phase: "14a",
+		status: "built",
+		load: () => import("../pages/settings/nhan-vien-page"),
+		managersOnly: true,
 	},
 	{
 		id: "alerts",

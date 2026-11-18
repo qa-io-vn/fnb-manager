@@ -34,6 +34,24 @@ describe("SETTINGS_PAGES", () => {
 		expect(manual?.load).toBeTypeOf("function");
 	});
 
+	it("builds Nhân viên as a lazy page of 14a, listed for owners and managers only, with its keys in the staff file", () => {
+		const staff = settingsPageOf("nhan-vien");
+		expect(staff).toMatchObject({
+			id: "staff",
+			status: "built",
+			phase: "14a",
+			titleKey: "settings.staff.title",
+			managersOnly: true,
+		});
+		expect(staff?.load).toBeTypeOf("function");
+		expect(
+			SETTINGS_PAGES.filter((page) => page.managersOnly).map(
+				(page) => page.slug,
+			),
+		).toEqual(["nhan-vien"]);
+		expect(inSharedSettingsFile("settings.staff.title")).toBe(false);
+	});
+
 	it("builds Ngày lễ as a lazy page of 10b", () => {
 		const holidays = settingsPageOf("ngay-le");
 		expect(holidays).toMatchObject({
@@ -69,7 +87,7 @@ describe("SETTINGS_PAGES", () => {
 			"canh-bao",
 			"ban-tin",
 		]);
-		for (const slug of ["nhan-vien", "ket-noi", "khach-hang"]) {
+		for (const slug of ["ket-noi", "khach-hang"]) {
 			expect(settingsPageOf(slug)).toBeNull();
 		}
 		for (const page of SETTINGS_PAGES) {
