@@ -447,7 +447,7 @@ The two ways a table downloads: comma-separated with decimal points (the default
 
 ### Data pack
 
-The versioned, aggregate-only JSON file that the owner gives to their own assistant to draft a store plan (ADR-003): store profile, weekly and monthly totals, heatmap, items, mixes and other figures from the metric registry, with the strategy prompt; no row-level or personal data. Buttons "Tải gói dữ liệu cho AI" and "Sao chép gói + prompt", and `fnb datapack`. One canonical text per pack, identified by its `pack_id`, a SHA-256 of that text without its timestamp, so the same data always gives the same pack ([strategy.md](strategy.md)). The format is built (phase 11a, #130); the content, the prompt, the buttons and the command are in build.
+The versioned, aggregate-only JSON file that the owner gives to their own assistant to draft a store plan (ADR-003): store profile, weekly and monthly totals, heatmap, items, mixes and other figures from the metric registry, with the strategy prompt; no row-level or personal data. Buttons "Tải gói dữ liệu cho AI" and "Sao chép gói + prompt", and `fnb datapack`. One canonical text per pack, identified by its `pack_id`, a SHA-256 of that text without its timestamp, so the same data always gives the same pack ([strategy.md](strategy.md)). The format and the content are built (phase 11a, #130, #134); the prompt, the buttons and the command are in build.
 
 ### Data roles
 

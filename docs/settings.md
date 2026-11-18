@@ -1,6 +1,6 @@
 # Settings sources
 
-How the settings pages read and write their data, in the live app and in the demo. Every page goes through one of two sources and one mutation hook. Each failure therefore has its message, the audit line has its columns, and cached numbers are dropped after a save. The page tickets build on this (#159 to #164). The rules for who may write what are in [schema.md](schema.md#who-can-write-what) and [api.md](api.md#34-settings-and-writes).
+How the settings pages read and write their data, in the live app and in the demo. Every page goes through one of two sources and one mutation hook. Each failure therefore has its message, the audit line has its columns, and cached numbers are dropped after a save. The page tickets build on this (#159 to #164). The rules for who may write what are in [schema.md](schema.md#who-can-write-what) and [api.md](api.md#34-settings-and-writes); [Who may write what](#who-may-write-what) below says how every page shows them and what the live spec of #165 proves for each login.
 
 ## The two sources
 
@@ -199,6 +199,66 @@ Row-level security and `app.stamp_store_profile` decide regardless: a refused ho
 
 The keys live in the shared `settings` file until phase 12 adds message files with the prefixes `settings.alerts.` and `settings.digests.` and moves them there; the i18n test allows no key in two files. To fill a slot, phase 12 sets the entry's `status` to `built` and gives it a `load`, so the layout, the menu and the route stay as they are. The access helper already separates the two kinds of alert writes: `alertRules` lets only owners with an unlimited scope edit rules, and `alertMutes` lets any owner or manager mute rules on their own destinations. Nhân viên (`#/cai-dat/nhan-vien`, 14a) and Cửa hàng và kết nối (`#/cai-dat/ket-noi`, 20a) stay unlisted until they are built; the customer-consent page (17a) is named on the Pháp lý page.
 
+## Who may write what
+
+Every settings page asks `useSettingsAccess(area, storeId)` (`settingsAccess` in `src/settings/access.ts`) before it offers a control. A member who may write gets the fields and the save bar. Everyone else gets `ReadOnlyNotice` (`src/settings/read-only-notice.tsx`: a note with the reason's message and the reason in `data-reason`) and no control that changes anything: no enabled field, no save bar and no add, publish, retire or delete button. Controls that only read stay: the year on Ngày lễ, the scope or store select of the Dữ liệu nhập tay tabs, the searches of Giá vốn and Nhóm của món, the history toggles, the cost template, "Xem nội dung" on Pháp lý and the device's CSV dialect on Ngưỡng báo cáo. The database decides regardless (row-level security, the column grants, the opening-hours guard and the checks), so a page that offered too much would still be refused.
+
+| Area | Where | Who may write | What everyone else sees |
+|---|---|---|---|
+| `tenantProfile` | Cửa hàng, the business block (legal form, default language) | an owner with an unlimited scope | `ownerOnly`: `settings.store.tenant.readOnly` |
+| `storeProfile` | Cửa hàng, a store's block | an owner or manager with the store in scope | `role` for staff, viewers and the publisher: `settings.store.readOnly.role`. A store outside a member's scope is not listed at all, because row-level security does not return it |
+| `openingHours` | Cửa hàng, the opening hours inside a store's block | an owner with the store in scope | a manager who may edit the block reads the hours under the note `settings.store.hours.readOnly` (`ownerOnly`) and keeps every other field of the block; staff and viewers see only the block's `role` note |
+| `manualData` | Dữ liệu nhập tay: Giá vốn, Mục tiêu and Phí thanh toán, for the scope chosen on the tab | a store: an owner or manager with that store in scope; all stores: an owner or manager with an unlimited scope | `role`: `settings.manual.readOnly.role` (on Mục tiêu `settings.targets.readOnly.role`); `scope` when a store-limited member chooses all stores: `settings.manual.costs.readOnly.scope`, `settings.fees.readOnly.scope` |
+| `roles` | Phân loại: Vai trò, Nhóm của món and Loại thanh toán | an owner or manager with an unlimited scope | `role`, or `scope` for a store-limited owner or manager: `settings.readOnly.role`, `settings.readOnly.scope` |
+| `holidays` | Ngày lễ | an owner or manager with an unlimited scope | as for `roles` |
+| `thresholds` | Ngưỡng báo cáo | an owner with an unlimited scope | `ownerOnly` for every other member, staff and viewers included: `settings.readOnly.ownerOnly` |
+| `legal` | Pháp lý | an owner with an unlimited scope | `ownerOnly`: `settings.legal.readOnly` |
+| `alertRules`, `alertMutes` | Cảnh báo (phase 12) | rules: an owner with an unlimited scope; mutes on the member's own destinations: an owner or manager | Cảnh báo and Bản tin are slots for now, with no field and no save button for anyone |
+
+The reasons: `role` (the member's role writes nothing here), `scope` (the member's stores do not cover the row: a row for all stores, or another store), `ownerOnly` (only an owner writes it, with an unlimited scope where the row is the tenant's). Three more come from the membership itself: `unknown` while it loads, `unavailable` when it could not be read, and `notMember` for a login that is not a member of the tenant on screen.
+
+### The write table, proven per login
+
+`e2e:live/settings-roles` (#165) signs in on the fixture tenant of #103 as each of its five logins and, through supabase-js and PostgREST, also as `anon`, and attempts 27 writes. "Manager" is the manager with an unlimited scope, "store-limited" the manager limited to store 1. "saved" means the database stored the write and a read as the owner shows the change; "no row" means a refused update or delete that row-level security answered with no row and no error, which the owner's read confirms changed nothing (the settings source reports it as `forbidden`); `42501` is a missing grant, a policy's check or a function's role check, `23505` a store code another store holds and `23514` a fee rate over the limit.
+
+| Write | Owner | Manager | Store-limited | Staff | Viewer | `anon` |
+|---|---|---|---|---|---|---|
+| Store 1's seat count | saved | saved | saved | no row | no row | `42501` |
+| Store 2's seat count | saved | saved | no row | no row | no row | `42501` |
+| Store 1's opening hours | saved | `42501` | `42501` | no row | no row | `42501` |
+| Store 1 given the code store 2 holds | `23505` | `23505` | `23505` | no row | no row | `42501` |
+| Store 1's name (no column grant) | `42501` | `42501` | `42501` | `42501` | `42501` | `42501` |
+| The tenant's legal form | saved | no row | no row | no row | no row | `42501` |
+| An item cost for all stores | saved | saved | `42501` | `42501` | `42501` | `42501` |
+| An item cost for store 1 | saved | saved | saved | `42501` | `42501` | `42501` |
+| An item cost for store 2 | saved | saved | `42501` | `42501` | `42501` | `42501` |
+| A fee rate for all stores | saved | saved | `42501` | `42501` | `42501` | `42501` |
+| A fee rate for store 1 | saved | saved | saved | `42501` | `42501` | `42501` |
+| A 21 % fee rate for store 1 | `23514` | `23514` | `23514` | `42501` | `42501` | `42501` |
+| Store 1's monthly target | saved | saved | saved | `42501` | `42501` | `42501` |
+| Store 2's monthly target | saved | saved | `42501` | `42501` | `42501` | `42501` |
+| An item type's role | saved | saved | `42501` | `42501` | `42501` | `42501` |
+| An item's category override | saved | saved | `42501` | `42501` | `42501` | `42501` |
+| A payment method's kind override | saved | saved | `42501` | `42501` | `42501` | `42501` |
+| A day off added | saved | saved | `42501` | `42501` | `42501` | `42501` |
+| A day off deleted | saved | saved | no row | no row | no row | `42501` |
+| A report setting | saved | `42501` | `42501` | `42501` | `42501` | `42501` |
+| A legal draft | saved | `42501` | `42501` | `42501` | `42501` | `42501` |
+| A legal draft's title edited | saved | no row | no row | no row | no row | `42501` |
+| A legal text inserted as published | `42501` | `42501` | `42501` | `42501` | `42501` | `42501` |
+| A legal draft's `status` patched | `42501` | `42501` | `42501` | `42501` | `42501` | `42501` |
+| A draft published (`publish_legal_document`) | saved | `42501` | `42501` | `42501` | `42501` | `42501` |
+| A published text retired (`retire_legal_document`) | saved | `42501` | `42501` | `42501` | `42501` | `42501` |
+| The catch-up (`refresh_my_analytics`) | saved | saved | saved | `42501` | `42501` | `42501` |
+| **Saved** | **22** | **15** | **5** | **0** | **0** | **0** |
+
+The spec also holds `settingsAccess` equal to this table: for every write a page offers, the helper allows it exactly when the database saves it, for each of the five logins. In the browser, each login opens Cửa hàng, the three Dữ liệu nhập tay tabs with every scope their select offers, the three Phân loại tabs, Ngày lễ, Ngưỡng báo cáo, Pháp lý, and the Cảnh báo and Bản tin slots, and finds write controls exactly where the database saves and the reason with no other control everywhere else. Staff and the viewer see every page, tab and scope read-only; the store-limited manager sees store 1 alone, its opening hours with the owner-only note, the costs and fee rates for all stores read-only with the scope reason, and the tenant-wide pages with their reasons. Axe finds no serious violation on the read-only pages at 360 and 1280 px, and a console error fails the spec. At the end the fixture tenant and its logins are gone, and every other tenant that is not a fixture keeps the same row counts in every table with a `tenant_id` and the same logins.
+
+Two results follow the design and are recorded so nobody reads them as leaks:
+
+- **A store-limited manager may run the catch-up for the whole tenant.** `refresh_my_analytics` checks the caller's role in the tenant (`app.has_tenant_role`), not the store scope, as [security.md, 5.3](security.md#53-rls-summary-matrix) allows managers. It only recomputes the aggregates from the synced facts, at most 92 days per call, and answers with the number of rows it refreshed; it changes no setting and returns no figure.
+- **A store-limited manager who gives their store the code of a store they cannot see gets `23505`.** The code check of `app.stamp_store_profile` is `security definer` and compares the code, trimmed and upper-cased, with every store of the tenant under a lock per tenant; there is no unique index, because two POS accounts may share a code ([schema.md, triggers and helpers](schema.md#triggers-and-helpers)). The refusal tells that manager only that some store of the tenant already uses the code.
+
 ## Tests
 
 | Test | What it proves |
@@ -218,7 +278,8 @@ The keys live in the shared `settings` file until phase 12 adds message files wi
 | `web:settings/manual/costs`, `web:settings/manual/cost-import`, `web:settings/manual/costs-tab`, `web:settings/manual/use-item-sales`, `web:pages/settings/du-lieu-nhap-tay-page`, `e2e:demo/settings-gia-von` | the Giá vốn tab and its CSV import: see [manual-data.md](manual-data.md#tests) |
 | `web:settings/manual/targets-tab`, `web:settings/manual/use-month-pace`, `web:settings/fees/fees-tab`, `e2e:demo/settings-muc-tieu`, `e2e:demo/settings-phi` | the Mục tiêu and Phí thanh toán tabs: see [manual-data.md](manual-data.md#tests) |
 | `web:pages/settings/ngay-le-page`, `web:settings/holidays/holidays`, `web:settings/validation` | the year select of 2024 to 2030 opening on the current year, the national days read-only with their Vietnamese names and kinds and the 2024 to 2028 note, a year without them, a day off added with its author and deleted, delete only on the tenant's own days, the name's 1 to 80 characters (combining marks counted once) and the calendar's dates checked before sending, a name the date already has held back (also when typed in another Unicode form), the database's duplicate message, the move to another year with the form, its focus and the status line kept, the retry after a lost connection emptying the form and moving the year, the focus on the heading after a delete or a retry, the read-only states of a store-limited manager, staff and a viewer, a year that could not be read |
-| `web:settings/pages`, `web:pages/settings/settings-layout`, `web:settings/access` | one entry per page; Ngày lễ built; Cảnh báo and Bản tin as slots of phase 12 with their keys in the shared `settings` file and their placeholder line; Nhân viên and Cửa hàng và kết nối unlisted; `holidays`, `alertRules` and `alertMutes` access |
+| `web:settings/pages`, `web:pages/settings/settings-layout`, `web:settings/access` | one entry per page; Ngày lễ built; Cảnh báo and Bản tin as slots of phase 12 with their keys in the shared `settings` file and their placeholder line; Nhân viên and Cửa hàng và kết nối unlisted; `holidays`, `alertRules` and `alertMutes` access; the table of the eight page areas by seven logins (owner, manager, each also limited to one store, staff, viewer, publisher) for all stores, the store in scope and another store, staff and viewers read-only everywhere and managers never on opening hours (#165) |
+| `e2e:live/settings-roles` | on the fixture tenant of #103 (#165): the 27 writes of [the write table](#the-write-table-proven-per-login) as the five logins and `anon` through PostgREST, each saved or refused with its code and read back as the owner, only the saved ones changing anything; `settingsAccess` equal to that table for every write a page offers; in the browser, for each login, every settings page, tab and scope with write controls exactly where the database saves and the reason everywhere else, axe at 360 and 1280 px on the read-only pages, no console error; afterwards no fixture tenant or login, and every real tenant's row counts and logins as before |
 | `e2e:demo/settings-ngay-le` | the national days of 2026 read-only and labelled by kind, the years 2024 to 2030 (2029 without national days), a day off added on a Tuesday of the eight weeks before Ngày's day turning its chip into "so với mức nền (7/8 tuần)" and back after the delete, all through the app's links without a reload; the Cảnh báo and Bản tin placeholders inside the settings layout; axe at 360 and 1280 px in both colour schemes and the English text without raw keys |
 | `web:settings/legal/legal-rules`, `web:settings/legal/markdown`, `web:settings/legal/markdown-preview`, `web:settings/legal/legal-editor`, `web:pages/settings/phap-ly-page` | the label's pattern and suggestion, the length limits, the skeleton equal to the demo engine's and made of headings only, the list order, the Markdown preview (numbered lists keeping their first number across blank lines, a heading's own `#`, links other than `http`, `https` and `mailto` shown without an anchor, no HTML, and 100,000 characters of each backtracking-prone input read and rendered within a time budget), the publish, retire and delete confirmations, no edit control on published or retired versions, the refusals, a publication, retirement or deletion made stale by a change elsewhere and the list read again, the focus back on the opening button, a round trip of draft, publication, replacement, retirement and deletion on the demo store, and the read-only page of a manager, a store-limited owner, staff and a viewer |
 | `e2e:demo/settings-phap-ly` | the twelve lists with the demo's draft, a draft from the skeleton previewed, published after the confirmation and retired with the demo store's dates, the next version retiring the one in force, an English skeleton, a deleted draft, English without raw keys, axe at 360 and 1280 px in both colour schemes on the list, the editor and the preview, and at 1280 px on the confirmation |

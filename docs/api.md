@@ -220,9 +220,9 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`data_quality_items`](#publicdata_quality_items) | themes | invoker, stable | rows per item | web theme Chất lượng dữ liệu (#158), Cài đặt → Phân loại → Nhóm của món (#160) | built (phase 10b) |
 | [`data_quality_summary`](#publicdata_quality_summary) | themes | invoker, stable | a row for all stores, then one per store | web theme Chất lượng dữ liệu (#158), Cài đặt → Cửa hàng's receipt suggestion (#159) | built (phase 10b) |
 | [`data_quality_payments`](#publicdata_quality_payments) | themes | invoker, stable | rows per payment method | web theme Chất lượng dữ liệu (#158) | built (phase 10b) |
-| [`store_profiles`](#publicstore_profiles) | data pack | invoker, stable | rows per store | no caller yet (the data pack builder, #130, #134) | built (phase 11a) |
-| [`metric_windows`](#publicmetric_windows) | data pack | invoker, stable | up to 300 rows | no caller yet (the data pack's KPI table, #134) | built (phase 11a) |
-| [`holiday_calendar`](#publicholiday_calendar) | data pack | invoker, stable | rows per date and name | no caller yet (the data pack's calendar, #134) | built (phase 11a) |
+| [`store_profiles`](#publicstore_profiles) | data pack | invoker, stable | rows per store | the data pack builder's first call (`packCalls`, #134) | built (phase 11a) |
+| [`metric_windows`](#publicmetric_windows) | data pack | invoker, stable | up to 300 rows | the data pack's KPI table (`packCalls`, #134) | built (phase 11a) |
+| [`holiday_calendar`](#publicholiday_calendar) | data pack | invoker, stable | rows per date and name | the data pack's calendar of the horizon (`packCalls`, #134) | built (phase 11a) |
 | [`pack_fence`](#publicpack_fence) | data pack | invoker, stable | `text` | no caller yet (the browser pack build, #142) | built (phase 11a) |
 | [`export_control_totals`](#publicexport_control_totals) | exports | invoker, stable | rows per store | no caller yet (the export proof, #139) | built (phase 11a) |
 
@@ -1078,7 +1078,7 @@ returns TABLE(
 )
 ```
 
-- **Called by:** no caller yet; the data pack builder (stage 1: labels and the default as-of day).
+- **Called by:** the data pack builder of `@fnb/datapack` (#134), as its first call: labels, currency, country and the default as-of day.
 - **Status:** built (phase 11a; pgTAP `40_pack_functions.sql`; parity `store-profiles.parity.test.ts`).
 - **Notes:** one row per visible store in the order asked. `label` is `S<n>`, the store's rank among the tenant's stores the caller can see, by `first_seen_at` then `id`; an inactive store keeps its place, so for an owner a label means the same store in every pack. No address, store code or POS id. A publisher reads the profiles, as it reads `stores`.
 
@@ -1089,7 +1089,7 @@ public.metric_windows(store_ids uuid[], metric_ids text[], from_dates date[], to
 returns TABLE(range_index smallint, from_date date, to_date date, metric_id text, value numeric)
 ```
 
-- **Called by:** no caller yet; the data pack's KPI table, and the KPI follow-up of plans (phase 11b).
+- **Called by:** the data pack's KPI table (#134: one call per scope, the 18 trackable ids over the eleven KPI windows); the KPI follow-up of plans comes in phase 11b.
 - **Status:** built (phase 11a; pgTAP `40_pack_functions.sql`; parity `metric-windows.parity.test.ts`).
 - **Notes:** `metric_value` of the stores together for 1 to 25 ids over 1 to 12 ranges of at most 400 days each, ordered by range (1-based `range_index`), then id in the order asked. `22023` names the limit for too many ids or ranges, lists of different lengths, a reversed or too long range; an id that `metric_value` does not compute raises its own `22023`. An empty store list returns no row, before any id is checked.
 
@@ -1100,7 +1100,7 @@ public.holiday_calendar(store_ids uuid[], from_date date, to_date date)
 returns TABLE(holiday_date date, name text, kind holiday_kind)
 ```
 
-- **Called by:** no caller yet; the data pack's calendar of the horizon.
+- **Called by:** the data pack's calendar of the horizon (#134).
 - **Status:** built (phase 11a; pgTAP `40_pack_functions.sql`; parity `holiday-calendar.parity.test.ts`).
 - **Notes:** the global holidays of the visible stores' tenant countries and those tenants' own holidays of the same country, once per date, name and kind, ordered by date, then name in byte order (`collate "C"`), then kind. At most 400 days. Nothing for stores the caller cannot see.
 
@@ -1111,7 +1111,7 @@ public.pack_fence(store_ids uuid[])
 returns text
 ```
 
-- **Called by:** no caller yet; the browser builds a pack between two equal fences and rebuilds when they differ.
+- **Called by:** no caller yet; `buildDataPack` (#134) reads a fence before and after its calls and rebuilds when they differ, up to three times, and the browser's pack build (#142) will pass this function as that fence.
 - **Status:** built (phase 11a; pgTAP `40_pack_functions.sql`).
 - **Notes:** a lowercase hex SHA-256 over what moves the pack's numbers for the visible stores: the refresh log, `synced_at` of invoices of the last live days, sync checks, the tenants' analytics-input version and stamp, item costs, targets, tenant holidays, report settings and the store profiles. It is not part of the pack.
 
