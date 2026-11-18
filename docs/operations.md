@@ -9,6 +9,7 @@ Last updated 2026-11-18
 - **No cloud project exists yet.** Gate G1 waits for the owner ([go-live.md](go-live.md)). The workflows that need the cloud ("Sync", "Backup database", "Migrate database") skip themselves with a note in their summary, and nothing syncs in the cloud. The local stack on the build machine holds a tenant loaded with real data, for verification only.
 - **GitHub runs the workflows on `main` (checked 2026-11-18).** All eleven workflow files are on GitHub, `deploy-functions.yml`, `notify.yml` and `deploy-mini-apps.yml` included; every one that needs the cloud project, its secrets or the Zalo configuration skips itself with a note in its summary. Pages serves the demo build that `deploy-web.yml` made from `main`.
 - **Phase 13 groundwork is built and not live.** The Zalo configuration tables with `fnb zalo config` and `fnb zalo bind`, the shared helpers of the Zalo Edge Functions, the Mini App sign-in (`zalo-session`, `zalo-phone`, the access-token hook), the two webhooks (`oa-webhook`, `bot-webhook`) and the two Mini App scaffolds exist (#203, #204, #205, #207, #208), tested against a mock of Zalo. No Zalo function is deployed, no token job runs (#206), and "Deploy Mini Apps" has never deployed. Everything real waits for the owner's Zalo accounts (#8) and the device check (#210).
+- **Phase 14a is built on the local stack.** The staff roster with Cài đặt → Nhân viên, pairing codes, the staff notice with its `staff_ops` consent, the staff revenue level and the staff app's home exist (#211, #212, #213, #214, #216, #217); the app's pairing screens are in progress (#215), and the device acceptance waits for the owner (#218). `pnpm zalo:dev` runs the staff app against the local backend, on this PC or a phone ([development.md](development.md)).
 - **Phase 12:** step 12a (outbox, Zalo Bot channel, `fnb notify tick`, `status`, `link`, `test`) is verified locally; step 12b (`fnb digest`, the alert rules, Brevo e-mail, `notify unlink`, `notify job-failed`, the Actions steps) is in build; step 12c (the Supabase dispatcher, the failure listener, Telegram, Resend and webhook, `docs/notifications.md`) is planned.
 - Known issues are in section 3.8.
 
@@ -563,6 +564,10 @@ FNB_MEMBER_PASSWORD='<a long password>' pnpm --filter @fnb/jobs fnb -- tenant ad
 
 ### 4.14 Removing a member
 
+**A person on the staff roster** (anyone who uses the staff Mini App): an owner or manager whose stores cover every store of the person opens Cài đặt → Nhân viên and chooses "Ngừng" on the person's card, then confirms. `deactivate_staff` removes the membership with its destinations and binding codes, deletes the person's Zalo identities in the tenant and the live pairing code, and revokes every Auth session of the login, so the staff app signs them out at its next call; the roster row stays as "Đã ngừng" and the consent ledger as evidence. If the person also receives notifications, run step 1 below first, while the membership still exists; afterwards rotate what they knew (step 4). Steps 2 and 3 are not needed: a login made at pairing has no password and no inbox, so it cannot sign in anywhere once its identities are gone. "Mở lại" later puts the row back to "Chờ ghép nối": access returns only with a new pairing code (4.19).
+
+**Any other member** (a web login without a roster row, or when the roster cannot be used):
+
 1. Stop their notifications and withdraw their notifications consent (12b, in build):
 
 ```sh
@@ -577,12 +582,12 @@ where tenant_id = (select id from public.tenants where slug = '<tenant-slug>')
   and user_id = (select id from auth.users where email = '<login e-mail>');
 ```
 
-The trigger `tenant_members_redact_notifications` redacts their message rows at once; their destinations go with the membership; the consent ledger row stays as evidence.
+The trigger `tenant_members_redact_notifications` redacts their message rows at once; their destinations go with the membership; the consent ledger row stays as evidence. If the login is on the staff roster, the trigger `tenant_members_deactivate_staff` marks the roster row inactive too, so the roster never shows access the person no longer has; their Zalo identities and sessions stay until step 3 or a `deactivate_staff`, but RLS reads `tenant_members`, so they read nothing.
 
 3. If the person should lose the login altogether, delete the user in the Supabase dashboard (Authentication → Users); every membership of that login goes with it.
 4. Rotate every shared credential the person knew: the POS passwords (4.7) and anything else they had (4.8).
 
-**Verify.** The person sees no tenant data after signing in, or cannot sign in; `fnb notify status --tenant <tenant-slug>` shows no destination of theirs.
+**Verify.** The person sees no tenant data after signing in, or cannot sign in; the staff app answers "not linked" at its next open; `fnb notify status --tenant <tenant-slug>` shows no destination of theirs; on Nhân viên the person's card reads "Đã ngừng".
 
 ### 4.15 Handling a data-subject request
 
@@ -599,12 +604,12 @@ returning id, first_response_due_at, completion_due_at;
 
 `subject_type` is `customer` or `staff`; `request_type` is `access`, `correction`, `deletion`, `export`, `objection` or `withdraw_consent`. Set `uses_processor` to true when a processor handles the data for this request; the legal read (Track Z) settles when that applies.
 
-2. **Find the data.** Members: the login e-mail (Supabase Auth), `tenant_members`, `notification_channels`, `outbound_messages`, `consent_records`. Customers, as the POS sends them: `customers` (phone, name), `invoices.customer_phone` and `customer_name`, and the raw payloads in `sale_payloads`. Cashiers: `shifts.cashier_name`. Backups hold copies for as long as they are kept.
+2. **Find the data.** Members: the login e-mail (Supabase Auth), `tenant_members`, `notification_channels`, `outbound_messages`, `consent_records`; staff on the roster also `staff_roster` (name, role, stores, status, and the phone if they linked one) and `zalo_identities` (the per-app Zalo user id and display name). Customers, as the POS sends them: `customers` (phone, name), `invoices.customer_phone` and `customer_name`, and the raw payloads in `sale_payloads`. Cashiers: `shifts.cashier_name`. Backups hold copies for as long as they are kept.
 3. **Act.**
    - Access or export: collect the rows privately and hand them over through a private channel, never through the repository.
    - Correction: members in Auth and `tenant_members`; POS data in the POS itself, then run those days again (4.6).
    - Deletion of a member: 4.14. Of a customer: remove the data in the POS first, because a re-sync of those days brings back what the POS still holds; then the delivery team removes our copies. Message rows of any subject can be redacted with `select app.redact_outbound_for_subject('<tenant id>', '<customer or staff>', '<subject id>');`.
-   - Objection or withdrawal of consent: for notifications, `fnb notify unlink --member <login e-mail> --all` (4.14, step 1); the loyalty, marketing and staff purposes arrive with Tracks B and C.
+   - Objection or withdrawal of consent: for notifications, `fnb notify unlink --member <login e-mail> --all` (4.14, step 1); for `staff_ops`, only the person withdraws it, in their own session (`withdraw_staff_ops_consent`; the app's screen for it is still to come), which unpairs their Zalo identities and ends their sessions; when they ask the owner instead, deactivate them on Nhân viên (4.14), which ends their access the same way. The loyalty and marketing purposes arrive with Track C.
 4. **Close** the request:
 
 ```sql
@@ -640,6 +645,8 @@ A breach is any unauthorised access to, loss of or disclosure of personal data: 
 - **What a run does.** It masks the credential fields, lists the configured Mini Apps with `fnb zalo app-config --list`, then for each one, numbered in the log: writes its `app-config.json` from the `mini_apps` row, builds it for the Zalo runtime with the size budgets (3 MB a file, 10 MB a version, no ECharts), gets its Mini App id and developer token from `fnb zalo zmp env` into a `.env` that it deletes afterwards, and runs `zmp-cli@4.0.5 login` and `deploy`. The summary ends with how many builds were deployed and at which stage.
 - **Quotas.** Zalo allows 300 Development and 60 Testing deploys per Mini App in 30 days. Every push to `main` that touches the paths above spends one Development deploy of each Mini App of every brand, and every tag one Testing deploy of each; a re-run spends them again. Keep Testing tags for real submissions, and group Mini App changes into fewer pushes when a month is busy.
 - **A skipped run is green and deploys nothing.** Its summary says why: "Mini App deploys are not configured yet (missing: …)" names the missing secret `SUPABASE_DB_URL` or variable `SUPABASE_URL` or `SUPABASE_PUBLISHABLE_KEY`; "The fnb zalo commands that read the mini_apps rows are not built yet" means the CLI lacks them (they are still to be built in phase 13); "No Mini App is configured in the mini_apps rows yet" means the owner's rows are missing. None of them is a failure.
+- **From mock ids to the real ones.** A brand set up for `pnpm zalo:dev` holds mock ids (`mock-…`), and `fnb zalo config set` refuses to change a stored row. Once the owner's Zalo App, OA and Mini App ids exist (#8): run `pnpm zalo:dev forget --tenant <slug> --brand <key>` on the machine that holds the rows, which removes the brand's Zalo rows and mock identities only when every Zalo id and every bound identity is a `mock-` one and nothing else hangs off the brand (it removes nothing and says why otherwise); then `fnb zalo config set --tenant <slug> --file <brand.json>` with the real ids, from a file outside the repository; then `fnb zalo bind --tenant <slug> --member <login e-mail> --brand <key>` for each owner or manager who signs in to the Mini App with an existing login, while staff on the roster pair with a code from Nhân viên (4.19).
+- **Allowed domains in the Zalo runtime.** The staff app calls `zalo-session` and, for its home, the Data API (`/rest/v1`) directly at the project's `https://<project ref>.supabase.co`. Add that domain to each Mini App's allowed domains in the Zalo developer console before the first Development version is opened on a phone; whether the Data API's own CORS answer works from inside Zalo is part of the device check (#210).
 - **Before a tag.** Run CI's checks locally on the commit: `pnpm --filter @fnb/zalo-staff build`, `pnpm --filter @fnb/zalo-customer build` and both apps' `test:e2e` ([development.md](development.md), section 3). A Testing build refuses the Development-only probe screen, so a probe left in the code fails the build, not the review.
 - **Verify:** the summary counts the deployed builds and names their stage, and the Development build of each Mini App opens on the owner's phone (#210).
 
@@ -656,6 +663,22 @@ A breach is any unauthorised access to, loss of or disclosure of personal data: 
 - **The webhook was disabled.** Check that the function is deployed and answers (an empty `POST` with `{}` gets 200 `{"ok": true}` and stores nothing), that the project is not paused (4.12) and that `oa-webhook` is in `supabase/config.toml` with `verify_jwt = false`. Then re-enable the webhook in the Zalo developer console. Events Zalo sent while it was disabled are not replayed; a member who wrote to the OA meanwhile counts as interacting again at their next message.
 - **Switch an OA from `observe` to `enforce`.** Do it once the first real events of the OA match (#210): a day or more of `raw` or `compact` and no `mismatch` or `missing`. As an owner through the API, or as `postgres` in the SQL editor: `update public.oas set webhook_mode = 'enforce' where external_id = '<OA id>';`. The function reads the mode at every call, so the next call follows it; nothing to redeploy. `fnb zalo config set` refuses to change a stored row, so it cannot switch the mode. Switch back the same way if real events start failing.
 - **Verify:** the day's counts show `raw` or `compact` only, no `zalo_webhook_unverified` episode stays open, and a follow or a message to the OA moves the member's `last_interaction_at`.
+
+### 4.19 Staff pairing support
+
+Staff pair their Zalo account with their row on the staff roster once (#213): an owner or manager issues a 6-digit code on Cài đặt → Nhân viên, and the person, in the brand's staff Mini App, reads the staff notice, accepts it and enters the code. The server side is built and tested against a mock of Zalo; the app's screens for the notice and the code are in progress (#215), and nothing is live before the owner's Zalo accounts exist (#8). [user-guide.md](user-guide.md) has the owner's side, [schema.md](schema.md) the rules.
+
+- **Before anyone pairs.** The tenant has a published Vietnamese staff notice (Cài đặt → Pháp lý, kind "Thông báo cho nhân viên"): without one no code is checked. The person has a roster row that is not "Đã ngừng"; the brand has its staff Mini App row and the store a store code, so Nhân viên can draw the store's QR code.
+- **Issuing a code.** "Tạo mã ghép nối" on the person's card shows the code once, with a 10-minute countdown; nothing stores it but a hash, so a code that was lost is replaced by issuing a new one, which also ends the old one. A refusal says why: the person works in a store outside the issuer's scope (`42501`), or the row is inactive or belongs to a login that is an owner, viewer or publisher of the tenant (`22023`).
+- **"The code was refused."** The app shows the same answer for a wrong, expired, used, replaced or burnt code and for a row that was deactivated in the meantime, on purpose. Check the person's card: "Đã ngừng" needs "Mở lại" first; otherwise issue a new code and have it typed within 10 minutes. Five wrong codes in the tenant's apps are tolerated while a code is live; the sixth burns every live code of the tenant, so issue new ones.
+- **"Wait."** Five wrong codes from one Zalo account make that account wait 15 minutes; the app gets the seconds left. Nothing needs resetting: wait, then use a fresh code.
+- **"The notice changed."** A pairing request names the notice version the person read; if a newer one was published meanwhile, the code is not checked. Reopen the app, read the new notice and try again.
+- **Asked for the notice again after pairing.** A newer staff notice was published. Accepting it in the app records the new version and signs the person in; nothing for the operator to do.
+- **"Đang hoạt động" but "Chưa ghép nối".** The person withdrew their `staff_ops` consent, which unpaired their Zalo account and ended their sessions while the membership stays. Issue a new code if they want to use the app again.
+- **Not linked at every open.** The row was deactivated, the membership removed (4.14), or the Zalo account belongs to another brand's app, which is a separate identity: a code works in every brand's staff app of the tenant, so pair again in that app.
+- **Look at the logs.** `zalo-session`'s lines (Edge Functions → `zalo-session` → Logs, once deployed; the `[zalo-session]` lines of `pnpm zalo:dev` locally) say what happened without a code, name or id: "unpaired: the pairing code was refused", "unpaired: the identity waits after too many wrong codes", "unpaired: the accepted notice is not the published one", "notice required: the staff_ops consent is missing or outdated", or "session minted: staff, 1 stores, identity bound, login created".
+- **Look in the database** (SQL editor, as `postgres`): `select display_name, status, paired_at, deactivated_at from public.staff_roster where tenant_id = '<tenant id>' order by display_name;` gives each person's state; `select count(*) from app.staff_pairing_codes where tenant_id = '<tenant id>' and expires_at > now();` the live codes (their hashes say nothing).
+- **Verify:** the person's card reads "Đang hoạt động" and "Đã ghép nối ngày …", and the staff app opens on Trang chủ with their stores.
 
 ## 5. Maintenance calendar
 
@@ -677,7 +700,7 @@ A breach is any unauthorised access to, loss of or disclosure of personal data: 
 | Monthly, once Mini Apps deploy | Mini App deploys in the last 30 days against 300 Development and 60 Testing per Mini App | operator | "Deploy Mini Apps" runs in the Actions tab; 4.17 |
 | Monthly | At least one commit, so GitHub's 60-day inactivity rule never disables the schedules | owner | – |
 | Quarterly | Restore drill | operator, with the verifier | 4.10 |
-| Quarterly | Review who has access (members, GitHub collaborators, the Supabase team); rotate after anyone left | owner | 4.8, 4.14 |
+| Quarterly | Review who has access (members, the staff roster on Cài đặt → Nhân viên, GitHub collaborators, the Supabase team); rotate after anyone left | owner | 4.8, 4.14 |
 | Yearly, before 1 January | The seeded public holidays and Tết windows cover 2024 to 2028: add the next years before they start | delivery team | a migration |
 | Yearly | Legal watch (the Decree 91 replacement, personal-data decrees, the e-invoice decree) and the privacy notice | owner | the legal read |
 | Yearly, and at gate G4 | Supabase plan: Pro before public launch, or at about 400 MB, a second owner or mandatory daily backups | owner | roadmap section 6 |

@@ -29,7 +29,7 @@ Last updated 2026-11-18
 | Năm · Báo cáo năm | Year · Yearly report | route `#/bao-cao/nam?year=YYYY`; report id `year` | a calendar year; verified locally (phase 9) |
 | Chủ đề · Báo cáo chủ đề | Topics · Thematic reports | route `#/chu-de/*`; `nav.topics`; links carry `range=<preset>` or `from=YYYY-MM-DD&to=YYYY-MM-DD`, and `store=<id>,<id>` | one subject over any range of days; four built (10a), four more in 10b ([below](#thematic-reports-phase-10)) |
 | Kế hoạch | Plans | route `#/ke-hoach/*`; `nav.plans` | saved strategy plans, KPI follow-up and the paste box; designed (phase 11b) |
-| Cài đặt | Settings | route `#/cai-dat/*` (`#/cai-dat` opens Cửa hàng); `nav.settings` | in build: the layout, the settings source, Ngưỡng báo cáo, the roles tab of Phân loại and the catch-up line are built (10a); the other pages in 10b and 12 |
+| Cài đặt | Settings | route `#/cai-dat/*` (`#/cai-dat` opens Cửa hàng); `nav.settings` | in build: the layout, the settings source, Ngưỡng báo cáo, the roles tab of Phân loại and the catch-up line are built (10a); the other pages in 10b and 12; Nhân viên built in 14a (#214), for owners and managers only |
 | Xuất dữ liệu | Exports | route `#/xuat-du-lieu`, tabs `?tab=goi` and `?tab=xuat`; `exports.*` | two tabs: "Gói dữ liệu cho AI" (the aggregate [data pack](#data-pack), the default tab, built in the browser and downloaded or copied with its prompt; built in 11a, #142) and "Xuất dữ liệu" (CSV or JSON files of invoices, lines, payments, shifts and the daily summary by month, each proven equal to the database; built in 11a, [exports.md](exports.md)); owners and managers only; no navigation item |
 | Đăng nhập | Sign in | route `#/dang-nhap`; `auth.login.title` | |
 | Quên mật khẩu? · Đặt lại mật khẩu | Forgot your password? · Reset password | route `#/quen-mat-khau`; `auth.forgot`, `auth.reset.title` | the reset e-mail links back to `#/mat-khau-moi` |
@@ -76,6 +76,7 @@ Names from `reportNames`; routes from [`web-app.md`](web-app.md).
 | Ngày lễ | Holidays | `#/cai-dat/ngay-le` | 10b |
 | Cảnh báo | Alerts: destinations, rules and a test button | `#/cai-dat/canh-bao` | after step 12c |
 | Pháp lý | Legal texts (the consent view comes in phase 17a) | `#/cai-dat/phap-ly` | 10b |
+| Nhân viên | Staff: the roster, pairing codes, the staff app's QR code per store and the staff revenue level | `#/cai-dat/nhan-vien`; `settings.staff.*` | built (14a, #214); listed for owners and managers only ([below](#staff-and-the-staff-app-phase-14a)) |
 
 ## 2. Report cards
 
@@ -229,7 +230,21 @@ Each card has an id in `@fnb/reports` and a title key `report.<report>.<name>.ti
 | Mã xác nhận | confirmation code | 6 digits; `app.confirm_email_link` | the code e-mailed to a member's login address to link it, valid 15 minutes; the member hands it back, and five wrong codes remove the pending destination; in build (step 12b) |
 | ĐỒNG Ý | I agree | the reply a member sends | accepts a linked chat and records the member's consent to notifications |
 | DỪNG | stop | the reply a member sends (also "DUNG", any case) | in a linked Zalo Bot chat: withdraws the member's consent to notifications, cancels their waiting messages, disables all their destinations (e-mail included) and confirms once; handled by `bot-webhook` once the bot is in webhook mode (#207, built) |
-| Mã liên kết (in a Mini App) | binding code | 6 digits; `fnb zalo bind`, `app.zalo_binding_codes` | the code a member enters once in a Mini App, then "Liên kết", to bind their Zalo account; see [Binding code](#binding-code) (#205, built) |
+| Mã liên kết (in a Mini App) | binding code | 6 digits; `fnb zalo bind`, `app.zalo_binding_codes` | the code a member enters once in a Mini App, then "Liên kết", to bind their Zalo account; see [Binding code](#binding-code) (#205, built). Staff on the roster pair with a [pairing code](#pairing-code) instead (14a) |
+
+### Staff and the staff app (phase 14a)
+
+| Vietnamese | English | Code id | Meaning |
+|---|---|---|---|
+| Danh sách nhân viên | Staff roster | table `staff_roster`; `settings.staff.roster.*` | the people of a tenant who may use the staff app, each with a display name, a role (Nhân viên or Quản lý), stores and a status; kept on Cài đặt → Nhân viên by owners and managers within their stores (#211, #214, built) |
+| Chờ ghép nối · Đang hoạt động · Đã ngừng | Waiting to pair · Active · Deactivated | `staff_roster.status` `invited`, `active`, `inactive` | a person added but not yet paired; paired, with a membership of the roster's role and stores; deactivated, with no membership, no Zalo identity in the tenant and no session left |
+| Ghép nối · Đã ghép nối · Chưa ghép nối | Pairing · Paired · Not paired | `settings.staff.pairing.*` | linking a person's Zalo account to their row on the roster, once, with a [pairing code](#pairing-code) after they accept the staff notice. On the web page "paired" means an active row whose login still has a Zalo identity in the tenant, so a person who withdrew their staff consent reads "Chưa ghép nối" |
+| Mã ghép nối · Tạo mã ghép nối | Pairing code · Create a pairing code | `issue_pairing_code`; `app.staff_pairing_codes` | the one-time six-digit code an owner or manager creates for one person on the roster and hands over; valid 10 minutes, shown once ([Pairing code](#pairing-code)) |
+| Thông báo cho nhân viên · Đồng ý | Staff notice · I agree | `legal_documents` kind `staff_notice`; consent purpose `staff_ops` | the tenant's published Vietnamese notice on how staff data is used; accepting it records the person's `staff_ops` consent, which only they can give or withdraw (#212, built) |
+| Doanh thu nhân viên được xem | What staff see of revenue | `tenants.staff_revenue_visibility`; `settings.staff.revenue.*` | the [staff revenue visibility](#staff-revenue-visibility): "Toàn bộ doanh thu của cửa hàng mình" (`all`, the default), "Chỉ tổng hôm nay" (`store_totals`) or "Không xem doanh thu" (`none`); set by an owner with every store |
+| Ứng dụng nhân viên trên Zalo · In mã QR | Staff app on Zalo · Print the QR codes | `settings.staff.app.*` | the section of Cài đặt → Nhân viên with each store's QR code of the staff Mini App (`zalo.me/s/<Mini App id>/?store=<store code>`), drawn in the browser |
+| Trang chủ | Home | staff app route `/`; `tab.home` | the staff app's first tab: the greeting and role, the store, today's figures as the role and the revenue level allow, today's opening hours and the freshness stamp (#217, built) |
+| Cập nhật lúc · Chưa đồng bộ | Updated at · Not synced yet | `home.freshness.*` | the staff home's stamp of the tenant's latest successful sync |
 
 ### Exports (phase 11a)
 
@@ -433,7 +448,7 @@ The last complete business day of the selected stores: the earliest store-local 
 
 ### Binding code
 
-The one-time, six-digit code that ties a member's Zalo account to their existing login for one brand's Mini Apps (#205). `fnb zalo bind --tenant <slug> --member <login e-mail> --brand <key>` prints it; the member enters it once in the Mini App, and from then on `zalo-session` signs that Zalo account in as the member. It is valid 10 minutes and stored only as a hash; a wrong code counts against every live code of the brand's Zalo App, and the sixth wrong attempt burns them. A publisher login cannot be bound. Not to be confused with the Zalo Bot's link code (`FNB-…`), which links a chat for notifications ([`security.md`](security.md), section 4.3).
+The one-time, six-digit code that ties a member's Zalo account to their existing login for one brand's Mini Apps (#205). `fnb zalo bind --tenant <slug> --member <login e-mail> --brand <key>` prints it; the member enters it once in the Mini App, and from then on `zalo-session` signs that Zalo account in as the member. It is valid 10 minutes and stored only as a hash; a wrong code counts against every live code of the brand's Zalo App, and the sixth wrong attempt burns them. A publisher login cannot be bound. Since 14a, people on the staff roster pair with a [pairing code](#pairing-code) that an owner or manager creates on the web instead; binding codes stay for members outside the roster, such as an owner, and for `pnpm zalo:dev`, whose first run binds its mock user with one. Not to be confused with the Zalo Bot's link code (`FNB-…`), which links a chat for notifications ([`security.md`](security.md), section 4.3).
 
 ### Capability
 
@@ -461,7 +476,7 @@ The versioned, aggregate-only JSON file that the owner gives to their own assist
 
 ### Data roles
 
-`owner`, `manager`, `staff` and `viewer`: the tenant roles that read sales. `publisher` is outside them ([`api.md`](api.md#tenant-roles)).
+`owner`, `manager`, `staff` and `viewer`: the tenant roles that read sales. `publisher` is outside them ([`api.md`](api.md#tenant-roles)). What `staff` read of revenue follows the tenant's [staff revenue visibility](#staff-revenue-visibility) (every revenue row of their stores by default).
 
 ### Dead-man's switch
 
@@ -493,11 +508,19 @@ The name of a user-facing text, such as `nav.today`; every key exists in Vietnam
 
 ### Mini App
 
-A web app that runs inside the Zalo phone app on zmp-sdk and zmp-ui, served from `https://h5.zdn.vn`, without LocalStorage or cookies. Phase 13 built two scaffolds, the staff app (`apps/zalo-staff`, hidden from search) and the customer app (`apps/zalo-customer`, listed), each built per brand from its `app-config.json`; until the owner's Zalo accounts exist they run in a browser with a mocked Zalo SDK ([development.md](development.md), section 6).
+A web app that runs inside the Zalo phone app on zmp-sdk and zmp-ui, served from `https://h5.zdn.vn`, without LocalStorage or cookies. Phase 13 built two scaffolds, the staff app (`apps/zalo-staff`, hidden from search) and the customer app (`apps/zalo-customer`, listed), each built per brand from its `app-config.json`; until the owner's Zalo accounts exist they run in a browser with a mocked Zalo SDK ([development.md](development.md), section 6), and the staff app also runs with `pnpm zalo:dev` against the real `zalo-session` on the local stack, signed in as a [mock](#mock-id) Zalo user. Since 14a the staff app's Trang chủ shows the home of #217.
+
+### Mock id
+
+An id that starts with `mock-`, used where a real Zalo id will go before the owner's Zalo accounts exist: the brand's Zalo App, OA and Mini App ids stored with `fnb zalo config set`, and the Zalo user ids of the mock Zalo Graph (`--mock-user mock-…`, default `mock-user-1`; 1 to 59 letters, digits, `_` or `-` after the prefix). `pnpm zalo:dev` serves only a brand whose Zalo App id is a mock id, and `pnpm zalo:dev forget` removes a brand's Zalo rows and identities only when every one of them is a mock id, so the real ids can be stored afterwards ([development.md](development.md), [operations.md](operations.md)).
 
 ### Outbox
 
 `outbound_messages`: the queue of every digest and alert message and its one-year log. Every send decision (consent, allowed hours, limits) is taken in SQL when a dispatcher claims a message. Verified locally (step 12a).
+
+### Pairing code
+
+Vietnamese: mã ghép nối. The one-time, six-digit code that pairs a person on the staff roster with their Zalo account in the staff app (#213). An owner or manager whose stores cover the person creates it on Cài đặt → Nhân viên ("Tạo mã ghép nối", `issue_pairing_code`); it is shown once, valid 10 minutes, one per person, works in every brand's staff app of the tenant and is stored only as a hash with the tenant. The person enters it after accepting the staff notice; `zalo-session` then links the Zalo identity, gives the person a login if they have none (an address on the reserved `.invalid` domain, no password), creates their membership from the roster's role and stores and marks the row active. A wrong, used, expired or deactivated code gets the same answer; five wrong codes within 15 minutes make that Zalo account wait 15 minutes, and the sixth wrong code in the tenant burns its live codes. A code never pairs a login that is already an owner, viewer or publisher. Built and tested locally; the staff app's screen that takes the code is #215, in progress. Compare [binding code](#binding-code).
 
 ### Parity test
 
@@ -550,6 +573,10 @@ A `security invoker` function runs as its caller, so RLS applies to it; a `secur
 ### Seed
 
 `supabase/seed.sql`: the synthetic data that `pnpm db:reset` loads after the migrations. It holds the tenant `demo-fnb` with the stores `TEA` (Demo Tea House) and `COF` (Demo Coffee Bar), a development login and seven business days of sales. A reset wipes everything else, so it is never run on a machine that holds real data.
+
+### Staff revenue visibility
+
+`tenants.staff_revenue_visibility`, "Doanh thu nhân viên được xem" on Cài đặt → Nhân viên: what members with the role `staff` may read of revenue (FR-STF-13). `all`, the default chosen by the owner: every revenue row of their stores, as a manager of those stores reads them; `store_totals`: only today's net revenue and invoice count of their stores, through `today_store_totals`; `none`: no revenue row, report or figure at all. Owners, managers and viewers are not affected. Only an owner with every store sets it (`set_staff_revenue_visibility`). The staff app's home follows it, and makes no revenue call at `none` (#211, #214, #217, built).
 
 ### Store scope
 

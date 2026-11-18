@@ -1,6 +1,6 @@
 # User guide
 
-Purpose and audience: what the FNB Manager app shows and how to read it, for the owner and the store managers. The app speaks Vietnamese by default; this guide is in English and quotes the Vietnamese labels exactly as the app shows them, with the app's own English label in brackets where it helps. It describes the app as built and verified on 2026-11-15, and Xuất dữ liệu as built on 2026-11-18; parts that are designed or planned say so.
+Purpose and audience: what the FNB Manager app shows and how to read it, for the owner and the store managers. The app speaks Vietnamese by default; this guide is in English and quotes the Vietnamese labels exactly as the app shows them, with the app's own English label in brackets where it helps. It describes the app as built and verified on 2026-11-15, and Xuất dữ liệu, Cài đặt → Nhân viên and the first screen of the staff app on Zalo as built on 2026-11-18; parts that are designed or planned say so.
 
 The screenshots come from the demo, so they show the sample stores "Cửa hàng mẫu 1" and "Cửa hàng mẫu 2" and generated numbers, never a real shop. They are taken on 4 November 2026 at 12:30 in Vietnam, in Vietnamese unless a caption says otherwise, and are retaken whenever a screen changes (`pnpm --filter @fnb/web docs:screenshots`).
 
@@ -55,7 +55,7 @@ The navigation sits at the bottom on a phone and on the left on a wide screen.
 | Báo cáo | Reports | Ngày, Tuần, Tháng, Năm | verified locally |
 | Chủ đề | Topics | thematic reports: Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt, Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng | the first four verified locally; Khuyến mãi & giảm giá, Ca & két tiền and So sánh cửa hàng built |
 | Kế hoạch | Plans | saved strategy plans | "Sắp có" |
-| Cài đặt | Settings | Cửa hàng (the business and store profiles), Dữ liệu nhập tay (item costs and their CSV import, monthly targets and payment fees), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (the national holidays and your own days off), Ngưỡng báo cáo (the report thresholds and this device's CSV format) and Pháp lý (the legal texts and their versions); the other settings pages say which phase brings them | Phân loại and Ngưỡng báo cáo verified locally; Cửa hàng, Dữ liệu nhập tay, Ngày lễ and Pháp lý built; the other pages planned |
+| Cài đặt | Settings | Cửa hàng (the business and store profiles), Dữ liệu nhập tay (item costs and their CSV import, monthly targets and payment fees), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (the national holidays and your own days off), Ngưỡng báo cáo (the report thresholds and this device's CSV format), Pháp lý (the legal texts and their versions) and, for owners and managers, Nhân viên (the staff of the Zalo staff app); the other settings pages say which phase brings them | Phân loại and Ngưỡng báo cáo verified locally; Cửa hàng, Dữ liệu nhập tay, Ngày lễ, Pháp lý and Nhân viên built; the other pages planned |
 
 - A page that is not built yet says "Sắp có" and names the roadmap phase that brings it ("Dự kiến ở giai đoạn … của lộ trình.").
 - Xuất dữ liệu (Exports) has no item in the navigation yet; [Xuất dữ liệu](#xuất-dữ-liệu-exports) below says how to open it.
@@ -451,7 +451,7 @@ The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08
 
 ## Cài đặt (Settings)
 
-"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. Six pages are open today, **Cửa hàng**, **Dữ liệu nhập tay** (item costs, monthly targets and payment fees), **Phân loại** (item-type roles, item categories and payment kinds), **Ngày lễ**, **Ngưỡng báo cáo** and **Pháp lý**. **Cảnh báo** (alerts) and **Bản tin** (the daily digest) are already in the list: each says what it will hold and that it comes with phase 12.
+"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. Seven pages are open today, **Cửa hàng**, **Dữ liệu nhập tay** (item costs, monthly targets and payment fees), **Phân loại** (item-type roles, item categories and payment kinds), **Ngày lễ**, **Ngưỡng báo cáo**, **Pháp lý** and **Nhân viên**, which only owners and managers find in the list ([Nhân viên và ứng dụng Zalo](#nhân-viên-và-ứng-dụng-zalo-staff-and-the-zalo-staff-app) below). **Cảnh báo** (alerts) and **Bản tin** (the daily digest) are already in the list: each says what it will hold and that it comes with phase 12.
 
 ### Cửa hàng (Stores)
 
@@ -600,7 +600,7 @@ The reports decide what to flag from nine thresholds. They belong to the whole b
 
 This page keeps the business's legal texts as numbered versions. A version that is published can never be changed or deleted, so every consent a customer or staff member gives later points at the exact text they saw. The app writes no legal wording: you write the texts, or have them written, and publish them here when they are ready.
 
-- **Six kinds of text**, each with a list in Tiếng Việt and one in Tiếng Anh: Thông báo bảo mật (privacy notice), Quy định bảo vệ thông tin (information-protection rules), Điều khoản Mini App (Mini App terms), Thông báo cho nhân viên (staff notice), Nội dung đồng ý tích điểm (loyalty consent text) and Nội dung đồng ý nhận tin quảng cáo (marketing consent text). The Mini Apps of later phases show these texts; until then they are kept here.
+- **Six kinds of text**, each with a list in Tiếng Việt and one in Tiếng Anh: Thông báo bảo mật (privacy notice), Quy định bảo vệ thông tin (information-protection rules), Điều khoản Mini App (Mini App terms), Thông báo cho nhân viên (staff notice), Nội dung đồng ý tích điểm (loyalty consent text) and Nội dung đồng ý nhận tin quảng cáo (marketing consent text). The Mini Apps show these texts. The Vietnamese **Thông báo cho nhân viên** is the first in use: the staff app shows the published version before anyone pairs, and nobody can pair while none is published ([Nhân viên và ứng dụng Zalo](#nhân-viên-và-ứng-dụng-zalo-staff-and-the-zalo-staff-app)); the other texts are kept here until their phases.
 - Each list starts with the version in force ("Đang áp dụng: …, công bố …"), then the drafts, then the versions no longer in force, newest first. Every version shows its **Mã phiên bản ghi khi đồng ý**, the label each consent will record, and the dates it was published and retired. **Xem nội dung** shows a version's text.
 - In the demo, the Vietnamese privacy notice starts as a draft made of the skeleton's headings.
 
@@ -624,6 +624,63 @@ This page keeps the business's legal texts as numbered versions. A version that 
 - If the text was published or withdrawn meanwhile on another device or tab, the page says so instead of acting twice and shows the list as it now stands.
 - At the foot of the page, **Mục liên quan** names what comes later (the customer consents and personal-data requests, phase 17a) and leads to the **Loại hình pháp lý** on Cửa hàng.
 - In the demo a change lasts until the page is reloaded.
+
+## Nhân viên và ứng dụng Zalo (Staff and the Zalo staff app)
+
+The staff app is a Zalo Mini App for your staff and managers: they open it inside Zalo, on their own phone, from a QR code at their store. On Cài đặt → **Nhân viên** you decide who may use it, in which role and for which stores, and you give each person a one-time code to pair their Zalo account. The page and the database behind it were built on 2026-11-18. The staff app itself has its first screen (Trang chủ) and runs in a browser for now: it reaches Zalo only once the owner's Zalo accounts exist and the app has been checked on a phone (#218). This section has no screenshots yet.
+
+### Cài đặt → Nhân viên
+
+- **Who sees it.** Owners and managers. Staff, viewers and other accounts do not find Nhân viên in the settings list; if they open its address they read "Trang Nhân viên chỉ dành cho chủ và quản lý." and nothing else.
+- **Danh sách nhân viên** (the roster) lists one card per person: the name, **Vai trò** (Nhân viên or Quản lý), **Cửa hàng** (the stores, or "Tất cả cửa hàng"), **Trạng thái**, **Ghép nối** and **Số điện thoại**, with the line saying when the card last changed and who changed it. The statuses are **Chờ ghép nối** (added, not yet paired), **Đang hoạt động** (paired and using the app) and **Đã ngừng từ …** (deactivated). **Ghép nối** reads "Đã ghép nối ngày …" or "Chưa ghép nối"; a person who withdrew their agreement in the app reads "Đang hoạt động" but "Chưa ghép nối" until they pair again. The phone shows only its last digits ("…678"), and only once the person has linked it themselves; until then it reads "Chưa liên kết". Deactivated people come last.
+- **Adding a person.** Press **Thêm nhân viên**, type the **Tên hiển thị** (the name you and their colleagues know them by, at most 100 characters), choose the **Vai trò** and tick the **Cửa hàng làm việc**, then press **Thêm**. A **Quản lý** may add, edit and deactivate staff in their own stores. An owner or manager who sees every store may also tick "Tất cả cửa hàng, cả cửa hàng mở sau này"; a manager of some stores is offered only those, and never "every store" or the owner role. The new card waits as "Chờ ghép nối".
+- **Editing.** **Sửa** on a card opens the same form. A change of role or stores applies at once, also to a person already using the app.
+- **Deactivating.** When someone leaves, press **Ngừng** on their card. The page asks first: "Ngừng quyền của …? Người này bị đăng xuất khỏi ứng dụng nhân viên ngay; muốn dùng lại phải được mở lại và ghép nối lại." Press **Ngừng quyền** to confirm, or **Quay lại**. From then on the person has no access: they are signed out of the staff app at once, their pairing, phone and any code you gave them are removed, and the card reads "Đã ngừng từ …". Their earlier agreements stay recorded as evidence.
+- **Reactivating.** **Mở lại** on a deactivated card puts the person back to "Chờ ghép nối" ("Đã mở lại …; người này cần ghép nối lại."). They get access again only by pairing with a new code.
+- **People outside your stores.** A manager of some stores sees the people of those stores only. A card that also covers a store outside your stores shows "Người này làm ở cửa hàng ngoài phạm vi của bạn nên bạn chỉ xem được." and no buttons.
+
+### Pairing a person with the staff app
+
+1. **Publish the staff notice first.** On Cài đặt → Pháp lý, publish the Vietnamese **Thông báo cho nhân viên**: the text that tells staff what the app keeps about them and why. The staff app shows it before anyone pairs, and pairing is refused while no version is published. When you publish a new version later, people already paired are asked to accept it again ("Đồng ý") the next time they open the app.
+2. **Give them the app.** **Ứng dụng nhân viên trên Zalo**, further down the page, shows one QR code per store: scanning it with Zalo opens the staff app for that store. A store needs a **Mã cửa hàng** on Cài đặt → Cửa hàng before it has a QR code, and the business needs its staff Mini App set up (the page says so when either is missing). **In mã QR** prints the codes to put up at the till or in the back office. The codes are drawn on your own screen; nothing is sent anywhere to make them.
+3. **Create their code.** Press **Tạo mã ghép nối** on the person's card. The six-digit code appears once, in large figures, with "Còn hiệu lực" counting down from 10 minutes, and **Chép mã** to copy it. Hand it over in person or read it out. The page keeps it nowhere: close the panel or let it run out ("Mã đã hết hạn…") and it is gone. Creating a new code replaces the previous one, so only the latest works. A code is used once; a deactivated person, or a card linked to an owner's, viewer's or reporting account, gets no code ("Không tạo được mã: …").
+4. **What the person does.** They scan the QR code with Zalo, read the staff notice and press **Đồng ý**, then type the six digits. Their Zalo account is then paired with their card: the card reads "Đang hoạt động" and "Đã ghép nối ngày …", and the app opens on their stores. They never get a password. A wrong, used or expired code gets the same answer, without saying which; after five wrong codes in 15 minutes that Zalo account must wait 15 minutes. **Not yet in the app:** the screens that show the notice before pairing and take the six-digit code come with the next piece of work (#215); the database and the sign-in function already accept them. Until then the app's "Tài khoản chưa được liên kết" screen takes only the older "Mã liên kết" that whoever runs the system creates with `fnb zalo bind`.
+5. **Withdrawing.** Only the person can withdraw their agreement to the staff notice; owners and managers cannot do it for them. They are then signed out and need a new code to pair again. Their agreement to receive the digest and alerts is not touched.
+
+### What staff see of revenue
+
+**Doanh thu nhân viên được xem**, at the foot of Cài đặt → Nhân viên, decides what people with the role Nhân viên see of the sales. It applies to every staff member of the business; owners, managers and viewers always see what their role allows.
+
+| Choice | What staff see in the staff app |
+|---|---|
+| **Toàn bộ doanh thu của cửa hàng mình** (the default) | Everything a manager of their stores sees: today's net revenue and invoices, and whether yesterday matched the POS |
+| **Chỉ tổng hôm nay** | Today's net revenue and number of invoices of their stores, nothing else |
+| **Không xem doanh thu** | No figure at all; the app does not even ask for one |
+
+Only an owner who sees every store can change it: choose and press **Lưu** on the bar "Lưu mức doanh thu nhân viên được xem". An owner of some stores sees the choice in force with a note saying why it cannot be changed; managers do not see this part. The database applies the choice to every sales figure and report a staff login can reach, not only to the app's screen.
+
+### The staff app's home (Trang chủ)
+
+What a person sees after pairing, on the first of the four tabs (Trang chủ, Ca làm, Thông báo, Cá nhân; the other three come in later steps):
+
+- "Xin chào, …" with their role, and **Cửa hàng**: their store, or a choice when they work in several stores of the brand.
+- "Cập nhật lúc HH:mm" (with the date when it was an earlier day): when your business's last sync succeeded. "Chưa đồng bộ" means no sync has succeeded yet.
+- **Hôm nay đến … · …**: **Doanh thu thuần** (net revenue, shortened like "12,5 tr ₫"; tap it for the exact amount) and **Số hóa đơn**, counted as Hôm nay in the web app counts them; then **Hôm qua · …** with "Đã đối soát" or "Chưa đối soát". Owners and managers see all three; staff see what [the choice above](#what-staff-see-of-revenue) allows.
+- **Việc hôm nay · …**: the store's opening hours today, "Hôm nay cửa hàng nghỉ", or "Chưa có giờ mở cửa". Everyone sees this.
+- A figure without sales yet reads "Chưa có dữ liệu", never 0. The numbers refresh every 5 minutes and when the app comes back to the front.
+
+The comparison with the usual level, the cash-drawer card and the shift cards are not there yet; they come with the shift work of phase 14b.
+
+### Trying the staff app on this computer or a phone
+
+Before the Zalo accounts exist, whoever runs the system can open the staff app in a browser against the real sign-in and the business's real numbers on the build machine, signed in as a pretend Zalo user. This is a tool for trying the app, not how staff will use it. It needs the local database running, the login of the member to try it as (`FNB_MEMBER_EMAIL` in `.env`, or `--member <e-mail>`), and the brand's Zalo settings stored with pretend ids that start with `mock-` ([development.md](development.md) has the setup).
+
+- **On this computer:** `pnpm zalo:dev`, then open the address it prints (`http://127.0.0.1:5741/`). It names the brand, the member's role and their number of stores. The first run pairs the pretend user with the member by itself.
+- **On a phone on the same Wi-Fi:** `pnpm zalo:dev --lan`. It prints a link and a QR code to scan with the phone's camera. If the phone cannot connect, allow TCP port 5741 on private networks in the computer's firewall.
+- **On a phone anywhere, for example an iPhone on mobile data:** `pnpm zalo:dev --tunnel`. It prints a public https link and a QR code through a Cloudflare quick tunnel and stops by itself after 4 hours (`--tunnel-hours`, at most 12). It works on a Windows computer only; the first time it downloads Cloudflare's program and checks it.
+- **Stopping:** Ctrl+C, or type q and press Enter.
+
+**Keep the link to yourself.** Whoever opens a `--lan` or `--tunnel` link is signed in as that member, with their role, their stores and the real figures. With `--tunnel` that means anyone on the internet who gets the link, until it stops. Do not post it in a group chat or a ticket. Each link carries a key that is new every time the tool starts: without it the app answers only "403 Forbidden", and once opened the browser keeps the key and drops it from the address bar. Stop the tool as soon as you are done.
 
 ## Xuất dữ liệu (Exports)
 
@@ -745,7 +802,8 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
   - **Stopping the Zalo Bot messages.** Whoever runs the system links your Zalo chat to the Bot with a one-time code, and you accept by replying "ĐỒNG Ý". To stop, reply "DỪNG" in that chat (or "DUNG"; upper or lower case does not matter). The Bot then confirms once: "Đã dừng: bạn sẽ không nhận bản tin và cảnh báo qua Zalo này nữa. Muốn nhận lại, hãy nhờ chủ cửa hàng tạo mã liên kết mới." Your agreement to receive the messages is withdrawn, the messages still waiting for you are cancelled, and you stop receiving the digest and alerts everywhere, by e-mail too; to receive them again, ask the owner for a new link code. The reply is built and works once the Bot receives its messages through the new webhook (phase 13, not live yet).
 - **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Dữ liệu nhập tay (item costs, monthly targets and payment fees), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (your own days off), Ngưỡng báo cáo and Pháp lý (the legal texts) are open (see above). Target progress waits for a monthly target. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
 - **Saved plans** ("Kế hoạch", phase 11b; the data pack, the plan check of "Dán kế hoạch" and the exports are open, see [Xuất dữ liệu](#xuất-dữ-liệu-exports)): saving a checked plan and keeping it in "Kế hoạch", where its KPIs are followed with live values.
-- **Later tracks**: the Zalo staff app and the loyalty programme wait for the owner's paperwork ([roadmap.md](roadmap.md), section 5).
+- **The Zalo staff app** (phase 14): the roster, the pairing codes, the staff notice and the home screen are built and tried in a browser ([above](#nhân-viên-và-ứng-dụng-zalo-staff-and-the-zalo-staff-app)); the app's first-time screens (why it needs a Zalo login, the notice, the code, a refusal screen, the privacy texts) are being built, and shift checklists, the cash count and incidents follow in phase 14b. Opening it inside Zalo waits for the owner's Zalo accounts and a check on a real phone.
+- **Later tracks**: the loyalty programme for customers waits for the owner's paperwork ([roadmap.md](roadmap.md), section 5).
 
 ## Words you will see
 
@@ -784,6 +842,11 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 | Gói dữ liệu cho AI | AI data pack | one file of summary figures with the instructions for your own AI assistant to write a business plan; no invoice or personal data |
 | Lời nhắc (prompt) | Instructions | the text inside the pack that tells the assistant how to write the plan |
 | Mã gói | Pack id | the pack's fingerprint: the same figures always give the same id, and a plan names the pack it was written from by it |
+| Danh sách nhân viên | Staff roster | the people who may use the Zalo staff app, with their role and stores |
+| Chờ ghép nối, Đang hoạt động, Đã ngừng | Waiting to pair, Active, Deactivated | a person's status on the roster |
+| Ghép nối, Mã ghép nối | Pairing, Pairing code | linking a person's Zalo account to their card once, with the six-digit code you create for them, valid 10 minutes |
+| Thông báo cho nhân viên | Staff notice | the text staff read and accept before pairing; published on Cài đặt → Pháp lý |
+| Doanh thu nhân viên được xem | What staff see of revenue | everything for their stores, only today's totals, or nothing |
 
 | Kèm thông tin cá nhân | Include personal data | add the columns that name or reach a person to one export |
 | Đã đối chiếu với cơ sở dữ liệu: … — khớp | Checked against the database: … — matched | an exported month's files equal the database |
