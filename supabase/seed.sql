@@ -661,5 +661,16 @@ cross join (
     ('privacy-2026-02', 'Demo privacy notice, next version', E'# Demo privacy notice\n\nPlaceholder draft for the demo tenant. It is not a legal text.', 'draft'::public.legal_document_status, null::timestamptz)
 ) as d (version, title, body, status, published_at);
 
+insert into public.staff_roster (tenant_id, display_name, role, store_ids, created_by)
+select c.tenant_id, r.display_name, r.role::public.tenant_role, array[s.store_id], c.dev_user_id
+from seed_constants c
+cross join (
+  values
+    ('Nhân viên 1', 'staff', 'TEA'),
+    ('Nhân viên 2', 'staff', 'COF'),
+    ('Quản lý 1', 'manager', 'TEA')
+) as r (display_name, role, store_code)
+join seed_stores s on s.code = r.store_code;
+
 select app.refresh_analytics(c.tenant_id, current_date - 7, current_date)
 from seed_constants c;

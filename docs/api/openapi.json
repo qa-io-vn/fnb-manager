@@ -4030,6 +4030,105 @@
 			],
 			"type": "object"
 		},
+		"staff_roster": {
+			"description": "the staff roster of a tenant (FR-STF-09): one row per person whatever the brand, with a role (staff or manager), a store scope and a status; written only through app.add_staff, app.update_staff, app.deactivate_staff and app.reactivate_staff, and by the pairing of phase 14a",
+			"properties": {
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"deactivated_at": {
+					"description": "when the row was deactivated; set exactly while the status is inactive",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"display_name": {
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"paired_at": {
+					"description": "when the person last paired a Zalo account",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"phone": {
+					"description": "the phone number in international form, only after the person linked it themselves; no API role may select it",
+					"format": "text",
+					"type": "string"
+				},
+				"phone_hint": {
+					"description": "what the screens show instead of the phone number, for example …678",
+					"format": "text",
+					"type": "string"
+				},
+				"phone_linked_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"role": {
+					"description": "staff or manager; the role the person's membership gets when paired",
+					"enum": ["owner", "manager", "staff", "viewer", "publisher"],
+					"format": "public.tenant_role",
+					"type": "string"
+				},
+				"status": {
+					"default": "invited",
+					"description": "invited (on the roster, not paired), active (paired, with a tenant_members row of the roster role and stores) or inactive (deactivated, no membership)",
+					"format": "text",
+					"type": "string"
+				},
+				"store_ids": {
+					"description": "the stores of the tenant the person works in, checked by app.validate_zalo_store_ids; null for every store, which only a member with an unlimited scope may grant",
+					"format": "uuid[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"user_id": {
+					"description": "the Auth user bound at the first pairing, kept after a deactivation so a later pairing reuses it; the person's Zalo identities, one per Zalo App, are the zalo_identities rows of this user",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"display_name",
+				"role",
+				"status",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"store_items": {
 			"properties": {
 				"active": {
@@ -4620,6 +4719,12 @@
 					"format": "text",
 					"type": "string"
 				},
+				"staff_revenue_visibility": {
+					"default": "all",
+					"description": "what members with role staff may read of revenue (FR-STF-13): none (no invoice, line, payment, shift, sync check or aggregate row, so report functions and metric_value return nothing), store_totals (as none, plus today's net revenue and invoice count of their stores through today_store_totals) or all (every revenue row of their stores); owners, managers and viewers are not affected; written by an owner with an unlimited scope through set_staff_revenue_visibility",
+					"format": "text",
+					"type": "string"
+				},
 				"timezone": {
 					"default": "Asia/Ho_Chi_Minh",
 					"format": "text",
@@ -4636,7 +4741,8 @@
 				"legal_form",
 				"created_at",
 				"analytics_inputs_version",
-				"default_language"
+				"default_language",
+				"staff_revenue_visibility"
 			],
 			"type": "object"
 		},
@@ -5449,6 +5555,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/sources"
+			}
+		},
+		"body.staff_roster": {
+			"description": "staff_roster",
+			"in": "body",
+			"name": "staff_roster",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/staff_roster"
 			}
 		},
 		"body.store_items": {
@@ -9773,6 +9888,110 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.staff_roster.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.deactivated_at": {
+			"description": "when the row was deactivated; set exactly while the status is inactive",
+			"in": "query",
+			"name": "deactivated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.display_name": {
+			"in": "query",
+			"name": "display_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.paired_at": {
+			"description": "when the person last paired a Zalo account",
+			"in": "query",
+			"name": "paired_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.phone": {
+			"description": "the phone number in international form, only after the person linked it themselves; no API role may select it",
+			"in": "query",
+			"name": "phone",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.phone_hint": {
+			"description": "what the screens show instead of the phone number, for example …678",
+			"in": "query",
+			"name": "phone_hint",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.phone_linked_at": {
+			"in": "query",
+			"name": "phone_linked_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.role": {
+			"description": "staff or manager; the role the person's membership gets when paired",
+			"in": "query",
+			"name": "role",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.status": {
+			"description": "invited (on the roster, not paired), active (paired, with a tenant_members row of the roster role and stores) or inactive (deactivated, no membership)",
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.store_ids": {
+			"description": "the stores of the tenant the person works in, checked by app.validate_zalo_store_ids; null for every store, which only a member with an unlimited scope may grant",
+			"in": "query",
+			"name": "store_ids",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_roster.user_id": {
+			"description": "the Auth user bound at the first pairing, kept after a deactivation so a later pairing reuses it; the person's Zalo identities, one per Zalo App, are the zalo_identities rows of this user",
+			"in": "query",
+			"name": "user_id",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.store_items.active": {
 			"in": "query",
 			"name": "active",
@@ -10377,6 +10596,13 @@
 		"rowFilter.tenants.slug": {
 			"in": "query",
 			"name": "slug",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.tenants.staff_revenue_visibility": {
+			"description": "what members with role staff may read of revenue (FR-STF-13): none (no invoice, line, payment, shift, sync check or aggregate row, so report functions and metric_value return nothing), store_totals (as none, plus today's net revenue and invoice count of their stores through today_store_totals) or all (every revenue row of their stores); owners, managers and viewers are not affected; written by an owner with an unlimited scope through set_staff_revenue_visibility",
+			"in": "query",
+			"name": "staff_revenue_visibility",
 			"required": false,
 			"type": "string"
 		},
@@ -20903,6 +21129,63 @@
 				"tags": ["report_settings"]
 			}
 		},
+		"/rpc/add_staff": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.add_staff",
+							"properties": {
+								"p_display_name": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_role": {
+									"format": "tenant_role",
+									"type": "string"
+								},
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"p_tenant_id",
+								"p_display_name",
+								"p_role",
+								"p_store_ids"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.add_staff",
+				"tags": ["(rpc) add_staff"]
+			}
+		},
 		"/rpc/analytics_catch_up_status": {
 			"get": {
 				"parameters": [
@@ -21505,6 +21788,43 @@
 					}
 				},
 				"tags": ["(rpc) data_quality_summary"]
+			}
+		},
+		"/rpc/deactivate_staff": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.deactivate_staff",
+							"properties": {
+								"p_roster_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_roster_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.deactivate_staff",
+				"tags": ["(rpc) deactivate_staff"]
 			}
 		},
 		"/rpc/export_control_totals": {
@@ -24483,6 +24803,43 @@
 				"tags": ["(rpc) range_totals"]
 			}
 		},
+		"/rpc/reactivate_staff": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.reactivate_staff",
+							"properties": {
+								"p_roster_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_roster_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.reactivate_staff",
+				"tags": ["(rpc) reactivate_staff"]
+			}
+		},
 		"/rpc/refresh_my_analytics": {
 			"post": {
 				"parameters": [
@@ -24783,6 +25140,47 @@
 					}
 				},
 				"tags": ["(rpc) seasonal_naive_forecast"]
+			}
+		},
+		"/rpc/set_staff_revenue_visibility": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.set_staff_revenue_visibility",
+							"properties": {
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_visibility": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id", "p_visibility"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.set_staff_revenue_visibility",
+				"tags": ["(rpc) set_staff_revenue_visibility"]
 			}
 		},
 		"/rpc/shift_adjustments": {
@@ -25207,6 +25605,107 @@
 					}
 				},
 				"tags": ["(rpc) store_targets"]
+			}
+		},
+		"/rpc/today_store_totals": {
+			"get": {
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the staff app's home card: app.today_store_totals",
+				"tags": ["(rpc) today_store_totals"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the staff app's home card: app.today_store_totals",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the staff app's home card: app.today_store_totals",
+				"tags": ["(rpc) today_store_totals"]
+			}
+		},
+		"/rpc/update_staff": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.update_staff",
+							"properties": {
+								"p_display_name": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_role": {
+									"format": "tenant_role",
+									"type": "string"
+								},
+								"p_roster_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": [
+								"p_roster_id",
+								"p_display_name",
+								"p_role",
+								"p_store_ids"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.update_staff",
+				"tags": ["(rpc) update_staff"]
 			}
 		},
 		"/rpc/weekday_profile_forecast": {
@@ -25721,6 +26220,244 @@
 					}
 				},
 				"tags": ["sources"]
+			}
+		},
+		"/staff_roster": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.display_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.role"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.paired_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.phone"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.phone_hint"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.phone_linked_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.deactivated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the staff roster of a tenant (FR-STF-09): one row per person whatever the brand, with a role (staff or manager), a store scope and a status; written only through app.add_staff, app.update_staff, app.deactivate_staff and app.reactivate_staff, and by the pairing of phase 14a",
+				"tags": ["staff_roster"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.display_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.role"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.paired_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.phone"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.phone_hint"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.phone_linked_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.deactivated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/staff_roster"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the staff roster of a tenant (FR-STF-09): one row per person whatever the brand, with a role (staff or manager), a store scope and a status; written only through app.add_staff, app.update_staff, app.deactivate_staff and app.reactivate_staff, and by the pairing of phase 14a",
+				"tags": ["staff_roster"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.display_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.role"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.paired_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.phone"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.phone_hint"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.phone_linked_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.deactivated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_roster.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.staff_roster"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the staff roster of a tenant (FR-STF-09): one row per person whatever the brand, with a role (staff or manager), a store scope and a status; written only through app.add_staff, app.update_staff, app.deactivate_staff and app.reactivate_staff, and by the pairing of phase 14a",
+				"tags": ["staff_roster"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.staff_roster"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the staff roster of a tenant (FR-STF-09): one row per person whatever the brand, with a role (staff or manager), a store scope and a status; written only through app.add_staff, app.update_staff, app.deactivate_staff and app.reactivate_staff, and by the pairing of phase 14a",
+				"tags": ["staff_roster"]
 			}
 		},
 		"/store_items": {
@@ -27167,6 +27904,9 @@
 						"$ref": "#/parameters/rowFilter.tenants.profile_updated_by"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.tenants.staff_revenue_visibility"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -27223,6 +27963,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.tenants.profile_updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.staff_revenue_visibility"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -27308,6 +28051,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.tenants.profile_updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.staff_revenue_visibility"
 					},
 					{
 						"$ref": "#/parameters/body.tenants"

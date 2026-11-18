@@ -166,11 +166,11 @@ A login holds one role per tenant in `tenant_members`, with an optional store sc
 
 ## 3. Functions in `public`
 
-The schema `public` holds 54 functions. `authenticated` may execute 52 of them, all but the two RPCs of the Zalo sign-in (`zalo_session_app`, `zalo_session_sign_in`), which only `service_role` may execute (section 3.10); `service_role` may execute every one but the two legal-text functions and `oa_event_counts`, which act only for a signed-in owner; `anon` may execute none. Of the 52, 48 are `security invoker` and `stable`; `refresh_my_analytics`, `publish_legal_document` and `retire_legal_document` are `security definer` and `volatile`, and `oa_event_counts` is `security definer` and `stable`. All of them set an empty `search_path`. No name is overloaded.
+The schema `public` holds 60 functions. `authenticated` may execute 58 of them, all but the two RPCs of the Zalo sign-in (`zalo_session_app`, `zalo_session_sign_in`), which only `service_role` may execute (section 3.10); `service_role` may execute every one but the two legal-text functions, `oa_event_counts` and the six functions of section 3.11, which act only for a signed-in member; `anon` may execute none. Of the 58, 49 are `security invoker` and `stable` (`today_store_totals` among them); the five roster and staff-revenue writers of section 3.11 are `security invoker` and `volatile` wrappers of `security definer` functions in `app`; `refresh_my_analytics`, `publish_legal_document` and `retire_legal_document` are `security definer` and `volatile`, and `oa_event_counts` is `security definer` and `stable`. All of them set an empty `search_path`. No name is overloaded.
 
 Each entry gives the signature exactly as Postgres prints it (`pg_get_function_arguments` and `pg_get_function_result`), then what calls it today, its status and notes. Column meanings and computation rules are in [`schema.md`](schema.md), sections "Query functions" and "Report functions (phase 9)"; report rules are in [`metrics.md`](metrics.md#report-conventions).
 
-**Who may call.** Any signed-in member may call the 48 invoker functions. The numbers cover only the stores that the caller's data role reads, so a publisher gets nulls or no rows (see [How RLS shapes function results](#how-rls-shapes-function-results)). `refresh_my_analytics`, the two legal-text functions and `oa_event_counts` have their own rules.
+**Who may call.** Any signed-in member may call the 49 stable invoker functions. The numbers cover only the stores that the caller's data role reads, so a publisher gets nulls or no rows (see [How RLS shapes function results](#how-rls-shapes-function-results)); staff read revenue only as their tenant's `staff_revenue_visibility` allows (section 3.11). `refresh_my_analytics`, the two legal-text functions, `oa_event_counts` and the roster writers have their own rules.
 
 **Callers named below.**
 
@@ -1155,6 +1155,76 @@ returns TABLE(oa_id uuid, day date, signature text, events integer)
 - **Status:** built (phase 13, #207; pgTAP `45_zalo_events.sql`).
 - **Who may call:** an owner of the tenant, whatever the store scope; anyone else, a manager included, gets `42501`. It is `security definer` because the counts sit in `app.oa_event_days`, which no API role reads.
 - **Notes:** the count-only facts of the tenant's OA webhook from `p_from` to `p_to`, at most 400 days (`22023` beyond, or for a reversed or missing bound): per OA, tenant-local day and signature outcome (`raw`, `compact`, `mismatch`, `missing`, or `refused` for a call refused in enforce mode), the number of events, ordered by day, OA and outcome. Never an event, a user id or a text. The counts outlive the 90 days for which `oa_events` keeps the events.
+
+### 3.11 Staff roster and staff revenue (phase 14a)
+
+Migrations `staff_roster` (#211) and `operations_rls` (#216) add six functions a client may call. Each is a `security invoker` wrapper of the `app` function of the same name, which is `security definer` with an empty `search_path` and checks the caller's role itself; the roster functions write `staff_roster` and the matching `tenant_members` row, which no client writes directly. No client calls them yet: Settings → Nhân viên (#214) and the staff app (#215, #217) will. Tests: pgTAP `46_staff_roster.sql` and `47_operations_rls.sql`.
+
+#### `public.add_staff`
+
+```sql
+public.add_staff(p_tenant_id uuid, p_display_name text, p_role tenant_role, p_store_ids uuid[])
+returns uuid
+```
+
+- **Status:** built (phase 14a, #211).
+- **Who may call:** an owner or a manager of the tenant, for stores within their scope; a store-limited caller cannot grant another store or every store (`22023`), nobody grants `owner` through it (`22023`), a store outside the caller's scope gives `42501` and a store of another tenant `23503`.
+- **Notes:** adds a person as `invited` with role `staff` or `manager` and their stores (`null` means every store) and returns the roster id; pairing with the staff app (#213) makes the row `active` and creates the membership.
+
+#### `public.update_staff`
+
+```sql
+public.update_staff(p_roster_id uuid, p_display_name text, p_role tenant_role, p_store_ids uuid[])
+returns void
+```
+
+- **Status:** built (phase 14a, #211).
+- **Who may call:** as `add_staff`, for a row whose every store is in the caller's scope.
+- **Notes:** changes the name, role and stores; on an active row the membership follows at once.
+
+#### `public.deactivate_staff`
+
+```sql
+public.deactivate_staff(p_roster_id uuid)
+returns void
+```
+
+- **Status:** built (phase 14a, #211).
+- **Who may call:** as `update_staff`.
+- **Notes:** marks the row `inactive` and removes the membership, the person's notification destinations and binding codes, their Zalo identities in the tenant and their Auth sessions and refresh tokens; the phone is cleared. Calling it twice does nothing more. Removing a membership by any other path also deactivates the roster row.
+
+#### `public.reactivate_staff`
+
+```sql
+public.reactivate_staff(p_roster_id uuid)
+returns void
+```
+
+- **Status:** built (phase 14a, #211).
+- **Who may call:** as `update_staff`.
+- **Notes:** returns an inactive row to `invited`, so access needs a new pairing. Calling it twice does nothing more.
+
+#### `public.set_staff_revenue_visibility`
+
+```sql
+public.set_staff_revenue_visibility(p_tenant_id uuid, p_visibility text)
+returns text
+```
+
+- **Status:** built (phase 14a, #216).
+- **Who may call:** an owner of the tenant with every store; anyone else gets `42501`. An unknown or missing level gives `22023`.
+- **Notes:** sets `tenants.staff_revenue_visibility` and returns it: `all` (the default: staff read every revenue row of their stores, as a manager of those stores does), `store_totals` (staff read no revenue row, only today's totals through `today_store_totals`) or `none` (staff read no revenue at all; report functions and `metric_value` return nothing for them). Owners, managers and viewers are not affected. The tenant's profile stamps record who changed it.
+
+#### `public.today_store_totals`
+
+```sql
+public.today_store_totals()
+returns TABLE(store_id uuid, business_date date, net_amount numeric, invoices bigint)
+```
+
+- **Status:** built (phase 14a, #216).
+- **Who may call:** any member; data roles get the stores in their scope, staff only when their tenant's level is `store_totals` or `all`, a publisher or a login without membership nothing.
+- **Notes:** today's net revenue and invoice count of each store, voided invoices left out as Hôm nay counts them, by each store's own business date.
 
 ## 4. Tables and views
 
