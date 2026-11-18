@@ -390,6 +390,30 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+[functions.zalo-session]
+enabled = false
+verify_jwt = false
+import_map = "./functions/zalo-session/deno.json"
+entrypoint = "./functions/zalo-session/index.ts"
+
+[functions.zalo-phone]
+enabled = false
+verify_jwt = true
+import_map = "./functions/zalo-phone/deno.json"
+entrypoint = "./functions/zalo-phone/index.ts"
+
+[functions.oa-webhook]
+enabled = false
+verify_jwt = false
+import_map = "./functions/oa-webhook/deno.json"
+entrypoint = "./functions/oa-webhook/index.ts"
+
+[functions.bot-webhook]
+enabled = false
+verify_jwt = false
+import_map = "./functions/bot-webhook/deno.json"
+entrypoint = "./functions/bot-webhook/index.ts"
+
 [functions.sync-incremental]
 enabled = true
 verify_jwt = false

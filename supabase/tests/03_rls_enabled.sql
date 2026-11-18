@@ -16,14 +16,14 @@ select is(
 
 select is(
   (select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r', 'p')),
-  56,
-  'public holds the 56 expected tables'
+  64,
+  'public holds the 64 expected tables'
 );
 
 select is(
-  (select count(*)::int from pg_policies where schemaname = 'public' and tablename = 'pos_account_tokens'),
+  (select count(*)::int from pg_policies where schemaname = 'public' and tablename in ('pos_account_tokens', 'zalo_tokens')),
   0,
-  'pos_account_tokens has no policies'
+  'the token caches pos_account_tokens and zalo_tokens have no policies'
 );
 
 select is(
@@ -32,10 +32,10 @@ select is(
     from pg_policies
     where schemaname = 'public'
       and cmd in ('INSERT', 'UPDATE', 'DELETE')
-      and tablename not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies', 'report_settings', 'item_category_overrides', 'payment_kind_overrides', 'legal_documents', 'stores', 'tenants')
+      and tablename not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies', 'report_settings', 'item_category_overrides', 'payment_kind_overrides', 'legal_documents', 'stores', 'tenants', 'brands', 'zalo_apps', 'oas', 'mini_apps', 'zbs_templates', 'gmf_groups')
   ),
   0,
-  'write policies exist only on the manual-input tables, the settings and mappings, the store and tenant profiles, strategy_reports, the legal ledgers, alert_rules and channel_policies'
+  'write policies exist only on the manual-input tables, the settings and mappings, the store and tenant profiles, strategy_reports, the legal ledgers, alert_rules, channel_policies and the Zalo configuration'
 );
 
 select is(
@@ -45,10 +45,10 @@ select is(
     where grantee = 'authenticated'
       and table_schema = 'public'
       and privilege_type <> 'SELECT'
-      and table_name not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies', 'report_settings', 'item_category_overrides', 'payment_kind_overrides', 'legal_documents')
+      and table_name not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies', 'report_settings', 'item_category_overrides', 'payment_kind_overrides', 'legal_documents', 'brands', 'zalo_apps', 'oas', 'mini_apps', 'zbs_templates', 'gmf_groups')
   ),
   0,
-  'authenticated holds table-wide write privileges only on the manual-input tables, the settings and mappings, strategy_reports, the legal ledgers, alert_rules and channel_policies'
+  'authenticated holds table-wide write privileges only on the manual-input tables, the settings and mappings, strategy_reports, the legal ledgers, alert_rules, channel_policies and the Zalo configuration'
 );
 
 select is(

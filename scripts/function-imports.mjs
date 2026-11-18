@@ -1,9 +1,21 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import {
+	basename,
+	dirname,
+	isAbsolute,
+	join,
+	relative,
+	resolve,
+	sep,
+} from "node:path";
 
 const repoRoot = process.cwd();
 const functionsRoot = join(repoRoot, "supabase", "functions");
 const packagesRoot = join(repoRoot, "packages");
+const globalInputs = [
+	join(repoRoot, "supabase", "config.toml"),
+	join(repoRoot, "scripts", "function-imports.mjs"),
+];
 const workspaceScope = "@fnb/";
 const walkerPattern =
 	/(?:import|export)\s+(?:type\s+)?(?:{[^{}]+}|.*?)\s*(?:from)?\s*['"](.*?)['"]|import\(\s*(?:"([^"\r\n]*)"|'([^'\r\n]*)')\s*[,)]/gi;
@@ -34,6 +46,11 @@ function specifiersOf(source) {
 
 function isRelative(specifier) {
 	return specifier.startsWith("./") || specifier.startsWith("../");
+}
+
+function isInside(directory, path) {
+	const local = relative(directory, path);
+	return local !== "" && !local.startsWith("..") && !isAbsolute(local);
 }
 
 function isRuntimeSpecifier(specifier) {
@@ -116,9 +133,21 @@ function buildImportMap(functionDirectory) {
 		npm.set(name, version);
 	};
 
-	for (const source of functionSources(functionDirectory)) {
+	const sources = functionSources(functionDirectory);
+	for (const source of sources) {
 		for (const specifier of specifiersOf(readFileSync(source, "utf8"))) {
-			if (!isRelative(specifier) && !isRuntimeSpecifier(specifier)) {
+			if (isRelative(specifier)) {
+				const target = resolve(dirname(source), specifier);
+				if (isInside(functionDirectory, target)) {
+					continue;
+				}
+				if (!existsSync(target)) {
+					throw new Error(
+						`${toPosix(relative(repoRoot, source))} imports ${specifier}, which does not exist`,
+					);
+				}
+				queue.push(target);
+			} else if (!isRuntimeSpecifier(specifier)) {
 				addBare(specifier, source);
 			}
 		}
@@ -176,7 +205,36 @@ function buildImportMap(functionDirectory) {
 			sorted([...mapping].map(([specifier, to]) => [specifier, local(to)])),
 		]),
 	);
-	return { imports, scopes: scopeEntries };
+	return { imports, scopes: scopeEntries, files: [...sources, ...seen] };
+}
+
+function deployableDirectories() {
+	return readdirSync(functionsRoot, { withFileTypes: true })
+		.filter(
+			(entry) =>
+				entry.isDirectory() &&
+				!entry.name.startsWith("_") &&
+				existsSync(join(functionsRoot, entry.name, "deno.json")) &&
+				existsSync(join(functionsRoot, entry.name, "index.ts")),
+		)
+		.map((entry) => join(functionsRoot, entry.name))
+		.sort();
+}
+
+function affectedFunctions(changedPaths) {
+	const changed = changedPaths.map((path) => resolve(repoRoot, path));
+	const everything = changed.some((path) => globalInputs.includes(path));
+	return deployableDirectories()
+		.filter((directory) => {
+			if (everything) {
+				return true;
+			}
+			const closure = new Set(buildImportMap(directory).files);
+			return changed.some(
+				(path) => isInside(directory, path) || closure.has(path),
+			);
+		})
+		.map((directory) => basename(directory));
 }
 
 function functionDirectories(names) {
@@ -198,6 +256,16 @@ function functionDirectories(names) {
 }
 
 const args = process.argv.slice(2);
+if (args.includes("--affected")) {
+	const changedPaths = readFileSync(0, "utf8")
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter((line) => line !== "");
+	for (const name of affectedFunctions(changedPaths)) {
+		console.log(name);
+	}
+	process.exit(0);
+}
 const check = args.includes("--check");
 const names = args.filter((arg) => arg !== "--check");
 let stale = 0;

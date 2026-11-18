@@ -43,9 +43,21 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.7.3
-      - name: Type-check the sync-incremental Edge Function with Deno
-        working-directory: supabase/functions/sync-incremental
-        run: deno check index.ts
+      - name: Type-check and test every Edge Function with Deno
+        working-directory: supabase/functions
+        run: |
+          for directory in */; do
+            name="${directory%/}"
+            if [ "$name" = "_shared" ]; then
+              continue
+            fi
+            echo "::group::$name"
+            (cd "$name" && deno check index.ts && deno test --permit-no-files)
+            echo "::endgroup::"
+          done
+      - name: Test the shared Edge Function helpers with Deno
+        working-directory: supabase/functions/_shared
+        run: deno test
 
   database:
     name: Migrations and pgTAP tests

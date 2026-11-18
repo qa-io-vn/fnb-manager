@@ -6,12 +6,9 @@ on:
     paths:
       - "supabase/functions/**"
       - "supabase/config.toml"
-      - "packages/core/src/**"
-      - "packages/connector-core/src/**"
-      - "packages/connector-ipos/src/**"
-      - "packages/connector-mock/src/**"
-      - "packages/sync/src/**"
-      - "packages/runner/src/**"
+      - "packages/*/src/**"
+      - "packages/*/package.json"
+      - "pnpm-lock.yaml"
       - "scripts/function-imports.mjs"
   workflow_dispatch:
 
@@ -24,7 +21,7 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy sync-incremental to the Supabase project
+    name: Deploy the affected Edge Functions to the Supabase project
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -42,6 +39,8 @@ jobs:
           fi
       - uses: actions/checkout@v5
         if: steps.config.outputs.configured == 'true'
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         if: steps.config.outputs.configured == 'true'
       - uses: actions/setup-node@v5
@@ -51,15 +50,46 @@ jobs:
           cache: pnpm
       - if: steps.config.outputs.configured == 'true'
         run: pnpm install --frozen-lockfile
-      - name: Check the import map is current
+      - name: Check the import maps are current
         if: steps.config.outputs.configured == 'true'
         run: node scripts/function-imports.mjs --check
-      - name: Deploy
+      - name: Choose the functions this change affects
+        id: affected
         if: steps.config.outputs.configured == 'true'
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT_NAME" != "push" ] || [ -z "$BEFORE" ] || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            changed="supabase/config.toml"
+          else
+            changed="$(git diff --name-only "$BEFORE" "$GITHUB_SHA")"
+          fi
+          functions="$(printf '%s\n' "$changed" | node scripts/function-imports.mjs --affected | tr '\n' ' ')"
+          echo "functions=${functions% }" >> "$GITHUB_OUTPUT"
+          if [ -z "${functions// /}" ]; then
+            echo "No Edge Function imports a changed file; nothing to deploy." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Deploy
+        if: steps.config.outputs.configured == 'true' && steps.affected.outputs.functions != ''
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-        run: pnpm exec supabase functions deploy sync-incremental --remote="$PROJECT_ID" --yes
-      - name: Note the deployment in the summary
-        if: steps.config.outputs.configured == 'true'
-        run: echo "Deployed sync-incremental. Its POS secrets and the schedule are owner steps in docs/go-live.md." >> "$GITHUB_STEP_SUMMARY"
+          FUNCTIONS: ${{ steps.affected.outputs.functions }}
+        run: |
+          failed=""
+          for name in $FUNCTIONS; do
+            if pnpm exec supabase functions deploy "$name" --remote="$PROJECT_ID" --yes; then
+              echo "Deployed $name." >> "$GITHUB_STEP_SUMMARY"
+            else
+              failed="$failed $name"
+              echo "Deploying $name failed; the functions deployed before it keep their new version." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+          if [ -n "$failed" ]; then
+            echo "::error::The deploy failed for:$failed"
+            exit 1
+          fi
+      - name: Note the owner steps in the summary
+        if: steps.config.outputs.configured == 'true' && steps.affected.outputs.functions != ''
+        run: echo "Each function's secrets and schedule are owner steps in docs/go-live.md." >> "$GITHUB_STEP_SUMMARY"

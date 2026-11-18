@@ -1043,6 +1043,68 @@
 			"required": ["id", "tenant_id", "from_date", "to_date", "started_at"],
 			"type": "object"
 		},
+		"brands": {
+			"description": "one row per brand of a tenant: the neutral key used in secret names, flags and logs (brand-1), the display name and the stores the brand covers; every Zalo row hangs off it",
+			"properties": {
+				"brand_key": {
+					"format": "text",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"display_name": {
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"store_ids": {
+					"description": "the stores of the tenant the brand covers, checked by app.validate_zalo_store_ids",
+					"format": "uuid[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"brand_key",
+				"display_name",
+				"store_ids",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"channel_policies": {
 			"description": "send rules per channel kind and message class: global defaults (tenant_id null) and tenant overrides; the Decree 91/2020 advertising floor and the internal-only channel rule are CHECK constraints, so no writer can store a policy below them",
 			"properties": {
@@ -1668,6 +1730,73 @@
 				"month_start",
 				"quarter",
 				"is_weekend"
+			],
+			"type": "object"
+		},
+		"gmf_groups": {
+			"description": "the OA's staff groups (Quản lý nhóm): the group id and the stores it serves",
+			"properties": {
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"external_id": {
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"oa_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"purpose": {
+					"default": "staff",
+					"format": "text",
+					"type": "string"
+				},
+				"store_ids": {
+					"format": "uuid[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"oa_id",
+				"external_id",
+				"store_ids",
+				"purpose",
+				"created_at",
+				"updated_at"
 			],
 			"type": "object"
 		},
@@ -2717,6 +2846,108 @@
 			],
 			"type": "object"
 		},
+		"mini_apps": {
+			"description": "the staff and customer Mini Apps of a brand: the Mini App id, whether it is listed, and the inputs of its app-config.json",
+			"properties": {
+				"brand_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"browsable": {
+					"description": "false for the staff app (hidden, opened by link or QR), true for the customer app",
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"external_id": {
+					"description": "the Mini App id",
+					"format": "text",
+					"type": "string"
+				},
+				"header_color_dark": {
+					"format": "text",
+					"type": "string"
+				},
+				"header_color_light": {
+					"format": "text",
+					"type": "string"
+				},
+				"header_title_en": {
+					"format": "text",
+					"type": "string"
+				},
+				"header_title_vi": {
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"kind": {
+					"format": "text",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"text_color_dark": {
+					"format": "text",
+					"type": "string"
+				},
+				"text_color_light": {
+					"description": "header title and icon colour in light mode; Zalo allows only black or white",
+					"format": "text",
+					"type": "string"
+				},
+				"title": {
+					"description": "the Mini App title, checked by app.mini_app_title_valid",
+					"format": "text",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"brand_id",
+				"kind",
+				"external_id",
+				"browsable",
+				"title",
+				"header_title_vi",
+				"header_title_en",
+				"header_color_light",
+				"header_color_dark",
+				"text_color_light",
+				"text_color_dark",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"notification_channels": {
 			"description": "destinations: one row per place a message can go, the member it belongs to (deleted with the member), the provider and the name of the secret holding its credential; written only by service-side code and security definer functions, and address, secret_name and config are not selectable by authenticated",
 			"properties": {
@@ -2866,6 +3097,90 @@
 				"enabled",
 				"muted_rules",
 				"consecutive_failures",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"oas": {
+			"description": "the Official Account of a brand (ADR-017): its id, package and expiry, verification, the name of the secret holding its OA secret key and the webhook signature mode",
+			"properties": {
+				"brand_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"external_id": {
+					"description": "the OA id",
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"package_expires_on": {
+					"format": "date",
+					"type": "string"
+				},
+				"package_tier": {
+					"default": "co_ban",
+					"description": "co_ban (Cơ bản), tieu_chuan (Tiêu chuẩn), tang_truong (Tăng trưởng) or toan_dien (Toàn diện); the Open API needs tang_truong or toan_dien",
+					"format": "text",
+					"type": "string"
+				},
+				"secret_name": {
+					"description": "the Edge Function secret holding the OA secret key that signs webhooks, ZALO_OA_SECRET_<BRAND>",
+					"format": "text",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"verified": {
+					"default": false,
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"webhook_mode": {
+					"default": "observe",
+					"description": "observe records a signature mismatch and accepts the event; enforce refuses it",
+					"format": "text",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"brand_id",
+				"external_id",
+				"package_tier",
+				"verified",
+				"secret_name",
+				"webhook_mode",
 				"created_at",
 				"updated_at"
 			],
@@ -4489,6 +4804,194 @@
 				}
 			},
 			"type": "object"
+		},
+		"zalo_apps": {
+			"description": "the Zalo App of a brand (ADR-017: one per brand, holding both Mini Apps): its id and the name of the function secret holding its App secret, never the secret",
+			"properties": {
+				"brand_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"external_id": {
+					"description": "the Zalo App id from developers.zalo.me",
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"secret_name": {
+					"description": "the Edge Function secret holding the App secret, ZALO_APP_SECRET_<BRAND>",
+					"format": "text",
+					"type": "string"
+				},
+				"status": {
+					"default": "active",
+					"description": "active, or disabled to refuse every Mini App sign-in of the brand",
+					"format": "text",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"brand_id",
+				"external_id",
+				"secret_name",
+				"status",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"zalo_identities": {
+			"description": "a Zalo user id, unique per Zalo App, bound to an Auth user, with the display name only: no phone, avatar or location (NFR-PRV-07); written by the sign-in function as service_role",
+			"properties": {
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"display_name": {
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"user_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"zalo_app_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"zalo_user_id": {
+					"format": "text",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"zalo_app_id",
+				"zalo_user_id",
+				"user_id",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"zbs_templates": {
+			"description": "ZBS template messages of an OA: the template id, its tag (1 transaction, 2 customer care, 3 promotion), what it is for and its approval state; rows arrive in phase 19a",
+			"properties": {
+				"approval_state": {
+					"default": "draft",
+					"format": "text",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"external_id": {
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"oa_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"purpose": {
+					"format": "text",
+					"type": "string"
+				},
+				"tag": {
+					"format": "text",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"oa_id",
+				"external_id",
+				"tag",
+				"purpose",
+				"approval_state",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
 		}
 	},
 	"externalDocs": {
@@ -4628,6 +5131,15 @@
 				"$ref": "#/definitions/analytics_refreshes"
 			}
 		},
+		"body.brands": {
+			"description": "brands",
+			"in": "body",
+			"name": "brands",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/brands"
+			}
+		},
 		"body.channel_policies": {
 			"description": "channel_policies",
 			"in": "body",
@@ -4698,6 +5210,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/dim_calendar"
+			}
+		},
+		"body.gmf_groups": {
+			"description": "gmf_groups",
+			"in": "body",
+			"name": "gmf_groups",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/gmf_groups"
 			}
 		},
 		"body.holidays": {
@@ -4808,6 +5329,15 @@
 				"$ref": "#/definitions/legal_documents"
 			}
 		},
+		"body.mini_apps": {
+			"description": "mini_apps",
+			"in": "body",
+			"name": "mini_apps",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/mini_apps"
+			}
+		},
 		"body.notification_channels": {
 			"description": "notification_channels",
 			"in": "body",
@@ -4815,6 +5345,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/notification_channels"
+			}
+		},
+		"body.oas": {
+			"description": "oas",
+			"in": "body",
+			"name": "oas",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/oas"
 			}
 		},
 		"body.outbound_messages": {
@@ -5004,6 +5543,33 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/v_recent_hourly_sales"
+			}
+		},
+		"body.zalo_apps": {
+			"description": "zalo_apps",
+			"in": "body",
+			"name": "zalo_apps",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/zalo_apps"
+			}
+		},
+		"body.zalo_identities": {
+			"description": "zalo_identities",
+			"in": "body",
+			"name": "zalo_identities",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/zalo_identities"
+			}
+		},
+		"body.zbs_templates": {
+			"description": "zbs_templates",
+			"in": "body",
+			"name": "zbs_templates",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/zbs_templates"
 			}
 		},
 		"limit": {
@@ -6105,6 +6671,61 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.brands.brand_key": {
+			"in": "query",
+			"name": "brand_key",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.brands.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.brands.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.brands.display_name": {
+			"in": "query",
+			"name": "display_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.brands.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.brands.store_ids": {
+			"description": "the stores of the tenant the brand covers, checked by app.validate_zalo_store_ids",
+			"in": "query",
+			"name": "store_ids",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.brands.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.brands.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.brands.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.channel_policies.allowed": {
 			"in": "query",
 			"name": "allowed",
@@ -6746,6 +7367,66 @@
 			"description": "ISO weekday, 1 is Monday and 7 is Sunday",
 			"in": "query",
 			"name": "weekday",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.gmf_groups.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.gmf_groups.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.gmf_groups.external_id": {
+			"in": "query",
+			"name": "external_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.gmf_groups.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.gmf_groups.oa_id": {
+			"in": "query",
+			"name": "oa_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.gmf_groups.purpose": {
+			"in": "query",
+			"name": "purpose",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.gmf_groups.store_ids": {
+			"in": "query",
+			"name": "store_ids",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.gmf_groups.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.gmf_groups.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.gmf_groups.updated_by": {
+			"in": "query",
+			"name": "updated_by",
 			"required": false,
 			"type": "string"
 		},
@@ -7865,6 +8546,112 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.mini_apps.brand_id": {
+			"in": "query",
+			"name": "brand_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.browsable": {
+			"description": "false for the staff app (hidden, opened by link or QR), true for the customer app",
+			"in": "query",
+			"name": "browsable",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.external_id": {
+			"description": "the Mini App id",
+			"in": "query",
+			"name": "external_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.header_color_dark": {
+			"in": "query",
+			"name": "header_color_dark",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.header_color_light": {
+			"in": "query",
+			"name": "header_color_light",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.header_title_en": {
+			"in": "query",
+			"name": "header_title_en",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.header_title_vi": {
+			"in": "query",
+			"name": "header_title_vi",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.kind": {
+			"in": "query",
+			"name": "kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.text_color_dark": {
+			"in": "query",
+			"name": "text_color_dark",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.text_color_light": {
+			"description": "header title and icon colour in light mode; Zalo allows only black or white",
+			"in": "query",
+			"name": "text_color_light",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.title": {
+			"description": "the Mini App title, checked by app.mini_app_title_valid",
+			"in": "query",
+			"name": "title",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_apps.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.notification_channels.address": {
 			"description": "the Zalo Bot or Telegram chat id, learnt only from the member's own message to the bot; null for e-mail, which sends to the member's login address, and for a webhook, whose URL is config.url",
 			"in": "query",
@@ -8019,6 +8806,88 @@
 		"rowFilter.notification_channels.user_id": {
 			"in": "query",
 			"name": "user_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.brand_id": {
+			"in": "query",
+			"name": "brand_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.external_id": {
+			"description": "the OA id",
+			"in": "query",
+			"name": "external_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.package_expires_on": {
+			"in": "query",
+			"name": "package_expires_on",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.package_tier": {
+			"description": "co_ban (Cơ bản), tieu_chuan (Tiêu chuẩn), tang_truong (Tăng trưởng) or toan_dien (Toàn diện); the Open API needs tang_truong or toan_dien",
+			"in": "query",
+			"name": "package_tier",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.secret_name": {
+			"description": "the Edge Function secret holding the OA secret key that signs webhooks, ZALO_OA_SECRET_<BRAND>",
+			"in": "query",
+			"name": "secret_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.verified": {
+			"in": "query",
+			"name": "verified",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oas.webhook_mode": {
+			"description": "observe records a signature mismatch and accepts the event; enforce refuses it",
+			"in": "query",
+			"name": "webhook_mode",
 			"required": false,
 			"type": "string"
 		},
@@ -9712,6 +10581,183 @@
 		"rowFilter.v_recent_hourly_sales.tenant_id": {
 			"in": "query",
 			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_apps.brand_id": {
+			"in": "query",
+			"name": "brand_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_apps.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_apps.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_apps.external_id": {
+			"description": "the Zalo App id from developers.zalo.me",
+			"in": "query",
+			"name": "external_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_apps.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_apps.secret_name": {
+			"description": "the Edge Function secret holding the App secret, ZALO_APP_SECRET_<BRAND>",
+			"in": "query",
+			"name": "secret_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_apps.status": {
+			"description": "active, or disabled to refuse every Mini App sign-in of the brand",
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_apps.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_apps.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_apps.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_identities.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_identities.display_name": {
+			"in": "query",
+			"name": "display_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_identities.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_identities.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_identities.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_identities.user_id": {
+			"in": "query",
+			"name": "user_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_identities.zalo_app_id": {
+			"in": "query",
+			"name": "zalo_app_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zalo_identities.zalo_user_id": {
+			"in": "query",
+			"name": "zalo_user_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zbs_templates.approval_state": {
+			"in": "query",
+			"name": "approval_state",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zbs_templates.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zbs_templates.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zbs_templates.external_id": {
+			"in": "query",
+			"name": "external_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zbs_templates.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zbs_templates.oa_id": {
+			"in": "query",
+			"name": "oa_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zbs_templates.purpose": {
+			"in": "query",
+			"name": "purpose",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zbs_templates.tag": {
+			"in": "query",
+			"name": "tag",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zbs_templates.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zbs_templates.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.zbs_templates.updated_by": {
+			"in": "query",
+			"name": "updated_by",
 			"required": false,
 			"type": "string"
 		},
@@ -12511,6 +13557,181 @@
 				"tags": ["analytics_refreshes"]
 			}
 		},
+		"/brands": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.brands.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.brand_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.display_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "one row per brand of a tenant: the neutral key used in secret names, flags and logs (brand-1), the display name and the stores the brand covers; every Zalo row hangs off it",
+				"tags": ["brands"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.brands.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.brand_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.display_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/brands"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "one row per brand of a tenant: the neutral key used in secret names, flags and logs (brand-1), the display name and the stores the brand covers; every Zalo row hangs off it",
+				"tags": ["brands"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.brands.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.brand_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.display_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.brands.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.brands"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "one row per brand of a tenant: the neutral key used in secret names, flags and logs (brand-1), the display name and the stores the brand covers; every Zalo row hangs off it",
+				"tags": ["brands"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.brands"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "one row per brand of a tenant: the neutral key used in secret names, flags and logs (brand-1), the display name and the stores the brand covers; every Zalo row hangs off it",
+				"tags": ["brands"]
+			}
+		},
 		"/channel_policies": {
 			"delete": {
 				"parameters": [
@@ -14191,6 +15412,190 @@
 					}
 				},
 				"tags": ["dim_calendar"]
+			}
+		},
+		"/gmf_groups": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.oa_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.purpose"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the OA's staff groups (Quản lý nhóm): the group id and the stores it serves",
+				"tags": ["gmf_groups"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.oa_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.purpose"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/gmf_groups"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the OA's staff groups (Quản lý nhóm): the group id and the stores it serves",
+				"tags": ["gmf_groups"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.oa_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.purpose"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.gmf_groups.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.gmf_groups"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the OA's staff groups (Quản lý nhóm): the group id and the stores it serves",
+				"tags": ["gmf_groups"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.gmf_groups"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the OA's staff groups (Quản lý nhóm): the group id and the stores it serves",
+				"tags": ["gmf_groups"]
 			}
 		},
 		"/holidays": {
@@ -16933,6 +18338,253 @@
 				"tags": ["legal_documents"]
 			}
 		},
+		"/mini_apps": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.browsable"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.header_title_vi"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.header_title_en"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.header_color_light"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.header_color_dark"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.text_color_light"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.text_color_dark"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the staff and customer Mini Apps of a brand: the Mini App id, whether it is listed, and the inputs of its app-config.json",
+				"tags": ["mini_apps"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.browsable"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.header_title_vi"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.header_title_en"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.header_color_light"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.header_color_dark"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.text_color_light"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.text_color_dark"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/mini_apps"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the staff and customer Mini Apps of a brand: the Mini App id, whether it is listed, and the inputs of its app-config.json",
+				"tags": ["mini_apps"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.browsable"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.header_title_vi"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.header_title_en"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.header_color_light"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.header_color_dark"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.text_color_light"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.text_color_dark"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_apps.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.mini_apps"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the staff and customer Mini Apps of a brand: the Mini App id, whether it is listed, and the inputs of its app-config.json",
+				"tags": ["mini_apps"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.mini_apps"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the staff and customer Mini Apps of a brand: the Mini App id, whether it is listed, and the inputs of its app-config.json",
+				"tags": ["mini_apps"]
+			}
+		},
 		"/notification_channels": {
 			"delete": {
 				"parameters": [
@@ -17250,6 +18902,217 @@
 				},
 				"summary": "destinations: one row per place a message can go, the member it belongs to (deleted with the member), the provider and the name of the secret holding its credential; written only by service-side code and security definer functions, and address, secret_name and config are not selectable by authenticated",
 				"tags": ["notification_channels"]
+			}
+		},
+		"/oas": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.oas.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.package_tier"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.package_expires_on"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.verified"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.secret_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.webhook_mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the Official Account of a brand (ADR-017): its id, package and expiry, verification, the name of the secret holding its OA secret key and the webhook signature mode",
+				"tags": ["oas"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.oas.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.package_tier"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.package_expires_on"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.verified"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.secret_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.webhook_mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/oas"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the Official Account of a brand (ADR-017): its id, package and expiry, verification, the name of the secret holding its OA secret key and the webhook signature mode",
+				"tags": ["oas"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.oas.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.package_tier"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.package_expires_on"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.verified"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.secret_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.webhook_mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oas.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.oas"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the Official Account of a brand (ADR-017): its id, package and expiry, verification, the name of the secret holding its OA secret key and the webhook signature mode",
+				"tags": ["oas"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.oas"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the Official Account of a brand (ADR-017): its id, package and expiry, verification, the name of the secret holding its OA secret key and the webhook signature mode",
+				"tags": ["oas"]
 			}
 		},
 		"/outbound_messages": {
@@ -25708,6 +27571,549 @@
 					}
 				},
 				"tags": ["v_recent_hourly_sales"]
+			}
+		},
+		"/zalo_apps": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.secret_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the Zalo App of a brand (ADR-017: one per brand, holding both Mini Apps): its id and the name of the function secret holding its App secret, never the secret",
+				"tags": ["zalo_apps"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.secret_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/zalo_apps"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the Zalo App of a brand (ADR-017: one per brand, holding both Mini Apps): its id and the name of the function secret holding its App secret, never the secret",
+				"tags": ["zalo_apps"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.secret_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_apps.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.zalo_apps"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the Zalo App of a brand (ADR-017: one per brand, holding both Mini Apps): its id and the name of the function secret holding its App secret, never the secret",
+				"tags": ["zalo_apps"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.zalo_apps"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the Zalo App of a brand (ADR-017: one per brand, holding both Mini Apps): its id and the name of the function secret holding its App secret, never the secret",
+				"tags": ["zalo_apps"]
+			}
+		},
+		"/zalo_identities": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.zalo_app_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.zalo_user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.display_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a Zalo user id, unique per Zalo App, bound to an Auth user, with the display name only: no phone, avatar or location (NFR-PRV-07); written by the sign-in function as service_role",
+				"tags": ["zalo_identities"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.zalo_app_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.zalo_user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.display_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/zalo_identities"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "a Zalo user id, unique per Zalo App, bound to an Auth user, with the display name only: no phone, avatar or location (NFR-PRV-07); written by the sign-in function as service_role",
+				"tags": ["zalo_identities"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.zalo_app_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.zalo_user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.display_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zalo_identities.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.zalo_identities"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a Zalo user id, unique per Zalo App, bound to an Auth user, with the display name only: no phone, avatar or location (NFR-PRV-07); written by the sign-in function as service_role",
+				"tags": ["zalo_identities"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.zalo_identities"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "a Zalo user id, unique per Zalo App, bound to an Auth user, with the display name only: no phone, avatar or location (NFR-PRV-07); written by the sign-in function as service_role",
+				"tags": ["zalo_identities"]
+			}
+		},
+		"/zbs_templates": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.oa_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.tag"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.purpose"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.approval_state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "ZBS template messages of an OA: the template id, its tag (1 transaction, 2 customer care, 3 promotion), what it is for and its approval state; rows arrive in phase 19a",
+				"tags": ["zbs_templates"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.oa_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.tag"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.purpose"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.approval_state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/zbs_templates"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "ZBS template messages of an OA: the template id, its tag (1 transaction, 2 customer care, 3 promotion), what it is for and its approval state; rows arrive in phase 19a",
+				"tags": ["zbs_templates"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.oa_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.tag"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.purpose"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.approval_state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.zbs_templates.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.zbs_templates"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "ZBS template messages of an OA: the template id, its tag (1 transaction, 2 customer care, 3 promotion), what it is for and its approval state; rows arrive in phase 19a",
+				"tags": ["zbs_templates"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.zbs_templates"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "ZBS template messages of an OA: the template id, its tag (1 transaction, 2 customer care, 3 promotion), what it is for and its approval state; rows arrive in phase 19a",
+				"tags": ["zbs_templates"]
 			}
 		}
 	},
