@@ -108,6 +108,8 @@ jobs:
           test -n "$API_URL" && test -n "$PUBLISHABLE_KEY"
           printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > apps/web/.env.local
       - run: pnpm --filter @fnb/web test:e2e
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
       - name: Keep the Playwright traces of a failed run
         if: failure()
         uses: actions/upload-artifact@v4

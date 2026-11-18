@@ -22,7 +22,7 @@ import { AnalyticsSourceProvider } from "./data/analytics-source-context";
 import { RowSourceProvider } from "./data/row-source-context";
 import { I18nProvider, type Language } from "./i18n";
 import { configuredClientLoader } from "./lib/supabase";
-import { PlaceholderPage } from "./pages/placeholder-page";
+import { PlansPage } from "./pages/plans/plans-page";
 import { TodayPage } from "./pages/today/today-page";
 import { ReportRouteLoading } from "./reports/route-loading";
 import { NewVersionPrompt } from "./shell/new-version-prompt";
@@ -166,7 +166,21 @@ export const routes: RouteObject[] = [
 							},
 						],
 					},
-					{ path: "ke-hoach/*", element: <PlaceholderPage section="plans" /> },
+					{
+						path: "ke-hoach",
+						hydrateFallbackElement: <ReportRouteLoading />,
+						children: [
+							{ index: true, element: <PlansPage /> },
+							{
+								path: "dan",
+								lazy: () =>
+									import("./pages/plans/paste-page").then((module) => ({
+										Component: module.PastePage,
+									})),
+							},
+							{ path: "*", element: <Navigate to="/ke-hoach" replace /> },
+						],
+					},
 					{
 						path: "cai-dat",
 						hydrateFallbackElement: <ReportRouteLoading />,

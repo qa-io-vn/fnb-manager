@@ -19,7 +19,7 @@ export type SettingsRole = (typeof SETTINGS_ROLES)[number];
 const FIXTURE_PASSWORD = "e2e-settings-login";
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const FIXTURE_EMAIL_SHAPE =
-	"^e2e-(owner|manager|store-manager|staff|viewer)-[0-9a-f]{8}@example\\.com$";
+	"^e2e-(owner|manager|store-manager|staff|viewer|publisher)-[0-9a-f]{8}@example\\.com$";
 const LEFTOVER_AGE = "1 hour";
 const SALES_DAYS = 35;
 const TIME_ZONE = "Asia/Ho_Chi_Minh";
@@ -50,6 +50,7 @@ export interface SettingsFixture {
 	readonly sales: { readonly from: string; readonly to: string };
 	readonly logins: Readonly<Record<SettingsRole, SettingsLogin>>;
 	clientAs(role: SettingsRole): Promise<SupabaseClient>;
+	addPublisher(): Promise<SettingsLogin>;
 	signIn(page: Page, role: SettingsRole): Promise<void>;
 	teardown(): Promise<void>;
 }
@@ -118,38 +119,41 @@ export async function removeLeftovers(
 	`;
 }
 
+async function insertLogin(sql: Sql, email: string): Promise<SettingsLogin> {
+	const userId = randomUUID();
+	await sql`
+		insert into auth.users (
+			instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+			raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+			confirmation_token, recovery_token, email_change_token_new, email_change,
+			email_change_token_current, phone_change, phone_change_token, reauthentication_token,
+			is_sso_user, is_anonymous
+		)
+		values (
+			${AUTH_INSTANCE_ID}, ${userId}, 'authenticated', 'authenticated', ${email},
+			extensions.crypt(${FIXTURE_PASSWORD}, extensions.gen_salt('bf')), now(),
+			'{"provider": "email", "providers": ["email"]}'::jsonb, '{}'::jsonb, now(), now(),
+			'', '', '', '', '', '', '', '', false, false
+		)
+	`;
+	await sql`
+		insert into auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
+		values (
+			${randomUUID()}, ${userId}, ${userId}, 'email',
+			jsonb_build_object('sub', ${userId}::text, 'email', ${email}::text, 'email_verified', true, 'phone_verified', false),
+			now(), now(), now()
+		)
+	`;
+	return { userId, email, password: FIXTURE_PASSWORD };
+}
+
 async function insertLogins(
 	sql: Sql,
 	hex: string,
 ): Promise<Record<SettingsRole, SettingsLogin>> {
 	const logins = {} as Record<SettingsRole, SettingsLogin>;
 	for (const role of SETTINGS_ROLES) {
-		const userId = randomUUID();
-		const email = `e2e-${role}-${hex}@example.com`;
-		await sql`
-			insert into auth.users (
-				instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
-				raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
-				confirmation_token, recovery_token, email_change_token_new, email_change,
-				email_change_token_current, phone_change, phone_change_token, reauthentication_token,
-				is_sso_user, is_anonymous
-			)
-			values (
-				${AUTH_INSTANCE_ID}, ${userId}, 'authenticated', 'authenticated', ${email},
-				extensions.crypt(${FIXTURE_PASSWORD}, extensions.gen_salt('bf')), now(),
-				'{"provider": "email", "providers": ["email"]}'::jsonb, '{}'::jsonb, now(), now(),
-				'', '', '', '', '', '', '', '', false, false
-			)
-		`;
-		await sql`
-			insert into auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
-			values (
-				${randomUUID()}, ${userId}, ${userId}, 'email',
-				jsonb_build_object('sub', ${userId}::text, 'email', ${email}::text, 'email_verified', true, 'phone_verified', false),
-				now(), now(), now()
-			)
-		`;
-		logins[role] = { userId, email, password: FIXTURE_PASSWORD };
+		logins[role] = await insertLogin(sql, `e2e-${role}-${hex}@example.com`);
 	}
 	return logins;
 }
@@ -324,6 +328,7 @@ export async function createSettingsFixture(): Promise<SettingsFixture> {
 		});
 		const { logins, sales } = created;
 		let removed = false;
+		let publisher: SettingsLogin | null = null;
 		return {
 			tenantId,
 			slug,
@@ -341,6 +346,22 @@ export async function createSettingsFixture(): Promise<SettingsFixture> {
 				if (error) throw error;
 				return client;
 			},
+			async addPublisher() {
+				if (publisher !== null) return publisher;
+				const added = await sql.begin(async (tx) => {
+					const login = await insertLogin(
+						tx as unknown as Sql,
+						`e2e-publisher-${hex}@example.com`,
+					);
+					await tx`
+						insert into public.tenant_members (tenant_id, user_id, role, store_ids)
+						values (${tenantId}, ${login.userId}, 'publisher'::public.tenant_role, null)
+					`;
+					return login;
+				});
+				publisher = added;
+				return added;
+			},
 			signIn: (page, role) => signInAs(page, logins[role]),
 			async teardown() {
 				if (removed) return;
@@ -351,7 +372,10 @@ export async function createSettingsFixture(): Promise<SettingsFixture> {
 					try {
 						await sql`
 							delete from auth.users
-							where id in ${sql(SETTINGS_ROLES.map((role) => logins[role].userId))}
+							where id in ${sql([
+								...SETTINGS_ROLES.map((role) => logins[role].userId),
+								...(publisher === null ? [] : [publisher.userId]),
+							])}
 						`;
 					} finally {
 						await sql.end();

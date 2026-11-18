@@ -4,6 +4,8 @@ import exportsEn from "./messages/exports.en.json";
 import exportsVi from "./messages/exports.vi.json";
 import metricsEn from "./messages/metrics.en.json";
 import metricsVi from "./messages/metrics.vi.json";
+import plansEn from "./messages/plans.en.json";
+import plansVi from "./messages/plans.vi.json";
 import reportDayEn from "./messages/report-day.en.json";
 import reportDayVi from "./messages/report-day.vi.json";
 import reportMonthEn from "./messages/report-month.en.json";
@@ -71,7 +73,8 @@ export type MessageKey =
 	| keyof typeof themesVi
 	| keyof typeof themeRevenueVi
 	| keyof typeof themeHoursVi
-	| keyof typeof exportsVi;
+	| keyof typeof exportsVi
+	| keyof typeof plansVi;
 
 export interface MessageFile {
 	readonly name: string;
@@ -114,7 +117,14 @@ export const messageFiles: readonly MessageFile[] = [
 	{
 		name: "core",
 		prefix: null,
-		excludedPrefixes: ["metric.", "report.", "theme.", "settings.", "exports."],
+		excludedPrefixes: [
+			"metric.",
+			"report.",
+			"theme.",
+			"settings.",
+			"exports.",
+			"plans.",
+		],
 		vi: coreVi,
 		en: coreEn,
 	},
@@ -292,6 +302,13 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: exportsVi,
 		en: exportsEn,
+	},
+	{
+		name: "plans",
+		prefix: "plans.",
+		excludedPrefixes: [],
+		vi: plansVi,
+		en: plansEn,
 	},
 ];
 

@@ -24,6 +24,7 @@ const manifestKeys = [
 	"src/settings/demo-settings-source.ts",
 	"src/pages/exports/exports-page.tsx",
 	"src/datapack/browser-pack.ts",
+	"src/pages/plans/paste-page.tsx",
 	"../../node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
 ];
 
@@ -80,5 +81,12 @@ describe("the size check's lazy chunks", () => {
 		expect(isLazySource("src/datapack/pack-cache.ts")).toBe(false);
 		expect(isLazySource("src/pages/exports/pack-tab.tsx")).toBe(false);
 		expect(isEagerSource("src/datapack/browser-pack.ts")).toBe(false);
+	});
+
+	it("loads the plan paste box and its lint only when the page is opened", () => {
+		expect(isLazySource("src/pages/plans/paste-page.tsx")).toBe(true);
+		expect(isLazySource("src/plans/paste-check.ts")).toBe(false);
+		expect(isLazySource("src/pages/plans/plans-page.tsx")).toBe(false);
+		expect(isEagerSource("src/pages/plans/paste-page.tsx")).toBe(false);
 	});
 });

@@ -11,6 +11,7 @@ export const lazySources = [
 	/src\/settings\/demo-settings-source\.ts$/,
 	/src\/pages\/exports\/exports-page\.tsx$/,
 	/src\/datapack\/browser-pack\.ts$/,
+	/src\/pages\/plans\/paste-page\.tsx$/,
 	/node_modules\/fflate\/esm\/browser\.js$/,
 ];
 

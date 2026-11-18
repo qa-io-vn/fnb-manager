@@ -8,6 +8,7 @@ import { notifyCommands } from "./notify.js";
 import { notifyJobFailedCommand } from "./notify-job.js";
 import { notifyLinkCommand, notifyUnlinkCommand } from "./notify-link.js";
 import { onboardCommand } from "./onboard.js";
+import { publishPlanCommand } from "./publish-plan.js";
 import type { CommandSpec } from "./spec.js";
 import { statusCommand } from "./status.js";
 import { syncCommands } from "./sync.js";
@@ -29,6 +30,7 @@ export const COMMANDS: readonly CommandSpec[] = [
 	notifyUnlinkCommand,
 	notifyJobFailedCommand,
 	datapackCommand,
+	publishPlanCommand,
 	...zaloCommands,
 ];
 

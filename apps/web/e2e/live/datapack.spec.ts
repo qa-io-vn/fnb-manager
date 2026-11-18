@@ -1,4 +1,9 @@
-import { readFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	buildDataPack,
 	chatBundle,
@@ -7,14 +12,18 @@ import {
 	parsePack,
 } from "@fnb/datapack";
 import { createRpcReportSource } from "@fnb/reports";
-import { expect, type Page, test } from "@playwright/test";
+import { type Download, expect, type Page, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkPage } from "../support/checks";
 import { clipboardText } from "../support/clipboard";
-import { isLocalStackConfigured } from "../support/local-stack";
+import {
+	anonymousClient,
+	isLocalStackConfigured,
+} from "../support/local-stack";
 import { expectNoConsoleErrors, watchConsoleErrors } from "../support/reports";
 import {
 	createSettingsFixture,
+	fixtureDatabaseUrl,
 	type SettingsFixture,
 	type SettingsRole,
 } from "../support/settings-fixture";
@@ -30,6 +39,21 @@ const BOM = [0xef, 0xbb, 0xbf];
 const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const FOCUS = "Tăng doanh thu buổi chiều";
 const BUILD_TIMEOUT = 120_000;
+const FNB_BIN = fileURLToPath(
+	new URL("../../../jobs/bin/fnb.mjs", import.meta.url),
+);
+const SALES_FIELDS = new Set([
+	"invoices",
+	"net_amount",
+	"net",
+	"gross_amount",
+	"paid_amount",
+	"quantity",
+	"items_sold",
+	"value",
+	"month_to_date_net_amount",
+	"month_to_date_invoices",
+]);
 
 let fixture: SettingsFixture;
 
@@ -45,6 +69,71 @@ interface BrowserPackFile {
 	readonly text: string;
 	readonly pack: DataPack;
 	readonly packId: string;
+	readonly download: Download;
+}
+
+interface FnbRun {
+	readonly code: number | null;
+	readonly stdout: string;
+	readonly stderr: string;
+}
+
+function cliDatabaseUrl(): string {
+	const url = process.env.DATABASE_URL;
+	if (!url) {
+		throw new Error(
+			"DATABASE_URL is not set: this check runs fnb datapack against the local stack's database as a child process, so it stops here instead of skipping; set DATABASE_URL to the local database, as CI's e2e job does",
+		);
+	}
+	try {
+		return fixtureDatabaseUrl({ E2E_DATABASE_URL: url });
+	} catch {
+		throw new Error(
+			"DATABASE_URL must be the local stack's database on a loopback host: this spec writes fixture logins and never reaches another database",
+		);
+	}
+}
+
+function runFnb(
+	args: readonly string[],
+	databaseUrl: string,
+	folder: string,
+): Promise<FnbRun> {
+	return new Promise((resolve, reject) => {
+		const child = spawn(process.execPath, [FNB_BIN, ...args], {
+			cwd: folder,
+			env: {
+				...process.env,
+				DATABASE_URL: databaseUrl,
+				SUPABASE_DB_URL: "",
+				INIT_CWD: folder,
+			},
+			windowsHide: true,
+		});
+		const stdout: Buffer[] = [];
+		const stderr: Buffer[] = [];
+		child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
+		child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
+		child.on("error", reject);
+		child.on("close", (code) =>
+			resolve({
+				code,
+				stdout: Buffer.concat(stdout).toString("utf8"),
+				stderr: Buffer.concat(stderr).toString("utf8"),
+			}),
+		);
+	});
+}
+
+function salesFigures(rows: readonly unknown[]): number {
+	let found = 0;
+	for (const row of rows) {
+		if (typeof row !== "object" || row === null) continue;
+		for (const [key, value] of Object.entries(row)) {
+			if (SALES_FIELDS.has(key) && Number(value) > 0) found += 1;
+		}
+	}
+	return found;
 }
 
 async function buildInBrowser(
@@ -80,7 +169,7 @@ async function buildInBrowser(
 	await expect(result.getByTestId("pack-id")).toHaveText(
 		parsed.packId.slice(0, 8),
 	);
-	return { text, pack: parsed.pack, packId: parsed.packId };
+	return { text, pack: parsed.pack, packId: parsed.packId, download: file };
 }
 
 function fenceOf(
@@ -155,6 +244,152 @@ test("the owner's browser pack equals the package's own build in the same sessio
 	expect(copied).toBe(chatBundle(pack));
 	await checkPage(page);
 	expectNoConsoleErrors(page);
+});
+
+test("the browser's download and the pack of fnb datapack for the same owner, day, horizon, language and focus are identical apart from generated_at, as fnb datapack --check --against reports", async ({
+	page,
+}) => {
+	const databaseUrl = cliDatabaseUrl();
+	watchConsoleErrors(page);
+	const asOf = fixture.sales.to;
+	const browser = await buildInBrowser(
+		page,
+		"owner",
+		`&asOf=${asOf}&horizon=90d&lang=vi&focus=${encodeURIComponent(FOCUS)}`,
+	);
+	const folder = await mkdtemp(join(tmpdir(), "fnb-pack-identity-"));
+	try {
+		const browserFile = join(folder, "browser.json");
+		const cliFile = join(folder, "cli.json");
+		await browser.download.saveAs(browserFile);
+		expect(await readFile(browserFile, "utf8")).toBe(browser.text);
+		const built = await runFnb(
+			[
+				"datapack",
+				"--tenant",
+				fixture.slug,
+				"--member",
+				fixture.logins.owner.email,
+				"--as-of",
+				asOf,
+				"--horizon",
+				"90d",
+				"--language",
+				"vi",
+				"--focus",
+				FOCUS,
+				"--out",
+				cliFile,
+				"--json",
+			],
+			databaseUrl,
+			folder,
+		);
+		expect(built.code, built.stderr).toBe(0);
+		expect(
+			JSON.parse(built.stdout.trim().split("\n").at(-1) ?? ""),
+		).toMatchObject({
+			valid: true,
+			aggregates_only: true,
+			as_of: asOf,
+			horizon: "90d",
+			language: "vi",
+			stores: ["S1", "S2"],
+		});
+		const cli = await parsePack(await readFile(cliFile, "utf8"));
+		expect(cli.valid).toBe(true);
+		expect(cli.packId).toBe(browser.packId);
+		const compared = await runFnb(
+			["datapack", "--check", browserFile, "--against", cliFile, "--json"],
+			databaseUrl,
+			folder,
+		);
+		expect(
+			JSON.parse(compared.stdout.trim().split("\n").at(-1) ?? ""),
+			compared.stderr,
+		).toEqual({
+			valid: true,
+			identical_apart_from_generated_at: true,
+			pack_id_equal: true,
+			tables_differing: [],
+		});
+		expect(compared.code).toBe(0);
+	} finally {
+		await rm(folder, { recursive: true, force: true });
+	}
+	expectNoConsoleErrors(page);
+});
+
+test("a publisher cannot build a pack: fnb datapack refuses its login with exit 1, and its own session reads no sales row", async () => {
+	const databaseUrl = cliDatabaseUrl();
+	const publisher = await fixture.addPublisher();
+	const asOf = fixture.sales.to;
+	const folder = await mkdtemp(join(tmpdir(), "fnb-pack-publisher-"));
+	try {
+		const out = join(folder, "publisher.json");
+		const refused = await runFnb(
+			[
+				"datapack",
+				"--tenant",
+				fixture.slug,
+				"--member",
+				publisher.email,
+				"--as-of",
+				asOf,
+				"--out",
+				out,
+			],
+			databaseUrl,
+			folder,
+		);
+		expect(refused.code, refused.stderr).toBe(1);
+		expect(refused.stderr).toContain(
+			"a publisher login reads no figures, so it cannot build a pack",
+		);
+		expect(existsSync(out)).toBe(false);
+	} finally {
+		await rm(folder, { recursive: true, force: true });
+	}
+
+	const request = {
+		storeIds: [...fixture.storeIds],
+		asOf,
+		horizon: "90d" as const,
+		language: "vi" as const,
+		focus: null,
+		ownerNote: null,
+		sample: false,
+	};
+	const owner = await fixture.clientAs("owner");
+	const ownerBuild = await buildDataPack(request, {
+		source: createRpcReportSource(
+			{ rpc: (fn, args) => owner.rpc(fn, args) },
+			"supabase",
+		),
+		clock: { now: () => new Date() },
+		fence: fenceOf(owner, fixture.storeIds),
+	});
+	const session = anonymousClient();
+	const { error } = await session.auth.signInWithPassword({
+		email: publisher.email,
+		password: publisher.password,
+	});
+	if (error) throw error;
+	let ownerSales = 0;
+	let ownerMonthToDate = 0;
+	for (const call of ownerBuild.calls) {
+		ownerSales += salesFigures(call.rows);
+		if (call.name === "month_pace") {
+			ownerMonthToDate += salesFigures(call.rows);
+		}
+		const { data, error: callError } = await session.rpc(call.name, call.args);
+		expect(callError, call.key).toBeNull();
+		expect(Array.isArray(data), call.key).toBe(true);
+		expect(salesFigures(data as unknown[]), call.key).toBe(0);
+	}
+	expect(ownerSales).toBeGreaterThan(0);
+	expect(ownerMonthToDate).toBeGreaterThan(0);
+	await session.auth.signOut();
 });
 
 test("a manager limited to one store builds a pack of that store alone", async ({

@@ -24,6 +24,8 @@ import {
 	lintPlan,
 	normalizePlanText,
 	PLAN_FORMAT,
+	PLAN_LINT_CODE_IDS,
+	PLAN_LINT_CODES,
 	PLAN_SECTIONS,
 	PROMPT_ID,
 	PROMPT_VERSION,
@@ -31,6 +33,8 @@ import {
 	parsePack,
 	parsePlan,
 	planFrontMatterSchema,
+	planIssueParameter,
+	planLintCodeOf,
 	planRecord,
 	sha256Hex,
 	strategyPrompt,
@@ -130,6 +134,8 @@ describe("the public interface of @fnb/datapack", () => {
 				"PACK_UNITS",
 				"PACK_WINDOWS",
 				"PLAN_FORMAT",
+				"PLAN_LINT_CODES",
+				"PLAN_LINT_CODE_IDS",
 				"PLAN_SECTIONS",
 				"PLAN_SECTION_IDS",
 				"PLAN_VIAS",
@@ -157,6 +163,8 @@ describe("the public interface of @fnb/datapack", () => {
 				"parsePack",
 				"parsePlan",
 				"planFrontMatterSchema",
+				"planIssueParameter",
+				"planLintCodeOf",
 				"planRecord",
 				"sha256Hex",
 				"strategyPrompt",
@@ -309,6 +317,29 @@ describe("the public interface of @fnb/datapack", () => {
 		expect(() =>
 			planRecord(plan, { ...pack, sample: true }, lint, "pasted"),
 		).toThrow(/^sample_pack_not_publishable: /);
+	});
+
+	it("names the 24 lint codes with their levels and reads a code's base and parameter", () => {
+		expect(PLAN_LINT_CODE_IDS).toHaveLength(24);
+		expect(PLAN_LINT_CODE_IDS).toEqual(Object.keys(PLAN_LINT_CODES));
+		expect(
+			PLAN_LINT_CODE_IDS.filter((code) => PLAN_LINT_CODES[code] === "warning"),
+		).toEqual([
+			"preamble_text",
+			"front_matter_extra_fields",
+			"kpi_initiative_unlinked",
+			"uncited_numbers",
+		]);
+		expect(planLintCodeOf("section_missing:7")).toBe("section_missing");
+		expect(planLintCodeOf("front_matter_missing")).toBe("front_matter_missing");
+		expect(planLintCodeOf("not_a_code:1")).toBeNull();
+		expect(planIssueParameter("citation_unknown:kpi:ALL/avg_ticket:w29")).toBe(
+			"kpi:ALL/avg_ticket:w29",
+		);
+		expect(planIssueParameter("initiative_field_missing:2:effort")).toBe(
+			"2:effort",
+		);
+		expect(planIssueParameter("pack_mismatch")).toBeNull();
 	});
 
 	it("builds the prompt and the chat bundle, and checks a request before reading", async () => {
