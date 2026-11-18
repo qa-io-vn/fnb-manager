@@ -17,9 +17,10 @@ test("a bound member sees Đang kết nối…, then the name, role and stores",
 		page.getByRole("heading", { name: "Xin chào, Thành viên thử" }),
 	).toBeVisible();
 	await expect(page.getByTestId("member-role")).toHaveText("Quản lý");
-	await expect(
-		page.getByTestId("member-stores").getByRole("listitem"),
-	).toHaveText(["Cửa hàng Mẫu 1", "Cửa hàng Mẫu 2"]);
+	await expect(page.getByLabel("Cửa hàng").locator("option")).toHaveText([
+		"Cửa hàng Mẫu 1",
+		"Cửa hàng Mẫu 2",
+	]);
 	await expect(page.getByTestId("stand-in-header")).toBeVisible();
 	await checkMiniAppScreen(page);
 });

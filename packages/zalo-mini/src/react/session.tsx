@@ -7,13 +7,19 @@ import {
 	useMemo,
 	useState,
 } from "react";
-import type { SessionClient, SessionState } from "../session/types";
+import type {
+	NoticeAcceptance,
+	SessionClient,
+	SessionState,
+} from "../session/types";
 
 interface SessionValue {
 	readonly state: SessionState;
 	readonly busy: boolean;
 	retry(): void;
 	bind(code: string): void;
+	pair(code: string, acceptance: NoticeAcceptance): void;
+	acceptNotice(acceptance: NoticeAcceptance): void;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -42,20 +48,33 @@ export function SessionProvider({ client, children }: SessionProviderProps) {
 		client.connect().then(setState);
 	}, [client]);
 
+	const run = useCallback((step: Promise<SessionState>) => {
+		setBusy(true);
+		step.then((next) => {
+			setBusy(false);
+			setState(next);
+		});
+	}, []);
+
 	const bind = useCallback(
-		(code: string) => {
-			setBusy(true);
-			client.bind(code).then((next) => {
-				setBusy(false);
-				setState(next);
-			});
-		},
-		[client],
+		(code: string) => run(client.bind(code)),
+		[client, run],
+	);
+
+	const pair = useCallback(
+		(code: string, acceptance: NoticeAcceptance) =>
+			run(client.pair(code, acceptance)),
+		[client, run],
+	);
+
+	const acceptNotice = useCallback(
+		(acceptance: NoticeAcceptance) => run(client.acceptNotice(acceptance)),
+		[client, run],
 	);
 
 	const value = useMemo(
-		() => ({ state, busy, retry, bind }),
-		[state, busy, retry, bind],
+		() => ({ state, busy, retry, bind, pair, acceptNotice }),
+		[state, busy, retry, bind, pair, acceptNotice],
 	);
 	return (
 		<SessionContext.Provider value={value}>{children}</SessionContext.Provider>

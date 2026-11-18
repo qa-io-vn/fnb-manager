@@ -4,6 +4,12 @@ import {
 } from "@fnb/zalo-mini/testing/design-checks";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 import {
+	checkHome,
+	expectHomeFor,
+	homeSummary,
+	watchDataRequests,
+} from "./home-check";
+import {
 	LocalLoop,
 	localApiUrl,
 	localStackRuns,
@@ -73,6 +79,7 @@ async function signsIn(page: Page, ready: Ready, secure: boolean) {
 	await watchMiniAppPage(page);
 	const hosts = new Set<string>();
 	page.on("request", (request) => hosts.add(new URL(request.url()).host));
+	const dataHeaders = watchDataRequests(page);
 	const session = page.waitForResponse(
 		(response) =>
 			response.url().endsWith("/functions/v1/zalo-session") &&
@@ -81,7 +88,8 @@ async function signsIn(page: Page, ready: Ready, secure: boolean) {
 	await page.goto(ready.phoneUrl ?? "");
 	const answer = await session;
 	expect(answer.status()).toBe(200);
-	expect((await answer.json()).status).toBe("bound");
+	const bound = await answer.json();
+	expect(bound.status).toBe("bound");
 	await expect(page).toHaveURL(appUrl);
 	expect(await page.evaluate(() => window.isSecureContext)).toBe(secure);
 
@@ -91,9 +99,16 @@ async function signsIn(page: Page, ready: Ready, secure: boolean) {
 	await expect(page.getByTestId("member-role")).toHaveText(
 		ROLE_LABELS[ready.role] ?? ready.role,
 	);
-	await expect(
-		page.getByTestId("member-stores").getByRole("listitem"),
-	).toHaveCount(ready.stores);
+	const home = await checkHome(
+		page,
+		appUrl,
+		await dataHeaders(),
+		String(bound.member?.tenant_id ?? ""),
+	);
+	test
+		.info()
+		.annotations.push({ type: "home", description: homeSummary(home) });
+	expectHomeFor(ready.role, ready.stores, home);
 	await expect(page.getByTestId("stand-in-header")).toBeVisible();
 	await checkMiniAppScreen(page);
 	expect([...hosts]).toEqual([new URL(appUrl).host]);

@@ -7,7 +7,9 @@ import {
 } from "../../src/session/session-store";
 import {
 	createStandInSessionClient,
+	STAND_IN_NOTICE,
 	STAND_IN_REJECTED_CODE,
+	STAND_IN_WAIT_CODE,
 	standInSettingsFrom,
 } from "../../src/session/stand-in";
 import type { StoredSession } from "../../src/session/types";
@@ -285,6 +287,7 @@ describe("stand-in session", () => {
 			delayMs: 0,
 		});
 		expect(standInSettingsFrom("?delay=99999").delayMs).toBe(10_000);
+		expect(standInSettingsFrom("?session=notice").scenario).toBe("notice");
 	});
 
 	it("runs the real client against a local answer", async () => {
@@ -297,10 +300,12 @@ describe("stand-in session", () => {
 		expect(await standIn.connect()).toEqual({
 			status: "unpaired",
 			codeRejected: false,
+			notice: STAND_IN_NOTICE,
 		});
 		expect(await standIn.bind(STAND_IN_REJECTED_CODE)).toEqual({
 			status: "unpaired",
 			codeRejected: true,
+			notice: STAND_IN_NOTICE,
 		});
 		const bound = await standIn.bind("123456");
 		expect(bound.status === "signed-in" && bound.session.member).toEqual(
@@ -319,5 +324,222 @@ describe("stand-in session", () => {
 			status: "failed",
 			reason: "network",
 		});
+	});
+});
+
+describe("the staff notice and the pairing step", () => {
+	const notice = {
+		version: "staff-notice-2026-01",
+		title: "Thông báo cho nhân viên",
+		body_markdown: "# Thông báo",
+		published_at: "2026-11-01T00:00:00+00:00",
+	};
+	const staffNotice = {
+		version: "staff-notice-2026-01",
+		title: "Thông báo cho nhân viên",
+		bodyMarkdown: "# Thông báo",
+		publishedAt: "2026-11-01T00:00:00+00:00",
+	};
+	const acceptance = {
+		version: "staff-notice-2026-01",
+		shownAt: NOW_MS - 60_000,
+	};
+
+	it("parses the notice, the reason and the wait of an answer", () => {
+		expect(parseSessionAnswer({ status: "unpaired", notice })).toEqual({
+			status: "unpaired",
+			notice: staffNotice,
+		});
+		expect(
+			parseSessionAnswer({
+				status: "unpaired",
+				reason: "wait",
+				retry_after: 900,
+				notice,
+			}),
+		).toEqual({
+			status: "unpaired",
+			notice: staffNotice,
+			reason: "wait",
+			retryAfterSeconds: 900,
+		});
+		expect(parseSessionAnswer({ status: "notice_required", notice })).toEqual({
+			status: "notice-required",
+			notice: staffNotice,
+		});
+		expect(parseSessionAnswer({ status: "notice_required" })).toEqual({
+			status: "notice-required",
+			notice: null,
+		});
+		for (const bad of [
+			{ status: "unpaired", reason: "roster_missing" },
+			{ status: "unpaired", retry_after: "soon" },
+			{ status: "unpaired", notice: { ...notice, version: "Bad" } },
+			{ status: "notice_required", notice: { title: "x" } },
+			{ status: "login_needed" },
+		]) {
+			expect(parseSessionAnswer(bad)).toBeNull();
+		}
+	});
+
+	it("keeps the member's tenant from a bound answer in the stored session", async () => {
+		const { sessionClient, storage } = client([
+			{
+				...boundAnswer(NOW_MS / 1000 + 3600),
+				member: { ...member, tenant_id: "tenant-1" },
+			},
+		]);
+		const state = await sessionClient.connect();
+		expect(state.status === "signed-in" && state.session.member.tenantId).toBe(
+			"tenant-1",
+		);
+		expect(
+			JSON.parse(storage.getItem(SESSION_STORAGE_KEY) ?? "{}").member.tenantId,
+		).toBe("tenant-1");
+		storage.setItem(
+			SESSION_STORAGE_KEY,
+			JSON.stringify({
+				accessToken: "a",
+				refreshToken: "r",
+				expiresAt: NOW_MS / 1000 + 3600,
+				member: { displayName: "A", role: "staff", stores: [], tenantId: 7 },
+			}),
+		);
+		expect(createSessionStore(storage).read()).toBeNull();
+	});
+
+	it("sends the pairing code with the accepted notice and its showing time", async () => {
+		const { sessionClient, requests } = client([
+			boundAnswer(NOW_MS / 1000 + 3600),
+		]);
+		const state = await sessionClient.pair("482913", acceptance);
+		expect(state.status).toBe("signed-in");
+		expect(requests[0]?.body).toEqual({
+			access_token: "zalo-token-1",
+			brand: "brand-1",
+			pairing_code: "482913",
+			notice: {
+				version: "staff-notice-2026-01",
+				shown_at: new Date(NOW_MS - 60_000).toISOString(),
+			},
+		});
+	});
+
+	it("tells a refused code, a wait and a changed notice apart", async () => {
+		const { sessionClient } = client([
+			{ status: "unpaired", reason: "code_refused", notice },
+			{ status: "unpaired", reason: "wait", retry_after: 900, notice },
+			{ status: "unpaired", reason: "notice_outdated", notice },
+		]);
+		expect(await sessionClient.pair("111111", acceptance)).toEqual({
+			status: "unpaired",
+			codeRejected: true,
+			notice: staffNotice,
+			reason: "code_refused",
+		});
+		expect(await sessionClient.pair("111111", acceptance)).toEqual({
+			status: "unpaired",
+			codeRejected: false,
+			notice: staffNotice,
+			reason: "wait",
+			retryAfterSeconds: 900,
+		});
+		expect(await sessionClient.pair("111111", acceptance)).toEqual({
+			status: "unpaired",
+			codeRejected: false,
+			notice: staffNotice,
+			reason: "notice_outdated",
+		});
+	});
+
+	it("refuses a malformed code or acceptance without a request", async () => {
+		const { sessionClient, requests } = client([]);
+		expect(await sessionClient.pair("12345", acceptance)).toEqual({
+			status: "unpaired",
+			codeRejected: true,
+			reason: "code_refused",
+		});
+		expect(
+			await sessionClient.pair("123456", { version: "Bad", shownAt: NOW_MS }),
+		).toEqual({ status: "failed", reason: "refused" });
+		expect(
+			await sessionClient.acceptNotice({
+				version: "staff-notice-2026-01",
+				shownAt: Number.NaN,
+			}),
+		).toEqual({ status: "failed", reason: "refused" });
+		expect(requests).toEqual([]);
+	});
+
+	it("asks for the notice before anything else and signs in once it is accepted", async () => {
+		const { sessionClient, storage, requests } = client([
+			{ status: "notice_required", notice },
+			boundAnswer(NOW_MS / 1000 + 3600),
+		]);
+		storage.setItem(SESSION_STORAGE_KEY, "stale");
+		expect(await sessionClient.connect()).toEqual({
+			status: "notice-required",
+			notice: staffNotice,
+		});
+		expect(storage.getItem(SESSION_STORAGE_KEY)).toBeNull();
+		expect((await sessionClient.acceptNotice(acceptance)).status).toBe(
+			"signed-in",
+		);
+		expect(requests[1]?.body).toEqual({
+			access_token: "zalo-token-2",
+			brand: "brand-1",
+			notice: {
+				version: "staff-notice-2026-01",
+				shown_at: new Date(NOW_MS - 60_000).toISOString(),
+			},
+		});
+	});
+});
+
+describe("the stand-in pairing step", () => {
+	const standInMember = {
+		displayName: "Nhân viên thử",
+		role: "staff" as const,
+		stores: ["Cửa hàng Mẫu 1"],
+	};
+	const accepted = { version: STAND_IN_NOTICE.version, shownAt: NOW_MS };
+
+	function standIn(scenario: "unpaired" | "notice") {
+		return createStandInSessionClient({
+			settings: { scenario, delayMs: 0 },
+			member: standInMember,
+			storage: createMemoryStorage(),
+			getAccessToken: async () => "mock-token",
+			now: () => NOW_MS,
+		});
+	}
+
+	it("pairs after the notice, and answers a wrong code, a wait and an old notice", async () => {
+		const client = standIn("unpaired");
+		expect(
+			await client.pair("123456", { version: "old-notice", shownAt: NOW_MS }),
+		).toMatchObject({ reason: "notice_outdated", codeRejected: false });
+		expect(await client.pair(STAND_IN_REJECTED_CODE, accepted)).toMatchObject({
+			reason: "code_refused",
+			codeRejected: true,
+		});
+		expect(await client.pair(STAND_IN_WAIT_CODE, accepted)).toMatchObject({
+			reason: "wait",
+			retryAfterSeconds: 900,
+		});
+		const paired = await client.pair("123456", accepted);
+		expect(paired.status === "signed-in" && paired.session.member).toEqual(
+			standInMember,
+		);
+	});
+
+	it("asks a paired person for the notice in the notice scenario", async () => {
+		const client = standIn("notice");
+		expect(await client.connect()).toEqual({
+			status: "notice-required",
+			notice: STAND_IN_NOTICE,
+		});
+		expect((await client.acceptNotice(accepted)).status).toBe("signed-in");
+		expect((await client.connect()).status).toBe("signed-in");
 	});
 });

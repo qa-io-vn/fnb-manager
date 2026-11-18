@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, useId, useState } from "react";
-import type { MemberProfile } from "../session/types";
+import type { MemberProfile, StaffNotice } from "../session/types";
 import { BINDING_CODE_PATTERN } from "../session/zalo-session-client";
 import { useI18n } from "./i18n";
 import { useSession } from "./session";
@@ -134,6 +134,42 @@ function Unpaired({ codeRejected }: { readonly codeRejected: boolean }) {
 	);
 }
 
+function NoticeRequired({ notice }: { readonly notice: StaffNotice | null }) {
+	const { t } = useI18n();
+	const { acceptNotice, busy, retry } = useSession();
+	const [shownAt] = useState(() => Date.now());
+	if (notice === null) {
+		return (
+			<Section status="notice-required">
+				<p className="text-base text-ink">{t("session.noticeUnavailable")}</p>
+				<button type="button" className={primaryButton} onClick={retry}>
+					{t("session.retry")}
+				</button>
+			</Section>
+		);
+	}
+	return (
+		<Section status="notice-required">
+			<h1 className="text-xl font-semibold text-ink">{notice.title}</h1>
+			<p
+				className="whitespace-pre-line text-base text-ink"
+				data-testid="staff-notice"
+			>
+				{notice.bodyMarkdown}
+			</p>
+			<button
+				type="button"
+				className={primaryButton}
+				disabled={busy}
+				aria-busy={busy}
+				onClick={() => acceptNotice({ version: notice.version, shownAt })}
+			>
+				{busy ? t("session.noticeAccepting") : t("session.noticeAccept")}
+			</button>
+		</Section>
+	);
+}
+
 function Failed() {
 	const { t } = useI18n();
 	const { retry } = useSession();
@@ -159,6 +195,8 @@ export function SessionScreen() {
 			return <SignedIn member={state.session.member} />;
 		case "unpaired":
 			return <Unpaired codeRejected={state.codeRejected} />;
+		case "notice-required":
+			return <NoticeRequired notice={state.notice} />;
 		case "failed":
 			return <Failed />;
 	}

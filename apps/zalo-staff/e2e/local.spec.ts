@@ -3,6 +3,12 @@ import {
 	watchMiniAppPage,
 } from "@fnb/zalo-mini/testing/design-checks";
 import { expect, test } from "@playwright/test";
+import {
+	checkHome,
+	expectHomeFor,
+	homeSummary,
+	watchDataRequests,
+} from "./home-check";
 import { LocalLoop, localStackRuns, portOf, ROLE_LABELS } from "./local-loop";
 
 const PORT = portOf(5761);
@@ -27,6 +33,7 @@ test("pnpm zalo:dev signs the mock Zalo user in through the real zalo-session an
 	await watchMiniAppPage(page);
 	const hosts = new Set<string>();
 	page.on("request", (request) => hosts.add(new URL(request.url()).host));
+	const dataHeaders = watchDataRequests(page);
 	const session = page.waitForResponse(
 		(response) =>
 			response.url().endsWith("/functions/v1/zalo-session") &&
@@ -35,7 +42,8 @@ test("pnpm zalo:dev signs the mock Zalo user in through the real zalo-session an
 	await page.goto(ready.appUrl);
 	const answer = await session;
 	expect(answer.status()).toBe(200);
-	expect((await answer.json()).status).toBe("bound");
+	const bound = await answer.json();
+	expect(bound.status).toBe("bound");
 
 	await expect(
 		page.getByRole("heading", { name: `Xin chào, ${ready.mockName}` }),
@@ -43,9 +51,16 @@ test("pnpm zalo:dev signs the mock Zalo user in through the real zalo-session an
 	await expect(page.getByTestId("member-role")).toHaveText(
 		ROLE_LABELS[ready.role] ?? ready.role,
 	);
-	await expect(
-		page.getByTestId("member-stores").getByRole("listitem"),
-	).toHaveCount(ready.stores);
+	const home = await checkHome(
+		page,
+		ready.appUrl,
+		await dataHeaders(),
+		String(bound.member?.tenant_id ?? ""),
+	);
+	test
+		.info()
+		.annotations.push({ type: "home", description: homeSummary(home) });
+	expectHomeFor(ready.role, ready.stores, home);
 	await expect(page.getByTestId("stand-in-header")).toBeVisible();
 	await checkMiniAppScreen(page);
 	expect([...hosts]).toEqual([`127.0.0.1:${PORT}`]);

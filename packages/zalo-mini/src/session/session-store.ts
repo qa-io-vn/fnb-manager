@@ -22,7 +22,7 @@ function isMemberRole(value: unknown): value is MemberRole {
 
 function readMember(value: unknown): MemberProfile | null {
 	if (!isRecord(value)) return null;
-	const { displayName, role, stores } = value;
+	const { displayName, role, stores, tenantId } = value;
 	if (typeof displayName !== "string" || displayName.trim() === "") return null;
 	if (!isMemberRole(role)) return null;
 	if (
@@ -30,7 +30,9 @@ function readMember(value: unknown): MemberProfile | null {
 		!stores.every((store) => typeof store === "string")
 	)
 		return null;
-	return { displayName, role, stores };
+	if (tenantId === undefined) return { displayName, role, stores };
+	if (typeof tenantId !== "string" || tenantId === "") return null;
+	return { displayName, role, stores, tenantId };
 }
 
 export function readStoredSession(value: unknown): StoredSession | null {

@@ -1,4 +1,20 @@
 export {
+	type DataEndpoint,
+	type DataEndpointSettings,
+	dataEndpointFrom,
+	LOCAL_SUPABASE_PATH,
+	STAND_IN_DATA,
+} from "./data/endpoint";
+export {
+	createRestClient,
+	REST_NETWORK_FAILURE,
+	REST_PATH,
+	REST_TIMEOUT_MS,
+	type RestClient,
+	type RestClientOptions,
+	RestError,
+} from "./data/rest-client";
+export {
 	type Catalog,
 	type CatalogParity,
 	catalogParity,
@@ -23,8 +39,11 @@ export {
 } from "./session/session-store";
 export {
 	createStandInSessionClient,
+	STAND_IN_NOTICE,
 	STAND_IN_REJECTED_CODE,
 	STAND_IN_SCENARIOS,
+	STAND_IN_WAIT_CODE,
+	STAND_IN_WAIT_SECONDS,
 	type StandInScenario,
 	type StandInSessionOptions,
 	type StandInSettings,
@@ -34,15 +53,22 @@ export {
 	MEMBER_ROLES,
 	type MemberProfile,
 	type MemberRole,
+	type NoticeAcceptance,
 	type SessionClient,
 	type SessionFailure,
 	type SessionState,
+	type StaffNotice,
 	type StoredSession,
+	UNPAIRED_REASONS,
+	type UnpairedReason,
 } from "./session/types";
 export {
 	BINDING_CODE_PATTERN,
 	createZaloSessionClient,
+	NOTICE_VERSION_PATTERN,
+	PAIRING_CODE_PATTERN,
 	parseSessionAnswer,
+	readStaffNotice,
 	type SessionAnswer,
 	type ZaloSessionClientOptions,
 } from "./session/zalo-session-client";

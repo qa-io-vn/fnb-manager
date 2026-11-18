@@ -16,6 +16,7 @@
 		"e2e:install": "playwright install chromium"
 	},
 	"dependencies": {
+		"@fnb/core": "workspace:^",
 		"@fnb/design-tokens": "workspace:^",
 		"@fnb/zalo-mini": "workspace:^",
 		"@tailwindcss/vite": "^4.3.5",

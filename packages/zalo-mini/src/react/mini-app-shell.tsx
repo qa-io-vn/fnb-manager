@@ -2,9 +2,11 @@ import { type ReactNode, useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { App, BottomNavigation, ZMPRouter } from "zmp-ui";
 import type { AppConfigApp } from "../app-config/index";
+import { type DataEndpoint, STAND_IN_DATA } from "../data/endpoint";
 import type { Catalog, Language } from "../i18n/translate";
 import type { SessionClient } from "../session/types";
 import { type ColorScheme, useColorScheme } from "./color-scheme";
+import { DataEndpointProvider } from "./data-endpoint";
 import { I18nProvider, useI18n } from "./i18n";
 import { SessionProvider } from "./session";
 
@@ -130,6 +132,7 @@ export interface MiniAppProps {
 	readonly routes: readonly MiniAppRoute[];
 	readonly tabs: readonly MiniAppTab[];
 	readonly standInHeader: AppConfigApp | null;
+	readonly dataEndpoint?: DataEndpoint;
 }
 
 export function MiniApp({
@@ -139,6 +142,7 @@ export function MiniApp({
 	routes,
 	tabs,
 	standInHeader,
+	dataEndpoint = STAND_IN_DATA,
 }: MiniAppProps) {
 	const scheme = useColorScheme();
 	useEffect(() => {
@@ -148,18 +152,20 @@ export function MiniApp({
 	if (problems.length > 0) throw new Error(problems.join("; "));
 	return (
 		<I18nProvider language={language} catalogs={catalogs}>
-			<SessionProvider client={sessionClient}>
-				<App theme={scheme}>
-					<ZMPRouter memoryRouter>
-						<Frame
-							routes={routes}
-							tabs={tabs}
-							standInHeader={standInHeader}
-							scheme={scheme}
-						/>
-					</ZMPRouter>
-				</App>
-			</SessionProvider>
+			<DataEndpointProvider endpoint={dataEndpoint}>
+				<SessionProvider client={sessionClient}>
+					<App theme={scheme}>
+						<ZMPRouter memoryRouter>
+							<Frame
+								routes={routes}
+								tabs={tabs}
+								standInHeader={standInHeader}
+								scheme={scheme}
+							/>
+						</ZMPRouter>
+					</App>
+				</SessionProvider>
+			</DataEndpointProvider>
 		</I18nProvider>
 	);
 }

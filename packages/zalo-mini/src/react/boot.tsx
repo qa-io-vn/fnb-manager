@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { getAccessToken, getSystemInfo, nativeStorage } from "zmp-sdk";
 import type { MiniAppBuildConfig } from "../app-config/index";
+import { type DataEndpoint, dataEndpointFrom } from "../data/endpoint";
 import { type Catalog, type Language, languageFrom } from "../i18n/translate";
 import { ZALO_SESSION_PATH } from "../session/endpoint";
 import {
@@ -19,6 +20,7 @@ export interface MiniAppEnvironment {
 	readonly runtime: "browser" | "zalo";
 	readonly language: Language;
 	readonly sessionClient: SessionClient;
+	readonly dataEndpoint: DataEndpoint;
 }
 
 export function miniAppEnvironment(
@@ -30,11 +32,18 @@ export function miniAppEnvironment(
 	const publishableKey = String(
 		import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "",
 	);
+	const dataEndpoint = dataEndpointFrom({
+		runtime: String(import.meta.env.VITE_ZALO_RUNTIME ?? ""),
+		session: String(import.meta.env.VITE_ZALO_SESSION ?? ""),
+		supabaseUrl: String(import.meta.env.VITE_SUPABASE_URL ?? ""),
+		publishableKey,
+	});
 	if (import.meta.env.VITE_ZALO_RUNTIME === "zalo") {
 		const supabaseUrl = String(import.meta.env.VITE_SUPABASE_URL ?? "");
 		return {
 			runtime: "zalo",
 			language,
+			dataEndpoint,
 			sessionClient: createZaloSessionClient({
 				endpoint: `${supabaseUrl.replace(/\/$/, "")}${ZALO_SESSION_PATH}`,
 				brandKey: config.brand,
@@ -48,6 +57,7 @@ export function miniAppEnvironment(
 		return {
 			runtime: "browser",
 			language,
+			dataEndpoint,
 			sessionClient: createZaloSessionClient({
 				endpoint: ZALO_SESSION_PATH,
 				brandKey: config.brand,
@@ -60,6 +70,7 @@ export function miniAppEnvironment(
 	return {
 		runtime: "browser",
 		language,
+		dataEndpoint,
 		sessionClient: createStandInSessionClient({
 			settings: standInSettingsFrom(window.location.search),
 			member: standInMember,
@@ -94,6 +105,7 @@ export function bootMiniApp(options: BootOptions): void {
 				standInHeader={
 					environment.runtime === "browser" ? options.config.app : null
 				}
+				dataEndpoint={environment.dataEndpoint}
 			/>
 		</StrictMode>,
 	);

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { loadEnv, type Plugin } from "vite";
+import { loadEnv, type Plugin, searchForWorkspaceRoot } from "vite";
 import {
 	type AppConfig,
 	AppConfigError,
@@ -11,6 +11,7 @@ import {
 	readAppConfig,
 	selectMiniAppRow,
 } from "../app-config/index.ts";
+import { LOCAL_SUPABASE_PATH } from "../data/endpoint.ts";
 import { ZALO_SESSION_PATH } from "../session/endpoint.ts";
 import {
 	ACCESS_KEY_PATTERN,
@@ -50,7 +51,8 @@ export const LOCAL_ACCESS_TOKEN_VARIABLE = "ZALO_LOCAL_ACCESS_TOKEN";
 export const LOCAL_ACCESS_KEY_VARIABLE = "ZALO_LOCAL_ACCESS_KEY";
 export const LOCAL_TUNNEL_HOST_VARIABLE = "ZALO_LOCAL_TUNNEL_HOST";
 export const LOCAL_SUPABASE_URL_VARIABLE = "ZALO_LOCAL_SUPABASE_URL";
-export const LOCAL_SUPABASE_PATH = "/supabase";
+export const WORKSPACE_SUPABASE_URL_VARIABLE = "SUPABASE_URL";
+export { LOCAL_SUPABASE_PATH };
 export const LOCAL_SUPABASE_SERVICES = ["rest", "auth"] as const;
 const LOOPBACK_URL = /^http:\/\/(127\.0\.0\.1|localhost):[0-9]{1,5}$/;
 
@@ -184,10 +186,19 @@ function localSessionSettings(
 			`${LOCAL_SUPABASE_URL_VARIABLE} must be the loopback address of the local Supabase API such as http://127.0.0.1:54321`,
 		);
 	}
+	const workspaceUrl = (env[WORKSPACE_SUPABASE_URL_VARIABLE] ?? "")
+		.trim()
+		.replace(/\/+$/, "");
+	const proxied =
+		supabaseUrl !== ""
+			? supabaseUrl
+			: LOOPBACK_URL.test(workspaceUrl)
+				? workspaceUrl
+				: null;
 	return {
 		functionUrl,
 		accessToken,
-		supabaseUrl: supabaseUrl === "" ? null : supabaseUrl,
+		supabaseUrl: proxied,
 		access: localAccess(env),
 	};
 }
@@ -404,8 +415,16 @@ export function miniApp(options: MiniAppPluginOptions): Plugin[] {
 					: (userConfig.envDir ?? options.appRoot),
 				["VITE_", "MINI_APP_"],
 			);
+			const workspace =
+				env.command === "serve"
+					? loadEnv(
+							env.mode,
+							searchForWorkspaceRoot(options.appRoot),
+							WORKSPACE_SUPABASE_URL_VARIABLE,
+						)
+					: {};
 			settings = miniAppSettings(
-				{ ...loaded, ...process.env },
+				{ ...workspace, ...loaded, ...process.env },
 				env.command,
 				options.appRoot,
 			);

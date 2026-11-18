@@ -11,6 +11,11 @@ export {
 	miniAppEnvironment,
 } from "./boot";
 export { type ColorScheme, useColorScheme } from "./color-scheme";
+export {
+	DataEndpointProvider,
+	type DataEndpointProviderProps,
+	useDataEndpoint,
+} from "./data-endpoint";
 export { I18nProvider, type I18nProviderProps, useI18n } from "./i18n";
 export {
 	MAX_TABS,

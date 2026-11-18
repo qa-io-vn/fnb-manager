@@ -9,7 +9,7 @@ import { MAX_TABS, MiniApp, shellProblems } from "@fnb/zalo-mini/react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { getAccessToken, nativeStorage } from "zmp-sdk";
-import { routes, standInMember, tabs } from "./app";
+import { routes, standInMember, standInMemberFrom, tabs } from "./app";
 import { catalogs } from "./i18n/catalog";
 
 function renderApp(scenario: StandInScenario, language: "vi" | "en" = "vi") {
@@ -33,17 +33,22 @@ function renderApp(scenario: StandInScenario, language: "vi" | "en" = "vi") {
 }
 
 describe("staff Mini App shell", () => {
-	it("shows Đang kết nối… first, then the member's name, role and stores", async () => {
+	it("shows Đang kết nối… first, then the member's name, role and stores on the home", async () => {
 		renderApp("bound");
 		expect(screen.getByRole("status")).toHaveTextContent("Đang kết nối…");
 		expect(
 			await screen.findByRole("heading", { name: "Xin chào, Thành viên thử" }),
 		).toBeInTheDocument();
 		expect(screen.getByTestId("member-role")).toHaveTextContent("Quản lý");
-		const stores = within(screen.getByTestId("member-stores"));
+		const picker = await screen.findByLabelText("Cửa hàng");
 		expect(
-			stores.getAllByRole("listitem").map((item) => item.textContent),
+			within(picker)
+				.getAllByRole("option")
+				.map((option) => option.textContent),
 		).toEqual(["Cửa hàng Mẫu 1", "Cửa hàng Mẫu 2"]);
+		expect(screen.getByTestId("home-freshness")).toHaveTextContent(
+			/^Cập nhật lúc \d{2}:\d{2}$/,
+		);
 	});
 
 	it("shows the unpaired instructions, refuses a wrong code and links with a good one", async () => {
@@ -112,5 +117,19 @@ describe("staff Mini App shell", () => {
 
 	it("keeps the routes and tabs within the design rules", () => {
 		expect(shellProblems(routes, tabs)).toEqual([]);
+	});
+
+	it("lets the stand-in address choose the member's role, with one store for staff", () => {
+		expect(standInMemberFrom("")).toEqual(standInMember);
+		expect(standInMemberFrom("?role=viewer")).toEqual(standInMember);
+		expect(standInMemberFrom("?role=owner")).toEqual({
+			...standInMember,
+			role: "owner",
+		});
+		expect(standInMemberFrom("?role=staff&revenue=none")).toEqual({
+			...standInMember,
+			role: "staff",
+			stores: ["Cửa hàng Mẫu 1"],
+		});
 	});
 });
