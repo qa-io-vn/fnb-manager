@@ -1,6 +1,6 @@
 import type { GeneratedDay } from "@fnb/connector-mock";
 import { type CanonicalLine, type CanonicalSale, roundMoney } from "@fnb/core";
-import { addDays, type IsoDate } from "@fnb/reports";
+import type { IsoDate } from "@fnb/reports";
 import {
 	DEMO_BILL_DISCOUNT_NAME,
 	DEMO_ITEM_PROMOTION_NAME,
@@ -8,6 +8,7 @@ import {
 	type DemoStoreId,
 	toDbLineKind,
 } from "../../src/index.js";
+import { openCaseDay } from "./case-days.js";
 
 export const COMPLIANCE_STORE: DemoStoreId = "MOCK-S1";
 export const COMPLIANCE_DAYS_BEFORE_AS_OF = 3;
@@ -45,7 +46,7 @@ export interface ComplianceCaseSale {
 }
 
 export function complianceDay(asOf: IsoDate): IsoDate {
-	return addDays(asOf, -COMPLIANCE_DAYS_BEFORE_AS_OF);
+	return openCaseDay(asOf, COMPLIANCE_DAYS_BEFORE_AS_OF);
 }
 
 export function itemLines(sale: CanonicalSale): CanonicalLine[] {

@@ -1,8 +1,9 @@
 import type { GeneratedDay } from "@fnb/connector-mock";
 import { MENU } from "@fnb/connector-mock";
 import type { CanonicalAdjustment, CanonicalSale } from "@fnb/core";
-import { addDays, type IsoDate } from "@fnb/reports";
+import type { IsoDate } from "@fnb/reports";
 import type { DemoDayRewrite, DemoStoreId } from "../../src/index.js";
+import { openCaseDay } from "./case-days.js";
 
 export const ATTRIBUTION_STORE: DemoStoreId = "MOCK-S1";
 export const ATTRIBUTION_DAYS_BEFORE_AS_OF = 5;
@@ -20,7 +21,7 @@ const CATALOGUE_MODIFIERS = new Set(
 );
 
 export function attributionDay(asOf: IsoDate): IsoDate {
-	return addDays(asOf, -ATTRIBUTION_DAYS_BEFORE_AS_OF);
+	return openCaseDay(asOf, ATTRIBUTION_DAYS_BEFORE_AS_OF);
 }
 
 function sellModifierAsItem(day: GeneratedDay): void {

@@ -1,7 +1,8 @@
 import type { GeneratedDay } from "@fnb/connector-mock";
 import type { CanonicalAdjustment } from "@fnb/core";
-import { addDays, type IsoDate } from "@fnb/reports";
+import type { IsoDate } from "@fnb/reports";
 import type { DemoDayRewrite, DemoStoreId } from "../../src/index.js";
+import { openCaseDay } from "./case-days.js";
 
 export const ORPHAN_STORE: DemoStoreId = "MOCK-S1";
 export const ORPHAN_DAYS_BEFORE_AS_OF = 9;
@@ -10,7 +11,7 @@ export const ORPHAN_SALE_ID = "PARITY-ORPHAN-SALE";
 const ORPHAN_VOID_AMOUNT = 38_000;
 
 export function orphanDay(asOf: IsoDate): IsoDate {
-	return addDays(asOf, -ORPHAN_DAYS_BEFORE_AS_OF);
+	return openCaseDay(asOf, ORPHAN_DAYS_BEFORE_AS_OF);
 }
 
 export function orphanVoids(asOf: IsoDate): DemoDayRewrite {
