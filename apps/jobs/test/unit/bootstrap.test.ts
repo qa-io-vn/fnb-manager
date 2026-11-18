@@ -129,6 +129,20 @@ describe("bootstrap options", () => {
 		).toThrow(UsageError);
 	});
 
+	it("targets mock-local with IPOS_REAL_API=off unless --tenant names another tenant", () => {
+		const off = { env: { IPOS_REAL_API: "off", LIVE_TENANT: "live-local" } };
+		expect(bootstrapOptions(off, {}).slug).toBe("mock-local");
+		expect(bootstrapOptions(off, { tenant: "mock-other" }).slug).toBe(
+			"mock-other",
+		);
+		expect(
+			bootstrapOptions(
+				{ env: { IPOS_REAL_API: "on", LIVE_TENANT: "live-local" } },
+				{},
+			).slug,
+		).toBe("live-local");
+	});
+
 	it("describes each month and stop in counts only", () => {
 		const options = bootstrapOptions({ env: {} }, {});
 		const window = monthWindow("2026-10", "2026-11-17");

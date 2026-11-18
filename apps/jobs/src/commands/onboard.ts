@@ -1,4 +1,4 @@
-import { connectAccount } from "@fnb/runner";
+import { connectAccount, requestCountText } from "@fnb/runner";
 import { MasterDataRunError, SyncEngine } from "@fnb/sync";
 import { requireTenant } from "../admin/tenants.js";
 import { accountEntry, isCi } from "../config/config.js";
@@ -12,6 +12,7 @@ import {
 	UsageError,
 } from "../context.js";
 import { countsText } from "./formatting.js";
+import { guardTenant, iposSnapshots, printIposMode } from "./ipos.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
 import { printFlags } from "./sync-report.js";
 
@@ -27,10 +28,14 @@ async function onboard(
 	const slug = requiredString(values, "tenant");
 	const key = requiredString(values, "account");
 	const entry = accountEntry(context.env, key);
+	await printIposMode(context, [entry]);
 	const { sql, repository } = context.services.db();
 	const tenant = await requireTenant(sql, slug, context.output.ci);
+	await guardTenant(context, [entry], tenant.id, { claim: true });
 	const existing = (await repository.findAccounts(key, slug))[0];
-	const session = await connectAccount(entry, context.env);
+	const session = await connectAccount(entry, context.env, {
+		snapshots: iposSnapshots(context),
+	});
 	context.output.line(
 		`authenticated ${context.output.ci ? "the account" : key} through ${entry.connector}`,
 	);
@@ -69,7 +74,7 @@ async function onboard(
 		);
 		context.output.line(`catalogue: ${countsText(summary.tables)}`);
 		context.output.line(
-			`connector calls ${summary.connectorCalls}, POS HTTP requests ${session.httpRequests()}`,
+			`connector calls ${summary.connectorCalls}, ${requestCountText(session.httpRequests(), session.ipos)}`,
 		);
 		printFlags(context, summary.flags);
 	} catch (error) {
@@ -103,6 +108,7 @@ export const onboardCommand: CommandSpec = {
 	},
 	details: [
 		"Needs DATABASE_URL and the account's entry in POS_ACCOUNTS_JSON (plus IPOS_APP_KEY for ipos-fabi).",
+		"An ipos-fabi account prints the iPOS mode first: IPOS_REAL_API=off answers from the local iPOS snapshot and refuses a tenant that holds real iPOS data; on (the default) refuses a tenant loaded from the snapshot.",
 		"Authenticates through the connector registry, writes pos_accounts and stores (timezone and business-day start from the POS), then runs the master-data sync.",
 		"Re-running refreshes store attributes and the catalogue; it never deletes rows.",
 		"--print-secret-entry prints the account's JSON entry with its credentials for the GitHub secret; refused when CI or GITHUB_ACTIONS is set.",

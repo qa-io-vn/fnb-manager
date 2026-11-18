@@ -4,6 +4,18 @@ import type {
 	RunnerDatabase,
 	TicketSource,
 } from "../database.js";
+import type { IposDataSource } from "../ipos-source.js";
+
+const MISSING_OBJECT_CODES = new Set(["42P01", "42883"]);
+
+function isMissingObject(error: unknown): boolean {
+	return (
+		error !== null &&
+		typeof error === "object" &&
+		"code" in error &&
+		MISSING_OBJECT_CODES.has(String(error.code))
+	);
+}
 
 interface TicketRow {
 	tenant_id: string;
@@ -69,5 +81,36 @@ export class PostgresRunnerDatabase implements RunnerDatabase {
 			select coalesce((select enabled from app.incremental_sync_settings), false) as enabled
 		`;
 		return row?.enabled ?? false;
+	}
+
+	async iposSource(tenantId: string): Promise<IposDataSource | null> {
+		try {
+			const [row] = await this.sql<{ source: IposDataSource }[]>`
+				select source from app.tenant_ipos_sources where tenant_id = ${tenantId}::uuid
+			`;
+			return row?.source ?? null;
+		} catch (error) {
+			if (isMissingObject(error)) {
+				return null;
+			}
+			throw error;
+		}
+	}
+
+	async claimIposSource(
+		tenantId: string,
+		source: IposDataSource,
+	): Promise<IposDataSource | null> {
+		try {
+			const [row] = await this.sql<{ source: IposDataSource }[]>`
+				select app.claim_ipos_source(${tenantId}::uuid, ${source}) as source
+			`;
+			return row?.source ?? null;
+		} catch (error) {
+			if (isMissingObject(error)) {
+				return null;
+			}
+			throw error;
+		}
 	}
 }

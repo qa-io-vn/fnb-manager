@@ -4,11 +4,16 @@ import {
 	collectSecretValues,
 	edgeFunctionBudget,
 	type IncrementalTicket,
+	IPOS_REAL_API_VARIABLE,
+	type IposApiMode,
+	iposApiMode,
+	iposModeLine,
 	isTicket,
 	outcomeLine,
 	outcomeReport,
 	parseAccountEntries,
 	runIncrementalStore,
+	usesIpos,
 } from "@fnb/runner";
 import { PostgresRunnerDatabase } from "@fnb/runner/postgres";
 import {
@@ -199,6 +204,22 @@ export async function handleRequest(
 	} catch (error) {
 		log(`POS_ACCOUNTS_JSON: ${safeErrorMessage(error, redact)}`);
 		return json({ error: "the function is not configured" }, 500);
+	}
+	let mode: IposApiMode;
+	try {
+		mode = iposApiMode(environment);
+	} catch (error) {
+		log(safeErrorMessage(error, redact));
+		return json({ error: "the function is not configured" }, 500);
+	}
+	if (usesIpos(entries)) {
+		if (mode === "snapshot") {
+			log(
+				`${IPOS_REAL_API_VARIABLE}=off: the Edge Function keeps no iPOS snapshot and never calls iPOS in that mode; unset it here, and run fnb sync incremental from the CLI to replay the snapshot`,
+			);
+			return json({ error: "the function is not configured" }, 500);
+		}
+		log(iposModeLine(mode, null));
 	}
 	try {
 		budget = edgeFunctionBudget(environment);

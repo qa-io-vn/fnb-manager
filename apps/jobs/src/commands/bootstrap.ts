@@ -1,6 +1,10 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { AccountEntry } from "@fnb/runner";
+import {
+	type AccountEntry,
+	IposSourceError,
+	SNAPSHOT_TENANT_SLUG,
+} from "@fnb/runner";
 import type { AccountRecord, StoreRecord } from "@fnb/sync";
 import { createAuthUser } from "../admin/auth-users.js";
 import {
@@ -55,6 +59,7 @@ import {
 	walkHistory,
 	walkTotals,
 } from "./history-walk.js";
+import { guardTenant, iposMode, printIposMode } from "./ipos.js";
 import { onboardCommand } from "./onboard.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
 import { syncAccountWindow } from "./sync.js";
@@ -111,8 +116,9 @@ export function bootstrapOptions(
 ): BootstrapOptions {
 	const slug =
 		stringOption(values, "tenant") ||
-		context.env.LIVE_TENANT ||
-		DEFAULT_TENANT_SLUG;
+		(iposMode(context) === "snapshot"
+			? SNAPSHOT_TENANT_SLUG
+			: context.env.LIVE_TENANT || DEFAULT_TENANT_SLUG);
 	if (!SLUG_PATTERN.test(slug)) {
 		throw new UsageError(
 			"--tenant must be 2–63 lower-case letters, digits or hyphens",
@@ -518,6 +524,7 @@ function printNextSteps(
 	context: CommandContext,
 	options: BootstrapOptions,
 	webReady: boolean,
+	snapshot: boolean,
 ): void {
 	const { output } = context;
 	const login =
@@ -533,7 +540,11 @@ function printNextSteps(
 			? "  1. pnpm --filter @fnb/web dev, then open http://localhost:5173"
 			: `  1. fix ${WEB_ENV_FILE} as said above, then pnpm --filter @fnb/web dev and open http://localhost:5173`,
 	);
-	output.line(`  2. sign in with ${login}`);
+	output.line(
+		snapshot
+			? `  2. sign in with ${login}, and pick ${output.ci ? "the snapshot tenant" : options.slug} in the tenant list of the scope bar when that login belongs to more than one tenant`
+			: `  2. sign in with ${login}`,
+	);
 	output.line(
 		"  3. run this again at any time: it skips the months already loaded and loads the current month again",
 	);
@@ -552,6 +563,7 @@ async function bootstrap(
 	if (entries.length === 0) {
 		throw new UsageError("POS_ACCOUNTS_JSON lists no accounts");
 	}
+	await printIposMode(context, entries);
 	if (!output.ci) {
 		output.line(
 			"note: CI is not set, so this output names accounts and stores; pnpm db:load-real sets CI=1 for output you can share",
@@ -569,6 +581,15 @@ async function bootstrap(
 		return 1;
 	}
 	const tenant = await ensureTenant(context, options);
+	try {
+		await guardTenant(context, entries, tenant.id, { claim: true });
+	} catch (error) {
+		if (error instanceof IposSourceError) {
+			output.error(`tenant: ${error.message}`);
+			return 1;
+		}
+		throw error;
+	}
 	if (!(await ensureOwner(context, tenant, options))) {
 		return 1;
 	}
@@ -590,7 +611,7 @@ async function bootstrap(
 	output.line();
 	printOutcomes(context, outcomes, options);
 	await printDatabaseSize(context, target);
-	printNextSteps(context, options, webReady);
+	printNextSteps(context, options, webReady, iposMode(context) === "snapshot");
 	const failed = outcomes.some(
 		(outcome) =>
 			outcome.status === "failed" || outcome.result?.stop === "failed",
@@ -615,7 +636,8 @@ export const bootstrapCommand: CommandSpec = {
 	details: [
 		"Needs DATABASE_URL (or SUPABASE_DB_URL), POS_ACCOUNTS_JSON (plus IPOS_APP_KEY for ipos-fabi), SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY for apps/web/.env.local, and SUPABASE_SECRET_KEY with FNB_MEMBER_PASSWORD when the owner login has to be created.",
 		"Refuses to start when the database and SUPABASE_URL point at different backends (the local stack and a remote project, or two projects), when the database cannot be reached or when a migration of supabase/migrations is not applied. It never resets or stops the stack.",
-		`Creates the tenant --tenant (default LIVE_TENANT, else ${DEFAULT_TENANT_SLUG}; --name defaults to the slug) unless it exists, and makes the --email login (or FNB_MEMBER_EMAIL) its owner unless it already has a role there; a missing login is created with FNB_MEMBER_PASSWORD.`,
+		`Creates the tenant --tenant (default LIVE_TENANT, else ${DEFAULT_TENANT_SLUG}; with IPOS_REAL_API=off always ${SNAPSHOT_TENANT_SLUG}; --name defaults to the slug) unless it exists, and makes the --email login (or FNB_MEMBER_EMAIL) its owner unless it already has a role there; a missing login is created with FNB_MEMBER_PASSWORD.`,
+		"With ipos-fabi accounts the first line names the iPOS mode. IPOS_REAL_API=off loads the local iPOS snapshot (fnb ipos-snapshot from-db builds it) without the network and refuses a tenant that holds real iPOS data; on (the default) refuses a tenant loaded from the snapshot.",
 		`Writes ${WEB_ENV_FILE} from SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY only when the file is missing; an existing file is never overwritten.`,
 		"Onboards every POS_ACCOUNTS_JSON entry whose catalogue was never loaded, then walks back one month per sync window --kind backfill run, starting with the current month.",
 		"A past month is skipped when every business date of every active store falls inside a succeeded window run of the account that started after that date closed (sync_runs); the current month is always loaded again.",

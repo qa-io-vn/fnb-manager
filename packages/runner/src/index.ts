@@ -32,6 +32,7 @@ export {
 	type RunnerEnvironment,
 	readOnlyTokenStore,
 	repositoryTokenStore,
+	SNAPSHOT_APP_KEY,
 } from "./connectors.js";
 export {
 	type IncrementalTicket,
@@ -59,6 +60,25 @@ export {
 	runIncrementalStore,
 	type SkipReason,
 } from "./incremental-run.js";
+export {
+	IPOS_API_HOST,
+	IPOS_REAL_API_VARIABLE,
+	type IposApiMode,
+	type IposSnapshots,
+	iposApiMode,
+	iposModeLine,
+	requestCountText,
+	snapshotCoverage,
+	usesIpos,
+} from "./ipos-mode.js";
+export {
+	guardIposTenant,
+	type IposDataSource,
+	IposSourceError,
+	iposDataSource,
+	SNAPSHOT_TENANT_SLUG,
+	sourceConflict,
+} from "./ipos-source.js";
 export { accountLabel, storeLabel } from "./labels.js";
 export {
 	authFailedNotification,

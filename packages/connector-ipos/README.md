@@ -13,6 +13,7 @@ Last updated 2026-11-12
 | Login tokens | `createMemoryTokenStore`, `decodeJwtPayload`, `isTokenFresh`, `TOKEN_REFRESH_WINDOW_MS`, `LOGIN_PATH` |
 | Errors and retries | `IposError`, `IposAuthError`, `IposHttpError`, `IposNetworkError`, `IposSchemaError`; `DEFAULT_RETRY_POLICY` |
 | Vietnam time | `vietnamDateISO`, `vietnamDayRange`, `vietnamMidnight`, `vietnamRange`, `splitRangeByCalendarMonth`, `VIETNAM_TIMEZONE` |
+| `@fnb/connector-ipos/snapshot` | a separate entry point for the local iPOS snapshot: `createRecordingFetch`, `createSnapshotReplay`, `snapshotKey`, `writeSnapshot`, `createMemorySnapshotStorage` and the `SnapshotStorage` contract ([docs/connectors/ipos-fabi.md](../../docs/connectors/ipos-fabi.md#real-api-or-local-snapshot)) |
 
 Every response is parsed with a zod schema (`src/schemas/`), and every vendor row is kept in `raw`. The connector declares every capability except `costs` (the CMS returns no cost prices); adjustments come from the CMS reports C05 and C08 and never include `reissued`.
 

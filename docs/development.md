@@ -31,6 +31,7 @@ pnpm db:status
    - `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`: the local keys that `pnpm db:status` prints.
    - `DATABASE_URL`: `.env.example` already points it at the local database on port 54322.
    - `POS_ACCOUNTS_JSON`: without POS credentials, use a synthetic account, for example `[{"key":"account-1","connector":"mock","seed":1}]` (optional `storeCount` 1 to 5). A real `ipos-fabi` entry also needs `IPOS_APP_KEY`. Real credentials come from the owner through a private channel, never through the repository.
+   - `IPOS_REAL_API`: `on` (or unset) calls the real iPOS API; `off` replays the local snapshot in `.ipos-snapshot/` with no network and writes into `mock-local` only ([sync.md](sync.md#real-or-fake-ipos)). Develop with `off` once the snapshot exists.
 3. Web app: `cp apps/web/.env.example apps/web/.env.local`, set `VITE_SUPABASE_URL` to the local API (`http://127.0.0.1:54321`) and `VITE_SUPABASE_PUBLISHABLE_KEY` to the publishable key from `pnpm db:status`, then run `pnpm --filter @fnb/web dev` and open `http://localhost:5173`. Sign in with the seeded development login `dev@example.com`; its password is the constant at the top of `supabase/seed.sql`. With either value empty the dev server runs the demo instead.
 4. Check the machine with `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm exec supabase test db`.
 
@@ -58,13 +59,14 @@ Local auth has sign-up turned off (`enable_signup = false`) and e-mail confirmat
 
 ### Move to another machine
 
-Git carries the code, the migrations, the synthetic seed and every document except the private ones. Three things never go through the repository and have to be carried by hand, over a private channel (a USB drive or the owner's own encrypted storage):
+Git carries the code, the migrations, the synthetic seed and every document except the private ones. Four things never go through the repository and have to be carried by hand, over a private channel (a USB drive or the owner's own encrypted storage):
 
 | What | Where | Why it is not in git |
 |---|---|---|
 | Secrets | `.env` and `apps/web/.env.local` | credentials of the POS, Supabase and providers |
 | Private documents | the whole `docs/private/` folder | build specs, local logins, the private identifier list the public-safety scan reads, the forbidden-terms list, the private reference figures |
 | The real tenant's data | the local database | real sales and member logins |
+| The iPOS snapshot | `.ipos-snapshot/` | real iPOS answers; `fnb ipos-snapshot from-db --tenant live-local` rebuilds it from the restored database without calling iPOS |
 
 On the new machine:
 
@@ -83,6 +85,7 @@ The build machine's local stack holds a real tenant loaded with `fnb`. On such a
 - Apply new migrations with `pnpm exec supabase migration up`.
 - Run the CLI with `CI=1` whenever its output is shared; it then numbers accounts and stores instead of naming them.
 - Never print or copy credential values from `.env` or `apps/web/.env.local`.
+- Work with `IPOS_REAL_API=off`: every command then answers from `.ipos-snapshot/`, calls iPOS not at all, writes into `mock-local` and refuses `live-local`. Build the snapshot once with `IPOS_REAL_API=off pnpm --filter @fnb/jobs fnb -- ipos-snapshot from-db --tenant live-local`, then load `mock-local` with `IPOS_REAL_API=off pnpm db:load-real`. Switch to `on` only when real data is needed; real runs then refresh the snapshot.
 
 ## 2. Repository layout
 
@@ -214,6 +217,8 @@ These suites skip unless their variables are set. They read the shell environmen
 | Live settings specs (`apps/web/e2e/live/settings-*.spec.ts`) | `apps/web/.env.local`; `E2E_DATABASE_URL` optional (the local stack when unset, loopback only) | `pnpm --filter @fnb/web test:e2e -- --project=live` |
 | Live export spec (`apps/web/e2e/live/exports.spec.ts`) | `apps/web/.env.local`; `E2E_DATABASE_URL` as above for its fixture tenant. With `E2E_LOGIN_EMAIL` and `E2E_LOGIN_PASSWORD`, and `E2E_TENANT_SLUG` for a login with more than one tenant, it signs in as that login instead (`liveLogin()` in `apps/web/e2e/support/local-stack.ts`) and exports the last complete month of its tenant read-only, compared with `export_control_totals`; the personal-data and role tests then skip | `E2E_PORT_OFFSET=110 pnpm --filter @fnb/web exec playwright test --project=live e2e/live/exports.spec.ts` |
 | iPOS live | `POS_ACCOUNTS_JSON` with an application key, from `.env` | `pnpm --filter @fnb/connector-ipos test:live`; prints counts and timings only |
+| iPOS snapshot, offline bootstrap (`apps/jobs/test/integration/ipos-snapshot-bootstrap.test.ts`) | `DATABASE_URL`; a synthetic snapshot in a temporary folder, tenants `it-snap-…` and `it-real-…` | `pnpm --filter @fnb/jobs test` |
+| iPOS snapshot fidelity, read-only (`apps/jobs/test/integration/ipos-snapshot-fidelity.test.ts`) | `DATABASE_URL` and a `live-local` tenant; prints counts only | `pnpm --filter @fnb/jobs test` |
 
 The sync and CLI integration tests create their own tenants (slugs starting `it-`) and delete them at the end.
 
@@ -335,6 +340,7 @@ Follow section 5. Before writing it, check [status.md](status.md) for work in pr
 2. CI runs `node scripts/function-imports.mjs --check` and `deno check index.ts` (Deno v2.7.3); `deploy-functions.yml` runs the check before every deploy.
 3. The script refuses a subpath import of an npm package (`name/sub`) until it learns that import, and an npm package that resolves to two versions in different packages.
 4. A push to `main` that touches those packages' `src/` redeploys the function (`deploy-functions.yml`).
+5. The local stack mounts each file of the import map when it starts, so a file added to the graph later is missing from the served function (`Module not found` at boot) until `pnpm db:stop` and `pnpm db:start` restart the stack; both keep the data.
 
 ### Add a CLI command
 

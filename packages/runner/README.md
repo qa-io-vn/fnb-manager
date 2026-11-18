@@ -10,11 +10,13 @@ Last updated 2026-11-12
 |---|---|
 | Account entries | `parseAccountEntries`, `accountEntrySchema` (a union of `iposAccountSchema` and `mockAccountSchema`), `entryForKey`, `ACCOUNTS_VARIABLE` (`POS_ACCOUNTS_JSON`), `CREDENTIAL_FIELDS`, `AccountConfigError` |
 | Connectors | `createConnectorRegistry` (`ipos-fabi` and `mock`), `connectAccount`, `credentialsFor`, `IPOS_APP_KEY_VARIABLE`, the token stores `repositoryTokenStore` and `readOnlyTokenStore` |
+| Real or fake iPOS | `iposApiMode` reads `IPOS_REAL_API` (`on` or unset: the real API; `off`: the local snapshot; anything else an `AccountConfigError`), and `connectAccount` applies it: with `off` an `ipos-fabi` session answers from `IposSnapshots.open(key)` and never calls `fetch`, with `on` it records into `IposSnapshots.recordTo(key)` when that returns a storage. `iposModeLine`, `snapshotCoverage`, `requestCountText`; `guardIposTenant`, `sourceConflict`, `IposSourceError` and `SNAPSHOT_TENANT_SLUG` (`mock-local`) keep snapshot data and real data in separate tenants |
+| `@fnb/runner/snapshot-files` | Node only, never imported by the Edge Function: `snapshotDirectory` (`.ipos-snapshot/` or `IPOS_SNAPSHOT_DIR`), `createFileSnapshotStorage`, `createFileSnapshots` (records only into a folder that exists) and `replaceAccountSnapshot` |
 | The incremental run | `runIncrementalStore`, `markAuthFailed`, `clearAuthFailure`; the budget from `FNB_INCREMENTAL_WALL_MS` and `FNB_INCREMENTAL_CPU_MS` (`edgeFunctionBudget`, `EDGE_FUNCTION_BUDGET_LIMITS`: at most 390,000 ms wall and 2,000 ms CPU) |
 | Dead-man's switch | `DEAD_MAN_THRESHOLD_MINUTES` (90 minutes of opening time without a successful sync), `checkPreviousDayFreshness`, `isStale` |
 | Notifier | `Notifier`, `ConsoleNotifier`, `MemoryNotifier`, `notifySafely`, `NOTIFICATION_KINDS` (`run_failed`, `auth_failed`, `sync_stale`), `runFailedNotification`, `authFailedNotification`, `staleSyncNotification` |
 | Labels and secrets | `accountLabel`, `storeLabel`, `collectSecretValues`, `accountSecretValues`, `databaseUrlSecrets` |
-| `@fnb/runner/postgres` | `PostgresRunnerDatabase`: claims a single-use ticket with `app.claim_incremental_sync_ticket` and reads `app.incremental_sync_watched`, `app.sync_gap_minutes`, `app.longest_sync_gap_minutes` and whether the schedule is enabled |
+| `@fnb/runner/postgres` | `PostgresRunnerDatabase`: claims a single-use ticket with `app.claim_incremental_sync_ticket`, reads `app.incremental_sync_watched`, `app.sync_gap_minutes`, `app.longest_sync_gap_minutes` and whether the schedule is enabled, and reads or claims a tenant's iPOS source (`app.tenant_ipos_sources`, `app.claim_ipos_source`) |
 
 Since step 12b of phase 12, the CLI wraps `ConsoleNotifier` with the outbox notifier of `@fnb/notify`; the Edge Function still reports through `ConsoleNotifier` only.
 
@@ -29,7 +31,7 @@ pnpm --filter @fnb/runner run test --maxWorkers=2
 pnpm --filter @fnb/runner typecheck
 ```
 
-Unit tests in `test/unit` (accounts, budget, dead-man's switch, incremental run, notifier) run on a test bed in `test/support/bed.ts`. The SQL functions that `PostgresRunnerDatabase` calls are covered by the pgTAP files `20_incremental_schedule.sql` and `21_sync_freshness.sql`.
+Unit tests in `test/unit` (accounts, budget, dead-man's switch, incremental run, notifier, the iPOS mode and its tenant guard, the snapshot files, and the `sync-incremental` handler's answer to `IPOS_REAL_API`, which `vitest.config.ts` resolves through aliases) run on a test bed in `test/support/bed.ts` and the small snapshot of `test/support/snapshot.ts`. The SQL functions that `PostgresRunnerDatabase` calls are covered by the pgTAP files `20_incremental_schedule.sql` and `21_sync_freshness.sql`.
 
 ## Read more
 

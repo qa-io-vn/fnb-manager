@@ -76,5 +76,9 @@ export function outcomeLine(outcome: IncrementalStoreOutcome): string {
 	const days = dayCounts(summary);
 	const stopped = summary.stopped ? `, stopped by ${summary.stopped}` : "";
 	const failure = outcome.kind === "failed" ? `: ${outcome.error}` : "";
-	return `${outcome.label}: ${summary.status}${stopped} in ${seconds(summary.durationMs)}, ${days.checked} days checked, ${days.changed} changed, ${days.synced} synced, ${days.handed_off} handed off, ${summary.store.pulledSales} sales pulled, ${summary.connectorCalls} connector calls, ${outcome.httpRequests} HTTP requests, about ${summary.estimatedCpuMs} ms CPU${failure}`;
+	const requests =
+		outcome.ipos === "snapshot"
+			? `${outcome.httpRequests} iPOS snapshot requests (no network)`
+			: `${outcome.httpRequests} HTTP requests`;
+	return `${outcome.label}: ${summary.status}${stopped} in ${seconds(summary.durationMs)}, ${days.checked} days checked, ${days.changed} changed, ${days.synced} synced, ${days.handed_off} handed off, ${summary.store.pulledSales} sales pulled, ${summary.connectorCalls} connector calls, ${requests}, about ${summary.estimatedCpuMs} ms CPU${failure}`;
 }

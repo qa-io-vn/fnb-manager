@@ -28,6 +28,12 @@ import {
 } from "../context.js";
 import { resolveAccount } from "./accounts.js";
 import { windowOption } from "./dates.js";
+import {
+	guardTenant,
+	iposSnapshots,
+	printIposMode,
+	tenantFor,
+} from "./ipos.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
 import {
 	checkYesterdayFreshness,
@@ -80,7 +86,14 @@ export async function syncAccountWindow(
 	const { output } = context;
 	const label = output.label("account", index, entry.key);
 	const { repository } = context.services.db();
-	const account = await resolveAccount(repository, entry.key, request.tenant);
+	const account = await resolveAccount(
+		repository,
+		entry.key,
+		tenantFor(context, entry, request.tenant),
+	);
+	await guardTenant(context, [entry], account.tenant_id, {
+		claim: !request.dryRun,
+	});
 	if (account.status === "paused") {
 		output.line(`${label}: paused, skipped`);
 		return null;
@@ -100,6 +113,7 @@ export async function syncAccountWindow(
 			tokenStore: request.dryRun
 				? readOnlyTokenStore(repository, account.id)
 				: repositoryTokenStore(repository, account.id),
+			snapshots: iposSnapshots(context),
 		});
 	} catch (error) {
 		if (!request.dryRun) {
@@ -133,7 +147,13 @@ export async function syncAccountWindow(
 		}
 		summary = error.summary;
 	}
-	printWindowSummary(context, label, summary, session.httpRequests());
+	printWindowSummary(
+		context,
+		label,
+		summary,
+		session.httpRequests(),
+		session.ipos,
+	);
 	output.summary(windowSummaryMarkdown(index, summary));
 	await reportRunFailure(context, configured, account, summary);
 	if (request.kind === "nightly" && !request.dryRun) {
@@ -158,6 +178,10 @@ async function syncWindow(
 ): Promise<number> {
 	const request = windowRequest(values);
 	const entries = selectedEntries(context, values);
+	await printIposMode(
+		context,
+		entries.map(({ entry }) => entry),
+	);
 	if (entries.length > 1 && request.stores.length > 0) {
 		throw new UsageError(
 			"--store applies to one account; drop it or pass --account",
@@ -188,16 +212,19 @@ async function syncMaster(
 	values: OptionValues,
 ): Promise<number> {
 	const entry = accountEntry(context.env, requiredString(values, "account"));
+	await printIposMode(context, [entry]);
 	const { repository } = context.services.db();
 	const account = await resolveAccount(
 		repository,
 		entry.key,
-		stringOption(values, "tenant"),
+		tenantFor(context, entry, stringOption(values, "tenant")),
 	);
+	await guardTenant(context, [entry], account.tenant_id, { claim: true });
 	let session: ConnectorSession;
 	try {
 		session = await connectAccount(entry, context.env, {
 			tokenStore: repositoryTokenStore(repository, account.id),
+			snapshots: iposSnapshots(context),
 		});
 	} catch (error) {
 		await reportAuthFailure(
@@ -250,6 +277,7 @@ export const syncCommands: CommandSpec[] = [
 		},
 		details: [
 			"Needs DATABASE_URL (or SUPABASE_DB_URL in CI), POS_ACCOUNTS_JSON and IPOS_APP_KEY for ipos-fabi accounts.",
+			"With ipos-fabi accounts the first line names the iPOS mode. IPOS_REAL_API=off answers every iPOS request from the local snapshot, writes into mock-local unless --tenant names another tenant loaded from the snapshot, and refuses a tenant that holds real iPOS data; on (the default) refuses a tenant loaded from the snapshot.",
 			"Dates are inclusive business dates in each store's timezone and day start. One month per run keeps a backfill inside the call budget.",
 			"--kind defaults to manual, which is recorded as backfill because sync_kind has no manual label.",
 			"--account-number picks the n-th entry of POS_ACCOUNTS_JSON (1 = first), so a workflow never has to name the account; --all-accounts runs every entry in order and exits 1 when any of them failed.",

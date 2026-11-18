@@ -12,6 +12,10 @@
 		"./postgres": {
 			"types": "./src/postgres/index.ts",
 			"import": "./src/postgres/index.ts"
+		},
+		"./snapshot-files": {
+			"types": "./src/snapshot-files.ts",
+			"import": "./src/snapshot-files.ts"
 		}
 	},
 	"files": [

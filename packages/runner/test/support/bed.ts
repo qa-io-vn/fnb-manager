@@ -6,6 +6,7 @@ import {
 import type {
 	AccountEntry,
 	IncrementalTicket,
+	IposDataSource,
 	RunnerDatabase,
 } from "../../src/index.js";
 
@@ -19,6 +20,8 @@ export class FakeRunnerDatabase implements RunnerDatabase {
 	readonly tickets = new Map<string, IncrementalTicket>();
 	readonly gapQueries: { storeId: string; at: string }[] = [];
 	readonly longestQueries: { storeId: string; from: string; to: string }[] = [];
+	readonly sources = new Map<string, IposDataSource>();
+	sourcesRecordable = true;
 
 	async claimIncrementalTicket(
 		ticket: string,
@@ -52,6 +55,22 @@ export class FakeRunnerDatabase implements RunnerDatabase {
 
 	async incrementalScheduleEnabled(): Promise<boolean> {
 		return this.enabled;
+	}
+
+	async iposSource(tenantId: string): Promise<IposDataSource | null> {
+		return this.sources.get(tenantId) ?? null;
+	}
+
+	async claimIposSource(
+		tenantId: string,
+		source: IposDataSource,
+	): Promise<IposDataSource | null> {
+		if (!this.sourcesRecordable) {
+			return null;
+		}
+		const recorded = this.sources.get(tenantId) ?? source;
+		this.sources.set(tenantId, recorded);
+		return recorded;
 	}
 }
 

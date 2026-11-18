@@ -1,3 +1,4 @@
+import { type IposApiMode, requestCountText } from "@fnb/runner";
 import type { FlagCount, MasterDataSummary, WindowSummary } from "@fnb/sync";
 import type { CommandContext } from "../context.js";
 import { countsText } from "./formatting.js";
@@ -32,6 +33,7 @@ export function printWindowSummary(
 	accountLabel: string,
 	summary: WindowSummary,
 	httpRequests: number,
+	ipos: IposApiMode | null = null,
 ): void {
 	const { output } = context;
 	output.line(
@@ -69,7 +71,7 @@ export function printWindowSummary(
 		`${summary.dryRun ? "would write" : "rows written"}: ${countsText(summary.tables)}`,
 	);
 	output.line(
-		`connector calls ${summary.connectorCalls} (retries ${summary.retries}), POS HTTP requests ${httpRequests}`,
+		`connector calls ${summary.connectorCalls} (retries ${summary.retries}), ${requestCountText(httpRequests, ipos)}`,
 	);
 	printFlags(context, summary.flags);
 	output.line(`analytics refresh: ${refreshText(summary)}`);

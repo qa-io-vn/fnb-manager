@@ -17,6 +17,7 @@ import {
 	UsageError,
 } from "../context.js";
 import { resolveAccount } from "./accounts.js";
+import { iposSnapshots, printIposMode, tenantFor } from "./ipos.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
 import { selectedEntries, selectStores } from "./sync-selection.js";
 
@@ -60,6 +61,10 @@ async function syncIncremental(
 		);
 	}
 	const entries = accountEntries(context.env);
+	await printIposMode(
+		context,
+		selected.map(({ entry }) => entry),
+	);
 	const { repository, runner } = context.services.db();
 	const rows: string[] = [];
 	let failures = 0;
@@ -67,7 +72,7 @@ async function syncIncremental(
 		const account = await resolveAccount(
 			repository,
 			entry.key,
-			stringOption(values, "tenant"),
+			tenantFor(context, entry, stringOption(values, "tenant")),
 		);
 		const stores = selectStores(
 			await repository.listStores(account.id),
@@ -79,6 +84,7 @@ async function syncIncremental(
 				database: runner,
 				entries,
 				environment: context.env,
+				snapshots: iposSnapshots(context),
 				storeId: store.id,
 				notifier: context.notifier,
 				redact: context.redact,
@@ -131,6 +137,7 @@ export const syncIncrementalCommand: CommandSpec = {
 		`No Edge Function limit applies to this runner, so each store's budget defaults to ${SERVER_INCREMENTAL_BUDGET.wallClockMs / 60_000} minutes of wall time and ${SERVER_INCREMENTAL_BUDGET.cpuMs / 60_000} minutes of estimated CPU; --wall-budget-ms and --cpu-budget-ms change it (105000 and 1200 reproduce the Free-plan budget of the Edge Function). A POS call still running at the end of the wall-time budget is cut off and its day handed off.`,
 		"A store whose window lock is held by another run for more than 15 s is left alone and recorded as partial. A store that went more than 90 minutes of opening hours without a successful sync raises the dead-man's switch before the run.",
 		"A login the POS rejects marks the account auth_failed and alerts once; such an account is skipped until --retry-auth-failed or any sync window run logs in again.",
+		"IPOS_REAL_API=off replays the local iPOS snapshot into mock-local (or --tenant) and refuses a tenant that holds real iPOS data; on refuses a tenant loaded from the snapshot.",
 	],
 	run: syncIncremental,
 };

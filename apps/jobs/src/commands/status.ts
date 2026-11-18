@@ -18,6 +18,7 @@ import {
 	numberAccounts,
 } from "./account-numbers.js";
 import { ageText } from "./formatting.js";
+import { printIposMode } from "./ipos.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
 
 function storesInAccountOrder<T extends { pos_account_id: string }>(
@@ -52,6 +53,7 @@ async function status(
 	values: OptionValues,
 ): Promise<number> {
 	const { output } = context;
+	await printIposMode(context, accountEntries(context.env));
 	const { sql } = context.services.db();
 	const now = context.now();
 	const window = statusWindow(now);
@@ -136,6 +138,7 @@ export const statusCommand: CommandSpec = {
 	options: { ...HELP_OPTION, tenant: { type: "string" } },
 	details: [
 		"Needs DATABASE_URL (or SUPABASE_DB_URL).",
+		"With ipos-fabi accounts in POS_ACCOUNTS_JSON the first line names the iPOS mode that IPOS_REAL_API selects.",
 		"A run is flagged when it raised warning-level data-quality flags or left a store-day unmatched.",
 		"The open alert column lists what the incremental scheduler raised for the store and has not cleared: stale <n> min while the store is over the 90-minute dead-man threshold, dispatch failed x<n> while its scheduled calls expire unclaimed (with the last HTTP answer when there was one).",
 		`Every ${STATUS_WINDOW_DAYS}d column covers the same window, the ${STATUS_WINDOW_DAYS} days ending now: flagged and failed count the runs started in it; unmatched and checked count the sync_checks rows of the store-days that closed in it, the ${STATUS_WINDOW_DAYS} business dates ending yesterday in each store's timezone and day start (the dates the nightly run covers). Today is still open and never counted, so a store whose every day was reconciled shows ${STATUS_WINDOW_DAYS}; a day without a row was never reconciled (the connector had no control totals or the day was not synced).`,

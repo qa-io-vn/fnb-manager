@@ -48,6 +48,13 @@
 		"../../../packages/connector-ipos/src/schemas/pos-cms.js": "../../../packages/connector-ipos/src/schemas/pos-cms.ts",
 		"../../../packages/connector-ipos/src/schemas/reports.js": "../../../packages/connector-ipos/src/schemas/reports.ts",
 		"../../../packages/connector-ipos/src/schemas/sale-summary.js": "../../../packages/connector-ipos/src/schemas/sale-summary.ts",
+		"../../../packages/connector-ipos/src/snapshot/build.js": "../../../packages/connector-ipos/src/snapshot/build.ts",
+		"../../../packages/connector-ipos/src/snapshot/json.js": "../../../packages/connector-ipos/src/snapshot/json.ts",
+		"../../../packages/connector-ipos/src/snapshot/record.js": "../../../packages/connector-ipos/src/snapshot/record.ts",
+		"../../../packages/connector-ipos/src/snapshot/replay.js": "../../../packages/connector-ipos/src/snapshot/replay.ts",
+		"../../../packages/connector-ipos/src/snapshot/routes.js": "../../../packages/connector-ipos/src/snapshot/routes.ts",
+		"../../../packages/connector-ipos/src/snapshot/serve.js": "../../../packages/connector-ipos/src/snapshot/serve.ts",
+		"../../../packages/connector-ipos/src/snapshot/storage.js": "../../../packages/connector-ipos/src/snapshot/storage.ts",
 		"../../../packages/connector-ipos/src/time.js": "../../../packages/connector-ipos/src/time.ts",
 		"../../../packages/connector-mock/src/connector.js": "../../../packages/connector-mock/src/connector.ts",
 		"../../../packages/connector-mock/src/generate.js": "../../../packages/connector-mock/src/generate.ts",
@@ -79,6 +86,8 @@
 		"../../../packages/runner/src/database.js": "../../../packages/runner/src/database.ts",
 		"../../../packages/runner/src/dead-man.js": "../../../packages/runner/src/dead-man.ts",
 		"../../../packages/runner/src/incremental-run.js": "../../../packages/runner/src/incremental-run.ts",
+		"../../../packages/runner/src/ipos-mode.js": "../../../packages/runner/src/ipos-mode.ts",
+		"../../../packages/runner/src/ipos-source.js": "../../../packages/runner/src/ipos-source.ts",
 		"../../../packages/runner/src/labels.js": "../../../packages/runner/src/labels.ts",
 		"../../../packages/runner/src/notifier.js": "../../../packages/runner/src/notifier.ts",
 		"../../../packages/runner/src/report.js": "../../../packages/runner/src/report.ts",
@@ -142,6 +151,7 @@
 		"../../../packages/sync/src/store-lock.js": "../../../packages/sync/src/store-lock.ts",
 		"@fnb/connector-core": "../../../packages/connector-core/src/index.ts",
 		"@fnb/connector-ipos": "../../../packages/connector-ipos/src/index.ts",
+		"@fnb/connector-ipos/snapshot": "../../../packages/connector-ipos/src/snapshot/index.ts",
 		"@fnb/connector-mock": "../../../packages/connector-mock/src/index.ts",
 		"@fnb/core": "../../../packages/core/src/index.ts",
 		"@fnb/runner": "../../../packages/runner/src/index.ts",
@@ -232,6 +242,21 @@
 			"./common.js": "../../../packages/connector-ipos/src/schemas/common.ts",
 			"./envelope.js": "../../../packages/connector-ipos/src/schemas/envelope.ts"
 		},
+		"../../../packages/connector-ipos/src/snapshot/": {
+			"../auth.js": "../../../packages/connector-ipos/src/auth.ts",
+			"../endpoints/accounting.js": "../../../packages/connector-ipos/src/endpoints/accounting.ts",
+			"../endpoints/pos-cms.js": "../../../packages/connector-ipos/src/endpoints/pos-cms.ts",
+			"../endpoints/reports.js": "../../../packages/connector-ipos/src/endpoints/reports.ts",
+			"../http.js": "../../../packages/connector-ipos/src/http.ts",
+			"../time.js": "../../../packages/connector-ipos/src/time.ts",
+			"./build.js": "../../../packages/connector-ipos/src/snapshot/build.ts",
+			"./json.js": "../../../packages/connector-ipos/src/snapshot/json.ts",
+			"./record.js": "../../../packages/connector-ipos/src/snapshot/record.ts",
+			"./replay.js": "../../../packages/connector-ipos/src/snapshot/replay.ts",
+			"./routes.js": "../../../packages/connector-ipos/src/snapshot/routes.ts",
+			"./serve.js": "../../../packages/connector-ipos/src/snapshot/serve.ts",
+			"./storage.js": "../../../packages/connector-ipos/src/snapshot/storage.ts"
+		},
 		"../../../packages/connector-mock/src/": {
 			"./connector.js": "../../../packages/connector-mock/src/connector.ts",
 			"./generate.js": "../../../packages/connector-mock/src/generate.ts",
@@ -282,13 +307,16 @@
 			"./database.js": "../../../packages/runner/src/database.ts",
 			"./dead-man.js": "../../../packages/runner/src/dead-man.ts",
 			"./incremental-run.js": "../../../packages/runner/src/incremental-run.ts",
+			"./ipos-mode.js": "../../../packages/runner/src/ipos-mode.ts",
+			"./ipos-source.js": "../../../packages/runner/src/ipos-source.ts",
 			"./labels.js": "../../../packages/runner/src/labels.ts",
 			"./notifier.js": "../../../packages/runner/src/notifier.ts",
 			"./report.js": "../../../packages/runner/src/report.ts",
 			"./secrets.js": "../../../packages/runner/src/secrets.ts"
 		},
 		"../../../packages/runner/src/postgres/": {
-			"../database.js": "../../../packages/runner/src/database.ts"
+			"../database.js": "../../../packages/runner/src/database.ts",
+			"../ipos-source.js": "../../../packages/runner/src/ipos-source.ts"
 		},
 		"../../../packages/sync/src/": {
 			"./digest.js": "../../../packages/sync/src/digest.ts",

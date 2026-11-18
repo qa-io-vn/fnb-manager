@@ -2,6 +2,7 @@ import { bootstrapCommand } from "./bootstrap.js";
 import { datapackCommand } from "./datapack.js";
 import { digestCommand } from "./digest.js";
 import { doctorCommand } from "./doctor.js";
+import { iposSnapshotCommands } from "./ipos-snapshot.js";
 import { maskCommand } from "./mask.js";
 import { notifyCommands } from "./notify.js";
 import { notifyJobFailedCommand } from "./notify-job.js";
@@ -17,6 +18,7 @@ export const COMMANDS: readonly CommandSpec[] = [
 	onboardCommand,
 	...syncCommands,
 	bootstrapCommand,
+	...iposSnapshotCommands,
 	statusCommand,
 	doctorCommand,
 	maskCommand,

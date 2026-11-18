@@ -37,12 +37,15 @@ The CLI (`docs/sync.md`) talks to Postgres directly with the database URL and us
 | `tenant add-member` | yes | only when the login has to be created | no |
 | `onboard` | yes | no | the account's entry |
 | `sync window`, `sync master`, `sync incremental` | yes | no | the account's entry (every entry with `--all-accounts`) |
+| `ipos-snapshot from-db` | yes | no | no; it reads the database only |
 | `bootstrap` (`pnpm db:load-real`) | yes | `SUPABASE_URL` with `SUPABASE_PUBLISHABLE_KEY` to write a missing `apps/web/.env.local`, and `SUPABASE_SECRET_KEY` with `FNB_MEMBER_PASSWORD` only when the owner login has to be created | every entry |
 | `status` | yes | no | optional; when present, accounts are numbered by their position in it, as in `sync window` |
 | `doctor` | yes | no | every entry (each one logs in once) |
 | `mask-credentials`, `--help` | no | no | no |
 
 In `sync.yml` the secrets are set on the `fnb` steps only (mask, sync, status), not on the job, so checkout, the setup actions and `pnpm install` with its lifecycle scripts run without them. The job gets `SUPABASE_DB_URL`, `POS_ACCOUNTS_JSON` and `IPOS_APP_KEY`; nothing in it needs `SUPABASE_SECRET_KEY`.
+
+`IPOS_REAL_API` (`on` or `off`; unset means `on`) chooses, for every command that reaches iPOS, between the real API and the local iPOS snapshot in `.ipos-snapshot/` (`docs/sync.md`, "Real or fake iPOS"). It is not a secret and no workflow sets it, so CI, GitHub Actions and production keep calling the real API. With `off` the POS credentials and `IPOS_APP_KEY` are never sent anywhere and may be missing. `IPOS_SNAPSHOT_DIR` moves the snapshot, which holds real business data, to another folder outside the repository or below `docs/private/`.
 
 The database URL is `DATABASE_URL` locally (the local stack) and `SUPABASE_DB_URL` in CI; each side falls back to the other when its own is missing. Locally the legacy `SUPABASE_SERVICE_ROLE_KEY` printed by older `supabase start` versions is accepted when `SUPABASE_SECRET_KEY` is empty. `FNB_MEMBER_PASSWORD` gives `tenant add-member` and `bootstrap` the password of a new login without putting it on the command line; `FNB_MEMBER_EMAIL` gives `bootstrap` the owner's e-mail when `--email` is not passed. `bootstrap` compares the database URL with `SUPABASE_URL` (local or remote, and the project reference) and refuses to load into a backend the web app would not read.
 
@@ -54,6 +57,7 @@ On GitHub Actions every `fnb` run first prints `::add-mask::` for the key, e-mai
 |---|---|
 | `POS_ACCOUNTS_JSON` | `sync-incremental`: the same JSON array as the GitHub secret; the function picks the entry whose key is the store's `pos_accounts.account_key` |
 | `IPOS_APP_KEY` | `sync-incremental`, unless every entry carries `appAccessToken` |
+| `IPOS_REAL_API` | `sync-incremental`: leave it unset or `on`; the function keeps no iPOS snapshot and answers 500 to every ticket while it is `off` |
 | `FNB_DB_URL` | `sync-incremental`, optional: overrides the injected `SUPABASE_DB_URL` (the direct connection) with another session-mode string, such as the session pooler with `?sslmode=require`; never the transaction pooler, because the store lock is a session lock. The function speaks TLS to any host that is not local and refuses a URL whose `sslmode` would allow plaintext |
 | `FNB_DB_CA_CERT` | `sync-incremental`, optional: the PEM of the certificate authority of the database's TLS certificate (Project settings → Database → SSL configuration), needed only if the runtime does not trust it already. It spans several lines, so set it on its own: `pnpm exec supabase secrets set FNB_DB_CA_CERT="$(cat <ca file>)" --remote=<project ref>` |
 | `FNB_INCREMENTAL_WALL_MS`, `FNB_INCREMENTAL_CPU_MS` | `sync-incremental`, optional: the run's wall-clock and estimated-CPU budget in milliseconds, default 105000 and 1200 for the Free plan; at most 390000 (paid plans allow 400 s of wall clock) and 2000 (the CPU limit on every plan) |
@@ -69,7 +73,7 @@ The `pg_cron` schedule that calls `sync-incremental` holds no credential: each c
 
 ## Local `.env`
 
-Copy `.env.example` and fill in the local Supabase keys printed by `pnpm db:start`, the POS accounts, `IPOS_APP_KEY` (the iPOS CMS application key; the live connector tests need it), and later the publisher login used by `/strategy`. The file is gitignored; the public-safety scan (`node scripts/check-public-safe.mjs`) refuses to pass if a credential-shaped string appears in a tracked file.
+Copy `.env.example` and fill in the local Supabase keys printed by `pnpm db:start`, the POS accounts, `IPOS_APP_KEY` (the iPOS CMS application key; the live connector tests need it), and later the publisher login used by `/strategy`. Once `.ipos-snapshot/` holds a snapshot, set `IPOS_REAL_API=off` to develop without calling iPOS; the folder is gitignored like `.env` and holds real business data, so it never leaves the machine except over the private channel. The file is gitignored; the public-safety scan (`node scripts/check-public-safe.mjs`) refuses to pass if a credential-shaped string appears in a tracked file.
 
 ## Rotation
 

@@ -24,6 +24,12 @@ import {
 } from "./connectors.js";
 import type { RunnerDatabase } from "./database.js";
 import { DEAD_MAN_THRESHOLD_MINUTES, isStale } from "./dead-man.js";
+import {
+	type IposApiMode,
+	type IposSnapshots,
+	iposApiMode,
+} from "./ipos-mode.js";
+import { guardIposTenant, IposSourceError } from "./ipos-source.js";
 import { accountLabel, storeLabel } from "./labels.js";
 import {
 	authFailedNotification,
@@ -52,6 +58,7 @@ export type IncrementalStoreOutcome =
 			summary: IncrementalSummary | null;
 			minutesWithoutSync: number | null;
 			httpRequests: number;
+			ipos: IposApiMode | null;
 	  }
 	| {
 			kind: "ran";
@@ -59,6 +66,7 @@ export type IncrementalStoreOutcome =
 			summary: IncrementalSummary;
 			minutesWithoutSync: number | null;
 			httpRequests: number;
+			ipos: IposApiMode | null;
 	  };
 
 export interface IncrementalStoreRunInput {
@@ -72,6 +80,7 @@ export interface IncrementalStoreRunInput {
 	triggeredBy: string;
 	now?: () => Date;
 	fetch?: FetchLike;
+	snapshots?: IposSnapshots;
 	incremental?: IncrementalOptions;
 	retryAuthFailed?: boolean;
 	deadManThresholdMinutes?: number;
@@ -142,6 +151,29 @@ async function recordFailedRun(
 	return runId;
 }
 
+async function sourceRefusal(
+	input: IncrementalStoreRunInput,
+	tenantId: string,
+): Promise<string | null> {
+	try {
+		await guardIposTenant(
+			input.database,
+			tenantId,
+			iposApiMode(input.environment),
+			{ claim: true },
+		);
+		return null;
+	} catch (error) {
+		if (
+			error instanceof IposSourceError ||
+			error instanceof AccountConfigError
+		) {
+			return safeErrorMessage(error, input.redact);
+		}
+		throw error;
+	}
+}
+
 export async function runIncrementalStore(
 	input: IncrementalStoreRunInput,
 ): Promise<IncrementalStoreOutcome> {
@@ -162,6 +194,22 @@ export async function runIncrementalStore(
 	const skipped = skipReason(account, store, input.retryAuthFailed ?? false);
 	if (skipped) {
 		return { kind: "skipped", label, reason: skipped };
+	}
+	const numbered = entryForKey(input.entries, account.account_key);
+	if (numbered?.entry.connector === "ipos-fabi") {
+		const refused = await sourceRefusal(input, account.tenant_id);
+		if (refused !== null) {
+			return {
+				kind: "failed",
+				label,
+				stage: "config",
+				error: refused,
+				summary: null,
+				minutesWithoutSync: null,
+				httpRequests: 0,
+				ipos: null,
+			};
+		}
 	}
 	const subject: NotificationSubject = {
 		tenantId: account.tenant_id,
@@ -193,6 +241,7 @@ export async function runIncrementalStore(
 		message: string,
 		summary: IncrementalSummary | null,
 		httpRequests: number,
+		ipos: IposApiMode | null = null,
 	): Promise<IncrementalStoreOutcome> => {
 		const runId =
 			summary?.runId ??
@@ -221,10 +270,10 @@ export async function runIncrementalStore(
 			summary,
 			minutesWithoutSync,
 			httpRequests,
+			ipos,
 		};
 	};
 
-	const numbered = entryForKey(input.entries, account.account_key);
 	if (!numbered) {
 		return fail(
 			"config",
@@ -238,6 +287,7 @@ export async function runIncrementalStore(
 		session = await connectAccount(numbered.entry, input.environment, {
 			tokenStore: repositoryTokenStore(input.repository, account.id),
 			...(input.fetch ? { fetch: input.fetch } : {}),
+			...(input.snapshots ? { snapshots: input.snapshots } : {}),
 		});
 	} catch (error) {
 		const message = safeErrorMessage(error, input.redact);
@@ -279,6 +329,7 @@ export async function runIncrementalStore(
 			summary,
 			minutesWithoutSync,
 			httpRequests: session.httpRequests(),
+			ipos: session.ipos,
 		};
 	} catch (error) {
 		if (error instanceof IncrementalRunError) {
@@ -287,6 +338,7 @@ export async function runIncrementalStore(
 				error.summary.error ?? "incremental sync failed",
 				error.summary,
 				session.httpRequests(),
+				session.ipos,
 			);
 		}
 		return fail(
@@ -294,6 +346,7 @@ export async function runIncrementalStore(
 			safeErrorMessage(error, input.redact),
 			null,
 			session.httpRequests(),
+			session.ipos,
 		);
 	}
 }

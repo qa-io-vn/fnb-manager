@@ -1,4 +1,4 @@
-import { connectAccount } from "@fnb/runner";
+import { connectAccount, usesIpos } from "@fnb/runner";
 import {
 	accountStatuses,
 	openingHoursCoverage,
@@ -23,6 +23,7 @@ import {
 	syncAgeHealth,
 } from "./doctor-checks.js";
 import { ageText, hoursSince } from "./formatting.js";
+import { iposModeText, iposSnapshots, printIposMode } from "./ipos.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
 
 async function databaseChecks(context: CommandContext): Promise<DoctorCheck[]> {
@@ -78,10 +79,19 @@ async function accountChecks(context: CommandContext): Promise<DoctorCheck[]> {
 		];
 	}
 	const checks: DoctorCheck[] = [];
+	if (usesIpos(entries)) {
+		checks.push({
+			name: "iPOS API",
+			health: "green",
+			detail: (await iposModeText(context, entries)).replace(/^iPOS: /, ""),
+		});
+	}
 	for (const [index, entry] of entries.entries()) {
 		const name = `login ${context.output.label("account", index, entry.key)}`;
 		try {
-			await connectAccount(entry, context.env);
+			await connectAccount(entry, context.env, {
+				snapshots: iposSnapshots(context),
+			});
 			checks.push({
 				name,
 				health: "green",
@@ -226,6 +236,7 @@ const UNMEASURED: DoctorCheck[] = [
 ];
 
 async function doctor(context: CommandContext): Promise<number> {
+	await printIposMode(context, accountEntries(context.env));
 	const checks: DoctorCheck[] = [];
 	let databaseReachable = true;
 	try {
@@ -267,7 +278,7 @@ export const doctorCommand: CommandSpec = {
 	usage: "fnb doctor",
 	options: { ...HELP_OPTION },
 	details: [
-		"Needs DATABASE_URL (or SUPABASE_DB_URL) and POS_ACCOUNTS_JSON; every configured account logs in once.",
+		"Needs DATABASE_URL (or SUPABASE_DB_URL) and POS_ACCOUNTS_JSON; every configured account logs in once, from the local iPOS snapshot when IPOS_REAL_API=off. With ipos-fabi accounts the first line and the iPOS API check name that mode.",
 		"In CI a login and the last sync of an account listed in POS_ACCOUNTS_JSON are labelled by its position there (account 1 is the first entry); the last sync of an onboarded account missing from it is labelled other 1, other 2, … in tenant and key order, as in fnb status.",
 		"Exits 1 when any check is red. Disk and egress are reported as unavailable: only the Supabase dashboard measures them.",
 		"Sync age: green within 26 h, yellow within 72 h, red beyond. Database size is in MiB (1 MiB = 1,048,576 bytes), the unit of pg_size_pretty with which Supabase measures its 500 MB free-plan quota: yellow from 400 MiB, red from 475 MiB.",

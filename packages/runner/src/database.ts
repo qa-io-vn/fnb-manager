@@ -1,3 +1,5 @@
+import type { IposDataSource } from "./ipos-source.js";
+
 export type TicketSource = "schedule" | "manual";
 
 export interface IncrementalTicket {
@@ -17,6 +19,11 @@ export interface RunnerDatabase {
 		to: Date,
 	): Promise<number | null>;
 	incrementalScheduleEnabled(): Promise<boolean>;
+	iposSource(tenantId: string): Promise<IposDataSource | null>;
+	claimIposSource(
+		tenantId: string,
+		source: IposDataSource,
+	): Promise<IposDataSource | null>;
 }
 
 export const TICKET_PATTERN =
