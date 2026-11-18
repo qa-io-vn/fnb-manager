@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { BREVO_LIMITS, ZALO_BOT_LIMITS } from "../../../src/index.js";
 import {
 	type AlertFacts,
+	fitSubject,
+	fitToUnits,
 	renderAlert,
 	renderQueuedMessage,
+	utf16Units,
 	workflowKeyOf,
 } from "../../../src/render/index.js";
 
@@ -196,6 +200,202 @@ describe("alert render", () => {
 		expect(workflowKeyOf("Sync")).toBe("sync");
 		expect(workflowKeyOf("Migrate database")).toBe("migrate");
 		expect(workflowKeyOf("deploy_web")).toBe("deploy_web");
+		expect(workflowKeyOf("Zalo tokens")).toBe("zalo_tokens");
+		expect(workflowKeyOf(" Zalo tokens ")).toBe("zalo_tokens");
+		expect(workflowKeyOf("zalo_tokens")).toBe("zalo_tokens");
 		expect(workflowKeyOf("Something else")).toBe("other");
+		expect(
+			body(
+				renderAlert(
+					facts({
+						ruleKey: "job_failed",
+						params: {
+							workflow: "zalo_tokens",
+							conclusion: "timed_out",
+							opened_at: 1_762_653_600,
+						},
+					}),
+				),
+			),
+		).toBe(
+			'Cảnh báo: tác vụ tự động "Làm mới token Zalo" thất bại lúc 09:00 (timed_out). Mở tab Actions của kho mã để xem nhật ký.',
+		);
+	});
+});
+
+describe("Zalo alert render", () => {
+	const OPENING: [Partial<AlertFacts>, string][] = [
+		[
+			{
+				ruleKey: "zalo_token_failed",
+				params: {
+					kind: "oa",
+					brand: "brand-1",
+					reason: "refused",
+					error_code: -216,
+				},
+			},
+			"Cảnh báo: Zalo từ chối làm mới token OA của thương hiệu brand-1 (mã lỗi -216). Cấp lại bằng fnb zalo oa authorize, rồi kiểm tra bằng fnb zalo status.",
+		],
+		[
+			{
+				ruleKey: "zalo_token_failed",
+				params: {
+					kind: "developer",
+					brand: "brand-2",
+					reason: "refused",
+					error_code: -124,
+				},
+			},
+			"Cảnh báo: Zalo từ chối làm mới token nhà phát triển Mini App của thương hiệu brand-2 (mã lỗi -124). Cấp lại bằng fnb zalo zmp seed, rồi kiểm tra bằng fnb zalo status.",
+		],
+		[
+			{
+				ruleKey: "zalo_token_failed",
+				params: { kind: "oa", brand: "brand-1", reason: "not_configured" },
+			},
+			"Cảnh báo: chưa làm mới được token OA của thương hiệu brand-1 vì nơi chạy tác vụ thiếu App secret của thương hiệu. Thêm secret đó, rồi chạy lại tác vụ.",
+		],
+		[
+			{
+				ruleKey: "zalo_token_failed",
+				params: { kind: "developer", brand: "brand-1", reason: "unanswered" },
+			},
+			"Cảnh báo: Zalo không trả lời khi làm mới token nhà phát triển Mini App của thương hiệu brand-1. Token cũ không được dùng lại; lần chạy sau sẽ đọc lại trạng thái. Nếu còn lỗi, chạy fnb zalo status.",
+		],
+		[
+			{
+				ruleKey: "zalo_token_failed",
+				params: { kind: "oa", brand: "brand-1", reason: "refused" },
+			},
+			"Cảnh báo: chưa làm mới được token OA của thương hiệu brand-1. Chạy fnb zalo status để xem trạng thái.",
+		],
+		[
+			{ ruleKey: "zalo_token_failed", params: {} },
+			"Cảnh báo: chưa làm mới được token Zalo của thương hiệu ?. Chạy fnb zalo status để xem trạng thái.",
+		],
+		[
+			{
+				ruleKey: "oa_package_expiring",
+				params: {
+					days_left: 30,
+					notice_days: 30,
+					expires_on: "2026-12-09",
+					tier: "tang_truong",
+				},
+			},
+			"Cảnh báo: gói Tăng trưởng của OA hết hạn ngày 09/12/2026, còn 30 ngày. Gia hạn trong trang quản lý OA để tin nhắn qua OA không bị gián đoạn.",
+		],
+		[
+			{
+				ruleKey: "oa_package_expiring",
+				params: {
+					days_left: 7,
+					notice_days: 7,
+					expires_on: "2026-11-16",
+					tier: "toan_dien",
+				},
+			},
+			"Cảnh báo: gói Toàn diện của OA hết hạn ngày 16/11/2026, còn 7 ngày. Gia hạn trong trang quản lý OA để tin nhắn qua OA không bị gián đoạn.",
+		],
+		[
+			{
+				ruleKey: "oa_package_expiring",
+				params: {
+					days_left: 0,
+					notice_days: 7,
+					expires_on: "2026-11-09",
+					tier: "co_ban",
+				},
+			},
+			"Cảnh báo: gói Cơ bản của OA hết hạn ngày 09/11/2026. Gia hạn ngay trong trang quản lý OA để tin nhắn qua OA không bị gián đoạn.",
+		],
+		[
+			{
+				ruleKey: "zalo_webhook_unverified",
+				params: {
+					unverified: 11,
+					max_per_day: 10,
+					mode: "observe",
+					business_date: "2026-11-09",
+				},
+			},
+			"Cảnh báo: ngày 09/11/2026, webhook OA nhận 11 sự kiện sai chữ ký (ngưỡng 10 mỗi ngày). Chế độ quan sát vẫn lưu các sự kiện này; kiểm tra khóa bí mật OA trong secret Edge Function trước khi chuyển sang chế độ chặn.",
+		],
+		[
+			{
+				ruleKey: "zalo_webhook_unverified",
+				params: {
+					unverified: 1,
+					max_per_day: 0,
+					mode: "enforce",
+					business_date: "2026-11-09",
+				},
+			},
+			"Cảnh báo: ngày 09/11/2026, webhook OA từ chối 1 sự kiện sai chữ ký (ngưỡng 0 mỗi ngày). Kiểm tra khóa bí mật OA trong secret Edge Function; nếu khóa đúng, có thể có người gửi sự kiện giả.",
+		],
+		[
+			{
+				ruleKey: "zalo_webhook_unverified",
+				params: { unverified: 21, max_per_day: 20 },
+			},
+			"Cảnh báo: ngày ?, webhook OA nhận 21 sự kiện sai chữ ký (ngưỡng 20 mỗi ngày). Kiểm tra khóa bí mật OA trong secret Edge Function.",
+		],
+	];
+
+	it("renders the token, package and webhook alerts from their count-only facts", () => {
+		for (const [input, expected] of OPENING) {
+			const rendered = renderAlert(
+				facts({ ...input, storeName: null, accountName: null }),
+			);
+			expect(body(rendered)).toBe(expected);
+			expect(body(rendered)).not.toContain("Cảnh báo vận hành:");
+			expect(rendered.title).toBe("Cảnh báo vận hành từ FNB Manager");
+			expect(rendered.text).not.toMatch(LEFTOVER);
+		}
+	});
+
+	it("reminds of and resolves a token failure", () => {
+		const params = { kind: "oa", brand: "brand-1", reason: "refused" };
+		const reminder = renderAlert(
+			facts({
+				kind: "alert_reminder",
+				ruleKey: "zalo_token_failed",
+				params: { ...params, opened_at: 1_762_653_600 },
+			}),
+		);
+		expect(body(reminder)).toBe(
+			"Nhắc lại: token OA của thương hiệu brand-1 vẫn chưa được làm mới (từ 09:00 09/11/2025). Chạy fnb zalo status để xem trạng thái.",
+		);
+		expect(reminder.title).toBe("Nhắc lại cảnh báo vận hành");
+		const resolved = renderAlert(
+			facts({
+				kind: "alert_resolved",
+				templateRef: "alert.zalo_token_failed.resolved.v1",
+				params: { ...params, kind: "developer" },
+			}),
+		);
+		expect(body(resolved)).toBe(
+			"Đã khôi phục: token nhà phát triển Mini App của thương hiệu brand-1 đã được lưu lại lúc 09:05.",
+		);
+		expect(resolved.title).toBe("Đã khôi phục");
+	});
+
+	it("fits every channel without truncation", () => {
+		for (const [input] of OPENING) {
+			for (const kind of ["alert", "alert_reminder"] as const) {
+				const rendered = renderAlert(facts({ ...input, kind }));
+				expect(utf16Units(rendered.text)).toBeLessThanOrEqual(
+					ZALO_BOT_LIMITS.maxTextUnits,
+				);
+				expect(fitToUnits(rendered.text, ZALO_BOT_LIMITS.maxTextUnits)).toBe(
+					rendered.text,
+				);
+				expect(fitSubject(rendered.title, BREVO_LIMITS.maxSubjectChars)).toBe(
+					rendered.title,
+				);
+				expect(rendered.text.split("\n")[0]).not.toMatch(/₫|\d{1,3}(\.\d{3})+/);
+			}
+		}
 	});
 });

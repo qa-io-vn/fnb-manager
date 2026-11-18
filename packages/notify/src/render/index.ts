@@ -27,6 +27,7 @@ export {
 	STORE_DAY_STATES,
 	type StoreDayState,
 } from "../digest/model.js";
+export { EN_MESSAGES } from "../messages/en.js";
 export {
 	CHANNEL_WORDS,
 	NOTICE_TEMPLATE,

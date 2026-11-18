@@ -34,6 +34,7 @@ export const WORKFLOW_KEYS = [
 	"deploy_functions",
 	"notify",
 	"workflows_active",
+	"zalo_tokens",
 	"other",
 ] as const;
 
@@ -47,6 +48,7 @@ const WORKFLOW_NAMES: Readonly<Record<string, WorkflowKey>> = {
 	"Deploy Edge Functions": "deploy_functions",
 	Notify: "notify",
 	"Scheduled workflows active": "workflows_active",
+	"Zalo tokens": "zalo_tokens",
 };
 
 export function workflowKeyOf(name: string): WorkflowKey {
@@ -89,6 +91,27 @@ const REASON_KEYS: ReadonlySet<string> = new Set([
 	"account_under_validation",
 ]);
 
+const CASH_REASON_KEYS: readonly (readonly [string, MessageKey])[] = [
+	["over_abs", "alert.cash_count_variance.reason.absolute"],
+	["over_rel", "alert.cash_count_variance.reason.relative"],
+	["over_z", "alert.cash_count_variance.reason.z_score"],
+];
+
+const TOKEN_KINDS: ReadonlySet<string> = new Set(["oa", "developer"]);
+
+const OA_TIERS: ReadonlySet<string> = new Set([
+	"co_ban",
+	"tieu_chuan",
+	"tang_truong",
+	"toan_dien",
+]);
+
+const WEBHOOK_MODE_KEYS: Readonly<Record<string, MessageKey>> = {
+	observe: "alert.zalo_webhook_unverified.observe",
+	enforce: "alert.zalo_webhook_unverified.enforce",
+};
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const UNKNOWN = "?";
 const STORE_FALLBACK = "cửa hàng";
 const ACCOUNT_FALLBACK = "tài khoản POS";
@@ -122,8 +145,35 @@ function textParam(
 	return null;
 }
 
+function booleanParam(
+	params: Readonly<Record<string, unknown>>,
+	key: string,
+): boolean | null {
+	const value = params[key];
+	if (typeof value === "boolean") {
+		return value;
+	}
+	return value === "true" ? true : value === "false" ? false : null;
+}
+
 function countText(value: number | null): string {
 	return value === null ? UNKNOWN : formatViCount(value);
+}
+
+function dateText(
+	params: Readonly<Record<string, unknown>>,
+	key: string,
+): string {
+	const date = textParam(params, key);
+	return date !== null && ISO_DATE.test(date) ? formatViDate(date) : UNKNOWN;
+}
+
+function listText(items: readonly string[]): string {
+	const last = items.at(-1);
+	if (last === undefined || items.length === 1) {
+		return last ?? "";
+	}
+	return `${items.slice(0, -1).join(", ")} ${message("list.and")} ${last}`;
 }
 
 function instantParam(
@@ -200,6 +250,115 @@ function syncFailedStage(facts: AlertFacts): string {
 	const stage = textParam(facts.params, "stage");
 	const key = stage === null ? undefined : STAGE_KEYS[stage];
 	return message(key ?? "alert.sync_failed.stage.run");
+}
+
+function cashCountText(facts: AlertFacts): string {
+	const params = facts.params;
+	const shiftNumber = numberParam(params, "shift_number");
+	const shortfall = booleanParam(params, "shortfall");
+	const reasons = CASH_REASON_KEYS.filter(
+		([key]) => booleanParam(params, key) === true,
+	).map(([, reasonKey]) => message(reasonKey));
+	const values = {
+		store: store(facts),
+		shift:
+			shiftNumber !== null && Number.isInteger(shiftNumber) && shiftNumber > 0
+				? message("alert.cash_count_variance.shift", {
+						number: formatViCount(shiftNumber),
+					})
+				: message("alert.cash_count_variance.shift.unknown"),
+		date: dateText(params, "business_date"),
+		direction: message(
+			shortfall === null
+				? "alert.cash_count_variance.differs"
+				: shortfall
+					? "alert.cash_count_variance.shortfall"
+					: "alert.cash_count_variance.surplus",
+		),
+		reasons:
+			reasons.length === 0
+				? message("alert.cash_count_variance.reason.unknown")
+				: listText(reasons),
+	};
+	const recounts = numberParam(params, "recounts");
+	return recounts !== null && recounts > 0
+		? message("alert.cash_count_variance.recount", {
+				...values,
+				count: countText(recounts),
+			})
+		: message("alert.cash_count_variance", values);
+}
+
+function tokenKind(facts: AlertFacts): string | null {
+	const kind = textParam(facts.params, "kind");
+	return kind !== null && TOKEN_KINDS.has(kind) ? kind : null;
+}
+
+function zaloTokenValues(facts: AlertFacts): TemplateValues {
+	const kind = tokenKind(facts);
+	return {
+		token: message(
+			kind === null
+				? "alert.zalo_token_failed.token.unknown"
+				: (`alert.zalo_token_failed.token.${kind}` as MessageKey),
+		),
+		brand: textParam(facts.params, "brand") ?? UNKNOWN,
+	};
+}
+
+function zaloTokenText(facts: AlertFacts): string {
+	const values = zaloTokenValues(facts);
+	const kind = tokenKind(facts);
+	const code = numberParam(facts.params, "error_code");
+	switch (textParam(facts.params, "reason")) {
+		case "refused":
+			return kind === null || code === null
+				? message("alert.zalo_token_failed", values)
+				: message("alert.zalo_token_failed.refused", {
+						...values,
+						code: String(code),
+						command: message(
+							`alert.zalo_token_failed.command.${kind}` as MessageKey,
+						),
+					});
+		case "not_configured":
+			return message("alert.zalo_token_failed.not_configured", values);
+		case "unanswered":
+			return message("alert.zalo_token_failed.unanswered", values);
+		default:
+			return message("alert.zalo_token_failed", values);
+	}
+}
+
+function oaPackageText(facts: AlertFacts): string {
+	const tier = textParam(facts.params, "tier");
+	const values = {
+		tier:
+			tier !== null && OA_TIERS.has(tier)
+				? message(`alert.oa_package_expiring.tier.${tier}` as MessageKey)
+				: (tier ?? UNKNOWN),
+		date: dateText(facts.params, "expires_on"),
+	};
+	const days = numberParam(facts.params, "days_left");
+	return days === 0
+		? message("alert.oa_package_expiring.last_day", values)
+		: message("alert.oa_package_expiring", {
+				...values,
+				days: countText(days),
+			});
+}
+
+function webhookUnverifiedText(facts: AlertFacts): string {
+	const mode = textParam(facts.params, "mode");
+	return message(
+		(mode === null ? undefined : WEBHOOK_MODE_KEYS[mode]) ??
+			"alert.zalo_webhook_unverified",
+		{
+			date: dateText(facts.params, "business_date"),
+			count: countText(numberParam(facts.params, "unverified")),
+			threshold: countText(numberParam(facts.params, "max_per_day")),
+		},
+	);
 }
 
 function openingText(facts: AlertFacts): string {
@@ -282,18 +441,32 @@ function openingText(facts: AlertFacts): string {
 				attempts: countText(numberParam(params, "attempts") ?? 5),
 			});
 		}
+		case "cash_count_variance":
+			return cashCountText(facts);
+		case "zalo_token_failed":
+			return zaloTokenText(facts);
+		case "oa_package_expiring":
+			return oaPackageText(facts);
+		case "zalo_webhook_unverified":
+			return webhookUnverifiedText(facts);
 		default:
 			return message("alert.generic", { rule });
 	}
 }
 
 function reminderText(facts: AlertFacts): string {
-	if (ruleOf(facts) === "sync_stale") {
+	const rule = ruleOf(facts);
+	if (rule === "sync_stale" || rule === "zalo_token_failed") {
 		const opened = instantParam(facts.params, "opened_at") ?? facts.at;
-		return message("alert.sync_stale.reminder", {
-			store: store(facts),
-			...clock(facts, opened),
-		});
+		return rule === "sync_stale"
+			? message("alert.sync_stale.reminder", {
+					store: store(facts),
+					...clock(facts, opened),
+				})
+			: message("alert.zalo_token_failed.reminder", {
+					...zaloTokenValues(facts),
+					...clock(facts, opened),
+				});
 	}
 	return openingText(facts);
 }
@@ -313,6 +486,11 @@ function resolvedText(facts: AlertFacts): string {
 			});
 		case "nightly_missing":
 			return message("alert.nightly_missing.resolved", {
+				time: formatClockTime(resolvedAt, facts.readerTimezone),
+			});
+		case "zalo_token_failed":
+			return message("alert.zalo_token_failed.resolved", {
+				...zaloTokenValues(facts),
 				time: formatClockTime(resolvedAt, facts.readerTimezone),
 			});
 		default:

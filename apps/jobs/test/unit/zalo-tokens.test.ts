@@ -9,9 +9,12 @@ import {
 	redirectUri,
 	refreshLine,
 	statusLines,
-	zaloMaskCommands,
-	zaloSecretVariables,
 } from "../../src/commands/zalo-tokens.js";
+import {
+	collectSecrets,
+	maskCommands,
+	zaloSecretVariables,
+} from "../../src/config/secrets.js";
 import { UsageError } from "../../src/context.js";
 import { capture } from "../support/capture.js";
 
@@ -185,16 +188,50 @@ describe("masking registration", () => {
 			"ZALO_APP_SECRET_BRAND_1",
 			"ZALO_ZMP_REFRESH_TOKEN",
 		]);
-		expect(zaloMaskCommands(environment)).toEqual([
+		expect(maskCommands(collectSecrets(environment))).toEqual([
 			"::add-mask::synthetic-app-secret-%25-value",
 			"::add-mask::synthetic-zmp-refresh-token",
 		]);
 	});
 
-	it("registers nothing outside GitHub Actions", () => {
-		expect(
-			zaloMaskCommands({ ...environment, GITHUB_ACTIONS: undefined }),
-		).toEqual([]);
+	it("leaves addresses, host names and timeouts of the local loop unmasked", () => {
+		const accessKey = ["synthetic", "access", "key", "0123456789"].join("-");
+		const oaSecret = ["synthetic", "oa", "secret", "2"].join("-");
+		const local = {
+			ZALO_OA_SECRET_BRAND_2: ` ${oaSecret}\n`,
+			ZALO_LOCAL_ACCESS_KEY: accessKey,
+			ZALO_LOCAL_SUPABASE_URL: "http://127.0.0.1:54321",
+			ZALO_LOCAL_SESSION_URL: "http://127.0.0.1:54399",
+			ZALO_LOCAL_TUNNEL_HOST: "synthetic-tunnel.example.invalid",
+			ZALO_HTTP_TIMEOUT_MS: "1500000",
+			ZALO_LOCAL_DEV: "1",
+		};
+		const masked = zaloSecretVariables(local);
+		expect(masked).toHaveLength(2);
+		expect(masked[0]).toBe("ZALO_LOCAL_ACCESS_KEY");
+		expect(masked[1]).toBe("ZALO_OA_SECRET_BRAND_2");
+		const secrets = collectSecrets(local);
+		expect(secrets).toEqual(expect.arrayContaining([accessKey, oaSecret]));
+		expect(secrets.join("\n")).not.toContain("127.0.0.1");
+		expect(secrets).not.toContain("1500000");
+	});
+
+	it("masks them first with fnb mask-credentials, and nothing outside GitHub Actions", async () => {
+		const masked = await fnb(["mask-credentials"], environment);
+		expect(masked.code).toBe(0);
+		expect(masked.stdout.split("\n").slice(0, 3)).toEqual([
+			"::add-mask::synthetic-app-secret-%25-value",
+			"::add-mask::synthetic-zmp-refresh-token",
+			"masked 2 credential value(s) for the rest of the job",
+		]);
+		const local = await fnb(["mask-credentials"], {
+			...environment,
+			GITHUB_ACTIONS: "",
+		});
+		expect(local.stdout).not.toContain("::add-mask::");
+		expect(local.stdout).toContain("nothing to mask");
+		const help = await fnb(["mask-credentials", "--help"], {});
+		expect(help.stdout).toContain("Every ZALO_* value");
 	});
 
 	it("masks the Zalo secrets before anything else the command prints", async () => {

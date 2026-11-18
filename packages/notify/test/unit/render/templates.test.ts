@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	EN_MESSAGES,
 	fillTemplate,
 	message,
 	NOTICE_TEMPLATE,
@@ -194,6 +195,50 @@ describe("templates", () => {
 			"alert.job_failed.workflows_active": [],
 			"alert.channel_failed": ["label", "reason"],
 			"alert.digest_failed": ["attempts", "date"],
+			"alert.cash_count_variance": [
+				"date",
+				"direction",
+				"reasons",
+				"shift",
+				"store",
+			],
+			"alert.cash_count_variance.recount": [
+				"count",
+				"date",
+				"direction",
+				"reasons",
+				"shift",
+				"store",
+			],
+			"alert.cash_count_variance.shift": ["number"],
+			"alert.cash_count_variance.shift.unknown": [],
+			"alert.cash_count_variance.shortfall": [],
+			"alert.cash_count_variance.surplus": [],
+			"alert.cash_count_variance.differs": [],
+			"alert.cash_count_variance.reason.absolute": [],
+			"alert.cash_count_variance.reason.relative": [],
+			"alert.cash_count_variance.reason.z_score": [],
+			"alert.cash_count_variance.reason.unknown": [],
+			"alert.zalo_token_failed": ["brand", "token"],
+			"alert.zalo_token_failed.refused": ["brand", "code", "command", "token"],
+			"alert.zalo_token_failed.not_configured": ["brand", "token"],
+			"alert.zalo_token_failed.unanswered": ["brand", "token"],
+			"alert.zalo_token_failed.reminder": ["brand", "date", "time", "token"],
+			"alert.zalo_token_failed.resolved": ["brand", "time", "token"],
+			"alert.zalo_token_failed.token.oa": [],
+			"alert.zalo_token_failed.token.developer": [],
+			"alert.zalo_token_failed.token.unknown": [],
+			"alert.zalo_token_failed.command.oa": [],
+			"alert.zalo_token_failed.command.developer": [],
+			"alert.oa_package_expiring": ["date", "days", "tier"],
+			"alert.oa_package_expiring.last_day": ["date", "tier"],
+			"alert.oa_package_expiring.tier.co_ban": [],
+			"alert.oa_package_expiring.tier.tieu_chuan": [],
+			"alert.oa_package_expiring.tier.tang_truong": [],
+			"alert.oa_package_expiring.tier.toan_dien": [],
+			"alert.zalo_webhook_unverified": ["count", "date", "threshold"],
+			"alert.zalo_webhook_unverified.observe": ["count", "date", "threshold"],
+			"alert.zalo_webhook_unverified.enforce": ["count", "date", "threshold"],
 			"alert.generic": ["rule"],
 			"alert.generic.resolved": ["rule"],
 			"alert.footer": [],
@@ -204,7 +249,9 @@ describe("templates", () => {
 			"workflow.deploy_functions": [],
 			"workflow.notify": [],
 			"workflow.workflows_active": [],
+			"workflow.zalo_tokens": [],
 			"workflow.other": [],
+			"list.and": [],
 			"reason.token_invalid": [],
 			"reason.unauthorized": [],
 			"reason.no_credit": [],
@@ -225,6 +272,27 @@ describe("templates", () => {
 			expect(placeholdersOf(template).sort(), key).toEqual(
 				Object.keys(supplied[key] ?? {}).sort(),
 			);
+		}
+	});
+
+	it("keep an English catalogue with the same keys and placeholders as the Vietnamese one", () => {
+		expect(Object.keys(EN_MESSAGES).sort()).toEqual(
+			Object.keys(VI_MESSAGES).sort(),
+		);
+		for (const [key, template] of Object.entries(VI_MESSAGES)) {
+			const english = EN_MESSAGES[key as keyof typeof VI_MESSAGES];
+			expect(placeholdersOf(english).sort(), key).toEqual(
+				placeholdersOf(template).sort(),
+			);
+			expect(english.trim(), key).not.toBe("");
+			expect(english, key).toBe(english.normalize("NFC"));
+		}
+	});
+
+	it("keep the Vietnamese templates in the registry spelling", () => {
+		for (const [key, template] of Object.entries(VI_MESSAGES)) {
+			expect(template, key).not.toMatch(/hoá|huỷ|tuỳ/i);
+			expect(template, key).toBe(template.normalize("NFC"));
 		}
 	});
 

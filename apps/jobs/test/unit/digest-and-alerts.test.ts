@@ -228,6 +228,10 @@ describe("fnb notify job-failed", () => {
 			jobEventInput({ workflow: "Something new", conclusion: "failure" })
 				.workflowKey,
 		).toBe("other");
+		expect(
+			jobEventInput({ workflow: "Zalo tokens", conclusion: "failure" })
+				.workflowKey,
+		).toBe("zalo_tokens");
 	});
 
 	it("exits 2 on a usage error and 3 when no database is configured", async () => {

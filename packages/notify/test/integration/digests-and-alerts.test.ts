@@ -1,3 +1,4 @@
+import { createMockConnector } from "@fnb/connector-mock";
 import { shiftIsoDate, zonedInstant } from "@fnb/core";
 import {
 	asOfDate,
@@ -8,7 +9,11 @@ import {
 	runReport,
 } from "@fnb/reports";
 import { staleSyncNotification } from "@fnb/runner";
-import { createPostgresClient } from "@fnb/sync/postgres";
+import { SyncEngine } from "@fnb/sync";
+import {
+	createPostgresClient,
+	PostgresSyncRepository,
+} from "@fnb/sync/postgres";
 import type { Sql } from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -29,6 +34,7 @@ import {
 import {
 	correctionDelta,
 	type DigestModel,
+	formatViDate,
 	isEmptyDelta,
 	parseDigestModel,
 } from "../../src/render/index.js";
@@ -558,5 +564,176 @@ describe.skipIf(!ENABLED)("digests and alerts on the local stack", () => {
 		expect(
 			stored?.model?.stores.find((store) => store.storeId === storeB)?.state,
 		).toBe("unsettled");
+	}, 300_000);
+
+	it("cash count variance", async () => {
+		const storeId = fixture.manager.storeIds?.[0] ?? "";
+		const managerChat = `synthetic-chat-cash-${today.replaceAll("-", "")}`;
+		const managerChannel = await fixture.linkZaloBot(fixture.manager, {
+			chatId: managerChat,
+		});
+		const staff = await fixture.addMember("staff", [storeId]);
+
+		const closedAt = new Date(Date.now() - 5 * MINUTE);
+		const day = localIsoDate(closedAt, ZONE);
+		const closeMinutes = Math.floor(
+			(closedAt.getTime() - localInstant(day, 0).getTime()) / MINUTE,
+		);
+		const openMinutes = Math.max(0, closeMinutes - 180);
+		const repository = new PostgresSyncRepository(sql);
+		const [account] = await repository.findAccounts(
+			fixture.accountKey,
+			fixture.slug,
+		);
+		if (account === undefined) {
+			throw new Error("the fixture account is missing");
+		}
+		const connector = createMockConnector({
+			profile: {
+				shifts: [
+					{
+						name: "Ca thử",
+						startMinutes: openMinutes,
+						endMinutes: closeMinutes,
+					},
+				],
+			},
+		});
+		await connector.authenticate({ seed: fixture.seed, storeCount: 2 });
+		const engine = new SyncEngine({
+			repository,
+			connector,
+			calls: { sleep: async () => undefined },
+		});
+		const stores = (await repository.listStores(account.id)).filter(
+			(store) => store.id === storeId,
+		);
+		const synced = await engine.syncWindow(
+			account,
+			stores,
+			{ fromDate: day, toDate: day },
+			"manual",
+		);
+		expect(synced.status).toBe("succeeded");
+		const [shift] = await sql<
+			{ id: string; expected: string | null; number: number | null }[]
+		>`
+			select s.id::text as id, a.expected_cash_amount::text as expected, app.shift_number(s.id) as number
+			from public.shifts s
+			join public.agg_shift_cash a on a.shift_id = s.id
+			where s.store_id = ${storeId}::uuid and s.closed_at = ${localInstant(day, 0, closeMinutes)}::timestamptz
+		`;
+		expect(shift?.expected).not.toBeNull();
+		const expected = Number(shift?.expected);
+		const dedupeKey = `cash_count_variance:shift:${shift?.id ?? ""}`;
+
+		const count = (staffAmount: number, replaces: string | null = null) =>
+			asOwner(sql, staff.userId, async (transaction) => {
+				const [row] = await transaction<{ result: Record<string, unknown> }[]>`
+					select public.record_cash_count(${storeId}::uuid, ${staffAmount}::numeric, null, null, ${replaces}::uuid) as result
+				`;
+				return row?.result ?? {};
+			});
+		const reopen = (countId: string) =>
+			asOwner(sql, fixture.manager.userId, (transaction) =>
+				transaction`select public.reopen_cash_count(${countId}::uuid)`.then(
+					() => undefined,
+				),
+			);
+		const episodes = () =>
+			sql<
+				{
+					id: string;
+					state: string;
+					resolution: string | null;
+					occurrences: number;
+					facts: Record<string, unknown>;
+				}[]
+			>`
+				select id::text as id, state, resolution, occurrences, facts
+				from public.alert_events
+				where tenant_id = ${fixture.tenantId}::uuid and dedupe_key = ${dedupeKey}
+			`;
+		const alertMessages = (episodeId: string) =>
+			sql<
+				{ channel_id: string; kind: string; params: Record<string, unknown> }[]
+			>`
+				select channel_id::text as channel_id, kind, params
+				from public.outbound_messages
+				where tenant_id = ${fixture.tenantId}::uuid and alert_event_id = ${episodeId}::uuid
+			`;
+		const managerAlerts = () =>
+			chatTexts(mock, managerChat).filter((text) =>
+				text.startsWith("Cảnh báo:"),
+			);
+
+		const first = await count(expected - 60_000);
+		expect(first.matched).toBe(true);
+		expect(Object.keys(first).sort()).toEqual([
+			"business_date",
+			"cash_count_id",
+			"counted_at",
+			"matched",
+			"status",
+		]);
+		const [opened] = await episodes();
+		expect(opened?.state).toBe("open");
+		expect(Object.keys(opened?.facts ?? {}).sort()).toEqual([
+			"over_abs",
+			"over_rel",
+			"over_z",
+			"recounts",
+			"shift_number",
+			"shortfall",
+		]);
+		expect(opened?.facts.shortfall).toBe(true);
+		expect(opened?.facts.over_abs).toBe(true);
+		const queued = await alertMessages(opened?.id ?? "");
+		expect(
+			queued.filter((row) => row.channel_id === managerChannel),
+		).toHaveLength(1);
+		expect(queued.some((row) => row.channel_id === ownerChannel)).toBe(true);
+		for (const row of queued) {
+			expect(row.kind).toBe("alert");
+			expect(JSON.stringify(row.params)).not.toContain(String(expected));
+		}
+
+		const soon = new Date(Date.now() + MINUTE);
+		const quietEnds = localInstant(localIsoDate(soon, ZONE), 6, 1);
+		const deliverAt = soon.getTime() < quietEnds.getTime() ? quietEnds : soon;
+		await fixture.cycle({ at: deliverAt });
+		const delivered = managerAlerts();
+		expect(delivered).toHaveLength(1);
+		const text = delivered[0] ?? "";
+		expect(text).toContain(
+			`, Ca ${shift?.number ?? "?"} ngày ${formatViDate(day)}: tiền mặt đếm khi đóng ca thiếu so với POS, vượt ngưỡng tuyệt đối`,
+		);
+		expect(text).not.toMatch(/₫|\d{1,3}(\.\d{3})+/);
+		expect(text).not.toContain("Ca thử");
+		expect(text.length).toBeLessThanOrEqual(1900);
+
+		await reopen(String(first.cash_count_id));
+		const recount = await count(expected - 70_000, String(first.cash_count_id));
+		expect(recount.matched).toBe(true);
+		const [repeated] = await episodes();
+		expect(repeated?.id).toBe(opened?.id);
+		expect(repeated?.state).toBe("open");
+		expect(repeated?.occurrences).toBe(2);
+		expect(repeated?.facts.recounts).toBe(1);
+		expect(await alertMessages(opened?.id ?? "")).toHaveLength(queued.length);
+		await fixture.cycle({ at: new Date(deliverAt.getTime() + MINUTE) });
+		expect(managerAlerts()).toHaveLength(1);
+
+		await reopen(String(recount.cash_count_id));
+		await count(expected, String(recount.cash_count_id));
+		const all = await episodes();
+		expect(all).toHaveLength(1);
+		expect(all[0]?.state).toBe("resolved");
+		expect(all[0]?.resolution).toBe("cleared");
+		await fixture.cycle({ at: new Date(deliverAt.getTime() + 2 * MINUTE) });
+		expect(managerAlerts()).toHaveLength(1);
+		expect(chatTexts(mock, managerChat).join("\n")).not.toContain(
+			"Đã khôi phục",
+		);
 	}, 300_000);
 });

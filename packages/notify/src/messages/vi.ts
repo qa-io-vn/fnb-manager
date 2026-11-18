@@ -134,6 +134,50 @@ export const VI_MESSAGES = {
 		"Cảnh báo: kênh {label} không gửi được tin ({reason}). Kiểm tra token hoặc liên kết lại trong Cài đặt → Cảnh báo.",
 	"alert.digest_failed":
 		"Cảnh báo: chưa tạo được bản tin ngày {date} sau {attempts} lần thử.",
+	"alert.cash_count_variance":
+		"Cảnh báo: {store}, {shift} ngày {date}: tiền mặt đếm khi đóng ca {direction} so với POS, vượt ngưỡng {reasons}. Kiểm tra két; quản lý có thể mở lại lượt đếm để đếm lại.",
+	"alert.cash_count_variance.recount":
+		"Cảnh báo: {store}, {shift} ngày {date}: sau {count} lần đếm lại, tiền mặt vẫn {direction} so với POS, vượt ngưỡng {reasons}. Kiểm tra két và các khoản thu chi trong ca.",
+	"alert.cash_count_variance.shift": "Ca {number}",
+	"alert.cash_count_variance.shift.unknown": "một ca",
+	"alert.cash_count_variance.shortfall": "thiếu",
+	"alert.cash_count_variance.surplus": "dư",
+	"alert.cash_count_variance.differs": "lệch",
+	"alert.cash_count_variance.reason.absolute": "tuyệt đối",
+	"alert.cash_count_variance.reason.relative": "tương đối",
+	"alert.cash_count_variance.reason.z_score": "điểm z",
+	"alert.cash_count_variance.reason.unknown": "đã đặt",
+	"alert.zalo_token_failed":
+		"Cảnh báo: chưa làm mới được {token} của thương hiệu {brand}. Chạy fnb zalo status để xem trạng thái.",
+	"alert.zalo_token_failed.refused":
+		"Cảnh báo: Zalo từ chối làm mới {token} của thương hiệu {brand} (mã lỗi {code}). Cấp lại bằng {command}, rồi kiểm tra bằng fnb zalo status.",
+	"alert.zalo_token_failed.not_configured":
+		"Cảnh báo: chưa làm mới được {token} của thương hiệu {brand} vì nơi chạy tác vụ thiếu App secret của thương hiệu. Thêm secret đó, rồi chạy lại tác vụ.",
+	"alert.zalo_token_failed.unanswered":
+		"Cảnh báo: Zalo không trả lời khi làm mới {token} của thương hiệu {brand}. Token cũ không được dùng lại; lần chạy sau sẽ đọc lại trạng thái. Nếu còn lỗi, chạy fnb zalo status.",
+	"alert.zalo_token_failed.reminder":
+		"Nhắc lại: {token} của thương hiệu {brand} vẫn chưa được làm mới (từ {time} {date}). Chạy fnb zalo status để xem trạng thái.",
+	"alert.zalo_token_failed.resolved":
+		"Đã khôi phục: {token} của thương hiệu {brand} đã được lưu lại lúc {time}.",
+	"alert.zalo_token_failed.token.oa": "token OA",
+	"alert.zalo_token_failed.token.developer": "token nhà phát triển Mini App",
+	"alert.zalo_token_failed.token.unknown": "token Zalo",
+	"alert.zalo_token_failed.command.oa": "fnb zalo oa authorize",
+	"alert.zalo_token_failed.command.developer": "fnb zalo zmp seed",
+	"alert.oa_package_expiring":
+		"Cảnh báo: gói {tier} của OA hết hạn ngày {date}, còn {days} ngày. Gia hạn trong trang quản lý OA để tin nhắn qua OA không bị gián đoạn.",
+	"alert.oa_package_expiring.last_day":
+		"Cảnh báo: gói {tier} của OA hết hạn ngày {date}. Gia hạn ngay trong trang quản lý OA để tin nhắn qua OA không bị gián đoạn.",
+	"alert.oa_package_expiring.tier.co_ban": "Cơ bản",
+	"alert.oa_package_expiring.tier.tieu_chuan": "Tiêu chuẩn",
+	"alert.oa_package_expiring.tier.tang_truong": "Tăng trưởng",
+	"alert.oa_package_expiring.tier.toan_dien": "Toàn diện",
+	"alert.zalo_webhook_unverified":
+		"Cảnh báo: ngày {date}, webhook OA nhận {count} sự kiện sai chữ ký (ngưỡng {threshold} mỗi ngày). Kiểm tra khóa bí mật OA trong secret Edge Function.",
+	"alert.zalo_webhook_unverified.observe":
+		"Cảnh báo: ngày {date}, webhook OA nhận {count} sự kiện sai chữ ký (ngưỡng {threshold} mỗi ngày). Chế độ quan sát vẫn lưu các sự kiện này; kiểm tra khóa bí mật OA trong secret Edge Function trước khi chuyển sang chế độ chặn.",
+	"alert.zalo_webhook_unverified.enforce":
+		"Cảnh báo: ngày {date}, webhook OA từ chối {count} sự kiện sai chữ ký (ngưỡng {threshold} mỗi ngày). Kiểm tra khóa bí mật OA trong secret Edge Function; nếu khóa đúng, có thể có người gửi sự kiện giả.",
 	"alert.generic": "Cảnh báo vận hành: {rule}.",
 	"alert.generic.resolved": "Đã khôi phục: {rule}.",
 	"alert.footer": "Tắt hoặc đổi kênh nhận: Cài đặt → Cảnh báo.",
@@ -144,7 +188,9 @@ export const VI_MESSAGES = {
 	"workflow.deploy_functions": "Triển khai Edge Function",
 	"workflow.notify": "Gửi bản tin",
 	"workflow.workflows_active": "Bật lại tác vụ theo lịch",
+	"workflow.zalo_tokens": "Làm mới token Zalo",
 	"workflow.other": "Tác vụ khác",
+	"list.and": "và",
 	"reason.token_invalid": "token không hợp lệ",
 	"reason.unauthorized": "khóa API bị từ chối",
 	"reason.no_credit": "hết lượt gửi",

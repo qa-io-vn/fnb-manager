@@ -15,7 +15,6 @@ import {
 } from "@fnb/zalo/tokens";
 import type { Sql } from "postgres";
 import { findTenant } from "../admin/tenants.js";
-import { maskCommands } from "../config/secrets.js";
 import {
 	type CommandContext,
 	flag,
@@ -31,53 +30,12 @@ export const ZMP_SEED_VARIABLE = "ZALO_ZMP_REFRESH_TOKEN";
 export const REDIRECT_URI_VARIABLE = "ZALO_OAUTH_REDIRECT_URI";
 export const CALLBACK_PATH = "/functions/v1/zalo-oauth";
 
-const ZALO_VARIABLE_PATTERN = /^ZALO_[A-Z0-9_]{1,60}$/;
-const ZALO_NOT_SECRET: ReadonlySet<string> = new Set([
-	"ZALO_INTEGRATION",
-	"ZALO_LOCAL_DEV",
-	"ZALO_TENANT_ID",
-]);
-const MIN_MASKED_LENGTH = 6;
 const LOOPBACK_URL = /^http:\/\/(127\.0\.0\.1|localhost):[0-9]{1,5}(\/|$)/;
 
 const KIND_LABEL: Readonly<Record<TokenKind, string>> = {
 	oa: "OA token",
 	developer: "developer token",
 };
-
-export function zaloSecretVariables(
-	environment: Readonly<Record<string, string | undefined>>,
-): string[] {
-	return Object.keys(environment)
-		.filter(
-			(name) =>
-				ZALO_VARIABLE_PATTERN.test(name) &&
-				!ZALO_NOT_SECRET.has(name) &&
-				!name.endsWith("_BASE_URL") &&
-				name !== REDIRECT_URI_VARIABLE &&
-				(environment[name]?.trim().length ?? 0) >= MIN_MASKED_LENGTH,
-		)
-		.sort();
-}
-
-export function zaloMaskCommands(
-	environment: Readonly<Record<string, string | undefined>>,
-): string[] {
-	if (!environment.GITHUB_ACTIONS) {
-		return [];
-	}
-	return maskCommands(
-		zaloSecretVariables(environment).map(
-			(name) => environment[name]?.trim() ?? "",
-		),
-	);
-}
-
-function registerMasks(context: CommandContext): void {
-	for (const command of zaloMaskCommands(context.env)) {
-		context.output.raw(command);
-	}
-}
 
 export function alertSource(
 	environment: Readonly<Record<string, string | undefined>>,
@@ -222,7 +180,6 @@ async function runRefresh(
 	values: OptionValues,
 	kind: TokenKind,
 ): Promise<number> {
-	registerMasks(context);
 	const settings = jobSettings(context);
 	const brandKey = brandOption(values);
 	const { sql } = context.services.db();
@@ -313,7 +270,6 @@ async function authorize(
 	context: CommandContext,
 	values: OptionValues,
 ): Promise<number> {
-	registerMasks(context);
 	if (context.output.ci) {
 		throw new UsageError(
 			"fnb zalo oa authorize prints a one-time permission link; run it on the owner's machine, not in CI",
@@ -354,7 +310,6 @@ async function seedDeveloper(
 	context: CommandContext,
 	values: OptionValues,
 ): Promise<number> {
-	registerMasks(context);
 	const settings = jobSettings(context);
 	const slug = requiredString(values, "tenant");
 	const brandKey = brandOption(values);
@@ -563,7 +518,6 @@ async function status(
 	context: CommandContext,
 	values: OptionValues,
 ): Promise<number> {
-	registerMasks(context);
 	const settings = jobSettings(context);
 	const { sql } = context.services.db();
 	const tenantId = await tenantFilter(

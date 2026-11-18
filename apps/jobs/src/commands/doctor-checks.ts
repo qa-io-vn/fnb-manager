@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Sql } from "postgres";
+import { ageText } from "./formatting.js";
 
 export type Health = "green" | "yellow" | "red" | "unavailable";
 
@@ -30,6 +31,90 @@ export function databaseSizeHealth(bytes: number): Health {
 
 export function databaseSizeDetail(bytes: number): string {
 	return `${toMebibytes(bytes).toFixed(1)} MiB of the ${FREE_PLAN_DATABASE_MIB} MiB free-plan quota (upgrade trigger ${UPGRADE_TRIGGER_MIB} MiB, red from ${DATABASE_RED_MIB} MiB)`;
+}
+
+export const FREE_PLAN_STORAGE_MIB = 1024;
+export const STORAGE_UPGRADE_TRIGGER_MIB = FREE_PLAN_STORAGE_MIB * 0.8;
+export const STORAGE_RED_MIB = FREE_PLAN_STORAGE_MIB * 0.95;
+export const EXPIRED_PHOTO_PROBE = 1000;
+
+export interface PhotoStorageUse {
+	buckets: number;
+	objects: number;
+	bytes: number;
+	oldestAt: Date | null;
+	expired: number;
+}
+
+export function photoStorageHealth(bytes: number): Health {
+	const mebibytes = toMebibytes(bytes);
+	if (mebibytes >= STORAGE_RED_MIB) {
+		return "red";
+	}
+	return mebibytes >= STORAGE_UPGRADE_TRIGGER_MIB ? "yellow" : "green";
+}
+
+export function photoStorageCheck(
+	use: PhotoStorageUse | null,
+	now: Date,
+): DoctorCheck {
+	const name = "operations photo storage";
+	if (use === null) {
+		return {
+			name,
+			health: "unavailable",
+			detail: "app.ops_photo_storage is missing; apply the migrations",
+		};
+	}
+	const oldest =
+		use.oldestAt === null
+			? "no photo yet"
+			: `oldest ${ageText(use.oldestAt, now)}`;
+	const expired =
+		use.expired === 0
+			? "none past retention"
+			: `${use.expired >= EXPIRED_PHOTO_PROBE ? `at least ${EXPIRED_PHOTO_PROBE}` : use.expired} past retention (fnb photos prune removes them)`;
+	return {
+		name,
+		health: photoStorageHealth(use.bytes),
+		detail: `${toMebibytes(use.bytes).toFixed(1)} MiB in ${use.objects} photo(s) across ${use.buckets} ops- bucket(s) (${oldest}; ${expired}) of the ${FREE_PLAN_STORAGE_MIB} MiB free-plan storage quota (upgrade trigger ${STORAGE_UPGRADE_TRIGGER_MIB.toFixed(1)} MiB, red from ${STORAGE_RED_MIB.toFixed(1)} MiB)`,
+	};
+}
+
+export async function photoStorageUse(
+	sql: Sql,
+	now: Date,
+): Promise<PhotoStorageUse | null> {
+	const [probe] = await sql<{ present: boolean }[]>`
+		select to_regprocedure('app.ops_photo_storage()') is not null
+			and to_regprocedure('app.expired_ops_photos(timestamptz, integer)') is not null as present
+	`;
+	if (!probe?.present) {
+		return null;
+	}
+	const [row] = await sql<
+		{
+			buckets: number;
+			objects: string;
+			bytes: string;
+			oldest_at: Date | null;
+		}[]
+	>`
+		select count(*)::integer as buckets, coalesce(sum(s.objects), 0)::text as objects,
+			coalesce(sum(s.bytes), 0)::text as bytes, min(s.oldest_at) as oldest_at
+		from app.ops_photo_storage() s
+	`;
+	const [expired] = await sql<{ expired: number }[]>`
+		select count(*)::integer as expired
+		from app.expired_ops_photos(${now}::timestamptz, ${EXPIRED_PHOTO_PROBE}::integer)
+	`;
+	return {
+		buckets: Number(row?.buckets ?? 0),
+		objects: Number(row?.objects ?? 0),
+		bytes: Number(row?.bytes ?? 0),
+		oldestAt: row?.oldest_at ?? null,
+		expired: Number(expired?.expired ?? 0),
+	};
 }
 
 export function syncAgeHealth(hours: number | null): Health {

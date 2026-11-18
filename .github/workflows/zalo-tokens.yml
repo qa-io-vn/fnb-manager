@@ -45,6 +45,8 @@ jobs:
         if: steps.config.outputs.configured == 'true'
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          ZALO_APP_SECRET_BRAND_1: ${{ secrets.ZALO_APP_SECRET_BRAND_1 }}
+          ZALO_APP_SECRET_BRAND_2: ${{ secrets.ZALO_APP_SECRET_BRAND_2 }}
         run: node apps/jobs/bin/fnb.mjs mask-credentials
       - name: Refresh the OA tokens older than 11 hours
         if: steps.config.outputs.configured == 'true'

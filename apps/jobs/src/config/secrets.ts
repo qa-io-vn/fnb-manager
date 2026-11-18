@@ -22,6 +22,14 @@ const NOTIFY_NOT_SECRET = new Set([
 const NOTIFY_BASE_URL_PATTERN = /^NOTIFY_[A-Z0-9_]+_BASE_URL$/;
 export const FALLBACK_TARGETS_VARIABLE = "NOTIFY_FALLBACK_TARGETS";
 
+const ZALO_SECRET_PATTERN = /^ZALO_[A-Z0-9_]{1,60}$/;
+const ZALO_NOT_SECRET: ReadonlySet<string> = new Set([
+	"ZALO_INTEGRATION",
+	"ZALO_LOCAL_DEV",
+	"ZALO_TENANT_ID",
+]);
+const ZALO_SETTING_SUFFIX = /_(URL|URI|HOST|MS)$/;
+
 const MIN_MASKED_LENGTH = 6;
 
 export function notifySecretVariables(environment: Environment): string[] {
@@ -31,6 +39,18 @@ export function notifySecretVariables(environment: Environment): string[] {
 				NOTIFY_SECRET_PATTERN.test(name) &&
 				!NOTIFY_NOT_SECRET.has(name) &&
 				!NOTIFY_BASE_URL_PATTERN.test(name) &&
+				(environment[name]?.trim().length ?? 0) >= MIN_MASKED_LENGTH,
+		)
+		.sort();
+}
+
+export function zaloSecretVariables(environment: Environment): string[] {
+	return Object.keys(environment)
+		.filter(
+			(name) =>
+				ZALO_SECRET_PATTERN.test(name) &&
+				!ZALO_NOT_SECRET.has(name) &&
+				!ZALO_SETTING_SUFFIX.test(name) &&
 				(environment[name]?.trim().length ?? 0) >= MIN_MASKED_LENGTH,
 		)
 		.sort();
@@ -63,17 +83,25 @@ export function fallbackTargetSecrets(raw: string | undefined): string[] {
 }
 
 export function collectSecrets(environment: Environment): string[] {
+	const zalo = zaloSecretVariables(environment);
 	const values = collectSecretValues(environment, {
-		variables: [...SECRET_VARIABLES, ...notifySecretVariables(environment)],
+		variables: [
+			...SECRET_VARIABLES,
+			...notifySecretVariables(environment),
+			...zalo,
+		],
 		databaseVariables: DATABASE_VARIABLES,
 		includeAccountKeys: isCi(environment),
 	});
 	return [
 		...new Set([
 			...values,
+			...zalo.map((name) => environment[name]?.trim() ?? ""),
 			...fallbackTargetSecrets(environment[FALLBACK_TARGETS_VARIABLE]),
 		]),
-	].sort();
+	]
+		.filter((value) => value !== "")
+		.sort();
 }
 
 export function escapeCommandData(value: string): string {

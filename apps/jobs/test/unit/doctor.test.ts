@@ -5,6 +5,8 @@ import {
 	isLocalDatabase,
 	migrationDrift,
 	pauseRiskHealth,
+	photoStorageCheck,
+	photoStorageHealth,
 	syncAgeHealth,
 } from "../../src/commands/doctor-checks.js";
 import { ageText } from "../../src/commands/formatting.js";
@@ -25,6 +27,59 @@ describe("doctor thresholds", () => {
 			"291.3 MiB of the 500 MiB free-plan quota (upgrade trigger 400 MiB, red from 475 MiB)",
 		);
 		expect(databaseSizeDetail(300_000_000)).toMatch(/^286\.1 MiB /);
+	});
+
+	it("grades operations photo storage against the free-plan storage quota", () => {
+		expect(photoStorageHealth(0)).toBe("green");
+		expect(photoStorageHealth(858_993_459)).toBe("green");
+		expect(photoStorageHealth(858_993_460)).toBe("yellow");
+		expect(photoStorageHealth(1_020_054_732)).toBe("yellow");
+		expect(photoStorageHealth(1_020_054_733)).toBe("red");
+		const now = new Date("2026-11-18T12:00:00Z");
+		expect(
+			photoStorageCheck(
+				{
+					buckets: 2,
+					objects: 345,
+					bytes: 12.34 * MIB,
+					oldestAt: new Date("2026-11-08T12:00:00Z"),
+					expired: 0,
+				},
+				now,
+			),
+		).toEqual({
+			name: "operations photo storage",
+			health: "green",
+			detail:
+				"12.3 MiB in 345 photo(s) across 2 ops- bucket(s) (oldest 10.0 d; none past retention) of the 1024 MiB free-plan storage quota (upgrade trigger 819.2 MiB, red from 972.8 MiB)",
+		});
+		const full = photoStorageCheck(
+			{
+				buckets: 1,
+				objects: 9000,
+				bytes: 980 * MIB,
+				oldestAt: new Date("2026-08-01T00:00:00Z"),
+				expired: 1000,
+			},
+			now,
+		);
+		expect(full.health).toBe("red");
+		expect(full.detail).toContain(
+			"at least 1000 past retention (fnb photos prune removes them)",
+		);
+		expect(
+			photoStorageCheck(
+				{ buckets: 0, objects: 0, bytes: 0, oldestAt: null, expired: 0 },
+				now,
+			).detail,
+		).toMatch(
+			/^0\.0 MiB in 0 photo\(s\) across 0 ops- bucket\(s\) \(no photo yet;/,
+		);
+		expect(photoStorageCheck(null, now)).toEqual({
+			name: "operations photo storage",
+			health: "unavailable",
+			detail: "app.ops_photo_storage is missing; apply the migrations",
+		});
 	});
 
 	it("grades sync age and pause risk", () => {
