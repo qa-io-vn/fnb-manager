@@ -414,6 +414,12 @@ verify_jwt = false
 import_map = "./functions/bot-webhook/deno.json"
 entrypoint = "./functions/bot-webhook/index.ts"
 
+[functions.zalo-oauth]
+enabled = true
+verify_jwt = false
+import_map = "./functions/zalo-oauth/deno.json"
+entrypoint = "./functions/zalo-oauth/index.ts"
+
 [functions.sync-incremental]
 enabled = true
 verify_jwt = false

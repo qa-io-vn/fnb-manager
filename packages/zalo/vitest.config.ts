@@ -12,8 +12,20 @@ export default defineConfig({
 				find: /^@fnb\/zalo\/testing$/,
 				replacement: source("./src/testing/index.ts"),
 			},
+			{
+				find: /^@fnb\/zalo\/tokens\/testing$/,
+				replacement: source("./src/tokens/testing.ts"),
+			},
+			{
+				find: /^@fnb\/zalo\/tokens$/,
+				replacement: source("./src/tokens/index.ts"),
+			},
 			{ find: /^@fnb\/zalo$/, replacement: source("./src/index.ts") },
 			{ find: /^@fnb\/sync$/, replacement: source("../sync/src/index.ts") },
+			{
+				find: /^@fnb\/sync\/postgres$/,
+				replacement: source("../sync/src/postgres/index.ts"),
+			},
 		],
 	},
 	test: {

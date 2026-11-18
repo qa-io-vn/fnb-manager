@@ -16,6 +16,7 @@ export const ZALO_SYNTHETIC_ENVIRONMENT_KEYS = [
 	ZALO_INTEGRATION_VARIABLE,
 	ZALO_TENANT_VARIABLE,
 	ZALO_GRAPH_BASE_URL_VARIABLE,
+	"ZALO_OAUTH_BASE_URL",
 ] as const;
 
 export class SyntheticEnvironmentError extends Error {

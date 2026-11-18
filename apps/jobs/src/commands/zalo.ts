@@ -34,6 +34,7 @@ import {
 	resolveStoreIds,
 	tenantStores,
 } from "./zalo-queries.js";
+import { zaloTokenCommands } from "./zalo-tokens.js";
 
 const FLAG_FIELDS = [
 	"name",
@@ -267,4 +268,5 @@ export const zaloCommands: CommandSpec[] = [
 		],
 		run: bind,
 	},
+	...zaloTokenCommands,
 ];

@@ -1,0 +1,62 @@
+name: Zalo tokens
+
+on:
+  schedule:
+    - cron: "23 3,15 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
+  workflow_dispatch:
+
+concurrency:
+  group: zalo-tokens
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  tokens:
+    name: Refresh the OA tokens and rotate the developer tokens
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check configuration
+        id: config
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Zalo token jobs not configured yet (SUPABASE_DB_URL missing); nothing was refreshed." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.config.outputs.configured == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.config.outputs.configured == 'true'
+      - uses: actions/setup-node@v5
+        if: steps.config.outputs.configured == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - if: steps.config.outputs.configured == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Mask credential fields
+        if: steps.config.outputs.configured == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node apps/jobs/bin/fnb.mjs mask-credentials
+      - name: Refresh the OA tokens older than 11 hours
+        if: steps.config.outputs.configured == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          ZALO_APP_SECRET_BRAND_1: ${{ secrets.ZALO_APP_SECRET_BRAND_1 }}
+          ZALO_APP_SECRET_BRAND_2: ${{ secrets.ZALO_APP_SECRET_BRAND_2 }}
+        run: node apps/jobs/bin/fnb.mjs zalo oa refresh
+      - name: Rotate the Mini App developer tokens older than 20 hours
+        if: steps.config.outputs.configured == 'true' && !cancelled()
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          ZALO_APP_SECRET_BRAND_1: ${{ secrets.ZALO_APP_SECRET_BRAND_1 }}
+          ZALO_APP_SECRET_BRAND_2: ${{ secrets.ZALO_APP_SECRET_BRAND_2 }}
+        run: node apps/jobs/bin/fnb.mjs zalo zmp rotate

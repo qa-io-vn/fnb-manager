@@ -53,6 +53,9 @@ importers:
       '@fnb/sync':
         specifier: workspace:^
         version: link:../../packages/sync
+      '@fnb/zalo':
+        specifier: workspace:^
+        version: link:../../packages/zalo
       '@supabase/supabase-js':
         specifier: ^2.119.0
         version: 2.119.0

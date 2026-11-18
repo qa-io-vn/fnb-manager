@@ -20,6 +20,7 @@
 		"@fnb/reports": "workspace:^",
 		"@fnb/runner": "workspace:^",
 		"@fnb/sync": "workspace:^",
+		"@fnb/zalo": "workspace:^",
 		"@supabase/supabase-js": "^2.119.0",
 		"postgres": "^4.1.0",
 		"zod": "^4.6.7"

@@ -1,7 +1,7 @@
 {
 	"name": "@fnb/zalo",
 	"version": "0.1.0",
-	"description": "The Zalo platform side of FNB Manager: the app-secret proof, a timed HTTP client, the graph me and me/info calls, the Supabase calls of the sign-in functions, the ZALO_INTEGRATION gate and a local mock of Zalo",
+	"description": "The Zalo platform side of FNB Manager: the app-secret proof, a timed HTTP client, the graph me and me/info calls, the Supabase calls of the sign-in functions, the OA authorisation with PKCE and the token jobs, the ZALO_INTEGRATION gate and a local mock of Zalo",
 	"license": "MIT",
 	"type": "module",
 	"sideEffects": false,
@@ -9,6 +9,14 @@
 		".": {
 			"types": "./src/index.ts",
 			"import": "./src/index.ts"
+		},
+		"./tokens": {
+			"types": "./src/tokens/index.ts",
+			"import": "./src/tokens/index.ts"
+		},
+		"./tokens/testing": {
+			"types": "./src/tokens/testing.ts",
+			"import": "./src/tokens/testing.ts"
 		},
 		"./testing": {
 			"types": "./src/testing/index.ts",
