@@ -70,7 +70,7 @@ describe("staff Mini App shell", () => {
 		expect(screen.getAllByRole("button", { name: "Thử lại" })).toHaveLength(1);
 	});
 
-	it("opens the first of at most four tabs and shows a plain state on the others", async () => {
+	it("opens the first of at most four tabs, the shift's tasks under Ca làm and a plain state under Thông báo", async () => {
 		renderApp("bound");
 		const navigation = await screen.findByRole("navigation", {
 			name: "Điều hướng chính",
@@ -87,9 +87,36 @@ describe("staff Mini App shell", () => {
 			await screen.findByRole("heading", { name: "Xin chào, Thành viên thử" }),
 		).toBeInTheDocument();
 		fireEvent.click(buttons[1] as HTMLElement);
+		expect(await screen.findByTestId("shift-board")).toBeInTheDocument();
+		expect(
+			screen.getByRole("heading", { level: 1, name: "Ca làm" }),
+		).toBeInTheDocument();
+		fireEvent.click(buttons[2] as HTMLElement);
 		expect(await screen.findByTestId("plain-state")).toHaveTextContent(
 			"Chưa có nội dung ở mục này.",
 		);
+	});
+
+	it("shows the checklist due and the shift close on the home, each opening Ca làm", async () => {
+		renderApp("bound");
+		const checklist = await screen.findByTestId("home-card-checklist");
+		expect(await screen.findByTestId("home-card-close")).toHaveTextContent(
+			"Chưa đếm tiền hôm nay.",
+		);
+		const open = within(checklist).getByRole("button");
+		const opensRun = open.textContent === "Mở danh sách";
+		fireEvent.click(open);
+		expect(
+			await screen.findByTestId(opensRun ? "checklist-run" : "shift-board"),
+		).toBeInTheDocument();
+		fireEvent.click(
+			within(
+				screen.getByRole("navigation", { name: "Điều hướng chính" }),
+			).getByRole("button", { name: "Trang chủ" }),
+		);
+		const close = await screen.findByTestId("home-card-close");
+		fireEvent.click(within(close).getByRole("button", { name: "Đóng ca" }));
+		expect(await screen.findByTestId("close-count")).toBeInTheDocument();
 	});
 
 	it("speaks English when Zalo is set to English", async () => {

@@ -47,13 +47,15 @@ export const MINI_APP_SESSIONS = ["stand-in", "local"] as const;
 export type MiniAppSession = (typeof MINI_APP_SESSIONS)[number];
 
 export const LOCAL_SESSION_URL_VARIABLE = "ZALO_LOCAL_SESSION_URL";
+export const LOCAL_PHONE_URL_VARIABLE = "ZALO_LOCAL_PHONE_URL";
 export const LOCAL_ACCESS_TOKEN_VARIABLE = "ZALO_LOCAL_ACCESS_TOKEN";
 export const LOCAL_ACCESS_KEY_VARIABLE = "ZALO_LOCAL_ACCESS_KEY";
 export const LOCAL_TUNNEL_HOST_VARIABLE = "ZALO_LOCAL_TUNNEL_HOST";
 export const LOCAL_SUPABASE_URL_VARIABLE = "ZALO_LOCAL_SUPABASE_URL";
 export const WORKSPACE_SUPABASE_URL_VARIABLE = "SUPABASE_URL";
 export { LOCAL_SUPABASE_PATH };
-export const LOCAL_SUPABASE_SERVICES = ["rest", "auth"] as const;
+export const LOCAL_SUPABASE_SERVICES = ["rest", "auth", "storage"] as const;
+export const LOCAL_PHONE_PATH = `${LOCAL_SUPABASE_PATH}/functions/v1/zalo-phone`;
 const LOOPBACK_URL = /^http:\/\/(127\.0\.0\.1|localhost):[0-9]{1,5}$/;
 
 export const VIRTUAL_APP_CONFIG = "virtual:mini-app-config";
@@ -79,6 +81,7 @@ export const SYNTHETIC_CONFIGURATION_PATH = join(
 
 export interface LocalSessionSettings {
 	readonly functionUrl: string;
+	readonly phoneUrl?: string;
 	readonly accessToken: string;
 	readonly supabaseUrl: string | null;
 	readonly access: LocalAccess;
@@ -174,6 +177,12 @@ function localSessionSettings(
 			`VITE_ZALO_SESSION=local needs ${LOCAL_SESSION_URL_VARIABLE}, the loopback address of the local zalo-session such as http://127.0.0.1:5745`,
 		);
 	}
+	const phoneUrl = env[LOCAL_PHONE_URL_VARIABLE]?.trim() ?? "";
+	if (phoneUrl !== "" && !LOOPBACK_URL.test(phoneUrl)) {
+		throw new Error(
+			`${LOCAL_PHONE_URL_VARIABLE} must be the loopback address of the local zalo-phone such as http://127.0.0.1:5746`,
+		);
+	}
 	const accessToken = env[LOCAL_ACCESS_TOKEN_VARIABLE]?.trim() ?? "";
 	if (accessToken === "") {
 		throw new Error(
@@ -197,6 +206,7 @@ function localSessionSettings(
 				: null;
 	return {
 		functionUrl,
+		...(phoneUrl === "" ? {} : { phoneUrl }),
 		accessToken,
 		supabaseUrl: proxied,
 		access: localAccess(env),
@@ -369,6 +379,15 @@ export function localSessionProxy(local: LocalSessionSettings): {
 	return {
 		proxy: {
 			[ZALO_SESSION_PATH]: { target: local.functionUrl, changeOrigin: true },
+			...(local.phoneUrl === undefined
+				? {}
+				: {
+						[LOCAL_PHONE_PATH]: {
+							target: local.phoneUrl,
+							changeOrigin: true,
+							rewrite: withoutSupabasePath,
+						} satisfies LocalProxyRoute,
+					}),
 			...(supabaseUrl === null
 				? {}
 				: Object.fromEntries(

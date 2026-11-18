@@ -10,8 +10,10 @@ import {
 	STAND_IN_CONTACT,
 	STAND_IN_NOTICE,
 	STAND_IN_REJECTED_CODE,
+	STAND_IN_STORES,
 	STAND_IN_WAIT_CODE,
 	standInSettingsFrom,
+	standInStoreIds,
 } from "../../src/session/stand-in";
 import type { StoredSession } from "../../src/session/types";
 import {
@@ -268,6 +270,38 @@ describe("session helpers", () => {
 		expect(parseSessionAnswer({ status: "bound" })).toBeNull();
 		expect(parseSessionAnswer([])).toBeNull();
 	});
+
+	it("keeps the brand's store ids of a bound answer next to the names, and still reads a session without them", () => {
+		const withIds = {
+			...boundAnswer(NOW_MS / 1000 + 3600),
+			member: {
+				...member,
+				stores: ["Cửa hàng A", "Cửa hàng B"],
+				store_ids: ["store-a", "store-b"],
+			},
+		};
+		const answer = parseSessionAnswer(withIds);
+		expect(answer?.status === "bound" && answer.session.member).toEqual({
+			displayName: "Thành viên thử",
+			role: "manager",
+			stores: ["Cửa hàng A", "Cửa hàng B"],
+			storeIds: ["store-a", "store-b"],
+		});
+		for (const storeIds of ["store-a", [7], [""], null]) {
+			expect(
+				parseSessionAnswer({
+					...withIds,
+					member: { ...withIds.member, store_ids: storeIds },
+				}),
+			).toBeNull();
+		}
+		const storage = createMemoryStorage();
+		const store = createSessionStore(storage);
+		if (answer?.status === "bound") store.write(answer.session);
+		expect(store.read()?.member.storeIds).toEqual(["store-a", "store-b"]);
+		store.write(session);
+		expect(store.read()?.member).toEqual(session.member);
+	});
 });
 
 describe("stand-in session", () => {
@@ -311,9 +345,26 @@ describe("stand-in session", () => {
 			contact: STAND_IN_CONTACT,
 		});
 		const bound = await standIn.bind("123456");
-		expect(bound.status === "signed-in" && bound.session.member).toEqual(
-			standInMember,
-		);
+		expect(bound.status === "signed-in" && bound.session.member).toEqual({
+			...standInMember,
+			storeIds: [STAND_IN_STORES[0]?.id],
+		});
+	});
+
+	it("answers the stand-in stores' ids next to their names, or the member's own ids", () => {
+		expect(STAND_IN_STORES.map((store) => store.name)).toEqual([
+			"Cửa hàng Mẫu 1",
+			"Cửa hàng Mẫu 2",
+		]);
+		expect(
+			standInStoreIds({
+				...standInMember,
+				stores: ["Cửa hàng Mẫu 2", "Cửa hàng Mẫu 1", "Cửa hàng khác"],
+			}),
+		).toEqual([STAND_IN_STORES[1]?.id, STAND_IN_STORES[0]?.id]);
+		expect(
+			standInStoreIds({ ...standInMember, storeIds: ["store-x"] }),
+		).toEqual(["store-x"]);
 	});
 
 	it("fails like a lost network in the failed scenario", async () => {
@@ -531,9 +582,10 @@ describe("the stand-in pairing step", () => {
 			retryAfterSeconds: 900,
 		});
 		const paired = await client.pair("123456", accepted);
-		expect(paired.status === "signed-in" && paired.session.member).toEqual(
-			standInMember,
-		);
+		expect(paired.status === "signed-in" && paired.session.member).toEqual({
+			...standInMember,
+			storeIds: [STAND_IN_STORES[0]?.id],
+		});
 	});
 
 	it("asks a paired person for the notice in the notice scenario", async () => {

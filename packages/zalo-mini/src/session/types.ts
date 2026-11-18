@@ -20,6 +20,7 @@ export interface MemberProfile {
 	readonly displayName: string;
 	readonly role: MemberRole;
 	readonly stores: readonly string[];
+	readonly storeIds?: readonly string[];
 	readonly tenantId?: string;
 }
 

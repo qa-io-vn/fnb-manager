@@ -18,6 +18,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { HomeTaskSlot } from "../shift/home-slot";
 import { createHomeFormatters, type HomeFormatters } from "./format";
 import { type HomeCard, type HoursToday, homeCards } from "./model";
 import { createSampleHomeSource, sampleSettingsFrom } from "./sample";
@@ -427,6 +428,7 @@ function TasksSection({
 				{t("home.tasks", { date: formatters.date(store.today) })}
 			</h2>
 			<div className="grid grid-cols-2 gap-3">
+				<HomeTaskSlot storeId={store.id} />
 				<OpeningHoursCard hours={store.hours} />
 			</div>
 		</section>
@@ -575,6 +577,7 @@ function SignedInHome({
 		() => ({
 			role: member.role,
 			tenantId: member.tenantId ?? null,
+			storeIds: member.storeIds ?? null,
 			storeNames: member.stores,
 		}),
 		[member],

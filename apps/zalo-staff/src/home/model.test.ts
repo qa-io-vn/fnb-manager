@@ -1,13 +1,16 @@
+import { STAND_IN_STORES } from "@fnb/zalo-mini";
 import { describe, expect, it } from "vitest";
 import {
 	brandStores,
 	homeCards,
 	hoursOn,
+	memberStores,
 	readOpeningHours,
 	revenueAccess,
 	storeDays,
 	weekdayOf,
 } from "./model";
+import { SAMPLE_STORES } from "./sample";
 
 describe("the home's revenue access", () => {
 	it("gives owners, managers and viewers every card whatever the staff level", () => {
@@ -49,6 +52,33 @@ describe("the home's stores and days", () => {
 			{ name: "C" },
 		]);
 		expect(brandStores(stores, [])).toEqual([]);
+	});
+
+	it("picks the member's stores by id, whatever their names", () => {
+		const stores = [
+			{ id: "a", name: "A" },
+			{ id: "b", name: "Same" },
+			{ id: "c", name: "Same" },
+		];
+		expect(memberStores(stores, ["c", "a"], ["Same", "A"])).toEqual([
+			{ id: "a", name: "A" },
+			{ id: "c", name: "Same" },
+		]);
+		expect(memberStores(stores, [], ["A"])).toEqual([]);
+	});
+
+	it("samples the stand-in's stores, so the stand-in session's ids find them", () => {
+		expect(
+			SAMPLE_STORES.map((store) => ({ id: store.id, name: store.name })),
+		).toEqual(STAND_IN_STORES);
+	});
+
+	it("matches names only for a session minted before the store ids", () => {
+		const stores = [
+			{ id: "a", name: "A" },
+			{ id: "b", name: "B" },
+		];
+		expect(memberStores(stores, null, ["B"])).toEqual([{ id: "b", name: "B" }]);
 	});
 
 	it("counts the business day from each store's day start, as the database does", () => {

@@ -7,12 +7,22 @@ import {
 import { HomeScreen } from "./home/home-screen";
 import { HomeIcon, NoticeIcon, ProfileIcon, ShiftIcon } from "./icons";
 import { ProfileScreen } from "./profile/profile-screen";
+import { ShiftTaskCards } from "./shift/home-cards";
+import { HomeTasksContext } from "./shift/home-slot";
+import { ShiftScreen } from "./shift/shift-screen";
 
 export { EntryGate } from "./onboarding/entry-gate";
 
 export const routes: readonly MiniAppRoute[] = [
-	{ path: "/", element: <HomeScreen /> },
-	{ path: "/ca-lam", element: <PlainState /> },
+	{
+		path: "/",
+		element: (
+			<HomeTasksContext.Provider value={ShiftTaskCards}>
+				<HomeScreen />
+			</HomeTasksContext.Provider>
+		),
+	},
+	{ path: "/ca-lam", element: <ShiftScreen /> },
 	{ path: "/thong-bao", element: <PlainState /> },
 	{ path: "/ca-nhan", element: <ProfileScreen /> },
 ];

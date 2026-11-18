@@ -1,7 +1,7 @@
 import {
-	brandStores,
 	DEFAULT_REVENUE_VISIBILITY,
 	isRevenueVisibility,
+	memberStores,
 	type OpeningHours,
 	type RevenueVisibility,
 	readOpeningHours,
@@ -94,7 +94,11 @@ export function createSampleHomeSource(settings: SampleSettings): HomeSource {
 		async load(query, now) {
 			if (settings.delayMs > 0) await wait(settings.delayMs);
 			const access = revenueAccess(query.role, settings.visibility);
-			const stores = brandStores(SAMPLE_STORES, query.storeNames);
+			const stores = memberStores(
+				SAMPLE_STORES,
+				query.storeIds,
+				query.storeNames,
+			);
 			const figures: StoreFigures = {
 				totals: new Map(
 					stores.map((store) => [

@@ -32,6 +32,13 @@ export const STAND_IN_NEW_NOTICE: StaffNotice = {
 		"Phiên bản mới của văn bản giữ chỗ, không phải văn bản pháp lý.",
 	publishedAt: "2026-11-02T00:00:00+00:00",
 };
+export const STAND_IN_STORES: readonly {
+	readonly id: string;
+	readonly name: string;
+}[] = [
+	{ id: "00000000-0000-4000-8000-0000000005a1", name: "Cửa hàng Mẫu 1" },
+	{ id: "00000000-0000-4000-8000-0000000005a2", name: "Cửa hàng Mẫu 2" },
+];
 export const STAND_IN_CONTACT =
 	"Văn bản liên hệ giữ chỗ của bản thử: hãy hỏi quản lý cửa hàng tại quầy.";
 
@@ -148,6 +155,16 @@ function requestOf(init: RequestInit | undefined): StandInRequest {
 	};
 }
 
+export function standInStoreIds(member: MemberProfile): readonly string[] {
+	return (
+		member.storeIds ??
+		member.stores.flatMap((name) => {
+			const store = STAND_IN_STORES.find((entry) => entry.name === name);
+			return store === undefined ? [] : [store.id];
+		})
+	);
+}
+
 function noticeAnswer(notice: StaffNotice): Record<string, unknown> {
 	return {
 		version: notice.version,
@@ -203,6 +220,7 @@ export function createStandInSessionClient(
 				display_name: options.member.displayName,
 				role: options.member.role,
 				stores: options.member.stores,
+				store_ids: standInStoreIds(options.member),
 				...(options.member.tenantId === undefined
 					? {}
 					: { tenant_id: options.member.tenantId }),

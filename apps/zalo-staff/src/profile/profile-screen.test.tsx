@@ -149,6 +149,23 @@ describe("the Cá nhân tab", () => {
 		expect(calls).toEqual(["linkPhone phone-token"]);
 	});
 
+	it("shows the phone the person linked before as soon as Cá nhân opens", async () => {
+		const { factory, calls } = account({
+			noticeCheck: async () => ({
+				consent: "current",
+				notice: STAND_IN_NOTICE,
+				phoneHint: "…789",
+			}),
+		});
+		renderStaffApp({ accountFor: factory });
+		const profile = await openProfile();
+		expect(
+			within(profile).getByTestId("profile-phone-state"),
+		).toHaveTextContent("Đã liên kết số …789");
+		expect(primaryActions()).toEqual(["Liên kết số điện thoại"]);
+		expect(calls).toEqual([]);
+	});
+
 	it("says so when the phone cannot be linked, and lets the person leave", async () => {
 		const { factory } = account({
 			linkPhone: async () => {

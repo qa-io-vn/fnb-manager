@@ -16,6 +16,7 @@ export type ConsentState = (typeof CONSENT_STATES)[number];
 export interface NoticeCheck {
 	readonly consent: ConsentState;
 	readonly notice: StaffNotice | null;
+	readonly phoneHint?: string;
 }
 
 export type MemberCheck =

@@ -52,6 +52,18 @@ export function brandStores<Store extends { readonly name: string }>(
 	return stores.filter((store) => names.has(store.name));
 }
 
+export function memberStores<
+	Store extends { readonly id: string; readonly name: string },
+>(
+	stores: readonly Store[],
+	memberStoreIds: readonly string[] | null,
+	memberStoreNames: readonly string[],
+): Store[] {
+	if (memberStoreIds === null) return brandStores(stores, memberStoreNames);
+	const ids = new Set(memberStoreIds);
+	return stores.filter((store) => ids.has(store.id));
+}
+
 export interface StoreClock {
 	readonly timeZone: string;
 	readonly businessDayStartMinutes: number;

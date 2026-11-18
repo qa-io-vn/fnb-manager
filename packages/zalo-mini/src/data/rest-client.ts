@@ -3,19 +3,33 @@ export const REST_TIMEOUT_MS = 15_000;
 export const REST_NETWORK_FAILURE = 0;
 
 const NAME = /^[a-z][a-z0-9_]{0,62}$/;
+const ERROR_CODE = /^([0-9A-Z]{5}|PGRST[0-9]{3})$/;
 
 export class RestError extends Error {
 	readonly status: number;
+	readonly code: string | null;
 
-	constructor(status: number) {
+	constructor(status: number, code: string | null = null) {
 		super(
 			status === REST_NETWORK_FAILURE
 				? "the data request did not complete"
-				: `the data request was answered with ${status}`,
+				: `the data request was answered with ${status}${code === null ? "" : ` (${code})`}`,
 		);
 		this.name = "RestError";
 		this.status = status;
+		this.code = code;
 	}
+}
+
+export function errorCodeOf(body: unknown): string | null {
+	if (typeof body !== "object" || body === null || Array.isArray(body))
+		return null;
+	const code = (body as Readonly<Record<string, unknown>>).code;
+	return typeof code === "string" && ERROR_CODE.test(code) ? code : null;
+}
+
+export function refusalCode(error: unknown): string | null {
+	return error instanceof RestError ? error.code : null;
 }
 
 export interface RestClientOptions {
@@ -66,10 +80,11 @@ export function createRestClient(options: RestClientOptions): RestClient {
 				throw new RestError(REST_NETWORK_FAILURE);
 			}
 			if (!response.ok) {
+				let body: unknown = null;
 				try {
-					await response.body?.cancel();
+					body = await response.json();
 				} catch {}
-				throw new RestError(response.status);
+				throw new RestError(response.status, errorCodeOf(body));
 			}
 			try {
 				return await response.json();

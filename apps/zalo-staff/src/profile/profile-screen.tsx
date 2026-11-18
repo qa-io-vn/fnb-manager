@@ -205,6 +205,8 @@ export function ProfileScreen({
 	if (state.status !== "signed-in") return null;
 	const member = state.session.member;
 	const onRoster = check !== null && check.consent !== "not_required";
+	const phoneHint = linked ? linkedHint : (check?.phoneHint ?? null);
+	const phoneLinked = linked || phoneHint !== null;
 	if (view === "phone") {
 		return (
 			<PhonePurpose
@@ -236,8 +238,8 @@ export function ProfileScreen({
 			{onRoster ? (
 				<Section title={t("profile.phone.title")} testId="profile-phone">
 					<p className="text-base text-ink" data-testid="profile-phone-state">
-						{linked
-							? t("profile.phone.linked", { hint: linkedHint ?? "" })
+						{phoneLinked
+							? t("profile.phone.linked", { hint: phoneHint ?? "" })
 							: t("profile.phone.none")}
 					</p>
 					<button

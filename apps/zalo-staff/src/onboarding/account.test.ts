@@ -94,6 +94,28 @@ describe("the member's staff notice and consent through the Data API", () => {
 		]);
 	});
 
+	it("reads the hint of a linked phone, and leaves out an unreadable one", async () => {
+		const { restAccount } = account([
+			{ consent: "current", notice, phone_hint: "…789" },
+		]);
+		expect(await restAccount.noticeCheck()).toMatchObject({
+			consent: "current",
+			phoneHint: "…789",
+		});
+		expect(
+			readNoticeCheck({
+				consent: "not_required",
+				notice: null,
+				phone_hint: "…123",
+			}),
+		).toEqual({ consent: "not_required", notice: null, phoneHint: "…123" });
+		for (const hint of [null, "", 789, "…".repeat(17)]) {
+			expect(
+				readNoticeCheck({ consent: "current", notice: null, phone_hint: hint }),
+			).toEqual({ consent: "current", notice: null });
+		}
+	});
+
 	it("accepts the notice with its version and showing time, and withdraws", async () => {
 		const { restAccount, requests } = account(["consent-id", true]);
 		await restAccount.acceptNotice({
@@ -254,5 +276,6 @@ describe("the stand-in account", () => {
 		expect((await standIn.noticeCheck()).consent).toBe("current");
 		expect(await standIn.legalDocuments()).toBe(STAND_IN_LEGAL_DOCUMENTS);
 		expect(await standIn.linkPhone("token")).toBe("…789");
+		expect((await standIn.noticeCheck()).phoneHint).toBe("…789");
 	});
 });

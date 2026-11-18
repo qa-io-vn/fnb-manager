@@ -20,19 +20,27 @@ function isMemberRole(value: unknown): value is MemberRole {
 	);
 }
 
+function isTextList(value: unknown): value is string[] {
+	return (
+		Array.isArray(value) && value.every((entry) => typeof entry === "string")
+	);
+}
+
 function readMember(value: unknown): MemberProfile | null {
 	if (!isRecord(value)) return null;
-	const { displayName, role, stores, tenantId } = value;
+	const { displayName, role, stores, storeIds, tenantId } = value;
 	if (typeof displayName !== "string" || displayName.trim() === "") return null;
 	if (!isMemberRole(role)) return null;
+	if (!isTextList(stores)) return null;
 	if (
-		!Array.isArray(stores) ||
-		!stores.every((store) => typeof store === "string")
+		storeIds !== undefined &&
+		(!isTextList(storeIds) || storeIds.some((id) => id === ""))
 	)
 		return null;
-	if (tenantId === undefined) return { displayName, role, stores };
+	const withIds = storeIds === undefined ? {} : { storeIds };
+	if (tenantId === undefined) return { displayName, role, stores, ...withIds };
 	if (typeof tenantId !== "string" || tenantId === "") return null;
-	return { displayName, role, stores, tenantId };
+	return { displayName, role, stores, ...withIds, tenantId };
 }
 
 export function readStoredSession(value: unknown): StoredSession | null {

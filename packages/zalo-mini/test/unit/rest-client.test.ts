@@ -3,6 +3,7 @@ import {
 	createRestClient,
 	REST_NETWORK_FAILURE,
 	RestError,
+	refusalCode,
 } from "../../src/data/rest-client";
 
 interface Sent {
@@ -112,6 +113,57 @@ describe("the Mini App's Data API client", () => {
 		await expect(notRows.select("tenants", {})).rejects.toMatchObject({
 			status: REST_NETWORK_FAILURE,
 		});
+	});
+
+	it("keeps the database's refusal code, and only the code, so a screen can tell refusals apart", async () => {
+		const answers: [Response, number, string | null][] = [
+			[
+				json(
+					{
+						code: "23505",
+						message:
+							"another member has this checklist open at this store today",
+						details: null,
+						hint: null,
+					},
+					409,
+				),
+				409,
+				"23505",
+			],
+			[
+				json({ code: "55000", message: "the checklist is retired" }, 500),
+				500,
+				"55000",
+			],
+			[json({ code: "42501", message: "x" }, 403), 403, "42501"],
+			[
+				json({ code: "PGRST301", message: "JWT expired" }, 401),
+				401,
+				"PGRST301",
+			],
+			[json({ code: "drop table", message: "x" }, 400), 400, null],
+			[new Response("not json", { status: 502 }), 502, null],
+		];
+		for (const [answer, status, code] of answers) {
+			const rest = createRestClient({
+				url: "/supabase",
+				publishableKey: "k",
+				accessToken: "t",
+				fetch: recorder(() => answer).send,
+			});
+			const error: unknown = await rest.rpc("start_checklist_run").then(
+				() => null,
+				(refused: unknown) => refused,
+			);
+			expect(error).toBeInstanceOf(RestError);
+			if (!(error instanceof RestError)) throw new Error("not refused");
+			expect(error.status).toBe(status);
+			expect(error.code).toBe(code);
+			expect(refusalCode(error)).toBe(code);
+			expect(error.message).not.toMatch(/member|retired|JWT|json/);
+		}
+		expect(refusalCode(new Error("x"))).toBeNull();
 	});
 
 	it("gives up after the timeout and refuses names that are not plain identifiers", async () => {

@@ -118,6 +118,7 @@ function query(role: HomeQuery["role"]): HomeQuery {
 	return {
 		role,
 		tenantId: TENANT,
+		storeIds: [STORE_2, STORE_1],
 		storeNames: ["Cửa hàng Hai", "Cửa hàng Một"],
 	};
 }
@@ -214,10 +215,28 @@ describe("the home's data from the Data API", () => {
 		expect(calls[2]?.query).not.toHaveProperty("tenant_id");
 	});
 
+	it("picks the brand's stores by id, whatever their names", async () => {
+		const { rest } = fakeRest();
+		const data = await createRestHomeSource(rest).load(
+			{
+				...query("manager"),
+				storeIds: [STORE_2],
+				storeNames: ["Cửa hàng Một", "Cửa hàng Khác"],
+			},
+			NOW,
+		);
+		expect(data.stores.map((store) => store.id)).toEqual([STORE_2]);
+		const older = await createRestHomeSource(rest).load(
+			{ ...query("manager"), storeIds: null, storeNames: ["Cửa hàng Khác"] },
+			NOW,
+		);
+		expect(older.stores.map((store) => store.id)).toEqual([OTHER_BRAND]);
+	});
+
 	it("asks for no figures when no store of the brand is in scope", async () => {
 		const { rest, calls } = fakeRest();
 		const data = await createRestHomeSource(rest).load(
-			{ ...query("manager"), storeNames: ["Cửa hàng Lạ"] },
+			{ ...query("manager"), storeIds: [] },
 			NOW,
 		);
 		expect(data.stores).toEqual([]);

@@ -153,6 +153,9 @@ export function parseSessionAnswer(value: unknown): SessionAnswer | null {
 			displayName: value.member.display_name,
 			role: value.member.role,
 			stores: value.member.stores,
+			...(value.member.store_ids === undefined
+				? {}
+				: { storeIds: value.member.store_ids }),
 			...(value.member.tenant_id === undefined
 				? {}
 				: { tenantId: value.member.tenant_id }),

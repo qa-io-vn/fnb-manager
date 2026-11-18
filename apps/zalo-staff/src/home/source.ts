@@ -1,7 +1,6 @@
 import type { MemberRole, MessageParams, RestClient } from "@fnb/zalo-mini";
 import type { HomeFormatters } from "./format";
 import {
-	brandStores,
 	calendarDateIn,
 	DEFAULT_REVENUE_VISIBILITY,
 	daysFrom,
@@ -9,6 +8,7 @@ import {
 	hoursOn,
 	type IsoDate,
 	isRevenueVisibility,
+	memberStores,
 	type OpeningHours,
 	type RevenueVisibility,
 	readOpeningHours,
@@ -48,6 +48,7 @@ export interface HomeData {
 export interface HomeQuery {
 	readonly role: MemberRole;
 	readonly tenantId: string | null;
+	readonly storeIds: readonly string[] | null;
 	readonly storeNames: readonly string[];
 }
 
@@ -268,7 +269,11 @@ export function createRestHomeSource(rest: RestClient): HomeSource {
 			]);
 			const tenant = readTenant(tenants[0]);
 			const access = revenueAccess(query.role, tenant.visibility);
-			const stores = brandStores(storeRows.map(readStore), query.storeNames);
+			const stores = memberStores(
+				storeRows.map(readStore),
+				query.storeIds,
+				query.storeNames,
+			);
 			const ids = stores.map((store) => store.id);
 			const yesterdays = [
 				...new Set(stores.map((store) => storeDays(now, store).yesterday)),

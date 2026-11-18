@@ -65,7 +65,7 @@ describe("the local session's data path", () => {
 		).toBe("http://localhost:54331");
 	});
 
-	it("proxies /supabase REST and Auth in plain local mode from the repository's .env, and exposes nothing else of it", () => {
+	it("proxies /supabase REST, Auth and Storage in plain local mode from the repository's .env, and exposes nothing else of it", () => {
 		const resolved = resolvedConfig("serve");
 		const proxy = resolved.server?.proxy as Record<
 			string,
@@ -75,8 +75,12 @@ describe("the local session's data path", () => {
 			"/functions/v1/zalo-session",
 			"/supabase/auth/v1/",
 			"/supabase/rest/v1/",
+			"/supabase/storage/v1/",
 		]);
 		expect(proxy["/supabase/rest/v1/"]?.target).toBe("http://127.0.0.1:54321");
+		expect(proxy["/supabase/storage/v1/"]?.target).toBe(
+			"http://127.0.0.1:54321",
+		);
 		expect(JSON.stringify(resolved.define)).not.toContain("not-for-the-app");
 		expect(JSON.stringify(resolved.define)).not.toContain("54321");
 	});

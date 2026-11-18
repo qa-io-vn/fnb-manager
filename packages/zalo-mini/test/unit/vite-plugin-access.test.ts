@@ -143,6 +143,7 @@ describe("the access guard of the local dev server", () => {
 			["/functions/v1/zalo-session", "POST"],
 			["/supabase/rest/v1/stores", "GET"],
 			["/supabase/auth/v1/user", "GET"],
+			["/supabase/storage/v1/object/ops-brand-1/a.jpg", "POST"],
 			["//", "GET"],
 		] as const) {
 			const answer = serve(LAN, request(PHONE, url, {}, method));
@@ -363,7 +364,7 @@ describe("the local session's access settings", () => {
 		).toThrow("needs ZALO_LOCAL_ACCESS_KEY");
 	});
 
-	it("allow the tunnel host, turn HMR off behind a tunnel and proxy only REST and Auth of the local Supabase API", () => {
+	it("allow the tunnel host, turn HMR off behind a tunnel and proxy only REST, Auth and Storage of the local Supabase API", () => {
 		const base = {
 			functionUrl: "http://127.0.0.1:5745",
 			accessToken: "mock-zalo-access-local",
@@ -376,15 +377,83 @@ describe("the local session's access settings", () => {
 			"/functions/v1/zalo-session",
 			"/supabase/auth/v1/",
 			"/supabase/rest/v1/",
+			"/supabase/storage/v1/",
 		]);
 		const rest = lan.proxy["/supabase/rest/v1/"];
 		expect(rest?.target).toBe("http://127.0.0.1:54321");
 		expect(rest?.rewrite?.("/supabase/rest/v1/stores?select=id")).toBe(
 			"/rest/v1/stores?select=id",
 		);
+		const storage = lan.proxy["/supabase/storage/v1/"];
+		expect(storage?.target).toBe("http://127.0.0.1:54321");
+		expect(
+			storage?.rewrite?.("/supabase/storage/v1/object/ops-brand-1/a/b.jpg"),
+		).toBe("/storage/v1/object/ops-brand-1/a/b.jpg");
 		const tunnel = localServerOptions({ ...base, access: TUNNEL });
 		expect(tunnel.allowedHosts).toEqual([TUNNEL_HOST]);
 		expect(tunnel.hmr).toBe(false);
+	});
+
+	it("proxy /supabase/functions/v1/zalo-phone to a loopback zalo-phone in every mode, behind the guard", () => {
+		const phoneUrl = "http://127.0.0.1:5746";
+		const plain = miniAppSettings(
+			{ ...local, ZALO_LOCAL_PHONE_URL: phoneUrl },
+			"serve",
+			appRoot,
+		).local;
+		expect(plain).toMatchObject({ phoneUrl, supabaseUrl: null });
+		for (const access of [plain?.access, LAN, TUNNEL]) {
+			if (plain === null || plain === undefined || access === undefined)
+				throw new Error("the local settings are missing");
+			const route = localServerOptions({ ...plain, access }).proxy[
+				"/supabase/functions/v1/zalo-phone"
+			];
+			expect(route?.target).toBe(phoneUrl);
+			expect(route?.rewrite?.("/supabase/functions/v1/zalo-phone")).toBe(
+				"/functions/v1/zalo-phone",
+			);
+		}
+		for (const access of [LAN, TUNNEL]) {
+			refused(
+				serve(
+					access,
+					request(PHONE, "/supabase/functions/v1/zalo-phone", {}, "POST"),
+				),
+			);
+		}
+		refused(
+			serve(
+				TUNNEL,
+				request("127.0.0.1", "/supabase/functions/v1/zalo-phone", {}, "POST"),
+			),
+		);
+		expect(
+			Object.keys(
+				localServerOptions({
+					functionUrl: "http://127.0.0.1:5745",
+					accessToken: "mock-zalo-access-local",
+					supabaseUrl: null,
+					access: LAN,
+				}).proxy,
+			),
+		).not.toContain("/supabase/functions/v1/zalo-phone");
+		for (const value of [
+			"https://project.example.com",
+			"http://192.168.1.30:5746",
+			"http://127.0.0.1:5746/functions/v1/zalo-phone",
+			"http://localhost",
+		]) {
+			const run = () =>
+				miniAppSettings(
+					{ ...local, ZALO_LOCAL_PHONE_URL: value },
+					"serve",
+					appRoot,
+				);
+			expect(run).toThrow(
+				"ZALO_LOCAL_PHONE_URL must be the loopback address of the local zalo-phone",
+			);
+			expect(run).not.toThrow(value);
+		}
 	});
 
 	it("put the guard in front of every dev server middleware and upgrade in local mode", () => {

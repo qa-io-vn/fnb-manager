@@ -36,15 +36,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+export const PHONE_HINT_MAX_LENGTH = 16;
+
+function phoneHintOf(value: unknown): { readonly phoneHint?: string } {
+	return typeof value === "string" &&
+		value.trim() !== "" &&
+		[...value].length <= PHONE_HINT_MAX_LENGTH
+		? { phoneHint: value }
+		: {};
+}
+
 export function readNoticeCheck(value: unknown): NoticeCheck | null {
 	if (!isRecord(value)) return null;
 	const consent = CONSENT_STATES.find((name) => name === value.consent);
 	if (consent === undefined) return null;
+	const hint = phoneHintOf(value.phone_hint);
 	if (value.notice === null || value.notice === undefined) {
-		return { consent, notice: null };
+		return { consent, notice: null, ...hint };
 	}
 	const notice = readStaffNotice(value.notice);
-	return notice === null ? null : { consent, notice };
+	return notice === null ? null : { consent, notice, ...hint };
 }
 
 export interface RestStaffAccountOptions {
@@ -178,6 +189,7 @@ export function createStandInStaffAccount(
 	settings: StandInAccountSettings,
 ): StaffAccount {
 	let consent = settings.consent;
+	let phoneLinked = false;
 	const pause = () =>
 		settings.delayMs > 0
 			? new Promise<void>((resolve) => setTimeout(resolve, settings.delayMs))
@@ -191,6 +203,7 @@ export function createStandInStaffAccount(
 					consent === "outdated" || consent === "missing"
 						? STAND_IN_NEW_NOTICE
 						: STAND_IN_NOTICE,
+				...(phoneLinked ? { phoneHint: STAND_IN_PHONE_HINT } : {}),
 			};
 		},
 		async acceptNotice() {
@@ -203,6 +216,7 @@ export function createStandInStaffAccount(
 		},
 		async linkPhone() {
 			await pause();
+			phoneLinked = true;
 			return STAND_IN_PHONE_HINT;
 		},
 		async legalDocuments() {

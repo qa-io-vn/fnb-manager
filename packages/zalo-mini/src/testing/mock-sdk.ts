@@ -123,6 +123,59 @@ export const getPhoneNumber: typeof Sdk.getPhoneNumber = async (args) => {
 	return result;
 };
 
+export const MOCK_CANCELLED_CODE = -1;
+export const MOCK_CAMERA_INPUT_ID = "mock-camera-input";
+
+function pickFile(cameraOnly: boolean): Promise<File | null> {
+	return new Promise((resolve) => {
+		const input = document.createElement("input");
+		input.type = "file";
+		input.accept = "image/*";
+		if (cameraOnly) input.setAttribute("capture", "environment");
+		input.id = MOCK_CAMERA_INPUT_ID;
+		input.hidden = true;
+		input.tabIndex = -1;
+		input.setAttribute("aria-hidden", "true");
+		document.body.append(input);
+		const done = (file: File | null) => {
+			input.remove();
+			resolve(file);
+		};
+		input.addEventListener("change", () => done(input.files?.[0] ?? null), {
+			once: true,
+		});
+		input.addEventListener("cancel", () => done(null), { once: true });
+		input.click();
+	});
+}
+
+export const chooseImage: typeof Sdk.chooseImage = async (args) => {
+	record("chooseImage", {
+		sourceType: args.sourceType ?? null,
+		cameraType: args.cameraType ?? null,
+		count: args.count,
+	});
+	if (searchParam("camera") === "refused") {
+		const failure = {
+			code: MOCK_PERMISSION_DENIED_CODE,
+			message: "User denied the permission",
+		};
+		args.fail?.(failure);
+		throw failure;
+	}
+	const sources = args.sourceType ?? ["album", "camera"];
+	const file = await pickFile(!sources.includes("album"));
+	if (file === null) {
+		const failure = { code: MOCK_CANCELLED_CODE, message: "User cancelled" };
+		args.fail?.(failure);
+		throw failure;
+	}
+	const path = URL.createObjectURL(file);
+	const result = { filePaths: [path], tempFiles: [{ path, size: file.size }] };
+	args.success?.(result);
+	return result;
+};
+
 export const openWebview: typeof Sdk.openWebview = async (args) => {
 	record("openWebview", args);
 };
