@@ -6,8 +6,10 @@ import {
 	type ZaloRequestInit,
 } from "../../src/http.js";
 import {
+	legalTextAnswer,
 	noticeAnswer,
 	parseSignIn,
+	parseTexts,
 	requireBrandApp,
 	STAFF_LOGIN_DOMAIN,
 	staffLoginEmail,
@@ -390,6 +392,131 @@ describe("brand resolution and sign-in answers", () => {
 			status: "login_needed",
 		});
 		expect(noticeAnswer(parsedNotice)).toEqual(notice);
+	});
+
+	it("parses the contact instructions of unpaired and notice_required answers", () => {
+		const contact = "Gặp quản lý ca tại quầy.\nGửi thư tới hr@example.com.";
+		expect(
+			parseSignIn({ status: "unpaired", reason: "code_refused", contact }),
+		).toEqual({ status: "unpaired", reason: "code_refused", contact });
+		expect(parseSignIn({ status: "notice_required", notice, contact })).toEqual(
+			{ status: "notice_required", notice: parsedNotice, contact },
+		);
+		expect(parseSignIn({ status: "unpaired", contact: null })).toEqual({
+			status: "unpaired",
+		});
+		for (const bad of [
+			{ status: "unpaired", contact: "" },
+			{ status: "unpaired", contact: 7 },
+			{ status: "notice_required", contact: ["text"] },
+		]) {
+			expect(() => parseSignIn(bad)).toThrow(UpstreamError);
+		}
+	});
+
+	it("parses the brand's store ids of a bound answer next to the names", () => {
+		const bound = {
+			status: "bound",
+			user_id: USER_ID,
+			tenant_id: "t",
+			role: "staff",
+			store_ids: null,
+			stores: ["Store A", "Store Z"],
+			brand_store_ids: ["s2", "s1"],
+			display_name: "Nhân viên",
+		};
+		expect(parseSignIn(bound)).toEqual({
+			status: "bound",
+			userId: USER_ID,
+			tenantId: "t",
+			role: "staff",
+			storeIds: null,
+			stores: ["Store A", "Store Z"],
+			brandStoreIds: ["s2", "s1"],
+			displayName: "Nhân viên",
+		});
+		expect(() => parseSignIn({ ...bound, brand_store_ids: "s1" })).toThrow(
+			UpstreamError,
+		);
+		expect(() => parseSignIn({ ...bound, brand_store_ids: [1] })).toThrow(
+			UpstreamError,
+		);
+	});
+
+	it("parses the published texts and the wait of the texts request", () => {
+		const privacy = {
+			kind: "privacy_notice",
+			language: "vi",
+			version: "privacy-2026-01",
+			title: "Thông báo quyền riêng tư",
+			body_markdown: "# Quyền riêng tư",
+			published_at: "2026-11-01T00:00:00+00:00",
+		};
+		const terms = {
+			...privacy,
+			kind: "mini_app_terms",
+			language: "en",
+			version: "terms-2026-01-en",
+			title: "Terms of use",
+		};
+		const parsed = parseTexts({
+			status: "texts",
+			documents: [privacy, terms],
+			contact: "Hỏi quản lý.",
+		});
+		expect(parsed).toEqual({
+			status: "texts",
+			documents: [
+				{
+					kind: "privacy_notice",
+					language: "vi",
+					version: "privacy-2026-01",
+					title: "Thông báo quyền riêng tư",
+					bodyMarkdown: "# Quyền riêng tư",
+					publishedAt: "2026-11-01T00:00:00+00:00",
+				},
+				{
+					kind: "mini_app_terms",
+					language: "en",
+					version: "terms-2026-01-en",
+					title: "Terms of use",
+					bodyMarkdown: "# Quyền riêng tư",
+					publishedAt: "2026-11-01T00:00:00+00:00",
+				},
+			],
+			contact: "Hỏi quản lý.",
+		});
+		expect(
+			parsed.status === "texts" ? parsed.documents.map(legalTextAnswer) : [],
+		).toEqual([privacy, terms]);
+		expect(
+			parseTexts({ status: "texts", documents: [], contact: null }),
+		).toEqual({ status: "texts", documents: [], contact: null });
+		expect(parseTexts({ status: "texts", documents: [] })).toEqual({
+			status: "texts",
+			documents: [],
+			contact: null,
+		});
+		expect(parseTexts({ status: "wait", retry_after: 41 })).toEqual({
+			status: "wait",
+			retryAfter: 41,
+		});
+		for (const bad of [
+			[],
+			{ status: "texts" },
+			{ status: "texts", documents: [{ ...privacy, kind: "staff_notice" }] },
+			{ status: "texts", documents: [{ ...privacy, language: "fr" }] },
+			{ status: "texts", documents: [{ ...privacy, version: "Bad" }] },
+			{ status: "texts", documents: [{ ...privacy, title: "" }] },
+			{ status: "texts", documents: [{ ...privacy, body_markdown: null }] },
+			{ status: "texts", documents: [], contact: "" },
+			{ status: "wait", retry_after: 0 },
+			{ status: "wait", retry_after: 1.5 },
+			{ status: "wait" },
+			{ status: "bound" },
+		]) {
+			expect(() => parseTexts(bad)).toThrow(UpstreamError);
+		}
 	});
 
 	it("gives a new staff login an e-mail on a reserved domain that can never receive mail", () => {

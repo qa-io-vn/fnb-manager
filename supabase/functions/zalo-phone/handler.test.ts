@@ -337,3 +337,89 @@ Deno.test("phone requests are refused for an unknown brand, a missing secret or 
 	}
 	assertEquals(test.zalo.requests(), [], "Zalo was not called");
 });
+
+const LOCAL_STACK: FunctionEnvironment = {
+	...ENVIRONMENT,
+	ZALO_LOCAL_DEV: "1",
+	ZALO_TENANT_ID: TENANT,
+	ZALO_GRAPH_BASE_URL: "http://127.0.0.1:8788",
+	SUPABASE_URL: "http://127.0.0.1:54321",
+	SUPABASE_DB_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+};
+
+Deno.test("in the local loop ZALO_LOCAL_DEV=1 decodes the standing mock phone token against the loopback graph, every time", async () => {
+	const test = await harness();
+	const phoneToken = test.zalo.issuePhoneToken(test.accessToken, NUMBER, {
+		token: "mock-phone-token",
+		reusable: true,
+	});
+	const urls: string[] = [];
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		const response = await handleZaloPhone(
+			new Request(FUNCTION_URL, {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					authorization: `Bearer ${test.session}`,
+				},
+				body: JSON.stringify({
+					brand: "brand-1",
+					access_token: test.accessToken,
+					phone_token: phoneToken,
+				}),
+			}),
+			LOCAL_STACK,
+			{
+				fetch: (url, init) => {
+					urls.push(url);
+					return test.zalo.fetch(url, init);
+				},
+				backend: test.backend,
+				log: (line) => test.lines.push(line),
+				requestId: () => "request-1",
+			},
+		);
+		assertEquals(response.status, 200, `status ${attempt}`);
+		assertEquals(
+			await response.json(),
+			{ phone_number: `+${NUMBER}` },
+			`answer ${attempt}`,
+		);
+	}
+	assertEquals(
+		urls,
+		[
+			"http://127.0.0.1:8788/v2.0/me/info",
+			"http://127.0.0.1:8788/v2.0/me/info",
+		],
+		"the loopback mock graph was asked, never graph.zalo.me",
+	);
+	assertNoPersonalData(test.lines, [NUMBER, test.accessToken, phoneToken]);
+});
+
+Deno.test("a deployed zalo-phone never meets the local switch: it is refused before Zalo is called", async () => {
+	for (const overrides of [
+		{ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co" },
+		{ SUPABASE_URL: "http://kong:8000" },
+		{ SUPABASE_DB_URL: "postgresql://postgres:postgres@db:5432/postgres" },
+		{ ZALO_INTEGRATION: "1" },
+	]) {
+		const test = await harness();
+		const phoneToken = test.zalo.issuePhoneToken(test.accessToken, NUMBER);
+		const response = await test.send(
+			{
+				brand: "brand-1",
+				access_token: test.accessToken,
+				phone_token: phoneToken,
+			},
+			{ environment: { ...LOCAL_STACK, ...overrides } },
+		);
+		const label = Object.keys(overrides).join(", ");
+		assertEquals(
+			[response.status, (await response.json()).error],
+			[500, "not_configured"],
+			label,
+		);
+		assertEquals(test.zalo.requests(), [], `${label}: Zalo was not called`);
+	}
+});

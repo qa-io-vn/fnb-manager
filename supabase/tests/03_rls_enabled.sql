@@ -16,8 +16,8 @@ select is(
 
 select is(
   (select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r', 'p')),
-  75,
-  'public holds the 75 expected tables'
+  81,
+  'public holds the 81 expected tables'
 );
 
 select is(
@@ -32,7 +32,7 @@ select is(
     from pg_policies
     where schemaname = 'public'
       and cmd in ('INSERT', 'UPDATE', 'DELETE')
-      and tablename not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies', 'report_settings', 'item_category_overrides', 'payment_kind_overrides', 'legal_documents', 'stores', 'tenants', 'brands', 'zalo_apps', 'oas', 'mini_apps', 'zbs_templates', 'gmf_groups', 'checklist_templates', 'checklist_items', 'checklist_runs', 'checklist_answers', 'checklist_corrections', 'shift_handovers', 'incidents', 'incident_categories', 'cash_counts')
+      and tablename not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies', 'report_settings', 'item_category_overrides', 'payment_kind_overrides', 'legal_documents', 'stores', 'tenants', 'brands', 'zalo_apps', 'oas', 'mini_apps', 'zbs_templates', 'gmf_groups', 'checklist_templates', 'checklist_items', 'checklist_runs', 'checklist_answers', 'checklist_corrections', 'shift_handovers', 'incidents', 'incident_categories', 'cash_counts', 'announcements', 'announcement_recipients', 'announcement_receipts', 'approval_request_kinds', 'approval_requests')
   ),
   0,
   'write policies exist only on the manual-input tables, the settings and mappings, the store and tenant profiles, strategy_reports, the legal ledgers, alert_rules, channel_policies, the Zalo configuration, the operations tables of phase 14b and incident_categories'
@@ -45,7 +45,7 @@ select is(
     where grantee = 'authenticated'
       and table_schema = 'public'
       and privilege_type <> 'SELECT'
-      and table_name not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies', 'report_settings', 'item_category_overrides', 'payment_kind_overrides', 'legal_documents', 'brands', 'zalo_apps', 'oas', 'mini_apps', 'zbs_templates', 'gmf_groups', 'incident_categories')
+      and table_name not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies', 'report_settings', 'item_category_overrides', 'payment_kind_overrides', 'legal_documents', 'brands', 'zalo_apps', 'oas', 'mini_apps', 'zbs_templates', 'gmf_groups', 'incident_categories', 'approval_request_kinds')
   ),
   0,
   'authenticated holds table-wide write privileges only on the manual-input tables, the settings and mappings, strategy_reports, the legal ledgers, alert_rules, channel_policies, the Zalo configuration and incident_categories'
@@ -112,7 +112,7 @@ select is(
       group by c.table_name
     ) t
   ),
-  array['checklist_answers:3', 'checklist_runs:1', 'incident_categories:3', 'incidents:5', 'legal_documents:3', 'shift_handovers:3', 'stores:7', 'tenants:2'],
+  array['approval_request_kinds:3', 'checklist_answers:3', 'checklist_runs:1', 'incident_categories:3', 'incidents:5', 'legal_documents:3', 'shift_handovers:3', 'stores:7', 'tenants:2'],
   'authenticated may update seven columns of stores, two of tenants, three of legal_documents and, in phase 14b, the answer fields of checklist_answers, the status of checklist_runs, the label, order and active flag of incident_categories and the content of incidents and shift_handovers, and no other column by column grant'
 );
 

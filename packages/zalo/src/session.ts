@@ -19,6 +19,8 @@ export const UNPAIRED_REASONS = [
 	"wait",
 	"notice_outdated",
 ] as const;
+export const LEGAL_TEXT_KINDS = ["privacy_notice", "mini_app_terms"] as const;
+export const LEGAL_TEXT_LANGUAGES = ["vi", "en"] as const;
 export const MEMBER_ROLES = [
 	"owner",
 	"manager",
@@ -39,6 +41,27 @@ export interface BrandApp {
 
 export type UnpairedReason = (typeof UNPAIRED_REASONS)[number];
 
+export type LegalTextKind = (typeof LEGAL_TEXT_KINDS)[number];
+
+export type LegalTextLanguage = (typeof LEGAL_TEXT_LANGUAGES)[number];
+
+export interface LegalText {
+	readonly kind: LegalTextKind;
+	readonly language: LegalTextLanguage;
+	readonly version: string;
+	readonly title: string;
+	readonly bodyMarkdown: string;
+	readonly publishedAt: string;
+}
+
+export type TextsResult =
+	| {
+			readonly status: "texts";
+			readonly documents: readonly LegalText[];
+			readonly contact: string | null;
+	  }
+	| { readonly status: "wait"; readonly retryAfter: number };
+
 export interface StaffNotice {
 	readonly version: string;
 	readonly title: string;
@@ -52,8 +75,13 @@ export type SignInResult =
 			readonly notice?: StaffNotice;
 			readonly reason?: UnpairedReason;
 			readonly retryAfter?: number;
+			readonly contact?: string;
 	  }
-	| { readonly status: "notice_required"; readonly notice?: StaffNotice }
+	| {
+			readonly status: "notice_required";
+			readonly notice?: StaffNotice;
+			readonly contact?: string;
+	  }
 	| { readonly status: "login_needed" }
 	| {
 			readonly status: "bound";
@@ -62,6 +90,7 @@ export type SignInResult =
 			readonly role: MemberRole;
 			readonly storeIds: readonly string[] | null;
 			readonly stores: readonly string[];
+			readonly brandStoreIds?: readonly string[];
 			readonly displayName: string | null;
 	  };
 
@@ -163,8 +192,16 @@ function parseNotice(value: unknown): StaffNotice | undefined {
 	};
 }
 
+function parseContact(value: unknown): string | undefined {
+	if (value === undefined || value === null) {
+		return undefined;
+	}
+	return text(value);
+}
+
 function parseUnpaired(value: Readonly<Record<string, unknown>>): SignInResult {
 	const notice = parseNotice(value.notice);
+	const contact = parseContact(value.contact);
 	const reason = UNPAIRED_REASONS.find((name) => name === value.reason);
 	if (value.reason !== undefined && reason === undefined) {
 		throw new UpstreamError("supabase", "invalid_answer");
@@ -183,6 +220,7 @@ function parseUnpaired(value: Readonly<Record<string, unknown>>): SignInResult {
 		...(notice === undefined ? {} : { notice }),
 		...(reason === undefined ? {} : { reason }),
 		...(retryAfter === undefined ? {} : { retryAfter }),
+		...(contact === undefined ? {} : { contact }),
 	};
 }
 
@@ -195,9 +233,11 @@ export function parseSignIn(value: unknown): SignInResult {
 	}
 	if (value.status === "notice_required") {
 		const notice = parseNotice(value.notice);
+		const contact = parseContact(value.contact);
 		return {
 			status: "notice_required",
 			...(notice === undefined ? {} : { notice }),
+			...(contact === undefined ? {} : { contact }),
 		};
 	}
 	if (value.status === "login_needed") {
@@ -211,6 +251,10 @@ export function parseSignIn(value: unknown): SignInResult {
 		throw new UpstreamError("supabase", "invalid_answer");
 	}
 	const displayName = value.display_name;
+	const brandStoreIds =
+		value.brand_store_ids === undefined
+			? undefined
+			: textList(value.brand_store_ids);
 	return {
 		status: "bound",
 		userId: text(value.user_id),
@@ -218,6 +262,7 @@ export function parseSignIn(value: unknown): SignInResult {
 		role,
 		storeIds: value.store_ids === null ? null : textList(value.store_ids),
 		stores: textList(value.stores),
+		...(brandStoreIds === undefined ? {} : { brandStoreIds }),
 		displayName:
 			typeof displayName === "string" && displayName.trim() !== ""
 				? displayName
@@ -241,6 +286,67 @@ export function noticeAnswer(notice: StaffNotice): Record<string, string> {
 		title: notice.title,
 		body_markdown: notice.bodyMarkdown,
 		published_at: notice.publishedAt,
+	};
+}
+
+function parseLegalText(value: unknown): LegalText {
+	if (!isRecord(value)) {
+		throw new UpstreamError("supabase", "invalid_answer");
+	}
+	const kind = LEGAL_TEXT_KINDS.find((name) => name === value.kind);
+	const language = LEGAL_TEXT_LANGUAGES.find((name) => name === value.language);
+	if (
+		kind === undefined ||
+		language === undefined ||
+		typeof value.version !== "string" ||
+		!NOTICE_VERSION_PATTERN.test(value.version) ||
+		typeof value.body_markdown !== "string"
+	) {
+		throw new UpstreamError("supabase", "invalid_answer");
+	}
+	return {
+		kind,
+		language,
+		version: value.version,
+		title: text(value.title),
+		bodyMarkdown: value.body_markdown,
+		publishedAt: text(value.published_at),
+	};
+}
+
+export function parseTexts(value: unknown): TextsResult {
+	if (!isRecord(value)) {
+		throw new UpstreamError("supabase", "invalid_answer");
+	}
+	if (value.status === "wait") {
+		const retryAfter = value.retry_after;
+		if (
+			typeof retryAfter !== "number" ||
+			!Number.isInteger(retryAfter) ||
+			retryAfter < 1
+		) {
+			throw new UpstreamError("supabase", "invalid_answer");
+		}
+		return { status: "wait", retryAfter };
+	}
+	if (value.status !== "texts" || !Array.isArray(value.documents)) {
+		throw new UpstreamError("supabase", "invalid_answer");
+	}
+	return {
+		status: "texts",
+		documents: value.documents.map(parseLegalText),
+		contact: parseContact(value.contact) ?? null,
+	};
+}
+
+export function legalTextAnswer(document: LegalText): Record<string, string> {
+	return {
+		kind: document.kind,
+		language: document.language,
+		version: document.version,
+		title: document.title,
+		body_markdown: document.bodyMarkdown,
+		published_at: document.publishedAt,
 	};
 }
 

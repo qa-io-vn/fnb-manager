@@ -30,6 +30,7 @@ export {
 	MOCK_ZALO_ERRORS,
 	type MockOauthApp,
 	type MockOauthCounts,
+	type MockPhoneTokenOptions,
 	type MockRefreshTokenState,
 	type MockTokenKind,
 	type MockTokenPair,

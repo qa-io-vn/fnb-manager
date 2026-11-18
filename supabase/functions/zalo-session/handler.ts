@@ -5,16 +5,19 @@ import {
 	fetchZaloUser,
 	functionBackend,
 	functionSettings,
+	legalTextAnswer,
 	NOTICE_VERSION_PATTERN,
 	noticeAnswer,
 	PAIRING_CODE_PATTERN,
 	parseSignIn,
+	parseTexts,
 	requireBrandApp,
 	type SignInResult,
 	type SupabaseBackend,
 	staffLoginEmail,
 	UpstreamError,
 	type ZaloFetch,
+	type ZaloSettings,
 } from "@fnb/zalo";
 import {
 	type FunctionEnvironment,
@@ -30,6 +33,7 @@ export const FUNCTION_NAME = "zalo-session";
 export const DEFAULT_DISPLAY_NAME = "Thành viên";
 export const ACCESS_TOKEN_MAX_LENGTH = 4096;
 export const SHOWN_AT_MAX_LENGTH = 40;
+export const TEXTS_REQUEST_FIELDS: readonly string[] = ["brand", "texts"];
 
 export interface ZaloSessionDependencies {
 	readonly fetch?: ZaloFetch;
@@ -113,6 +117,56 @@ function sessionRequest(
 		pairingCode: typeof pairingCode === "string" ? pairingCode : null,
 		notice: noticeAcceptance(body.notice),
 	};
+}
+
+function textsBrand(body: Readonly<Record<string, unknown>>): string {
+	if (
+		body.texts !== true ||
+		!Object.keys(body).every((field) => TEXTS_REQUEST_FIELDS.includes(field))
+	) {
+		throw new HttpError(400, "invalid_texts");
+	}
+	const brand = body.brand;
+	if (typeof brand !== "string" || !BRAND_KEY_PATTERN.test(brand)) {
+		throw new HttpError(400, "invalid_brand");
+	}
+	return brand;
+}
+
+async function publishedTexts(
+	brand: string,
+	settings: ZaloSettings,
+	context: RequestContext,
+	dependencies: ZaloSessionDependencies,
+): Promise<Response> {
+	const backend =
+		dependencies.backend ??
+		functionBackend(context.environment, dependencies.fetch);
+	const app = await requireBrandApp(backend, settings, brand);
+	const answer = parseTexts(
+		await backend.rpc("zalo_session_texts", { p_zalo_app_id: app.zaloAppId }),
+	);
+	if (answer.status === "wait") {
+		context.log(
+			`texts: held back for ${answer.retryAfter} s after too many requests for the app`,
+		);
+		return json(
+			{ error: "too_many_requests", request_id: context.requestId },
+			429,
+			{ "retry-after": String(answer.retryAfter) },
+		);
+	}
+	context.log(
+		`texts: ${answer.documents.length} documents, contact ${answer.contact === null ? "not set" : "set"}`,
+	);
+	return json(
+		{
+			status: "texts",
+			documents: answer.documents.map(legalTextAnswer),
+			contact: answer.contact,
+		},
+		200,
+	);
 }
 
 function unpairedLog(
@@ -210,6 +264,14 @@ async function zaloSession(
 	try {
 		const settings = functionSettings(context.environment);
 		const { body } = await readJsonObject(request);
+		if (body.texts !== undefined) {
+			return await publishedTexts(
+				textsBrand(body),
+				settings,
+				context,
+				dependencies,
+			);
+		}
 		const input = sessionRequest(body);
 		context.protect(input.accessToken);
 		if (input.bindingCode !== null) {
@@ -261,6 +323,7 @@ async function zaloSession(
 					...(signIn.notice === undefined
 						? {}
 						: { notice: noticeAnswer(signIn.notice) }),
+					...(signIn.contact === undefined ? {} : { contact: signIn.contact }),
 				},
 				200,
 			);
@@ -275,6 +338,7 @@ async function zaloSession(
 					...(signIn.notice === undefined
 						? {}
 						: { notice: noticeAnswer(signIn.notice) }),
+					...(signIn.contact === undefined ? {} : { contact: signIn.contact }),
 				},
 				200,
 			);
@@ -314,6 +378,9 @@ async function zaloSession(
 					display_name: signIn.displayName ?? DEFAULT_DISPLAY_NAME,
 					role: signIn.role,
 					stores: [...signIn.stores],
+					...(signIn.brandStoreIds === undefined
+						? {}
+						: { store_ids: [...signIn.brandStoreIds] }),
 					tenant_id: signIn.tenantId,
 				},
 			},

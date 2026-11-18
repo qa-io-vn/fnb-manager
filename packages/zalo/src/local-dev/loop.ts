@@ -54,6 +54,8 @@ import {
 } from "./processes.js";
 
 const START_TIMEOUT_MS = 180_000;
+export const LOCAL_PHONE_TOKEN = "mock-phone-token";
+export const LOCAL_PHONE_NUMBER = "84900000789";
 const TUNNEL_REACH_TIMEOUT_MS = 120_000;
 const VITE_ADDRESS_LINE = /(Local|Network)\S*:\s.*https?:\/\//;
 
@@ -61,6 +63,7 @@ export interface LocalLoopPaths {
 	readonly rootDir: string;
 	readonly staffDir: string;
 	readonly functionDir: string;
+	readonly phoneFunctionDir: string;
 	readonly cacheDir: string;
 }
 
@@ -70,6 +73,7 @@ export function localLoopPaths(rootDir: string): LocalLoopPaths {
 		rootDir,
 		staffDir,
 		functionDir: join(rootDir, "supabase", "functions", "zalo-session"),
+		phoneFunctionDir: join(rootDir, "supabase", "functions", "zalo-phone"),
 		cacheDir: join(staffDir, "node_modules", ".cache", "zalo-local"),
 	};
 }
@@ -86,6 +90,7 @@ export interface LocalLoopReady {
 	readonly lan: LanHost | null;
 	readonly port: number;
 	readonly functionUrl: string;
+	readonly phoneFunctionUrl: string;
 	readonly graphUrl: string;
 	readonly tenant: string;
 	readonly brand: string;
@@ -155,6 +160,18 @@ async function bindWithCode(
 			`zalo-session did not bind the mock user with the binding code (${typeof status === "string" ? status : "no answer"})`,
 		);
 	}
+}
+
+function denoFunctionArgs(functionDir: string): string[] {
+	return [
+		"run",
+		"--allow-net=127.0.0.1,localhost",
+		"--allow-env",
+		"--no-prompt",
+		"--config",
+		join(functionDir, "deno.json"),
+		join(functionDir, "index.ts"),
+	];
 }
 
 function viteBin(staffDir: string): string {
@@ -241,37 +258,48 @@ export async function startLocalLoop(
 			id: options.mockUser,
 			name: options.mockName,
 		});
+		mock.issuePhoneToken(accessToken, LOCAL_PHONE_NUMBER, {
+			token: LOCAL_PHONE_TOKEN,
+			reusable: true,
+		});
 
 		const base = passthroughEnvironment(environment);
 		const deno = resolveDeno(paths.cacheDir, base);
 		const functionPort = await freePort();
 		const functionUrl = `http://127.0.0.1:${functionPort}`;
+		const functionEnvironment = (port: number) =>
+			sessionFunctionEnvironment(environment, {
+				stack,
+				tenantId: target.tenantId,
+				graphBaseUrl: graph.baseUrl,
+				secretName: target.secretName,
+				appSecret,
+				port,
+			});
 		const session = startProcess(
 			"zalo-session",
 			deno,
-			[
-				"run",
-				"--allow-net=127.0.0.1,localhost",
-				"--allow-env",
-				"--no-prompt",
-				"--config",
-				join(paths.functionDir, "deno.json"),
-				join(paths.functionDir, "index.ts"),
-			],
+			denoFunctionArgs(paths.functionDir),
 			{
 				cwd: paths.functionDir,
-				env: sessionFunctionEnvironment(environment, {
-					stack,
-					tenantId: target.tenantId,
-					graphBaseUrl: graph.baseUrl,
-					secretName: target.secretName,
-					appSecret,
-					port: functionPort,
-				}),
+				env: functionEnvironment(functionPort),
 				onLine: (line) => io.line(`[zalo-session] ${line}`),
 			},
 		);
 		cleanups.push(() => session.stop());
+		const phoneFunctionPort = await freePort();
+		const phoneFunctionUrl = `http://127.0.0.1:${phoneFunctionPort}`;
+		const phone = startProcess(
+			"zalo-phone",
+			deno,
+			denoFunctionArgs(paths.phoneFunctionDir),
+			{
+				cwd: paths.phoneFunctionDir,
+				env: functionEnvironment(phoneFunctionPort),
+				onLine: (line) => io.line(`[zalo-phone] ${line}`),
+			},
+		);
+		cleanups.push(() => phone.stop());
 		const sessionUp = await waitForHttp(functionUrl, {
 			method: "OPTIONS",
 			accept: (status) => status === 204,
@@ -280,6 +308,15 @@ export async function startLocalLoop(
 		});
 		if (!sessionUp) {
 			throw failure(session, "zalo-session did not start");
+		}
+		const phoneUp = await waitForHttp(phoneFunctionUrl, {
+			method: "OPTIONS",
+			accept: (status) => status === 204,
+			timeoutMs: START_TIMEOUT_MS,
+			alive: phone.running,
+		});
+		if (!phoneUp) {
+			throw failure(phone, "zalo-phone did not start");
 		}
 
 		const boundNow = owner === null;
@@ -310,7 +347,7 @@ export async function startLocalLoop(
 			cleanups.push(() => rmSync(path, { force: true }));
 		}
 		const key = options.exposure === "loopback" ? null : newAccessKey();
-		const parts: ManagedProcess[] = [session];
+		const parts: ManagedProcess[] = [session, phone];
 		let tunnelHost: string | null = null;
 		if (options.exposure === "tunnel") {
 			const binary = await ensureCloudflared(environment, io);
@@ -346,6 +383,7 @@ export async function startLocalLoop(
 					brand: options.brand,
 					publishableKey: stack.publishableKey,
 					functionUrl,
+					phoneFunctionUrl,
 					accessToken,
 					appConfigPath,
 					access:
@@ -415,6 +453,7 @@ export async function startLocalLoop(
 				lan,
 				port: options.port,
 				functionUrl,
+				phoneFunctionUrl,
 				graphUrl: graph.baseUrl,
 				tenant: options.tenant,
 				brand: options.brand,

@@ -153,6 +153,44 @@ describe.skipIf(!gate.enabled)(
 			expect(row?.identities).toBe(0);
 		});
 
+		it("answers the published texts and the contact instructions before any pairing, without a Zalo identity", async () => {
+			const contact = "Hỏi quản lý ca tại quầy.\nThư: nhansu@example.com";
+			await sql`
+				insert into public.legal_documents (tenant_id, kind, language, version, title, body_markdown, status, published_at)
+				values (${fixture.tenantId}::uuid, 'privacy_notice', 'vi', 'it-privacy-1', 'Quyền riêng tư thử',
+					'Văn bản thử của bộ kiểm thử.', 'published', now() - interval '1 minute')
+			`;
+			await sql`
+				update public.tenants set staff_contact_instructions = ${contact}
+				where id = ${fixture.tenantId}::uuid
+			`;
+			const response = await post(session, {
+				brand: fixture.brandKey,
+				texts: true,
+			});
+			expect(response.status).toBe(200);
+			const body = (await response.json()) as Record<string, unknown>;
+			expect(body).toEqual({
+				status: "texts",
+				documents: [
+					expect.objectContaining({
+						kind: "privacy_notice",
+						language: "vi",
+						version: "it-privacy-1",
+						title: "Quyền riêng tư thử",
+					}),
+				],
+				contact,
+			});
+			const token = mock.issueAccessToken(APP_SECRET, { id: `${zaloUserId}9` });
+			protectedValues.push(token);
+			expect(await signIn(token)).toEqual({ status: "unpaired", contact });
+			await sql`
+				update public.tenants set staff_contact_instructions = null
+				where id = ${fixture.tenantId}::uuid
+			`;
+		});
+
 		it("binds a fixture member with a code and mints a real session that the Data API scopes to the member's stores", async () => {
 			const code = await fixture.issueBindingCode(manager.userId);
 			spentCode = code;

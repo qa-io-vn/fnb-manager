@@ -337,7 +337,7 @@ create temp table paired_a as
 select pg_temp.pair(app_1, 'pair-zalo-a', pg_temp.code('r_new'), fresh_1) as answer from fx;
 select is(
   (select answer - 'user_id' - 'tenant_id' - 'display_name' from paired_a),
-  (select jsonb_build_object('status', 'bound', 'role', 'staff', 'store_ids', jsonb_build_array(store_p1), 'stores', jsonb_build_array('Synthetic store P1')) from fx),
+  (select jsonb_build_object('status', 'bound', 'role', 'staff', 'store_ids', jsonb_build_array(store_p1), 'stores', jsonb_build_array('Synthetic store P1'), 'brand_store_ids', jsonb_build_array(store_p1)) from fx),
   'the code pairs the person with exactly the roster role and stores'
 );
 select is(
@@ -387,7 +387,7 @@ select is(
 
 select is(
   (select pg_temp.pair(app_1, 'pair-zalo-m', pg_temp.code('r_mgr'), fresh_2) - 'user_id' - 'tenant_id' - 'display_name' from fx),
-  (select jsonb_build_object('status', 'bound', 'role', 'manager', 'store_ids', jsonb_build_array(store_p1, store_p2), 'stores', jsonb_build_array('Synthetic store P1', 'Synthetic store P2')) from fx),
+  (select jsonb_build_object('status', 'bound', 'role', 'manager', 'store_ids', jsonb_build_array(store_p1, store_p2), 'stores', jsonb_build_array('Synthetic store P1', 'Synthetic store P2'), 'brand_store_ids', jsonb_build_array(store_p1, store_p2)) from fx),
   'a manager row pairs as a manager of its two stores'
 );
 
@@ -498,7 +498,7 @@ select is(pg_temp.outcome_as((select manager_p1 from fx), $q$ insert into codes 
 reset role;
 select is(
   (select pg_temp.pair(app_2, 'pair-zalo-t2', pg_temp.code('r_two')) - 'tenant_id' - 'display_name' from fx),
-  (select jsonb_build_object('status', 'bound', 'user_id', fresh_3, 'role', 'staff', 'store_ids', jsonb_build_array(store_p1), 'stores', jsonb_build_array('Synthetic store P1')) from fx),
+  (select jsonb_build_object('status', 'bound', 'user_id', fresh_3, 'role', 'staff', 'store_ids', jsonb_build_array(store_p1), 'stores', jsonb_build_array('Synthetic store P1'), 'brand_store_ids', jsonb_build_array(store_p1)) from fx),
   'pairing in the second brand keeps the same login, asks for no new one and shows that brand''s stores in scope'
 );
 select is(

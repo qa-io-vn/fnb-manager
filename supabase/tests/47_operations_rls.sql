@@ -547,14 +547,15 @@ select is(
   array['app.accept_staff_notice', 'app.acknowledge_handover', 'app.acknowledge_incident', 'app.add_staff', 'app.can_manage_staff',
         'app.can_manage_store_scope', 'app.can_publish_store_scope', 'app.can_read_store',
         'app.current_user_channel_ids', 'app.current_user_data_store_ids', 'app.current_user_data_tenant_ids', 'app.current_user_ops_store_ids',
-        'app.current_user_revenue_store_ids', 'app.current_user_store_ids', 'app.current_user_tenant_ids', 'app.deactivate_staff', 'app.has_store_scope',
-        'app.has_tenant_role', 'app.issue_pairing_code', 'app.link_my_phone', 'app.my_staff_notice', 'app.ops_can_manage', 'app.ops_can_read',
-        'app.ops_can_write_own', 'app.ops_photo_readable', 'app.ops_photo_writable', 'app.reactivate_staff', 'app.reopen_cash_count',
-        'app.resolve_incident', 'app.save_checklist_template', 'app.set_checklist_template_active', 'app.set_ops_photo_retention_days',
-        'app.set_staff_revenue_visibility', 'app.today_store_totals', 'app.update_staff',
+        'app.current_user_revenue_store_ids', 'app.current_user_store_ids', 'app.current_user_tenant_ids', 'app.deactivate_staff', 'app.decide_request',
+        'app.has_store_scope', 'app.has_tenant_role', 'app.issue_pairing_code', 'app.link_my_phone', 'app.mark_announcement_read', 'app.my_staff_notice',
+        'app.ops_can_manage', 'app.ops_can_read', 'app.ops_can_write_own', 'app.ops_photo_readable', 'app.ops_photo_writable', 'app.publish_announcement',
+        'app.reactivate_staff', 'app.reopen_cash_count', 'app.resolve_incident', 'app.save_checklist_template', 'app.set_announcement_pin',
+        'app.set_checklist_template_active', 'app.set_ops_photo_retention_days',
+        'app.set_staff_contact_instructions', 'app.set_staff_revenue_visibility', 'app.today_store_totals', 'app.update_staff',
         'app.withdraw_staff_ops_consent', 'public.oa_event_counts', 'public.publish_legal_document', 'public.refresh_my_analytics',
         'public.retire_legal_document'],
-  'the only security definer functions a member may call are the membership helpers, the roster, pairing, staff notice and phone functions, settings and legal functions, today_store_totals and the phase 14b checklist editor, acknowledgement, reopening, photo retention and photo policy functions, so no other function reads revenue past RLS'
+  'the only security definer functions a member may call are the membership helpers, the roster, pairing, staff notice and phone functions, settings and legal functions, today_store_totals, the phase 14b checklist editor, acknowledgement, reopening, photo retention and photo policy functions and the phase 15 announcement and request writers, so no other function reads revenue past RLS'
 );
 select col_type_is('public', 'tenants', 'staff_revenue_visibility', 'text', 'tenants.staff_revenue_visibility is text');
 select col_default_is('public', 'tenants', 'staff_revenue_visibility', 'all', 'staff see their stores'' revenue until the owner restricts it');
@@ -695,7 +696,8 @@ reset role;
 select is(
   (select array_agg(distinct p.tablename::text) from pg_policies p
    where p.schemaname = 'public' and (coalesce(p.qual, '') || coalesce(p.with_check, '')) ~ '(ops_can_|current_user_ops_store_ids)'),
-  array['cash_counts', 'checklist_answers', 'checklist_corrections', 'checklist_items', 'checklist_runs', 'checklist_templates', 'incidents', 'ops_template_pgtap', 'shift_handovers'],
+  array['announcement_receipts', 'announcement_recipients', 'announcements', 'approval_requests', 'cash_counts', 'checklist_answers', 'checklist_corrections',
+        'checklist_items', 'checklist_runs', 'checklist_templates', 'incidents', 'ops_template_pgtap', 'shift_handovers'],
   'the operations tables: 14b and 15 add each of theirs here'
 );
 select is(

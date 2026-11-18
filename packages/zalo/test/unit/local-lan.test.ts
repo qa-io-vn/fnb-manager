@@ -232,6 +232,7 @@ describe("the one-time key and its link", () => {
 				brand: "brand-1",
 				publishableKey: "sb_publishable_synthetic",
 				functionUrl: "http://127.0.0.1:40124",
+				phoneFunctionUrl: "http://127.0.0.1:40125",
 				accessToken: "mock-zalo-access-synthetic",
 				appConfigPath: null,
 				access: {

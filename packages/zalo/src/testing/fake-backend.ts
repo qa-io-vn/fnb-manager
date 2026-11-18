@@ -1,6 +1,12 @@
 import type { MintedSession, SupabaseBackend } from "../backend.js";
 import { UpstreamError } from "../http.js";
-import type { BrandApp, MemberRole, StaffNotice } from "../session.js";
+import {
+	type BrandApp,
+	type LegalText,
+	legalTextAnswer,
+	type MemberRole,
+	type StaffNotice,
+} from "../session.js";
 
 export interface FakeBrandApp extends BrandApp {
 	readonly brandKey: string;
@@ -12,6 +18,7 @@ export interface FakeMember {
 	readonly role: MemberRole;
 	readonly storeIds: readonly string[] | null;
 	readonly stores: readonly string[];
+	readonly brandStoreIds?: readonly string[];
 	readonly email: string | null;
 }
 
@@ -67,6 +74,9 @@ export interface FakeBackend extends SupabaseBackend {
 	): void;
 	issueCode(zaloAppId: string, userId: string, code: string): void;
 	publishNotice(tenantId: string, notice: StaffNotice | null): void;
+	publishTexts(tenantId: string, documents: readonly LegalText[]): void;
+	setContact(tenantId: string, contact: string | null): void;
+	holdTexts(zaloAppId: string, retryAfter: number | null): void;
 	addRosterEntry(entry: FakeRosterEntry): void;
 	rosterEntry(id: string): FakeRosterEntry | undefined;
 	issuePairingCode(rosterId: string, code: string): void;
@@ -102,6 +112,9 @@ export function createFakeBackend(): FakeBackend {
 	const identities = new Map<string, FakeIdentity>();
 	const codes = new Map<string, { zaloAppId: string; userId: string }>();
 	const notices = new Map<string, StaffNotice>();
+	const texts = new Map<string, readonly LegalText[]>();
+	const contacts = new Map<string, string>();
+	const heldTexts = new Map<string, number>();
 	const roster = new Map<string, FakeRosterEntry>();
 	const pairingCodes = new Map<string, PairingCode>();
 	const attempts = new Map<string, number>();
@@ -140,6 +153,7 @@ export function createFakeBackend(): FakeBackend {
 			role: member.role,
 			store_ids: member.storeIds === null ? null : [...member.storeIds],
 			stores: [...member.stores],
+			brand_store_ids: [...(member.brandStoreIds ?? member.storeIds ?? [])],
 			display_name: identity.displayName,
 		};
 	};
@@ -158,6 +172,11 @@ export function createFakeBackend(): FakeBackend {
 				};
 	};
 
+	const contactOf = (tenantId: string): Record<string, unknown> => {
+		const contact = contacts.get(tenantId);
+		return contact === undefined ? {} : { contact };
+	};
+
 	const unpaired = (
 		tenantId: string,
 		reason?: string,
@@ -167,7 +186,24 @@ export function createFakeBackend(): FakeBackend {
 		...(reason === undefined ? {} : { reason }),
 		...(retryAfter === undefined ? {} : { retry_after: retryAfter }),
 		...noticeOf(tenantId),
+		...contactOf(tenantId),
 	});
+
+	const textsOf = (args: Readonly<Record<string, unknown>>): unknown => {
+		const app = appOf(String(args.p_zalo_app_id));
+		if (app.status !== "active") {
+			throw new UpstreamError("supabase", "status", 400);
+		}
+		const held = heldTexts.get(app.zaloAppId);
+		if (held !== undefined) {
+			return { status: "wait", retry_after: held };
+		}
+		return {
+			status: "texts",
+			documents: (texts.get(app.tenantId) ?? []).map(legalTextAnswer),
+			contact: contacts.get(app.tenantId) ?? null,
+		};
+	};
 
 	const activeConsent = (tenantId: string, userId: string) =>
 		consents.find(
@@ -228,7 +264,11 @@ export function createFakeBackend(): FakeBackend {
 			recordConsent(tenantId, userId, version);
 			return null;
 		}
-		return { status: "notice_required", ...noticeOf(tenantId) };
+		return {
+			status: "notice_required",
+			...noticeOf(tenantId),
+			...contactOf(tenantId),
+		};
 	};
 
 	const boundIdentity = (
@@ -421,6 +461,9 @@ export function createFakeBackend(): FakeBackend {
 			if (name === "zalo_session_pair") {
 				return pair(args);
 			}
+			if (name === "zalo_session_texts") {
+				return textsOf(args);
+			}
 			throw new UpstreamError("supabase", "status", 404);
 		},
 		async userEmail(userId) {
@@ -491,6 +534,23 @@ export function createFakeBackend(): FakeBackend {
 				notices.delete(tenantId);
 			} else {
 				notices.set(tenantId, notice);
+			}
+		},
+		publishTexts(tenantId, documents) {
+			texts.set(tenantId, [...documents]);
+		},
+		setContact(tenantId, contact) {
+			if (contact === null) {
+				contacts.delete(tenantId);
+			} else {
+				contacts.set(tenantId, contact);
+			}
+		},
+		holdTexts(zaloAppId, retryAfter) {
+			if (retryAfter === null) {
+				heldTexts.delete(zaloAppId);
+			} else {
+				heldTexts.set(zaloAppId, retryAfter);
 			}
 		},
 		addRosterEntry(entry) {

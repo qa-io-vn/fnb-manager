@@ -91,7 +91,7 @@ export interface MockZalo {
 	issuePhoneToken(
 		accessToken: string,
 		number: string,
-		options?: { readonly lifetimeMs?: number },
+		options?: MockPhoneTokenOptions,
 	): string;
 	registerApp(app: MockOauthApp): void;
 	issueTokens(appId: string, kind: MockTokenKind): MockTokenPair;
@@ -103,6 +103,12 @@ export interface MockZalo {
 	requests(path?: string): readonly MockZaloRequest[];
 	failNext(path: string, fault: MockZaloFault): void;
 	reset(): void;
+}
+
+export interface MockPhoneTokenOptions {
+	readonly lifetimeMs?: number;
+	readonly token?: string;
+	readonly reusable?: boolean;
 }
 
 export interface MockZaloOptions {
@@ -119,6 +125,7 @@ interface PhoneEntry {
 	readonly accessToken: string;
 	readonly number: string;
 	readonly expiresAt: number;
+	readonly reusable: boolean;
 	used: boolean;
 }
 
@@ -432,7 +439,7 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 		if (phone.expiresAt <= clock) {
 			return failure(MOCK_ZALO_ERRORS.phoneTokenExpired, "code has expired");
 		}
-		phone.used = true;
+		phone.used = !phone.reusable;
 		return answer({
 			data: { number: phone.number },
 			error: 0,
@@ -517,12 +524,15 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 			return token;
 		},
 		issuePhoneToken(accessToken, number, tokenOptions = {}) {
-			const token = `mock-zalo-phone-${randomPart()}`;
+			const token = tokenOptions.token ?? `mock-zalo-phone-${randomPart()}`;
+			const reusable = tokenOptions.reusable === true;
 			phoneTokens.set(token, {
 				accessToken,
 				number,
-				expiresAt:
-					clock + (tokenOptions.lifetimeMs ?? MOCK_PHONE_TOKEN_LIFETIME_MS),
+				expiresAt: reusable
+					? Number.POSITIVE_INFINITY
+					: clock + (tokenOptions.lifetimeMs ?? MOCK_PHONE_TOKEN_LIFETIME_MS),
+				reusable,
 				used: false,
 			});
 			return token;

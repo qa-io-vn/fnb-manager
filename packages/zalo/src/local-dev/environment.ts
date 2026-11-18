@@ -15,6 +15,7 @@ import {
 import { LocalLoopError } from "./options.js";
 
 export const LOCAL_SESSION_URL_VARIABLE = "ZALO_LOCAL_SESSION_URL";
+export const LOCAL_PHONE_URL_VARIABLE = "ZALO_LOCAL_PHONE_URL";
 export const LOCAL_ACCESS_TOKEN_VARIABLE = "ZALO_LOCAL_ACCESS_TOKEN";
 export const LOCAL_ACCESS_KEY_VARIABLE = "ZALO_LOCAL_ACCESS_KEY";
 export const LOCAL_TUNNEL_HOST_VARIABLE = "ZALO_LOCAL_TUNNEL_HOST";
@@ -184,6 +185,7 @@ export interface StaffAppInput {
 	readonly brand: string;
 	readonly publishableKey: string;
 	readonly functionUrl: string;
+	readonly phoneFunctionUrl: string;
 	readonly accessToken: string;
 	readonly appConfigPath: string | null;
 	readonly access: StaffAppAccess | null;
@@ -206,6 +208,7 @@ export function staffAppEnvironment(
 		VITE_BRAND_KEY: input.brand,
 		VITE_SUPABASE_PUBLISHABLE_KEY: input.publishableKey,
 		[LOCAL_SESSION_URL_VARIABLE]: input.functionUrl,
+		[LOCAL_PHONE_URL_VARIABLE]: input.phoneFunctionUrl,
 		[LOCAL_ACCESS_TOKEN_VARIABLE]: input.accessToken,
 		...(input.appConfigPath === null
 			? {}

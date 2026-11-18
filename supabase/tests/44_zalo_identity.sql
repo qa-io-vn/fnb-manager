@@ -270,7 +270,7 @@ select is(
 
 select is(
   (select app.zalo_sign_in(app_a, 'zalo-user-manager', 'Quản lý thử', (select code from codes where label = 'manager-again')) - 'user_id' - 'tenant_id' from fx),
-  (select jsonb_build_object('status', 'bound', 'role', 'manager', 'store_ids', jsonb_build_array(store_a1), 'stores', jsonb_build_array('Synthetic store A1'), 'display_name', 'Quản lý thử') from fx),
+  (select jsonb_build_object('status', 'bound', 'role', 'manager', 'store_ids', jsonb_build_array(store_a1), 'stores', jsonb_build_array('Synthetic store A1'), 'brand_store_ids', jsonb_build_array(store_a1), 'display_name', 'Quản lý thử') from fx),
   'a valid code binds the identity and answers the manager''s role, store scope and store names'
 );
 select is(
@@ -363,7 +363,7 @@ select is(
 insert into codes select 'owner', app.issue_zalo_binding_code(tenant_a, owner_a, app_a, now() - interval '9 minutes') from fx;
 select is(
   (select app.zalo_sign_in(app_a, 'zalo-user-owner', null, (select code from codes where label = 'owner')) - 'user_id' - 'tenant_id' - 'display_name' from fx),
-  '{"status": "bound", "role": "owner", "store_ids": null, "stores": ["Synthetic store A1", "Synthetic store A2"]}'::jsonb,
+  (select jsonb_build_object('status', 'bound', 'role', 'owner', 'store_ids', null, 'stores', jsonb_build_array('Synthetic store A1', 'Synthetic store A2'), 'brand_store_ids', jsonb_build_array(store_a1, store_a2)) from fx),
   'a code nine minutes old still binds, and an owner sees every store of the brand'
 );
 
@@ -413,7 +413,7 @@ select throws_ok(
 insert into codes select 'two-tenants', app.issue_zalo_binding_code(tenant_b, two_tenants, app_b) from fx;
 select is(
   (select app.zalo_sign_in(app_b, 'zalo-user-two', null, (select code from codes where label = 'two-tenants')) - 'user_id' - 'display_name' from fx),
-  (select jsonb_build_object('status', 'bound', 'tenant_id', tenant_b, 'role', 'manager', 'store_ids', jsonb_build_array(store_b1), 'stores', jsonb_build_array('Synthetic store B1')) from fx),
+  (select jsonb_build_object('status', 'bound', 'tenant_id', tenant_b, 'role', 'manager', 'store_ids', jsonb_build_array(store_b1), 'stores', jsonb_build_array('Synthetic store B1'), 'brand_store_ids', jsonb_build_array(store_b1)) from fx),
   'a member of two tenants signs in to a brand with the role of that brand''s tenant'
 );
 

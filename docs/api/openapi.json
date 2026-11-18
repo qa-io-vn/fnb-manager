@@ -1043,6 +1043,340 @@
 			"required": ["id", "tenant_id", "from_date", "to_date", "started_at"],
 			"type": "object"
 		},
+		"announcement_receipts": {
+			"description": "Đã đọc: one receipt per reader (created_by) and announcement, written only by the reader through mark_announcement_read; the first tap is kept, so read_at never moves",
+			"properties": {
+				"announcement_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"description": "the reader",
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"read_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"store_ids": {
+					"description": "the reader's recipient store_ids, or for a reader who was not a recipient their scope within the announcement's",
+					"format": "uuid[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"announcement_id",
+				"read_at",
+				"created_by",
+				"created_at"
+			],
+			"type": "object"
+		},
+		"announcement_recipients": {
+			"description": "the members an announcement was published to, fixed at publication so the read rate keeps its denominator: every owner, manager or staff member of an audience role whose store scope meets the announcement's, the author left out; kept when the member later leaves; written only by publish_announcement",
+			"properties": {
+				"announcement_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"description": "the author who published it",
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"role": {
+					"description": "the member's role at publication",
+					"enum": ["owner", "manager", "staff", "viewer", "publisher"],
+					"format": "public.tenant_role",
+					"type": "string"
+				},
+				"store_ids": {
+					"description": "the stores at which the member received it: the member's store scope at publication within the announcement's (null when both are every store); owners and managers whose scope meets it read the row",
+					"format": "uuid[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"user_id": {
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"announcement_id",
+				"user_id",
+				"role",
+				"created_at"
+			],
+			"type": "object"
+		},
+		"announcements": {
+			"description": "announcements (FR-STF-19): a plain-text title and body published by an owner or manager to the members of the audience roles in the store scope, written only through publish_announcement; pinned while pinned_until lies ahead, hidden from the feed after expires_at; the title and body never enter a message, an alert or a log",
+			"properties": {
+				"audience": {
+					"description": "the roles it is published to, among owner, manager and staff; owners and managers of its stores read it whatever the audience",
+					"format": "public.tenant_role[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"body": {
+					"format": "text",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"description": "the author",
+					"format": "uuid",
+					"type": "string"
+				},
+				"expires_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"pinned_until": {
+					"description": "the announcement stays first in the feed and on the staff home until this instant; null when not pinned; changed through set_announcement_pin",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"published_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"store_ids": {
+					"description": "the stores the announcement is for; null for every store of the tenant, which only a member with an unlimited scope publishes",
+					"format": "uuid[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"title": {
+					"format": "text",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"audience",
+				"title",
+				"body",
+				"published_at",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"approval_request_kinds": {
+			"description": "kinds of staff requests: the Vietnamese defaults as global rows (tenant_id null) and a tenant's own rows, which override a default of the same key (label, order, active) or add a key; leave and shift swaps stay with the POS vendor's HR product and have no default; a tenant's effective list is approval_request_kinds_of; tenant rows written by owners with an unlimited scope",
+			"properties": {
+				"active": {
+					"default": true,
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"key": {
+					"description": "the stable key a request stores in approval_requests.kind_key; never changes once written",
+					"format": "text",
+					"type": "string"
+				},
+				"label": {
+					"format": "text",
+					"type": "string"
+				},
+				"sort_order": {
+					"default": 50,
+					"format": "int32",
+					"type": "integer"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"key",
+				"label",
+				"sort_order",
+				"active",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"approval_requests": {
+			"description": "staff requests to the managers of a store (FR-STF-20): a kind, plain-text details and the requester (created_by); pending until an owner or manager of the store other than the requester approves or refuses it through decide_request, with a reason on refusal; a decided request never changes; details and reason never enter a message, an alert or a log",
+			"properties": {
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"decided_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"decided_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"details": {
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"kind_key": {
+					"format": "text",
+					"type": "string"
+				},
+				"refusal_reason": {
+					"description": "the reason given with a refusal, shown to the requester; set exactly when the status is refused",
+					"format": "text",
+					"type": "string"
+				},
+				"status": {
+					"default": "pending",
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"kind_key",
+				"details",
+				"status",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"brands": {
 			"description": "one row per brand of a tenant: the neutral key used in secret names, flags and logs (brand-1), the display name and the stores the brand covers; every Zalo row hangs off it",
 			"properties": {
@@ -3499,6 +3833,38 @@
 			],
 			"type": "object"
 		},
+		"mini_app_visits": {
+			"description": "count-only visits per Mini App and month in the tenant's zone (ADR-022: at least 10 a month), incremented by zalo-session through zalo_session_visit; no per-person row, no device, no location; owners and managers of the tenant read it",
+			"properties": {
+				"mini_app_id": {
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"month": {
+					"description": "the first day of the month in the tenant's time zone\n\nNote:\nThis is a Primary Key.<pk/>",
+					"format": "date",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"visits": {
+					"default": 0,
+					"format": "int32",
+					"type": "integer"
+				}
+			},
+			"required": ["tenant_id", "mini_app_id", "month", "visits", "updated_at"],
+			"type": "object"
+		},
 		"mini_apps": {
 			"description": "the staff and customer Mini Apps of a brand: the Mini App id, whether it is listed, and the inputs of its app-config.json",
 			"properties": {
@@ -3924,7 +4290,7 @@
 					"type": "string"
 				},
 				"kind": {
-					"description": "digest, digest_correction, alert, alert_reminder, alert_resolved, test, link_code, link_notice or link_confirmation; null on log rows outside the outbox",
+					"description": "digest, digest_correction, alert, alert_reminder, alert_resolved, test, link_code, link_notice, link_confirmation, announcement (a new announcement waits in the staff app), request_decided (a request of the member was approved or refused) or staff_digest (the staff form of the daily digest); null on log rows outside the outbox",
 					"format": "text",
 					"type": "string"
 				},
@@ -5450,6 +5816,11 @@
 					"format": "text",
 					"type": "string"
 				},
+				"staff_contact_instructions": {
+					"description": "the contact instructions every brand's staff app shows before pairing and on its refusal screen (zalo-session answers them as contact): plain text of 1 to 500 characters, line breaks allowed, no other control character and no link; null shows the app's own fallback; written by an owner with an unlimited scope through set_staff_contact_instructions",
+					"format": "text",
+					"type": "string"
+				},
 				"staff_revenue_visibility": {
 					"default": "all",
 					"description": "what members with role staff may read of revenue (FR-STF-13): none (no invoice, line, payment, shift, sync check or aggregate row, so report functions and metric_value return nothing), store_totals (as none, plus today's net revenue and invoice count of their stores through today_store_totals) or all (every revenue row of their stores); owners, managers and viewers are not affected; written by an owner with an unlimited scope through set_staff_revenue_visibility",
@@ -5974,6 +6345,51 @@
 				"$ref": "#/definitions/analytics_refreshes"
 			}
 		},
+		"body.announcement_receipts": {
+			"description": "announcement_receipts",
+			"in": "body",
+			"name": "announcement_receipts",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/announcement_receipts"
+			}
+		},
+		"body.announcement_recipients": {
+			"description": "announcement_recipients",
+			"in": "body",
+			"name": "announcement_recipients",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/announcement_recipients"
+			}
+		},
+		"body.announcements": {
+			"description": "announcements",
+			"in": "body",
+			"name": "announcements",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/announcements"
+			}
+		},
+		"body.approval_request_kinds": {
+			"description": "approval_request_kinds",
+			"in": "body",
+			"name": "approval_request_kinds",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/approval_request_kinds"
+			}
+		},
+		"body.approval_requests": {
+			"description": "approval_requests",
+			"in": "body",
+			"name": "approval_requests",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/approval_requests"
+			}
+		},
 		"body.brands": {
 			"description": "brands",
 			"in": "body",
@@ -6242,6 +6658,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/legal_documents"
+			}
+		},
+		"body.mini_app_visits": {
+			"description": "mini_app_visits",
+			"in": "body",
+			"name": "mini_app_visits",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/mini_app_visits"
 			}
 		},
 		"body.mini_apps": {
@@ -7601,6 +8026,317 @@
 		"rowFilter.analytics_refreshes.to_date": {
 			"in": "query",
 			"name": "to_date",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_receipts.announcement_id": {
+			"in": "query",
+			"name": "announcement_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_receipts.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_receipts.created_by": {
+			"description": "the reader",
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_receipts.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_receipts.read_at": {
+			"in": "query",
+			"name": "read_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_receipts.store_ids": {
+			"description": "the reader's recipient store_ids, or for a reader who was not a recipient their scope within the announcement's",
+			"in": "query",
+			"name": "store_ids",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_receipts.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_recipients.announcement_id": {
+			"in": "query",
+			"name": "announcement_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_recipients.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_recipients.created_by": {
+			"description": "the author who published it",
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_recipients.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_recipients.role": {
+			"description": "the member's role at publication",
+			"in": "query",
+			"name": "role",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_recipients.store_ids": {
+			"description": "the stores at which the member received it: the member's store scope at publication within the announcement's (null when both are every store); owners and managers whose scope meets it read the row",
+			"in": "query",
+			"name": "store_ids",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_recipients.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcement_recipients.user_id": {
+			"in": "query",
+			"name": "user_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.audience": {
+			"description": "the roles it is published to, among owner, manager and staff; owners and managers of its stores read it whatever the audience",
+			"in": "query",
+			"name": "audience",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.body": {
+			"in": "query",
+			"name": "body",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.created_by": {
+			"description": "the author",
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.expires_at": {
+			"in": "query",
+			"name": "expires_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.pinned_until": {
+			"description": "the announcement stays first in the feed and on the staff home until this instant; null when not pinned; changed through set_announcement_pin",
+			"in": "query",
+			"name": "pinned_until",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.published_at": {
+			"in": "query",
+			"name": "published_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.store_ids": {
+			"description": "the stores the announcement is for; null for every store of the tenant, which only a member with an unlimited scope publishes",
+			"in": "query",
+			"name": "store_ids",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.title": {
+			"in": "query",
+			"name": "title",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.announcements.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_request_kinds.active": {
+			"in": "query",
+			"name": "active",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_request_kinds.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_request_kinds.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_request_kinds.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_request_kinds.key": {
+			"description": "the stable key a request stores in approval_requests.kind_key; never changes once written",
+			"in": "query",
+			"name": "key",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_request_kinds.label": {
+			"in": "query",
+			"name": "label",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_request_kinds.sort_order": {
+			"in": "query",
+			"name": "sort_order",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_request_kinds.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_request_kinds.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_request_kinds.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_requests.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_requests.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_requests.decided_at": {
+			"in": "query",
+			"name": "decided_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_requests.decided_by": {
+			"in": "query",
+			"name": "decided_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_requests.details": {
+			"in": "query",
+			"name": "details",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_requests.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_requests.kind_key": {
+			"in": "query",
+			"name": "kind_key",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_requests.refusal_reason": {
+			"description": "the reason given with a refusal, shown to the requester; set exactly when the status is refused",
+			"in": "query",
+			"name": "refusal_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_requests.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_requests.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_requests.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.approval_requests.updated_at": {
+			"in": "query",
+			"name": "updated_at",
 			"required": false,
 			"type": "string"
 		},
@@ -10155,6 +10891,37 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.mini_app_visits.mini_app_id": {
+			"in": "query",
+			"name": "mini_app_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_app_visits.month": {
+			"description": "the first day of the month in the tenant's time zone",
+			"in": "query",
+			"name": "month",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_app_visits.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_app_visits.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.mini_app_visits.visits": {
+			"in": "query",
+			"name": "visits",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.mini_apps.brand_id": {
 			"in": "query",
 			"name": "brand_id",
@@ -10612,7 +11379,7 @@
 			"type": "string"
 		},
 		"rowFilter.outbound_messages.kind": {
-			"description": "digest, digest_correction, alert, alert_reminder, alert_resolved, test, link_code, link_notice or link_confirmation; null on log rows outside the outbox",
+			"description": "digest, digest_correction, alert, alert_reminder, alert_resolved, test, link_code, link_notice, link_confirmation, announcement (a new announcement waits in the staff app), request_decided (a request of the member was approved or refused) or staff_digest (the staff form of the daily digest); null on log rows outside the outbox",
 			"in": "query",
 			"name": "kind",
 			"required": false,
@@ -12165,6 +12932,13 @@
 		"rowFilter.tenants.slug": {
 			"in": "query",
 			"name": "slug",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.tenants.staff_contact_instructions": {
+			"description": "the contact instructions every brand's staff app shows before pairing and on its refusal screen (zalo-session answers them as contact): plain text of 1 to 500 characters, line breaks allowed, no other control character and no link; null shows the app's own fallback; written by an owner with an unlimited scope through set_staff_contact_instructions",
+			"in": "query",
+			"name": "staff_contact_instructions",
 			"required": false,
 			"type": "string"
 		},
@@ -15362,6 +16136,926 @@
 					}
 				},
 				"tags": ["analytics_refreshes"]
+			}
+		},
+		"/announcement_receipts": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.announcement_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.read_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.created_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "Đã đọc: one receipt per reader (created_by) and announcement, written only by the reader through mark_announcement_read; the first tap is kept, so read_at never moves",
+				"tags": ["announcement_receipts"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.announcement_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.read_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.created_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/announcement_receipts"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "Đã đọc: one receipt per reader (created_by) and announcement, written only by the reader through mark_announcement_read; the first tap is kept, so read_at never moves",
+				"tags": ["announcement_receipts"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.announcement_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.read_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_receipts.created_at"
+					},
+					{
+						"$ref": "#/parameters/body.announcement_receipts"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "Đã đọc: one receipt per reader (created_by) and announcement, written only by the reader through mark_announcement_read; the first tap is kept, so read_at never moves",
+				"tags": ["announcement_receipts"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.announcement_receipts"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "Đã đọc: one receipt per reader (created_by) and announcement, written only by the reader through mark_announcement_read; the first tap is kept, so read_at never moves",
+				"tags": ["announcement_receipts"]
+			}
+		},
+		"/announcement_recipients": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.announcement_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.role"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.created_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the members an announcement was published to, fixed at publication so the read rate keeps its denominator: every owner, manager or staff member of an audience role whose store scope meets the announcement's, the author left out; kept when the member later leaves; written only by publish_announcement",
+				"tags": ["announcement_recipients"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.announcement_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.role"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.created_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/announcement_recipients"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the members an announcement was published to, fixed at publication so the read rate keeps its denominator: every owner, manager or staff member of an audience role whose store scope meets the announcement's, the author left out; kept when the member later leaves; written only by publish_announcement",
+				"tags": ["announcement_recipients"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.announcement_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.role"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcement_recipients.created_at"
+					},
+					{
+						"$ref": "#/parameters/body.announcement_recipients"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the members an announcement was published to, fixed at publication so the read rate keeps its denominator: every owner, manager or staff member of an audience role whose store scope meets the announcement's, the author left out; kept when the member later leaves; written only by publish_announcement",
+				"tags": ["announcement_recipients"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.announcement_recipients"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the members an announcement was published to, fixed at publication so the read rate keeps its denominator: every owner, manager or staff member of an audience role whose store scope meets the announcement's, the author left out; kept when the member later leaves; written only by publish_announcement",
+				"tags": ["announcement_recipients"]
+			}
+		},
+		"/announcements": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.announcements.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.audience"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.body"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.pinned_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.published_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "announcements (FR-STF-19): a plain-text title and body published by an owner or manager to the members of the audience roles in the store scope, written only through publish_announcement; pinned while pinned_until lies ahead, hidden from the feed after expires_at; the title and body never enter a message, an alert or a log",
+				"tags": ["announcements"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.announcements.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.audience"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.body"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.pinned_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.published_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/announcements"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "announcements (FR-STF-19): a plain-text title and body published by an owner or manager to the members of the audience roles in the store scope, written only through publish_announcement; pinned while pinned_until lies ahead, hidden from the feed after expires_at; the title and body never enter a message, an alert or a log",
+				"tags": ["announcements"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.announcements.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.audience"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.body"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.pinned_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.published_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.announcements.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.announcements"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "announcements (FR-STF-19): a plain-text title and body published by an owner or manager to the members of the audience roles in the store scope, written only through publish_announcement; pinned while pinned_until lies ahead, hidden from the feed after expires_at; the title and body never enter a message, an alert or a log",
+				"tags": ["announcements"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.announcements"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "announcements (FR-STF-19): a plain-text title and body published by an owner or manager to the members of the audience roles in the store scope, written only through publish_announcement; pinned while pinned_until lies ahead, hidden from the feed after expires_at; the title and body never enter a message, an alert or a log",
+				"tags": ["announcements"]
+			}
+		},
+		"/approval_request_kinds": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.sort_order"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "kinds of staff requests: the Vietnamese defaults as global rows (tenant_id null) and a tenant's own rows, which override a default of the same key (label, order, active) or add a key; leave and shift swaps stay with the POS vendor's HR product and have no default; a tenant's effective list is approval_request_kinds_of; tenant rows written by owners with an unlimited scope",
+				"tags": ["approval_request_kinds"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.sort_order"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/approval_request_kinds"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "kinds of staff requests: the Vietnamese defaults as global rows (tenant_id null) and a tenant's own rows, which override a default of the same key (label, order, active) or add a key; leave and shift swaps stay with the POS vendor's HR product and have no default; a tenant's effective list is approval_request_kinds_of; tenant rows written by owners with an unlimited scope",
+				"tags": ["approval_request_kinds"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.sort_order"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_request_kinds.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.approval_request_kinds"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "kinds of staff requests: the Vietnamese defaults as global rows (tenant_id null) and a tenant's own rows, which override a default of the same key (label, order, active) or add a key; leave and shift swaps stay with the POS vendor's HR product and have no default; a tenant's effective list is approval_request_kinds_of; tenant rows written by owners with an unlimited scope",
+				"tags": ["approval_request_kinds"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.approval_request_kinds"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "kinds of staff requests: the Vietnamese defaults as global rows (tenant_id null) and a tenant's own rows, which override a default of the same key (label, order, active) or add a key; leave and shift swaps stay with the POS vendor's HR product and have no default; a tenant's effective list is approval_request_kinds_of; tenant rows written by owners with an unlimited scope",
+				"tags": ["approval_request_kinds"]
+			}
+		},
+		"/approval_requests": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.kind_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.details"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.decided_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.decided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.refusal_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "staff requests to the managers of a store (FR-STF-20): a kind, plain-text details and the requester (created_by); pending until an owner or manager of the store other than the requester approves or refuses it through decide_request, with a reason on refusal; a decided request never changes; details and reason never enter a message, an alert or a log",
+				"tags": ["approval_requests"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.kind_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.details"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.decided_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.decided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.refusal_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/approval_requests"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "staff requests to the managers of a store (FR-STF-20): a kind, plain-text details and the requester (created_by); pending until an owner or manager of the store other than the requester approves or refuses it through decide_request, with a reason on refusal; a decided request never changes; details and reason never enter a message, an alert or a log",
+				"tags": ["approval_requests"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.kind_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.details"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.decided_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.decided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.refusal_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.approval_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.approval_requests"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "staff requests to the managers of a store (FR-STF-20): a kind, plain-text details and the requester (created_by); pending until an owner or manager of the store other than the requester approves or refuses it through decide_request, with a reason on refusal; a decided request never changes; details and reason never enter a message, an alert or a log",
+				"tags": ["approval_requests"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.approval_requests"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "staff requests to the managers of a store (FR-STF-20): a kind, plain-text details and the requester (created_by); pending until an owner or manager of the store other than the requester approves or refuses it through decide_request, with a reason on refusal; a decided request never changes; details and reason never enter a message, an alert or a log",
+				"tags": ["approval_requests"]
 			}
 		},
 		"/brands": {
@@ -21887,6 +23581,145 @@
 				"tags": ["legal_documents"]
 			}
 		},
+		"/mini_app_visits": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.mini_app_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.month"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.visits"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "count-only visits per Mini App and month in the tenant's zone (ADR-022: at least 10 a month), incremented by zalo-session through zalo_session_visit; no per-person row, no device, no location; owners and managers of the tenant read it",
+				"tags": ["mini_app_visits"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.mini_app_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.month"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.visits"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/mini_app_visits"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "count-only visits per Mini App and month in the tenant's zone (ADR-022: at least 10 a month), incremented by zalo-session through zalo_session_visit; no per-person row, no device, no location; owners and managers of the tenant read it",
+				"tags": ["mini_app_visits"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.mini_app_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.month"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.visits"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.mini_app_visits.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.mini_app_visits"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "count-only visits per Mini App and month in the tenant's zone (ADR-022: at least 10 a month), incremented by zalo-session through zalo_session_visit; no per-person row, no device, no location; owners and managers of the tenant read it",
+				"tags": ["mini_app_visits"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.mini_app_visits"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "count-only visits per Mini App and month in the tenant's zone (ADR-022: at least 10 a month), incremented by zalo-session through zalo_session_visit; no per-person row, no device, no location; owners and managers of the tenant read it",
+				"tags": ["mini_app_visits"]
+			}
+		},
 		"/mini_apps": {
 			"delete": {
 				"parameters": [
@@ -24677,6 +26510,315 @@
 				"tags": ["(rpc) analytics_catch_up_status"]
 			}
 		},
+		"/rpc/announcement_feed": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store_id",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"format": "boolean",
+						"in": "query",
+						"name": "p_include_expired",
+						"required": false,
+						"type": "boolean"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the announcements the caller may read, for one store (its own and the every-store ones) or all: pinned ones first while their pin lasts, then the newest; expired ones only when asked; with whether the caller is a recipient and the caller's own read time; at most 200 rows",
+				"tags": ["(rpc) announcement_feed"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the announcements the caller may read, for one store (its own and the every-store ones) or all: pinned ones first while their pin lasts, then the newest; expired ones only when asked; with whether the caller is a recipient and the caller's own read time; at most 200 rows",
+							"properties": {
+								"p_include_expired": {
+									"format": "boolean",
+									"type": "boolean"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the announcements the caller may read, for one store (its own and the every-store ones) or all: pinned ones first while their pin lasts, then the newest; expired ones only when asked; with whether the caller is a recipient and the caller's own read time; at most 200 rows",
+				"tags": ["(rpc) announcement_feed"]
+			}
+		},
+		"/rpc/announcement_read_rate": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_announcement_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the read rate of an announcement over its fixed recipients that the caller may read (an owner or manager reads the recipients whose stores meet the caller's scope, so a store-limited manager gets the rate of their own staff): recipients, readers, readers within 24 hours of publication and both shares; a reader who was not a recipient is not counted; 42501 for staff, for a member outside the tenant and for an announcement the caller cannot read",
+				"tags": ["(rpc) announcement_read_rate"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the read rate of an announcement over its fixed recipients that the caller may read (an owner or manager reads the recipients whose stores meet the caller's scope, so a store-limited manager gets the rate of their own staff): recipients, readers, readers within 24 hours of publication and both shares; a reader who was not a recipient is not counted; 42501 for staff, for a member outside the tenant and for an announcement the caller cannot read",
+							"properties": {
+								"p_announcement_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_announcement_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the read rate of an announcement over its fixed recipients that the caller may read (an owner or manager reads the recipients whose stores meet the caller's scope, so a store-limited manager gets the rate of their own staff): recipients, readers, readers within 24 hours of publication and both shares; a reader who was not a recipient is not counted; 42501 for staff, for a member outside the tenant and for an announcement the caller cannot read",
+				"tags": ["(rpc) announcement_read_rate"]
+			}
+		},
+		"/rpc/announcement_readers": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_announcement_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the recipients of an announcement the caller may read with their read time (null while unread, listed first), the display name from the roster or the Zalo identity when the caller may read it, the role and stores at publication and whether the person is still a member; a store-limited manager gets the recipients of their own stores only; 42501 for staff, for a member outside the tenant and for an announcement the caller cannot read",
+				"tags": ["(rpc) announcement_readers"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the recipients of an announcement the caller may read with their read time (null while unread, listed first), the display name from the roster or the Zalo identity when the caller may read it, the role and stores at publication and whether the person is still a member; a store-limited manager gets the recipients of their own stores only; 42501 for staff, for a member outside the tenant and for an announcement the caller cannot read",
+							"properties": {
+								"p_announcement_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_announcement_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the recipients of an announcement the caller may read with their read time (null while unread, listed first), the display name from the roster or the Zalo identity when the caller may read it, the role and stores at publication and whether the person is still a member; a store-limited manager gets the recipients of their own stores only; 42501 for staff, for a member outside the tenant and for an announcement the caller cannot read",
+				"tags": ["(rpc) announcement_readers"]
+			}
+		},
+		"/rpc/approval_queue": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store_id",
+						"required": false,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the manager's queue: the pending requests of the stores the caller manages (one store or all), oldest first, without the caller's own requests, which another manager decides; with the kind label and the requester's name when the caller may read it; the home card counts its rows; at most 500",
+				"tags": ["(rpc) approval_queue"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the manager's queue: the pending requests of the stores the caller manages (one store or all), oldest first, without the caller's own requests, which another manager decides; with the kind label and the requester's name when the caller may read it; the home card counts its rows; at most 500",
+							"properties": {
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the manager's queue: the pending requests of the stores the caller manages (one store or all), oldest first, without the caller's own requests, which another manager decides; with the kind label and the requester's name when the caller may read it; the home card counts its rows; at most 500",
+				"tags": ["(rpc) approval_queue"]
+			}
+		},
+		"/rpc/approval_request_kinds_of": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_tenant_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the tenant's effective request kinds: its own rows and the global defaults it does not override, active or not, in order; a caller outside the tenant gets the defaults only",
+				"tags": ["(rpc) approval_request_kinds_of"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the tenant's effective request kinds: its own rows and the global defaults it does not override, active or not, in order; a caller outside the tenant gets the defaults only",
+							"properties": {
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the tenant's effective request kinds: its own rows and the global defaults it does not override, active or not, in order; a caller outside the tenant gets the defaults only",
+				"tags": ["(rpc) approval_request_kinds_of"]
+			}
+		},
 		"/rpc/basket_pairs": {
 			"get": {
 				"parameters": [
@@ -25404,6 +27546,51 @@
 				},
 				"summary": "RPC: app.deactivate_staff",
 				"tags": ["(rpc) deactivate_staff"]
+			}
+		},
+		"/rpc/decide_request": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.decide_request",
+							"properties": {
+								"p_decision": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_reason": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_request_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_request_id", "p_decision"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.decide_request",
+				"tags": ["(rpc) decide_request"]
 			}
 		},
 		"/rpc/due_checklists": {
@@ -26675,6 +28862,43 @@
 				"tags": ["(rpc) link_my_phone"]
 			}
 		},
+		"/rpc/mark_announcement_read": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.mark_announcement_read",
+							"properties": {
+								"p_announcement_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_announcement_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.mark_announcement_read",
+				"tags": ["(rpc) mark_announcement_read"]
+			}
+		},
 		"/rpc/menu_engineering": {
 			"get": {
 				"parameters": [
@@ -27339,6 +29563,50 @@
 					}
 				},
 				"tags": ["(rpc) month_pace"]
+			}
+		},
+		"/rpc/my_requests": {
+			"get": {
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "Yêu cầu của tôi: the caller's own requests, newest first, with the state, the decision time and the reason of a refusal; at most 200",
+				"tags": ["(rpc) my_requests"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "Yêu cầu của tôi: the caller's own requests, newest first, with the state, the decision time and the reason of a refusal; at most 200",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "Yêu cầu của tôi: the caller's own requests, newest first, with the state, the decision time and the reason of a refusal; at most 200",
+				"tags": ["(rpc) my_requests"]
 			}
 		},
 		"/rpc/my_staff_notice": {
@@ -28565,6 +30833,73 @@
 				"tags": ["(rpc) promotion_summary"]
 			}
 		},
+		"/rpc/publish_announcement": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.publish_announcement",
+							"properties": {
+								"p_audience": {
+									"format": "tenant_role[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"p_body": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_expires_at": {
+									"format": "timestamp with time zone",
+									"type": "string"
+								},
+								"p_pinned_until": {
+									"format": "timestamp with time zone",
+									"type": "string"
+								},
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_title": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id", "p_title", "p_body"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.publish_announcement",
+				"tags": ["(rpc) publish_announcement"]
+			}
+		},
 		"/rpc/publish_legal_document": {
 			"post": {
 				"parameters": [
@@ -29326,6 +31661,47 @@
 				"tags": ["(rpc) seasonal_naive_forecast"]
 			}
 		},
+		"/rpc/set_announcement_pin": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.set_announcement_pin",
+							"properties": {
+								"p_announcement_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_pinned_until": {
+									"format": "timestamp with time zone",
+									"type": "string"
+								}
+							},
+							"required": ["p_announcement_id", "p_pinned_until"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.set_announcement_pin",
+				"tags": ["(rpc) set_announcement_pin"]
+			}
+		},
 		"/rpc/set_checklist_template_active": {
 			"post": {
 				"parameters": [
@@ -29406,6 +31782,47 @@
 				},
 				"summary": "RPC: app.set_ops_photo_retention_days",
 				"tags": ["(rpc) set_ops_photo_retention_days"]
+			}
+		},
+		"/rpc/set_staff_contact_instructions": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.set_staff_contact_instructions",
+							"properties": {
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_text": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id", "p_text"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.set_staff_contact_instructions",
+				"tags": ["(rpc) set_staff_contact_instructions"]
 			}
 		},
 		"/rpc/set_staff_revenue_visibility": {
@@ -29912,6 +32329,51 @@
 					}
 				},
 				"tags": ["(rpc) store_targets"]
+			}
+		},
+		"/rpc/submit_request": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "sends a request to the managers of a store in the caller's operations scope (42501 otherwise): an active request kind of the tenant (22023 otherwise) and plain-text details of 1 to 1000 characters (23514 otherwise); returns {request_id, status, created_at}; no message is sent, the managers see it in their queue",
+							"properties": {
+								"p_details": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_kind_key": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_id", "p_kind_key", "p_details"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "sends a request to the managers of a store in the caller's operations scope (42501 otherwise): an active request kind of the tenant (22023 otherwise) and plain-text details of 1 to 1000 characters (23514 otherwise); returns {request_id, status, created_at}; no message is sent, the managers see it in their queue",
+				"tags": ["(rpc) submit_request"]
 			}
 		},
 		"/rpc/today_store_totals": {
@@ -32626,6 +35088,9 @@
 						"$ref": "#/parameters/rowFilter.tenants.ops_photo_retention_days"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.tenants.staff_contact_instructions"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -32688,6 +35153,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.tenants.ops_photo_retention_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.staff_contact_instructions"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -32779,6 +35247,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.tenants.ops_photo_retention_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.staff_contact_instructions"
 					},
 					{
 						"$ref": "#/parameters/body.tenants"

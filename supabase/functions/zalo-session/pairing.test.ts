@@ -196,6 +196,7 @@ Deno.test("a pairing code sent with the accepted notice creates the login, recor
 				display_name: ZALO_NAME,
 				role: "staff",
 				stores: ["Cửa hàng Mẫu 1"],
+				store_ids: [STORE],
 				tenant_id: TENANT,
 			},
 		},

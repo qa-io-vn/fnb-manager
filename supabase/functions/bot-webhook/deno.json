@@ -50,6 +50,7 @@
 		"../../../packages/notify/src/dispatch/report.js": "../../../packages/notify/src/dispatch/report.ts",
 		"../../../packages/notify/src/dispatch/repository.js": "../../../packages/notify/src/dispatch/repository.ts",
 		"../../../packages/notify/src/dispatch/spacing.js": "../../../packages/notify/src/dispatch/spacing.ts",
+		"../../../packages/notify/src/messages/en.js": "../../../packages/notify/src/messages/en.ts",
 		"../../../packages/notify/src/messages/notice.js": "../../../packages/notify/src/messages/notice.ts",
 		"../../../packages/notify/src/messages/vi.js": "../../../packages/notify/src/messages/vi.ts",
 		"../../../packages/notify/src/render/alert.js": "../../../packages/notify/src/render/alert.ts",
@@ -389,10 +390,14 @@
 			"./repository.js": "../../../packages/notify/src/dispatch/repository.ts",
 			"./spacing.js": "../../../packages/notify/src/dispatch/spacing.ts"
 		},
+		"../../../packages/notify/src/messages/": {
+			"./vi.js": "../../../packages/notify/src/messages/vi.ts"
+		},
 		"../../../packages/notify/src/render/": {
 			"../channels/types.js": "../../../packages/notify/src/channels/types.ts",
 			"../digest/fingerprint.js": "../../../packages/notify/src/digest/fingerprint.ts",
 			"../digest/model.js": "../../../packages/notify/src/digest/model.ts",
+			"../messages/en.js": "../../../packages/notify/src/messages/en.ts",
 			"../messages/notice.js": "../../../packages/notify/src/messages/notice.ts",
 			"../messages/vi.js": "../../../packages/notify/src/messages/vi.ts",
 			"../rules/day.js": "../../../packages/notify/src/rules/day.ts",

@@ -202,10 +202,10 @@ select ok(not app.alert_rule_params_valid('daily_digest', '{"corrections": "yes"
 select ok(not app.alert_rule_params_valid('sync_stale', '{"threshold": 120}'::jsonb), 'an unknown parameter is refused');
 select ok(not app.alert_rule_params_valid('not_a_rule', '{}'::jsonb), 'an unknown rule is refused');
 
-select is((select count(*)::integer from public.alert_rule_catalog), 19, 'the catalogue holds the 19 rules');
+select is((select count(*)::integer from public.alert_rule_catalog), 26, 'the catalogue holds the 26 rules');
 select is(
   (select array_agg(rule_key order by sort_order) from public.alert_rule_catalog),
-  array['daily_digest', 'revenue_below_baseline', 'ticket_drop', 'drawer_variance', 'unverified_day', 'zero_sales_day', 'zero_sales_open', 'sync_failed', 'auth_failed', 'sync_stale', 'sync_dispatch_failed', 'nightly_missing', 'job_failed', 'channel_failed', 'digest_failed', 'zalo_webhook_unverified', 'zalo_token_failed', 'oa_package_expiring', 'cash_count_variance'],
+  array['daily_digest', 'revenue_below_baseline', 'ticket_drop', 'drawer_variance', 'unverified_day', 'zero_sales_day', 'zero_sales_open', 'sync_failed', 'auth_failed', 'sync_stale', 'sync_dispatch_failed', 'nightly_missing', 'job_failed', 'channel_failed', 'digest_failed', 'zalo_webhook_unverified', 'zalo_token_failed', 'oa_package_expiring', 'cash_count_variance', 'staff_sync_stale', 'abnormal_voids', 'voucher_spike', 'checklist_unfinished', 'staff_daily_digest', 'oa_inactive', 'mini_app_visits_low'],
   'the catalogue rules in their order'
 );
 select ok((select bool_and(app.alert_rule_params_valid(rule_key, default_params)) from public.alert_rule_catalog), 'every catalogue default passes its own parameter schema');
@@ -214,7 +214,7 @@ select is(
   row(interval '2 hours', interval '24 hours', true, true, 'critical')::text,
   'sync_stale cools down for 2 hours, reminds every 24 hours and announces its resolution'
 );
-select is((select count(*)::integer from public.alert_rule_catalog where delivery = 'digest'), 6, 'six rules are digest lines');
+select is((select count(*)::integer from public.alert_rule_catalog where delivery = 'digest'), 7, 'seven rules are digests or digest lines, staff_daily_digest included');
 
 select is((select count(*)::integer from public.channel_policies where tenant_id is null), 27, 'the 27 global policies are seeded');
 select is((select count(distinct (channel_kind, message_class))::integer from public.channel_policies where tenant_id is null), 27, 'one global policy per channel kind and message class');

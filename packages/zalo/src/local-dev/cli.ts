@@ -61,7 +61,7 @@ function exposureLines(
 			...qr(ready.phoneUrl),
 			`  public link: anyone with it can open the app as ${ready.role}; it stops ${stopsAt === null ? "" : `at ${clockTime(stopsAt)} `}or on Ctrl+C`,
 			"  the key in the link is new on every start; the dev server sets it as a cookie and drops it from the address, and any request without it gets 403",
-			`  the staff app listens on 127.0.0.1:${ready.port} behind a Cloudflare quick tunnel; zalo-session, the mock Zalo graph and the local Supabase API stay on 127.0.0.1 behind its proxy`,
+			`  the staff app listens on 127.0.0.1:${ready.port} behind a Cloudflare quick tunnel; zalo-session, zalo-phone, the mock Zalo graph and the local Supabase API stay on 127.0.0.1 behind its proxy`,
 		];
 	}
 	if (ready.exposure === "lan" && ready.phoneUrl !== null) {
@@ -70,7 +70,7 @@ function exposureLines(
 			`zalo:dev: ready on the home network; on the phone (same Wi-Fi) open ${ready.phoneUrl}`,
 			...qr(ready.phoneUrl),
 			`  the link carries a one-time key, new on every start: whoever opens it is signed in as the member below (${ready.role}), so keep it to yourself; without it every request gets 403`,
-			`  the staff app listens on ${ready.lan?.host ?? ""}:${ready.port} only; zalo-session, the mock Zalo graph and the local Supabase API stay on 127.0.0.1 behind its proxy`,
+			`  the staff app listens on ${ready.lan?.host ?? ""}:${ready.port} only; zalo-session, zalo-phone, the mock Zalo graph and the local Supabase API stay on 127.0.0.1 behind its proxy`,
 			...(others.length === 0
 				? []
 				: [
@@ -108,7 +108,7 @@ function readyLines(
 					"  first run: the mock user was bound to the member with a one-time binding code",
 				]
 			: []),
-		`  zalo-session runs under Deno with ZALO_LOCAL_DEV=1 on ${ready.functionUrl}; the mock Zalo graph answers on ${ready.graphUrl}`,
+		`  zalo-session and zalo-phone run under Deno with ZALO_LOCAL_DEV=1 on ${ready.functionUrl} and ${ready.phoneFunctionUrl}; the mock Zalo graph answers on ${ready.graphUrl}, phone linking included`,
 		"  stop with Ctrl+C, or type q and Enter",
 	];
 }
@@ -202,7 +202,7 @@ export async function runLocalLoopCli(
 			return 0;
 		}
 		console.log(
-			`zalo:dev: starting the mock Zalo graph, zalo-session and the staff app for ${options.brand} of ${options.tenant}`,
+			`zalo:dev: starting the mock Zalo graph, zalo-session, zalo-phone and the staff app for ${options.brand} of ${options.tenant}`,
 		);
 		const loop = await startLocalLoop(
 			options,

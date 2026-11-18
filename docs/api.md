@@ -735,6 +735,8 @@ Settings are written as rows, not through functions. RLS decides each write. The
 | `incidents` (phase 14b) | `tenant_id`, `store_id`, `occurred_at`, `kind`, `category_key`, `description`, `item_label`, as the caller, with the store in scope | `occurred_at`, `category_key`, `description`, `item_label` and `photo_paths`, by the reporter while the report is open | never |
 | `cash_counts` (phase 14b) | `tenant_id`, `store_id`, `counted_amount`, `denominations`, `note` and `replaces_id`, as the caller, with the store in scope; matching and evaluation follow at once | never | never |
 | `incident_categories` (phase 14b) | owner with an unlimited scope, tenant rows only, naming themselves as `created_by`; the global defaults are read-only | `label`, `sort_order` and `active` only; a key never changes | the same as insert |
+| `approval_requests` (phase 15) | `tenant_id`, `store_id`, `kind_key` and `details` only, as the caller, with the store in their operations scope; a trigger makes it pending (`22023` for a kind that is not active for the tenant) | never; a decision goes through [`decide_request`](#publicdecide_request) | never |
+| `approval_request_kinds` (phase 15) | owner with an unlimited scope, tenant rows only, naming themselves as `created_by`; the global defaults are read-only | `label`, `sort_order` and `active` only; a key never changes | the same as insert |
 
 Status: the tables, policies and triggers are verified locally (pgTAP `05_write_policies.sql`, `07_write_scope_and_attribution.sql`, `10_payment_fee_rates.sql`, `11_item_type_roles_and_holidays.sql`, `12_consent_and_legal.sql`, `31_notify_access.sql`, `35_mappings_and_catch_up.sql`). Inserts must name the caller as `created_by`, and a trigger sets `updated_by` to the caller on every insert and update of the manual-input tables, `item_category_overrides`, `report_settings`, `payment_kind_overrides`, `legal_documents` and `holidays`; a member's change of a store or tenant profile column stamps `profile_updated_at` and `profile_updated_by`. The 10b rows are verified by pgTAP `38_settings_writes.sql`. Cài đặt → Ngưỡng báo cáo writes `report_settings` (phase 10a); the other Settings screens are designed for phase 10b, Kế hoạch and `fnb publish-plan` (which will insert plans as the publisher) for 11b, and Settings → Cảnh báo after step 12c. The 10b Settings pages that write the store and tenant profiles (Cửa hàng, #159), the payment-kind overrides (Phân loại, #160) and the legal texts (Pháp lý, #164) are built on these rules. Destinations in `notification_channels` are written only by server code ([section 3.5](#35-notifications)). The Zalo configuration rows are built and tested by pgTAP `42_zalo_config.sql` (#203); no client writes them yet: the brand settings screen belongs to phase 20a, and the `fnb zalo config` command is still to be built.
 
@@ -1148,7 +1150,7 @@ returns TABLE(
 
 ### 3.10 Zalo (phase 13)
 
-Migration `zalo_inbound_events` (#207) adds one function a client may call. Migration `zalo_sign_in` (#205) adds two more to `public`, `zalo_session_app(p_brand_key text, p_tenant_id uuid default null)` and `zalo_session_sign_in(p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text default null, p_binding_code text default null)`, and migration `staff_pairing` (#213) a third, `zalo_session_pair(p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text default null, p_code text default null, p_notice_version text default null, p_notice_shown_at timestamp with time zone default null, p_new_user_id uuid default null)`. They are the database half of `zalo-session` and `zalo-phone` (section 5): `security invoker` wrappers of `app.zalo_resolve_app`, `app.zalo_sign_in` and `app.zalo_pair` that only `service_role` may execute, so `authenticated` and `anon` get `42501` and no client calls them; they are not part of this page's check. Since #213 `zalo_session_sign_in` answers `notice_required` for a bound person on the staff roster whose `staff_ops` consent is missing or outdated, and every `unpaired` answer carries the tenant's published staff notice. Tests: pgTAP `44_zalo_identity.sql`, `45_zalo_events.sql`, `48_staff_consent.sql` and `49_staff_pairing.sql`.
+Migration `zalo_inbound_events` (#207) adds one function a client may call. Migration `zalo_sign_in` (#205) adds two more to `public`, `zalo_session_app(p_brand_key text, p_tenant_id uuid default null)` and `zalo_session_sign_in(p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text default null, p_binding_code text default null)`, and migration `staff_pairing` (#213) a third, `zalo_session_pair(p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text default null, p_code text default null, p_notice_version text default null, p_notice_shown_at timestamp with time zone default null, p_new_user_id uuid default null)`. Migration `staff_app_texts_and_contact` adds a fourth, `zalo_session_texts(p_zalo_app_id uuid)`, the texts request of `zalo-session`. They are the database half of `zalo-session` and `zalo-phone` (section 5): `security invoker` wrappers of `app.zalo_resolve_app`, `app.zalo_sign_in`, `app.zalo_pair` and `app.zalo_texts` that only `service_role` may execute, so `authenticated` and `anon` get `42501` and no client calls them; they are not part of this page's check. Since #213 `zalo_session_sign_in` answers `notice_required` for a bound person on the staff roster whose `staff_ops` consent is missing or outdated, and every `unpaired` answer carries the tenant's published staff notice. Since `staff_app_texts_and_contact`, the `unpaired` and `notice_required` answers also carry the tenant's staff contact instructions as `contact` when it has some, and a bound answer carries `brand_store_ids`, the ids of the brand's stores in the member's scope in the order of `stores`. `zalo_session_texts` answers the published `privacy_notice` and `mini_app_terms` of the app's tenant in every published language, Vietnamese first, and the contact instructions (`null` when none); past 120 requests per Zalo App within a minute it answers `{"status": "wait", "retry_after": <seconds>}` instead, counted in `app.zalo_texts_requests` (app, window start, count, nothing about the caller). Tests: pgTAP `44_zalo_identity.sql`, `45_zalo_events.sql`, `48_staff_consent.sql`, `49_staff_pairing.sql` and `54_staff_app_texts.sql`.
 
 #### `public.oa_event_counts`
 
@@ -1234,7 +1236,7 @@ returns TABLE(store_id uuid, business_date date, net_amount numeric, invoices bi
 
 ### 3.12 Staff notice, consent and pairing (phase 14a)
 
-Migrations `staff_notice_consent` (#212) and `staff_pairing` (#213) add five functions a client may call. Each is a `security invoker` wrapper of the `app` function of the same name, which is `security definer` with an empty `search_path` and acts for the caller only: no owner or manager records, changes or revokes a person's `staff_ops` consent, and restrictive policies refuse a `staff_ops` row written to `consent_records` from the browser by any role, as for `notifications`. The staff notice is the tenant's published Vietnamese `legal_documents` row of kind `staff_notice`; a consent names its `version` as `policy_version` and is outdated once another version is published. The pairing itself is the `zalo-session` request of section 5. No client calls these functions yet: Settings → Nhân viên (#214) will issue codes and the staff app (#215) the rest. Tests: pgTAP `48_staff_consent.sql` and `49_staff_pairing.sql`.
+Migrations `staff_notice_consent` (#212) and `staff_pairing` (#213) add five functions a client may call. Each is a `security invoker` wrapper of the `app` function of the same name, which is `security definer` with an empty `search_path` and acts for the caller only: no owner or manager records, changes or revokes a person's `staff_ops` consent, and restrictive policies refuse a `staff_ops` row written to `consent_records` from the browser by any role, as for `notifications`. The staff notice is the tenant's published Vietnamese `legal_documents` row of kind `staff_notice`; a consent names its `version` as `policy_version` and is outdated once another version is published. The pairing itself is the `zalo-session` request of section 5. No client calls these functions yet: Settings → Nhân viên (#214) will issue codes and the staff app (#215) the rest. Migration `staff_app_texts_and_contact` adds a sixth, `set_staff_contact_instructions`, the contact text every staff app of the tenant shows before pairing, and `my_staff_notice` now names a linked phone's hint. Tests: pgTAP `48_staff_consent.sql`, `49_staff_pairing.sql` and `54_staff_app_texts.sql`.
 
 #### `public.issue_pairing_code`
 
@@ -1278,7 +1280,7 @@ returns jsonb
 
 - **Status:** built (phase 14a, #212).
 - **Who may call:** any member of the tenant; anyone else gets `42501`.
-- **Notes:** `{"consent": "current" | "outdated" | "missing" | "not_required", "notice": {"version", "title", "body_markdown", "published_at"} | null}` for the caller: `not_required` for a member who is not on the staff roster, `outdated` once a newer notice is published. The staff app calls it at each open, since a stored session skips `zalo-session`.
+- **Notes:** `{"consent": "current" | "outdated" | "missing" | "not_required", "notice": {"version", "title", "body_markdown", "published_at"} | null, "phone_hint"?: "…789"}` for the caller: `not_required` for a member who is not on the staff roster, `outdated` once a newer notice is published. `phone_hint` (`…` and the last three digits) is there only while the caller's roster row holds a phone they linked, so Cá nhân shows it when it opens; never the number. The staff app calls it at each open, since a stored session skips `zalo-session`.
 
 #### `public.link_my_phone`
 
@@ -1290,6 +1292,18 @@ returns text
 - **Status:** built (phase 14a, #213).
 - **Who may call:** a paired person on the tenant's roster (an `active` row), for their own row only; anyone else, an owner or manager included, gets `42501`. A number not in international form (`+` and 8 to 15 digits) gives `22023`.
 - **Notes:** stores the number that `zalo-phone` decoded for the caller, with `phone_linked_at`, and returns its hint (`…` and the last three digits); `null` removes it. Optional and separate from pairing: nothing else depends on it. `authenticated` never selects `staff_roster.phone`, only `phone_hint`.
+
+#### `public.set_staff_contact_instructions`
+
+```sql
+public.set_staff_contact_instructions(p_tenant_id uuid, p_text text)
+returns text
+```
+
+- **Called by:** no caller yet; the contact field of Cài đặt → Nhân viên is being built.
+- **Status:** built (migration `staff_app_texts_and_contact`; pgTAP `54_staff_app_texts.sql`).
+- **Who may call:** an owner of the tenant with every store; anyone else, a store-limited owner and managers included, gets `42501`. More than 500 characters (`the staff contact instructions hold at most 500 characters`), a control character other than a line break or a tab (`… are plain text without control characters`) or a link (`… hold no link`) gives `22023` with that message.
+- **Notes:** sets `tenants.staff_contact_instructions`, the plain text every brand's staff app shows on the refusal screen and with the texts before pairing, and returns what was stored: line breaks made `\n`, the ends trimmed, and a blank text or `null` stored as `null`, which clears it so the app shows its own fallback. A link is a URL scheme with `//`, a `www.` host, a host name with a path (`zalo.me/…`) or a host name ending in a common top-level domain (`example.vn`); phone numbers, e-mail addresses, times and abbreviations such as `TP.HCM` are accepted, and no other personal-data check is made. A check constraint on the column repeats the rules, and `authenticated` cannot update the column directly. Members read it with the rest of `tenants`. The tenant's profile stamps record who changed it. `zalo-session` answers it as `contact` (section 5).
 
 ### 3.13 Checklists and operations photos (phase 14b)
 
@@ -1512,6 +1526,139 @@ returns TABLE(store_id uuid, business_date date, shift_id uuid, shift_number int
 - **Who may call:** any member, with the rules of the report functions: at most 50 stores and 92 days (`22023`), at most 900 rows. RLS shapes the result: the shifts come from `agg_shift_cash`, so staff see them only when their tenant's `staff_revenue_visibility` is `all`; the counts come from `cash_counts`, so staff without it see only their own counts, and viewers see the shifts without counts.
 - **Notes:** one row per synced shift of the stores and dates (`shift_number` is Ca {n} by opening order within the business day) with its active count, plus every count not matched yet; `variance_amount` is counted minus expected, `drawer_variance_amount` the POS drawer's own variance as in Ca & két tiền, `recounts` the reopenings before the active count. `state` is `no_count` (a shift without a count; Chất lượng dữ liệu flags a closed one), `unmatched` (chưa khớp ca), `recorded` (matched, but the caller may not read the shift's figures or they are not refreshed yet: the staff app shows Đã ghi nhận), `no_reference` (the POS gave no expected cash), `over` or `within`.
 
+### 3.16 Announcements and Đã đọc (phase 15)
+
+Migration `announcements_and_requests` (#227) adds six functions a client may call. `publish_announcement`, `set_announcement_pin` and `mark_announcement_read` are `security invoker` wrappers of the `app` function of the same name, which is `security definer` with an empty `search_path` and checks the caller's role itself; no client writes `announcements`, `announcement_recipients` or `announcement_receipts` directly. The three readers run as the caller under the operations policies of [section 4](#notices-and-requests-phase-15). An announcement names its stores (`null` for every store of the tenant) and its audience among `owner`, `manager` and `staff`; it is read by the members of an audience role whose operations scope meets its stores, and by every owner and manager of those stores whatever the audience. Its recipients are fixed when it is published (every member of an audience role whose scope meets the stores, the author left out), so the read rate keeps its denominator when people join or leave. Publishing queues one `announcement` message per destination of each recipient who holds the `notifications` consent, through `app.enqueue_message`: template `announcement.v1`, count-only parameters (`announcement_id`, `pinned`, `all_stores`, `store_count`) and no title or body, so the message only says that something new waits in the app; the dispatcher of step 12c sends it, and #231 will choose one route per person instead of every destination. Titles and bodies are plain text, never copied into a message, an alert or a log. No client calls these functions yet: the staff app and the web page (#228) will. Tests: pgTAP `55_announcements_requests.sql` and `47_operations_rls.sql`.
+
+#### `public.publish_announcement`
+
+```sql
+public.publish_announcement(p_tenant_id uuid, p_title text, p_body text, p_store_ids uuid[] DEFAULT NULL::uuid[], p_audience tenant_role[] DEFAULT ARRAY['manager'::tenant_role, 'staff'::tenant_role], p_pinned_until timestamp with time zone DEFAULT NULL::timestamp with time zone, p_expires_at timestamp with time zone DEFAULT NULL::timestamp with time zone)
+returns jsonb
+```
+
+- **Status:** built (phase 15, #227).
+- **Who may call:** an owner or a manager whose scope holds every store of `p_store_ids`; for every store (`null`), an owner or manager with an unlimited scope. Anyone else, a store of another tenant included, gets `42501`. A store list that is empty, longer than 50 or names a store twice, a title outside 1 to 120 characters, a body outside 1 to 4,000 characters or with control characters other than line breaks and tabs, an audience outside `owner`, `manager` and `staff`, a pin that does not end within the next 365 days, an expiry not within the next 730 days, or a pin past the expiry gives `22023`.
+- **Notes:** publishes now and returns `{"announcement_id", "published_at", "recipients", "messages"}`: the number of fixed recipients and of messages queued. The audience defaults to managers and staff. A link-like text in the body is stored as text; the screens show it as text.
+
+#### `public.set_announcement_pin`
+
+```sql
+public.set_announcement_pin(p_announcement_id uuid, p_pinned_until timestamp with time zone)
+returns jsonb
+```
+
+- **Status:** built (phase 15, #227).
+- **Who may call:** an owner or a manager whose scope holds every store of the announcement (an unlimited scope for an every-store one); anyone else, or an unknown id, gets `42501`. A pin that does not end within the next 365 days, or ends after the announcement expires, gives `22023`.
+- **Notes:** pins the announcement until `p_pinned_until`, or unpins it with `null`; nothing else of a published announcement changes, and no message is sent. Returns `{"announcement_id", "pinned_until", "pinned"}`.
+
+#### `public.announcement_feed`
+
+```sql
+public.announcement_feed(p_store_id uuid DEFAULT NULL::uuid, p_include_expired boolean DEFAULT false)
+returns TABLE(announcement_id uuid, tenant_id uuid, store_ids uuid[], audience tenant_role[], title text, body text, pinned boolean, pinned_until timestamp with time zone, published_by uuid, published_at timestamp with time zone, expires_at timestamp with time zone, recipient boolean, read_at timestamp with time zone)
+```
+
+- **Status:** built (phase 15, #227).
+- **Who may call:** any member; the rows are the announcements the caller may read, none for a viewer, the publisher or `anon`.
+- **Notes:** the Thông báo list: for one store (its own and the every-store announcements) or all, pinned ones first while their pin lasts, then the newest; expired ones only with `p_include_expired`. `recipient` says whether the caller was among the fixed recipients and `read_at` is the caller's own Đã đọc time (`null` while unread). At most 200 rows. The staff home shows the rows with `pinned`.
+
+#### `public.mark_announcement_read`
+
+```sql
+public.mark_announcement_read(p_announcement_id uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 15, #227).
+- **Who may call:** a member who may read the announcement, for themselves only; anyone else, or an unknown id, gets `42501`.
+- **Notes:** Đã đọc: records the caller's receipt once; a second tap keeps the first time. Returns `{"announcement_id", "read_at", "recipient"}`; `recipient` is `false` for a member who joined after publication, whose receipt is kept but not counted in the read rate.
+
+#### `public.announcement_read_rate`
+
+```sql
+public.announcement_read_rate(p_announcement_id uuid)
+returns TABLE(announcement_id uuid, published_at timestamp with time zone, recipients integer, readers integer, readers_within_24h integer, read_rate numeric, read_rate_24h numeric)
+```
+
+- **Status:** built (phase 15, #227).
+- **Who may call:** an owner or a manager who may read the announcement; staff, members of another tenant and an unknown id get `42501`.
+- **Notes:** one row: the fixed recipients the caller may read, how many of them tapped Đã đọc, how many within 24 hours of publication, and both shares (4 decimals, `null` without recipients). An owner or manager reads the recipients whose stores meet their scope, so a store-limited manager gets the rate of their own staff; the owner with every store gets the rate of the 80 % acceptance.
+
+#### `public.announcement_readers`
+
+```sql
+public.announcement_readers(p_announcement_id uuid)
+returns TABLE(user_id uuid, display_name text, role tenant_role, store_ids uuid[], member boolean, read_at timestamp with time zone)
+```
+
+- **Status:** built (phase 15, #227).
+- **Who may call:** as `announcement_read_rate`.
+- **Notes:** the recipients the caller may read, the unread first: the name from the staff roster or the Zalo identity where the caller may read one, the role and stores at publication, whether the person is still a member, and the read time. A store-limited manager sees only the recipients of their own stores.
+
+### 3.17 Staff requests and the approval queue (phase 15)
+
+Migration `announcements_and_requests` (#227) adds five functions a client may call. `decide_request` is a `security invoker` wrapper of `app.decide_request`, which is `security definer` with an empty `search_path`, checks the caller's role and is the only way to change a request's status; the others run as the caller under the operations policies. A request belongs to a store, has a kind and plain-text details, and stays `pending` until an owner or manager of the store who is not the requester approves or refuses it (with a reason); a decided request never changes. Staff read their own requests only; owners and managers read those of the stores in their scope. Kinds are the Vietnamese defaults `mua_hang` Mua hàng cho cửa hàng, `chenh_lech_tien` Giải trình chênh lệch tiền, `ngoai_le_checklist` Ngoại lệ checklist and `khac` Khác, overridable per tenant; leave and shift swaps stay with the POS vendor's HR product. Submitting sends no message: managers see the request in their queue. A decision queues one `request_decided` message per destination of the requester who holds the `notifications` consent: template `request_decided.v1`, parameters `request_id`, `decision` and `kind_key`, never the details or the reason. No client calls these functions yet: the staff app (#229) will. Tests: pgTAP `55_announcements_requests.sql` and `47_operations_rls.sql`.
+
+#### `public.submit_request`
+
+```sql
+public.submit_request(p_store_id uuid, p_kind_key text, p_details text)
+returns jsonb
+```
+
+- **Status:** built (phase 15, #227).
+- **Who may call:** an owner, manager or staff member with the store in scope; anyone else gets `42501`. A kind that is not an active kind of the tenant gives `22023`; details outside 1 to 1,000 characters, or with control characters other than line breaks and tabs, give `23514`.
+- **Notes:** Gửi yêu cầu: returns `{"request_id", "status", "created_at"}` with the status `pending`.
+
+#### `public.approval_request_kinds_of`
+
+```sql
+public.approval_request_kinds_of(p_tenant_id uuid)
+returns TABLE(key text, label text, sort_order smallint, active boolean, tenant_row boolean)
+```
+
+- **Status:** built (phase 15, #227).
+- **Who may call:** any member; a caller outside the tenant gets the defaults only.
+- **Notes:** the tenant's effective kinds in order: the defaults and the tenant's own rows, which override a default of the same key or add one (`tenant_row`); retired ones come with `active` false for the labels of older requests. Owners with every store write their rows in `approval_request_kinds` directly (section 4).
+
+#### `public.approval_queue`
+
+```sql
+public.approval_queue(p_store_id uuid DEFAULT NULL::uuid)
+returns TABLE(request_id uuid, tenant_id uuid, store_id uuid, kind_key text, kind_label text, details text, requested_by uuid, requester_name text, requested_at timestamp with time zone)
+```
+
+- **Status:** built (phase 15, #227).
+- **Who may call:** any member; rows only for the stores the caller manages (owners and managers), none for staff.
+- **Notes:** the manager's queue: the pending requests of one store or of every store the caller manages, oldest first, without the caller's own requests, which another manager decides. `requester_name` comes from the roster or the Zalo identity where the caller may read one. The home card counts the rows. At most 500.
+
+#### `public.decide_request`
+
+```sql
+public.decide_request(p_request_id uuid, p_decision text, p_reason text DEFAULT NULL::text)
+returns jsonb
+```
+
+- **Status:** built (phase 15, #227).
+- **Who may call:** an owner or a manager of the request's store who is not its requester; the requester, staff, anyone outside the store or an unknown id gets `42501`. A decision other than `approved` or `refused`, a refusal without a reason of 1 to 500 characters, or an approval with a reason gives `22023`; a request already decided gives `55000`.
+- **Notes:** returns `{"request_id", "status", "decided_by", "decided_at", "refusal_reason", "messages"}`, `messages` being the number of messages queued to the requester.
+
+#### `public.my_requests`
+
+```sql
+public.my_requests()
+returns TABLE(request_id uuid, tenant_id uuid, store_id uuid, kind_key text, kind_label text, details text, status text, requested_at timestamp with time zone, decided_by uuid, decided_at timestamp with time zone, refusal_reason text)
+```
+
+- **Status:** built (phase 15, #227).
+- **Who may call:** any member; the caller's own requests only.
+- **Notes:** Yêu cầu của tôi: newest first, with the status, the decision time and the reason of a refusal. At most 200.
+
+### 3.18 Staff alert rules and activity monitors (phase 15)
+
+Migration `staff_alert_rules` (#230) adds no function for members. It adds seven catalogue rules (26 in all): `staff_sync_stale` (staff and managers of the store, 6-hour cool-down; it opens while an owner-facing `sync_stale` or `sync_failed` episode of the store, or an `auth_failed` episode of its POS account, is open, and carries no fact at all), `abnormal_voids` (owners and managers; a closed shift of today or yesterday whose void or removed-line rate scores above `z_threshold`, 2 by default, against the store's shifts of the 56 days before, as `shift_adjustments` computes it, with at least `min_events` voids or removed lines), `voucher_spike` (owners and managers; the invoices with a voucher on a day at or above `min_vouchers` and above `ratio` times the same weekday's mean count or share over `weeks` weeks), `checklist_unfinished` (staff and managers of the store; a checklist with no finished run `grace_minutes` after its shift phase ends: opening at the store's first opening, midshift halfway through the day, closing at its last close, so a store without opening hours is not checked), `staff_daily_digest` (staff only; the daily digest in the staff form), `oa_inactive` (owners; from `warn_after_days`, 150 by default, without an OA message to a follower, with a reminder every 7 days) and `mini_app_visits_low` (owners; fewer than `min_visits`, 10 by default, projected over the month from `min_days` into it). Facts are count-only and never hold an amount, a title, a name or a voucher code. `app.evaluate_staff_rules(p_at, p_tenant_id, p_source)` evaluates them all for the postgres connection of the incremental sync (`p_source` `incremental`) and of the nightly job (`nightly`); neither calls it yet. `app.due_staff_digests` and `app.enqueue_staff_digest_message` give the digest builder the staff scopes, built as a staff member so that RLS keeps the figures to the tenant's `staff_revenue_visibility`; the daily digest can never take staff among its roles (`22023`). Visits are counted per Mini App and month in `mini_app_visits` by `public.zalo_session_visit(p_zalo_app_id, p_kind)`, which only the service role may execute, for `zalo-session`; it is not listed above because no member may call it. Migration `job_event_and_package_brand` lets `app.record_job_event` take the workflow key `zalo_tokens` and adds the brand key (`brand`, such as `brand-1`) to the facts of `oa_package_expiring`. Tests: pgTAP `56_staff_rules.sql`, `26_notify_schema.sql` and `31_notify_access.sql`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -1592,7 +1739,7 @@ Step 12a verified locally; step 12b in build. No screen reads them yet; the Cả
 
 | Relation | Purpose | Who reads | Client writes | Read by a client today |
 |---|---|---|---|---|
-| `alert_rule_catalog` | the 19 alert and digest rules with defaults and the parameter schema, `zalo_webhook_unverified` (#207), `zalo_token_failed` and `oa_package_expiring` (#206) and `cash_count_variance` (#222) included | every signed-in user | none | none |
+| `alert_rule_catalog` | the 26 alert and digest rules with defaults and the parameter schema, `zalo_webhook_unverified` (#207), `zalo_token_failed` and `oa_package_expiring` (#206), `cash_count_variance` (#222) and the seven staff rules and monitors of phase 15 (#230) included | every signed-in user | none | none |
 | `alert_rules` | tenant and store overrides of the catalogue | owners and managers; store rows in scope | [owners](#writes-through-tables) | none |
 | `channel_policies` | send rules per channel kind and message class: 27 global defaults and tenant overrides | global rows: every signed-in user; tenant rows: owners and managers | [owners](#writes-through-tables) | none |
 | `notification_channels` | destinations: member, kind, provider, label, status and health | owners and managers with an unlimited scope read every destination; every member reads their own; 20 columns only, never the address, secret name or configuration | none (server code only) | none |
@@ -1615,6 +1762,7 @@ Built (migration `zalo_configuration`, pgTAP `42_zalo_config.sql`, #203); every 
 | `zalo_identities` | a Zalo user id per Zalo App bound to an Auth user, with the display name only | the same | none (`zalo-session` writes it through `zalo_session_sign_in` when a binding code is used, #205, and through `zalo_session_pair` at a pairing, #213; `withdraw_staff_ops_consent` and `deactivate_staff` delete the person's rows) | none |
 | `zalo_tokens` | the OA and Mini App developer token pairs of a brand | nobody (no grant, no policy) | none (written as `postgres` by `zalo-oauth` and `fnb zalo oa` and `zmp`, #206) | none |
 | `oa_events` | the OA webhook's event log: event id, OA, event name, OA user id, times and signature outcome, never a text; kept 90 days | nobody (no grant, no policy); owners read the day counts through [`oa_event_counts`](#publicoa_event_counts) | none (`oa-webhook` writes it as `postgres`, #207) | none |
+| `mini_app_visits` | visits per Mini App and month in the tenant's zone, a count only: no person, device or location (#230) | owners and managers of the tenant | none (`zalo-session` counts through `zalo_session_visit` as the service role) | none |
 
 ### Operations (phase 14b)
 
@@ -1631,6 +1779,18 @@ Built (migrations `checklists`, `handovers_and_incidents` and `cash_counts`; pgT
 | `incidents` | incident and stock-out reports: time, business date, kind, category key, description, item, up to three photo paths, status (`open`, `seen`, `resolved`) with who and when | the same | [the reporter](#writes-through-tables) | none |
 | `incident_categories` | the five Vietnamese default categories (global rows) and a tenant's overrides and additions | global rows: every signed-in user; tenant rows: owners, managers and staff of the tenant | [owners with an unlimited scope](#writes-through-tables) | none |
 | `cash_counts` | the cash counted at a shift close: amount, breakdown, note, counter, time, matched shift (`shift_id`), business date, `active` or `reopened` with who and when, the count it replaces | owners and managers of the store; staff their own counts, and every count of their stores when the tenant's `staff_revenue_visibility` is `all` | [the counter](#writes-through-tables) | none |
+
+### Notices and requests (phase 15)
+
+Built (migration `announcements_and_requests`; pgTAP `55_announcements_requests.sql` and `47_operations_rls.sql`; #227). Every table but `approval_request_kinds` carries the four operations policies; a row naming several stores (`store_ids`, `null` for every store) is in scope when one of them is, and is written or managed only by a member whose scope holds all of them (`app.ops_can_write_own_stores`, `app.ops_can_manage_stores`). No client inserts, updates or deletes an announcement, a recipient or a receipt: the functions of [section 3.16](#316-announcements-and-đã-đọc-phase-15) do.
+
+| Relation | Purpose | Who reads | Client writes | Read by a client today |
+|---|---|---|---|---|
+| `announcements` | a title and body in plain text, its stores (`store_ids`), audience roles, `pinned_until`, `published_at`, `expires_at` and author | members of an audience role whose scope meets its stores; owners and managers of those stores whatever the audience | none ([`publish_announcement`](#publicpublish_announcement), [`set_announcement_pin`](#publicset_announcement_pin)) | none |
+| `announcement_recipients` | the members it was published to, fixed at publication, with their role and the stores they received it at | each recipient their own rows; owners and managers whose scope meets the recipient's stores | none | none |
+| `announcement_receipts` | Đã đọc: one receipt per reader (`created_by`) and announcement, with `read_at` | each reader their own; owners and managers whose scope meets the reader's stores | none ([`mark_announcement_read`](#publicmark_announcement_read)) | none |
+| `approval_request_kinds` | the four Vietnamese default kinds (global rows) and a tenant's overrides and additions | global rows: every signed-in user; tenant rows: owners, managers and staff of the tenant | [owners with an unlimited scope](#writes-through-tables) | none |
+| `approval_requests` | a request to the managers of a store: kind key, details, requester, status (`pending`, `approved`, `refused`), who decided and when, the reason of a refusal | the requester; owners and managers of the store | [the requester](#writes-through-tables) | none |
 
 ## 5. Edge Function endpoints
 
@@ -1659,7 +1819,7 @@ Built in `supabase/functions/_shared` (`cors.ts`, `http.ts`; 30 Deno tests in `c
 
 ### `zalo-session`
 
-Built against the mock (#205, with the staff notice and pairing of #212 and #213; Deno 25 tests in `handler.test.ts` and `pairing.test.ts`, and the gated integration suite of `@fnb/zalo`). The Mini Apps' session client (`@fnb/zalo-mini`, #208) reads every answer below; the answers of #205 are unchanged except that `member` gained `tenant_id` and `unpaired` may carry `notice`, `reason` and `retry_after`.
+Built against the mock (#205, with the staff notice and pairing of #212 and #213, and the texts and contact instructions of #215; Deno 32 tests in `handler.test.ts`, `pairing.test.ts` and `texts.test.ts`, and the gated integration suite of `@fnb/zalo`). The Mini Apps' session client (`@fnb/zalo-mini`, #208) reads every answer below; the answers of #205 are unchanged except that `member` gained `tenant_id` and `store_ids`, `unpaired` may carry `notice`, `reason`, `retry_after` and `contact`, and `notice_required` may carry `contact`.
 
 - **URL:** `<SUPABASE_URL>/functions/v1/zalo-session`. **Method:** `POST`; `OPTIONS` answers the preflight of a Mini App origin.
 - **Authorization:** none at the gateway (`verify_jwt = false`); the Zalo access token in the body is the credential.
@@ -1669,34 +1829,39 @@ Built against the mock (#205, with the staff notice and pairing of #212 and #213
   - `"notice": {…}` alone: a paired person accepts a newly published notice.
 
   `binding_code` and `pairing_code` together are refused.
-- **What it does:** finds the brand's Zalo App through `zalo_session_app` (one app, `active`), reads the App secret named by `zalo_apps.secret_name`, and asks the Zalo Graph `GET /v2.0/me?fields=id,name` with the access token and its app-secret proof (HMAC-SHA256 of the access token keyed with the App secret), 10 seconds at most. `zalo_session_sign_in` then answers `bound` for a Zalo user id already bound to a current member of the app's tenant, binds it first when a valid binding code comes with it, and answers `unpaired` otherwise; a request with `pairing_code` or `notice` goes to `zalo_session_pair` instead. Before any session for a person on the staff roster, the `staff_ops` consent must be current: otherwise the answer is `notice_required`, unless the acceptance sent along records it. A valid pairing code, with the published notice accepted, records the consent, creates or updates the membership with exactly the roster role and stores, binds the Zalo identity of this app and makes the roster row `active`. At a person's first pairing the roster row has no login yet: the database answers `login_needed`, the function creates a login without password through the Auth admin API (`staff-<uuid>@zalo-staff.invalid`, an address that can never receive mail) and pairs again with it; a login it then does not need is deleted. A person paired in one brand's app pairs again in another brand's app of the tenant with a new code and keeps the same login and roster row. For `bound` the function reads the member's login e-mail through the Auth admin API and mints a session for that login (ADR-037).
+
+  The texts request is `{"brand": "brand-1", "texts": true}` and nothing else: no access token, no code, no notice. The staff app sends it before pairing, for Privacy and Terms (`texts()` of `@fnb/zalo-mini`).
+- **What it does:** finds the brand's Zalo App through `zalo_session_app` (one app, `active`), reads the App secret named by `zalo_apps.secret_name`, and asks the Zalo Graph `GET /v2.0/me?fields=id,name` with the access token and its app-secret proof (HMAC-SHA256 of the access token keyed with the App secret), 10 seconds at most. `zalo_session_sign_in` then answers `bound` for a Zalo user id already bound to a current member of the app's tenant, binds it first when a valid binding code comes with it, and answers `unpaired` otherwise; a request with `pairing_code` or `notice` goes to `zalo_session_pair` instead. Before any session for a person on the staff roster, the `staff_ops` consent must be current: otherwise the answer is `notice_required`, unless the acceptance sent along records it. A valid pairing code, with the published notice accepted, records the consent, creates or updates the membership with exactly the roster role and stores, binds the Zalo identity of this app and makes the roster row `active`. At a person's first pairing the roster row has no login yet: the database answers `login_needed`, the function creates a login without password through the Auth admin API (`staff-<uuid>@zalo-staff.invalid`, an address that can never receive mail) and pairs again with it; a login it then does not need is deleted. A person paired in one brand's app pairs again in another brand's app of the tenant with a new code and keeps the same login and roster row. For `bound` the function reads the member's login e-mail through the Auth admin API and mints a session for that login (ADR-037). A texts request reads no App secret and calls no Graph: it finds the app as above and answers `zalo_session_texts`, the published `privacy_notice` and `mini_app_terms` of the app's tenant in every published language and the tenant's contact instructions (`set_staff_contact_instructions`, section 3.12), and nothing else; past 120 texts requests per Zalo App within a minute it answers 429 until the minute is over. The texts request carries no identity to count against, so the limit counts per app, as the code limits count per app and per tenant, and a burst only holds back the texts.
 
 | Status | Body | When |
 |---|---|---|
-| 200 | `{"status": "bound", "access_token", "refresh_token", "expires_at", "member": {"display_name", "role", "stores", "tenant_id"}}` | the Zalo identity is bound to a member, now or before; `stores` are the names of the brand's stores within the member's scope, `display_name` the Zalo name or "Thành viên", `tenant_id` the tenant that the functions of section 3.12 take |
-| 200 | `{"status": "unpaired", "reason"?, "retry_after"?, "notice"?}` | no binding and no code; a wrong, expired, used or burnt code; or a bound login that no longer exists. `notice` is the tenant's published staff notice, `{"version", "title", "body_markdown", "published_at"}`, when there is one. A pairing request adds `reason`: `code_refused` for any refused code, never saying whether it was wrong, expired, used, burnt or a code of a roster row that cannot pair; `wait` with `retry_after` in seconds when the identity must wait after five wrong codes; `notice_outdated` when the notice accepted is not the published one, and the code was then not checked |
-| 200 | `{"status": "notice_required", "notice"?}` | a bound person on the staff roster whose `staff_ops` consent is missing or names an older notice; no session until the notice is accepted. Without `notice`, no staff notice is published |
+| 200 | `{"status": "bound", "access_token", "refresh_token", "expires_at", "member": {"display_name", "role", "stores", "store_ids", "tenant_id"}}` | the Zalo identity is bound to a member, now or before; `stores` are the names of the brand's stores within the member's scope, by name, and `store_ids` their ids in the same order; `display_name` the Zalo name or "Thành viên", `tenant_id` the tenant that the functions of section 3.12 take |
+| 200 | `{"status": "unpaired", "reason"?, "retry_after"?, "notice"?, "contact"?}` | no binding and no code; a wrong, expired, used or burnt code; or a bound login that no longer exists. `notice` is the tenant's published staff notice, `{"version", "title", "body_markdown", "published_at"}`, when there is one; `contact` the tenant's contact instructions, plain text of at most 500 characters, when the owner set some. A pairing request adds `reason`: `code_refused` for any refused code, never saying whether it was wrong, expired, used, burnt or a code of a roster row that cannot pair; `wait` with `retry_after` in seconds when the identity must wait after five wrong codes; `notice_outdated` when the notice accepted is not the published one, and the code was then not checked |
+| 200 | `{"status": "notice_required", "notice"?, "contact"?}` | a bound person on the staff roster whose `staff_ops` consent is missing or names an older notice; no session until the notice is accepted. Without `notice`, no staff notice is published; `contact` as for `unpaired` |
+| 200 | `{"status": "texts", "documents": [{"kind", "language", "version", "title", "body_markdown", "published_at"}], "contact"}` | a texts request: `kind` is `privacy_notice` or `mini_app_terms`, `language` `vi` or `en`, privacy first and Vietnamese first; `documents` is empty and `contact` is `null` when the tenant has published or set none |
 | 400 | `invalid_access_token` | the token is missing, empty or over 4,096 characters |
 | 400 | `invalid_brand` | `brand` is not a brand key (`brand-<n>`, `n` from 1 to 999) |
 | 400 | `invalid_binding_code` | `binding_code` is present but not six digits |
 | 400 | `invalid_pairing_code` | `pairing_code` is present but not six digits, or comes with `binding_code` |
 | 400 | `invalid_notice` | `notice` is not `{"version", "shown_at"}` with a legal-document version and a readable time |
+| 400 | `invalid_texts` | `texts` is present but not `true`, or comes with anything but `brand` |
 | 400 | `invalid_json`, `invalid_body` | the shared body errors |
 | 401 | `zalo_token_refused` | the Graph answered an error for the token or its proof |
 | 403 | `app_disabled` | the brand's Zalo App is `disabled` |
 | 404 | `unknown_brand` | no Zalo App is configured for the brand key |
+| 429 | `too_many_requests` | a texts request past 120 within a minute for the brand's Zalo App; `Retry-After` gives the seconds until the minute is over |
 | 500 | `not_configured` | the App secret is not set; `SUPABASE_URL` or the service key is missing; the brand key names Zalo Apps of two tenants and `ZALO_TENANT_ID` does not choose; an invalid `ZALO_INTEGRATION`, `ZALO_TENANT_ID` or `ZALO_GRAPH_BASE_URL`; or, with `ZALO_INTEGRATION=1`, a tenant that is not a `zalo-it-` fixture |
 | 500 | `session_unavailable` | the bound login has no e-mail to mint a session for |
 | 502 | `zalo_unavailable` | the Graph did not answer in time, or answered something unreadable |
 | 503 | `backend_unavailable` | PostgREST or Supabase Auth did not answer, refused, or answered something unreadable; also when creating a staff login failed, and nothing was paired then |
 
-Pairing codes come from `issue_pairing_code` (section 3.12): six digits, valid 10 minutes, stored only as a hash salted by the tenant. A wrong code counts against every live pairing code of the tenant and every live binding code of the app (five tolerated, the sixth burns them) and against the Zalo identity, which waits 15 minutes after its fifth wrong code; the identity is kept only as a hash. Log lines name the outcome only (`unpaired: the pairing code was refused`, `notice required: …`, `session minted: staff, 1 stores, identity bound, login created`), never the code, a token, the Zalo id, the login or its e-mail.
+Pairing codes come from `issue_pairing_code` (section 3.12): six digits, valid 10 minutes, stored only as a hash salted by the tenant. A wrong code counts against every live pairing code of the tenant and every live binding code of the app (five tolerated, the sixth burns them) and against the Zalo identity, which waits 15 minutes after its fifth wrong code; the identity is kept only as a hash. Log lines name the outcome only (`unpaired: the pairing code was refused`, `notice required: …`, `session minted: staff, 1 stores, identity bound, login created`, `texts: 3 documents, contact set`), never the code, a token, the Zalo id, the login, its e-mail or the contact text.
 
 Binding codes come from `fnb zalo bind` (section 6): six digits, valid 10 minutes, stored only as a hash. A wrong code counts against every live code of the brand's Zalo App; five wrong attempts are tolerated and the sixth burns them all, so guessing gains nothing ([`security.md`](security.md), section 4.3).
 
 ### `zalo-phone`
 
-Built against the mock (#205; Deno 7 tests in `handler.test.ts`, and the gated integration suite).
+Built against the mock (#205; Deno 9 tests in `handler.test.ts`, and the gated integration suite). `pnpm zalo:dev` runs it unmodified under Deno with `ZALO_LOCAL_DEV=1` on loopback, next to `zalo-session`, and the staff app reaches it at `/supabase/functions/v1/zalo-phone` through the dev server's proxy in every mode, behind the access guard with `--lan` and `--tunnel`; the mock Zalo graph there answers the mock SDK's phone token with a synthetic number, every time.
 
 - **URL:** `<SUPABASE_URL>/functions/v1/zalo-phone`. **Method:** `POST`.
 - **Authorization:** `Authorization: Bearer <the caller's Supabase session>`; the gateway verifies it (`verify_jwt = true`) and the function checks it again with Supabase Auth.

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -9,11 +9,17 @@ import {
 	startProblems,
 } from "../../src/local-dev/database.js";
 import {
+	findRepositoryRoot,
 	localStackFrom,
 	sessionFunctionEnvironment,
 	staffAppEnvironment,
 	withRepositoryEnv,
 } from "../../src/local-dev/environment.js";
+import {
+	LOCAL_PHONE_NUMBER,
+	LOCAL_PHONE_TOKEN,
+	localLoopPaths,
+} from "../../src/local-dev/loop.js";
 import {
 	isMockId,
 	LOCAL_LOOP_DEFAULTS,
@@ -243,11 +249,12 @@ describe("the local zalo-session's environment", () => {
 		);
 	});
 
-	it("gives the staff app the local session and only the publishable key", () => {
+	it("gives the staff app the local session, the local zalo-phone and only the publishable key", () => {
 		const app = staffAppEnvironment(OUTSIDE_ENV, {
 			brand: "brand-1",
 			publishableKey: stack.publishableKey,
 			functionUrl: "http://127.0.0.1:40124",
+			phoneFunctionUrl: "http://127.0.0.1:40125",
 			accessToken: "mock-zalo-access-synthetic",
 			appConfigPath: null,
 			access: null,
@@ -259,8 +266,37 @@ describe("the local zalo-session's environment", () => {
 			VITE_BRAND_KEY: "brand-1",
 			VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic",
 			ZALO_LOCAL_SESSION_URL: "http://127.0.0.1:40124",
+			ZALO_LOCAL_PHONE_URL: "http://127.0.0.1:40125",
 			ZALO_LOCAL_ACCESS_TOKEN: "mock-zalo-access-synthetic",
 		});
+	});
+
+	it("runs the unmodified zalo-phone next to zalo-session", () => {
+		const paths = localLoopPaths(findRepositoryRoot());
+		expect(paths.phoneFunctionDir).toBe(
+			join(paths.rootDir, "supabase", "functions", "zalo-phone"),
+		);
+		expect(
+			readFileSync(join(paths.phoneFunctionDir, "index.ts"), "utf8"),
+		).toContain("handleZaloPhone");
+	});
+
+	it("answers the phone token of the browser mock SDK with a synthetic number", () => {
+		const mockSdk = readFileSync(
+			join(
+				findRepositoryRoot(),
+				"packages",
+				"zalo-mini",
+				"src",
+				"testing",
+				"mock-sdk.ts",
+			),
+			"utf8",
+		);
+		expect(mockSdk).toContain(
+			`export const MOCK_PHONE_TOKEN = "${LOCAL_PHONE_TOKEN}";`,
+		);
+		expect(LOCAL_PHONE_NUMBER).toMatch(/^84900000[0-9]{3}$/);
 	});
 });
 

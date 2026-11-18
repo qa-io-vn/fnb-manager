@@ -124,6 +124,28 @@ describe("graph me/info", () => {
 		});
 	});
 
+	it("answers a standing phone token of the local loop every time, for its own user only", async () => {
+		const { mock, options } = graph();
+		const token = mock.issueAccessToken(SECRET, USER);
+		const other = mock.issueAccessToken(SECRET, { id: "8800000000000000003" });
+		const phone = mock.issuePhoneToken(token, "84912345678", {
+			token: "synthetic-standing-phone-token",
+			reusable: true,
+		});
+		expect(phone).toBe("synthetic-standing-phone-token");
+		mock.advance(MOCK_PHONE_TOKEN_LIFETIME_MS * 10);
+		for (let attempt = 0; attempt < 3; attempt += 1) {
+			expect(await exchangePhoneToken(options, token, phone, SECRET)).toEqual({
+				ok: true,
+				value: INTERNATIONAL,
+			});
+		}
+		expect(await exchangePhoneToken(options, other, phone, SECRET)).toEqual({
+			ok: false,
+			error: MOCK_ZALO_ERRORS.phoneTokenInvalid,
+		});
+	});
+
 	it("refuses a phone token of another user and a wrong App secret", async () => {
 		const { mock, options } = graph();
 		const token = mock.issueAccessToken(SECRET, USER);
