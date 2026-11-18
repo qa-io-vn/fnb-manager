@@ -118,6 +118,8 @@ describe("Mini App build settings", () => {
 			localSessionProxy({
 				functionUrl: "http://127.0.0.1:5745",
 				accessToken: "mock-zalo-access-local",
+				supabaseUrl: null,
+				access: { key: null, tunnelHost: null },
 			}),
 		).toEqual({
 			proxy: {

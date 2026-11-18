@@ -16,6 +16,9 @@ import { LocalLoopError } from "./options.js";
 
 export const LOCAL_SESSION_URL_VARIABLE = "ZALO_LOCAL_SESSION_URL";
 export const LOCAL_ACCESS_TOKEN_VARIABLE = "ZALO_LOCAL_ACCESS_TOKEN";
+export const LOCAL_ACCESS_KEY_VARIABLE = "ZALO_LOCAL_ACCESS_KEY";
+export const LOCAL_TUNNEL_HOST_VARIABLE = "ZALO_LOCAL_TUNNEL_HOST";
+export const STAFF_SUPABASE_URL_VARIABLE = "ZALO_LOCAL_SUPABASE_URL";
 export const DENO_SERVE_ADDRESS_VARIABLE = "DENO_SERVE_ADDRESS";
 
 export const PASSTHROUGH_VARIABLES: readonly string[] = [
@@ -183,6 +186,13 @@ export interface StaffAppInput {
 	readonly functionUrl: string;
 	readonly accessToken: string;
 	readonly appConfigPath: string | null;
+	readonly access: StaffAppAccess | null;
+}
+
+export interface StaffAppAccess {
+	readonly key: string;
+	readonly tunnelHost: string | null;
+	readonly supabaseUrl: string;
 }
 
 export function staffAppEnvironment(
@@ -200,5 +210,14 @@ export function staffAppEnvironment(
 		...(input.appConfigPath === null
 			? {}
 			: { MINI_APP_CONFIG: input.appConfigPath }),
+		...(input.access === null
+			? {}
+			: {
+					[LOCAL_ACCESS_KEY_VARIABLE]: input.access.key,
+					[STAFF_SUPABASE_URL_VARIABLE]: input.access.supabaseUrl,
+					...(input.access.tunnelHost === null
+						? {}
+						: { [LOCAL_TUNNEL_HOST_VARIABLE]: input.access.tunnelHost }),
+				}),
 	};
 }

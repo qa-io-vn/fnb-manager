@@ -12,6 +12,29 @@ import {
 	selectMiniAppRow,
 } from "../app-config/index.ts";
 import { ZALO_SESSION_PATH } from "../session/endpoint.ts";
+import {
+	ACCESS_KEY_PATTERN,
+	guardUpgrades,
+	type LocalAccess,
+	localAccessGuard,
+	TUNNEL_HOST_PATTERN,
+} from "./access-guard.ts";
+
+export {
+	ACCESS_COOKIE,
+	ACCESS_KEY_PARAMETER,
+	type AccessDecision,
+	type AccessRequest,
+	accessCookieName,
+	accessDecision,
+	FORBIDDEN_PAGE,
+	guardUpgrades,
+	isForwarded,
+	isLoopbackAddress,
+	type LocalAccess,
+	localAccessGuard,
+	SECURE_ACCESS_COOKIE,
+} from "./access-guard.ts";
 
 export const MINI_APP_RUNTIMES = ["browser", "zalo"] as const;
 export type MiniAppRuntime = (typeof MINI_APP_RUNTIMES)[number];
@@ -24,6 +47,11 @@ export type MiniAppSession = (typeof MINI_APP_SESSIONS)[number];
 
 export const LOCAL_SESSION_URL_VARIABLE = "ZALO_LOCAL_SESSION_URL";
 export const LOCAL_ACCESS_TOKEN_VARIABLE = "ZALO_LOCAL_ACCESS_TOKEN";
+export const LOCAL_ACCESS_KEY_VARIABLE = "ZALO_LOCAL_ACCESS_KEY";
+export const LOCAL_TUNNEL_HOST_VARIABLE = "ZALO_LOCAL_TUNNEL_HOST";
+export const LOCAL_SUPABASE_URL_VARIABLE = "ZALO_LOCAL_SUPABASE_URL";
+export const LOCAL_SUPABASE_PATH = "/supabase";
+export const LOCAL_SUPABASE_SERVICES = ["rest", "auth"] as const;
 const LOOPBACK_URL = /^http:\/\/(127\.0\.0\.1|localhost):[0-9]{1,5}$/;
 
 export const VIRTUAL_APP_CONFIG = "virtual:mini-app-config";
@@ -50,6 +78,8 @@ export const SYNTHETIC_CONFIGURATION_PATH = join(
 export interface LocalSessionSettings {
 	readonly functionUrl: string;
 	readonly accessToken: string;
+	readonly supabaseUrl: string | null;
+	readonly access: LocalAccess;
 }
 
 export interface MiniAppSettings {
@@ -148,7 +178,44 @@ function localSessionSettings(
 			`VITE_ZALO_SESSION=local needs ${LOCAL_ACCESS_TOKEN_VARIABLE}, the mock Zalo access token of the local user`,
 		);
 	}
-	return { functionUrl, accessToken };
+	const supabaseUrl = env[LOCAL_SUPABASE_URL_VARIABLE]?.trim() ?? "";
+	if (supabaseUrl !== "" && !LOOPBACK_URL.test(supabaseUrl)) {
+		throw new Error(
+			`${LOCAL_SUPABASE_URL_VARIABLE} must be the loopback address of the local Supabase API such as http://127.0.0.1:54321`,
+		);
+	}
+	return {
+		functionUrl,
+		accessToken,
+		supabaseUrl: supabaseUrl === "" ? null : supabaseUrl,
+		access: localAccess(env),
+	};
+}
+
+function localAccess(
+	env: Readonly<Record<string, string | undefined>>,
+): LocalAccess {
+	const key = env[LOCAL_ACCESS_KEY_VARIABLE]?.trim() ?? "";
+	if (key !== "" && !ACCESS_KEY_PATTERN.test(key)) {
+		throw new Error(
+			`${LOCAL_ACCESS_KEY_VARIABLE} must be a random key of 22 to 128 base64url characters (at least 128 bits)`,
+		);
+	}
+	const tunnelHost = env[LOCAL_TUNNEL_HOST_VARIABLE]?.trim() ?? "";
+	if (tunnelHost !== "" && !TUNNEL_HOST_PATTERN.test(tunnelHost)) {
+		throw new Error(
+			`${LOCAL_TUNNEL_HOST_VARIABLE} must be a quick tunnel host such as name.trycloudflare.com`,
+		);
+	}
+	if (tunnelHost !== "" && key === "") {
+		throw new Error(
+			`${LOCAL_TUNNEL_HOST_VARIABLE} needs ${LOCAL_ACCESS_KEY_VARIABLE}: a tunnel serves only visitors with the key`,
+		);
+	}
+	return {
+		key: key === "" ? null : key,
+		tunnelHost: tunnelHost === "" ? null : tunnelHost,
+	};
 }
 
 export function loadMiniAppConfig(
@@ -274,16 +341,48 @@ export function deployedAppConfig(
 	};
 }
 
+export interface LocalProxyRoute {
+	readonly target: string;
+	readonly changeOrigin: true;
+	readonly rewrite?: (path: string) => string;
+}
+
+function withoutSupabasePath(path: string): string {
+	return path.slice(LOCAL_SUPABASE_PATH.length);
+}
+
 export function localSessionProxy(local: LocalSessionSettings): {
-	readonly proxy: Record<
-		string,
-		{ readonly target: string; readonly changeOrigin: true }
-	>;
+	readonly proxy: Record<string, LocalProxyRoute>;
 } {
+	const supabaseUrl = local.supabaseUrl;
 	return {
 		proxy: {
 			[ZALO_SESSION_PATH]: { target: local.functionUrl, changeOrigin: true },
+			...(supabaseUrl === null
+				? {}
+				: Object.fromEntries(
+						LOCAL_SUPABASE_SERVICES.map((service) => [
+							`${LOCAL_SUPABASE_PATH}/${service}/v1/`,
+							{
+								target: supabaseUrl,
+								changeOrigin: true,
+								rewrite: withoutSupabasePath,
+							} satisfies LocalProxyRoute,
+						]),
+					)),
 		},
+	};
+}
+
+export function localServerOptions(local: LocalSessionSettings): {
+	readonly proxy: Record<string, LocalProxyRoute>;
+	readonly allowedHosts?: string[];
+	readonly hmr?: false;
+} {
+	const tunnelHost = local.access.tunnelHost;
+	return {
+		...localSessionProxy(local),
+		...(tunnelHost === null ? {} : { allowedHosts: [tunnelHost], hmr: false }),
 	};
 }
 
@@ -323,7 +422,7 @@ export function miniApp(options: MiniAppPluginOptions): Plugin[] {
 						local?.accessToken ?? "",
 					),
 				},
-				...(local ? { server: localSessionProxy(local) } : {}),
+				...(local ? { server: localServerOptions(local) } : {}),
 				resolve:
 					settings.runtime === "browser"
 						? { alias: [{ find: /^zmp-sdk$/, replacement: MOCK_SDK_PATH }] }
@@ -339,6 +438,17 @@ export function miniApp(options: MiniAppPluginOptions): Plugin[] {
 					},
 				},
 			};
+		},
+		configureServer: {
+			order: "pre",
+			handler(server) {
+				const local = current().settings.local;
+				if (!local) return;
+				server.middlewares.use(localAccessGuard(local.access));
+				return () => {
+					if (server.httpServer) guardUpgrades(server.httpServer, local.access);
+				};
+			},
 		},
 		resolveId(source) {
 			return source === VIRTUAL_APP_CONFIG ? RESOLVED_VIRTUAL_APP_CONFIG : null;

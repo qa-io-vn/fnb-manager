@@ -77,6 +77,9 @@ describe("pnpm zalo:dev options", () => {
 			mockUser: "mock-user-1",
 			mockName: LOCAL_LOOP_DEFAULTS.mockName,
 			port: 5741,
+			exposure: "loopback",
+			host: null,
+			tunnelHours: 4,
 		});
 		expect(parseLocalLoopArgs(["--help"])).toBe("help");
 	});
@@ -107,6 +110,9 @@ describe("pnpm zalo:dev options", () => {
 			mockUser: "mock-user-2",
 			mockName: "Nhân viên thử",
 			port: 5761,
+			exposure: "loopback",
+			host: null,
+			tunnelHours: 4,
 		});
 	});
 
@@ -244,6 +250,7 @@ describe("the local zalo-session's environment", () => {
 			functionUrl: "http://127.0.0.1:40124",
 			accessToken: "mock-zalo-access-synthetic",
 			appConfigPath: null,
+			access: null,
 		});
 		expect(app).toEqual({
 			PATH: "/usr/bin",

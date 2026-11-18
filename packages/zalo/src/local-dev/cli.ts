@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline";
 import type { ZaloEnvironment } from "../settings.js";
 import { findRepositoryRoot, withRepositoryEnv } from "./environment.js";
+import { qrCodeLines } from "./lan.js";
 import {
 	forgetLocalBrand,
 	type LocalLoop,
@@ -18,26 +19,89 @@ import {
 
 const STOP_SIGNALS = ["SIGINT", "SIGTERM", "SIGBREAK"] as const;
 const SIGNAL_GRACE_MS = 1000;
+const HOUR_MS = 3_600_000;
 
 export interface LocalLoopReadyMessage {
 	readonly type: "ready";
 	readonly appUrl: string;
+	readonly phoneUrl: string | null;
 	readonly role: string;
 	readonly stores: number;
 	readonly mockName: string;
 	readonly boundNow: boolean;
 }
 
+function two(value: number): string {
+	return String(value).padStart(2, "0");
+}
+
+export function clockTime(at: Date, now: Date = new Date()): string {
+	const time = `${two(at.getHours())}:${two(at.getMinutes())}`;
+	return at.toDateString() === now.toDateString()
+		? time
+		: `${at.getFullYear()}-${two(at.getMonth() + 1)}-${two(at.getDate())} ${time}`;
+}
+
+function firewallHint(port: number): string {
+	return `  if the phone can't connect, allow TCP port ${port} on private networks in this PC's firewall`;
+}
+
+function exposureLines(
+	ready: LocalLoopReady,
+	stopsAt: Date | null,
+	terminal: boolean,
+): string[] {
+	const qr = (url: string) =>
+		terminal
+			? ["  or scan this QR code with the iPhone camera:", ...qrCodeLines(url)]
+			: [];
+	if (ready.exposure === "tunnel" && ready.phoneUrl !== null) {
+		return [
+			`zalo:dev: ready on a public https link; on the phone open ${ready.phoneUrl}`,
+			...qr(ready.phoneUrl),
+			`  public link: anyone with it can open the app as ${ready.role}; it stops ${stopsAt === null ? "" : `at ${clockTime(stopsAt)} `}or on Ctrl+C`,
+			"  the key in the link is new on every start; the dev server sets it as a cookie and drops it from the address, and any request without it gets 403",
+			`  the staff app listens on 127.0.0.1:${ready.port} behind a Cloudflare quick tunnel; zalo-session, the mock Zalo graph and the local Supabase API stay on 127.0.0.1 behind its proxy`,
+		];
+	}
+	if (ready.exposure === "lan" && ready.phoneUrl !== null) {
+		const others = ready.lan?.others ?? [];
+		return [
+			`zalo:dev: ready on the home network; on the phone (same Wi-Fi) open ${ready.phoneUrl}`,
+			...qr(ready.phoneUrl),
+			`  the link carries a one-time key, new on every start: whoever opens it is signed in as the member below (${ready.role}), so keep it to yourself; without it every request gets 403`,
+			`  the staff app listens on ${ready.lan?.host ?? ""}:${ready.port} only; zalo-session, the mock Zalo graph and the local Supabase API stay on 127.0.0.1 behind its proxy`,
+			...(others.length === 0
+				? []
+				: [
+						`  other addresses of this PC: ${others.map((entry) => `${entry.address} (${entry.name})`).join(", ")}; pass --host <ipv4> to use one`,
+					]),
+			firewallHint(ready.port),
+		];
+	}
+	if (ready.exposure === "lan") {
+		return [
+			`zalo:dev: ready; no Wi-Fi or LAN IPv4 address was found, so the staff app listens on every interface (${ready.lan?.host ?? ""})`,
+			`  on the phone open ${ready.phoneHint ?? ""}, or restart with --host <ipv4>`,
+			`  on this PC open ${ready.appUrl}`,
+			firewallHint(ready.port),
+		];
+	}
+	return [`zalo:dev: ready, open ${ready.appUrl}`];
+}
+
 function readyLines(
 	options: LocalLoopOptions,
 	ready: LocalLoopReady,
+	stopsAt: Date | null,
+	terminal: boolean,
 ): string[] {
 	const member =
 		options.member === null
 			? `the member in ${MEMBER_EMAIL_VARIABLE}`
 			: "the member given with --member";
 	return [
-		`zalo:dev: ready, open ${ready.appUrl}`,
+		...exposureLines(ready, stopsAt, terminal),
 		`  ${ready.brand} of ${ready.tenant}: the mock Zalo user ${ready.mockUser} signs in as ${member} (${ready.role}, ${ready.stores} ${ready.stores === 1 ? "store" : "stores"})`,
 		...(ready.boundNow
 			? [
@@ -49,12 +113,30 @@ function readyLines(
 	];
 }
 
-function untilStopped(loop: LocalLoop): Promise<string | null> {
+function untilStopped(
+	loop: LocalLoop,
+	stopsAt: Date | null,
+): Promise<string | null> {
 	return new Promise((resolve) => {
 		const lineReader = process.stdin.isTTY
 			? createInterface({ input: process.stdin })
 			: null;
+		const deadline =
+			stopsAt === null
+				? null
+				: setTimeout(
+						() => {
+							console.log(
+								"zalo:dev: the public link reached its time limit and stops now",
+							);
+							finish(null);
+						},
+						Math.max(0, stopsAt.getTime() - Date.now()),
+					);
 		const finish = (reason: string | null) => {
+			if (deadline !== null) {
+				clearTimeout(deadline);
+			}
 			for (const signal of STOP_SIGNALS) {
 				process.off(signal, onSignal);
 			}
@@ -128,19 +210,29 @@ export async function runLocalLoopCli(
 			io,
 			localLoopPaths(rootDir),
 		);
-		for (const line of readyLines(options, loop.ready)) {
+		const stopsAt =
+			options.exposure === "tunnel"
+				? new Date(Date.now() + options.tunnelHours * HOUR_MS)
+				: null;
+		for (const line of readyLines(
+			options,
+			loop.ready,
+			stopsAt,
+			process.stdout.isTTY === true,
+		)) {
 			console.log(line);
 		}
 		const message: LocalLoopReadyMessage = {
 			type: "ready",
 			appUrl: loop.ready.appUrl,
+			phoneUrl: loop.ready.phoneUrl,
 			role: loop.ready.role,
 			stores: loop.ready.stores,
 			mockName: loop.ready.mockName,
 			boundNow: loop.ready.boundNow,
 		};
 		process.send?.(message);
-		const failure = await untilStopped(loop);
+		const failure = await untilStopped(loop, stopsAt);
 		console.log("zalo:dev: stopping");
 		await loop.stop();
 		if (failure !== null) {

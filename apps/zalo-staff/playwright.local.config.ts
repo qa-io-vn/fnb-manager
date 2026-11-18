@@ -1,9 +1,8 @@
 import { MINI_APP_VIEWPORT } from "@fnb/zalo-mini/testing/design-checks";
-import { defineConfig } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
 	testDir: "e2e",
-	testMatch: /local\.spec\.ts/,
 	outputDir: "node_modules/.cache/playwright-results-local",
 	fullyParallel: false,
 	workers: 1,
@@ -12,13 +11,28 @@ export default defineConfig({
 	expect: { timeout: 30_000 },
 	reporter: [["list"]],
 	use: {
-		viewport: MINI_APP_VIEWPORT,
-		deviceScaleFactor: 2,
-		isMobile: true,
-		hasTouch: true,
-		colorScheme: "light",
 		locale: "vi-VN",
 		timezoneId: "Asia/Ho_Chi_Minh",
 		trace: "off",
+		screenshot: "off",
+		video: "off",
 	},
+	projects: [
+		{
+			name: "local",
+			testMatch: /local\.spec\.ts/,
+			use: {
+				viewport: MINI_APP_VIEWPORT,
+				deviceScaleFactor: 2,
+				isMobile: true,
+				hasTouch: true,
+				colorScheme: "light",
+			},
+		},
+		{
+			name: "iphone",
+			testMatch: /phone\.spec\.ts/,
+			use: { ...devices["iPhone 14"], colorScheme: "light" },
+		},
+	],
 });
