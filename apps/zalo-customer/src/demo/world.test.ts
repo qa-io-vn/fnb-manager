@@ -15,6 +15,7 @@ import { DEMO_PHONE_TOKEN, DEMO_POLICY_VERSION } from "./fixtures";
 import {
 	createDemoWorld,
 	DEMO_DEFAULTS,
+	DEMO_DELETION_REQUEST_ID,
 	type DemoSettings,
 	demoSettingsFrom,
 } from "./world";
@@ -70,7 +71,9 @@ describe("demo settings", () => {
 			programme: "active",
 			privacy: true,
 			vouchers: false,
+			stores: true,
 		});
+		expect(demoSettingsFrom("?stores=none").stores).toBe(false);
 		expect(demoSettingsFrom("?member=1&vouchers=1").vouchers).toBe(true);
 		expect(demoSettingsFrom("?vouchers=1").vouchers).toBe(false);
 		expect(demoSettingsFrom("?marketing=1").marketing).toBe(false);
@@ -264,9 +267,13 @@ describe("the demo source", () => {
 			stoppedAt: new Date(START).toISOString(),
 		});
 		expect((await client.wallet()).marketingConsent).toBe(false);
-		expect(await client.requestDeletion()).toMatchObject({
+		const request = await client.requestDeletion();
+		expect(request).toEqual({
+			requestId: DEMO_DELETION_REQUEST_ID,
 			status: "received",
+			requestedAt: new Date(START).toISOString(),
 		});
+		expect(await client.requestDeletion()).toEqual(request);
 	});
 
 	it("fails like a lost connection when asked to", async () => {

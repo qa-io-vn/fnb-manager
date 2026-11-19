@@ -81,7 +81,7 @@ describe("the wallet", () => {
 		expect(items[4]).toHaveTextContent("Dấu chào mừng");
 	});
 
-	it("stops promotions after a confirmation, and sends a request to leave", async () => {
+	it("stops promotions after a confirmation", async () => {
 		const app = renderCustomerApp({
 			settings: { member: true, marketing: true },
 		});
@@ -102,12 +102,6 @@ describe("the wallet", () => {
 		expect(
 			screen.queryByRole("button", { name: "Dừng nhận tin" }),
 		).not.toBeInTheDocument();
-		fireEvent.click(screen.getByRole("button", { name: "Rời chương trình" }));
-		const leave = within(await screen.findByRole("dialog"));
-		fireEvent.click(leave.getByRole("button", { name: "Gửi yêu cầu" }));
-		expect(await screen.findByTestId("leave-sent")).toHaveTextContent(
-			"Đã gửi yêu cầu rời chương trình.",
-		);
 	});
 
 	it("offers joining to a visitor on the account tab", async () => {

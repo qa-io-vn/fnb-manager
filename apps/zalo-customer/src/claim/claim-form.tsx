@@ -17,6 +17,7 @@ import { useCustomerData, useLoad } from "../data/customer-data";
 import { claimDates, shownDate } from "../data/dates";
 import type { Failure } from "../data/source";
 import { useStoreLink } from "../data/store-link";
+import { storeOrOnly } from "../home/model";
 import {
 	BackButton,
 	Badge,
@@ -24,6 +25,7 @@ import {
 	failureKey,
 	fieldClass,
 	Loading,
+	NoStores,
 	primaryButton,
 	Screen,
 	Spinner,
@@ -305,9 +307,7 @@ function ClaimView() {
 		Date.now(),
 		home.data.programme?.claimWindowHours ?? CLAIM_WINDOW_HOURS,
 	);
-	const initialStore =
-		stores.find((store) => store.code === currentStore)?.code ??
-		(stores.length === 1 ? (stores[0]?.code ?? null) : null);
+	const initialStore = storeOrOnly(stores, currentStore)?.code ?? null;
 	const claimsLeft =
 		wallet.state.status === "ready"
 			? Math.max(
@@ -330,7 +330,9 @@ function ClaimView() {
 		<Screen testId="claim">
 			<BackButton />
 			<h1 className="text-xl font-semibold text-ink">{t("claim.title")}</h1>
-			{result === null ? (
+			{result === null && stores.length === 0 ? (
+				<NoStores />
+			) : result === null ? (
 				<>
 					<p className="text-base text-ink">{t("claim.intro")}</p>
 					<ClaimFormView

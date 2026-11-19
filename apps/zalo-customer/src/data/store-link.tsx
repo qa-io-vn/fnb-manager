@@ -1,4 +1,3 @@
-import { STORE_CODE_PATTERN } from "@fnb/zalo-mini/loyalty";
 import {
 	createContext,
 	type ReactNode,
@@ -11,44 +10,21 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { EventName, events, getRouteParams } from "zmp-sdk";
+import {
+	type LinkSource,
+	type StoreLink,
+	storeLinkFrom,
+	storeLinkFromEvent,
+} from "./link";
 
-export const LINK_SOURCES = ["qr", "standee", "receipt"] as const;
-export type LinkSource = (typeof LINK_SOURCES)[number];
-
-export interface StoreLink {
-	readonly store: string;
-	readonly source: LinkSource | null;
-}
-
-export function storeLinkFrom(
-	params: Readonly<Record<string, string | undefined>>,
-): StoreLink | null {
-	const store = params.store?.trim().toLowerCase() ?? "";
-	if (!STORE_CODE_PATTERN.test(store)) return null;
-	const source = LINK_SOURCES.find((name) => name === params.src) ?? null;
-	return { store, source };
-}
-
-export function storeLinkFromPath(path: unknown): StoreLink | null {
-	if (typeof path !== "string") return null;
-	const query = path.includes("?") ? path.slice(path.indexOf("?") + 1) : "";
-	return storeLinkFrom(Object.fromEntries(new URLSearchParams(query)));
-}
-
-export function storeLinkFromEvent(data: unknown): StoreLink | null {
-	if (typeof data !== "object" || data === null) return null;
-	const record = data as Readonly<Record<string, unknown>>;
-	const params = record.params ?? record.query;
-	if (typeof params === "object" && params !== null) {
-		const found = storeLinkFrom(
-			Object.fromEntries(
-				Object.entries(params).map(([key, value]) => [key, String(value)]),
-			),
-		);
-		if (found !== null) return found;
-	}
-	return storeLinkFromPath(record.path);
-}
+export {
+	LINK_SOURCES,
+	type LinkSource,
+	type StoreLink,
+	storeLinkFrom,
+	storeLinkFromEvent,
+	storeLinkFromPath,
+} from "./link";
 
 interface StoreLinkValue {
 	readonly currentStore: string | null;

@@ -1,0 +1,38 @@
+{
+	"listings": [
+		{
+			"brand_key": "brand-1",
+			"kind": "customer",
+			"id": "synthetic-customer-1",
+			"owner_mark": "Quán Mẫu Một",
+			"description": "Thẻ thành viên của Quán Mẫu Một: tích dấu và điểm sau mỗi lần mua đồ uống, đổi quà tại quầy và xem giờ mở cửa của các cửa hàng.",
+			"category": "FNB",
+			"logo": "logos/brand-1-customer.png",
+			"stores": [
+				{
+					"code": "mau-1",
+					"name": "Cửa hàng Mẫu 1"
+				},
+				{
+					"code": "mau-2",
+					"name": "Cửa hàng Mẫu 2"
+				}
+			]
+		},
+		{
+			"brand_key": "brand-2",
+			"kind": "customer",
+			"id": "synthetic-customer-2",
+			"owner_mark": "Quán Mẫu Hai",
+			"description": "Thẻ thành viên của Quán Mẫu Hai: tích dấu và điểm khi mua đồ uống, đổi quà tại quầy và xem các cửa hàng của quán.",
+			"category": "FNB",
+			"logo": "logos/brand-2-customer.png",
+			"stores": [
+				{
+					"code": "hai-1",
+					"name": "Cửa hàng Mẫu Hai 1"
+				}
+			]
+		}
+	]
+}

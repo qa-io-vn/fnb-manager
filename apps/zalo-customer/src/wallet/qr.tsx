@@ -1,19 +1,7 @@
 import { useMemo } from "react";
-import { encode } from "uqr";
+import { qrPath } from "./qr-path";
 
-export function qrPath(payload: string): {
-	readonly size: number;
-	readonly path: string;
-} {
-	const { size, data } = encode(payload, { ecc: "M", border: 2 });
-	const parts: string[] = [];
-	data.forEach((row, y) => {
-		row.forEach((dark, x) => {
-			if (dark) parts.push(`M${x} ${y}h1v1h-1z`);
-		});
-	});
-	return { size, path: parts.join("") };
-}
+export { qrPath } from "./qr-path";
 
 export function QrCode({
 	payload,

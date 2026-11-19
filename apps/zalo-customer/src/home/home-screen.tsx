@@ -9,6 +9,7 @@ import {
 	Card,
 	Failed,
 	Loading,
+	NoStores,
 	primaryButton,
 	rowButton,
 	Screen,
@@ -139,53 +140,57 @@ function ReadyHome({ home }: { readonly home: CustomerHome }) {
 				<h2 id={storesId} className="text-lg font-semibold text-ink">
 					{t("home.stores")}
 				</h2>
-				<ul className="flex flex-col gap-2" data-testid="store-list">
-					{home.stores.map((store) => {
-						const hours = hoursOn(store, today);
-						return (
-							<li key={store.code}>
-								<button
-									type="button"
-									className={rowButton}
-									onClick={() => navigate(`/cua-hang/${store.code}`)}
-								>
-									<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-										<span className="text-base font-semibold">
-											{store.name}
-										</span>
-										{store.address === null ? null : (
-											<span className="text-sm text-ink-muted">
-												{store.address}
-											</span>
-										)}
-										<span className="text-sm text-ink-muted">
-											{hours.kind === "open"
-												? t("store.todayHours", {
-														hours: spansText(hours.spans),
-													})
-												: hours.kind === "closed"
-													? t("store.closedToday")
-													: t("store.hoursUnknown")}
-										</span>
-									</span>
-									<svg
-										aria-hidden="true"
-										width="20"
-										height="20"
-										viewBox="0 0 20 20"
-										fill="none"
-										stroke="currentColor"
-										strokeWidth="1.8"
-										strokeLinecap="round"
-										strokeLinejoin="round"
+				{home.stores.length === 0 ? (
+					<NoStores />
+				) : (
+					<ul className="flex flex-col gap-2" data-testid="store-list">
+						{home.stores.map((store) => {
+							const hours = hoursOn(store, today);
+							return (
+								<li key={store.code}>
+									<button
+										type="button"
+										className={rowButton}
+										onClick={() => navigate(`/cua-hang/${store.code}`)}
 									>
-										<path d="M7.5 4.5L13 10l-5.5 5.5" />
-									</svg>
-								</button>
-							</li>
-						);
-					})}
-				</ul>
+										<span className="flex min-w-0 flex-1 flex-col gap-0.5">
+											<span className="text-base font-semibold">
+												{store.name}
+											</span>
+											{store.address === null ? null : (
+												<span className="text-sm text-ink-muted">
+													{store.address}
+												</span>
+											)}
+											<span className="text-sm text-ink-muted">
+												{hours.kind === "open"
+													? t("store.todayHours", {
+															hours: spansText(hours.spans),
+														})
+													: hours.kind === "closed"
+														? t("store.closedToday")
+														: t("store.hoursUnknown")}
+											</span>
+										</span>
+										<svg
+											aria-hidden="true"
+											width="20"
+											height="20"
+											viewBox="0 0 20 20"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="1.8"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<path d="M7.5 4.5L13 10l-5.5 5.5" />
+										</svg>
+									</button>
+								</li>
+							);
+						})}
+					</ul>
+				)}
 			</section>
 			{home.menu.length === 0 ? null : (
 				<section aria-labelledby={menuId} className="flex flex-col gap-2">

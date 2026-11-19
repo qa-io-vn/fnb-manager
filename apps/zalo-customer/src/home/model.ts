@@ -96,3 +96,25 @@ export function joinableHome(
 ): JoinableHome | null {
 	return joinBlock(home, today) === null ? (home as JoinableHome) : null;
 }
+
+export function storeByCode<T extends { readonly code: string }>(
+	stores: readonly T[],
+	code: string | null | undefined,
+): T | null {
+	if (code === null || code === undefined || code === "") return null;
+	const exact = stores.find((store) => store.code === code);
+	if (exact !== undefined) return exact;
+	const wanted = code.toLowerCase();
+	const matches = stores.filter((store) => store.code.toLowerCase() === wanted);
+	return matches.length === 1 ? (matches[0] ?? null) : null;
+}
+
+export function storeOrOnly<T extends { readonly code: string }>(
+	stores: readonly T[],
+	code: string | null | undefined,
+): T | null {
+	return (
+		storeByCode(stores, code) ??
+		(stores.length === 1 ? (stores[0] ?? null) : null)
+	);
+}

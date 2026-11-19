@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { buildStandee } from "../scripts/standee";
 import {
 	checkCustomerScreen,
 	nativeStorageKeys,
@@ -160,5 +161,33 @@ test("without an active programme the home shows the stores and says joining is 
 	await expect(
 		page.getByRole("button", { name: "Tham gia thành viên" }),
 	).toBeDisabled();
+	await checkCustomerScreen(page);
+});
+
+test("a standee's link opens that store's page, whatever the case of its code", async ({
+	page,
+}) => {
+	await page.goto("./?store=MAU-1&src=standee");
+	await expect(
+		page.getByRole("heading", { name: "Cửa hàng Mẫu 1" }),
+	).toBeVisible();
+	await expect(page.getByTestId("menu-item")).toHaveCount(4);
+	await checkCustomerScreen(page);
+});
+
+test("a printed standee's QR, made for this build, opens its store's page", async ({
+	page,
+	baseURL,
+}) => {
+	const standee = buildStandee(
+		{ displayName: "Quán Mẫu Một", headerColor: "#0A6B56", textColor: "white" },
+		{ code: "mau-2", name: "Cửa hàng Mẫu 2" },
+		baseURL ?? "",
+	);
+	expect(standee.link).toContain("?store=mau-2&src=standee");
+	await page.goto(standee.link);
+	await expect(
+		page.getByRole("heading", { name: "Cửa hàng Mẫu 2" }),
+	).toBeVisible();
 	await checkCustomerScreen(page);
 });

@@ -103,6 +103,9 @@ describe("claiming a receipt", () => {
 		expect(
 			within(form).queryByText("Hãy nhập số hóa đơn."),
 		).not.toBeInTheDocument();
+		expect(
+			within(form).getByTestId("claim-receipt"),
+		).toHaveAccessibleDescription("Số hóa đơn in trên bill (thường 6 chữ số).");
 		fireEvent.click(within(form).getByRole("button", { name: "Gửi hóa đơn" }));
 		expect(within(form).getByText("Hãy nhập số hóa đơn.")).toBeInTheDocument();
 		expect(within(form).getByText("Hãy nhập tổng tiền.")).toBeInTheDocument();

@@ -16,7 +16,7 @@ import {
 } from "../ui";
 import { MenuList } from "./home-screen";
 import { JoinActions } from "./join-actions";
-import { hoursKnown, menuAt, spansText, weekRows } from "./model";
+import { hoursKnown, menuAt, spansText, storeByCode, weekRows } from "./model";
 
 function StoreDetails({
 	home,
@@ -114,8 +114,8 @@ export function StoreScreen() {
 	if (home.status === "loading") return <Loading />;
 	if (home.status === "failed")
 		return <Failed failure={home.failure} onRetry={reloadHome} />;
-	const store = home.data.stores.find((entry) => entry.code === code);
-	if (store === undefined) {
+	const store = storeByCode(home.data.stores, code);
+	if (store === null) {
 		return (
 			<Screen testId="store-missing">
 				<BackButton to="/" />

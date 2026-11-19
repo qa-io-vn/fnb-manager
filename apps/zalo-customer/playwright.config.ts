@@ -29,12 +29,12 @@ export default defineConfig({
 	projects: [
 		{
 			name: "phone-light",
-			testMatch: /(browse|join|wallet)\.spec\.ts/,
+			testMatch: /(account|browse|join|wallet)\.spec\.ts/,
 			use: { ...phone, colorScheme: "light" },
 		},
 		{
 			name: "phone-dark",
-			testMatch: /(browse|join|wallet)\.spec\.ts/,
+			testMatch: /(account|browse|join|wallet)\.spec\.ts/,
 			use: { ...phone, colorScheme: "dark" },
 		},
 		{

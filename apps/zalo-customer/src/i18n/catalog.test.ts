@@ -21,7 +21,7 @@ describe("customer catalogues", () => {
 
 	it("follow the registry's spelling and show no price", () => {
 		const vietnamese = Object.values(appCatalogs.vi).join("\n");
-		expect(vietnamese).not.toMatch(/hoá|huỷ|tuỳ/);
+		expect(vietnamese).not.toMatch(/hoá|huỷ|tuỳ|[Xx]oá/);
 		for (const message of [
 			...Object.values(appCatalogs.vi),
 			...Object.values(appCatalogs.en),

@@ -10,6 +10,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useCustomerData, useLoad } from "../data/customer-data";
 import { shownInstant } from "../data/dates";
 import { useStoreLink } from "../data/store-link";
+import { storeOrOnly } from "../home/model";
 import {
 	BackButton,
 	Badge,
@@ -17,6 +18,7 @@ import {
 	Failed,
 	failureKey,
 	Loading,
+	NoStores,
 	primaryButton,
 	Screen,
 	Spinner,
@@ -273,22 +275,24 @@ function RewardsView() {
 	if (home.status === "failed")
 		return <Failed failure={home.failure} onRetry={reloadHome} />;
 	const stores = home.data.stores;
-	const store =
-		stores.find((entry) => entry.code === currentStore) ??
-		(stores.length === 1 ? (stores[0] ?? null) : null);
+	const store = storeOrOnly(stores, currentStore);
 	return (
 		<Screen testId="rewards-screen">
 			<BackButton />
 			<h1 className="text-xl font-semibold text-ink">{t("reward.title")}</h1>
 			<p className="text-base text-ink">{t("reward.intro")}</p>
-			<StorePicker
-				stores={stores}
-				value={store?.code ?? null}
-				onChange={chooseStore}
-				label={t("reward.storeLabel")}
-				testId="reward-store-picker"
-			/>
-			{store === null ? (
+			{stores.length === 0 ? (
+				<NoStores />
+			) : (
+				<StorePicker
+					stores={stores}
+					value={store?.code ?? null}
+					onChange={chooseStore}
+					label={t("reward.storeLabel")}
+					testId="reward-store-picker"
+				/>
+			)}
+			{stores.length === 0 ? null : store === null ? (
 				<p className="text-base text-ink" data-testid="reward-pick-first">
 					{t("reward.pickFirst")}
 				</p>

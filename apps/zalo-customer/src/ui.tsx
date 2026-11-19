@@ -113,6 +113,18 @@ export function Failed({
 	);
 }
 
+export function NoStores() {
+	const { t } = useI18n();
+	return (
+		<p
+			className="rounded-xl bg-neutral-soft px-4 py-3 text-base text-ink"
+			data-testid="no-stores"
+		>
+			{t("customer.noStores")}
+		</p>
+	);
+}
+
 export function BackButton({ to }: { readonly to?: string }) {
 	const { t } = useI18n();
 	const navigate = useNavigate();

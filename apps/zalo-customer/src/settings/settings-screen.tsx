@@ -1,12 +1,20 @@
-import type { LoyaltyClient, Wallet } from "@fnb/zalo-mini/loyalty";
+import type {
+	DeletionRequest,
+	DeletionStatus,
+	LoyaltyClient,
+	Wallet,
+} from "@fnb/zalo-mini/loyalty";
 import { Popup, ResultModal, useI18n } from "@fnb/zalo-mini/react";
 import { useCallback, useId, useState } from "react";
 import { useCustomerData, useLoad } from "../data/customer-data";
+import { shownInstant } from "../data/dates";
 import type { Failure } from "../data/source";
 import { JoinActions } from "../home/join-actions";
 import { LegalButtons } from "../legal/legal-popups";
 import {
+	Badge,
 	Card,
+	CheckControl,
 	dangerButton,
 	Failed,
 	failureKey,
@@ -17,7 +25,64 @@ import {
 	secondaryButton,
 } from "../ui";
 
-type Confirm = "stop-marketing" | "leave" | null;
+type Confirm = "stop-marketing" | "delete" | null;
+
+const DELETION_TONES: Readonly<
+	Record<DeletionStatus, "pending" | "positive" | "negative">
+> = {
+	received: "pending",
+	in_progress: "pending",
+	completed: "positive",
+	rejected: "negative",
+};
+
+export function deletionReference(request: DeletionRequest): string {
+	return request.requestId.replace(/-/g, "").slice(0, 8).toUpperCase();
+}
+
+export function deletionOpen(request: DeletionRequest): boolean {
+	return request.status === "received" || request.status === "in_progress";
+}
+
+export function DeletionState({
+	request,
+}: {
+	readonly request: DeletionRequest;
+}) {
+	const { t } = useI18n();
+	return (
+		<div className="flex flex-col gap-2" data-testid="deletion-state">
+			<div className="flex flex-wrap items-center gap-2">
+				<Badge tone={DELETION_TONES[request.status]}>
+					<span data-testid="deletion-status" data-status={request.status}>
+						{t(`settings.deleteState.${request.status}`)}
+					</span>
+				</Badge>
+			</div>
+			<p className="text-sm text-ink-muted" data-testid="deletion-requested">
+				{t("settings.deleteRequested", {
+					time: shownInstant(request.requestedAt),
+				})}
+				{" · "}
+				{t("settings.deleteReference", {
+					code: deletionReference(request),
+				})}
+			</p>
+			{deletionOpen(request) ? (
+				<>
+					<p className="text-base text-ink" data-testid="deletion-deadline">
+						{t("settings.deleteDeadline")}
+					</p>
+					<p className="text-base text-ink">{t("settings.deleteUntil")}</p>
+				</>
+			) : (
+				<p className="text-base text-ink">
+					{t(`settings.deleteStateBody.${request.status}`)}
+				</p>
+			)}
+		</div>
+	);
+}
 
 function MemberSettings({
 	wallet,
@@ -27,18 +92,23 @@ function MemberSettings({
 	readonly onChanged: () => void;
 }) {
 	const { t } = useI18n();
-	const { client, recover } = useCustomerData();
+	const { client, recover, deletion, rememberDeletion } = useCustomerData();
 	const [confirm, setConfirm] = useState<Confirm>(null);
 	const [busy, setBusy] = useState(false);
 	const [failure, setFailure] = useState<Failure | null>(null);
 	const [result, setResult] = useState<string | null>(null);
-	const [leaveRequested, setLeaveRequested] = useState(false);
+	const [understood, setUnderstood] = useState(false);
 	const marketingId = useId();
-	const leaveId = useId();
-	const close = useCallback(() => setConfirm(null), []);
+	const deleteId = useId();
+	const ackId = useId();
+	const close = useCallback(() => {
+		setConfirm(null);
+		setFailure(null);
+		setUnderstood(false);
+	}, []);
 
 	const run = async (
-		work: (active: LoyaltyClient) => Promise<unknown>,
+		work: (active: LoyaltyClient) => Promise<void>,
 		done: () => void,
 	) => {
 		if (client === null) return;
@@ -46,7 +116,7 @@ function MemberSettings({
 		setFailure(null);
 		try {
 			await work(client);
-			setConfirm(null);
+			close();
 			done();
 		} catch (error) {
 			setFailure(recover(error));
@@ -57,22 +127,24 @@ function MemberSettings({
 
 	const stopMarketing = () =>
 		run(
-			(active) => active.stopMarketing(),
+			async (active) => {
+				await active.stopMarketing();
+			},
 			() => {
 				setResult(t("settings.stopped"));
 				onChanged();
 			},
 		);
 
-	const leave = () =>
+	const requestDeletion = () =>
 		run(
-			(active) => active.requestDeletion(),
-			() => {
-				setLeaveRequested(true);
-				setResult(t("settings.leaveSent"));
+			async (active) => {
+				rememberDeletion(await active.requestDeletion());
 			},
+			() => setResult(t("settings.deleteSent")),
 		);
 
+	const deleting = confirm === "delete";
 	return (
 		<>
 			<Card testId="settings-member">
@@ -100,23 +172,22 @@ function MemberSettings({
 					</button>
 				) : null}
 			</Card>
-			<Card labelledBy={leaveId} testId="settings-leave">
-				<h2 id={leaveId} className="text-lg font-semibold text-ink">
-					{t("settings.leave")}
+			<Card labelledBy={deleteId} testId="settings-delete">
+				<h2 id={deleteId} className="text-lg font-semibold text-ink">
+					{t("settings.delete")}
 				</h2>
-				{leaveRequested ? (
-					<p className="text-base text-ink" data-testid="leave-sent">
-						{t("settings.leaveSent")}
-					</p>
+				{deletion !== null && deletionOpen(deletion) ? (
+					<DeletionState request={deletion} />
 				) : (
 					<>
-						<p className="text-base text-ink">{t("settings.leaveBody")}</p>
+						{deletion === null ? null : <DeletionState request={deletion} />}
+						<p className="text-base text-ink">{t("settings.deleteBody")}</p>
 						<button
 							type="button"
 							className={dangerButton}
-							onClick={() => setConfirm("leave")}
+							onClick={() => setConfirm("delete")}
 						>
-							{t("settings.leaveAction")}
+							{t("settings.deleteAction")}
 						</button>
 					</>
 				)}
@@ -124,24 +195,24 @@ function MemberSettings({
 			{confirm === null ? null : (
 				<Popup
 					title={
-						confirm === "leave"
-							? t("settings.leaveConfirmTitle")
+						deleting
+							? t("settings.deleteConfirmTitle")
 							: t("settings.stopConfirmTitle")
 					}
 					onClose={close}
-					testId="settings-confirm"
+					testId={deleting ? "delete-confirm" : "settings-confirm"}
 					footer={
 						<>
 							<button
 								type="button"
-								className={primaryButton}
-								disabled={busy}
+								className={deleting ? dangerButton : primaryButton}
+								disabled={busy || (deleting && !understood)}
 								aria-busy={busy}
-								onClick={confirm === "leave" ? leave : stopMarketing}
+								onClick={deleting ? requestDeletion : stopMarketing}
 							>
 								{busy ? <Spinner /> : null}
-								{confirm === "leave"
-									? t("settings.leaveConfirm")
+								{deleting
+									? t("settings.deleteConfirm")
 									: t("settings.stopConfirm")}
 							</button>
 							<button
@@ -155,11 +226,34 @@ function MemberSettings({
 						</>
 					}
 				>
-					<p className="text-base text-ink">
-						{confirm === "leave"
-							? t("settings.leaveConfirmBody")
-							: t("settings.stopConfirmBody")}
-					</p>
+					{deleting ? (
+						<div className="flex flex-col gap-3">
+							<p className="text-base text-ink">
+								{t("settings.deleteConfirmBody")}
+							</p>
+							<p className="text-base text-ink">
+								{t("settings.deleteDeadline")}
+							</p>
+							<p className="text-base text-ink">{t("settings.deleteUntil")}</p>
+							<div className="flex items-start gap-3">
+								<CheckControl
+									id={ackId}
+									kind="checkbox"
+									checked={understood}
+									disabled={busy}
+									testId="delete-understood"
+									onChange={setUnderstood}
+								/>
+								<label htmlFor={ackId} className="pt-2 text-base text-ink">
+									{t("settings.deleteAck")}
+								</label>
+							</div>
+						</div>
+					) : (
+						<p className="text-base text-ink">
+							{t("settings.stopConfirmBody")}
+						</p>
+					)}
 					{failure === null ? null : (
 						<p role="alert" className="pt-3 text-base text-negative">
 							{t(failureKey(failure))}
@@ -183,20 +277,32 @@ function MemberPart() {
 	return <MemberSettings wallet={state.data} onChanged={reload} />;
 }
 
+function AccountPart() {
+	const { t } = useI18n();
+	const { member, session, sessionState, retrySession } = useCustomerData();
+	if (sessionState.status === "failed")
+		return (
+			<Failed
+				failure={sessionState.reason === "network" ? "network" : "unknown"}
+				onRetry={retrySession}
+			/>
+		);
+	if (session === null) return <Loading />;
+	if (member) return <MemberPart />;
+	return (
+		<Card testId="settings-visitor">
+			<p className="text-base text-ink">{t("settings.notMember")}</p>
+			<JoinActions claim={false} />
+		</Card>
+	);
+}
+
 export function SettingsScreen() {
 	const { t } = useI18n();
-	const { member, session } = useCustomerData();
 	return (
 		<Screen testId="settings">
 			<h1 className="text-xl font-semibold text-ink">{t("settings.title")}</h1>
-			{session === null ? null : member ? (
-				<MemberPart />
-			) : (
-				<Card testId="settings-visitor">
-					<p className="text-base text-ink">{t("settings.notMember")}</p>
-					<JoinActions claim={false} />
-				</Card>
-			)}
+			<AccountPart />
 			<p className="text-sm text-ink-muted">{t("settings.language")}</p>
 			<LegalButtons />
 		</Screen>

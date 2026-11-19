@@ -7,7 +7,7 @@ import {
 	storeLinkFromPath,
 } from "../data/store-link";
 import { renderCustomerApp, setSearch } from "../test/render-app";
-import { looksLikePrice, menuAt } from "./model";
+import { looksLikePrice, menuAt, storeByCode, storeOrOnly } from "./model";
 
 afterEach(() => setSearch(""));
 
@@ -17,8 +17,8 @@ describe("store links", () => {
 			store: "mau-2",
 			source: "qr",
 		});
-		expect(storeLinkFrom({ store: "MAU-1", src: "flyer" })).toEqual({
-			store: "mau-1",
+		expect(storeLinkFrom({ store: " MAU-1 ", src: "flyer" })).toEqual({
+			store: "MAU-1",
 			source: null,
 		});
 		expect(storeLinkFrom({ store: "../x" })).toBeNull();
@@ -36,6 +36,24 @@ describe("store links", () => {
 			source: null,
 		});
 		expect(storeLinkFromEvent(null)).toBeNull();
+	});
+
+	it("finds the store a link names, exactly first and then ignoring case", () => {
+		const stores = [
+			{ code: "mau-1" },
+			{ code: "Q1.HN" },
+			{ code: "dup" },
+			{ code: "DUP" },
+		];
+		expect(storeByCode(stores, "Q1.HN")).toEqual({ code: "Q1.HN" });
+		expect(storeByCode(stores, "q1.hn")).toEqual({ code: "Q1.HN" });
+		expect(storeByCode(stores, "MAU-1")).toEqual({ code: "mau-1" });
+		expect(storeByCode(stores, "DUP")).toEqual({ code: "DUP" });
+		expect(storeByCode(stores, "Dup")).toBeNull();
+		expect(storeByCode(stores, "mau-9")).toBeNull();
+		expect(storeByCode(stores, null)).toBeNull();
+		expect(storeOrOnly([{ code: "only" }], "gone")).toEqual({ code: "only" });
+		expect(storeOrOnly(stores, null)).toBeNull();
 	});
 });
 
@@ -70,6 +88,14 @@ describe("browse-first home", () => {
 			"34 Đường Số 2",
 		);
 		expect(screen.getAllByTestId("menu-item").length).toBe(3);
+	});
+
+	it("opens a store's page from a standee link written in capitals", async () => {
+		renderCustomerApp({ search: "?store=MAU-1&src=standee" });
+		expect(
+			await screen.findByRole("heading", { name: "Cửa hàng Mẫu 1" }),
+		).toBeInTheDocument();
+		expect(screen.getAllByTestId("menu-item").length).toBe(4);
 	});
 
 	it("opens another store's page when the app comes back with a new link", async () => {

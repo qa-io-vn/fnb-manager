@@ -2,6 +2,7 @@ import type { MiniAppRoute, MiniAppTab } from "@fnb/zalo-mini/react";
 import { lazy, type ReactNode, Suspense } from "react";
 import { ClaimScreen } from "./claim/claim-form";
 import { CustomerDataProvider } from "./data/customer-data";
+import { OfflineNotice } from "./data/offline";
 import { StoreLinkProvider } from "./data/store-link";
 import { HomeScreen } from "./home/home-screen";
 import { StoreScreen } from "./home/store-screen";
@@ -80,7 +81,10 @@ export const tabs: readonly MiniAppTab[] = [
 export function CustomerGate({ children }: { readonly children: ReactNode }) {
 	return (
 		<CustomerDataProvider>
-			<StoreLinkProvider>{children}</StoreLinkProvider>
+			<StoreLinkProvider>
+				<OfflineNotice />
+				{children}
+			</StoreLinkProvider>
 		</CustomerDataProvider>
 	);
 }

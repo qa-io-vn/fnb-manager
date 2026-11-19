@@ -127,6 +127,34 @@ describe("joining", () => {
 		expect(app.world.marketing()).toBe(true);
 	});
 
+	it("sends the store's own code for a standee link written in capitals", async () => {
+		const app = renderCustomerApp({ search: "?store=MAU-2&src=standee" });
+		await screen.findByRole("heading", { name: "Cửa hàng Mẫu 2" });
+		fireEvent.click(
+			screen.getByRole("button", { name: "Tham gia thành viên" }),
+		);
+		fireEvent.click(await screen.findByRole("button", { name: "Tiếp tục" }));
+		fireEvent.click(await screen.findByTestId("consent-loyalty"));
+		fireEvent.click(screen.getByRole("button", { name: "Tham gia" }));
+		await screen.findByRole("heading", { name: "Chào mừng bạn!" });
+		expect(joinBodies(app.fetches())[0]).toMatchObject({ store: "mau-2" });
+	});
+
+	it("joins without a store when the linked one no longer exists", async () => {
+		const app = renderCustomerApp({ search: "?store=mau-9&src=standee" });
+		await screen.findByRole("heading", { name: "Không tìm thấy cửa hàng" });
+		fireEvent.click(screen.getByRole("button", { name: "Quay lại" }));
+		await screen.findByRole("heading", { name: "Thành viên Quán Mẫu Một" });
+		fireEvent.click(
+			screen.getByRole("button", { name: "Tham gia thành viên" }),
+		);
+		fireEvent.click(await screen.findByRole("button", { name: "Tiếp tục" }));
+		fireEvent.click(await screen.findByTestId("consent-loyalty"));
+		fireEvent.click(screen.getByRole("button", { name: "Tham gia" }));
+		await screen.findByRole("heading", { name: "Chào mừng bạn!" });
+		expect(joinBodies(app.fetches())[0]).toMatchObject({ store: null });
+	});
+
 	it("goes back to browsing and stores nothing when the purpose is declined", async () => {
 		const app = renderCustomerApp();
 		await screen.findByRole("heading", { name: "Thành viên Quán Mẫu Một" });

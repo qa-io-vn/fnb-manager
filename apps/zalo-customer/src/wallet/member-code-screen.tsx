@@ -4,6 +4,7 @@ import { useId } from "react";
 import { useCustomerData } from "../data/customer-data";
 import { shownTime } from "../data/dates";
 import { useStoreLink } from "../data/store-link";
+import { storeOrOnly } from "../home/model";
 import {
 	BackButton,
 	Card,
@@ -11,6 +12,7 @@ import {
 	failureKey,
 	fieldClass,
 	Loading,
+	NoStores,
 	primaryButton,
 	Screen,
 	Spinner,
@@ -141,22 +143,24 @@ function MemberCodeView() {
 	if (home.status === "failed")
 		return <Failed failure={home.failure} onRetry={reloadHome} />;
 	const stores = home.data.stores;
-	const only = stores.length === 1 ? (stores[0]?.code ?? null) : null;
-	const store =
-		stores.find((entry) => entry.code === currentStore)?.code ?? only;
+	const store = storeOrOnly(stores, currentStore)?.code ?? null;
 	return (
 		<Screen testId="member-code-screen">
 			<BackButton />
 			<h1 className="text-xl font-semibold text-ink">{t("code.title")}</h1>
 			<p className="text-base text-ink">{t("code.intro")}</p>
-			<StorePicker
-				stores={stores}
-				value={store}
-				onChange={chooseStore}
-				label={t("code.storeLabel")}
-				testId="code-store-picker"
-			/>
-			{store === null ? (
+			{stores.length === 0 ? (
+				<NoStores />
+			) : (
+				<StorePicker
+					stores={stores}
+					value={store}
+					onChange={chooseStore}
+					label={t("code.storeLabel")}
+					testId="code-store-picker"
+				/>
+			)}
+			{stores.length === 0 ? null : store === null ? (
 				<p className="text-base text-ink" data-testid="code-pick-first">
 					{t("code.pickFirst")}
 				</p>

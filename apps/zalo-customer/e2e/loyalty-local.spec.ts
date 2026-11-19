@@ -146,7 +146,7 @@ test.afterEach(async () => {
 	}
 });
 
-test("a customer browses loyalty-sim, joins with the phone consent, claims a receipt from the till and sees it confirmed", async ({
+test("a customer browses loyalty-sim, joins with the phone consent, claims a receipt from the till, sees it confirmed and asks to delete their data", async ({
 	page,
 }) => {
 	if (fixture === null) throw new Error("no fixture");
@@ -207,6 +207,25 @@ test("a customer browses loyalty-sim, joins with the phone consent, claims a rec
 	const claimed = await fixture.customerState(customer);
 	expect(claimed.earnsByPath).toEqual({ C: 1 });
 	expect(claimed.matchedClaims).toBe(1);
+	expect(claimed.openDeletionRequests).toBe(0);
+
+	await openTab(page, "Tài khoản");
+	await page
+		.getByTestId("settings-delete")
+		.getByRole("button", { name: "Xóa dữ liệu của tôi" })
+		.click();
+	const confirm = page.getByRole("dialog", { name: "Xóa dữ liệu của bạn?" });
+	await confirm.getByRole("checkbox").check();
+	await confirm.getByRole("button", { name: "Gửi yêu cầu xóa" }).click();
+	await expect(page.getByTestId("deletion-status")).toHaveAttribute(
+		"data-status",
+		"received",
+	);
+	await expect(page.getByTestId("deletion-deadline")).toBeVisible();
+	await checkCustomerScreen(page);
+	const asked = await fixture.customerState(customer);
+	expect(asked.openDeletionRequests).toBe(1);
+	expect(asked.memberships).toBe(1);
 	expect([...hosts].filter((host) => host !== "")).toEqual([
 		`127.0.0.1:${CUSTOMER_PORT}`,
 	]);

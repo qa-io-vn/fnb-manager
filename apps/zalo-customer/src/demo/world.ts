@@ -48,6 +48,7 @@ export interface DemoSettings {
 	readonly programme: DemoProgrammeState;
 	readonly privacy: boolean;
 	readonly vouchers: boolean;
+	readonly stores: boolean;
 }
 
 export const DEMO_DEFAULTS: DemoSettings = {
@@ -59,9 +60,11 @@ export const DEMO_DEFAULTS: DemoSettings = {
 	programme: "active",
 	privacy: true,
 	vouchers: false,
+	stores: true,
 };
 
 const MAX_DEMO_DELAY_MS = 10_000;
+export const DEMO_DELETION_REQUEST_ID = "00000000-0000-4000-8000-00000000d001";
 const SESSION_SECONDS = 3600;
 const UNKNOWN_TOKEN = "PGRST301";
 
@@ -88,6 +91,7 @@ export function demoSettingsFrom(search: string): DemoSettings {
 		programme: member && programme === "none" ? "active" : programme,
 		privacy: params.get("privacy") !== "none",
 		vouchers: member && params.get("vouchers") === "1",
+		stores: params.get("stores") !== "none",
 	};
 }
 
@@ -133,6 +137,7 @@ export interface DemoWorld {
 	rest(accessToken: string): RestClient;
 	joined(): boolean;
 	marketing(): boolean;
+	deletionRequested(): boolean;
 	setOffline(offline: boolean): void;
 }
 
@@ -182,7 +187,11 @@ export function createDemoWorld(
 	let memberSince = isoDateIn(now() - 40 * DAY_MS);
 	let entryCount = 0;
 	let claimCount = 0;
-	let deletionCount = 0;
+	let deletion: {
+		readonly request_id: string;
+		readonly status: "received";
+		readonly requested_at: string;
+	} | null = null;
 	let offline = false;
 	const entries: Entry[] = [];
 	const claims: Claim[] = [];
@@ -784,7 +793,7 @@ export function createDemoWorld(
 						(document) => document.kind !== "privacy_notice",
 					),
 				},
-		stores: DEMO_STORES,
+		stores: settings.stores ? DEMO_STORES : [],
 		menu: DEMO_MENU,
 	});
 
@@ -815,12 +824,14 @@ export function createDemoWorld(
 					stopped_at: new Date(now()).toISOString(),
 				};
 			case CUSTOMER_FUNCTIONS.requestDeletion:
-				deletionCount += 1;
-				return {
-					request_id: `demo-deletion-${deletionCount}`,
-					status: "received",
-					requested_at: new Date(now()).toISOString(),
-				};
+				if (deletion === null) {
+					deletion = {
+						request_id: DEMO_DELETION_REQUEST_ID,
+						status: "received",
+						requested_at: new Date(now()).toISOString(),
+					};
+				}
+				return deletion;
 			default:
 				throw new RestError(404, "PGRST202");
 		}
@@ -854,5 +865,6 @@ export function createDemoWorld(
 			offline = value;
 		},
 		marketing: () => marketing,
+		deletionRequested: () => deletion !== null,
 	};
 }

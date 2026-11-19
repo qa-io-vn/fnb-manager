@@ -21,6 +21,10 @@
 			"types": "./src/loyalty/index.ts",
 			"import": "./src/loyalty/index.ts"
 		},
+		"./listing": {
+			"types": "./src/listing/index.ts",
+			"import": "./src/listing/index.ts"
+		},
 		"./vite": {
 			"types": "./src/vite/index.ts",
 			"import": "./src/vite/index.ts"
@@ -54,7 +58,8 @@
 	"scripts": {
 		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
 		"test": "vitest run",
-		"app-config": "tsx src/app-config/cli.ts"
+		"app-config": "tsx src/app-config/cli.ts",
+		"listing": "tsx src/listing/cli.ts"
 	},
 	"dependencies": {
 		"react": "^19.3.1",

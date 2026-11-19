@@ -100,6 +100,7 @@ export interface CustomerState {
 	readonly matchedCheckins: number;
 	readonly loyaltyConsents: number;
 	readonly marketingConsents: number;
+	readonly openDeletionRequests: number;
 }
 
 export interface CleanupCounts {
@@ -205,12 +206,23 @@ async function eraseCustomers(
 		customerLogins: 0,
 	};
 	for (const { id } of found) {
-		const [request] = await sql<{ id: string }>`
-			insert into public.data_subject_requests (tenant_id, subject_type, subject_id, contact, request_type, notes)
-			values (${tenantId}::uuid, 'customer', ${id}::uuid, 'mini_app', 'deletion',
-				'synthetic customer of the local loyalty trial')
-			returning id::text as id
+		const [asked] = await sql<{ id: string }>`
+			select r.id::text as id from public.data_subject_requests r
+			where r.tenant_id = ${tenantId}::uuid and r.subject_type = 'customer'
+				and r.subject_id = ${id}::uuid and r.request_type = 'deletion'
+				and r.status in ('received', 'in_progress')
+			order by r.received_at desc
+			limit 1
 		`;
+		const [request] =
+			asked === undefined
+				? await sql<{ id: string }>`
+						insert into public.data_subject_requests (tenant_id, subject_type, subject_id, contact, request_type, notes)
+						values (${tenantId}::uuid, 'customer', ${id}::uuid, 'mini_app', 'deletion',
+							'synthetic customer of the local loyalty trial')
+						returning id::text as id
+					`
+				: [asked];
 		if (request === undefined) throw new Error("no deletion request");
 		const [erased] = await sql<{ result: Row }>`
 			select app.dsr_erase_customer(${request.id}::uuid, null, now()) as result
@@ -492,7 +504,8 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 					(select count(*) from public.receipt_claims r where r.membership_id in (select id from m) and r.status = 'matched')::integer as matched_claims,
 					(select count(*) from public.pending_checkins k where k.membership_id in (select id from m) and k.status = 'matched')::integer as matched_checkins,
 					(select count(*) from public.consent_records r where r.subject_type = 'customer' and r.subject_id in (select id from c) and r.purpose = 'loyalty' and r.revoked_at is null)::integer as loyalty_consents,
-					(select count(*) from public.consent_records r where r.subject_type = 'customer' and r.subject_id in (select id from c) and r.purpose = 'marketing' and r.revoked_at is null)::integer as marketing_consents
+					(select count(*) from public.consent_records r where r.subject_type = 'customer' and r.subject_id in (select id from c) and r.purpose = 'marketing' and r.revoked_at is null)::integer as marketing_consents,
+					(select count(*) from public.data_subject_requests r where r.tenant_id = ${tenant.id}::uuid and r.subject_type = 'customer' and r.subject_id in (select id from c) and r.request_type = 'deletion' and r.status = 'received' and r.contact = 'mini_app' and r.completion_due_at > r.first_response_due_at)::integer as open_deletion_requests
 			`;
 			return {
 				customers: Number(row?.customers ?? 0),
@@ -503,6 +516,7 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 				matchedCheckins: Number(row?.matched_checkins ?? 0),
 				loyaltyConsents: Number(row?.loyalty_consents ?? 0),
 				marketingConsents: Number(row?.marketing_consents ?? 0),
+				openDeletionRequests: Number(row?.open_deletion_requests ?? 0),
 			};
 		},
 		async ringSale(input) {

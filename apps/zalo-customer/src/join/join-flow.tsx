@@ -12,6 +12,7 @@ import {
 	type JoinBlock,
 	joinableHome,
 	joinBlock,
+	storeByCode,
 } from "../home/model";
 import { retentionText } from "../home/programme";
 import { useLegalPopup } from "../legal/legal-popups";
@@ -367,7 +368,7 @@ export function JoinFlow({
 			marketingConsent: state.marketing,
 			policyVersion: data.legal.policyVersion,
 			screenVersion: JOIN_SCREEN_VERSION,
-			store: currentStore,
+			store: storeByCode(data.stores, currentStore)?.code ?? null,
 			shownAt: state.shownAt,
 		});
 		if (!mounted.current) return;

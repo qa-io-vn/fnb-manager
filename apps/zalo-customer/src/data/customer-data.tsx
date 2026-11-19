@@ -2,6 +2,7 @@ import type { CustomerSessionState, JoinResult } from "@fnb/zalo-mini";
 import type {
 	CustomerHome,
 	CustomerSession,
+	DeletionRequest,
 	JoinRequest,
 	LoyaltyClient,
 } from "@fnb/zalo-mini/loyalty";
@@ -16,6 +17,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useBackOnline } from "./offline";
 import {
 	type Failure,
 	failureOf,
@@ -34,6 +36,8 @@ export interface CustomerDataValue {
 	readonly member: boolean;
 	readonly client: LoyaltyClient | null;
 	readonly home: Load<CustomerHome>;
+	readonly deletion: DeletionRequest | null;
+	rememberDeletion(request: DeletionRequest): void;
 	reloadHome(): void;
 	retrySession(): void;
 	recover(error: unknown): Failure;
@@ -65,6 +69,21 @@ export function CustomerDataProvider({
 	);
 	const [home, setHome] = useState<Load<CustomerHome>>({ status: "loading" });
 	const generation = useRef(0);
+	const customerId = session?.customer.customerId ?? null;
+	const [deletion, setDeletion] = useState<{
+		readonly customerId: string;
+		readonly request: DeletionRequest;
+	} | null>(null);
+	const rememberDeletion = useCallback(
+		(request: DeletionRequest) => {
+			if (customerId !== null) setDeletion({ customerId, request });
+		},
+		[customerId],
+	);
+	const deletionNow =
+		deletion !== null && deletion.customerId === customerId
+			? deletion.request
+			: null;
 
 	const renewedFor = useRef<string | null>(null);
 	const renewOnce = useCallback(() => {
@@ -114,6 +133,16 @@ export function CustomerDataProvider({
 		loadHome();
 	}, [loadHome]);
 
+	const sessionFailed = state.status === "failed";
+	const homeFailed = home.status === "failed";
+	const latest = useRef({ sessionFailed, homeFailed });
+	latest.current = { sessionFailed, homeFailed };
+	const reconnect = useCallback(() => {
+		if (latest.current.sessionFailed) retry();
+		else if (latest.current.homeFailed) loadHome();
+	}, [retry, loadHome]);
+	useBackOnline(reconnect);
+
 	const value = useMemo<CustomerDataValue>(
 		() => ({
 			sessionState: state,
@@ -127,12 +156,25 @@ export function CustomerDataProvider({
 							failure: state.reason === "network" ? "network" : "unknown",
 						}
 					: home,
+			deletion: deletionNow,
+			rememberDeletion,
 			reloadHome: loadHome,
 			retrySession: retry,
 			recover,
 			join,
 		}),
-		[state, session, client, home, loadHome, retry, recover, join],
+		[
+			state,
+			session,
+			client,
+			home,
+			deletionNow,
+			rememberDeletion,
+			loadHome,
+			retry,
+			recover,
+			join,
+		],
 	);
 	return (
 		<CustomerDataContext.Provider value={value}>
@@ -175,5 +217,11 @@ export function useLoad<T>(
 			generation.current += 1;
 		};
 	}, [reload, enabled]);
+	const failed = useRef(false);
+	failed.current = state.status === "failed";
+	const reloadIfFailed = useCallback(() => {
+		if (failed.current) reload();
+	}, [reload]);
+	useBackOnline(reloadIfFailed);
 	return { state, reload };
 }

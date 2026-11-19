@@ -17,6 +17,7 @@
 		"vitest.config.ts",
 		"playwright.config.ts",
 		"playwright.local.config.ts",
-		"e2e"
+		"e2e",
+		"scripts"
 	]
 }
