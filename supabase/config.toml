@@ -426,6 +426,12 @@ verify_jwt = false
 import_map = "./functions/sync-incremental/deno.json"
 entrypoint = "./functions/sync-incremental/index.ts"
 
+[functions.voucher-callback]
+enabled = true
+verify_jwt = false
+import_map = "./functions/voucher-callback/deno.json"
+entrypoint = "./functions/voucher-callback/index.ts"
+
 [analytics]
 enabled = true
 port = 54327

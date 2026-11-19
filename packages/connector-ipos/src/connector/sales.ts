@@ -97,6 +97,19 @@ function text(value: string | null | undefined): string | undefined {
 	return trimmed ? trimmed : undefined;
 }
 
+function paymentText(
+	rows: readonly Payment[],
+	field: "customer_phone" | "customer_name",
+): string | undefined {
+	for (const row of rows) {
+		const value = text(row[field]);
+		if (value) {
+			return value;
+		}
+	}
+	return undefined;
+}
+
 function toSale(
 	invoice: Invoice,
 	lineRows: readonly InvoiceLine[],
@@ -156,8 +169,11 @@ function toSale(
 		employeeExternalId: text(invoice.employee_id),
 		employeeName: text(invoice.employee_name),
 		guestCount: Math.max(0, Math.trunc(invoice.peo_count ?? 0)),
-		customerPhone: text(invoice.customer_phone),
-		customerName: text(invoice.customer_name),
+		customerPhone:
+			text(invoice.customer_phone) ??
+			paymentText(paymentRows, "customer_phone"),
+		customerName:
+			text(invoice.customer_name) ?? paymentText(paymentRows, "customer_name"),
 		grossAmount: roundMoney(invoice.amount_origin + itemDiscountAmount),
 		itemDiscountAmount,
 		billDiscountAmount,

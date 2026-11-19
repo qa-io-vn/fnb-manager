@@ -77,6 +77,10 @@ pnpm --filter @fnb/jobs fnb -- sync incremental --account <account-key>
 pnpm --filter @fnb/jobs fnb -- sync master --account <account-key>
 pnpm --filter @fnb/jobs fnb -- status
 pnpm --filter @fnb/jobs fnb -- doctor
+pnpm --filter @fnb/jobs fnb -- loyalty codes import --tenant <tenant-slug> --store <store-code> --reward <reward-key> --file <codes.csv>
+pnpm --filter @fnb/jobs fnb -- loyalty codes status --tenant <tenant-slug>
+pnpm --filter @fnb/jobs fnb -- loyalty codes export --tenant <tenant-slug> --state used --out <path outside the repository>
+pnpm --filter @fnb/jobs fnb -- loyalty callback-path issue --tenant <tenant-slug>
 ```
 
 `docs/sync.md` describes the engine, the incremental runner and its schedule, every option and the runbook; `docs/secrets.md` lists what each command and the Edge Function need.

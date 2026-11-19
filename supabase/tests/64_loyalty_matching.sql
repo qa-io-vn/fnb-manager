@@ -290,7 +290,7 @@ create temp table rows_before as
 select (select count(*) from public.loyalty_ledger where tenant_id = (select tenant_m from fx)) as ledger,
        (select count(*) from public.loyalty_queue where tenant_id = (select tenant_m from fx)) as queue;
 select is(
-  (pg_temp.reconcile(timestamptz '2026-11-18 11:00+07') - 'expired_codes' - 'expired_checkins' - 'expired_claims'),
+  (pg_temp.reconcile(timestamptz '2026-11-18 11:00+07') - 'expired_codes' - 'expired_checkins' - 'expired_claims' - array['callback_confirmed', 'callback_earned', 'pool_codes_used', 'rail_evidence']),
   '{"a_earned": 0, "b_queued": 0, "c_queued": 0, "d_earned": 0, "a_refused": 0, "b_matched": 0, "b_pending": 0, "c_matched": 0, "c_pending": 0, "d_refused": 0, "b_rejected": 0, "c_rejected": 0, "d_confirmed": 0, "discount_earned": 0, "mismatch_alerts": 0, "mismatches_found": 0, "discount_confirmed": 0}'::jsonb,
   're-running the reconciliation finds nothing to do'
 );

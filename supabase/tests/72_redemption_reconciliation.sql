@@ -147,7 +147,7 @@ as $$
     app.store_business_date((select store_1 from fx), now()) - 3,
     app.store_business_date((select store_1 from fx), now()) + 1,
     p_at
-  ) - array['a_earned', 'a_refused', 'b_matched', 'b_queued', 'b_rejected', 'b_pending', 'c_matched', 'c_queued', 'c_rejected', 'c_pending', 'd_confirmed', 'd_earned', 'd_refused', 'expired_codes', 'expired_checkins', 'expired_claims'];
+  ) - array['a_earned', 'a_refused', 'b_matched', 'b_queued', 'b_rejected', 'b_pending', 'c_matched', 'c_queued', 'c_rejected', 'c_pending', 'd_confirmed', 'd_earned', 'd_refused', 'expired_codes', 'expired_checkins', 'expired_claims', 'callback_confirmed', 'callback_earned', 'pool_codes_used', 'rail_evidence'];
 $$;
 
 create function pg_temp.episode()

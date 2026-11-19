@@ -4,6 +4,7 @@ import { digestCommand } from "./digest.js";
 import { doctorCommand } from "./doctor.js";
 import { iposSnapshotCommands } from "./ipos-snapshot.js";
 import { loyaltyCommands } from "./loyalty.js";
+import { loyaltyCodeCommands } from "./loyalty-codes.js";
 import { loyaltySaleCommand } from "./loyalty-sale.js";
 import { maskCommand } from "./mask.js";
 import { notifyCommands } from "./notify.js";
@@ -37,6 +38,7 @@ export const COMMANDS: readonly CommandSpec[] = [
 	...zaloCommands,
 	photosPruneCommand,
 	...loyaltyCommands,
+	...loyaltyCodeCommands,
 	loyaltySaleCommand,
 ];
 

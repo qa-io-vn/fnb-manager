@@ -12,6 +12,10 @@
 		"./snapshot": {
 			"types": "./src/snapshot/index.ts",
 			"import": "./src/snapshot/index.ts"
+		},
+		"./voucher-callback": {
+			"types": "./src/voucher-callback/index.ts",
+			"import": "./src/voucher-callback/index.ts"
 		}
 	},
 	"files": [

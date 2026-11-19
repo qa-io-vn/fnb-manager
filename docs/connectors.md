@@ -93,6 +93,8 @@ An adjustment belongs to the window by the business date of `occurredAt` in the 
 
 Reports hide the sections a connector cannot feed instead of failing.
 
+Loyalty (phase 16b): `customers` covers what a loyalty rail can read from a sale, the customer phone and name; no connector maps a membership id or check-in code, because neither POS payload carries one. Vouchers and discounts need no capability: `voucherCode`, `voucherName`, `billDiscountName` and the lines' `promotionExternalId` are part of every canonical sale, and the database recognises which rail an invoice used from them and from the store's `coupon_rails` row (see [connectors/ipos-fabi.md](connectors/ipos-fabi.md#loyalty-rail-recognition)). A POS-specific inbound call, such as the iPOS CRM voucher callback, lives in its connector package as an adapter that turns the vendor payload into canonical values (`@fnb/connector-ipos/voucher-callback`), so the Edge Function and the database never see a vendor field name.
+
 ## Shared rules in `@fnb/core`
 
 - `businessDate(instant, timezone, dayStartMinutes)` uses `Intl.DateTimeFormat` with an IANA timezone; 23:30 local stays on its local date whatever the UTC date is, and 00:30 with a 05:00 day start belongs to the previous business date. `businessDayStart`, `businessDayEnd` and `instantOnBusinessDate` go the other way.

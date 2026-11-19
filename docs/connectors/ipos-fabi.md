@@ -113,6 +113,50 @@ What this shows:
 - **Vouchers.** Every code typed at the till reaches `voucher_code`. It always comes with a promotion line whose promotion is in the master and flagged `partner_auto_gen`. The discount sits on the lines (`amount_discount_price`) or in `discount_extra_amount`, depending on the programme, never in `voucher_amount_paid`. The `CRM`, `ZALO` and `FACEBOOK` sources and the auto-generated promotions suggest that iPOS CRM is connected and that its programme names are synced into Fabi (FABi feature "đồng bộ Tên chương trình khuyến mãi từ CRM").
 - **Receipt numbers.** `tran_no` is unique per store and business day. Its first two digits are the day of month on S1, so a receipt claim can check the number against the chosen date.
 
+## Loyalty rail recognition
+
+Phase 16b (#243 to #245). Field names only; no value from a real account is shown or committed.
+
+**What the connector maps.** The canonical sale carries every loyalty field the payloads have:
+
+| Canonical | iPOS source | Rule |
+|---|---|---|
+| `customerPhone`, `customerName` | `customer_phone`, `customer_name` on the sale; else the first non-empty `customer_phone`, `customer_name` of its payment rows | trimmed; empty means none |
+| `voucherCode`, `voucherName`, `voucherAmount` | `voucher_code`, `voucher_name`, `voucher_amount_paid` | the code and name as typed; the amount is 0 on Fabi |
+| `billDiscountName`, `billDiscountAmount` | `discount_extra_name`, `discount_extra_amount` | a Fabi payment discount entry, or a CRM programme whose accounting type discounts the whole bill |
+| `itemDiscountAmount`, `line.promotionExternalId`, `line.promotionName` | `amount_discount_detail` + `amount_discount_price`; `promotion_id`, `promotion_name` on sale-detail | a CRM programme whose discount sits on the lines |
+
+The payloads carry no membership id, member code or check-in string, so nothing else can be mapped; `customer_id` (payment rows) stays unmapped because it has been empty on every row and the canonical model has no member reference yet. `pos_id` is parsed and not mapped; it is the value to configure as a store's `callback_store_ref`. `extra_data.reset_tran_no_period` of the stores master is not mapped either: the canonical store has no field for it, so `stores.tran_no_reset_period` stays an owner setting. Golden cases: `test/unit/normalise-loyalty.test.ts` (a member-attached invoice, a voucher invoice with its promotion line, a discount-entry invoice).
+
+**What the database recognises.** After every sync `app.recognise_rail_events` ([schema.md](../schema.md#rail-recognition-phase-16b)) records per invoice, against the store's rail at the time of sale:
+
+| Evidence | From | On the rail of |
+|---|---|---|
+| `member_phone`, `member_ref` | a readable `customer_phone`; a linked customer | every rail |
+| `pool_code` | `voucher_code` equal (case ignored) to a code of the store's pool | `crm_code_pool` |
+| `redemption_code` | `voucher_code` equal to a redemption code of the tenant | the redemption's own code rail |
+| `callback_sale` | the invoice's `tran_id` answered by the voucher callback | `crm_callback` |
+| `discount_entry` | `discount_extra_name` equal (case and spacing ignored) to a mapped `pos_discount_name` | `pos_payment_discount` |
+| `zero_price_line` | a 0-net item line of a mapped `pos_free_item_external_id` | `pos_payment_discount` |
+| `crm_promotion` | a line `promotion_id` equal to a mapped `crm_programme_external_id` or listed on the rail | `crm_code_pool`, `crm_callback` |
+
+The amounts follow where Fabi puts the discount: the line reductions and `discount_extra_amount` (with `voucher_amount_paid`, always 0) for a code, `discount_extra_amount` for an entry, and the promoted lines' discounts plus a `discount_extra_amount` named after their promotion for a CRM promotion. To recognise the two multi-use CRM programmes seen on S1, list their `promotion_id` in the store's rail (`crm_programme_external_ids`) or in a reward's mapping.
+
+**The voucher callback adapter.** `@fnb/connector-ipos/voucher-callback` reads the CRM validation callback (field names verified on the vendor page of 2024-06-10) into canonical values and writes the answer back:
+
+| Canonical | Vendor field | Status |
+|---|---|---|
+| `storeRef` | `Pos_Id` (text or whole number) | name verified; assumed to equal the store's `fb_store_id` and the invoices' `pos_id` |
+| `brandRef` | `Pos_Parent` | name verified; not used |
+| `code` | `Coupon_Code`, trimmed, 1 to 64 characters without spaces | name verified; whether the POS forwards a customer-specific code is unknown (hotline question 6) |
+| `saleRef` | `Sale_Tran_Id` | name verified; assumed to equal `tran_id` (hotline question 8) |
+| `memberPhone` | `Membership_Id` when it reads as a Vietnamese phone | name verified; content assumed |
+| `lines[]` | `Voucher_Order_Line[]`: `Item_Id`, `Quantity`, `Amount` − `Discount`, checked against `Price_Sale` × `Quantity` | names verified; the meaning of `Amount` and `Discount` assumed; `Item_Type_Id`, `Description`, `Pr_Key`, `Detail_State`, `Package_Id` read and ignored |
+| (none) | `Code`, `Created_At`, `Date_Start`, `Date_End` | read and ignored; the meaning of `Code` is unknown |
+| answer | the posted object plus `Discount_Amount` and `Discount_Description`; `Code` echoed | shape assumed (the vendor sample is not valid JSON); the accept and refuse values of `Code` are unknown (hotline question 7) |
+
+Unknown fields are tolerated; known ones are checked strictly (types, lengths, quantity and amount ranges). The handler and the database see only the canonical values, so a corrected payload changes this adapter and its tests (`test/unit/voucher-callback.test.ts`, fixtures marked assumed) and nothing else. The function is described in [api.md](../api.md#voucher-callback).
+
 ## Real API or local snapshot
 
 `@fnb/connector-ipos/snapshot` is a separate entry point, so code that imports only the connector never bundles it. It holds the record-and-replay pair that `IPOS_REAL_API` switches between (`docs/sync.md`, "Real or fake iPOS"):

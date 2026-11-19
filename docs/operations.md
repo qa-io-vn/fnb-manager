@@ -687,6 +687,31 @@ Staff pair their Zalo account with their row on the staff roster once (#213): an
 - **Look in the database** (SQL editor, as `postgres`): `select display_name, status, paired_at, deactivated_at from public.staff_roster where tenant_id = '<tenant id>' order by display_name;` gives each person's state; `select count(*) from app.staff_pairing_codes where tenant_id = '<tenant id>' and expires_at > now();` the live codes (their hashes say nothing).
 - **Verify:** the person's card reads "Đang hoạt động" and "Đã ghép nối ngày …", and the staff app opens on Trang chủ with their stores.
 
+### 4.20 Importing a voucher code pool
+
+A store on the CRM code-pool rail (`crm_code_pool`) hands out single-use codes that iPOS CRM generated (#244). Run this on the owner's machine; the commands refuse to run with `CI` set because the files hold live codes.
+
+1. **In iPOS CRM**, create one "Xuất danh sách voucher" programme per reward, with an accounting type that shows on the bill ("Chiết khấu trên tổng hóa đơn" or "Giảm giá trên từng món"), and export its codes: at most 1,000 per run, sent by e-mail as Excel.
+2. **Save the export as CSV.** Open it in Excel and use Save As → "CSV UTF-8", into a folder outside the repository. The code must be in the first column; a header row is fine.
+3. **Map the reward first** if it is new: its `coupon_rail_rewards` row at the store, with the programme's id as `crm_programme_external_id`.
+4. **Import:** `pnpm --filter @fnb/jobs fnb -- loyalty codes import --tenant <slug> --store <store code> --reward <key> --file <path>.csv` (add `--expires <ISO instant>` when the export has an end date). The line printed holds counts only: rows read, malformed and duplicate rows refused, codes inserted, already in the pool, used elsewhere. Importing the same file again inserts nothing.
+5. **Delete the CSV and the e-mail attachment** once imported; the codes now live in the database only.
+6. **Watch the stock:** `fnb loyalty codes status --tenant <slug>` counts available, assigned, used, quarantined and expired codes per store and reward. When the available count of a reward runs low, export and import the next batch; an empty pool answers `no_code_available` in the customer app.
+7. **Reconcile with the vendor:** `fnb loyalty codes export --tenant <slug> --state used --out <path outside the repository>` (or `--state quarantined`) writes the codes with the invoice that used them. A code burns at the till as soon as it is typed, so a code removed from a bill reads "Đã sử dụng" in CRM without an invoice: it stays assigned until the 24-hour release quarantines it, and appears in the quarantined export.
+8. **Verify:** after the next sync, a code typed at the till shows as used in `codes status` (the reconciliation's `pool_codes_used` count) and the redemption as Đã dùng in the app.
+
+### 4.21 The voucher callback refuses or does not answer
+
+The `voucher-callback` Edge Function answers the codes a cashier types on a CRM multi-use programme (#243, [api.md](api.md#voucher-callback)). It is off until the store's `coupon_rails` row has `callback_enabled = true`; switch it on only after the iPOS hotline has confirmed the method, timeout, retries, source addresses and result code (questions 6 to 8 of the [integration design](deep-dives/ipos-loyalty-integration-design.md#questions-for-the-ipos-hotline)).
+
+- **Set up.** `fnb loyalty callback-path issue --tenant <slug>` prints the URL once; enter it as the programme's callback link in iPOS CRM. On the store's `crm_callback` rail row set `callback_store_ref` to the store's POS id (`fb_store_id`, the `pos_id` of its invoices) and, once known, `callback_ip_allowlist` to the vendor's addresses.
+- **The till shows 0 ₫ with a reason.** The reason names the outcome: "Cửa hàng chưa bật kiểm tra mã ưu đãi" (switched off), "Cửa hàng chưa được cấu hình…" (no rail carries that store reference), "Mã đã được sử dụng" (answered for another sale, or confirmed), "Mã không hợp lệ", "Mã đã hết hạn", "Hóa đơn chưa đạt giá trị tối thiểu", "Hóa đơn không có món được áp dụng". A refusal binds nothing: correct the bill and type the code again.
+- **"Hệ thống đang bận".** The database did not answer within 2.5 seconds. Type the code again on the same bill: a stored answer is replayed.
+- **Nothing reaches the function, or every call gets 404.** The URL in CRM is wrong or was revoked; issue a new one (which revokes the old) and update the programme. A 403 means the POS called from an address outside the allow-list.
+- **Look at the log** (SQL editor, as `postgres`): `select logged_at, store_id, outcome, discount_amount, latency_ms from app.voucher_callback_log where tenant_id = '<tenant id>' order by logged_at desc limit 50;` holds outcomes only, never a code. The function's own lines (Edge Functions → `voucher-callback` → Logs) give the outcome and duration per call.
+- **An answered sale never syncs** (the bill was cancelled after the code was applied). The redemption stays held, is listed as `verified_without_invoice` after the grace hours and is released by the nightly job at the end of its hold.
+- **To stop the callback at once,** set `callback_enabled = false` on the rail row, or revoke the path with `fnb loyalty callback-path revoke --tenant <slug> --label pos-crm`; the cashier then sees 0 ₫ and the staff app's verification still works on the other rails.
+
 ## 5. Maintenance calendar
 
 | When | Task | Who | How |

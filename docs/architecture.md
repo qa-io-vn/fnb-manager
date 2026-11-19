@@ -719,7 +719,8 @@ Credentials live in three places only: the owner's local `.env`, GitHub Actions 
 | `BACKUP_AGE_RECIPIENT`, `BACKUP_S3_ENDPOINT`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY` | no | secrets; the `age` private key stays offline with the owner | not applicable | `backup.yml` |
 | `NOTIFY_ZALO_BOT_TOKEN`, `NOTIFY_EMAIL_API_KEY`, `NOTIFY_EMAIL_FROM`, `NOTIFY_EMAIL_FROM_NAME`, `NOTIFY_TELEGRAM_BOT_TOKEN`, `NOTIFY_WEBHOOK_SECRET` | optional | secrets read by `sync.yml` and `notify.yml` | function secrets once the `notify` function exists (12c) | the notification dispatchers; rows store only the name |
 | `FNB_INCREMENTAL_WALL_MS`, `FNB_INCREMENTAL_CPU_MS` | no | no | optional function secrets | the incremental guard |
-| Zalo secrets per brand (`ZALO_APP_SECRET_<BRAND>`, `ZALO_OA_SECRET_<BRAND>`), `VOUCHER_CALLBACK_PATH_SECRET` | no | no | function secrets, named in `zalo_apps.secret_name` and `oas.secret_name` | the Zalo functions of phase 13 (#205, #207) and the voucher callback of phase 16b |
+| Zalo secrets per brand (`ZALO_APP_SECRET_<BRAND>`, `ZALO_OA_SECRET_<BRAND>`) | no | no | function secrets, named in `zalo_apps.secret_name` and `oas.secret_name` | the Zalo functions of phase 13 (#205, #207) |
+| Voucher callback path segment | no | no | only its SHA-256, in `app.voucher_callback_paths`; the URL itself, printed once by `fnb loyalty callback-path issue`, is typed into the POS CRM programme | the voucher callback of phase 16b (#243) |
 | The OA and Mini App developer token pairs | no | no | rows of `zalo_tokens`, closed to every API role, because their refresh tokens are single-use | the token jobs (#206) and `deploy-mini-apps.yml` |
 | Publisher login for `fnb publish-plan` | planned | no | no | phase 11b |
 
