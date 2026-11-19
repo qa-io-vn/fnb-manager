@@ -2283,6 +2283,12 @@
 					"format": "timestamp with time zone",
 					"type": "string"
 				},
+				"callback_enabled": {
+					"default": false,
+					"description": "crm_callback only: whether the voucher callback decides codes for the store; off by default, so a configured store answers disabled (0 dong) until the owner switches it on after the POS vendor has confirmed how the callback behaves (method, timeout, retries, source addresses, result code)",
+					"format": "boolean",
+					"type": "boolean"
+				},
 				"callback_ip_allowlist": {
 					"description": "optional source networks the voucher callback accepts; empty accepts any",
 					"format": "cidr[]",
@@ -2290,6 +2296,11 @@
 						"type": "string"
 					},
 					"type": "array"
+				},
+				"callback_store_ref": {
+					"description": "crm_callback only: the store as the POS names it in the voucher callback (the store reference the adapter reads from the payload); the callback answers only a store whose active rail row carries it; set again on a new row after a rail switch",
+					"format": "text",
+					"type": "string"
 				},
 				"created_at": {
 					"default": "now()",
@@ -2349,7 +2360,8 @@
 				"callback_ip_allowlist",
 				"active_from",
 				"created_at",
-				"updated_at"
+				"updated_at",
+				"callback_enabled"
 			],
 			"type": "object"
 		},
@@ -10930,10 +10942,24 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.coupon_rails.callback_enabled": {
+			"description": "crm_callback only: whether the voucher callback decides codes for the store; off by default, so a configured store answers disabled (0 dong) until the owner switches it on after the POS vendor has confirmed how the callback behaves (method, timeout, retries, source addresses, result code)",
+			"in": "query",
+			"name": "callback_enabled",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.coupon_rails.callback_ip_allowlist": {
 			"description": "optional source networks the voucher callback accepts; empty accepts any",
 			"in": "query",
 			"name": "callback_ip_allowlist",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.callback_store_ref": {
+			"description": "crm_callback only: the store as the POS names it in the voucher callback (the store reference the adapter reads from the payload); the callback answers only a store whose active rail row carries it; set again on a new row after a rail switch",
+			"in": "query",
+			"name": "callback_store_ref",
 			"required": false,
 			"type": "string"
 		},
@@ -22698,6 +22724,12 @@
 						"$ref": "#/parameters/rowFilter.coupon_rails.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.callback_store_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.callback_enabled"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -22746,6 +22778,12 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.coupon_rails.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.callback_store_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.callback_enabled"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -22823,6 +22861,12 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.coupon_rails.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.callback_store_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.callback_enabled"
 					},
 					{
 						"$ref": "#/parameters/body.coupon_rails"
