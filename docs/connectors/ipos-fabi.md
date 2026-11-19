@@ -75,6 +75,44 @@ Adjustments (the `adjustments` capability is **implemented**; it reads the CMS r
 | `adjustment` (`kind: line_removed`) | C08 event, one per `sale_detail` line with a negative `quantity` | `saleExternalId` = `tran_id`, `lineExternalId` = `id_sale_detail` (the `_REMOVE` suffix included when the server sent one), `itemExternalId`/`itemName` from the line, `quantity` = \|`quantity`\|, `amount` = `price × quantity` (the line's own value, toppings excluded; they stay in `raw`), `occurredAt` = `log_date`; `raw` is the event with only that line; kept or added lines (positive quantity) in the same event are skipped; a removed line without the `_REMOVE` suffix is still emitted and raises an informational `removed_line_without_suffix` flag. The order is in the sale report only when it was later paid |
 | adjustment window | `updated_at` / `log_date` in the store's timezone | the connector queries one day on each side of the business-day instants (the server's own date filter field is not documented), splits that range per calendar month for both C05 (three-month cap) and C08 (same-month rule), keeps the adjustments whose change time falls on a business date inside the window, de-duplicates by (kind, sale, line, time) with `adjustmentKey` from `@fnb/core` and sorts by time |
 
+## Loyalty fields
+
+This section is an offline audit made on 2026-11-19 from the local snapshot of one account (brand-1, store S1, one store): 3,538 invoices, 8,196 lines and 3,539 payment rows over 50 business days. No API call was made. It covers every field that could carry member identity, check-in strings, vouchers, discounts, receipt numbers or e-invoice data. Counts and shapes only; the detailed private notes are in `docs/private/ipos/loyalty-fields.md`.
+
+| Field (JSON path) | Endpoint | Filled on S1 | Shape | Mapped to |
+|---|---|---|---|---|
+| `customer_phone`, `customer_name` | sale | 0 of 3,538 | string, empty | `invoices.customer_phone`, `customer_name` (path A reads the phone) |
+| `customer_phone`, `customer_name`, `customer_id` | payment-method | 0 of 3,539 | string, empty | not mapped |
+| `customer_phone`, `customer_name`, `sdtnmua`, `ma_dt`, `inv_buyer*` (7 fields) | sale-detail | 0 of 8,196 | string, empty | not mapped |
+| membership id, member code, points, check-in string | sale, sale-detail, payment-method | field absent | — | — |
+| `sale_note` | sale | 26 | free text, 4–86 characters, no digit runs | not mapped on sales (only on C05, as the reason) |
+| `item_note` | sale-detail | 601 | free text, 1–33 characters, no digit runs | `invoice_lines.note` |
+| `voucher_code` | sale | 385 | 5–6 upper-case alphanumeric; 2 distinct codes, each reused (multi-use) | `invoices.voucher_code` |
+| `voucher_name` | sale | 374 | free text; equals a promotion master name | `invoices.voucher_name` |
+| `voucher_amount_paid` | sale | 0 non-zero | integer | `invoices.voucher_amount` (always 0) |
+| `promotion_id`, `promotion_name` | sale-detail | 408 lines on the same 385 invoices | 6 digits; free text | `invoice_lines.promotion_external_id`, `promotion_name` |
+| `promo_in_sale`, `voucher_amount` | sale-detail | 0 | empty or 0 | not mapped |
+| `source_voucher` | C05 | 0 of 8 | null | raw only |
+| `promotion_id`, `promotion_name`, `partner_auto_gen` | promotions master | 4 entries, flag set on all 4 | 6 digits; free text; integer flag | `promotions` (flag in `raw`) |
+| `discount_extra_amount`, `discount_extra_name` | sale | 11 | integer; free text equal to a promotion master name | `invoices.bill_discount_amount`, `bill_discount_name` |
+| `amount_discount_price`, `amount_discount_on_price` | sale, sale-detail | 374 invoices, 386 lines | integer | item and line discount amounts |
+| `tran_no` | sale | 3,538 | 6 digits: 2-digit day of month + 4-digit daily sequence; unique per store and day | `invoices.receipt_no` (path C key) |
+| `tran_id` / `trace_no` | sale / payment-method | all | 22–30 upper-case alphanumeric; `trace_no` equals `tran_id` on 3,535 of 3,538 | `invoices.external_id` / `invoice_payments.reference_no` |
+| `sale_id` | sale-detail | all | UUID, one per invoice | not mapped |
+| `tran_id_of_partner` | payment-method | 1,536 | 12 digits, unique (payment provider reference) | `invoice_payments.partner_transaction_id` |
+| `pos_id` | sale | all | 6-digit integer, equal to the store's `fb_store_id` | parsed, not mapped |
+| `vat_invoice_number`, `vat_invoice_series`, `vat_invoice_date` | sale | 0 | empty or 0 | not mapped |
+| `CRM`, `ZALO`, `FACEBOOK` (`source_name`) | sources master | 3 of 7 sources exist | generic labels | sources; 0 invoices use them |
+| `extra_data.find_member`, `multi_voucher`, `view_voucher_of_member`, `exchange_points_for_voucher`, `enable_checkin_by_phone_number` | stores master | 0 of 5 on (S1) | integer flags | not mapped |
+| `extra_data.reset_tran_no_period` | stores master | 1 | enum (daily on S1) | not mapped; `stores.tran_no_reset_period` is set by hand |
+| `extra_data.enable_minvoice`, `minvoice_*`, `inv_*`, `customer_default_vat`, `auto_export_vat` | stores master | e-invoicing off | flags and empty strings | not mapped |
+
+What this shows:
+
+- **Identity.** No invoice on S1 carries a customer, and the sales payloads have no field for a membership id, member code or check-in string. Whether `customer_phone` fills (and whether it is masked) once a cashier attaches a member is still unverified.
+- **Vouchers.** Every code typed at the till reaches `voucher_code`. It always comes with a promotion line whose promotion is in the master and flagged `partner_auto_gen`. The discount sits on the lines (`amount_discount_price`) or in `discount_extra_amount`, depending on the programme, never in `voucher_amount_paid`. The `CRM`, `ZALO` and `FACEBOOK` sources and the auto-generated promotions suggest that iPOS CRM is connected and that its programme names are synced into Fabi (FABi feature "đồng bộ Tên chương trình khuyến mãi từ CRM").
+- **Receipt numbers.** `tran_no` is unique per store and business day. Its first two digits are the day of month on S1, so a receipt claim can check the number against the chosen date.
+
 ## Real API or local snapshot
 
 `@fnb/connector-ipos/snapshot` is a separate entry point, so code that imports only the connector never bundles it. It holds the record-and-replay pair that `IPOS_REAL_API` switches between (`docs/sync.md`, "Real or fake iPOS"):
@@ -106,3 +144,5 @@ Adjustments (the `adjustments` capability is **implemented**; it reads the CMS r
 11. On C08 and C04 rows `updated_at` is in epoch seconds and shifted by the local offset; use `log_date` (ms) for the change time. C09 takes its range in epoch seconds.
 12. A removed line is recognised by its negative `quantity` (with `sort_index` −1); most carry the `_REMOVE` suffix on `id_sale_detail` but live data also has removed lines without it, so never rely on the suffix alone. Its `amount` is already positive (`price × |quantity|`) and excludes toppings, so never negate it again and do not expect it to include `amount_all_topping`.
 13. An EDIT can increase the bill (`total_amount > total_amount_origin`); the canonical `edited.amount` is the absolute difference and the direction lives in `raw`.
+14. `tran_no` repeats across days (daily reset, or yearly on other stores; the store record's `extra_data.reset_tran_no_period` says which). Never key on it without the store and the business date. On a daily-reset store observed so far it is the 2-digit day of month followed by a 4-digit sequence.
+15. Customer fields exist on the sale, sale-detail and payment rows (`customer_phone`, `customer_name`; `customer_id` only on payments), but none has ever been filled. A voucher's value is never in `voucher_amount_paid`; read the lines and `discount_extra_amount`.
