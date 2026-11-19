@@ -81,6 +81,20 @@ export {
 } from "./ipos-source.js";
 export { accountLabel, storeLabel } from "./labels.js";
 export {
+	FAST_LANE_SPACING_MINUTES,
+	FAST_LANE_WINDOW_MINUTES,
+	type FastLaneRun,
+	fastLaneEnabled,
+	fastLaneWindow,
+	LOYALTY_FAST_LANE_VARIABLE,
+	type LoyaltyCounts,
+	type LoyaltyDatabase,
+	type LoyaltyStepOutcome,
+	loyaltyLine,
+	reconcileLoyaltySafely,
+	windowDays,
+} from "./loyalty.js";
+export {
 	authFailedNotification,
 	ConsoleNotifier,
 	formatNotification,

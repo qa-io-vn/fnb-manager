@@ -1,4 +1,4 @@
-import type { RunnerDatabase } from "@fnb/runner";
+import type { LoyaltyDatabase, RunnerDatabase } from "@fnb/runner";
 import { PostgresRunnerDatabase } from "@fnb/runner/postgres";
 import type { SyncRepository } from "@fnb/sync";
 import {
@@ -17,7 +17,7 @@ import type { Environment } from "./config/env-file.js";
 export interface Database {
 	sql: Sql;
 	repository: SyncRepository;
-	runner: RunnerDatabase;
+	runner: RunnerDatabase & LoyaltyDatabase;
 	setting: DatabaseSetting;
 }
 

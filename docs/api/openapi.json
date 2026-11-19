@@ -2121,6 +2121,340 @@
 			],
 			"type": "object"
 		},
+		"coupon_codes": {
+			"description": "single-use POS codes of a reward at a store, imported from a CRM export pool: available, assigned to a redemption, used on a synced invoice, quarantined after an unused hold, or expired; read by owners and managers only, written by the service role and the staff functions",
+			"properties": {
+				"assigned_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"code": {
+					"format": "text",
+					"type": "string"
+				},
+				"crm_programme_external_id": {
+					"format": "text",
+					"type": "string"
+				},
+				"expires_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"imported_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"quarantined_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"reward_key": {
+					"format": "text",
+					"type": "string"
+				},
+				"state": {
+					"default": "available",
+					"enum": ["available", "assigned", "used", "quarantined", "expired"],
+					"format": "public.coupon_code_state",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"used_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"used_invoice_id": {
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"reward_key",
+				"code",
+				"state",
+				"imported_at"
+			],
+			"type": "object"
+		},
+		"coupon_rail_rewards": {
+			"description": "the POS side of a reward at a store: a POS discount by name, a 0-price promotional line by item external id or a CRM programme, and how the cash-register e-invoice shows it; a reward is active at a store only with an active row here",
+			"properties": {
+				"active": {
+					"default": true,
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"crm_programme_external_id": {
+					"format": "text",
+					"type": "string"
+				},
+				"einvoice_display": {
+					"enum": ["discount", "zero_price_line"],
+					"format": "public.einvoice_display",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"pos_discount_name": {
+					"format": "text",
+					"type": "string"
+				},
+				"pos_free_item_external_id": {
+					"format": "text",
+					"type": "string"
+				},
+				"reward_key": {
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"reward_key",
+				"einvoice_display",
+				"active",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"coupon_rails": {
+			"description": "the loyalty rail of a store: the active row (active_until null) says how rewards reach the till; switching a rail inserts a new row, which closes the previous one and keeps it as history",
+			"properties": {
+				"active_from": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"active_until": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"callback_ip_allowlist": {
+					"description": "optional source networks the voucher callback accepts; empty accepts any",
+					"format": "cidr[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"crm_programme_external_ids": {
+					"description": "the POS CRM programmes the rail uses, by external id",
+					"format": "text[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"rail": {
+					"enum": ["crm_code_pool", "crm_callback", "pos_payment_discount"],
+					"format": "public.coupon_rail",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"rail",
+				"crm_programme_external_ids",
+				"callback_ip_allowlist",
+				"active_from",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"coupons": {
+			"description": "the reward catalogue of a programme (completed in phase 18b): what a reward costs in stamps or points, where it is valid and whether it is active; a reward is active only when every store in its scope maps it in coupon_rail_rewards (FR-CMP-11)",
+			"properties": {
+				"active": {
+					"default": false,
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"cost_points": {
+					"default": 0,
+					"format": "int32",
+					"type": "integer"
+				},
+				"cost_stamps": {
+					"default": 0,
+					"format": "int32",
+					"type": "integer"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"hold_hours": {
+					"default": 24,
+					"format": "int32",
+					"type": "integer"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"min_bill_amount": {
+					"default": 0,
+					"format": "numeric",
+					"type": "number"
+				},
+				"name": {
+					"format": "text",
+					"type": "string"
+				},
+				"programme_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"reward_key": {
+					"format": "text",
+					"type": "string"
+				},
+				"store_ids": {
+					"description": "the stores where the reward is redeemed; null for every store of the tenant",
+					"format": "uuid[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"valid_days": {
+					"default": 30,
+					"format": "int32",
+					"type": "integer"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"programme_id",
+				"reward_key",
+				"name",
+				"cost_stamps",
+				"cost_points",
+				"min_bill_amount",
+				"valid_days",
+				"hold_hours",
+				"active",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"customers": {
 			"properties": {
 				"external_id": {
@@ -3833,6 +4167,683 @@
 			],
 			"type": "object"
 		},
+		"loyalty_ledger": {
+			"description": "the append-only loyalty ledger: every stamp and point movement of a membership as a row (earn, confirm, clawback, redeem, adjust, expire) with its value at issue; inserts only, a correction is a new row that references the original through source_entry_id; only app.erase_loyalty_membership (the data-subject deletion) removes rows",
+			"properties": {
+				"approved_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"business_date": {
+					"format": "date",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"entry_kind": {
+					"enum": ["earn", "confirm", "clawback", "redeem", "adjust", "expire"],
+					"format": "public.loyalty_entry_kind",
+					"type": "string"
+				},
+				"expires_at": {
+					"description": "on a crediting row, when its points expire, fixed at issue from the programme's points_expiry_months; each stamp carries its own expiry on its stamps row",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"invoice_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"matched_path": {
+					"description": "how the invoice of an earn was tied to the membership: A the phone or member on the invoice, B a check-in code, C a receipt claim, D a voucher recipient",
+					"format": "text",
+					"type": "string"
+				},
+				"membership_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"occurred_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"pending": {
+					"default": false,
+					"description": "an earn or a redemption hold that waits for its confirm row; a pending earn is shown but not spendable, a pending redemption already holds its stamps or points",
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"point_delta": {
+					"default": 0,
+					"format": "int32",
+					"type": "integer"
+				},
+				"programme_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"source_entry_id": {
+					"description": "Note:\nThis is a Foreign Key to `loyalty_ledger.id`.<fk table='loyalty_ledger' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"stamp_delta": {
+					"default": 0,
+					"format": "int32",
+					"type": "integer"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"value_amount": {
+					"default": 0,
+					"description": "value at issue in the tenant currency: the point delta times the programme's point_value_amount when the row was written",
+					"format": "numeric",
+					"type": "number"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"programme_id",
+				"membership_id",
+				"entry_kind",
+				"stamp_delta",
+				"point_delta",
+				"value_amount",
+				"pending",
+				"occurred_at",
+				"created_at"
+			],
+			"type": "object"
+		},
+		"loyalty_liability_daily": {
+			"description": "the nightly points liability of a programme: outstanding points (positive balances, confirmed) times the point value times one minus the expected breakage, which is the programme's configured rate until six months of expiry data exist and the observed expired share of spent and expired points of the last 12 months after; the day's issued, redeemed, expired and clawed-back points, the deferred revenue released by redemptions and the breakage by issue month; counts and amounts only",
+			"properties": {
+				"as_of": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"as_of_date": {
+					"format": "date",
+					"type": "string"
+				},
+				"breakage_by_cohort": {
+					"format": "jsonb"
+				},
+				"breakage_source": {
+					"format": "text",
+					"type": "string"
+				},
+				"computed_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"deferred_revenue_released_amount": {
+					"default": 0,
+					"format": "numeric",
+					"type": "number"
+				},
+				"expected_breakage_rate": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"liability_amount": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"members": {
+					"default": 0,
+					"format": "int32",
+					"type": "integer"
+				},
+				"outstanding_points": {
+					"default": 0,
+					"format": "int64",
+					"type": "integer"
+				},
+				"outstanding_stamps": {
+					"default": 0,
+					"format": "int64",
+					"type": "integer"
+				},
+				"point_value_amount": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"points_clawed_back": {
+					"default": 0,
+					"format": "int64",
+					"type": "integer"
+				},
+				"points_expired": {
+					"default": 0,
+					"format": "int64",
+					"type": "integer"
+				},
+				"points_issued": {
+					"default": 0,
+					"format": "int64",
+					"type": "integer"
+				},
+				"points_redeemed": {
+					"default": 0,
+					"format": "int64",
+					"type": "integer"
+				},
+				"programme_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"programme_id",
+				"as_of_date",
+				"as_of",
+				"members",
+				"outstanding_points",
+				"outstanding_stamps",
+				"point_value_amount",
+				"expected_breakage_rate",
+				"breakage_source",
+				"liability_amount",
+				"points_issued",
+				"points_redeemed",
+				"points_expired",
+				"points_clawed_back",
+				"deferred_revenue_released_amount",
+				"breakage_by_cohort",
+				"computed_at"
+			],
+			"type": "object"
+		},
+		"loyalty_programmes": {
+			"description": "one loyalty programme of a tenant with its period, reward budget, mechanic and anti-fraud parameters and the decision on the Department of Industry and Trade notification; every parameter is read at earn time, so a changed row changes the next earn",
+			"properties": {
+				"checkin_code_ttl_seconds": {
+					"default": 120,
+					"format": "int32",
+					"type": "integer"
+				},
+				"checkin_pending_hours": {
+					"default": 24,
+					"format": "int32",
+					"type": "integer"
+				},
+				"checkin_window_after_minutes": {
+					"default": 15,
+					"format": "int32",
+					"type": "integer"
+				},
+				"checkin_window_before_minutes": {
+					"default": 2,
+					"format": "int32",
+					"type": "integer"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"earning_invoices_per_phone_per_day": {
+					"default": 3,
+					"format": "int32",
+					"type": "integer"
+				},
+				"ends_on": {
+					"format": "date",
+					"type": "string"
+				},
+				"excluded_order_sources": {
+					"description": "order sources whose invoices never earn, matched against invoices.source_external_id or invoices.source_name",
+					"format": "text[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"expected_breakage_rate": {
+					"default": 0.2,
+					"format": "numeric",
+					"type": "number"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"name": {
+					"format": "text",
+					"type": "string"
+				},
+				"notification_basis": {
+					"description": "short legal basis of the notification decision; required when the decision is not_required",
+					"format": "text",
+					"type": "string"
+				},
+				"notification_decided_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"notification_decision": {
+					"default": "pending",
+					"enum": ["pending", "notified", "below_threshold", "not_required"],
+					"format": "public.loyalty_notification_decision",
+					"type": "string"
+				},
+				"point_unit_amount": {
+					"default": 10000,
+					"format": "numeric",
+					"type": "number"
+				},
+				"point_value_amount": {
+					"default": 500,
+					"description": "value of one point in the tenant currency, used for the value at issue of each ledger row and for the liability",
+					"format": "numeric",
+					"type": "number"
+				},
+				"points_expiry_months": {
+					"default": 12,
+					"format": "int32",
+					"type": "integer"
+				},
+				"points_per_unit": {
+					"default": 1,
+					"format": "int32",
+					"type": "integer"
+				},
+				"receipt_claim_window_hours": {
+					"default": 72,
+					"format": "int32",
+					"type": "integer"
+				},
+				"receipt_claims_per_phone_per_day": {
+					"default": 3,
+					"format": "int32",
+					"type": "integer"
+				},
+				"reward_budget_amount": {
+					"default": 0,
+					"format": "numeric",
+					"type": "number"
+				},
+				"stamp_min_bill_amount": {
+					"default": 50000,
+					"format": "numeric",
+					"type": "number"
+				},
+				"stamp_validity_months": {
+					"default": 6,
+					"format": "int32",
+					"type": "integer"
+				},
+				"stamps_per_card": {
+					"default": 8,
+					"format": "int32",
+					"type": "integer"
+				},
+				"starts_on": {
+					"format": "date",
+					"type": "string"
+				},
+				"status": {
+					"default": "draft",
+					"enum": ["draft", "active", "paused", "ended"],
+					"format": "public.loyalty_programme_status",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"welcome_stamps": {
+					"default": 2,
+					"format": "int32",
+					"type": "integer"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"name",
+				"starts_on",
+				"reward_budget_amount",
+				"status",
+				"stamps_per_card",
+				"stamp_min_bill_amount",
+				"welcome_stamps",
+				"point_unit_amount",
+				"points_per_unit",
+				"stamp_validity_months",
+				"points_expiry_months",
+				"earning_invoices_per_phone_per_day",
+				"checkin_window_before_minutes",
+				"checkin_window_after_minutes",
+				"checkin_code_ttl_seconds",
+				"checkin_pending_hours",
+				"receipt_claim_window_hours",
+				"receipt_claims_per_phone_per_day",
+				"excluded_order_sources",
+				"point_value_amount",
+				"expected_breakage_rate",
+				"notification_decision",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"loyalty_queue": {
+			"description": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed; an owner or manager of the store resolves it with resolve_loyalty_queue_item",
+			"properties": {
+				"candidate_invoice_ids": {
+					"format": "uuid[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"checkin_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"chosen_invoice_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"claim_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"entry_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"matched_path": {
+					"format": "text",
+					"type": "string"
+				},
+				"membership_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"resolution_reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"resolved_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"resolved_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"state": {
+					"default": "open",
+					"enum": ["open", "resolved", "dismissed"],
+					"format": "public.loyalty_queue_state",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"membership_id",
+				"matched_path",
+				"candidate_invoice_ids",
+				"reason",
+				"state",
+				"created_at"
+			],
+			"type": "object"
+		},
+		"loyalty_refusals": {
+			"description": "why an invoice did not earn (or earned points without a stamp, below_minimum) for a membership, one row per invoice, membership and reason, for the shift anomaly report; a refused invoice is not tried again on that path",
+			"properties": {
+				"business_date": {
+					"format": "date",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"invoice_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"matched_path": {
+					"format": "text",
+					"type": "string"
+				},
+				"membership_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"membership_id",
+				"invoice_id",
+				"business_date",
+				"matched_path",
+				"reason",
+				"created_at"
+			],
+			"type": "object"
+		},
+		"loyalty_staff_phones": {
+			"description": "the staff-phone exclusion list of a tenant: an invoice or a claim of one of these phones never earns; phones in E.164 form; read and written by owners and managers only, never shown to staff",
+			"properties": {
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"label": {
+					"format": "text",
+					"type": "string"
+				},
+				"phone": {
+					"format": "text",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				}
+			},
+			"required": ["id", "tenant_id", "phone", "created_at", "updated_at"],
+			"type": "object"
+		},
+		"memberships": {
+			"description": "a customer's membership of a loyalty programme; the customer row holds the phone, this row only the per-brand Zalo user id of the brand the customer joined through (NFR-PRV-07); balances come from loyalty_ledger through app.loyalty_balance, never from a column here",
+			"properties": {
+				"brand_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"channel": {
+					"format": "text",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"customer_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"joined_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"joined_store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"programme_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"status": {
+					"default": "active",
+					"enum": ["active", "suspended", "closed"],
+					"format": "public.membership_status",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"zalo_user_id": {
+					"format": "text",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"programme_id",
+				"customer_id",
+				"joined_at",
+				"channel",
+				"status",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"mini_app_visits": {
 			"description": "count-only visits per Mini App and month in the tenant's zone (ADR-022: at least 10 a month), incremented by zalo-session through zalo_session_visit; no per-person row, no device, no location; owners and managers of the tenant read it",
 			"properties": {
@@ -4676,6 +5687,95 @@
 			],
 			"type": "object"
 		},
+		"pending_checkins": {
+			"description": "path B: a dynamic check-in code a member shows, valid until expires_at, recorded by staff at a store (recorded_at, optionally the bill amount) and matched by the reconciliation to an invoice of that store within the programme's window",
+			"properties": {
+				"amount": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"closed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"code": {
+					"format": "text",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"expires_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"matched_entry_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"matched_invoice_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"membership_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"recorded_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"recorded_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"status": {
+					"default": "issued",
+					"enum": [
+						"issued",
+						"recorded",
+						"matched",
+						"queued",
+						"expired",
+						"rejected"
+					],
+					"format": "public.checkin_status",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"membership_id",
+				"code",
+				"created_at",
+				"expires_at",
+				"status"
+			],
+			"type": "object"
+		},
 		"pos_accounts": {
 			"properties": {
 				"account_key": {
@@ -4803,6 +5903,164 @@
 				"active",
 				"first_seen_at",
 				"last_seen_at"
+			],
+			"type": "object"
+		},
+		"receipt_claims": {
+			"description": "path C: a member's claim of a receipt by store, business date, receipt number and exact amount, pending until the reconciliation matches it to a synced invoice or its window ends; one matched claim per invoice for ever, one open claim per receipt",
+			"properties": {
+				"amount": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"business_date": {
+					"format": "date",
+					"type": "string"
+				},
+				"closed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"entry_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"expires_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"invoice_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"membership_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"receipt_no": {
+					"format": "text",
+					"type": "string"
+				},
+				"status": {
+					"default": "pending",
+					"enum": ["pending", "matched", "queued", "rejected", "expired"],
+					"format": "public.receipt_claim_status",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"membership_id",
+				"business_date",
+				"receipt_no",
+				"amount",
+				"status",
+				"created_at",
+				"expires_at"
+			],
+			"type": "object"
+		},
+		"redemptions": {
+			"description": "a member's redemption of a coupon: held with a single-use code until the synced invoice carrying it confirms it, or released when the hold expires",
+			"properties": {
+				"code": {
+					"format": "text",
+					"type": "string"
+				},
+				"confirmed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"confirmed_invoice_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"coupon_code_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"coupon_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"held_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"hold_expires_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"membership_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"redeem_entry_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"released_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"state": {
+					"default": "held",
+					"enum": ["held", "confirmed", "released", "cancelled"],
+					"format": "public.redemption_state",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"membership_id",
+				"coupon_id",
+				"code",
+				"state",
+				"held_at",
+				"hold_expires_at"
 			],
 			"type": "object"
 		},
@@ -5217,6 +6475,62 @@
 				"status",
 				"created_at",
 				"updated_at"
+			],
+			"type": "object"
+		},
+		"stamps": {
+			"description": "one row per stamp credited by a ledger row, with its expiry; redemptions use the oldest active stamps first, the nightly expiry and clawbacks close them; a working table beside the ledger, which alone gives the balance",
+			"properties": {
+				"closed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"closed_entry_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"earn_entry_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"earned_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"expires_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"membership_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"state": {
+					"default": "active",
+					"enum": ["active", "redeemed", "expired", "clawed_back"],
+					"format": "public.stamp_state",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"membership_id",
+				"earn_entry_id",
+				"earned_at",
+				"expires_at",
+				"state"
 			],
 			"type": "object"
 		},
@@ -6471,6 +7785,42 @@
 				"$ref": "#/definitions/consent_records"
 			}
 		},
+		"body.coupon_codes": {
+			"description": "coupon_codes",
+			"in": "body",
+			"name": "coupon_codes",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/coupon_codes"
+			}
+		},
+		"body.coupon_rail_rewards": {
+			"description": "coupon_rail_rewards",
+			"in": "body",
+			"name": "coupon_rail_rewards",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/coupon_rail_rewards"
+			}
+		},
+		"body.coupon_rails": {
+			"description": "coupon_rails",
+			"in": "body",
+			"name": "coupon_rails",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/coupon_rails"
+			}
+		},
+		"body.coupons": {
+			"description": "coupons",
+			"in": "body",
+			"name": "coupons",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/coupons"
+			}
+		},
 		"body.customers": {
 			"description": "customers",
 			"in": "body",
@@ -6660,6 +8010,69 @@
 				"$ref": "#/definitions/legal_documents"
 			}
 		},
+		"body.loyalty_ledger": {
+			"description": "loyalty_ledger",
+			"in": "body",
+			"name": "loyalty_ledger",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/loyalty_ledger"
+			}
+		},
+		"body.loyalty_liability_daily": {
+			"description": "loyalty_liability_daily",
+			"in": "body",
+			"name": "loyalty_liability_daily",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/loyalty_liability_daily"
+			}
+		},
+		"body.loyalty_programmes": {
+			"description": "loyalty_programmes",
+			"in": "body",
+			"name": "loyalty_programmes",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/loyalty_programmes"
+			}
+		},
+		"body.loyalty_queue": {
+			"description": "loyalty_queue",
+			"in": "body",
+			"name": "loyalty_queue",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/loyalty_queue"
+			}
+		},
+		"body.loyalty_refusals": {
+			"description": "loyalty_refusals",
+			"in": "body",
+			"name": "loyalty_refusals",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/loyalty_refusals"
+			}
+		},
+		"body.loyalty_staff_phones": {
+			"description": "loyalty_staff_phones",
+			"in": "body",
+			"name": "loyalty_staff_phones",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/loyalty_staff_phones"
+			}
+		},
+		"body.memberships": {
+			"description": "memberships",
+			"in": "body",
+			"name": "memberships",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/memberships"
+			}
+		},
 		"body.mini_app_visits": {
 			"description": "mini_app_visits",
 			"in": "body",
@@ -6741,6 +8154,15 @@
 				"$ref": "#/definitions/payment_methods"
 			}
 		},
+		"body.pending_checkins": {
+			"description": "pending_checkins",
+			"in": "body",
+			"name": "pending_checkins",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/pending_checkins"
+			}
+		},
 		"body.pos_accounts": {
 			"description": "pos_accounts",
 			"in": "body",
@@ -6757,6 +8179,24 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/promotions"
+			}
+		},
+		"body.receipt_claims": {
+			"description": "receipt_claims",
+			"in": "body",
+			"name": "receipt_claims",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/receipt_claims"
+			}
+		},
+		"body.redemptions": {
+			"description": "redemptions",
+			"in": "body",
+			"name": "redemptions",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/redemptions"
 			}
 		},
 		"body.report_settings": {
@@ -6802,6 +8242,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/staff_roster"
+			}
+		},
+		"body.stamps": {
+			"description": "stamps",
+			"in": "body",
+			"name": "stamps",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/stamps"
 			}
 		},
 		"body.store_items": {
@@ -9097,6 +10546,333 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.coupon_codes.assigned_at": {
+			"in": "query",
+			"name": "assigned_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_codes.code": {
+			"in": "query",
+			"name": "code",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_codes.crm_programme_external_id": {
+			"in": "query",
+			"name": "crm_programme_external_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_codes.expires_at": {
+			"in": "query",
+			"name": "expires_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_codes.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_codes.imported_at": {
+			"in": "query",
+			"name": "imported_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_codes.quarantined_at": {
+			"in": "query",
+			"name": "quarantined_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_codes.reward_key": {
+			"in": "query",
+			"name": "reward_key",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_codes.state": {
+			"in": "query",
+			"name": "state",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_codes.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_codes.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_codes.used_at": {
+			"in": "query",
+			"name": "used_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_codes.used_invoice_id": {
+			"in": "query",
+			"name": "used_invoice_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.active": {
+			"in": "query",
+			"name": "active",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.crm_programme_external_id": {
+			"in": "query",
+			"name": "crm_programme_external_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.einvoice_display": {
+			"in": "query",
+			"name": "einvoice_display",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.pos_discount_name": {
+			"in": "query",
+			"name": "pos_discount_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.pos_free_item_external_id": {
+			"in": "query",
+			"name": "pos_free_item_external_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.reward_key": {
+			"in": "query",
+			"name": "reward_key",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rail_rewards.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.active_from": {
+			"in": "query",
+			"name": "active_from",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.active_until": {
+			"in": "query",
+			"name": "active_until",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.callback_ip_allowlist": {
+			"description": "optional source networks the voucher callback accepts; empty accepts any",
+			"in": "query",
+			"name": "callback_ip_allowlist",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.crm_programme_external_ids": {
+			"description": "the POS CRM programmes the rail uses, by external id",
+			"in": "query",
+			"name": "crm_programme_external_ids",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.rail": {
+			"in": "query",
+			"name": "rail",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupon_rails.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.active": {
+			"in": "query",
+			"name": "active",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.cost_points": {
+			"in": "query",
+			"name": "cost_points",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.cost_stamps": {
+			"in": "query",
+			"name": "cost_stamps",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.hold_hours": {
+			"in": "query",
+			"name": "hold_hours",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.min_bill_amount": {
+			"in": "query",
+			"name": "min_bill_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.name": {
+			"in": "query",
+			"name": "name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.programme_id": {
+			"in": "query",
+			"name": "programme_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.reward_key": {
+			"in": "query",
+			"name": "reward_key",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.store_ids": {
+			"description": "the stores where the reward is redeemed; null for every store of the tenant",
+			"in": "query",
+			"name": "store_ids",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.valid_days": {
+			"in": "query",
+			"name": "valid_days",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.customers.external_id": {
 			"in": "query",
 			"name": "external_id",
@@ -10891,6 +12667,691 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.loyalty_ledger.approved_by": {
+			"in": "query",
+			"name": "approved_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.business_date": {
+			"in": "query",
+			"name": "business_date",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.entry_kind": {
+			"in": "query",
+			"name": "entry_kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.expires_at": {
+			"description": "on a crediting row, when its points expire, fixed at issue from the programme's points_expiry_months; each stamp carries its own expiry on its stamps row",
+			"in": "query",
+			"name": "expires_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.invoice_id": {
+			"in": "query",
+			"name": "invoice_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.matched_path": {
+			"description": "how the invoice of an earn was tied to the membership: A the phone or member on the invoice, B a check-in code, C a receipt claim, D a voucher recipient",
+			"in": "query",
+			"name": "matched_path",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.membership_id": {
+			"in": "query",
+			"name": "membership_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.occurred_at": {
+			"in": "query",
+			"name": "occurred_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.pending": {
+			"description": "an earn or a redemption hold that waits for its confirm row; a pending earn is shown but not spendable, a pending redemption already holds its stamps or points",
+			"in": "query",
+			"name": "pending",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.point_delta": {
+			"in": "query",
+			"name": "point_delta",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.programme_id": {
+			"in": "query",
+			"name": "programme_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.reason": {
+			"in": "query",
+			"name": "reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.source_entry_id": {
+			"in": "query",
+			"name": "source_entry_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.stamp_delta": {
+			"in": "query",
+			"name": "stamp_delta",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.value_amount": {
+			"description": "value at issue in the tenant currency: the point delta times the programme's point_value_amount when the row was written",
+			"in": "query",
+			"name": "value_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.as_of": {
+			"in": "query",
+			"name": "as_of",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.as_of_date": {
+			"in": "query",
+			"name": "as_of_date",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.breakage_by_cohort": {
+			"in": "query",
+			"name": "breakage_by_cohort",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.breakage_source": {
+			"in": "query",
+			"name": "breakage_source",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.computed_at": {
+			"in": "query",
+			"name": "computed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.deferred_revenue_released_amount": {
+			"in": "query",
+			"name": "deferred_revenue_released_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.expected_breakage_rate": {
+			"in": "query",
+			"name": "expected_breakage_rate",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.liability_amount": {
+			"in": "query",
+			"name": "liability_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.members": {
+			"in": "query",
+			"name": "members",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.outstanding_points": {
+			"in": "query",
+			"name": "outstanding_points",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.outstanding_stamps": {
+			"in": "query",
+			"name": "outstanding_stamps",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.point_value_amount": {
+			"in": "query",
+			"name": "point_value_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.points_clawed_back": {
+			"in": "query",
+			"name": "points_clawed_back",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.points_expired": {
+			"in": "query",
+			"name": "points_expired",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.points_issued": {
+			"in": "query",
+			"name": "points_issued",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.points_redeemed": {
+			"in": "query",
+			"name": "points_redeemed",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.programme_id": {
+			"in": "query",
+			"name": "programme_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_liability_daily.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.checkin_code_ttl_seconds": {
+			"in": "query",
+			"name": "checkin_code_ttl_seconds",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.checkin_pending_hours": {
+			"in": "query",
+			"name": "checkin_pending_hours",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.checkin_window_after_minutes": {
+			"in": "query",
+			"name": "checkin_window_after_minutes",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.checkin_window_before_minutes": {
+			"in": "query",
+			"name": "checkin_window_before_minutes",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.earning_invoices_per_phone_per_day": {
+			"in": "query",
+			"name": "earning_invoices_per_phone_per_day",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.ends_on": {
+			"in": "query",
+			"name": "ends_on",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.excluded_order_sources": {
+			"description": "order sources whose invoices never earn, matched against invoices.source_external_id or invoices.source_name",
+			"in": "query",
+			"name": "excluded_order_sources",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.expected_breakage_rate": {
+			"in": "query",
+			"name": "expected_breakage_rate",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.name": {
+			"in": "query",
+			"name": "name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.notification_basis": {
+			"description": "short legal basis of the notification decision; required when the decision is not_required",
+			"in": "query",
+			"name": "notification_basis",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.notification_decided_at": {
+			"in": "query",
+			"name": "notification_decided_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.notification_decision": {
+			"in": "query",
+			"name": "notification_decision",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.point_unit_amount": {
+			"in": "query",
+			"name": "point_unit_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.point_value_amount": {
+			"description": "value of one point in the tenant currency, used for the value at issue of each ledger row and for the liability",
+			"in": "query",
+			"name": "point_value_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.points_expiry_months": {
+			"in": "query",
+			"name": "points_expiry_months",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.points_per_unit": {
+			"in": "query",
+			"name": "points_per_unit",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.receipt_claim_window_hours": {
+			"in": "query",
+			"name": "receipt_claim_window_hours",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.receipt_claims_per_phone_per_day": {
+			"in": "query",
+			"name": "receipt_claims_per_phone_per_day",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.reward_budget_amount": {
+			"in": "query",
+			"name": "reward_budget_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.stamp_min_bill_amount": {
+			"in": "query",
+			"name": "stamp_min_bill_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.stamp_validity_months": {
+			"in": "query",
+			"name": "stamp_validity_months",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.stamps_per_card": {
+			"in": "query",
+			"name": "stamps_per_card",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.starts_on": {
+			"in": "query",
+			"name": "starts_on",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_programmes.welcome_stamps": {
+			"in": "query",
+			"name": "welcome_stamps",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.candidate_invoice_ids": {
+			"in": "query",
+			"name": "candidate_invoice_ids",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.checkin_id": {
+			"in": "query",
+			"name": "checkin_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.chosen_invoice_id": {
+			"in": "query",
+			"name": "chosen_invoice_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.claim_id": {
+			"in": "query",
+			"name": "claim_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.entry_id": {
+			"in": "query",
+			"name": "entry_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.matched_path": {
+			"in": "query",
+			"name": "matched_path",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.membership_id": {
+			"in": "query",
+			"name": "membership_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.reason": {
+			"in": "query",
+			"name": "reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.resolution_reason": {
+			"in": "query",
+			"name": "resolution_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.resolved_at": {
+			"in": "query",
+			"name": "resolved_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.resolved_by": {
+			"in": "query",
+			"name": "resolved_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.state": {
+			"in": "query",
+			"name": "state",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_refusals.business_date": {
+			"in": "query",
+			"name": "business_date",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_refusals.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_refusals.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_refusals.invoice_id": {
+			"in": "query",
+			"name": "invoice_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_refusals.matched_path": {
+			"in": "query",
+			"name": "matched_path",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_refusals.membership_id": {
+			"in": "query",
+			"name": "membership_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_refusals.reason": {
+			"in": "query",
+			"name": "reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_refusals.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_refusals.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_staff_phones.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_staff_phones.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_staff_phones.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_staff_phones.label": {
+			"in": "query",
+			"name": "label",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_staff_phones.phone": {
+			"in": "query",
+			"name": "phone",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_staff_phones.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_staff_phones.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.memberships.brand_id": {
+			"in": "query",
+			"name": "brand_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.memberships.channel": {
+			"in": "query",
+			"name": "channel",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.memberships.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.memberships.customer_id": {
+			"in": "query",
+			"name": "customer_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.memberships.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.memberships.joined_at": {
+			"in": "query",
+			"name": "joined_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.memberships.joined_store_id": {
+			"in": "query",
+			"name": "joined_store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.memberships.programme_id": {
+			"in": "query",
+			"name": "programme_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.memberships.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.memberships.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.memberships.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.memberships.zalo_user_id": {
+			"in": "query",
+			"name": "zalo_user_id",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.mini_app_visits.mini_app_id": {
 			"in": "query",
 			"name": "mini_app_id",
@@ -11759,6 +14220,96 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.pending_checkins.amount": {
+			"in": "query",
+			"name": "amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.closed_at": {
+			"in": "query",
+			"name": "closed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.code": {
+			"in": "query",
+			"name": "code",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.expires_at": {
+			"in": "query",
+			"name": "expires_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.matched_entry_id": {
+			"in": "query",
+			"name": "matched_entry_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.matched_invoice_id": {
+			"in": "query",
+			"name": "matched_invoice_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.membership_id": {
+			"in": "query",
+			"name": "membership_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.reason": {
+			"in": "query",
+			"name": "reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.recorded_at": {
+			"in": "query",
+			"name": "recorded_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.recorded_by": {
+			"in": "query",
+			"name": "recorded_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.pending_checkins.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.pos_accounts.account_key": {
 			"in": "query",
 			"name": "account_key",
@@ -11886,6 +14437,174 @@
 			"type": "string"
 		},
 		"rowFilter.promotions.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.amount": {
+			"in": "query",
+			"name": "amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.business_date": {
+			"in": "query",
+			"name": "business_date",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.closed_at": {
+			"in": "query",
+			"name": "closed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.entry_id": {
+			"in": "query",
+			"name": "entry_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.expires_at": {
+			"in": "query",
+			"name": "expires_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.invoice_id": {
+			"in": "query",
+			"name": "invoice_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.membership_id": {
+			"in": "query",
+			"name": "membership_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.reason": {
+			"in": "query",
+			"name": "reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.receipt_no": {
+			"in": "query",
+			"name": "receipt_no",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.receipt_claims.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.code": {
+			"in": "query",
+			"name": "code",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.confirmed_at": {
+			"in": "query",
+			"name": "confirmed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.confirmed_invoice_id": {
+			"in": "query",
+			"name": "confirmed_invoice_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.coupon_code_id": {
+			"in": "query",
+			"name": "coupon_code_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.coupon_id": {
+			"in": "query",
+			"name": "coupon_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.held_at": {
+			"in": "query",
+			"name": "held_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.hold_expires_at": {
+			"in": "query",
+			"name": "hold_expires_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.membership_id": {
+			"in": "query",
+			"name": "membership_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.redeem_entry_id": {
+			"in": "query",
+			"name": "redeem_entry_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.released_at": {
+			"in": "query",
+			"name": "released_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.state": {
+			"in": "query",
+			"name": "state",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.tenant_id": {
 			"in": "query",
 			"name": "tenant_id",
 			"required": false,
@@ -12318,6 +15037,60 @@
 			"description": "the Auth user bound at the first pairing, kept after a deactivation so a later pairing reuses it; the person's Zalo identities, one per Zalo App, are the zalo_identities rows of this user",
 			"in": "query",
 			"name": "user_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamps.closed_at": {
+			"in": "query",
+			"name": "closed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamps.closed_entry_id": {
+			"in": "query",
+			"name": "closed_entry_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamps.earn_entry_id": {
+			"in": "query",
+			"name": "earn_entry_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamps.earned_at": {
+			"in": "query",
+			"name": "earned_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamps.expires_at": {
+			"in": "query",
+			"name": "expires_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamps.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamps.membership_id": {
+			"in": "query",
+			"name": "membership_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamps.state": {
+			"in": "query",
+			"name": "state",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamps.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
 			"required": false,
 			"type": "string"
 		},
@@ -19007,6 +21780,868 @@
 				"tags": ["consent_records"]
 			}
 		},
+		"/coupon_codes": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.reward_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.crm_programme_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.imported_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.assigned_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.used_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.used_invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.quarantined_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "single-use POS codes of a reward at a store, imported from a CRM export pool: available, assigned to a redemption, used on a synced invoice, quarantined after an unused hold, or expired; read by owners and managers only, written by the service role and the staff functions",
+				"tags": ["coupon_codes"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.reward_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.crm_programme_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.imported_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.assigned_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.used_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.used_invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.quarantined_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/coupon_codes"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "single-use POS codes of a reward at a store, imported from a CRM export pool: available, assigned to a redemption, used on a synced invoice, quarantined after an unused hold, or expired; read by owners and managers only, written by the service role and the staff functions",
+				"tags": ["coupon_codes"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.reward_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.crm_programme_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.imported_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.assigned_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.used_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.used_invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_codes.quarantined_at"
+					},
+					{
+						"$ref": "#/parameters/body.coupon_codes"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "single-use POS codes of a reward at a store, imported from a CRM export pool: available, assigned to a redemption, used on a synced invoice, quarantined after an unused hold, or expired; read by owners and managers only, written by the service role and the staff functions",
+				"tags": ["coupon_codes"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.coupon_codes"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "single-use POS codes of a reward at a store, imported from a CRM export pool: available, assigned to a redemption, used on a synced invoice, quarantined after an unused hold, or expired; read by owners and managers only, written by the service role and the staff functions",
+				"tags": ["coupon_codes"]
+			}
+		},
+		"/coupon_rail_rewards": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.reward_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.pos_discount_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.pos_free_item_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.crm_programme_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.einvoice_display"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the POS side of a reward at a store: a POS discount by name, a 0-price promotional line by item external id or a CRM programme, and how the cash-register e-invoice shows it; a reward is active at a store only with an active row here",
+				"tags": ["coupon_rail_rewards"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.reward_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.pos_discount_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.pos_free_item_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.crm_programme_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.einvoice_display"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/coupon_rail_rewards"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the POS side of a reward at a store: a POS discount by name, a 0-price promotional line by item external id or a CRM programme, and how the cash-register e-invoice shows it; a reward is active at a store only with an active row here",
+				"tags": ["coupon_rail_rewards"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.reward_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.pos_discount_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.pos_free_item_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.crm_programme_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.einvoice_display"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rail_rewards.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.coupon_rail_rewards"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the POS side of a reward at a store: a POS discount by name, a 0-price promotional line by item external id or a CRM programme, and how the cash-register e-invoice shows it; a reward is active at a store only with an active row here",
+				"tags": ["coupon_rail_rewards"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.coupon_rail_rewards"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the POS side of a reward at a store: a POS discount by name, a 0-price promotional line by item external id or a CRM programme, and how the cash-register e-invoice shows it; a reward is active at a store only with an active row here",
+				"tags": ["coupon_rail_rewards"]
+			}
+		},
+		"/coupon_rails": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.rail"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.crm_programme_external_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.callback_ip_allowlist"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.active_from"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.active_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the loyalty rail of a store: the active row (active_until null) says how rewards reach the till; switching a rail inserts a new row, which closes the previous one and keeps it as history",
+				"tags": ["coupon_rails"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.rail"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.crm_programme_external_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.callback_ip_allowlist"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.active_from"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.active_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/coupon_rails"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the loyalty rail of a store: the active row (active_until null) says how rewards reach the till; switching a rail inserts a new row, which closes the previous one and keeps it as history",
+				"tags": ["coupon_rails"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.rail"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.crm_programme_external_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.callback_ip_allowlist"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.active_from"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.active_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupon_rails.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.coupon_rails"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the loyalty rail of a store: the active row (active_until null) says how rewards reach the till; switching a rail inserts a new row, which closes the previous one and keeps it as history",
+				"tags": ["coupon_rails"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.coupon_rails"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the loyalty rail of a store: the active row (active_until null) says how rewards reach the till; switching a rail inserts a new row, which closes the previous one and keeps it as history",
+				"tags": ["coupon_rails"]
+			}
+		},
+		"/coupons": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.coupons.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.programme_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.cost_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.cost_points"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.min_bill_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.valid_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.hold_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the reward catalogue of a programme (completed in phase 18b): what a reward costs in stamps or points, where it is valid and whether it is active; a reward is active only when every store in its scope maps it in coupon_rail_rewards (FR-CMP-11)",
+				"tags": ["coupons"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.coupons.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.programme_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.cost_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.cost_points"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.min_bill_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.valid_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.hold_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/coupons"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the reward catalogue of a programme (completed in phase 18b): what a reward costs in stamps or points, where it is valid and whether it is active; a reward is active only when every store in its scope maps it in coupon_rail_rewards (FR-CMP-11)",
+				"tags": ["coupons"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.coupons.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.programme_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.cost_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.cost_points"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.min_bill_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.valid_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.hold_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.coupons"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the reward catalogue of a programme (completed in phase 18b): what a reward costs in stamps or points, where it is valid and whether it is active; a reward is active only when every store in its scope maps it in coupon_rail_rewards (FR-CMP-11)",
+				"tags": ["coupons"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.coupons"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the reward catalogue of a programme (completed in phase 18b): what a reward costs in stamps or points, where it is valid and whether it is active; a reward is active only when every store in its scope maps it in coupon_rail_rewards (FR-CMP-11)",
+				"tags": ["coupons"]
+			}
+		},
 		"/customers": {
 			"delete": {
 				"parameters": [
@@ -23581,6 +27216,1681 @@
 				"tags": ["legal_documents"]
 			}
 		},
+		"/loyalty_ledger": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.programme_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.entry_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.stamp_delta"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.point_delta"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.value_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.matched_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.pending"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.source_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.approved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.created_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the append-only loyalty ledger: every stamp and point movement of a membership as a row (earn, confirm, clawback, redeem, adjust, expire) with its value at issue; inserts only, a correction is a new row that references the original through source_entry_id; only app.erase_loyalty_membership (the data-subject deletion) removes rows",
+				"tags": ["loyalty_ledger"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.programme_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.entry_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.stamp_delta"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.point_delta"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.value_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.matched_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.pending"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.source_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.approved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.created_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/loyalty_ledger"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the append-only loyalty ledger: every stamp and point movement of a membership as a row (earn, confirm, clawback, redeem, adjust, expire) with its value at issue; inserts only, a correction is a new row that references the original through source_entry_id; only app.erase_loyalty_membership (the data-subject deletion) removes rows",
+				"tags": ["loyalty_ledger"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.programme_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.entry_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.stamp_delta"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.point_delta"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.value_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.matched_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.pending"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.source_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.approved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.created_at"
+					},
+					{
+						"$ref": "#/parameters/body.loyalty_ledger"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the append-only loyalty ledger: every stamp and point movement of a membership as a row (earn, confirm, clawback, redeem, adjust, expire) with its value at issue; inserts only, a correction is a new row that references the original through source_entry_id; only app.erase_loyalty_membership (the data-subject deletion) removes rows",
+				"tags": ["loyalty_ledger"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.loyalty_ledger"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the append-only loyalty ledger: every stamp and point movement of a membership as a row (earn, confirm, clawback, redeem, adjust, expire) with its value at issue; inserts only, a correction is a new row that references the original through source_entry_id; only app.erase_loyalty_membership (the data-subject deletion) removes rows",
+				"tags": ["loyalty_ledger"]
+			}
+		},
+		"/loyalty_liability_daily": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.programme_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.as_of_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.as_of"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.members"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.outstanding_points"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.outstanding_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.point_value_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.expected_breakage_rate"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.breakage_source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.liability_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.points_issued"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.points_redeemed"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.points_expired"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.points_clawed_back"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.deferred_revenue_released_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.breakage_by_cohort"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.computed_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the nightly points liability of a programme: outstanding points (positive balances, confirmed) times the point value times one minus the expected breakage, which is the programme's configured rate until six months of expiry data exist and the observed expired share of spent and expired points of the last 12 months after; the day's issued, redeemed, expired and clawed-back points, the deferred revenue released by redemptions and the breakage by issue month; counts and amounts only",
+				"tags": ["loyalty_liability_daily"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.programme_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.as_of_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.as_of"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.members"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.outstanding_points"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.outstanding_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.point_value_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.expected_breakage_rate"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.breakage_source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.liability_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.points_issued"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.points_redeemed"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.points_expired"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.points_clawed_back"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.deferred_revenue_released_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.breakage_by_cohort"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.computed_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/loyalty_liability_daily"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the nightly points liability of a programme: outstanding points (positive balances, confirmed) times the point value times one minus the expected breakage, which is the programme's configured rate until six months of expiry data exist and the observed expired share of spent and expired points of the last 12 months after; the day's issued, redeemed, expired and clawed-back points, the deferred revenue released by redemptions and the breakage by issue month; counts and amounts only",
+				"tags": ["loyalty_liability_daily"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.programme_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.as_of_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.as_of"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.members"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.outstanding_points"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.outstanding_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.point_value_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.expected_breakage_rate"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.breakage_source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.liability_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.points_issued"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.points_redeemed"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.points_expired"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.points_clawed_back"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.deferred_revenue_released_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.breakage_by_cohort"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_liability_daily.computed_at"
+					},
+					{
+						"$ref": "#/parameters/body.loyalty_liability_daily"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the nightly points liability of a programme: outstanding points (positive balances, confirmed) times the point value times one minus the expected breakage, which is the programme's configured rate until six months of expiry data exist and the observed expired share of spent and expired points of the last 12 months after; the day's issued, redeemed, expired and clawed-back points, the deferred revenue released by redemptions and the breakage by issue month; counts and amounts only",
+				"tags": ["loyalty_liability_daily"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.loyalty_liability_daily"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the nightly points liability of a programme: outstanding points (positive balances, confirmed) times the point value times one minus the expected breakage, which is the programme's configured rate until six months of expiry data exist and the observed expired share of spent and expired points of the last 12 months after; the day's issued, redeemed, expired and clawed-back points, the deferred revenue released by redemptions and the breakage by issue month; counts and amounts only",
+				"tags": ["loyalty_liability_daily"]
+			}
+		},
+		"/loyalty_programmes": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.starts_on"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.ends_on"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.reward_budget_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.stamps_per_card"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.stamp_min_bill_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.welcome_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.point_unit_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.points_per_unit"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.stamp_validity_months"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.points_expiry_months"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.earning_invoices_per_phone_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.checkin_window_before_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.checkin_window_after_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.checkin_code_ttl_seconds"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.checkin_pending_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.receipt_claim_window_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.receipt_claims_per_phone_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.excluded_order_sources"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.point_value_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.expected_breakage_rate"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.notification_decision"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.notification_decided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.notification_basis"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "one loyalty programme of a tenant with its period, reward budget, mechanic and anti-fraud parameters and the decision on the Department of Industry and Trade notification; every parameter is read at earn time, so a changed row changes the next earn",
+				"tags": ["loyalty_programmes"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.starts_on"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.ends_on"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.reward_budget_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.stamps_per_card"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.stamp_min_bill_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.welcome_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.point_unit_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.points_per_unit"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.stamp_validity_months"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.points_expiry_months"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.earning_invoices_per_phone_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.checkin_window_before_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.checkin_window_after_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.checkin_code_ttl_seconds"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.checkin_pending_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.receipt_claim_window_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.receipt_claims_per_phone_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.excluded_order_sources"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.point_value_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.expected_breakage_rate"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.notification_decision"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.notification_decided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.notification_basis"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/loyalty_programmes"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "one loyalty programme of a tenant with its period, reward budget, mechanic and anti-fraud parameters and the decision on the Department of Industry and Trade notification; every parameter is read at earn time, so a changed row changes the next earn",
+				"tags": ["loyalty_programmes"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.starts_on"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.ends_on"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.reward_budget_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.stamps_per_card"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.stamp_min_bill_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.welcome_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.point_unit_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.points_per_unit"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.stamp_validity_months"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.points_expiry_months"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.earning_invoices_per_phone_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.checkin_window_before_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.checkin_window_after_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.checkin_code_ttl_seconds"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.checkin_pending_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.receipt_claim_window_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.receipt_claims_per_phone_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.excluded_order_sources"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.point_value_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.expected_breakage_rate"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.notification_decision"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.notification_decided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.notification_basis"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_programmes.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.loyalty_programmes"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "one loyalty programme of a tenant with its period, reward budget, mechanic and anti-fraud parameters and the decision on the Department of Industry and Trade notification; every parameter is read at earn time, so a changed row changes the next earn",
+				"tags": ["loyalty_programmes"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.loyalty_programmes"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "one loyalty programme of a tenant with its period, reward budget, mechanic and anti-fraud parameters and the decision on the Department of Industry and Trade notification; every parameter is read at earn time, so a changed row changes the next earn",
+				"tags": ["loyalty_programmes"]
+			}
+		},
+		"/loyalty_queue": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.checkin_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.claim_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.matched_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.candidate_invoice_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.resolved_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.resolved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.chosen_invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.resolution_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.entry_id"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed; an owner or manager of the store resolves it with resolve_loyalty_queue_item",
+				"tags": ["loyalty_queue"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.checkin_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.claim_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.matched_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.candidate_invoice_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.resolved_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.resolved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.chosen_invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.resolution_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.entry_id"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/loyalty_queue"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed; an owner or manager of the store resolves it with resolve_loyalty_queue_item",
+				"tags": ["loyalty_queue"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.checkin_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.claim_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.matched_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.candidate_invoice_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.resolved_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.resolved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.chosen_invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.resolution_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.entry_id"
+					},
+					{
+						"$ref": "#/parameters/body.loyalty_queue"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed; an owner or manager of the store resolves it with resolve_loyalty_queue_item",
+				"tags": ["loyalty_queue"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.loyalty_queue"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed; an owner or manager of the store resolves it with resolve_loyalty_queue_item",
+				"tags": ["loyalty_queue"]
+			}
+		},
+		"/loyalty_refusals": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.matched_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.created_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "why an invoice did not earn (or earned points without a stamp, below_minimum) for a membership, one row per invoice, membership and reason, for the shift anomaly report; a refused invoice is not tried again on that path",
+				"tags": ["loyalty_refusals"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.matched_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.created_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/loyalty_refusals"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "why an invoice did not earn (or earned points without a stamp, below_minimum) for a membership, one row per invoice, membership and reason, for the shift anomaly report; a refused invoice is not tried again on that path",
+				"tags": ["loyalty_refusals"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.matched_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_refusals.created_at"
+					},
+					{
+						"$ref": "#/parameters/body.loyalty_refusals"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "why an invoice did not earn (or earned points without a stamp, below_minimum) for a membership, one row per invoice, membership and reason, for the shift anomaly report; a refused invoice is not tried again on that path",
+				"tags": ["loyalty_refusals"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.loyalty_refusals"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "why an invoice did not earn (or earned points without a stamp, below_minimum) for a membership, one row per invoice, membership and reason, for the shift anomaly report; a refused invoice is not tried again on that path",
+				"tags": ["loyalty_refusals"]
+			}
+		},
+		"/loyalty_staff_phones": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.phone"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the staff-phone exclusion list of a tenant: an invoice or a claim of one of these phones never earns; phones in E.164 form; read and written by owners and managers only, never shown to staff",
+				"tags": ["loyalty_staff_phones"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.phone"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/loyalty_staff_phones"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the staff-phone exclusion list of a tenant: an invoice or a claim of one of these phones never earns; phones in E.164 form; read and written by owners and managers only, never shown to staff",
+				"tags": ["loyalty_staff_phones"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.phone"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_staff_phones.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.loyalty_staff_phones"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the staff-phone exclusion list of a tenant: an invoice or a claim of one of these phones never earns; phones in E.164 form; read and written by owners and managers only, never shown to staff",
+				"tags": ["loyalty_staff_phones"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.loyalty_staff_phones"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the staff-phone exclusion list of a tenant: an invoice or a claim of one of these phones never earns; phones in E.164 form; read and written by owners and managers only, never shown to staff",
+				"tags": ["loyalty_staff_phones"]
+			}
+		},
+		"/memberships": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.memberships.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.programme_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.customer_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.joined_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.channel"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.joined_store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.zalo_user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a customer's membership of a loyalty programme; the customer row holds the phone, this row only the per-brand Zalo user id of the brand the customer joined through (NFR-PRV-07); balances come from loyalty_ledger through app.loyalty_balance, never from a column here",
+				"tags": ["memberships"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.memberships.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.programme_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.customer_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.joined_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.channel"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.joined_store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.zalo_user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/memberships"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "a customer's membership of a loyalty programme; the customer row holds the phone, this row only the per-brand Zalo user id of the brand the customer joined through (NFR-PRV-07); balances come from loyalty_ledger through app.loyalty_balance, never from a column here",
+				"tags": ["memberships"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.memberships.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.programme_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.customer_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.joined_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.channel"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.joined_store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.zalo_user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.memberships.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.memberships"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a customer's membership of a loyalty programme; the customer row holds the phone, this row only the per-brand Zalo user id of the brand the customer joined through (NFR-PRV-07); balances come from loyalty_ledger through app.loyalty_balance, never from a column here",
+				"tags": ["memberships"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.memberships"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "a customer's membership of a loyalty programme; the customer row holds the phone, this row only the per-brand Zalo user id of the brand the customer joined through (NFR-PRV-07); balances come from loyalty_ledger through app.loyalty_balance, never from a column here",
+				"tags": ["memberships"]
+			}
+		},
 		"/mini_app_visits": {
 			"delete": {
 				"parameters": [
@@ -25675,6 +30985,235 @@
 				"tags": ["payment_methods"]
 			}
 		},
+		"/pending_checkins": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.recorded_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.recorded_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.matched_invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.matched_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.closed_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "path B: a dynamic check-in code a member shows, valid until expires_at, recorded by staff at a store (recorded_at, optionally the bill amount) and matched by the reconciliation to an invoice of that store within the programme's window",
+				"tags": ["pending_checkins"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.recorded_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.recorded_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.matched_invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.matched_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.closed_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/pending_checkins"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "path B: a dynamic check-in code a member shows, valid until expires_at, recorded by staff at a store (recorded_at, optionally the bill amount) and matched by the reconciliation to an invoice of that store within the programme's window",
+				"tags": ["pending_checkins"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.recorded_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.recorded_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.matched_invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.matched_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.pending_checkins.closed_at"
+					},
+					{
+						"$ref": "#/parameters/body.pending_checkins"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "path B: a dynamic check-in code a member shows, valid until expires_at, recorded by staff at a store (recorded_at, optionally the bill amount) and matched by the reconciliation to an invoice of that store within the programme's window",
+				"tags": ["pending_checkins"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.pending_checkins"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "path B: a dynamic check-in code a member shows, valid until expires_at, recorded by staff at a store (recorded_at, optionally the bill amount) and matched by the reconciliation to an invoice of that store within the programme's window",
+				"tags": ["pending_checkins"]
+			}
+		},
 		"/pos_accounts": {
 			"delete": {
 				"parameters": [
@@ -26051,6 +31590,446 @@
 					}
 				},
 				"tags": ["promotions"]
+			}
+		},
+		"/receipt_claims": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.receipt_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.closed_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "path C: a member's claim of a receipt by store, business date, receipt number and exact amount, pending until the reconciliation matches it to a synced invoice or its window ends; one matched claim per invoice for ever, one open claim per receipt",
+				"tags": ["receipt_claims"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.receipt_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.closed_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/receipt_claims"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "path C: a member's claim of a receipt by store, business date, receipt number and exact amount, pending until the reconciliation matches it to a synced invoice or its window ends; one matched claim per invoice for ever, one open claim per receipt",
+				"tags": ["receipt_claims"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.receipt_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.receipt_claims.closed_at"
+					},
+					{
+						"$ref": "#/parameters/body.receipt_claims"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "path C: a member's claim of a receipt by store, business date, receipt number and exact amount, pending until the reconciliation matches it to a synced invoice or its window ends; one matched claim per invoice for ever, one open claim per receipt",
+				"tags": ["receipt_claims"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.receipt_claims"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "path C: a member's claim of a receipt by store, business date, receipt number and exact amount, pending until the reconciliation matches it to a synced invoice or its window ends; one matched claim per invoice for ever, one open claim per receipt",
+				"tags": ["receipt_claims"]
+			}
+		},
+		"/redemptions": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.coupon_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.coupon_code_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.held_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.hold_expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.redeem_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.confirmed_invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.confirmed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.released_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a member's redemption of a coupon: held with a single-use code until the synced invoice carrying it confirms it, or released when the hold expires",
+				"tags": ["redemptions"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.coupon_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.coupon_code_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.held_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.hold_expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.redeem_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.confirmed_invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.confirmed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.released_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/redemptions"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "a member's redemption of a coupon: held with a single-use code until the synced invoice carrying it confirms it, or released when the hold expires",
+				"tags": ["redemptions"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.coupon_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.coupon_code_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.held_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.hold_expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.redeem_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.confirmed_invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.confirmed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.released_at"
+					},
+					{
+						"$ref": "#/parameters/body.redemptions"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a member's redemption of a coupon: held with a single-use code until the synced invoice carrying it confirms it, or released when the hold expires",
+				"tags": ["redemptions"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.redemptions"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "a member's redemption of a coupon: held with a single-use code until the synced invoice carrying it confirms it, or released when the hold expires",
+				"tags": ["redemptions"]
 			}
 		},
 		"/report_settings": {
@@ -28862,6 +34841,129 @@
 				"tags": ["(rpc) link_my_phone"]
 			}
 		},
+		"/rpc/loyalty_balance": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_membership_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.loyalty_balance for a membership the caller reads (a customer session its own, owners, managers and viewers their tenant's)",
+				"tags": ["(rpc) loyalty_balance"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.loyalty_balance for a membership the caller reads (a customer session its own, owners, managers and viewers their tenant's)",
+							"properties": {
+								"p_membership_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_membership_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.loyalty_balance for a membership the caller reads (a customer session its own, owners, managers and viewers their tenant's)",
+				"tags": ["(rpc) loyalty_balance"]
+			}
+		},
+		"/rpc/loyalty_rail_flags": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "p_store_ids",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the active loyalty rail of each given store the caller reads, with the store's e-invoice status; flagged when a store with a rail does not issue cash-register e-invoices (status other than configured), for the data-quality page",
+				"tags": ["(rpc) loyalty_rail_flags"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the active loyalty rail of each given store the caller reads, with the store's e-invoice status; flagged when a store with a rail does not issue cash-register e-invoices (status other than configured), for the data-quality page",
+							"properties": {
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": ["p_store_ids"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the active loyalty rail of each given store the caller reads, with the store's e-invoice status; flagged when a store with a rail does not issue cash-register e-invoices (status other than configured), for the data-quality page",
+				"tags": ["(rpc) loyalty_rail_flags"]
+			}
+		},
 		"/rpc/mark_announcement_read": {
 			"post": {
 				"parameters": [
@@ -31351,6 +37453,51 @@
 				"tags": ["(rpc) resolve_incident"]
 			}
 		},
+		"/rpc/resolve_loyalty_queue_item": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.resolve_loyalty_queue_item",
+							"properties": {
+								"p_choice": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_item_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_reason": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_item_id", "p_choice", "p_reason"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.resolve_loyalty_queue_item",
+				"tags": ["(rpc) resolve_loyalty_queue_item"]
+			}
+		},
 		"/rpc/retire_legal_document": {
 			"post": {
 				"parameters": [
@@ -33636,6 +39783,181 @@
 				},
 				"summary": "the staff roster of a tenant (FR-STF-09): one row per person whatever the brand, with a role (staff or manager), a store scope and a status; written only through app.add_staff, app.update_staff, app.deactivate_staff and app.reactivate_staff, and by the pairing of phase 14a",
 				"tags": ["staff_roster"]
+			}
+		},
+		"/stamps": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamps.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.earn_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.earned_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.closed_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.closed_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "one row per stamp credited by a ledger row, with its expiry; redemptions use the oldest active stamps first, the nightly expiry and clawbacks close them; a working table beside the ledger, which alone gives the balance",
+				"tags": ["stamps"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamps.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.earn_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.earned_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.closed_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.closed_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/stamps"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "one row per stamp credited by a ledger row, with its expiry; redemptions use the oldest active stamps first, the nightly expiry and clawbacks close them; a working table beside the ledger, which alone gives the balance",
+				"tags": ["stamps"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamps.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.earn_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.earned_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.expires_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.closed_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamps.closed_at"
+					},
+					{
+						"$ref": "#/parameters/body.stamps"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "one row per stamp credited by a ledger row, with its expiry; redemptions use the oldest active stamps first, the nightly expiry and clawbacks close them; a working table beside the ledger, which alone gives the balance",
+				"tags": ["stamps"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.stamps"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "one row per stamp credited by a ledger row, with its expiry; redemptions use the oldest active stamps first, the nightly expiry and clawbacks close them; a working table beside the ledger, which alone gives the balance",
+				"tags": ["stamps"]
 			}
 		},
 		"/store_items": {

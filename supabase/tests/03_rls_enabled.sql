@@ -16,8 +16,8 @@ select is(
 
 select is(
   (select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r', 'p')),
-  81,
-  'public holds the 81 expected tables'
+  96,
+  'public holds the 96 expected tables'
 );
 
 select is(
@@ -32,10 +32,10 @@ select is(
     from pg_policies
     where schemaname = 'public'
       and cmd in ('INSERT', 'UPDATE', 'DELETE')
-      and tablename not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies', 'report_settings', 'item_category_overrides', 'payment_kind_overrides', 'legal_documents', 'stores', 'tenants', 'brands', 'zalo_apps', 'oas', 'mini_apps', 'zbs_templates', 'gmf_groups', 'checklist_templates', 'checklist_items', 'checklist_runs', 'checklist_answers', 'checklist_corrections', 'shift_handovers', 'incidents', 'incident_categories', 'cash_counts', 'announcements', 'announcement_recipients', 'announcement_receipts', 'approval_request_kinds', 'approval_requests')
+      and tablename not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies', 'report_settings', 'item_category_overrides', 'payment_kind_overrides', 'legal_documents', 'stores', 'tenants', 'brands', 'zalo_apps', 'oas', 'mini_apps', 'zbs_templates', 'gmf_groups', 'checklist_templates', 'checklist_items', 'checklist_runs', 'checklist_answers', 'checklist_corrections', 'shift_handovers', 'incidents', 'incident_categories', 'cash_counts', 'announcements', 'announcement_recipients', 'announcement_receipts', 'approval_request_kinds', 'approval_requests', 'loyalty_programmes', 'loyalty_staff_phones', 'coupon_rails', 'coupon_rail_rewards', 'coupons')
   ),
   0,
-  'write policies exist only on the manual-input tables, the settings and mappings, the store and tenant profiles, strategy_reports, the legal ledgers, alert_rules, channel_policies, the Zalo configuration, the operations tables of phase 14b and incident_categories'
+  'write policies exist only on the manual-input tables, the settings and mappings, the store and tenant profiles, strategy_reports, the legal ledgers, alert_rules, channel_policies, the Zalo configuration, the operations tables of phase 14b, incident_categories and the loyalty configuration'
 );
 
 select is(
@@ -45,10 +45,10 @@ select is(
     where grantee = 'authenticated'
       and table_schema = 'public'
       and privilege_type <> 'SELECT'
-      and table_name not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies', 'report_settings', 'item_category_overrides', 'payment_kind_overrides', 'legal_documents', 'brands', 'zalo_apps', 'oas', 'mini_apps', 'zbs_templates', 'gmf_groups', 'incident_categories', 'approval_request_kinds')
+      and table_name not in ('item_costs', 'payment_fee_rates', 'item_type_roles', 'holidays', 'targets', 'strategy_reports', 'consent_records', 'data_subject_requests', 'alert_rules', 'channel_policies', 'report_settings', 'item_category_overrides', 'payment_kind_overrides', 'legal_documents', 'brands', 'zalo_apps', 'oas', 'mini_apps', 'zbs_templates', 'gmf_groups', 'incident_categories', 'approval_request_kinds', 'loyalty_programmes', 'loyalty_staff_phones', 'coupon_rails', 'coupon_rail_rewards', 'coupons')
   ),
   0,
-  'authenticated holds table-wide write privileges only on the manual-input tables, the settings and mappings, strategy_reports, the legal ledgers, alert_rules, channel_policies, the Zalo configuration and incident_categories'
+  'authenticated holds table-wide write privileges only on the manual-input tables, the settings and mappings, strategy_reports, the legal ledgers, alert_rules, channel_policies, the Zalo configuration, incident_categories and the loyalty configuration'
 );
 
 select is(

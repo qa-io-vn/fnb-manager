@@ -3,6 +3,8 @@ import { datapackCommand } from "./datapack.js";
 import { digestCommand } from "./digest.js";
 import { doctorCommand } from "./doctor.js";
 import { iposSnapshotCommands } from "./ipos-snapshot.js";
+import { loyaltyCommands } from "./loyalty.js";
+import { loyaltySaleCommand } from "./loyalty-sale.js";
 import { maskCommand } from "./mask.js";
 import { notifyCommands } from "./notify.js";
 import { notifyJobFailedCommand } from "./notify-job.js";
@@ -34,6 +36,8 @@ export const COMMANDS: readonly CommandSpec[] = [
 	publishPlanCommand,
 	...zaloCommands,
 	photosPruneCommand,
+	...loyaltyCommands,
+	loyaltySaleCommand,
 ];
 
 export function findCommand(words: readonly string[]): CommandSpec | undefined {

@@ -1,4 +1,5 @@
 import type { IposDataSource } from "./ipos-source.js";
+import type { LoyaltyDatabase } from "./loyalty.js";
 
 export type TicketSource = "schedule" | "manual";
 
@@ -24,6 +25,7 @@ export interface RunnerDatabase {
 		tenantId: string,
 		source: IposDataSource,
 	): Promise<IposDataSource | null>;
+	reconcileLoyalty?: LoyaltyDatabase["reconcileLoyalty"];
 }
 
 export const TICKET_PATTERN =

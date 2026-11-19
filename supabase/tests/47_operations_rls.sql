@@ -546,16 +546,18 @@ select is(
   ),
   array['app.accept_staff_notice', 'app.acknowledge_handover', 'app.acknowledge_incident', 'app.add_staff', 'app.can_manage_staff',
         'app.can_manage_store_scope', 'app.can_publish_store_scope', 'app.can_read_store',
-        'app.current_user_channel_ids', 'app.current_user_data_store_ids', 'app.current_user_data_tenant_ids', 'app.current_user_ops_store_ids',
+        'app.current_customer_id', 'app.current_customer_membership_ids', 'app.current_customer_tenant_id',
+        'app.current_user_channel_ids', 'app.current_user_data_store_ids', 'app.current_user_data_tenant_ids',
+        'app.current_user_loyalty_manager_store_ids', 'app.current_user_loyalty_store_ids', 'app.current_user_loyalty_tenant_ids', 'app.current_user_ops_store_ids',
         'app.current_user_revenue_store_ids', 'app.current_user_store_ids', 'app.current_user_tenant_ids', 'app.deactivate_staff', 'app.decide_request',
         'app.has_store_scope', 'app.has_tenant_role', 'app.issue_pairing_code', 'app.link_my_phone', 'app.mark_announcement_read', 'app.my_staff_notice',
         'app.ops_can_manage', 'app.ops_can_read', 'app.ops_can_write_own', 'app.ops_photo_readable', 'app.ops_photo_writable', 'app.publish_announcement',
-        'app.reactivate_staff', 'app.reopen_cash_count', 'app.resolve_incident', 'app.save_checklist_template', 'app.set_announcement_pin',
+        'app.reactivate_staff', 'app.reopen_cash_count', 'app.resolve_incident', 'app.resolve_loyalty_queue_item', 'app.save_checklist_template', 'app.set_announcement_pin',
         'app.set_checklist_template_active', 'app.set_ops_photo_retention_days',
         'app.set_staff_contact_instructions', 'app.set_staff_revenue_visibility', 'app.today_store_totals', 'app.update_staff',
         'app.withdraw_staff_ops_consent', 'public.oa_event_counts', 'public.publish_legal_document', 'public.refresh_my_analytics',
         'public.retire_legal_document'],
-  'the only security definer functions a member may call are the membership helpers, the roster, pairing, staff notice and phone functions, settings and legal functions, today_store_totals, the phase 14b checklist editor, acknowledgement, reopening, photo retention and photo policy functions and the phase 15 announcement and request writers, so no other function reads revenue past RLS'
+  'the only security definer functions a member may call are the membership helpers, the roster, pairing, staff notice and phone functions, settings and legal functions, today_store_totals, the phase 14b checklist editor, acknowledgement, reopening, photo retention and photo policy functions, the phase 15 announcement and request writers, the loyalty and customer-session membership helpers and the loyalty queue resolution, so no other function reads revenue past RLS'
 );
 select col_type_is('public', 'tenants', 'staff_revenue_visibility', 'text', 'tenants.staff_revenue_visibility is text');
 select col_default_is('public', 'tenants', 'staff_revenue_visibility', 'all', 'staff see their stores'' revenue until the owner restricts it');
@@ -603,8 +605,8 @@ select is(
         )
     ) t
   ),
-  array['item_costs', 'items', 'outbound_messages', 'packages', 'payment_fee_rates', 'store_items', 'targets'],
-  'every other table with an amount or a price holds costs, menu prices, fees, targets or message costs, not revenue'
+  array['coupons', 'item_costs', 'items', 'loyalty_ledger', 'loyalty_liability_daily', 'loyalty_programmes', 'outbound_messages', 'packages', 'payment_fee_rates', 'pending_checkins', 'receipt_claims', 'store_items', 'targets'],
+  'every other table with an amount or a price holds costs, menu prices, fees, targets, message costs or loyalty amounts that staff never read, not revenue'
 );
 
 set local role authenticated;

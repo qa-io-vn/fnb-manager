@@ -55,7 +55,18 @@ export function outcomeReport(outcome: IncrementalStoreOutcome): JsonObject {
 			...(outcome.summary ? summaryReport(outcome.summary) : {}),
 		};
 	}
-	return { ...base, ...summaryReport(outcome.summary) };
+	const loyalty: JsonObject =
+		outcome.loyalty === undefined
+			? {}
+			: {
+					loyalty:
+						outcome.loyalty.status === "reconciled"
+							? { status: "reconciled", ...outcome.loyalty.counts }
+							: outcome.loyalty.status === "skipped"
+								? { status: "skipped", reason: outcome.loyalty.reason }
+								: { status: "failed" },
+				};
+	return { ...base, ...summaryReport(outcome.summary), ...loyalty };
 }
 
 function seconds(milliseconds: number): string {

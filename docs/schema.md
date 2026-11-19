@@ -1580,6 +1580,142 @@ A row is deleted at the app's next pairing request once it is stale (15 minutes 
 
 For the login of a first pairing, `zalo-session` creates an Auth user through the admin API with the address `staff-<uuid>@zalo-staff.invalid` (a reserved domain that can never receive mail), a confirmed e-mail and no password, and deletes it again when the pairing does not use it ([decisions.md](decisions.md), ADR-037 as amended).
 
+## Loyalty configuration (phase 16)
+
+Roadmap phase 16, built before the owner's paperwork (#14, #25, #8) so the rules are configuration from the start. Two migrations: `loyalty_programmes` (#239) and `coupon_rails` (#242, the schema part; the CRM setup, the callback and pool imports are #243 to #246). Every parameter is a row: no function holds a mechanic value, so changing a row changes the next earn without a deploy (FR-LOY-03). The zod schemas `loyaltyProgrammeSchema`, `loyaltyParametersSchema` (with `LOYALTY_PARAMETER_RANGES`), `couponRailSchema` and `couponRailRewardSchema` of `@fnb/core` hold the same ranges and rules for the Settings page.
+
+### Enums
+
+| Enum | Labels | Used by |
+| --- | --- | --- |
+| `loyalty_programme_status` | `draft`, `active`, `paused`, `ended` | `loyalty_programmes.status` |
+| `loyalty_notification_decision` | `pending`, `notified`, `below_threshold`, `not_required` | `loyalty_programmes.notification_decision` |
+| `coupon_rail` | `crm_code_pool`, `crm_callback`, `pos_payment_discount` | `coupon_rails.rail` |
+| `einvoice_display` | `discount`, `zero_price_line` | `coupon_rail_rewards.einvoice_display` |
+| `coupon_code_state` | `available`, `assigned`, `used`, `quarantined`, `expired` | `coupon_codes.state` |
+
+### `loyalty_programmes`
+
+One programme of a tenant; at most one is `active` per tenant (a partial unique index). Read by the data roles of the tenant and by a customer session of the tenant when not a draft; written by owners and managers with an unlimited scope. The trigger `app.guard_loyalty_programme()` trims the name, the basis and the excluded sources, stamps `notification_decided_at` when the decision leaves `pending` (and clears it on `pending`), and refuses with `22023` every value outside its range (`app.loyalty_programme_problem`) and `status = 'active'` while the decision is `pending`, for every writer including the service role and the database owner (FR-CMP-15).
+
+| Column | Type | Default | Range or rule |
+| --- | --- | --- | --- |
+| `id`, `tenant_id` | uuid | | unique (`tenant_id`, `id`) |
+| `name` | text | | 1 to 120 characters, no control character |
+| `starts_on`, `ends_on` | date | | `ends_on` null (open-ended) or on or after `starts_on` |
+| `reward_budget_amount` | numeric(14,2) | 0 | 0 or more; drives the 100 M₫ notification question |
+| `status` | loyalty_programme_status | `draft` | `active` needs a decision other than `pending` |
+| `stamps_per_card` | smallint | 8 | 2 to 20 |
+| `stamp_min_bill_amount` | numeric(14,2) | 50,000 | 0 to 10,000,000: the net amount that earns a stamp |
+| `welcome_stamps` | smallint | 2 | 0 to one less than `stamps_per_card` |
+| `point_unit_amount`, `points_per_unit` | numeric(14,2), smallint | 10,000, 1 | 1,000 to 1,000,000; 0 to 100: points per started unit of the net amount |
+| `stamp_validity_months`, `points_expiry_months` | smallint | 6, 12 | 1 to 36; 1 to 60 (points: rolling, from each earn) |
+| `earning_invoices_per_phone_per_day` | smallint | 3 | 1 to 20 |
+| `checkin_window_before_minutes`, `checkin_window_after_minutes` | smallint | 2, 15 | 0 to 30; 1 to 120: the path B window around the recording |
+| `checkin_code_ttl_seconds`, `checkin_pending_hours` | smallint | 120, 24 | 30 to 600; 1 to 168: a code's life, and how long a recorded check-in waits for its invoice |
+| `receipt_claim_window_hours`, `receipt_claims_per_phone_per_day` | smallint | 72, 3 | 1 to 720; 1 to 20 |
+| `excluded_order_sources` | text[] | `{}` | at most 50 names of 1 to 100 characters, matched case-insensitively against `invoices.source_external_id` or `source_name` |
+| `point_value_amount` | numeric(14,2) | 500 | 0 to 1,000,000: the value of a point at issue and in the liability |
+| `expected_breakage_rate` | numeric(4,3) | 0.200 | 0 to 0.9: used until six months of expiry data exist |
+| `notification_decision` | loyalty_notification_decision | `pending` | `not_required` only with `notification_basis` (Decree 239/2026 is unconfirmed; #282 checks again at launch) |
+| `notification_decided_at` | timestamptz | | set by the trigger |
+| `notification_basis` | text | | 1 to 500 characters |
+| `created_by`, `created_at`, `updated_by`, `updated_at` | | | the usual stamps |
+
+### `loyalty_staff_phones`
+
+The staff-phone exclusion list of a tenant (#14): an invoice or a claim of one of these phones never earns, and a member with such a phone gets no welcome stamps. `phone` is normalised to E.164 by `app.normalize_loyalty_staff_phone()` through `app.loyalty_normalize_phone` (`22023` when unreadable; unique per tenant), with an optional `label` of 1 to 100 characters. Read and written by owners and managers of the tenant only (whatever their store scope); staff, viewers, the publisher, a customer session and `anon` read nothing.
+
+### `coupon_rails`
+
+The loyalty rail of each store (FR-LOY-04): `rail`, the CRM programmes by external id (`crm_programme_external_ids`, at most 20), an optional `callback_ip_allowlist` (`cidr[]`, at most 20), `active_from` and `active_until`. The row with `active_until` null is the active one (a partial unique index per store). Switching a rail inserts a row: `app.guard_coupon_rail()` closes the previous row at the new `active_from` (refusing a start before it) and refuses a change of store, rail or start or the reopening of a closed row (`22023`), so the history stays. Read by the data roles, stores in scope; written by owners and managers with an unlimited scope.
+
+### `coupon_rail_rewards`
+
+The POS side of a reward (`reward_key`, `^[a-z0-9][a-z0-9_-]{0,63}$`) at a store, unique per store and reward: `pos_discount_name` (a Fabi payment discount), `pos_free_item_external_id` (a 0-price promotional line) or `crm_programme_external_id` (at least one, a CHECK), and `einvoice_display` (`discount` or `zero_price_line`, the latter needing the free item), with `active`. FR-CMP-11 is kept for every writer by two triggers: `app.guard_coupon()` refuses an active `coupons` row while a store of its scope (its `store_ids`, or every active store of the tenant) has no active mapping, and `app.guard_coupon_rail_reward()` refuses deactivating, deleting or moving a mapping that an active reward needs (`22023`). Same access as `coupon_rails`.
+
+### `coupon_codes`
+
+Single-use POS codes per store and reward (a CRM export pool, imported by #244): `code` (unique per store), `state` with `assigned_at`, `used_at`, `used_invoice_id` and `quarantined_at` required by their states, `expires_at`, `imported_at`. Owners and managers read the codes of their stores; no API role writes them (the service role and the phase 17b functions do).
+
+### The e-invoice flag
+
+`loyalty_rail_flags(store_ids)` returns the active rail of each store with its `e_invoice_status` and `flagged` when the status is not `configured` (FR-CMP-10), as the caller (`security invoker`), for Chất lượng dữ liệu.
+
+## Loyalty ledger (phase 17)
+
+Roadmap phase 17a. Migration `loyalty_ledger` (#247) holds the tables; `loyalty_earn` (#248), `loyalty_matching` (#249) and `loyalty_jobs` (#250) the functions, the refusals, the queue and the liability. The ledger is the system of record (ADR-016); the synced invoice is the only proof of purchase.
+
+### Enums
+
+| Enum | Labels | Used by |
+| --- | --- | --- |
+| `membership_status` | `active`, `suspended`, `closed` | `memberships.status` |
+| `loyalty_entry_kind` | `earn`, `confirm`, `clawback`, `redeem`, `adjust`, `expire` | `loyalty_ledger.entry_kind` |
+| `stamp_state` | `active`, `redeemed`, `expired`, `clawed_back` | `stamps.state` |
+| `checkin_status` | `issued`, `recorded`, `matched`, `queued`, `expired`, `rejected` | `pending_checkins.status` |
+| `receipt_claim_status` | `pending`, `matched`, `queued`, `rejected`, `expired` | `receipt_claims.status` |
+| `redemption_state` | `held`, `confirmed`, `released`, `cancelled` | `redemptions.state` |
+| `loyalty_queue_state` | `open`, `resolved`, `dismissed` | `loyalty_queue.state` |
+
+### Tables
+
+| Table | Holds | Key rules |
+| --- | --- | --- |
+| `memberships` | a customer's membership of a programme: `customer_id` (the phone stays on `customers`), `joined_at`, `channel` (`mini_app`, `oa_form`, `till`, `staff`, `import`), `status`, `joined_store_id`, and only the per-brand `zalo_user_id` of `brand_id` (NFR-PRV-07) | unique (`programme_id`, `customer_id`); no balance column |
+| `loyalty_ledger` | every movement: `entry_kind`, `stamp_delta`, `point_delta`, `value_amount` (points × `point_value_amount` at issue), `invoice_id` and `business_date`, `matched_path` (`A` to `D`), `pending`, `source_entry_id`, `reason`, `approved_by`, `expires_at` (the points' expiry of a crediting row), `occurred_at` | an invoice for every earn, confirm and clawback; a path on every earn and only there; a source for every confirm and clawback; a reason for every adjust and clawback; signs per kind; one earn per invoice, one confirm and one clawback per entry (unique indexes) |
+| `stamps` | one row per stamp a ledger row credited, with `earned_at` (the sale time), `expires_at` and `state`, closed by the clawback, redemption or expiry row | a working table: the balance comes from the ledger only |
+| `pending_checkins` | path B: `code` (6 digits, unique per store while `issued`), `expires_at`, `recorded_at`, `recorded_by`, `amount` typed by staff, `status`, `matched_invoice_id`, `matched_entry_id`, `reason` | one check-in per matched invoice |
+| `receipt_claims` | path C: `store_id`, `business_date`, `receipt_no`, `amount`, `status`, `expires_at`, `invoice_id`, `entry_id`, `reason` | one claim per invoice for ever; one open (`pending`, `matched`, `queued`) claim per store, business date and receipt number, because receipt numbers reset daily at one shop and yearly at the other (ADR-024) |
+| `coupons` | the reward catalogue (completed in #269): `reward_key`, `name`, `cost_stamps`, `cost_points`, `min_bill_amount`, `valid_days`, `hold_hours`, `store_ids`, `active` | active only with a mapping at every store in scope (above) |
+| `redemptions` | a hold of a coupon by a member: `code` (unique per store while `held`), `coupon_code_id`, `state`, `hold_expires_at`, `redeem_entry_id`, `confirmed_invoice_id` | confirmed by the synced invoice carrying the code (path D) |
+| `loyalty_refusals` | why an invoice did not earn for a membership: `reason` (`below_minimum`, `daily_cap`, `excluded_phone`, `excluded_source`, `already_earned`, `invoice_not_completed`, `programme_inactive`, `membership_inactive`), `matched_path`, store and business date, for the shift anomaly report | unique per invoice, membership and reason; a refused invoice is not tried again on path A |
+| `loyalty_queue` | a check-in or claim with 2 to 20 candidate invoices within tolerance (`two_candidates`, `duplicate_receipt`), its `state` and resolution (`resolved_by`, `chosen_invoice_id`, `resolution_reason`, `entry_id`) | one item per check-in or claim |
+| `loyalty_liability_daily` | per programme and local day: members, outstanding points and stamps (positive confirmed balances), `point_value_amount`, `expected_breakage_rate` with `breakage_source` (`configured` or `observed`), `liability_amount`, the day's issued, redeemed, expired and clawed-back points, the deferred revenue released by redemptions and `breakage_by_cohort` (issued and expired points per issue month) | unique per programme and day; a re-run replaces the row |
+
+Every table carries `tenant_id` and composite foreign keys to the tenant's stores, memberships, invoices and ledger rows (`invoices` and `customers` gained `unique (tenant_id, id)` for this, and `invoices` two partial indexes for paths C and D: (`store_id`, `business_date`, `receipt_no`) and (`store_id`, `voucher_code`)).
+
+### Append-only rule
+
+`app.keep_loyalty_ledger()` refuses every update and delete of a ledger row and `app.refuse_loyalty_ledger_truncate()` every truncate, for every role, the service role and the database owner included; setting the flag `app.loyalty_erasure` does not help the service role. Corrections are new rows that reference the original (`source_entry_id`). Two deletions pass: `app.erase_loyalty_membership(membership)`, the data-subject deletion (it runs as the owner, sets the transaction-local flag and removes the membership's queue items, refusals, stamps, redemptions, claims, check-ins, ledger rows and the membership, returning the counts; the cascade to customers and consent evidence is #252), and the cascade of a deleted tenant.
+
+### Access
+
+Owners, managers and viewers read memberships, stamps and the liability of their tenants and the ledger, check-ins, claims, redemptions and refusals of the stores in their scope (ledger rows without a store with the tenant); owners and managers read the queue of their stores. Staff read none of it: they reach loyalty rows through the functions of phase 17b. The publisher and `anon` read nothing. A customer session reads only its own rows: `app.current_customer_id()` accepts a JWT whose `app_metadata` holds `kind` `customer`, `tenant_id` and `customer_id` when that customer belongs to that tenant, and `app.current_customer_membership_ids()` lists its memberships; such a session also reads its own `customers` row, its tenant's programmes that are not drafts and its tenant's active `coupons`. No API role writes these tables; `coupons` is written by owners and managers with an unlimited scope.
+
+### Loyalty functions (phase 17)
+
+Every function sets an empty `search_path`. The `app` functions are `security definer` and executable by the service role only (the jobs connect as the owner), except the balance (`security invoker`) and the queue resolution.
+
+| Function | Does |
+| --- | --- |
+| `app.loyalty_normalize_phone(text)` | E.164 or null: spaces, dots, dashes and brackets dropped; `00` read as `+`; a national number with a leading 0 and the bare 84 prefix read as Vietnamese. `normalizeLoyaltyPhone` of `@fnb/core` is the same rule |
+| `app.loyalty_customer_for_phone(tenant, phone, at)` | the tenant's `customers` row of a phone in any form, created with the E.164 phone when missing |
+| `app.loyalty_active_programme(tenant, on)` | the active programme covering a day |
+| `app.loyalty_join(tenant, customer, channel, store, brand, zalo_user_id, at)` | the membership id in the active programme; the first join credits `welcome_stamps` (an `adjust` row, reason `welcome`, with their stamps rows), except for a staff phone; idempotent |
+| `app.loyalty_earn(invoice, membership, path, at, pending, approved_by)` | one earn per invoice: a stamp when the net amount reaches `stamp_min_bill_amount`, `points_per_unit` per started `point_unit_amount`; refuses in this order `already_earned`, `membership_inactive`, `invoice_not_completed`, `programme_inactive` (paused, or the invoice outside the period), `excluded_source`, `excluded_phone` (the member's or the invoice's phone), `daily_cap` (earns not clawed back on the invoice's business date), and notes `below_minimum` when no stamp is earned (points may still be). Returns (`entry_id`, `stamps`, `points`, `refusal`) and stores each refusal |
+| `app.loyalty_confirm(entry, invoice, at)` | confirms a pending earn or redemption hold with a `confirm` row naming the invoice; idempotent; a reversed entry is refused |
+| `app.loyalty_clawback(invoice, reason, at)` | reverses every earn of the invoice not yet reversed and closes its active stamps; a redeemed stamp stays redeemed, so the balance may go negative; the reason defaults to `invoice_voided` or `invoice_edited`; a completed invoice needs one |
+| `app.loyalty_expiring_points(membership, as_of)`, `app.loyalty_expire(tenant, as_of)` | stamps past their `expires_at` and points first in first out (credits past their expiry, net of their clawbacks, less everything already spent, held, adjusted away or expired), one `expire` row per membership; counts only |
+| `app.loyalty_balance(membership, at)` and `public.loyalty_balance(membership)` | spendable and pending stamps and points, card progress, next stamp expiry and the points value, as the caller |
+| `app.loyalty_issue_checkin_code(membership, store, at)` | path B: a fresh 6-digit code valid `checkin_code_ttl_seconds`, replacing the member's live code at that store |
+| `app.loyalty_record_checkin(store, code, recorded_by, amount, at)` | path B: staff record a live code (`22023` when unknown or expired); matched at once when the invoice is synced, otherwise a fast-lane run is requested |
+| `app.loyalty_match_checkin(checkin, at)` | path B: completed invoices of the store sold from `checkin_window_before_minutes` before to `checkin_window_after_minutes` after the recording, not earned, matched or claimed, ranked by the gap to the typed amount and then by time; two candidates equally close go to the queue |
+| `app.loyalty_submit_claim(membership, store, business_date, receipt_no, amount, at)` | path C: records the claim; a refusal is stored as a `rejected` claim with `membership_inactive`, `outside_window` (a business date older than `receipt_claim_window_hours` or in the future), `daily_cap` (`receipt_claims_per_phone_per_day` submissions on the store's business day) or `already_claimed` (an open claim of the receipt, by this or another phone); matched at once when the invoice is synced, otherwise a fast-lane run is requested |
+| `app.loyalty_match_claim(claim, at)` | path C: the invoice of the store, business date and receipt number (leading zeros ignored) with the exact net amount; `amount_mismatch`, `already_claimed`, `already_earned`, `invoice_not_completed` and earn refusals reject it; two such invoices go to the queue; past `expires_at` without an invoice it expires (`no_matching_invoice`) |
+| `app.reconcile_loyalty(tenant, from, to, at)` | the step after every sync (at most 63 days; nothing without an active programme): path A for invoices of the range carrying a member's customer or phone (sold no earlier than the claim window before joining), path B for recorded check-ins, path C for pending claims, path D for held redemptions whose code (case-insensitive) is on an invoice of the range (confirming the redemption, its hold and its pool code, then earning), then expiry of stale codes, check-ins (`checkin_pending_hours`) and claims; idempotent; returns counts |
+| `app.resolve_loyalty_queue_item(item, choice, reason)` and `public.resolve_loyalty_queue_item` | an owner or manager of the store earns the chosen candidate (`approved_by` the caller) or dismisses the item |
+| `app.request_fast_lane(store, reason, at)` | records a fast-lane request in `app.loyalty_fast_lane_runs`: joins the store's run not yet claimed, or opens one due at once, or 5 minutes after the previous run's start when that is later; calls nothing |
+| `app.claim_fast_lane_runs(at, limit)`, `app.finish_fast_lane_run(run, outcome, at)` | hand each due run out once with its 60-minute window and record its outcome; requests unclaimed for an hour close as `expired`; `postgres` only |
+| `app.loyalty_liability(programme, as_of)` | stores the day's `loyalty_liability_daily` row: outstanding points × `point_value_amount` × (1 − breakage); breakage is `expected_breakage_rate` until the programme's first expiry is six months old, then expired ÷ (redeemed + expired) points of the last 12 months |
+| `app.loyalty_nightly(tenant, as_of)` | clawback of earns whose invoice the re-pull marked `voided` or `edited`, `loyalty_expire`, then the liability of each active or paused programme; counts only |
+| `app.loyalty_tenants()` | the tenants with an active or paused programme |
+| `app.erase_loyalty_membership(membership)` | the data-subject deletion above |
+
+### Where the steps run
+
+`@fnb/runner` ends every incremental run (the `sync-incremental` Edge Function and `fnb sync incremental`) with `app.reconcile_loyalty` over the run's window, and `fnb sync window` does the same after each window run; `--kind nightly` then runs `app.loyalty_nightly` for the account's tenant. `fnb loyalty nightly` reconciles the last 14 business days and runs the nightly step on demand, `fnb loyalty reconcile` reconciles a range. A failure of a loyalty step is reported and never fails the sync (NFR-AVL-04). The fast lane calls the POS only from `fnb loyalty fast-lane` with `LOYALTY_FAST_LANE=on`; it is off by default and nothing schedules it.
+
 ## Row-level security
 
 Every table in `public` has RLS enabled. `anon` holds no privilege on any table. `authenticated` holds `SELECT` on every table except the token caches `pos_account_tokens` and `zalo_tokens` and the OA webhook's event log `oa_events`, `INSERT`, `UPDATE`, `DELETE` only on the manual-input tables (`item_costs`, `payment_fee_rates`, `item_type_roles`, `holidays`, `targets`), the report settings and mappings (`report_settings`, `item_category_overrides`) and `strategy_reports`, `INSERT`, `UPDATE` without `DELETE` on the legal ledgers `consent_records` and `data_subject_requests`, `INSERT`, `UPDATE`, `DELETE` on the notification settings `alert_rules` and `channel_policies`, and `INSERT`, `UPDATE`, `DELETE` on the six Zalo configuration tables (`brands`, `zalo_apps`, `oas`, `mini_apps`, `zbs_templates`, `gmf_groups`). On `notification_channels` it holds column-level `SELECT` only, without `address`, `secret_name` and `config`, and on `staff_roster` column-level `SELECT` only, without `phone`, and no write privilege (phase 14a). Default privileges are set so that a future table created by the migration role starts read-only for `authenticated` and invisible to `anon`. The sync jobs run as `service_role`, which bypasses RLS.
@@ -1719,7 +1855,7 @@ The database therefore refuses a row that names tenant A together with a store o
 | --- | --- |
 | `01_schema.sql` | Schemas, helper functions, enums with their labels (the phase 12 enums and the `notifications` purpose included), tables and key columns |
 | `02_unique_keys.sql` | Unique natural keys and the tenant-consistent composite foreign keys |
-| `03_rls_enabled.sql` | RLS on every table of `public` with the expected table count (66 since `staff_roster`), no policy on the token caches `pos_account_tokens` and `zalo_tokens` and on the event log `oa_events`, write policies and grants audited (`alert_rules`, `channel_policies`, `report_settings`, `item_category_overrides` and the six Zalo configuration tables on the allow-lists), default privileges for future tables, no privilege for `anon` |
+| `03_rls_enabled.sql` | RLS on every table of `public` with the expected table count (96 since the loyalty tables of phases 16 and 17), no policy on the token caches `pos_account_tokens` and `zalo_tokens` and on the event log `oa_events`, write policies and grants audited (`alert_rules`, `channel_policies`, `report_settings`, `item_category_overrides` and the six Zalo configuration tables on the allow-lists), default privileges for future tables, no privilege for `anon` |
 | `04_tenant_isolation.sql` | Two-tenant isolation of reads |
 | `05_write_policies.sql` | Who may write the manual-input tables |
 | `06_anon_and_tokens.sql` | `anon` reads nothing; the token cache is service-role only |
@@ -1765,5 +1901,11 @@ The database therefore refuses a row that names tenant A together with a store o
 | `47_operations_rls.sql` | Operations access and revenue levels (111 tests): the four helpers for an unlimited and a store-limited owner, an unlimited and a one-store manager, staff of one and of every store, a viewer, the publisher, another tenant and a login without membership, at a store, another store and tenant-wide; the policy template on a table built inside the test (staff insert and update their own rows in their store and delete nothing, managers update and delete in theirs, an owner in any store, nobody crosses a tenant) and every table using the helpers carrying exactly the four policies; `staff_revenue_visibility` defaulting to `all`, set only by an owner with every store (store-limited owners, managers, staff, viewers, the publisher, another tenant's owner, an unknown or missing level and a direct update refused) with the profile stamps; `today_store_totals` by each store's business date with voided and earlier invoices left out, for each role and level; at `none` and `store_totals` staff read no row of the revenue tables and live views, and every report function taking a store list and `metric_value` return them no revenue; at `all` staff get exactly what a manager of the same store gets; owners, managers and viewers unchanged at every level |
 | `48_staff_consent.sql` | The staff notice and `staff_ops` consent (72 tests): the consent states, a tenant without a published notice, no `staff_ops` row inserted or changed from the browser by any role, one active row per person, the evidence without identifiers, a current consent signing in, the owner reading the row, `my_staff_notice` for the person, an owner who is not on the roster (`not_required`) and an outsider (refused); a newly published notice making the consent outdated and the session asking for it again, then accepting it; a withdrawal revoking the consent, unpairing the identity and leaving the next call unpaired, a second withdrawal changing nothing, the `notifications` consent kept; the seeded notice |
 | `49_staff_pairing.sql` | Pairing codes and the pairing step (125 tests): who issues a code (an owner, a store manager for their store only, a store-limited owner, an unlimited manager; staff, a viewer, the publisher, another tenant, a login without membership, a request without a login, an unknown row and `anon` refused); six digits stored as a hash, one per row, 10 minutes; a first pairing with the notice creating the login, the consent, the membership with the roster's role and stores and the identity, the code used once, the next sign-in without a code, the new member reading only their store and their own row; five wrong codes tolerated and the sixth burning the tenant's codes and the app's binding codes; an identity waiting 15 minutes after its fifth wrong code and its later requests not counting; a second identity of the same person; a new code for an active row; deactivation deleting the live code, an inactive row getting no code, a deactivated person unpaired at the next call, then reactivated and paired again as the same login; wrong, expired, used, deactivated and conflicting codes giving the same answer; a row bound to an owner, viewer or publisher login getting no code; a newer notice through the pairing request; `link_my_phone` (international form, own row only, removal, never gating the sign-in); a withdrawal unpairing both identities; refusals of malformed input |
+| `60_loyalty_programmes.sql` | Loyalty programmes and staff phones (59 tests): defaults, the activation hold for the owner, the service role and an owner, `not_required` with its basis, one active programme, every range refused with `22023` and every boundary accepted, RLS per role and for a customer session, phone normalisation |
+| `61_coupon_rails.sql` | Rails, reward mappings and pool codes (48 tests): one active rail per store, switching with history, the e-invoice flag, the mapping rule for every writer, code states, RLS per role |
+| `62_loyalty_ledger_schema.sql` | The ledger schema (55 tests): the append-only rule for the owner, the service role and members, an earn without an invoice and a second earn refused, cross-tenant references refused, RLS per role and for a synthetic customer claim, the balance, the data-subject deletion and the tenant cascade |
+| `63_loyalty_earn.sql` | Earn, confirm, clawback and expire (59 tests): joining and the welcome stamps, each anti-fraud rule with its reason, a changed parameter, pending and confirmed earns, clawbacks with a negative balance after a redemption, stamp and FIFO point expiry, and the 30-day replay with 50 synthetic phones against the expected ledger of `@fnb/core` (`packages/core/test/fixtures/loyalty-replay.json`, embedded verbatim), re-run idempotent |
+| `64_loyalty_matching.sql` | Matching (54 tests): paths A to D with their letters, the −2/+15 minute edges, the closest amount, the double candidate in the queue and its resolution by a manager (staff and another store refused), claims twice, by a second phone, with the wrong amount, outside the window, over the daily cap and of an earned receipt, duplicate receipts queued, expiry, re-run idempotent |
+| `65_loyalty_jobs.sql` | Loyalty jobs (32 tests): fast-lane coalescing, spacing, claiming and expiry, the nightly clawback of a voided invoice, stamp expiry, the liability against a hand calculation with the configured and the observed breakage, RLS |
 
 The notification tests (26 to 32) build their own fixture tenants (`notify-it-pgtap-…`), the phase 10 tests (33 to 39) theirs (`theme-pgtap-…`), the phase 11 tests (40 and 41) theirs (`pack-pgtap…`, `export-pgtap…`), the Zalo configuration test (42) `zalo-it-pgtap-a` and `zalo-it-pgtap-b`, the iPOS source test (43) `ipos-source-…`, the Zalo identity and events tests (44, 45) `zalo-it-pgtap-identity-…` and `zalo-it-pgtap-events-…`, the phase 14a tests (46 to 49) `roster-pgtap-a` and `-b`, `ops-rls-pgtap-x` and `-y`, `consent-pgtap-c` and `-d` and `pairing-pgtap-p` and `-o` (47 also reads the demo tenant's seeded window to compare report functions by role), and destinations on `_IT` secret names and pass a tenant filter to every scanning function. The analytics tests scope every count to the demo tenant, and the report tests to their own fixture tenants (and the demo tenant where they compare with the seed), so further tenants in the database do not change their outcome. The seed is synthetic and the tests create their own fixture users and tenants inside a rolled-back transaction.

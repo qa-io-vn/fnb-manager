@@ -235,6 +235,7 @@ Each table lists the threats, the controls that exist with their status, and the
 | Auth administration | `fnb tenant add-member`; `zalo-session` to mint a bound member's session and to create (and, when unused, delete) the login of a first pairing | The secret API key against the Auth admin API | not applicable | verified locally; the Zalo use built against a mock |
 | Local loop visitor | Whoever opens the link `pnpm zalo:dev --lan` or `--tunnel` prints (section 4.9) | The 256-bit key in the link, exchanged once for an HttpOnly cookie; the loop's `zalo-session` then signs its mock Zalo user in as the member it bound, on the local stack only | `authenticated` as that member | built; developer machines only |
 | Caller without a session | Anyone holding the bundle | The publishable key | `anon`, which may do nothing | verified locally |
+| Customer session (phases 17 and 18, prepared) | A customer in the customer Mini App | A session minted by the server for an Auth user whose `app_metadata` holds `kind` `customer`, `tenant_id` and `customer_id`; only the service role sets `app_metadata`. `app.current_customer_id()` accepts the claim only when that customer belongs to that tenant; the user has no `tenant_members` row | `authenticated`, reading its own loyalty rows, its own `customers` row, its tenant's programmes that are not drafts and its active rewards | RLS built and tested with a synthetic claim (pgTAP `60` and `62`); the minting function is not built |
 | Digest builder | `fnb digest` | Switches to `authenticated` with the recipient's claims inside a read-only transaction | `authenticated` | in build (12b) |
 
 ### 5.2 Roles and store scope
@@ -289,9 +290,20 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Write the Zalo configuration | unlimited | no | no | no | no |
 | Write Zalo identities | no | no | no | no | no |
 | Read the OA webhook's day counts (`oa_event_counts`) | yes | no | no | no | no |
+| Read loyalty programmes | yes | yes | yes | yes | no |
+| Write loyalty programmes (activation refused while the notification decision is `pending`, for every writer) | unlimited | unlimited | no | no | no |
+| Read and write the loyalty staff-phone list (`loyalty_staff_phones`) | yes | yes | no | no | no |
+| Read coupon rails and reward mappings | scope | scope | scope | scope | no |
+| Write coupon rails, reward mappings and the reward catalogue (`coupons`) | unlimited | unlimited | no | no | no |
+| Read pool codes (`coupon_codes`) and the loyalty queue | scope | scope | no | no | no |
+| Read memberships, stamps and the liability (tenant-wide), the ledger, check-ins, claims, redemptions and refusals | scope (tenant rows: yes) | scope (tenant rows: yes) | no (phase 17b functions only) | scope (tenant rows: yes) | no |
+| Resolve a loyalty queue item (`resolve_loyalty_queue_item`) | scope | scope | no | no | no |
+| Write memberships, the ledger, stamps, check-ins, claims, redemptions, refusals, pool codes or the liability | no | no | no | no | no |
 | Read the OA webhook's events (`oa_events`), the binding codes, the pairing codes and wrong-code counts, a staff member's phone, the POS or Zalo token caches, the payload documents or anything in `app` | no | no | no | no | no |
 
 Destinations are created, linked and withdrawn through `security definer` functions and the CLI, not by direct writes.
+
+Loyalty rows are written only by `app` functions run by the service role and the jobs (`app.loyalty_join`, `app.loyalty_earn`, `app.reconcile_loyalty`, the claim and check-in helpers, the nightly step). `loyalty_ledger` is append-only for every role, the service role and the database owner included: a trigger refuses every update, delete and truncate, and only `app.erase_loyalty_membership`, the data-subject deletion run as the owner with a transaction-local flag, or the deletion of the whole tenant removes rows. The customer session (section 5.1) reads only rows of its own memberships. The simulated till (`pnpm loyalty:sale`, `fnb loyalty sale`) writes synthetic sales only to the local stack and refuses `live-local` and every tenant registered as fed by the real iPOS API. The fast lane records requests in the database; it calls the POS only from `fnb loyalty fast-lane` with `LOYALTY_FAST_LANE=on`, which nothing schedules.
 
 ### 5.4 Database hardening
 

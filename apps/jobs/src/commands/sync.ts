@@ -3,6 +3,7 @@ import {
 	type ConnectorSession,
 	clearAuthFailure,
 	connectAccount,
+	loyaltyLine,
 	readOnlyTokenStore,
 	repositoryTokenStore,
 } from "@fnb/runner";
@@ -34,6 +35,7 @@ import {
 	printIposMode,
 	tenantFor,
 } from "./ipos.js";
+import { nightlyAfterWindow, reconcileAfterWindow } from "./loyalty.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
 import {
 	checkYesterdayFreshness,
@@ -155,9 +157,32 @@ export async function syncAccountWindow(
 		session.ipos,
 	);
 	output.summary(windowSummaryMarkdown(index, summary));
+	if (!request.dryRun && summary.runId !== null) {
+		const loyalty = await reconcileAfterWindow(
+			context.services.db().runner,
+			account.tenant_id,
+			summary.window,
+			context.now(),
+			context.redact,
+		);
+		if (loyalty.status !== "skipped" || loyalty.reason !== "not_wired") {
+			output.line(`${label}: ${loyaltyLine(loyalty)}`);
+		}
+	}
 	await reportRunFailure(context, configured, account, summary);
 	if (request.kind === "nightly" && !request.dryRun) {
 		await checkYesterdayFreshness(context, configured, account, stores);
+		const nightly = await nightlyAfterWindow(
+			context.services.db().runner,
+			account.tenant_id,
+			label,
+			context.now(),
+			context.redact,
+		);
+		if (nightly !== null) {
+			output.line(nightly);
+			output.summary(`- ${nightly}`);
+		}
 	}
 	return summary;
 }

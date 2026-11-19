@@ -1659,6 +1659,43 @@ returns TABLE(request_id uuid, tenant_id uuid, store_id uuid, kind_key text, kin
 
 Migration `staff_alert_rules` (#230) adds no function for members. It adds seven catalogue rules (26 in all): `staff_sync_stale` (staff and managers of the store, 6-hour cool-down; it opens while an owner-facing `sync_stale` or `sync_failed` episode of the store, or an `auth_failed` episode of its POS account, is open, and carries no fact at all), `abnormal_voids` (owners and managers; a closed shift of today or yesterday whose void or removed-line rate scores above `z_threshold`, 2 by default, against the store's shifts of the 56 days before, as `shift_adjustments` computes it, with at least `min_events` voids or removed lines), `voucher_spike` (owners and managers; the invoices with a voucher on a day at or above `min_vouchers` and above `ratio` times the same weekday's mean count or share over `weeks` weeks), `checklist_unfinished` (staff and managers of the store; a checklist with no finished run `grace_minutes` after its shift phase ends: opening at the store's first opening, midshift halfway through the day, closing at its last close, so a store without opening hours is not checked), `staff_daily_digest` (staff only; the daily digest in the staff form), `oa_inactive` (owners; from `warn_after_days`, 150 by default, without an OA message to a follower, with a reminder every 7 days) and `mini_app_visits_low` (owners; fewer than `min_visits`, 10 by default, projected over the month from `min_days` into it). Facts are count-only and never hold an amount, a title, a name or a voucher code. `app.evaluate_staff_rules(p_at, p_tenant_id, p_source)` evaluates them all for the postgres connection of the incremental sync (`p_source` `incremental`) and of the nightly job (`nightly`); neither calls it yet. `app.due_staff_digests` and `app.enqueue_staff_digest_message` give the digest builder the staff scopes, built as a staff member so that RLS keeps the figures to the tenant's `staff_revenue_visibility`; the daily digest can never take staff among its roles (`22023`). Visits are counted per Mini App and month in `mini_app_visits` by `public.zalo_session_visit(p_zalo_app_id, p_kind)`, which only the service role may execute, for `zalo-session`; it is not listed above because no member may call it. Migration `job_event_and_package_brand` lets `app.record_job_event` take the workflow key `zalo_tokens` and adds the brand key (`brand`, such as `brand-1`) to the facts of `oa_package_expiring`. Tests: pgTAP `56_staff_rules.sql`, `26_notify_schema.sql` and `31_notify_access.sql`.
 
+### 3.19 Loyalty (phases 16 and 17)
+
+Migrations `loyalty_programmes` (#239), `coupon_rails` (#242, schema only), `loyalty_ledger` (#247), `loyalty_earn` (#248), `loyalty_matching` (#249) and `loyalty_jobs` (#250) add three functions a client may call. Everything else in the loyalty engine is an `app` function for the service role and the jobs ([schema.md](schema.md#loyalty-functions-phase-17), "Loyalty functions"): the earn, confirm, clawback and expiry functions, the reconciliation `app.reconcile_loyalty`, the customer-facing helpers `app.loyalty_join`, `app.loyalty_issue_checkin_code` and `app.loyalty_submit_claim` that a later customer function will wrap, the staff helper `app.loyalty_record_checkin`, the fast-lane requests and the nightly step. Owners and managers with an unlimited scope write `loyalty_programmes`, `coupon_rails`, `coupon_rail_rewards` and `coupons` directly, and owners and managers write `loyalty_staff_phones` ([section 4](#loyalty-phases-16-and-17)). A customer session (a JWT whose `app_metadata` holds `kind` `customer`, `tenant_id` and `customer_id`, the customer belonging to that tenant) reads only its own loyalty rows. No client calls these functions yet. Tests: pgTAP `60_loyalty_programmes.sql` to `65_loyalty_jobs.sql`.
+
+#### `public.loyalty_balance`
+
+```sql
+public.loyalty_balance(p_membership_id uuid)
+returns TABLE(membership_id uuid, programme_id uuid, stamps integer, points integer, pending_stamps integer, pending_points integer, stamps_per_card smallint, cards_completed integer, stamps_on_card integer, next_stamp_expiry timestamp with time zone, points_value_amount numeric)
+```
+
+- **Status:** built (phase 17a, #247).
+- **Who may call:** anyone signed in; `security invoker`, so the row comes back only for a membership the caller reads: a customer session its own memberships, owners, managers and viewers every membership of their tenants. Staff, the publisher and anyone else get no row.
+- **Notes:** the balance is computed from `loyalty_ledger`, never stored. `stamps` and `points` are spendable: confirmed earns, adjustments (the welcome stamps), redemption holds and redemptions, clawbacks and expiries; they may be negative after a clawback of a redeemed earn. `pending_stamps` and `pending_points` are earns waiting for their confirm row. `cards_completed` and `stamps_on_card` divide the spendable stamps by the programme's `stamps_per_card`; `next_stamp_expiry` is the earliest expiry of an active stamp; `points_value_amount` is the points times the programme's `point_value_amount`. Pending check-ins and receipt claims (paths B and C, shown as waiting for confirmation) are rows of `pending_checkins` and `receipt_claims` the session reads directly.
+
+#### `public.loyalty_rail_flags`
+
+```sql
+public.loyalty_rail_flags(p_store_ids uuid[])
+returns TABLE(store_id uuid, rail coupon_rail, active_from timestamp with time zone, e_invoice_status e_invoice_status, flagged boolean)
+```
+
+- **Status:** built (phase 16b, #242); the data-quality page does not show it yet.
+- **Who may call:** anyone signed in; `security invoker`, so only the stores whose rails the caller reads (data roles, stores in scope).
+- **Notes:** the active rail of each given store that has one, with the store's `e_invoice_status`; `flagged` is true when the store does not issue cash-register e-invoices (`e_invoice_status` other than `configured`), the FR-CMP-10 flag for Chất lượng dữ liệu.
+
+#### `public.resolve_loyalty_queue_item`
+
+```sql
+public.resolve_loyalty_queue_item(p_item_id uuid, p_choice uuid, p_reason text)
+returns jsonb
+```
+
+- **Status:** built (phase 17a, #249); the queue page is #253.
+- **Who may call:** an owner or a manager whose scope holds the item's store; anyone else, or an unknown item, gets `42501`. A closed item, a reason outside 1 to 200 characters or with a control character, or a `p_choice` that is not one of the item's `candidate_invoice_ids` gives `22023`.
+- **Notes:** `p_choice` earns the chosen invoice for the member on the item's path (`B` or `C`) with the caller as `approved_by`, the anti-fraud rules applied as for any earn, and closes the check-in or claim as `matched` (or `rejected` with the refusal reason); `null` dismisses the item and rejects the check-in or claim with reason `dismissed`. Returns `{"state", "entry_id", "refusal"}`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -1791,6 +1828,28 @@ Built (migration `announcements_and_requests`; pgTAP `55_announcements_requests.
 | `announcement_receipts` | Đã đọc: one receipt per reader (`created_by`) and announcement, with `read_at` | each reader their own; owners and managers whose scope meets the reader's stores | none ([`mark_announcement_read`](#publicmark_announcement_read)) | none |
 | `approval_request_kinds` | the four Vietnamese default kinds (global rows) and a tenant's overrides and additions | global rows: every signed-in user; tenant rows: owners, managers and staff of the tenant | [owners with an unlimited scope](#writes-through-tables) | none |
 | `approval_requests` | a request to the managers of a store: kind key, details, requester, status (`pending`, `approved`, `refused`), who decided and when, the reason of a refusal | the requester; owners and managers of the store | [the requester](#writes-through-tables) | none |
+
+### Loyalty (phases 16 and 17)
+
+Built locally (migrations `loyalty_programmes` to `loyalty_jobs`, pgTAP `60` to `65`; #239, #242, #247 to #250); empty until a programme is configured. Customer data is read by owners, managers and viewers only: staff reach loyalty rows through the functions of phase 17b, the publisher and `anon` read nothing. A customer session reads its own rows where the table says so. Columns and rules are in [schema.md](schema.md#loyalty-configuration-phase-16).
+
+| Relation | Purpose | Who reads | Client writes | Read by a client today |
+|---|---|---|---|---|
+| `loyalty_programmes` | a programme: period, reward budget, status, the mechanic and anti-fraud parameters, the notification decision | data roles of the tenant; a customer session its tenant's programmes that are not drafts | owners and managers with an unlimited scope; `active` is refused while the decision is `pending` | none |
+| `loyalty_staff_phones` | the staff phones that never earn, in E.164 form | owners and managers of the tenant | owners and managers of the tenant | none |
+| `coupon_rails` | the rail of each store (`crm_code_pool`, `crm_callback`, `pos_payment_discount`) with its history | data roles, stores in scope | owners and managers with an unlimited scope; switching inserts a row | none |
+| `coupon_rail_rewards` | the POS side of each reward per store and its e-invoice display | data roles, stores in scope | owners and managers with an unlimited scope | none |
+| `coupon_codes` | single-use POS codes of a reward per store and their state | owners and managers, stores in scope | none | none |
+| `memberships` | a customer's membership of a programme, with the per-brand Zalo user id only | owners, managers and viewers of the tenant; a customer session its own | none (`app.loyalty_join`) | none |
+| `loyalty_ledger` | the append-only ledger: earn, confirm, clawback, redeem, adjust, expire, with the value at issue and the matched path | owners, managers and viewers, stores in scope (rows without a store: the tenant); a customer session its own | none | none |
+| `stamps` | one row per stamp with its expiry and state | owners, managers and viewers of the tenant; a customer session its own | none | none |
+| `pending_checkins` | path B check-in codes, their recording by staff and their match | owners, managers and viewers, stores in scope; a customer session its own | none | none |
+| `receipt_claims` | path C receipt claims and their outcome with its reason | owners, managers and viewers, stores in scope; a customer session its own | none | none |
+| `coupons` | the reward catalogue (completed in 18b); active only when every store in scope maps it | data roles of the tenant; a customer session its tenant's active rewards | owners and managers with an unlimited scope | none |
+| `redemptions` | holds and confirmations of rewards | owners, managers and viewers, stores in scope; a customer session its own | none | none |
+| `loyalty_refusals` | why an invoice did not earn, for the shift anomaly report | owners, managers and viewers, stores in scope | none | none |
+| `loyalty_queue` | check-ins and claims with two candidate invoices, waiting for a manager | owners and managers, stores in scope | none ([`resolve_loyalty_queue_item`](#publicresolve_loyalty_queue_item)) | none |
+| `loyalty_liability_daily` | the nightly points liability, breakage and deferred revenue per programme and day | owners, managers and viewers of the tenant | none | none |
 
 ## 5. Edge Function endpoints
 

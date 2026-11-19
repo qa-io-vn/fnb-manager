@@ -32,6 +32,11 @@ import {
 import { guardIposTenant, IposSourceError } from "./ipos-source.js";
 import { accountLabel, storeLabel } from "./labels.js";
 import {
+	type LoyaltyStepOutcome,
+	loyaltyLine,
+	reconcileLoyaltySafely,
+} from "./loyalty.js";
+import {
 	authFailedNotification,
 	type NotificationSubject,
 	type Notifier,
@@ -67,6 +72,7 @@ export type IncrementalStoreOutcome =
 			minutesWithoutSync: number | null;
 			httpRequests: number;
 			ipos: IposApiMode | null;
+			loyalty?: LoyaltyStepOutcome;
 	  };
 
 export interface IncrementalStoreRunInput {
@@ -323,6 +329,17 @@ export async function runIncrementalStore(
 			store,
 			input.incremental ?? {},
 		);
+		const reconcile = input.database.reconcileLoyalty?.bind(input.database);
+		const loyalty = await reconcileLoyaltySafely(
+			reconcile ? { reconcileLoyalty: reconcile } : undefined,
+			account.tenant_id,
+			summary.window,
+			now(),
+			input.redact,
+		);
+		if (loyalty.status !== "skipped" || loyalty.reason !== "not_wired") {
+			log(`${label} ${loyaltyLine(loyalty)}`);
+		}
 		return {
 			kind: "ran",
 			label,
@@ -330,6 +347,7 @@ export async function runIncrementalStore(
 			minutesWithoutSync,
 			httpRequests: session.httpRequests(),
 			ipos: session.ipos,
+			loyalty,
 		};
 	} catch (error) {
 		if (error instanceof IncrementalRunError) {
