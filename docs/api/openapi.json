@@ -6994,6 +6994,13 @@
 				"raw": {
 					"format": "jsonb"
 				},
+				"receipt_numbers_reset": {
+					"default": "unknown",
+					"description": "how often the POS restarts its receipt numbering as the POS itself reports it (iPOS stores master extra_data.reset_tran_no_period: DAILY, YEARLY), written by every sync: daily, yearly, or unknown when the connector cannot tell; the owner's tran_no_reset_period overrides it unless unknown (app.receipt_numbers_reset)",
+					"enum": ["daily", "yearly", "never", "unknown"],
+					"format": "public.tran_no_reset_period",
+					"type": "string"
+				},
 				"seat_count": {
 					"format": "int32",
 					"type": "integer"
@@ -7038,7 +7045,8 @@
 				"active",
 				"first_seen_at",
 				"last_seen_at",
-				"member_capture_status"
+				"member_capture_status",
+				"receipt_numbers_reset"
 			],
 			"type": "object"
 		},
@@ -15976,6 +15984,13 @@
 		"rowFilter.stores.raw": {
 			"in": "query",
 			"name": "raw",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stores.receipt_numbers_reset": {
+			"description": "how often the POS restarts its receipt numbering as the POS itself reports it (iPOS stores master extra_data.reset_tran_no_period: DAILY, YEARLY), written by every sync: daily, yearly, or unknown when the connector cannot tell; the owner's tran_no_reset_period overrides it unless unknown (app.receipt_numbers_reset)",
+			"in": "query",
+			"name": "receipt_numbers_reset",
 			"required": false,
 			"type": "string"
 		},
@@ -33984,6 +33999,195 @@
 				"tags": ["(rpc) announcement_feed"]
 			}
 		},
+		"/rpc/announcement_feed_page": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_tenant_id",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store_id",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"format": "boolean",
+						"in": "query",
+						"name": "p_include_expired",
+						"required": false,
+						"type": "boolean"
+					},
+					{
+						"format": "boolean",
+						"in": "query",
+						"name": "p_after_pinned",
+						"required": false,
+						"type": "boolean"
+					},
+					{
+						"format": "timestamp with time zone",
+						"in": "query",
+						"name": "p_after_published_at",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_after_id",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "p_limit",
+						"required": false,
+						"type": "integer"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the announcements of one tenant the caller may read, a page at a time (keyset paging), in the order of announcement_feed: pinned ones first while their pin lasts, then the newest, then by id; for one store (its own and the every-store ones) or all; expired ones only when asked; the next page starts after the pinned, published_at and announcement_id of the last row (all three or none); 1 to 200 rows a page, 50 by default; 22023 for a missing tenant, a bad page size or a partial cursor; announcement_feed (every tenant, at most 200 rows) stays for the staff app",
+				"tags": ["(rpc) announcement_feed_page"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the announcements of one tenant the caller may read, a page at a time (keyset paging), in the order of announcement_feed: pinned ones first while their pin lasts, then the newest, then by id; for one store (its own and the every-store ones) or all; expired ones only when asked; the next page starts after the pinned, published_at and announcement_id of the last row (all three or none); 1 to 200 rows a page, 50 by default; 22023 for a missing tenant, a bad page size or a partial cursor; announcement_feed (every tenant, at most 200 rows) stays for the staff app",
+							"properties": {
+								"p_after_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_after_pinned": {
+									"format": "boolean",
+									"type": "boolean"
+								},
+								"p_after_published_at": {
+									"format": "timestamp with time zone",
+									"type": "string"
+								},
+								"p_include_expired": {
+									"format": "boolean",
+									"type": "boolean"
+								},
+								"p_limit": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the announcements of one tenant the caller may read, a page at a time (keyset paging), in the order of announcement_feed: pinned ones first while their pin lasts, then the newest, then by id; for one store (its own and the every-store ones) or all; expired ones only when asked; the next page starts after the pinned, published_at and announcement_id of the last row (all three or none); 1 to 200 rows a page, 50 by default; 22023 for a missing tenant, a bad page size or a partial cursor; announcement_feed (every tenant, at most 200 rows) stays for the staff app",
+				"tags": ["(rpc) announcement_feed_page"]
+			}
+		},
+		"/rpc/announcement_read_counts": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "p_announcement_ids",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "announcement_read_rate for up to 200 announcements in one call: one row per listed announcement the caller may read as an owner or manager of its tenant, with the same counts over the recipients the caller may read; an id the caller may not read the rate of (staff, another tenant, unknown) is left out rather than refused; 22023 for no list or more than 200 ids",
+				"tags": ["(rpc) announcement_read_counts"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "announcement_read_rate for up to 200 announcements in one call: one row per listed announcement the caller may read as an owner or manager of its tenant, with the same counts over the recipients the caller may read; an id the caller may not read the rate of (staff, another tenant, unknown) is left out rather than refused; 22023 for no list or more than 200 ids",
+							"properties": {
+								"p_announcement_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": ["p_announcement_ids"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "announcement_read_rate for up to 200 announcements in one call: one row per listed announcement the caller may read as an owner or manager of its tenant, with the same counts over the recipients the caller may read; an id the caller may not read the rate of (staff, another tenant, unknown) is left out rather than refused; 22023 for no list or more than 200 ids",
+				"tags": ["(rpc) announcement_read_counts"]
+			}
+		},
 		"/rpc/announcement_read_rate": {
 			"get": {
 				"parameters": [
@@ -43271,6 +43475,9 @@
 						"$ref": "#/parameters/rowFilter.stores.profile_updated_by"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.stores.receipt_numbers_reset"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -43351,6 +43558,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.stores.profile_updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stores.receipt_numbers_reset"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -43460,6 +43670,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.stores.profile_updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stores.receipt_numbers_reset"
 					},
 					{
 						"$ref": "#/parameters/body.stores"
