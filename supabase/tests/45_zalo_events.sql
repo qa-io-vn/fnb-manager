@@ -129,8 +129,8 @@ select is(
 );
 select columns_are(
   'public', 'oa_events',
-  array['id', 'tenant_id', 'oa_id', 'event_id', 'event_name', 'oa_user_id', 'occurred_at', 'received_at', 'signature', 'processed_at'],
-  'oa_events holds ids, the event name and times, never message text'
+  array['id', 'tenant_id', 'oa_id', 'event_id', 'event_name', 'oa_user_id', 'occurred_at', 'received_at', 'signature', 'processed_at', 'customer_step', 'customer_step_at'],
+  'oa_events holds ids, the event name, times and the customer step outcome, never message text'
 );
 select ok(not has_table_privilege('authenticated', 'public.oa_events', 'select'), 'authenticated cannot select oa_events');
 select ok(not has_table_privilege('anon', 'public.oa_events', 'select'), 'anon cannot select oa_events');

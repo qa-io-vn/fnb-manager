@@ -25,6 +25,7 @@ import {
 	showLines,
 	WEBHOOK_MODES,
 } from "./zalo-config.js";
+import { zaloOaMenuCommands } from "./zalo-oa-menu.js";
 import {
 	applyBrandConfig,
 	BrandConflictError,
@@ -269,4 +270,5 @@ export const zaloCommands: CommandSpec[] = [
 		run: bind,
 	},
 	...zaloTokenCommands,
+	...zaloOaMenuCommands,
 ];

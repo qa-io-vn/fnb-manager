@@ -18,6 +18,13 @@ export const CYCLE_COUNT_KEYS = [
 	"links_matched",
 	"links_accepted",
 	"updates_discarded",
+	"customer_reminders",
+	"customer_claimed",
+	"customer_sent",
+	"customer_retried",
+	"customer_rerouted",
+	"customer_failed",
+	"customer_uncertain",
 ] as const;
 
 export type CycleCountKey = (typeof CYCLE_COUNT_KEYS)[number];

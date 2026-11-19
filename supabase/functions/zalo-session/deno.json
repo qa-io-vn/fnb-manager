@@ -85,6 +85,9 @@
 		"../../../packages/zalo/src/function.js": "../../../packages/zalo/src/function.ts",
 		"../../../packages/zalo/src/graph.js": "../../../packages/zalo/src/graph.ts",
 		"../../../packages/zalo/src/http.js": "../../../packages/zalo/src/http.ts",
+		"../../../packages/zalo/src/oa/api.js": "../../../packages/zalo/src/oa/api.ts",
+		"../../../packages/zalo/src/oa/menu.js": "../../../packages/zalo/src/oa/menu.ts",
+		"../../../packages/zalo/src/oa/messages.js": "../../../packages/zalo/src/oa/messages.ts",
 		"../../../packages/zalo/src/proof.js": "../../../packages/zalo/src/proof.ts",
 		"../../../packages/zalo/src/refusal.js": "../../../packages/zalo/src/refusal.ts",
 		"../../../packages/zalo/src/session.js": "../../../packages/zalo/src/session.ts",
@@ -252,10 +255,17 @@
 			"./session.js": "../../../packages/zalo/src/session.ts",
 			"./settings.js": "../../../packages/zalo/src/settings.ts"
 		},
+		"../../../packages/zalo/src/oa/": {
+			"../http.js": "../../../packages/zalo/src/http.ts",
+			"../proof.js": "../../../packages/zalo/src/proof.ts",
+			"./menu.js": "../../../packages/zalo/src/oa/menu.ts",
+			"./messages.js": "../../../packages/zalo/src/oa/messages.ts"
+		},
 		"../../../packages/zalo/src/testing/": {
 			"../backend.js": "../../../packages/zalo/src/backend.ts",
 			"../graph.js": "../../../packages/zalo/src/graph.ts",
 			"../http.js": "../../../packages/zalo/src/http.ts",
+			"../oa/api.js": "../../../packages/zalo/src/oa/api.ts",
 			"../proof.js": "../../../packages/zalo/src/proof.ts",
 			"../session.js": "../../../packages/zalo/src/session.ts",
 			"../settings.js": "../../../packages/zalo/src/settings.ts",

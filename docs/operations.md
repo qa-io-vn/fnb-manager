@@ -196,6 +196,7 @@ Unknown opening hours count every minute. A store that is inactive, belongs to a
 - **The Zalo Bot's replies** reach the platform through the poller of `fnb notify tick` today. `bot-webhook` (#207, built, not deployed) can take them instead once a bot is in webhook mode: the bot's secret token is stored only as its SHA-256 (`app.set_bot_webhook`, run as `postgres` after the Bot's `setWebhook` succeeded; no `fnb` command does both yet), and from then on the poller leaves that bot alone, because Zalo treats polling and a webhook as exclusive. Either path completes a member's link code and their "ĐỒNG Ý". Through the webhook a member can also reply "DỪNG" (or "DUNG"): their consent to notifications is withdrawn, their waiting messages are cancelled, all their destinations of the tenant (e-mail included) are disabled as `consent_withdrawn`, and the chat gets one confirmation, logged as `stop_confirmation.v1` without its text. To receive messages again they need a new link from the owner.
 - **Quiet hours:** operational messages on the Zalo Bot, Telegram and e-mail go out between 06:00 and 24:00 in the reader's time zone, at most 20 per local day (the seeded `channel_policies`). A message outside that window is held until it opens. Critical alerts are held too, unless the owner sets `critical_bypass` on the tenant's policy.
 - **The daily digest** is the Ngày report built as its recipient, so its numbers equal Ngày. It is due when every store of its scope has settled the day (no open shift, and a successful sync at least 30 minutes after the close and the last shift close), or at the 06:30 deadline the next morning. `fnb digest` queues it; `fnb notify tick` sends it. Until 12c only the Actions path sends, so GitHub's delays (2.3) apply.
+- **Customer messages (phase 19a, built against a mock ZBS provider, off by default):** a loyalty event (points confirmed, a reward held, a held reward about to end, points or stamps about to expire; birthday and win-back only behind the promotions flag) becomes one outbox row for the member, never with a name, phone or text in it. It is always an in-app notice first (the wallet shows it); it leaves the app as a free OA consultation message only when the customer messaged the OA within 48 hours (within the API's 7 days only on the package's out-of-window allowance), and as a paid ZBS template only for the events whose route allows it, once the brand's template is approved and `zbs_enabled` is on. A free message that works means no paid one for the same event. Loyalty consent is checked when the event is queued and again when it is sent; promotions also need the marketing consent at both moments, so "Dừng nhận tin" stops what already waits; per-user caps (Tag 3: 1 in 24 hours, 30 a month) and the OA's daily template quota hold messages locally. Nothing reaches Zalo before runbook 4.23 is done.
 - **Alert rules** (the catalogue `alert_rule_catalog`; owners override them per tenant or store):
 
 | Rule | Delivery | Severity | To | Cool-down | Raised by |
@@ -217,6 +218,7 @@ Unknown opening hours count every minute. A store that is inactive, belongs to a
 | `digest_failed` | immediate | warning | owner | 24 h | a digest that could not be built (12b) |
 | `zalo_webhook_unverified` | immediate | warning | owner | 24 h | `oa-webhook` (#207, built): more OA calls in one tenant-local day than `max_per_day` (default 10) whose signature was missing or wrong, counted whether observe mode stored them or enforce mode refused them; raised once, at the first call over the limit (runbook 4.18) |
 | `redemption_mismatch` | immediate | warning | owner, manager (store-scoped) | – | `app.reconcile_redemptions` after each sync (#273, built): a code verified at the till without an invoice `grace_hours` (24) later, an invoice carrying a reward discount without a redemption, or a discount that differs from the reward by more than `amount_tolerance` (1,000 ₫); the message counts each kind, names the store and carries no amount, code or link; it clears without a notice once no path D item of the store is open in `loyalty_queue` |
+| `zbs_report_rate` | immediate | warning | owner | 24 h | `app.record_zbs_reports` (#279, built against a mock): on a day with at least `min_sent` (50) template messages of an OA, more than `max_rate_percent` (1 %) of them reported by recipients; Zalo lowers the daily quota tier above 2 % (runbook 4.23) |
 
 ```sh
 CI=1 pnpm --filter @fnb/jobs fnb -- notify status --tenant <tenant-slug>
@@ -711,6 +713,57 @@ The `voucher-callback` Edge Function answers the codes a cashier types on a CRM 
 - **Look at the log** (SQL editor, as `postgres`): `select logged_at, store_id, outcome, discount_amount, latency_ms from app.voucher_callback_log where tenant_id = '<tenant id>' order by logged_at desc limit 50;` holds outcomes only, never a code. The function's own lines (Edge Functions → `voucher-callback` → Logs) give the outcome and duration per call.
 - **An answered sale never syncs** (the bill was cancelled after the code was applied). The redemption stays held, is listed as `verified_without_invoice` after the grace hours and is released by the nightly job at the end of its hold.
 - **To stop the callback at once,** set `callback_enabled = false` on the rail row, or revoke the path with `fnb loyalty callback-path revoke --tenant <slug> --label pos-crm`; the cashier then sees 0 ₫ and the staff app's verification still works on the other rails.
+
+### 4.22 The OA chat menu, the welcome and the no-app enrolment
+
+Each brand's OA gets a chat menu and a welcome, and a customer can join from the chat by sharing name and phone in Zalo's `request_user_info` form (#276, #277; [api.md](api.md#oa-webhook), [schema.md](schema.md#oa-menus-oa-users-and-the-no-app-enrolment-phase-19a)). Everything is built against a mock of the OA Open API. Nothing reaches Zalo until the owner's accounts exist (#8) and the steps below are done.
+
+- **Set up, once per brand, after the OA is verified, on `tang_truong` or `toan_dien`, authorised (`fnb zalo oa authorize`) and its signatures matching (4.18, #210).**
+  1. Put the brand's logo, a square https image, where Zalo can fetch it. The form needs it.
+  2. Write the menu: `fnb zalo oa-menu set --tenant <slug> --brand <key> --form-image-url <https URL>` takes the default buttons (Tham gia thành viên as the join keyword; Điểm của tôi, Voucher của tôi and Mở ứng dụng thành viên as links into the customer Mini App) and the default Vietnamese texts. `--file <menu.json>`, kept outside the repository, replaces any of them (`fnb zalo oa-menu set --help` lists the fields). The welcome and the replies are consultation messages: never a promotion, a price or a discount. The joined text must keep saying that promotions are opt-in from the Mini App.
+  3. Check: `fnb zalo oa-menu apply --tenant <slug> --brand <key> --dry-run` prints the buttons, their links and the diff, and calls nothing. The links point at `https://zalo.me/s/<customer Mini App id>/…`, so the brand's customer row in `mini_apps` must hold the real Mini App id first (`fnb zalo config set`).
+  4. Push: the same command without `--dry-run`. If Zalo refuses it, the OA Open API's menu path or body may differ from the one built here (`POST /v3.0/oa/menu` with `{"menus": [...]}`, taken from third-party documentation and unverified). Then enter the buttons the dry run printed by hand in OA Manager (Quản lý → Menu) and report the error code.
+  5. Switch the replies on: `pnpm exec supabase secrets set ZALO_OA_MESSAGES=1 --project-ref <ref>`. Until then every due reply is logged as `cancelled` (`messages_off`), and the enrolment through the form still runs.
+  6. On a phone, follow the OA: one welcome arrives with the buttons. Tap Tham gia thành viên: the form arrives. Send it: the joined text arrives, and the customer shows in Khách hàng with the channel `oa_form`. Record the run privately, without the phone.
+- **No welcome after a follow.** `select event_name, signature, customer_step from public.oa_events where oa_id = '<OA row id>' order by received_at desc limit 20;`:
+  - `unverified`: the signature does not match (4.18). Nothing is sent and nobody is enrolled until it does, in `observe` mode too.
+  - `no_welcome`: the OA has no menu, or its welcome is off.
+  - `already_welcomed`: the user was welcomed in this follow or in the last 24 hours.
+  - `stale`: the event arrived more than 48 hours late.
+- **The step ran but nothing arrived.** `select template_ref, status, last_error_code, sent_at from public.outbound_messages where tenant_id = '<tenant id>' and channel = 'zalo_oa' order by created_at desc limit 20;`:
+  - `cancelled` with `messages_off`: `ZALO_OA_MESSAGES` is not set.
+  - `cancelled` with `no_token`: no valid OA access token, or the package has no Open API; check `fnb zalo status`.
+  - `failed` with `zalo_m230`: the user has not interacted with the OA in 7 days.
+  - Other `zalo_m…` codes are Zalo's error codes with the minus written `m`.
+  - `uncertain`: the answer was lost. Nothing is retried.
+- **A customer cannot join from the chat.** `customer_step` names the reason:
+  - `refused_phone_invalid`: the form's phone does not read as a phone.
+  - `refused_phone_in_use`: the phone is enrolled as, or tied to, another OA user of this OA. The customer can join in the Mini App, whose phone comes from Zalo's phone token.
+  - `refused_policy_missing`: no privacy notice is published (Pháp lý).
+  - `refused_no_programme`: no active loyalty programme.
+  - `form_recent`: a second tap within two minutes of a form.
+  - `outside_window`: the tap was handled more than 48 hours after it.
+- **Change the menu:** run `set` again with the new values, then `apply`. An unchanged menu is never pushed twice.
+
+### 4.23 Customer messages: ZBS templates and consultation messages
+
+Customer messages (#278 to #280; [schema.md](schema.md#customer-messaging-phase-19a), [the template drafts](loyalty/zbs-templates.md)) are built against a mock ZBS provider and a mock OA Open API. Nothing is sent to a customer, and nothing costs money, until the steps below are done.
+
+- **Owner steps, once per brand (#16):**
+  1. Fund the brand's ZBS account (at least 50,000 ₫ a top-up, non-refundable), linked to the brand's verified OA on `tang_truong` or `toan_dien`, and authorise the Zalo App for the OA (`fnb zalo oa authorize`, so `zalo_tokens` holds a live OA token).
+  2. Submit the six drafts of [zbs-templates.md](loyalty/zbs-templates.md) in the ZBS console with the logo in its light and dark versions and the category question. Record each template id as a `zbs_templates` row (`pending_review`), then the decision (`approved` or `rejected`) once the console shows it, and the reviewers' answer in [roadmap.md section 11](roadmap.md#11-open-questions).
+  3. Switch the tenant on, as `postgres` on the owner's machine: `insert into app.customer_message_settings (tenant_id, enabled) values ('<tenant id>', true) on conflict (tenant_id) do update set enabled = true;`. In-app notices and free consultation messages work from here; `zbs_enabled = true` adds paid templates, and `promotions_enabled = true` adds birthday and win-back (only when the reviewers accepted them). Keep `zbs_daily_quota` at or below the OA's ZBS quota tier.
+  4. Run the dispatcher with `NOTIFY_CUSTOMER_MESSAGES=on` and `NOTIFY_CUSTOMER_LIVE=1`. The second is the only switch that lets it call the real Zalo hosts; without it only a loopback mock named in `NOTIFY_ZBS_BASE_URL` or `NOTIFY_ZALO_OA_BASE_URL` is called, and in-app notices still close.
+  5. Check on the owner's phone: hold a test reward in the Mini App and time the voucher template until it arrives (the target is 2 minutes with the Supabase dispatcher of 12c; with `fnb notify tick` it is the next tick). Record the run privately.
+- **What happened to a message:** `select kind, channel, status, decision, hold_reason, last_error_code, params ->> 'route' as route from public.outbound_messages where tenant_id = '<tenant id>' and subject_type = 'customer' order by created_at desc limit 20;`
+  - `sent` on `mini_app` with the decision `in_app_only`, `outside_window`, `no_template`, `templates_disabled`, `no_recipient` or a hold reason: it stayed in the app, at no cost.
+  - `cancelled` with `no_consent`, `no_marketing_consent`, `membership_inactive`, `messaging_disabled`, `subject_removed` or `expired`: deliberately not sent.
+  - `held` with `outside_hours`, `daily_cap`, `monthly_cap` or `zbs_quota`: it waits for `not_before`.
+  - `queued` with `token_missing`: no live OA token; authorise the OA again.
+  - `failed` with `balance_insufficient`: top up the ZBS account; `template_rejected`: the console's template and the registry differ; `user_unreachable`: the phone has no Zalo account or refuses templates.
+  - `uncertain`: the provider's answer was lost (a timeout). It is never resent; check the ZBS console's history before doing anything.
+- **Report rate:** read the day's reported count in the ZBS console and record it with `select app.record_zbs_reports('<OA row id>', date '<day>', <reported>);`. Above 1 % the owner gets `zbs_report_rate`; above 2 % Zalo lowers the daily quota. Look at the wording and the event that drew the reports, and switch that route to `in_app` until it is fixed.
+- **Stop everything for a tenant:** `update app.customer_message_settings set enabled = false where tenant_id = '<tenant id>';`. Waiting messages are cancelled as `messaging_disabled` at the next tick.
 
 ## 5. Maintenance calendar
 

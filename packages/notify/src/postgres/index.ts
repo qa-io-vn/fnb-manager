@@ -1,4 +1,13 @@
 export {
+	beginCustomerSend,
+	claimNextCustomerMessage,
+	createPostgresCustomerRepository,
+	customerClaimFromRow,
+	enqueueCustomerReminders,
+	finishCustomerSend,
+	oaAccessToken,
+} from "./customers.js";
+export {
 	type BotDestinationInput,
 	botName,
 	type DestinationState,

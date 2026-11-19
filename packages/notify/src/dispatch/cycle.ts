@@ -19,6 +19,10 @@ import {
 	type SendOutcome,
 	USER_AGENT,
 } from "../channels/types.js";
+import {
+	type CustomerRepository,
+	runCustomerStep,
+} from "../customer/dispatch.js";
 import { emailHtml } from "../render/html.js";
 import { renderQueuedMessage } from "../render/queued.js";
 import { fitSubject, fitToUnits } from "../render/truncate.js";
@@ -53,6 +57,7 @@ export interface NotifyCycleInput {
 	readonly sleep?: Sleep;
 	readonly requestTimeoutMs?: number;
 	readonly digests?: DigestBuilder;
+	readonly customers?: CustomerRepository;
 }
 
 export async function runNotifyCycle(
@@ -75,6 +80,25 @@ export async function runNotifyCycle(
 	await buildDueDigests(input, report);
 	await pollPendingLinks(input, report);
 	await dispatchDue(input, report);
+	if (input.customers !== undefined) {
+		await runCustomerStep(
+			{
+				repository: input.customers,
+				environment: input.environment,
+				fetch: input.fetch,
+				clock: input.clock,
+				worker: input.worker,
+				tenantId: input.tenantId,
+				budget: input.budget,
+				log: input.log,
+				...(input.requestTimeoutMs === undefined
+					? {}
+					: { requestTimeoutMs: input.requestTimeoutMs }),
+				...(input.sleep === undefined ? {} : { sleep: input.sleep }),
+			},
+			report,
+		);
+	}
 	report.stoppedBy = input.budget.exhausted();
 	await input.repository.recordDispatch(
 		input.clock(),

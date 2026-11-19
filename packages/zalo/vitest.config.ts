@@ -17,6 +17,10 @@ export default defineConfig({
 				replacement: source("./src/tokens/testing.ts"),
 			},
 			{
+				find: /^@fnb\/zalo\/oa$/,
+				replacement: source("./src/oa/index.ts"),
+			},
+			{
 				find: /^@fnb\/zalo\/tokens$/,
 				replacement: source("./src/tokens/index.ts"),
 			},

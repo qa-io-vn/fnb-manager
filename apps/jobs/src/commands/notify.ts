@@ -5,6 +5,7 @@ import {
 	type CycleReport,
 	createAdapterRegistry,
 	createCycleBudget,
+	customerMessagesEnabled,
 	formatLocalInstant,
 	hasBaseUrlOverride,
 	isFixtureTenantSlug,
@@ -16,6 +17,7 @@ import {
 	type TickSummary,
 } from "@fnb/notify";
 import {
+	createPostgresCustomerRepository,
 	createPostgresDigestBuilder,
 	createPostgresNotifyRepository,
 	enqueueMessage,
@@ -182,6 +184,9 @@ export async function runCliCycle(
 						simulatedClock: simulated,
 					}),
 				}
+			: {}),
+		...(customerMessagesEnabled(context.env)
+			? { customers: createPostgresCustomerRepository(sql) }
 			: {}),
 		repository: notifyRepository(context, sql, simulated),
 		adapters: createAdapterRegistry(),

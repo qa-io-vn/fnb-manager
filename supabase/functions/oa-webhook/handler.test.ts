@@ -1,8 +1,10 @@
+import type { CustomerInput } from "@fnb/zalo/oa";
 import {
 	type FunctionEnvironment,
 	REQUEST_ID_HEADER,
 	serveFunction,
 } from "../_shared/http.ts";
+import type { CustomerStep } from "./customer.ts";
 import {
 	createOaWebhookHandler,
 	FUNCTION_NAME,
@@ -68,6 +70,27 @@ class FakeStore implements OaWebhookStore {
 	receiveGate: Promise<void> | null = null;
 	applyGate: Promise<void> | null = null;
 	applyFails = false;
+	readonly steps: { eventRow: string; input: CustomerInput }[] = [];
+
+	async customerStep(
+		eventRow: string,
+		input: CustomerInput,
+	): Promise<CustomerStep> {
+		this.steps.push({ eventRow, input });
+		return {
+			step: "ignored",
+			oaUserRow: null,
+			recipient: null,
+			customerId: null,
+			reply: null,
+		};
+	}
+
+	async accessToken(): Promise<string | null> {
+		return null;
+	}
+
+	async recordReply(): Promise<void> {}
 
 	configure(mode: WebhookMode, count = 1): void {
 		const rows: OaTarget[] = [];
@@ -241,6 +264,28 @@ Deno.test("a signed event in observe mode is answered 200, stored as raw and fol
 	);
 	assertEquals(test.store.applied, ["row-1"], "follow-up");
 	assertEquals(test.store.alerts, [], "no alert for a verified event");
+	assertEquals(
+		test.store.steps,
+		[{ eventRow: "row-1", input: { kind: "none" } }],
+		"the customer step runs after the follow-up with what the body said",
+	);
+	assert(
+		test.lines.some((line) => line.endsWith("customer step ignored")),
+		"the customer step is logged",
+	);
+});
+
+Deno.test("the join keyword reaches the customer step and a duplicate does not", async () => {
+	const test = harness();
+	const body = messageBody({ message: { text: "#join", msg_id: "m-join" } });
+	await test.send(await signed(body));
+	await test.send(await signed(body));
+	await test.settle();
+	assertEquals(
+		test.store.steps,
+		[{ eventRow: "row-1", input: { kind: "keyword", action: "join" } }],
+		"one step with the keyword",
+	);
 });
 
 Deno.test("Zalo delivering the same event twice stores and follows it up once", async () => {

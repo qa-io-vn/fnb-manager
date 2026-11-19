@@ -1,3 +1,5 @@
+import type { ZaloFetch } from "@fnb/zalo";
+import { type CustomerInput, customerInput } from "@fnb/zalo/oa";
 import {
 	type FunctionEnvironment,
 	type FunctionHandler,
@@ -7,6 +9,7 @@ import {
 	readJsonObject,
 	requireMethod,
 } from "../_shared/http.ts";
+import { type CustomerStore, deliverReply } from "./customer.ts";
 import {
 	eventId,
 	type OaEvent,
@@ -45,7 +48,7 @@ export interface Reception {
 	readonly unverified: number | null;
 }
 
-export interface OaWebhookStore {
+export interface OaWebhookStore extends CustomerStore {
 	targets(appId: string, oaId: string): Promise<readonly OaTarget[]>;
 	receive(event: ReceivedEvent): Promise<Reception>;
 	apply(eventRow: string, at: Date): Promise<string>;
@@ -60,6 +63,7 @@ export interface OaWebhookDependencies {
 	clock(): Date;
 	waitUntil(promise: Promise<unknown>): void;
 	readonly ackDeadlineMs: number;
+	readonly fetch?: ZaloFetch | undefined;
 }
 
 type Intake =
@@ -122,10 +126,31 @@ async function intake(
 	return { kind: "received", target, signature, reception };
 }
 
+async function customerFollowUp(
+	dependencies: OaWebhookDependencies,
+	context: RequestContext,
+	store: OaWebhookStore,
+	target: OaTarget,
+	eventRow: string,
+	input: CustomerInput,
+): Promise<string> {
+	const step = await store.customerStep(eventRow, input, dependencies.clock());
+	const reply = await deliverReply(
+		{ store, clock: dependencies.clock, fetch: dependencies.fetch },
+		context,
+		{ oaId: target.oaId, tenantId: target.tenantId },
+		step,
+	);
+	return step.reply === null
+		? `customer step ${step.step}`
+		: `customer step ${step.step}, ${step.reply.kind} reply ${reply}`;
+}
+
 async function followUp(
 	dependencies: OaWebhookDependencies,
 	context: RequestContext,
 	eventName: string,
+	input: CustomerInput,
 	result: Intake,
 ): Promise<void> {
 	if (result.kind === "unrouted") {
@@ -150,8 +175,19 @@ async function followUp(
 					reception.unverified,
 					dependencies.clock(),
 				);
+	const customer =
+		reception.eventRow === null
+			? "customer step none"
+			: await customerFollowUp(
+					dependencies,
+					context,
+					store,
+					target,
+					reception.eventRow,
+					input,
+				);
 	context.log(
-		`${eventName}: ${reception.outcome}, signature ${signature}, mode ${target.webhookMode}, follow-up ${applied}, alert ${alert}`,
+		`${eventName}: ${reception.outcome}, signature ${signature}, mode ${target.webhookMode}, follow-up ${applied}, alert ${alert}, ${customer}`,
 	);
 }
 
@@ -159,11 +195,14 @@ function scheduleFollowUp(
 	dependencies: OaWebhookDependencies,
 	context: RequestContext,
 	eventName: string,
+	input: CustomerInput,
 	work: Promise<Intake>,
 ): void {
 	dependencies.waitUntil(
 		work
-			.then((result) => followUp(dependencies, context, eventName, result))
+			.then((result) =>
+				followUp(dependencies, context, eventName, input, result),
+			)
 			.catch((error: unknown) => {
 				context.log(
 					`${eventName}: follow-up failed: ${context.errorMessage(error)}`,
@@ -185,6 +224,7 @@ export function createOaWebhookHandler(
 			);
 			return json({ ok: true }, 200);
 		}
+		const input = customerInput(event.eventName, body);
 		const receivedAt = dependencies.clock();
 		const work = intake(
 			dependencies,
@@ -195,7 +235,7 @@ export function createOaWebhookHandler(
 			receivedAt,
 		);
 		const settled = await within(work, dependencies.ackDeadlineMs);
-		scheduleFollowUp(dependencies, context, event.eventName, work);
+		scheduleFollowUp(dependencies, context, event.eventName, input, work);
 		if (settled === LATE) {
 			context.log(
 				`${event.eventName}: answered before the event was stored; it is stored after the answer`,

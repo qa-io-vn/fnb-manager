@@ -1,11 +1,12 @@
 import { serveFunction } from "../_shared/http.ts";
-import { PostgresOaWebhookStore, webhookDatabase } from "./database.ts";
+import { webhookDatabase } from "./database.ts";
 import {
 	ACK_DEADLINE_MS,
 	createOaWebhookHandler,
 	FUNCTION_NAME,
 } from "./handler.ts";
 import { runtimeWaitUntil } from "./runtime.ts";
+import { PostgresOaWebhookStore } from "./store.ts";
 
 const handler = createOaWebhookHandler({
 	store: (environment, context) =>

@@ -5,6 +5,7 @@ import {
 } from "node:http";
 import { GRAPH_ME_INFO_PATH, GRAPH_ME_PATH } from "../graph.js";
 import type { ZaloFetch } from "../http.js";
+import { OA_MENU_PATH, OA_MESSAGE_CS_PATH } from "../oa/api.js";
 import { appSecretProof } from "../proof.js";
 
 export const MOCK_ZALO_ERRORS = {
@@ -24,7 +25,24 @@ export const MOCK_ZALO_ERRORS = {
 	refreshTokenInvalid: -9108,
 	refreshTokenUsed: -9109,
 	refreshTokenExpired: -9110,
+	oaAccessTokenInvalid: -216,
+	oaOutsideWindow: -230,
+	oaPayloadInvalid: -9201,
 } as const;
+
+export const MOCK_OA_WINDOW_MS = 7 * 86_400_000;
+export const MOCK_OA_PATHS = {
+	message: OA_MESSAGE_CS_PATH,
+	menu: OA_MENU_PATH,
+} as const;
+
+export interface MockOaMessage {
+	readonly appId: string;
+	readonly userId: string;
+	readonly messageId: string;
+	readonly body: Readonly<Record<string, unknown>>;
+	readonly at: number;
+}
 
 export const MOCK_ACCESS_TOKEN_LIFETIME_MS = 3_600_000;
 export const MOCK_PHONE_TOKEN_LIFETIME_MS = 120_000;
@@ -98,6 +116,9 @@ export interface MockZalo {
 	refreshTokenState(refreshToken: string): MockRefreshTokenState;
 	accessTokenLive(accessToken: string): boolean;
 	oauthCounts(): MockOauthCounts;
+	oaInteraction(appId: string, userId: string): void;
+	oaMessages(appId?: string): readonly MockOaMessage[];
+	oaMenu(appId: string): readonly unknown[] | null;
 	advance(milliseconds: number): void;
 	now(): number;
 	requests(path?: string): readonly MockZaloRequest[];
@@ -145,6 +166,8 @@ interface RefreshEntry {
 }
 
 interface OauthAccessEntry {
+	readonly appId: string;
+	readonly kind: MockTokenKind;
 	readonly expiresAt: number;
 	live: boolean;
 }
@@ -191,6 +214,75 @@ function randomPart(): string {
 	);
 }
 
+const MOCK_OA_MAX_BUTTONS = 5;
+const MOCK_OA_BUTTON_TYPES: ReadonlySet<string> = new Set([
+	"oa.open.url",
+	"oa.query.show",
+	"oa.query.hide",
+]);
+
+function objectOf(value: unknown): Record<string, unknown> | null {
+	return value !== null && typeof value === "object" && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
+
+function shortText(value: unknown, max: number): boolean {
+	return typeof value === "string" && value.length >= 1 && value.length <= max;
+}
+
+function oaButtonValid(value: unknown): boolean {
+	const button = objectOf(value);
+	if (
+		button === null ||
+		!shortText(button.title, 100) ||
+		typeof button.type !== "string" ||
+		!MOCK_OA_BUTTON_TYPES.has(button.type)
+	) {
+		return false;
+	}
+	if (button.type === "oa.open.url") {
+		const url = objectOf(button.payload)?.url;
+		return typeof url === "string" && url.startsWith("https://");
+	}
+	return shortText(button.payload, 1000);
+}
+
+function oaMessageValid(message: Record<string, unknown>): boolean {
+	if (message.text !== undefined && !shortText(message.text, 2000)) {
+		return false;
+	}
+	if (message.attachment === undefined) {
+		return message.text !== undefined;
+	}
+	const attachment = objectOf(message.attachment);
+	const payload = objectOf(attachment?.payload);
+	if (attachment?.type !== "template" || payload === null) {
+		return false;
+	}
+	if (payload.template_type === "request_user_info") {
+		const elements = payload.elements;
+		const element = Array.isArray(elements) ? objectOf(elements[0]) : null;
+		return (
+			Array.isArray(elements) &&
+			elements.length === 1 &&
+			element !== null &&
+			shortText(element.title, 100) &&
+			shortText(element.subtitle, 500) &&
+			typeof element.image_url === "string" &&
+			element.image_url.startsWith("https://")
+		);
+	}
+	const buttons = payload.buttons;
+	return (
+		message.text !== undefined &&
+		Array.isArray(buttons) &&
+		buttons.length >= 1 &&
+		buttons.length <= MOCK_OA_MAX_BUTTONS &&
+		buttons.every(oaButtonValid)
+	);
+}
+
 function hang(signal: AbortSignal | null | undefined): Promise<Response> {
 	return new Promise((_, reject) => {
 		signal?.addEventListener("abort", () =>
@@ -209,6 +301,9 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 	const codes = new Map<string, CodeEntry>();
 	const refreshTokens = new Map<string, RefreshEntry>();
 	const oauthAccess = new Map<string, OauthAccessEntry>();
+	const oaSent: MockOaMessage[] = [];
+	const oaMenus = new Map<string, readonly unknown[]>();
+	const oaInteractions = new Map<string, number>();
 	const counts = {
 		authorizations: 0,
 		exchanges: 0,
@@ -221,6 +316,8 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 		const accessToken = `mock-zalo-${kind}-access-${randomPart()}`;
 		const refreshToken = `mock-zalo-${kind}-refresh-${randomPart()}`;
 		oauthAccess.set(accessToken, {
+			appId,
+			kind,
 			expiresAt: clock + lifetimes.accessSeconds * 1000,
 			live: true,
 		});
@@ -447,6 +544,84 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 		});
 	};
 
+	const oaApp = (request: Request): string | { readonly refusal: Response } => {
+		const entry = oauthAccess.get(request.headers.get("access_token") ?? "");
+		if (
+			entry === undefined ||
+			!entry.live ||
+			entry.kind !== "oa" ||
+			entry.expiresAt <= clock
+		) {
+			return {
+				refusal: failure(
+					MOCK_ZALO_ERRORS.oaAccessTokenInvalid,
+					"access token is invalid",
+				),
+			};
+		}
+		return entry.appId;
+	};
+
+	const oaRequestBody = async (
+		request: Request,
+	): Promise<Record<string, unknown> | null> => {
+		try {
+			return objectOf(JSON.parse(await request.text()));
+		} catch {
+			return null;
+		}
+	};
+
+	const oaMessage = async (request: Request): Promise<Response> => {
+		const appId = oaApp(request);
+		if (typeof appId !== "string") {
+			return appId.refusal;
+		}
+		const body = await oaRequestBody(request);
+		const userId = objectOf(body?.recipient)?.user_id;
+		const message = objectOf(body?.message);
+		if (
+			body === null ||
+			typeof userId !== "string" ||
+			message === null ||
+			!oaMessageValid(message)
+		) {
+			return failure(MOCK_ZALO_ERRORS.oaPayloadInvalid, "message is invalid");
+		}
+		const last = oaInteractions.get(`${appId}/${userId}`);
+		if (last === undefined || clock - last > MOCK_OA_WINDOW_MS) {
+			return failure(
+				MOCK_ZALO_ERRORS.oaOutsideWindow,
+				"the user has not interacted with the OA within 7 days",
+			);
+		}
+		const messageId = `mock-oa-message-${randomPart()}`;
+		oaSent.push({ appId, userId, messageId, body, at: clock });
+		return answer({
+			error: 0,
+			message: "Success",
+			data: { message_id: messageId, user_id: userId },
+		});
+	};
+
+	const oaMenuUpdate = async (request: Request): Promise<Response> => {
+		const appId = oaApp(request);
+		if (typeof appId !== "string") {
+			return appId.refusal;
+		}
+		const menus = (await oaRequestBody(request))?.menus;
+		if (
+			!Array.isArray(menus) ||
+			menus.length === 0 ||
+			menus.length > MOCK_OA_MAX_BUTTONS ||
+			!menus.every(oaButtonValid)
+		) {
+			return failure(MOCK_ZALO_ERRORS.oaPayloadInvalid, "menus are invalid");
+		}
+		oaMenus.set(appId, menus);
+		return answer({ error: 0, message: "Success" });
+	};
+
 	const handle = async (request: Request): Promise<Response> => {
 		const url = new URL(request.url);
 		recorded.push({
@@ -486,6 +661,16 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 		if (url.pathname === MOCK_OAUTH_PATHS.developerToken) {
 			return request.method === "POST"
 				? token(request, "developer")
+				: answer({ message: "method not allowed" }, 405);
+		}
+		if (url.pathname === MOCK_OA_PATHS.message) {
+			return request.method === "POST"
+				? oaMessage(request)
+				: answer({ message: "method not allowed" }, 405);
+		}
+		if (url.pathname === MOCK_OA_PATHS.menu) {
+			return request.method === "POST"
+				? oaMenuUpdate(request)
 				: answer({ message: "method not allowed" }, 405);
 		}
 		if (request.method !== "GET") {
@@ -557,6 +742,17 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 		oauthCounts() {
 			return { ...counts };
 		},
+		oaInteraction(appId, userId) {
+			oaInteractions.set(`${appId}/${userId}`, clock);
+		},
+		oaMessages(appId) {
+			return appId === undefined
+				? [...oaSent]
+				: oaSent.filter((message) => message.appId === appId);
+		},
+		oaMenu(appId) {
+			return oaMenus.get(appId) ?? null;
+		},
 		advance(milliseconds) {
 			clock += milliseconds;
 		},
@@ -580,6 +776,9 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 			codes.clear();
 			refreshTokens.clear();
 			oauthAccess.clear();
+			oaSent.length = 0;
+			oaMenus.clear();
+			oaInteractions.clear();
 			counts.authorizations = 0;
 			counts.exchanges = 0;
 			counts.refreshes = 0;

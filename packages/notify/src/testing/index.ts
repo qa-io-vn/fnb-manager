@@ -32,3 +32,12 @@ export {
 	type MockZaloUpdate,
 	startMockProviders,
 } from "./mock-providers.js";
+export {
+	createMockZbs,
+	type MockConsultationMessage,
+	type MockZbs,
+	type MockZbsFault,
+	type MockZbsMessage,
+	type MockZbsServer,
+	startMockZbs,
+} from "./mock-zbs.js";
