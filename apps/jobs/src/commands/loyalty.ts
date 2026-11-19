@@ -105,16 +105,21 @@ function countsText(counts: LoyaltyCounts): string {
 
 export function nightlyLines(
 	outcomes: readonly NightlyTenantOutcome[],
+	ci = false,
 ): string[] {
 	if (outcomes.length === 0) {
 		return ["loyalty nightly: no tenant has an active or paused programme"];
 	}
-	return outcomes.flatMap((outcome) => [
-		`${outcome.slug}: ${loyaltyLine(outcome.reconcile)}`,
-		outcome.nightly.status === "done"
-			? `${outcome.slug}: nightly ${countsText(outcome.nightly.counts)}`
-			: `${outcome.slug}: nightly failed (${outcome.nightly.error})`,
-	]);
+	return outcomes.flatMap((outcome, index) => {
+		// With CI set the output numbers tenants instead of naming them.
+		const name = ci ? `tenant ${index + 1}` : outcome.slug;
+		return [
+			`${name}: ${loyaltyLine(outcome.reconcile)}`,
+			outcome.nightly.status === "done"
+				? `${name}: nightly ${countsText(outcome.nightly.counts)}`
+				: `${name}: nightly failed (${outcome.nightly.error})`,
+		];
+	});
 }
 
 export function nightlyFailures(
@@ -200,7 +205,7 @@ async function loyaltyNightly(
 		businessDate: localDate(at, timezone),
 		redact: context.redact,
 	});
-	const lines = nightlyLines(outcomes);
+	const lines = nightlyLines(outcomes, context.output.ci);
 	for (const line of lines) {
 		context.output.line(line);
 	}

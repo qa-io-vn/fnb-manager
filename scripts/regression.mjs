@@ -44,6 +44,13 @@ const SMOKE_PGTAP = (number) =>
 	(number >= 90 && number <= 98) ||
 	(number >= 130 && number <= 139);
 
+// The staff Mini App's smoke run covers its loyalty specs only; the full pack runs them all.
+const SMOKE_STAFF_SPECS = [
+	"e2e/check-in.spec.ts",
+	"e2e/redemption.spec.ts",
+	"e2e/loyalty-queue.spec.ts",
+];
+
 const SMOKE_WEB_DEMO_SPECS = [
 	"e2e/demo/loyalty.spec.ts",
 	"e2e/demo/settings-loyalty.spec.ts",
@@ -359,7 +366,7 @@ function smokeSteps() {
 		...denoSteps("smoke"),
 		{
 			id: "e2e-zalo-staff-light",
-			title: "Staff Mini App demo Playwright (phone-light)",
+			title: "Staff Mini App loyalty Playwright (phone-light)",
 			level: "e2e",
 			timeout: 15 * MINUTE,
 			unitEnvironment: true,
@@ -370,6 +377,7 @@ function smokeSteps() {
 				"playwright",
 				"test",
 				"--project=phone-light",
+				...SMOKE_STAFF_SPECS,
 			),
 		},
 		{
@@ -674,15 +682,6 @@ function knownIssues(step, output) {
 						]
 					: [],
 			others: diagnostics.length - crlf.length,
-		};
-	}
-	if (
-		step.id === "check-openapi" &&
-		/spawnSync pnpm ENOENT|syscall: 'spawnSync pnpm'/.test(text)
-	) {
-		return {
-			known: ["export-openapi.mjs spawns pnpm without its .cmd shim"],
-			others: 0,
 		};
 	}
 	const failures = text

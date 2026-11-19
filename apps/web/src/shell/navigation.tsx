@@ -1,6 +1,12 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { MessageKey } from "../i18n";
 import { useT } from "../i18n";
+import { loyaltyReadAccess } from "../loyalty/access";
+import { staffPageAccess } from "../settings/access";
+import { useMembership } from "../settings/queries";
+import type { Membership } from "../settings/source";
+import { useTenantScope } from "../state/tenant-scope";
 
 export interface NavigationItem {
 	to: string;
@@ -41,6 +47,37 @@ export const navigationItems: readonly NavigationItem[] = [
 		icon: "M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v3m0 14v3M2 12h3m14 0h3",
 	},
 ];
+
+export interface SecondaryNavigationItem extends NavigationItem {
+	opensFor: (membership: Membership) => boolean;
+}
+
+// The side rail's second group: sections the bottom bar has no slot for. Each
+// entry shows only to the roles that can open the page (the same checks the
+// pages make), so nobody is offered a link that ends in a reason.
+export const secondaryNavigationItems: readonly SecondaryNavigationItem[] = [
+	{
+		to: "/khach-hang/thanh-vien",
+		section: "khach-hang",
+		labelKey: "nav.customers",
+		icon: "M16 19v-1a4 4 0 00-4-4H8a4 4 0 00-4 4v1M10 4a3 3 0 100 6 3 3 0 000-6zM20 19v-1a3 3 0 00-2-2.8M16 4.2a3 3 0 010 5.6",
+		opensFor: (membership) => loyaltyReadAccess(membership).canRead,
+	},
+	{
+		to: "/van-hanh/checklist",
+		section: "van-hanh",
+		labelKey: "nav.operations",
+		icon: "M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2",
+		opensFor: (membership) => staffPageAccess(membership).canWrite,
+	},
+];
+
+export function visibleSecondaryItems(
+	membership: Membership | null | undefined,
+): readonly SecondaryNavigationItem[] {
+	if (membership === null || membership === undefined) return [];
+	return secondaryNavigationItems.filter((item) => item.opensFor(membership));
+}
 
 export function activeSection(pathname: string): string {
 	return pathname.split("/").filter(Boolean)[0] ?? "";
@@ -101,6 +138,65 @@ export function BottomNavigation() {
 	);
 }
 
+const WIDE_QUERY = "(min-width: 1024px)";
+
+// The rail is hidden below 1024 px; its role-gated entries read the membership,
+// so they are only mounted (and the settings source only loaded) when it shows.
+function useRailShown(): boolean {
+	const [shown, setShown] = useState(
+		() =>
+			typeof window.matchMedia === "function" &&
+			window.matchMedia(WIDE_QUERY).matches,
+	);
+	useEffect(() => {
+		if (typeof window.matchMedia !== "function") return;
+		const query = window.matchMedia(WIDE_QUERY);
+		const update = () => setShown(query.matches);
+		update();
+		query.addEventListener("change", update);
+		return () => query.removeEventListener("change", update);
+	}, []);
+	return shown;
+}
+
+function SecondaryLinks() {
+	const t = useT();
+	const { pathname } = useLocation();
+	const current = activeSection(pathname);
+	const membership = useMembership();
+	const items = visibleSecondaryItems(
+		membership.status === "success" ? membership.data : undefined,
+	);
+	if (items.length === 0) return null;
+	return (
+		<ul
+			aria-label={t("nav.secondary")}
+			className="mt-4 space-y-1 border-t border-line pt-4"
+			data-testid="side-rail-secondary"
+		>
+			{items.map((item) => (
+				<li key={item.to}>
+					<Link
+						to={item.to}
+						aria-current={item.section === current ? "page" : undefined}
+						className="flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm font-medium text-ink-muted hover:bg-surface-sunken aria-[current=page]:bg-accent aria-[current=page]:text-accent-ink"
+					>
+						<NavigationIcon path={item.icon} />
+						<span>{t(item.labelKey)}</span>
+					</Link>
+				</li>
+			))}
+		</ul>
+	);
+}
+
+function SecondaryNavigation() {
+	const scope = useTenantScope();
+	const shown = useRailShown();
+	if (!shown || scope.status !== "ready") return null;
+	return <SecondaryLinks />;
+}
+
 export function SideRail() {
 	const t = useT();
 	const links = useNavigationLinks();
@@ -125,6 +221,7 @@ export function SideRail() {
 					</li>
 				))}
 			</ul>
+			<SecondaryNavigation />
 		</nav>
 	);
 }
