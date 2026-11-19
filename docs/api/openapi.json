@@ -3700,6 +3700,16 @@
 					"format": "int32",
 					"type": "integer"
 				},
+				"has_customer_identity": {
+					"description": "whether the invoice carries a customer_phone or a customer_id; stored by the database, so a report counts identified invoices without reading either customer column",
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"has_customer_phone": {
+					"description": "whether the invoice carries a customer_phone (a member attached at the till with Thêm khách hàng); stored by the database from customer_phone, so a report counts member invoices without reading the phone itself, also once customer_phone loses its column grant",
+					"format": "boolean",
+					"type": "boolean"
+				},
 				"id": {
 					"default": "gen_random_uuid()",
 					"description": "Note:\nThis is a Primary Key.<pk/>",
@@ -12431,6 +12441,20 @@
 		"rowFilter.invoices.guest_count": {
 			"in": "query",
 			"name": "guest_count",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoices.has_customer_identity": {
+			"description": "whether the invoice carries a customer_phone or a customer_id; stored by the database, so a report counts identified invoices without reading either customer column",
+			"in": "query",
+			"name": "has_customer_identity",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoices.has_customer_phone": {
+			"description": "whether the invoice carries a customer_phone (a member attached at the till with Thêm khách hàng); stored by the database from customer_phone, so a report counts member invoices without reading the phone itself, also once customer_phone loses its column grant",
+			"in": "query",
+			"name": "has_customer_phone",
 			"required": false,
 			"type": "string"
 		},
@@ -26352,6 +26376,12 @@
 						"$ref": "#/parameters/rowFilter.invoices.synced_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.invoices.has_customer_phone"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoices.has_customer_identity"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -26489,6 +26519,12 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.invoices.synced_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoices.has_customer_phone"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoices.has_customer_identity"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -26655,6 +26691,12 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.invoices.synced_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoices.has_customer_phone"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoices.has_customer_identity"
 					},
 					{
 						"$ref": "#/parameters/body.invoices"
@@ -36625,6 +36667,91 @@
 				},
 				"summary": "RPC: app.mark_announcement_read",
 				"tags": ["(rpc) mark_announcement_read"]
+			}
+		},
+		"/rpc/member_share_by_shift": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the phone-capture KPI of Ca & két tiền (#236, #237, FR-LOY-01): per store and shift of the range, the non-voided invoices, those with a customer_phone (member_invoices) and those with a customer_phone or a customer_id (identified_invoices), and both shares (null without an invoice). A shift belongs to the business date of its opening under the store's day-start rule and is labelled by shift_ordinal, n of Ca {n}: its place by opening time, then external id, among the store's shifts of that business date, as app.shift_number numbers it; a shift without invoices comes back with zeros. An invoice counts in the shift its shift_external_id names; an invoice naming no shift of its store counts in one row per store and business date of the invoice whose shift_ordinal, opened_at and closed_at are null (Không rõ ca). Rows come by business date, the order of store_ids, then shift_ordinal with that row last. The counts read the stored flags invoices.has_customer_phone and has_customer_identity, never the customer columns, and no column carries a phone, a customer id, a cashier name or the POS shift label. A report function: security invoker, 0 to 50 stores, at most 92 days and 900 rows (22023 otherwise); the caller's revenue scope applies through the policies of invoices and shifts, so the publisher gets no row",
+				"tags": ["(rpc) member_share_by_shift"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the phone-capture KPI of Ca & két tiền (#236, #237, FR-LOY-01): per store and shift of the range, the non-voided invoices, those with a customer_phone (member_invoices) and those with a customer_phone or a customer_id (identified_invoices), and both shares (null without an invoice). A shift belongs to the business date of its opening under the store's day-start rule and is labelled by shift_ordinal, n of Ca {n}: its place by opening time, then external id, among the store's shifts of that business date, as app.shift_number numbers it; a shift without invoices comes back with zeros. An invoice counts in the shift its shift_external_id names; an invoice naming no shift of its store counts in one row per store and business date of the invoice whose shift_ordinal, opened_at and closed_at are null (Không rõ ca). Rows come by business date, the order of store_ids, then shift_ordinal with that row last. The counts read the stored flags invoices.has_customer_phone and has_customer_identity, never the customer columns, and no column carries a phone, a customer id, a cashier name or the POS shift label. A report function: security invoker, 0 to 50 stores, at most 92 days and 900 rows (22023 otherwise); the caller's revenue scope applies through the policies of invoices and shifts, so the publisher gets no row",
+							"properties": {
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["store_ids", "from_date", "to_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the phone-capture KPI of Ca & két tiền (#236, #237, FR-LOY-01): per store and shift of the range, the non-voided invoices, those with a customer_phone (member_invoices) and those with a customer_phone or a customer_id (identified_invoices), and both shares (null without an invoice). A shift belongs to the business date of its opening under the store's day-start rule and is labelled by shift_ordinal, n of Ca {n}: its place by opening time, then external id, among the store's shifts of that business date, as app.shift_number numbers it; a shift without invoices comes back with zeros. An invoice counts in the shift its shift_external_id names; an invoice naming no shift of its store counts in one row per store and business date of the invoice whose shift_ordinal, opened_at and closed_at are null (Không rõ ca). Rows come by business date, the order of store_ids, then shift_ordinal with that row last. The counts read the stored flags invoices.has_customer_phone and has_customer_identity, never the customer columns, and no column carries a phone, a customer id, a cashier name or the POS shift label. A report function: security invoker, 0 to 50 stores, at most 92 days and 900 rows (22023 otherwise); the caller's revenue scope applies through the policies of invoices and shifts, so the publisher gets no row",
+				"tags": ["(rpc) member_share_by_shift"]
 			}
 		},
 		"/rpc/menu_engineering": {
