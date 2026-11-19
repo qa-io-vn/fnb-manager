@@ -1,6 +1,12 @@
 import type { DeletionRequest } from "@fnb/zalo-mini/loyalty";
 import { I18nProvider } from "@fnb/zalo-mini/react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+	within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { DEMO_DELETION_REQUEST_ID } from "../demo/world";
 import { catalogs } from "../i18n/catalog";
@@ -9,6 +15,7 @@ import {
 	DeletionState,
 	deletionOpen,
 	deletionReference,
+	shownDeletion,
 } from "./settings-screen";
 
 afterEach(() => setSearch(""));
@@ -23,6 +30,14 @@ const REQUEST: DeletionRequest = {
 	requestId: "aaaaaaaa-0000-4000-8000-000000000001",
 	status: "received",
 	requestedAt: "2026-11-19T03:00:00.000Z",
+	firstResponseDueAt: null,
+	completionDueAt: null,
+};
+
+const DATED: DeletionRequest = {
+	...REQUEST,
+	firstResponseDueAt: "2026-11-23T03:00:00.000Z",
+	completionDueAt: "2026-12-09T03:00:00.000Z",
 };
 
 function renderState(request: DeletionRequest, language: "vi" | "en" = "vi") {
@@ -87,8 +102,11 @@ describe("Xóa dữ liệu của tôi", () => {
 		expect(state.getByTestId("deletion-requested")).toHaveTextContent(
 			`Mã yêu cầu ${DEMO_DELETION_REQUEST_ID.replace(/-/g, "").slice(0, 8).toUpperCase()}`,
 		);
-		expect(state.getByTestId("deletion-deadline")).toHaveTextContent(
-			"phản hồi trong 2 ngày làm việc",
+		expect(state.getByTestId("deletion-reply-by")).toHaveTextContent(
+			/^Chủ quán phản hồi chậm nhất ngày \d{2}\/\d{2}\/\d{4}\.$/,
+		);
+		expect(state.getByTestId("deletion-done-by")).toHaveTextContent(
+			/^Dữ liệu được xóa xong chậm nhất ngày \d{2}\/\d{2}\/\d{4}\.$/,
 		);
 		expect(
 			screen.queryByRole("button", { name: "Xóa dữ liệu của tôi" }),
@@ -150,6 +168,80 @@ describe("Xóa dữ liệu của tôi", () => {
 			"Gửi lúc 10:00 19/11/2026",
 		);
 		expect(progress.getByTestId("deletion-deadline")).toBeInTheDocument();
+	});
+
+	it("shows the due dates the server gives, the reply date only while it is due", () => {
+		const received = renderState(DATED);
+		expect(received.getByTestId("deletion-reply-by")).toHaveTextContent(
+			"Chủ quán phản hồi chậm nhất ngày 23/11/2026.",
+		);
+		expect(received.getByTestId("deletion-done-by")).toHaveTextContent(
+			"Dữ liệu được xóa xong chậm nhất ngày 09/12/2026.",
+		);
+		expect(received.queryByText(/2 ngày làm việc/)).toBeNull();
+		cleanup();
+		const handled = renderState({ ...DATED, status: "in_progress" }, "en");
+		expect(handled.queryByTestId("deletion-reply-by")).toBeNull();
+		expect(handled.getByTestId("deletion-done-by")).toHaveTextContent(
+			"Your data is deleted by 09/12/2026 at the latest.",
+		);
+	});
+
+	it("picks the request to show from the wallet and the one sent in this session", () => {
+		const older = { ...DATED, status: "rejected" as const };
+		const newer = {
+			...REQUEST,
+			requestId: "bbbbbbbb-0000-4000-8000-000000000002",
+			requestedAt: "2026-11-19T04:00:00.000Z",
+		};
+		expect(shownDeletion(null, null)).toBeNull();
+		expect(shownDeletion(older, null)).toBe(older);
+		expect(shownDeletion(null, newer)).toBe(newer);
+		expect(shownDeletion(older, newer)).toBe(newer);
+		expect(shownDeletion(newer, older)).toBe(newer);
+		const fresher = { ...newer, status: "in_progress" as const };
+		expect(shownDeletion(fresher, newer)).toBe(fresher);
+	});
+
+	it("shows a request sent before a restart, with its dates and no second request", async () => {
+		const app = renderCustomerApp({
+			settings: { member: true, deletion: "received" },
+		});
+		const card = await openAccount();
+		const state = within(await card.findByTestId("deletion-state"));
+		expect(state.getByTestId("deletion-status")).toHaveAttribute(
+			"data-status",
+			"received",
+		);
+		expect(state.getByTestId("deletion-reply-by")).toBeInTheDocument();
+		expect(state.getByTestId("deletion-done-by")).toBeInTheDocument();
+		expect(
+			card.queryByRole("button", { name: "Xóa dữ liệu của tôi" }),
+		).not.toBeInTheDocument();
+		expect(app.world.deletionRequested()).toBe(false);
+	});
+
+	it("offers a new request after a refused one", async () => {
+		const app = renderCustomerApp({
+			settings: { member: true, deletion: "rejected" },
+		});
+		const card = await openAccount();
+		expect(await card.findByTestId("deletion-status")).toHaveAttribute(
+			"data-status",
+			"rejected",
+		);
+		fireEvent.click(card.getByRole("button", { name: "Xóa dữ liệu của tôi" }));
+		const dialog = within(await screen.findByRole("dialog"));
+		fireEvent.click(dialog.getByRole("checkbox"));
+		fireEvent.click(dialog.getByRole("button", { name: "Gửi yêu cầu xóa" }));
+		expect(
+			await screen.findByText("Đã gửi yêu cầu xóa dữ liệu"),
+		).toBeInTheDocument();
+		expect(await card.findByTestId("deletion-status")).toHaveAttribute(
+			"data-status",
+			"received",
+		);
+		expect(app.world.deletionRequested()).toBe(true);
 	});
 
 	it("says when the data is deleted", () => {

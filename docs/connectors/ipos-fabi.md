@@ -104,7 +104,7 @@ This section is an offline audit made on 2026-11-19 from the local snapshot of o
 | `vat_invoice_number`, `vat_invoice_series`, `vat_invoice_date` | sale | 0 | empty or 0 | not mapped |
 | `CRM`, `ZALO`, `FACEBOOK` (`source_name`) | sources master | 3 of 7 sources exist | generic labels | sources; 0 invoices use them |
 | `extra_data.find_member`, `multi_voucher`, `view_voucher_of_member`, `exchange_points_for_voucher`, `enable_checkin_by_phone_number` | stores master | 0 of 5 on (S1) | integer flags | not mapped |
-| `extra_data.reset_tran_no_period` | stores master | 1 | enum (daily on S1) | not mapped; `stores.tran_no_reset_period` is set by hand |
+| `extra_data.reset_tran_no_period` | stores master | 1 | enum (daily on S1) | `receiptNumbersReset` → `stores.receipt_numbers_reset` (`DAILY` daily, `YEARLY` yearly, else unknown) |
 | `extra_data.enable_minvoice`, `minvoice_*`, `inv_*`, `customer_default_vat`, `auto_export_vat` | stores master | e-invoicing off | flags and empty strings | not mapped |
 
 What this shows:
@@ -126,7 +126,7 @@ Phase 16b (#243 to #245). Field names only; no value from a real account is show
 | `billDiscountName`, `billDiscountAmount` | `discount_extra_name`, `discount_extra_amount` | a Fabi payment discount entry, or a CRM programme whose accounting type discounts the whole bill |
 | `itemDiscountAmount`, `line.promotionExternalId`, `line.promotionName` | `amount_discount_detail` + `amount_discount_price`; `promotion_id`, `promotion_name` on sale-detail | a CRM programme whose discount sits on the lines |
 
-The payloads carry no membership id, member code or check-in string, so nothing else can be mapped; `customer_id` (payment rows) stays unmapped because it has been empty on every row and the canonical model has no member reference yet. `pos_id` is parsed and not mapped; it is the value to configure as a store's `callback_store_ref`. `extra_data.reset_tran_no_period` of the stores master is not mapped either: the canonical store has no field for it, so `stores.tran_no_reset_period` stays an owner setting. Golden cases: `test/unit/normalise-loyalty.test.ts` (a member-attached invoice, a voucher invoice with its promotion line, a discount-entry invoice).
+The payloads carry no membership id, member code or check-in string, so nothing else can be mapped; `customer_id` (payment rows) stays unmapped because it has been empty on every row and the canonical model has no member reference yet. `pos_id` is parsed and not mapped; it is the value to configure as a store's `callback_store_ref`. `extra_data.reset_tran_no_period` of the stores master is mapped to the canonical store's `receiptNumbersReset` (`DAILY` and `YEARLY`, case ignored; anything else or no setting is `unknown`; the login payload's store row wins when it carries the setting, else the stores master's), which every sync writes to `stores.receipt_numbers_reset`. The owner's `stores.tran_no_reset_period` still wins when set; `customer_home` gives each store the result, and the customer app's receipt claim warns, without blocking, when a daily store's receipt number does not start with the chosen day. Golden cases: `test/unit/store-receipt-numbering.test.ts`. Golden cases: `test/unit/normalise-loyalty.test.ts` (a member-attached invoice, a voucher invoice with its promotion line, a discount-entry invoice).
 
 **What the database recognises.** After every sync `app.recognise_rail_events` ([schema.md](../schema.md#rail-recognition-phase-16b)) records per invoice, against the store's rail at the time of sale:
 

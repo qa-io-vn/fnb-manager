@@ -164,8 +164,8 @@ export function useActors() {
 }
 
 export function useAnnouncements() {
-	return useOperationsRead("announcements", [], (source) =>
-		source.announcements(),
+	return useOperationsRead("announcements", [], (source, tenantId) =>
+		source.announcements(tenantId),
 	);
 }
 

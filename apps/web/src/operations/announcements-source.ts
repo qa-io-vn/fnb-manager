@@ -66,7 +66,7 @@ export interface AnnouncementPin {
 }
 
 export interface AnnouncementsSource {
-	announcements(): Promise<Announcement[]>;
+	announcements(tenantId: string): Promise<Announcement[]>;
 	announcementReadRate(
 		announcementId: string,
 	): Promise<AnnouncementReadRate | null>;

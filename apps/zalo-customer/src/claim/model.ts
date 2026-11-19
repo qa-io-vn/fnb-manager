@@ -1,10 +1,12 @@
 import {
 	type ClaimInput,
+	ISO_DATE_PATTERN,
 	type IsoDate,
 	knownClaimReason,
 	MAX_CLAIM_AMOUNT,
 	RECEIPT_NO_MAX_LENGTH,
 	RECEIPT_NO_PATTERN,
+	type ReceiptNumbersReset,
 } from "@fnb/zalo-mini/loyalty";
 
 export interface ClaimDraft {
@@ -73,6 +75,31 @@ export function claimInput(
 		amount: Number(draft.amount),
 		businessDate: draft.businessDate,
 	};
+}
+
+/** A daily-numbering POS (iPOS tran_no) prints the 2-digit day of month, then a 4-digit daily sequence. */
+export const DAILY_RECEIPT_DIGITS = 6;
+
+/**
+ * The day of month a receipt number of a store that restarts its numbering
+ * each day should start with, when the number typed does not: a gentle
+ * warning, never a refusal. A shorter number of digits is read with its
+ * leading zeros restored; a number with other characters is not checked.
+ */
+export function receiptDayMismatch(
+	receiptNo: string,
+	businessDate: IsoDate,
+	reset: ReceiptNumbersReset | null,
+): string | null {
+	if (
+		reset !== "daily" ||
+		!/^\d+$/.test(receiptNo) ||
+		!ISO_DATE_PATTERN.test(businessDate)
+	)
+		return null;
+	const day = businessDate.slice(8, 10);
+	const digits = receiptNo.padStart(DAILY_RECEIPT_DIGITS, "0");
+	return digits.slice(0, 2) === day ? null : day;
 }
 
 export function claimReasonKey(reason: string): string {

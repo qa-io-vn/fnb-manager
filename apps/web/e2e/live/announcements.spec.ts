@@ -157,6 +157,24 @@ async function readerNames(scope: Locator): Promise<string[]> {
 		.sort();
 }
 
+interface RpcCall {
+	readonly name: string;
+	readonly body: Record<string, unknown>;
+}
+
+function watchRpcs(page: Page): RpcCall[] {
+	const calls: RpcCall[] = [];
+	page.on("request", (request) => {
+		const name = /\/rest\/v1\/rpc\/([a-z_]+)/.exec(request.url())?.[1];
+		if (name === undefined) return;
+		calls.push({
+			name,
+			body: (request.postDataJSON() ?? {}) as Record<string, unknown>,
+		});
+	});
+	return calls;
+}
+
 async function checkFromTop(page: Page): Promise<void> {
 	await page.evaluate(() =>
 		window.scrollTo({ top: 0, left: 0, behavior: "instant" }),
@@ -221,6 +239,27 @@ test("through PostgREST, the owner publishes to both stores, a store-2 staff mem
 	expect(names["store-manager"]).toContain(ROSTER_NAMES.storeOneStaff);
 	expect(names["store-manager"]).not.toContain(ROSTER_NAMES.storeTwoStaff);
 
+	const other = await owner.rpc("announcement_feed_page", {
+		p_tenant_id: settings().tenantId,
+		p_limit: 1,
+	});
+	expect(other.error).toBeNull();
+	const [firstRow] = other.data as {
+		announcement_id: string;
+		tenant_id: string;
+	}[];
+	expect(firstRow).toMatchObject({
+		announcement_id: both(),
+		tenant_id: settings().tenantId,
+	});
+	const counts = await owner.rpc("announcement_read_counts", {
+		p_announcement_ids: [both()],
+	});
+	expect(counts.error).toBeNull();
+	expect(counts.data).toMatchObject([
+		{ announcement_id: both(), recipients: 4, readers: 1 },
+	]);
+
 	const limited = await clientAs("store-manager");
 	expect(
 		await code(
@@ -265,6 +304,7 @@ test("through PostgREST, the owner publishes to both stores, a store-2 staff mem
 test("the owner sees the read rate and who has not read, publishes to every store with a pin, unpins and pins, and a link stays text", async ({
 	page,
 }) => {
+	const rpcs = watchRpcs(page);
 	await signedIn(page, "owner");
 	const list = await openAnnouncements(page);
 	await expect(page.getByTestId("range-picker")).toHaveCount(0);
@@ -351,6 +391,23 @@ test("the owner sees the read rate and who has not read, publishes to every stor
 		until: endOfDayHere(plusDays(todayHere(), 6)).slice(0, 19),
 	});
 	await expect(list.locator("a")).toHaveCount(0);
+	const names = new Set(rpcs.map((call) => call.name));
+	expect(names.has("announcement_feed")).toBe(false);
+	expect(names.has("announcement_read_rate")).toBe(false);
+	const feeds = rpcs.filter((call) => call.name === "announcement_feed_page");
+	expect(feeds.length).toBeGreaterThan(0);
+	for (const feed of feeds) {
+		expect(feed.body).toMatchObject({
+			p_tenant_id: settings().tenantId,
+			p_include_expired: true,
+			p_after_id: null,
+		});
+	}
+	const counted = rpcs
+		.filter((call) => call.name === "announcement_read_counts")
+		.map((call) => (call.body.p_announcement_ids as string[]).length);
+	expect(counted.length).toBeGreaterThan(0);
+	expect(Math.max(...counted)).toBeGreaterThanOrEqual(2);
 	await checkFromTop(page);
 	expectNoConsoleErrors(page);
 });

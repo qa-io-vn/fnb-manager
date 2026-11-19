@@ -206,4 +206,10 @@ export {
 	canonicalSaleSchema,
 } from "./schemas/sale.js";
 export { type CanonicalShift, canonicalShiftSchema } from "./schemas/shift.js";
-export { type CanonicalStore, canonicalStoreSchema } from "./schemas/store.js";
+export {
+	type CanonicalStore,
+	canonicalStoreSchema,
+	RECEIPT_NUMBER_RESETS,
+	type ReceiptNumbersReset,
+	receiptNumbersResetSchema,
+} from "./schemas/store.js";

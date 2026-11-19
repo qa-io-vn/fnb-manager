@@ -42,6 +42,7 @@ import {
 	cleanAmount,
 	cleanReceiptNo,
 	groupedAmount,
+	receiptDayMismatch,
 } from "./model";
 
 function Field({
@@ -93,6 +94,7 @@ export function ClaimFormView({
 		businessDate: dates[0] ?? "",
 	});
 	const [shown, setShown] = useState(false);
+	const [receiptLeft, setReceiptLeft] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [failure, setFailure] = useState<Failure | null>(null);
 	const receiptId = useId();
@@ -103,6 +105,23 @@ export function ClaimFormView({
 		const key = problems[field];
 		return shown && key !== undefined ? t(key) : null;
 	};
+	const dayMismatch =
+		shown || receiptLeft
+			? receiptDayMismatch(
+					draft.receiptNo,
+					draft.businessDate,
+					stores.find((store) => store.code === draft.store)
+						?.receiptNumbersReset ?? null,
+				)
+			: null;
+	const receiptDescription = [
+		problem("receiptNo") === null
+			? `${receiptId}-hint`
+			: `${receiptId}-problem`,
+		dayMismatch === null ? null : `${receiptId}-day`,
+	]
+		.filter((id) => id !== null)
+		.join(" ");
 	const limitReached = claimsLeft !== null && claimsLeft <= 0;
 	const update = (change: Partial<ClaimDraft>) =>
 		setDraft((current) => ({ ...current, ...change }));
@@ -144,22 +163,31 @@ export function ClaimFormView({
 					onChange={(event) =>
 						update({ receiptNo: cleanReceiptNo(event.target.value) })
 					}
+					onBlur={() => setReceiptLeft(true)}
 					autoCapitalize="characters"
 					autoComplete="off"
 					enterKeyHint="next"
 					maxLength={32}
 					aria-invalid={problem("receiptNo") !== null}
-					aria-describedby={
-						problem("receiptNo") === null
-							? `${receiptId}-hint`
-							: `${receiptId}-problem`
-					}
+					aria-describedby={receiptDescription}
 					className={fieldClass}
 					data-testid="claim-receipt"
 				/>
 				<p id={`${receiptId}-hint`} className="text-sm text-ink-muted">
 					{t("claim.receiptHint")}
 				</p>
+				<div aria-live="polite">
+					{dayMismatch === null ? null : (
+						<p
+							id={`${receiptId}-day`}
+							className="rounded-lg bg-warning-soft px-3 py-2 text-sm text-ink"
+							data-testid="claim-receipt-day"
+							data-day={dayMismatch}
+						>
+							{t("claim.receiptDay", { day: dayMismatch })}
+						</p>
+					)}
+				</div>
 			</Field>
 			<Field
 				id={amountId}

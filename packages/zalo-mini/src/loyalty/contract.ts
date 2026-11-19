@@ -189,11 +189,20 @@ export interface Programme {
 	readonly tiers: readonly ProgrammeTier[];
 }
 
+export const RECEIPT_NUMBER_RESETS = [
+	"daily",
+	"yearly",
+	"never",
+	"unknown",
+] as const;
+export type ReceiptNumbersReset = (typeof RECEIPT_NUMBER_RESETS)[number];
+
 export interface CustomerStore {
 	readonly code: string;
 	readonly name: string;
 	readonly address: string | null;
 	readonly openingHours: OpeningHours;
+	readonly receiptNumbersReset: ReceiptNumbersReset;
 }
 
 export interface MenuHighlight {
@@ -287,6 +296,7 @@ export interface Wallet {
 	readonly claims: readonly ClaimRecord[];
 	readonly claimsToday: number;
 	readonly claimsPerDay: number;
+	readonly deletionRequest: DeletionRequest | null;
 }
 
 export interface MemberCode {
@@ -322,6 +332,8 @@ export interface DeletionRequest {
 	readonly requestId: string;
 	readonly status: DeletionStatus;
 	readonly requestedAt: string;
+	readonly firstResponseDueAt: string | null;
+	readonly completionDueAt: string | null;
 }
 
 export interface CustomerProfile {
@@ -635,7 +647,12 @@ export function readCustomerStore(value: unknown): CustomerStore {
 		name: text(row.name, "store name"),
 		address: optionalText(row.address, "store address"),
 		openingHours: readOpeningHours(row.opening_hours),
+		receiptNumbersReset: readReceiptNumbersReset(row.receipt_numbers_reset),
 	};
+}
+
+export function readReceiptNumbersReset(value: unknown): ReceiptNumbersReset {
+	return RECEIPT_NUMBER_RESETS.find((reset) => reset === value) ?? "unknown";
 }
 
 export function readMenuHighlight(value: unknown): MenuHighlight {
@@ -786,6 +803,10 @@ export function readWallet(value: unknown): Wallet {
 			row.claims_per_day ?? MAX_CLAIMS_PER_DAY,
 			"claims per day",
 		),
+		deletionRequest:
+			row.deletion_request === null || row.deletion_request === undefined
+				? null
+				: readDeletionRequest(row.deletion_request),
 	};
 }
 
@@ -846,7 +867,19 @@ export function readDeletionRequest(value: unknown): DeletionRequest {
 				? "received"
 				: oneOf(DELETION_STATUSES, row.status, "deletion request status"),
 		requestedAt: instant(row.requested_at, "deletion request time"),
+		firstResponseDueAt: optionalInstant(
+			row.first_response_due_at,
+			"deletion reply deadline",
+		),
+		completionDueAt: optionalInstant(
+			row.completion_due_at,
+			"deletion deadline",
+		),
 	};
+}
+
+function optionalInstant(value: unknown, what: string): string | null {
+	return value === null || value === undefined ? null : instant(value, what);
 }
 
 function numberOrNull(value: unknown, what: string): number | null {

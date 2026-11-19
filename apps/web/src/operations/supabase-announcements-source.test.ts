@@ -1,7 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import { writeCodeOf } from "../settings/source";
-import { createSupabaseAnnouncements } from "./supabase-announcements-source";
+import {
+	createSupabaseAnnouncements,
+	FEED_MAX_PAGES,
+	FEED_PAGE_ROWS,
+} from "./supabase-announcements-source";
 
 const TENANT = "33333333-3333-4333-8333-333333333333";
 const STORE = "77777777-7777-4777-8777-777777777777";
@@ -30,7 +34,7 @@ function fakeClient(answer: (name: string, args: unknown) => Reply | Error) {
 }
 
 describe("the Supabase announcements source", () => {
-	it("reads the whole feed with expired ones and maps its rows", async () => {
+	it("reads the tenant's feed with expired ones, a page at a time, and maps its rows", async () => {
 		const { client, calls } = fakeClient(() => ({
 			data: [
 				{
@@ -52,7 +56,7 @@ describe("the Supabase announcements source", () => {
 			error: null,
 		}));
 		const source = createSupabaseAnnouncements(client);
-		expect(await source.announcements()).toEqual([
+		expect(await source.announcements(TENANT)).toEqual([
 			{
 				id: ANNOUNCEMENT,
 				tenantId: TENANT,
@@ -70,13 +74,76 @@ describe("the Supabase announcements source", () => {
 			},
 		]);
 		expect(calls).toEqual([
-			["announcement_feed", { p_store_id: null, p_include_expired: true }],
+			[
+				"announcement_feed_page",
+				{
+					p_tenant_id: TENANT,
+					p_store_id: null,
+					p_include_expired: true,
+					p_after_pinned: null,
+					p_after_published_at: null,
+					p_after_id: null,
+					p_limit: FEED_PAGE_ROWS,
+				},
+			],
 		]);
+	});
+
+	it("follows the keyset cursor while pages are full, and stops after the last page cap", async () => {
+		const row = (index: number) => ({
+			announcement_id: `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`,
+			tenant_id: TENANT,
+			store_ids: null,
+			audience: ["manager", "staff"],
+			title: `Thông báo ${index}`,
+			body: "Nội dung",
+			pinned: index === 0,
+			pinned_until: index === 0 ? AT : null,
+			published_by: USER,
+			published_at: `2026-11-${String(17 - Math.floor(index / 100)).padStart(2, "0")}T01:00:00+00:00`,
+			expires_at: null,
+			recipient: false,
+			read_at: null,
+		});
+		const { client, calls } = fakeClient((_name, args) => {
+			const after = (args as { p_after_id: string | null }).p_after_id;
+			const start = after === null ? 0 : Number(after.slice(-12)) + 1;
+			const size = start < 400 ? FEED_PAGE_ROWS : 3;
+			return {
+				data: Array.from({ length: size }, (_, offset) => row(start + offset)),
+				error: null,
+			};
+		});
+		const source = createSupabaseAnnouncements(client);
+		const feed = await source.announcements(TENANT);
+		expect(feed).toHaveLength(403);
+		expect(new Set(feed.map((item) => item.id)).size).toBe(403);
+		expect(calls).toHaveLength(3);
+		expect(calls[1]?.[1]).toMatchObject({
+			p_tenant_id: TENANT,
+			p_after_pinned: false,
+			p_after_published_at: row(199).published_at,
+			p_after_id: row(199).announcement_id,
+		});
+		const endless = fakeClient((_name, args) => {
+			const after = (args as { p_after_id: string | null }).p_after_id;
+			const start = after === null ? 0 : Number(after.slice(-12)) + 1;
+			return {
+				data: Array.from({ length: FEED_PAGE_ROWS }, (_, offset) =>
+					row(start + offset),
+				),
+				error: null,
+			};
+		});
+		expect(
+			await createSupabaseAnnouncements(endless.client).announcements(TENANT),
+		).toHaveLength(FEED_PAGE_ROWS * FEED_MAX_PAGES);
+		expect(endless.calls).toHaveLength(FEED_MAX_PAGES);
 	});
 
 	it("reads the read rate with numeric shares and the readers with their names", async () => {
 		const { client, calls } = fakeClient((name) =>
-			name === "announcement_read_rate"
+			name === "announcement_read_counts"
 				? {
 						data: [
 							{
@@ -125,9 +192,55 @@ describe("the Supabase announcements source", () => {
 			},
 		]);
 		expect(calls).toEqual([
-			["announcement_read_rate", { p_announcement_id: ANNOUNCEMENT }],
+			["announcement_read_counts", { p_announcement_ids: [ANNOUNCEMENT] }],
 			["announcement_readers", { p_announcement_id: ANNOUNCEMENT }],
 		]);
+	});
+
+	it("asks the read rates of a whole list in one call, and in calls of 200 ids at most", async () => {
+		const ids = Array.from(
+			{ length: 205 },
+			(_, index) =>
+				`11111111-1111-4111-8111-${String(index).padStart(12, "0")}`,
+		);
+		const { client, calls } = fakeClient((_name, args) => ({
+			data: (args as { p_announcement_ids: string[] }).p_announcement_ids
+				.filter((id) => id !== ids[1])
+				.map((id) => ({
+					announcement_id: id,
+					published_at: AT,
+					recipients: 2,
+					readers: 1,
+					readers_within_24h: 1,
+					read_rate: "0.5000",
+					read_rate_24h: "0.5000",
+				})),
+			error: null,
+		}));
+		const source = createSupabaseAnnouncements(client);
+		const [first, second, again] = await Promise.all([
+			source.announcementReadRate(ids[0] ?? ""),
+			source.announcementReadRate(ids[1] ?? ""),
+			source.announcementReadRate(ids[0] ?? ""),
+		]);
+		expect(first).toMatchObject({ announcementId: ids[0], readRate: 0.5 });
+		expect(second).toBeNull();
+		expect(again).toEqual(first);
+		expect(calls).toEqual([
+			["announcement_read_counts", { p_announcement_ids: [ids[0], ids[1]] }],
+		]);
+		const all = await Promise.all(
+			ids.map((id) => source.announcementReadRate(id)),
+		);
+		expect(all.filter((rate) => rate !== null)).toHaveLength(204);
+		expect(
+			calls
+				.slice(1)
+				.map(
+					([name, args]) =>
+						`${name}:${(args as { p_announcement_ids: string[] }).p_announcement_ids.length}`,
+				),
+		).toEqual(["announcement_read_counts:200", "announcement_read_counts:5"]);
 	});
 
 	it("gives no read rate for an empty answer and passes a refused read on with its code", async () => {

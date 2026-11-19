@@ -6,6 +6,7 @@ import type {
 	InvoicePaymentRow,
 	InvoiceRow,
 	JsonValue,
+	ReceiptNumbersResetValue,
 	RunFinish,
 	RunStart,
 	ShiftRow,
@@ -69,6 +70,7 @@ export interface StoredAccount {
 }
 
 export interface StoredStore extends StoreRecord {
+	receipt_numbers_reset: ReceiptNumbersResetValue;
 	raw: JsonValue | null;
 	first_seen_at: string;
 	last_seen_at: string;

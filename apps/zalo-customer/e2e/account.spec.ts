@@ -44,11 +44,68 @@ test("a member asks to delete their data after a clear confirmation and sees the
 		"Gửi lúc 10:00 19/11/2026",
 	);
 	await expect(page.getByTestId("deletion-deadline")).toBeVisible();
+	await expect(page.getByTestId("deletion-reply-by")).toHaveText(
+		"Chủ quán phản hồi chậm nhất ngày 23/11/2026.",
+	);
+	await expect(page.getByTestId("deletion-done-by")).toHaveText(
+		"Dữ liệu được xóa xong chậm nhất ngày 09/12/2026.",
+	);
 	await expect(
 		card.getByRole("button", { name: "Xóa dữ liệu của tôi" }),
 	).toHaveCount(0);
 	await checkCustomerScreen(page);
 	expect(await nativeStorageKeys(page)).toEqual(["fnb.customer-session"]);
+});
+
+test("a deletion request sent before the app restarted shows its state and due dates, and a refused one can be sent again", async ({
+	page,
+}) => {
+	await openHome(page, "?member=1&deletion=received");
+	await openTab(page, "Tài khoản");
+	const card = page.getByTestId("settings-delete");
+	await expect(card.getByTestId("deletion-status")).toHaveText(
+		"Chủ quán đã nhận yêu cầu",
+	);
+	await expect(card.getByTestId("deletion-requested")).toContainText(
+		"Gửi lúc 10:00 18/11/2026",
+	);
+	await expect(card.getByTestId("deletion-reply-by")).toHaveText(
+		"Chủ quán phản hồi chậm nhất ngày 20/11/2026.",
+	);
+	await expect(card.getByTestId("deletion-done-by")).toHaveText(
+		"Dữ liệu được xóa xong chậm nhất ngày 08/12/2026.",
+	);
+	await expect(
+		card.getByRole("button", { name: "Xóa dữ liệu của tôi" }),
+	).toHaveCount(0);
+	await checkCustomerScreen(page);
+
+	await openHome(page, "?member=1&deletion=in_progress&lang=en");
+	await openTab(page, "Account");
+	await expect(card.getByTestId("deletion-status")).toHaveText(
+		"The owner is handling it",
+	);
+	await expect(card.getByTestId("deletion-reply-by")).toHaveCount(0);
+	await expect(card.getByTestId("deletion-done-by")).toHaveText(
+		"Your data is deleted by 08/12/2026 at the latest.",
+	);
+
+	await openHome(page, "?member=1&deletion=rejected");
+	await openTab(page, "Tài khoản");
+	await expect(card.getByTestId("deletion-status")).toHaveText(
+		"Yêu cầu không được thực hiện",
+	);
+	await card.getByRole("button", { name: "Xóa dữ liệu của tôi" }).click();
+	const dialog = page.getByRole("dialog", { name: "Xóa dữ liệu của bạn?" });
+	await dialog.getByRole("checkbox").check();
+	await dialog.getByRole("button", { name: "Gửi yêu cầu xóa" }).click();
+	await expect(card.getByTestId("deletion-status")).toHaveText(
+		"Chủ quán đã nhận yêu cầu",
+	);
+	await expect(card.getByTestId("deletion-requested")).toContainText(
+		"Gửi lúc 10:00 19/11/2026",
+	);
+	await checkCustomerScreen(page);
 });
 
 test("offline, the app says so on every screen and drops the notice when the connection is back", async ({

@@ -217,6 +217,58 @@ describe("the loyalty contract's readers", () => {
 		);
 	});
 
+	it("read the wallet's deletion request with both deadlines, or none", () => {
+		expect(readWallet(WALLET).deletionRequest).toBeNull();
+		expect(
+			readWallet({ ...WALLET, deletion_request: null }).deletionRequest,
+		).toBeNull();
+		expect(
+			readWallet({
+				...WALLET,
+				deletion_request: {
+					request_id: "d-1",
+					status: "in_progress",
+					requested_at: "2026-11-19T03:00:00Z",
+					first_response_due_at: "2026-11-21T03:00:00Z",
+					completion_due_at: "2026-12-09T03:00:00Z",
+				},
+			}).deletionRequest,
+		).toEqual({
+			requestId: "d-1",
+			status: "in_progress",
+			requestedAt: "2026-11-19T03:00:00Z",
+			firstResponseDueAt: "2026-11-21T03:00:00Z",
+			completionDueAt: "2026-12-09T03:00:00Z",
+		});
+		expect(() =>
+			readWallet({
+				...WALLET,
+				deletion_request: {
+					request_id: "d-1",
+					status: "received",
+					requested_at: "2026-11-19T03:00:00Z",
+					completion_due_at: "soon",
+				},
+			}),
+		).toThrow("deletion deadline");
+	});
+
+	it("read each store's receipt numbering, unknown when absent or new", () => {
+		const resets = ["daily", "yearly", "never", "unknown", "monthly", null];
+		expect(
+			resets.map(
+				(reset) =>
+					readCustomerHome({
+						...HOME,
+						stores: [{ ...HOME.stores[0], receipt_numbers_reset: reset }],
+					}).stores[0]?.receiptNumbersReset,
+			),
+		).toEqual(["daily", "yearly", "never", "unknown", "unknown", "unknown"]);
+		expect(readCustomerHome(HOME).stores[0]?.receiptNumbersReset).toBe(
+			"unknown",
+		);
+	});
+
 	it("read a member code with its 60-second refresh and 2-minute expiry", () => {
 		expect(readMemberCode(CODE)).toEqual({
 			code: "042913",
@@ -458,6 +510,33 @@ describe("the contract read against the loyalty tables", () => {
 				requested_at: "2026-11-19T03:00:00Z",
 			}).status,
 		).toBe("received");
+		expect(
+			readDeletionRequest({
+				request_id: "d",
+				status: "received",
+				requested_at: "2026-11-19T03:00:00Z",
+			}),
+		).toMatchObject({ firstResponseDueAt: null, completionDueAt: null });
+		expect(
+			readDeletionRequest({
+				request_id: "d",
+				status: "received",
+				requested_at: "2026-11-19T03:00:00Z",
+				first_response_due_at: "2026-11-21T03:00:00Z",
+				completion_due_at: "2026-12-09T03:00:00Z",
+			}),
+		).toMatchObject({
+			firstResponseDueAt: "2026-11-21T03:00:00Z",
+			completionDueAt: "2026-12-09T03:00:00Z",
+		});
+		expect(() =>
+			readDeletionRequest({
+				request_id: "d",
+				status: "received",
+				requested_at: "2026-11-19T03:00:00Z",
+				first_response_due_at: 42,
+			}),
+		).toThrow("deletion reply deadline");
 		expect(() =>
 			readDeletionRequest({
 				request_id: "d",

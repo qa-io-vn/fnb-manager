@@ -163,6 +163,7 @@ export const STORE_COLUMNS = columnsOf<StoreUpsert>()([
 	"timezone",
 	"business_day_start_minutes",
 	"opened_on",
+	"receipt_numbers_reset",
 	"raw",
 ]);
 

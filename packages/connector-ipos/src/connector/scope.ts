@@ -1,5 +1,5 @@
 import { ConnectorError } from "@fnb/connector-core";
-import type { CanonicalStore } from "@fnb/core";
+import type { CanonicalStore, ReceiptNumbersReset } from "@fnb/core";
 import type { IposClient } from "../client.js";
 import type { LoginPayload } from "../schemas/login.js";
 import { IPOS_CONNECTOR_ID } from "./descriptor.js";
@@ -21,6 +21,7 @@ interface StoreLike {
 	address?: string | null | undefined;
 	brand_uid: string;
 	open_at?: number | null | undefined;
+	extra_data?: unknown;
 }
 
 export class StoreDirectory {
@@ -60,6 +61,25 @@ export function resolveDayStart(
 	return options.dayStartMinutes ?? dayStartFromOpenAt(store.open_at);
 }
 
+/**
+ * The store setting `extra_data.reset_tran_no_period` of the stores master
+ * (`DAILY` on the audited account), case ignored; anything else, or no
+ * setting, is `unknown`.
+ */
+export function receiptNumbersResetOf(extraData: unknown): ReceiptNumbersReset {
+	if (typeof extraData !== "object" || extraData === null) return "unknown";
+	const period = (extraData as Record<string, unknown>).reset_tran_no_period;
+	if (typeof period !== "string") return "unknown";
+	switch (period.trim().toUpperCase()) {
+		case "DAILY":
+			return "daily";
+		case "YEARLY":
+			return "yearly";
+		default:
+			return "unknown";
+	}
+}
+
 function toCanonicalStore(
 	store: StoreLike,
 	currency: string,
@@ -73,7 +93,12 @@ function toCanonicalStore(
 		timezone: options.timezone,
 		dayStartMinutes: resolveDayStart(store, options),
 		currency,
+		receiptNumbersReset: receiptNumbersResetOf(store.extra_data),
 	};
+}
+
+function hasSetting(extraData: unknown): boolean {
+	return receiptNumbersResetOf(extraData) !== "unknown";
 }
 
 function mergeStoreRows(
@@ -91,6 +116,9 @@ function mergeStoreRows(
 			...store,
 			address: store.address?.trim() || existing?.address,
 			open_at: store.open_at ?? existing?.open_at,
+			extra_data: hasSetting(store.extra_data)
+				? store.extra_data
+				: existing?.extra_data,
 		});
 	}
 	return [...merged.values()];

@@ -324,6 +324,8 @@ export interface StoreRecord {
 	active: boolean;
 }
 
+export type ReceiptNumbersResetValue = "daily" | "yearly" | "unknown";
+
 export interface StoreUpsert {
 	external_id: string;
 	name: string;
@@ -331,6 +333,7 @@ export interface StoreUpsert {
 	timezone: string;
 	business_day_start_minutes: number;
 	opened_on: string | null;
+	receipt_numbers_reset: ReceiptNumbersResetValue;
 	raw: JsonValue | null;
 }
 

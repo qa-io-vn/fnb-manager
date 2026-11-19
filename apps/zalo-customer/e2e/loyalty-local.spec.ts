@@ -223,6 +223,28 @@ test("a customer browses loyalty-sim, joins with the phone consent, claims a rec
 	);
 	await expect(page.getByTestId("deletion-deadline")).toBeVisible();
 	await checkCustomerScreen(page);
+	const due = await fixture.deletionDueDates(customer);
+	await expect(page.getByTestId("deletion-reply-by")).toHaveText(
+		`Chủ quán phản hồi chậm nhất ngày ${due.firstResponse}.`,
+	);
+	await expect(page.getByTestId("deletion-done-by")).toHaveText(
+		`Dữ liệu được xóa xong chậm nhất ngày ${due.completion}.`,
+	);
+
+	await page.reload();
+	await openTab(page, "Tài khoản");
+	const card = page.getByTestId("settings-delete");
+	await expect(card.getByTestId("deletion-status")).toHaveAttribute(
+		"data-status",
+		"received",
+	);
+	await expect(card.getByTestId("deletion-done-by")).toHaveText(
+		`Dữ liệu được xóa xong chậm nhất ngày ${due.completion}.`,
+	);
+	await expect(
+		card.getByRole("button", { name: "Xóa dữ liệu của tôi" }),
+	).toHaveCount(0);
+	await checkCustomerScreen(page);
 	const asked = await fixture.customerState(customer);
 	expect(asked.openDeletionRequests).toBe(1);
 	expect(asked.memberships).toBe(1);

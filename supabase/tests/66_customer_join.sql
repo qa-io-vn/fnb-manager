@@ -372,7 +372,7 @@ select is(
   'the stores of the app''s brand only, by name, with their link keys'
 );
 select is(
-  (select jsonb_agg(s.value - 'code' - 'name' order by s.ordinality) from jsonb_array_elements(public.customer_home() -> 'stores') with ordinality s),
+  (select jsonb_agg(s.value - 'code' - 'name' - 'receipt_numbers_reset' order by s.ordinality) from jsonb_array_elements(public.customer_home() -> 'stores') with ordinality s),
   '[{"address": null, "opening_hours": null}, {"address": "Số 1 Đường Thử", "opening_hours": {"mon": [["07:00", "22:00"]]}}]'::jsonb,
   'with the address and opening hours, null when unknown'
 );
@@ -449,7 +449,7 @@ set local role authenticated;
 select pg_temp.as_customer((select login_2 from fx), (select tenant_c from fx), pg_temp.customer_of((select login_2 from fx)));
 insert into deletion select public.customer_request_deletion();
 select is(
-  (select (answer - 'request_id' - 'requested_at') from deletion),
+  (select (answer - 'request_id' - 'requested_at' - 'first_response_due_at' - 'completion_due_at') from deletion),
   '{"status": "received"}'::jsonb,
   'the deletion request is received'
 );

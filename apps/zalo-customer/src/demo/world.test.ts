@@ -16,6 +16,7 @@ import {
 	createDemoWorld,
 	DEMO_DEFAULTS,
 	DEMO_DELETION_REQUEST_ID,
+	DEMO_EARLIER_DELETION_REQUEST_ID,
 	type DemoSettings,
 	demoSettingsFrom,
 } from "./world";
@@ -72,8 +73,14 @@ describe("demo settings", () => {
 			privacy: true,
 			vouchers: false,
 			stores: true,
+			deletion: null,
 		});
 		expect(demoSettingsFrom("?stores=none").stores).toBe(false);
+		expect(demoSettingsFrom("?member=1&deletion=in_progress").deletion).toBe(
+			"in_progress",
+		);
+		expect(demoSettingsFrom("?deletion=received").deletion).toBeNull();
+		expect(demoSettingsFrom("?member=1&deletion=done").deletion).toBeNull();
 		expect(demoSettingsFrom("?member=1&vouchers=1").vouchers).toBe(true);
 		expect(demoSettingsFrom("?vouchers=1").vouchers).toBe(false);
 		expect(demoSettingsFrom("?marketing=1").marketing).toBe(false);
@@ -267,13 +274,46 @@ describe("the demo source", () => {
 			stoppedAt: new Date(START).toISOString(),
 		});
 		expect((await client.wallet()).marketingConsent).toBe(false);
+		expect((await client.wallet()).deletionRequest).toBeNull();
 		const request = await client.requestDeletion();
 		expect(request).toEqual({
 			requestId: DEMO_DELETION_REQUEST_ID,
 			status: "received",
 			requestedAt: new Date(START).toISOString(),
+			firstResponseDueAt: "2026-11-23T03:00:00.000Z",
+			completionDueAt: "2026-12-09T03:00:00.000Z",
 		});
 		expect(await client.requestDeletion()).toEqual(request);
+		expect((await client.wallet()).deletionRequest).toEqual(request);
+	});
+
+	it("keeps a request made before a restart in the wallet, and a refused one can be asked again", async () => {
+		const open = setup({ member: true, deletion: "in_progress" });
+		const openState = await open.session.connect();
+		if (openState.status !== "ready") throw new Error("no session");
+		const openClient = open.client(openState.session.accessToken);
+		const earlier = (await openClient.wallet()).deletionRequest;
+		expect(earlier).toEqual({
+			requestId: DEMO_EARLIER_DELETION_REQUEST_ID,
+			status: "in_progress",
+			requestedAt: new Date(START - 86_400_000).toISOString(),
+			firstResponseDueAt: "2026-11-20T03:00:00.000Z",
+			completionDueAt: "2026-12-08T03:00:00.000Z",
+		});
+		expect(await openClient.requestDeletion()).toEqual(earlier);
+		expect(open.world.deletionRequested()).toBe(false);
+		const refused = setup({ member: true, deletion: "rejected" });
+		const refusedState = await refused.session.connect();
+		if (refusedState.status !== "ready") throw new Error("no session");
+		const refusedClient = refused.client(refusedState.session.accessToken);
+		expect((await refusedClient.wallet()).deletionRequest?.status).toBe(
+			"rejected",
+		);
+		expect(await refusedClient.requestDeletion()).toMatchObject({
+			requestId: DEMO_DELETION_REQUEST_ID,
+			status: "received",
+		});
+		expect(refused.world.deletionRequested()).toBe(true);
 	});
 
 	it("fails like a lost connection when asked to", async () => {

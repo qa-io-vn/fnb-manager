@@ -26,6 +26,7 @@ import type {
 	TableCounts,
 	TokenRecord,
 } from "../rows.js";
+import type { StoreSeed } from "./accounts.js";
 import * as accounts from "./accounts.js";
 import * as bookkeeping from "./bookkeeping.js";
 import * as catalog from "./catalog.js";
@@ -87,7 +88,7 @@ export class InMemorySyncRepository implements SyncRepository {
 
 	addStore(
 		account: Pick<AccountRecord, "id" | "tenant_id">,
-		store: StoreUpsert,
+		store: StoreSeed,
 	): StoreRecord {
 		return accounts.addStore(this.state, account, store);
 	}

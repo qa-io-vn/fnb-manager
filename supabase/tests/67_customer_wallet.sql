@@ -143,7 +143,7 @@ select is(
   'the history starts with the welcome row'
 );
 select is(
-  pg_temp.wallet((select login_1 from fx), (select t0 from fx)) - 'card' - 'stamp_cards' - 'history',
+  pg_temp.wallet((select login_1 from fx), (select t0 from fx)) - 'card' - 'stamp_cards' - 'history' - 'deletion_request',
   '{"points": {"balance": 0, "pending": 0, "expiring": null}, "tier": null, "marketing_consent": false, "claims": [], "claims_today": 0, "claims_per_day": 3}'::jsonb,
   'no points, no tier, no marketing consent and no claim yet'
 );

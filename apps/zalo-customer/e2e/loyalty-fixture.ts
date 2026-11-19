@@ -103,6 +103,11 @@ export interface CustomerState {
 	readonly openDeletionRequests: number;
 }
 
+export interface DeletionDueDates {
+	readonly firstResponse: string;
+	readonly completion: string;
+}
+
 export interface CleanupCounts {
 	readonly customers: number;
 	readonly memberships: number;
@@ -121,6 +126,7 @@ export interface LoyaltyFixture {
 	quietStore(storeCode: string): Promise<number>;
 	redemptionState(reward: SeededReward): Promise<RedemptionState>;
 	customerState(customer: SyntheticCustomer): Promise<CustomerState>;
+	deletionDueDates(customer: SyntheticCustomer): Promise<DeletionDueDates>;
 	ringSale(input: SaleInput): Promise<Sale>;
 	cleanup(): Promise<CleanupCounts>;
 }
@@ -517,6 +523,22 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 				loyaltyConsents: Number(row?.loyalty_consents ?? 0),
 				marketingConsents: Number(row?.marketing_consents ?? 0),
 				openDeletionRequests: Number(row?.open_deletion_requests ?? 0),
+			};
+		},
+		async deletionDueDates(customer) {
+			const [row] = await sql<Row>`
+				select
+					to_char(r.first_response_due_at at time zone 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY') as first_response,
+					to_char(r.completion_due_at at time zone 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY') as completion
+				from public.data_subject_requests r
+				join public.customers c on c.id = r.subject_id
+				where r.tenant_id = ${tenant.id}::uuid and c.phone = ${e164(customer.phone)}
+					and r.subject_type = 'customer' and r.request_type = 'deletion' and r.status = 'received'
+			`;
+			if (row === undefined) throw new Error("no open deletion request");
+			return {
+				firstResponse: String(row.first_response),
+				completion: String(row.completion),
 			};
 		},
 		async ringSale(input) {

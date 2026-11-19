@@ -120,6 +120,7 @@ const STORE_UPDATE_COLUMNS = [
 	"address",
 	"timezone",
 	"business_day_start_minutes",
+	"receipt_numbers_reset",
 	"raw",
 ];
 

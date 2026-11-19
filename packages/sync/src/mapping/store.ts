@@ -11,6 +11,7 @@ export function toStoreUpsert(store: CanonicalStore): StoreUpsert {
 		timezone: store.timezone,
 		business_day_start_minutes: store.dayStartMinutes,
 		opened_on: store.openedOn ?? null,
+		receipt_numbers_reset: store.receiptNumbersReset ?? "unknown",
 		raw: toJson(store),
 	};
 }

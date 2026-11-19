@@ -108,6 +108,68 @@ test("a receipt claim is validated, sent and credited, within the day's limit", 
 	await checkCustomerScreen(page);
 });
 
+test("at a store that restarts its receipt numbers each day, a number not starting with the chosen day gets a gentle warning, never a block", async ({
+	page,
+}) => {
+	await openHome(page, "?member=1");
+	await page.getByRole("button", { name: "Nhận điểm từ hóa đơn" }).click();
+	const form = page.getByTestId("claim-form");
+	await form.getByTestId("claim-store").selectOption("mau-2");
+	const receipt = form.getByTestId("claim-receipt");
+	const warning = form.getByTestId("claim-receipt-day");
+	await receipt.fill("1001");
+	await expect(warning).toHaveCount(0);
+	await receipt.press("Tab");
+	await expect(warning).toHaveText(
+		"Số hóa đơn ở cửa hàng này bắt đầu bằng ngày trong tháng (19 cho ngày đã chọn). Hãy xem lại số hóa đơn hoặc ngày trên hóa đơn. Bạn vẫn gửi được.",
+	);
+	await expect(receipt).toHaveAttribute("aria-invalid", "false");
+	await checkCustomerScreen(page);
+	await receipt.fill("190042");
+	await expect(warning).toHaveCount(0);
+	await form.getByTestId("claim-date").selectOption("2026-11-18");
+	await expect(warning).toHaveAttribute("data-day", "18");
+	await receipt.fill("180042");
+	await expect(warning).toHaveCount(0);
+	await form.getByTestId("claim-amount").fill("42000");
+	await form.getByRole("button", { name: "Gửi hóa đơn" }).click();
+	await expect(page.getByTestId("claim-result")).toHaveAttribute(
+		"data-state",
+		"matched",
+	);
+	await page.getByRole("button", { name: "Gửi hóa đơn khác" }).click();
+	const again = page.getByTestId("claim-form");
+	await again.getByTestId("claim-store").selectOption("mau-2");
+	await again.getByTestId("claim-receipt").fill("0042");
+	await again.getByTestId("claim-amount").fill("30000");
+	await again.getByRole("button", { name: "Gửi hóa đơn" }).click();
+	await expect(page.getByTestId("claim-result")).toHaveAttribute(
+		"data-state",
+		"pending",
+	);
+	await checkCustomerScreen(page);
+});
+
+test("the receipt-day warning speaks English and stays away from a store that numbers by year", async ({
+	page,
+}) => {
+	await page.goto("./?member=1&lang=en&store=mau-2");
+	await page
+		.getByRole("button", { name: "Earn from a receipt" })
+		.first()
+		.click();
+	const form = page.getByTestId("claim-form");
+	await expect(form.getByTestId("claim-store")).toHaveValue("mau-2");
+	await form.getByTestId("claim-receipt").fill("4321");
+	await form.getByTestId("claim-receipt").press("Tab");
+	await expect(form.getByTestId("claim-receipt-day")).toHaveText(
+		"Receipt numbers at this store start with the day of the month (19 for the date you chose). Check the receipt number or the date on the receipt. You can still send it.",
+	);
+	await checkCustomerScreen(page);
+	await form.getByTestId("claim-store").selectOption("mau-1");
+	await expect(form.getByTestId("claim-receipt-day")).toHaveCount(0);
+});
+
 test("a reward is redeemed with a confirmation of its cost, its code counts down, and used and returned vouchers say so", async ({
 	page,
 }) => {

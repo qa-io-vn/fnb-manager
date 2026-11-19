@@ -64,6 +64,68 @@ const pinned = z.object({
 
 type Reply = PromiseLike<{ data: unknown; error: PostgrestFailure | null }>;
 
+/** Rows per call of announcement_feed_page (its maximum). */
+export const FEED_PAGE_ROWS = 200;
+/** Pages read for one list: 2,000 announcements of one tenant at most. */
+export const FEED_MAX_PAGES = 10;
+/** Ids per call of announcement_read_counts (its maximum). */
+export const READ_COUNTS_MAX_IDS = 200;
+
+type ReadRateRow = z.infer<typeof readRateRow>;
+
+interface Waiter {
+	resolve(row: ReadRateRow | null): void;
+	reject(error: unknown): void;
+}
+
+/**
+ * Collects the read rates asked for in the same tick (every item of the
+ * list mounts at once) and answers them with one announcement_read_counts
+ * call per 200 ids, instead of one call per announcement.
+ */
+function readCountsBatcher(
+	client: SupabaseClient,
+): (announcementId: string) => Promise<ReadRateRow | null> {
+	let pending: Map<string, Waiter[]> | null = null;
+	const flush = async (batch: Map<string, Waiter[]>): Promise<void> => {
+		const ids = [...batch.keys()];
+		for (let start = 0; start < ids.length; start += READ_COUNTS_MAX_IDS) {
+			const chunk = ids.slice(start, start + READ_COUNTS_MAX_IDS);
+			const settle = (answer: (waiter: Waiter, id: string) => void) => {
+				for (const id of chunk) {
+					for (const waiter of batch.get(id) ?? []) answer(waiter, id);
+				}
+			};
+			try {
+				const rows = await read(
+					z.array(readRateRow),
+					client.rpc("announcement_read_counts", {
+						p_announcement_ids: chunk,
+					}),
+				);
+				const byId = new Map(rows.map((row) => [row.announcement_id, row]));
+				settle((waiter, id) => waiter.resolve(byId.get(id) ?? null));
+			} catch (error) {
+				settle((waiter) => waiter.reject(error));
+			}
+		}
+	};
+	return (announcementId) =>
+		new Promise((resolve, reject) => {
+			if (pending === null) {
+				const batch = new Map<string, Waiter[]>();
+				pending = batch;
+				queueMicrotask(() => {
+					pending = null;
+					void flush(batch);
+				});
+			}
+			const waiters = pending.get(announcementId) ?? [];
+			waiters.push({ resolve, reject });
+			pending.set(announcementId, waiters);
+		});
+}
+
 async function read<Value>(
 	schema: z.ZodType<Value>,
 	request: Reply,
@@ -94,15 +156,27 @@ async function written<Value>(
 export function createSupabaseAnnouncements(
 	client: SupabaseClient,
 ): AnnouncementsSource {
+	const readCounts = readCountsBatcher(client);
 	return {
-		async announcements(): Promise<Announcement[]> {
-			const rows = await read(
-				z.array(feedRow),
-				client.rpc("announcement_feed", {
-					p_store_id: null,
-					p_include_expired: true,
-				}),
-			);
+		async announcements(tenantId): Promise<Announcement[]> {
+			const rows: z.infer<typeof feedRow>[] = [];
+			for (let page = 0; page < FEED_MAX_PAGES; page += 1) {
+				const last = rows.at(-1);
+				const next = await read(
+					z.array(feedRow),
+					client.rpc("announcement_feed_page", {
+						p_tenant_id: tenantId,
+						p_store_id: null,
+						p_include_expired: true,
+						p_after_pinned: last?.pinned ?? null,
+						p_after_published_at: last?.published_at ?? null,
+						p_after_id: last?.announcement_id ?? null,
+						p_limit: FEED_PAGE_ROWS,
+					}),
+				);
+				rows.push(...next);
+				if (next.length < FEED_PAGE_ROWS) break;
+			}
 			return rows.map((row) => ({
 				id: row.announcement_id,
 				tenantId: row.tenant_id,
@@ -121,13 +195,8 @@ export function createSupabaseAnnouncements(
 		},
 
 		async announcementReadRate(announcementId) {
-			const [row] = await read(
-				z.array(readRateRow),
-				client.rpc("announcement_read_rate", {
-					p_announcement_id: announcementId,
-				}),
-			);
-			if (row === undefined) return null;
+			const row = await readCounts(announcementId);
+			if (row === null) return null;
 			return {
 				announcementId: row.announcement_id,
 				recipients: row.recipients,

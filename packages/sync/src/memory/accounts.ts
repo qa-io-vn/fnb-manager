@@ -150,10 +150,14 @@ export function findStore(
 		: null;
 }
 
+/** A store row as a test seeds it: the receipt numbering defaults to unknown, as in the database. */
+export type StoreSeed = Omit<StoreUpsert, "receipt_numbers_reset"> &
+	Partial<Pick<StoreUpsert, "receipt_numbers_reset">>;
+
 export function addStore(
 	state: MemoryState,
 	account: Pick<AccountRecord, "id" | "tenant_id">,
-	store: StoreUpsert,
+	store: StoreSeed,
 ): StoreRecord {
 	const stamp = state.timestamp();
 	const stored: StoredStore = {
@@ -168,6 +172,7 @@ export function addStore(
 		business_day_start_minutes: store.business_day_start_minutes,
 		opened_on: store.opened_on,
 		active: true,
+		receipt_numbers_reset: store.receipt_numbers_reset ?? "unknown",
 		raw: store.raw,
 		first_seen_at: stamp,
 		last_seen_at: stamp,
@@ -206,6 +211,7 @@ export function upsertStores(
 				timezone: store.timezone,
 				business_day_start_minutes: store.business_day_start_minutes,
 				opened_on: existing.opened_on ?? store.opened_on,
+				receipt_numbers_reset: store.receipt_numbers_reset,
 				raw: store.raw,
 				active: true,
 				last_seen_at: stamp,

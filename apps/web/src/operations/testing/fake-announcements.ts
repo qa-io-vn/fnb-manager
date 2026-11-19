@@ -28,9 +28,11 @@ export function fakeAnnouncementMethods(
 ): AnnouncementsSource {
 	let next = 1;
 	return {
-		async announcements() {
-			record("announcements", null);
-			return data.announcements.map((row) => ({ ...row }));
+		async announcements(tenantId) {
+			record("announcements", tenantId);
+			return data.announcements
+				.filter((row) => row.tenantId === tenantId)
+				.map((row) => ({ ...row }));
 		},
 		async announcementReadRate(announcementId) {
 			record("announcementReadRate", announcementId);

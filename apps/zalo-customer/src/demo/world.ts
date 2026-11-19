@@ -10,7 +10,7 @@ import {
 	REFUSAL_INVALID,
 	REFUSAL_NOT_MEMBER,
 } from "@fnb/zalo-mini/loyalty";
-import { addDays, isoDateIn } from "../data/dates";
+import { addDays, isoDateIn, weekdayOf } from "../data/dates";
 import {
 	DEMO_CUSTOMER_ID,
 	DEMO_DISPLAY_NAME,
@@ -28,6 +28,7 @@ import {
 	DEMO_SYNCED_INVOICES,
 	DEMO_TENANT_ID,
 	DEMO_WELCOME_STAMPS,
+	type DemoInvoice,
 	type DemoReward,
 } from "./fixtures";
 
@@ -39,6 +40,13 @@ export const DEMO_PROGRAMME_STATES = [
 ] as const;
 export type DemoProgrammeState = (typeof DEMO_PROGRAMME_STATES)[number];
 
+export const DEMO_DELETION_STATES = [
+	"received",
+	"in_progress",
+	"rejected",
+] as const;
+export type DemoDeletionState = (typeof DEMO_DELETION_STATES)[number];
+
 export interface DemoSettings {
 	readonly member: boolean;
 	readonly marketing: boolean;
@@ -49,6 +57,7 @@ export interface DemoSettings {
 	readonly privacy: boolean;
 	readonly vouchers: boolean;
 	readonly stores: boolean;
+	readonly deletion: DemoDeletionState | null;
 }
 
 export const DEMO_DEFAULTS: DemoSettings = {
@@ -61,10 +70,13 @@ export const DEMO_DEFAULTS: DemoSettings = {
 	privacy: true,
 	vouchers: false,
 	stores: true,
+	deletion: null,
 };
 
 const MAX_DEMO_DELAY_MS = 10_000;
 export const DEMO_DELETION_REQUEST_ID = "00000000-0000-4000-8000-00000000d001";
+export const DEMO_EARLIER_DELETION_REQUEST_ID =
+	"00000000-0000-4000-8000-00000000d000";
 const SESSION_SECONDS = 3600;
 const UNKNOWN_TOKEN = "PGRST301";
 
@@ -76,6 +88,9 @@ export function demoSettingsFrom(search: string): DemoSettings {
 	const programme =
 		DEMO_PROGRAMME_STATES.find((state) => state === params.get("programme")) ??
 		"active";
+	const deletion =
+		DEMO_DELETION_STATES.find((state) => state === params.get("deletion")) ??
+		null;
 	return {
 		member,
 		marketing: member && params.get("marketing") === "1",
@@ -92,6 +107,7 @@ export function demoSettingsFrom(search: string): DemoSettings {
 		privacy: params.get("privacy") !== "none",
 		vouchers: member && params.get("vouchers") === "1",
 		stores: params.get("stores") !== "none",
+		deletion: member ? deletion : null,
 	};
 }
 
@@ -143,6 +159,45 @@ export interface DemoWorld {
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
+const DEMO_COMPLETION_DAYS = 20;
+
+interface DemoDeletion {
+	readonly request_id: string;
+	readonly status: DemoDeletionState;
+	readonly requested_at: string;
+	readonly first_response_due_at: string;
+	readonly completion_due_at: string;
+}
+
+export function demoDeletion(
+	requestId: string,
+	status: DemoDeletionState,
+	at: number,
+): DemoDeletion {
+	const day = isoDateIn(at);
+	let days = 0;
+	for (let working = 0; working < 2; ) {
+		days += 1;
+		const weekday = weekdayOf(addDays(day, days));
+		if (weekday !== "sat" && weekday !== "sun") working += 1;
+	}
+	return {
+		request_id: requestId,
+		status,
+		requested_at: new Date(at).toISOString(),
+		first_response_due_at: new Date(at + days * DAY_MS).toISOString(),
+		completion_due_at: new Date(
+			at + DEMO_COMPLETION_DAYS * DAY_MS,
+		).toISOString(),
+	};
+}
+
+export function demoReceiptNo(invoice: DemoInvoice, today: string): string {
+	return invoice.receiptNo.replace(
+		"DD",
+		addDays(today, -invoice.daysAgo).slice(8, 10),
+	);
+}
 
 function storeName(code: string | null): string | null {
 	return DEMO_STORES.find((store) => store.code === code)?.name ?? null;
@@ -187,11 +242,14 @@ export function createDemoWorld(
 	let memberSince = isoDateIn(now() - 40 * DAY_MS);
 	let entryCount = 0;
 	let claimCount = 0;
-	let deletion: {
-		readonly request_id: string;
-		readonly status: "received";
-		readonly requested_at: string;
-	} | null = null;
+	let deletion: DemoDeletion | null =
+		settings.deletion === null
+			? null
+			: demoDeletion(
+					DEMO_EARLIER_DELETION_REQUEST_ID,
+					settings.deletion,
+					now() - DAY_MS,
+				);
 	let offline = false;
 	const entries: Entry[] = [];
 	const claims: Claim[] = [];
@@ -673,6 +731,7 @@ export function createDemoWorld(
 				})),
 			claims_today: claimsToday(),
 			claims_per_day: MAX_CLAIMS_PER_DAY,
+			deletion_request: deletion,
 		};
 	};
 
@@ -722,7 +781,7 @@ export function createDemoWorld(
 		const invoice = DEMO_SYNCED_INVOICES.find(
 			(candidate) =>
 				candidate.store === store &&
-				leading(candidate.receiptNo) === leading(receiptNo) &&
+				leading(demoReceiptNo(candidate, today)) === leading(receiptNo) &&
 				addDays(today, -candidate.daysAgo) === businessDate,
 		);
 		const reason =
@@ -824,12 +883,8 @@ export function createDemoWorld(
 					stopped_at: new Date(now()).toISOString(),
 				};
 			case CUSTOMER_FUNCTIONS.requestDeletion:
-				if (deletion === null) {
-					deletion = {
-						request_id: DEMO_DELETION_REQUEST_ID,
-						status: "received",
-						requested_at: new Date(now()).toISOString(),
-					};
+				if (deletion === null || deletion.status === "rejected") {
+					deletion = demoDeletion(DEMO_DELETION_REQUEST_ID, "received", now());
 				}
 				return deletion;
 			default:
@@ -865,6 +920,7 @@ export function createDemoWorld(
 			offline = value;
 		},
 		marketing: () => marketing,
-		deletionRequested: () => deletion !== null,
+		deletionRequested: () =>
+			deletion !== null && deletion.request_id === DEMO_DELETION_REQUEST_ID,
 	};
 }

@@ -1668,6 +1668,30 @@ returns TABLE(user_id uuid, display_name text, role tenant_role, store_ids uuid[
 - **Who may call:** as `announcement_read_rate`.
 - **Notes:** the recipients the caller may read, the unread first: the name from the staff roster or the Zalo identity where the caller may read one, the role and stores at publication, whether the person is still a member, and the read time. A store-limited manager sees only the recipients of their own stores.
 
+Migration `announcement_feed_pages` adds two readers for the web page, which no longer asks for every tenant at once or one read rate per announcement. Both run as the caller under the same policies. `announcement_feed`, `announcement_read_rate` and `announcement_readers` keep their signatures for the staff app. Tests: pgTAP `117_announcement_feed_pages.sql`.
+
+#### `public.announcement_feed_page`
+
+```sql
+public.announcement_feed_page(p_tenant_id uuid, p_store_id uuid DEFAULT NULL::uuid, p_include_expired boolean DEFAULT false, p_after_pinned boolean DEFAULT NULL::boolean, p_after_published_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_after_id uuid DEFAULT NULL::uuid, p_limit integer DEFAULT 50)
+returns TABLE(announcement_id uuid, tenant_id uuid, store_ids uuid[], audience tenant_role[], title text, body text, pinned boolean, pinned_until timestamp with time zone, published_by uuid, published_at timestamp with time zone, expires_at timestamp with time zone, recipient boolean, read_at timestamp with time zone)
+```
+
+- **Status:** built (migration `announcement_feed_pages`); called by the web Thông báo page (`apps/web/src/operations/supabase-announcements-source.ts`).
+- **Who may call:** any member; the rows are those of `announcement_feed`, of `p_tenant_id` only, so a member of two tenants gets the asked one. A caller outside the tenant gets none. A missing tenant, a page size outside 1 to 200, or a cursor that does not name all three keys gives `22023`.
+- **Notes:** the rows and order of `announcement_feed`: pinned ones first while their pin lasts, then the newest, then by `announcement_id`. Keyset paging: the next page passes the `pinned`, `published_at` and `announcement_id` of the last row as `p_after_pinned`, `p_after_published_at` and `p_after_id`. A page shorter than `p_limit` is the last. The pin is read at each call, so a pin that ends between two calls can move a row across the cursor. The web reads pages of 200, up to 2,000 rows a tenant, with the expired ones, and filters the stores of the page itself.
+
+#### `public.announcement_read_counts`
+
+```sql
+public.announcement_read_counts(p_announcement_ids uuid[])
+returns TABLE(announcement_id uuid, published_at timestamp with time zone, recipients integer, readers integer, readers_within_24h integer, read_rate numeric, read_rate_24h numeric)
+```
+
+- **Status:** built (migration `announcement_feed_pages`); called by the web Thông báo page.
+- **Who may call:** any member. A list missing or longer than 200 ids gives `22023`.
+- **Notes:** `announcement_read_rate` for up to 200 announcements in one call. It gives one row per listed announcement the caller may read as an owner or manager of its tenant, with the same counts over the recipients the caller may read. An id the caller may not have the rate of (staff, another tenant, an unknown id) is left out, not refused. The web collects the rates its list asks for in the same tick into one call.
+
 ### 3.17 Staff requests and the approval queue (phase 15)
 
 Migration `announcements_and_requests` (#227) adds five functions a client may call. `decide_request` is a `security invoker` wrapper of `app.decide_request`, which is `security definer` with an empty `search_path`, checks the caller's role and is the only way to change a request's status; the others run as the caller under the operations policies. A request belongs to a store, has a kind and plain-text details, and stays `pending` until an owner or manager of the store who is not the requester approves or refuses it (with a reason); a decided request never changes. Staff read their own requests only; owners and managers read those of the stores in their scope. Kinds are the Vietnamese defaults `mua_hang` Mua hàng cho cửa hàng, `chenh_lech_tien` Giải trình chênh lệch tiền, `ngoai_le_checklist` Ngoại lệ checklist and `khac` Khác, overridable per tenant; leave and shift swaps stay with the POS vendor's HR product. Submitting sends no message: managers see the request in their queue. A decision queues one `request_decided` message per destination of the requester who holds the `notifications` consent: template `request_decided.v1`, parameters `request_id`, `decision` and `kind_key`, never the details or the reason. No client calls these functions yet: the staff app (#229) will. Tests: pgTAP `55_announcements_requests.sql` and `47_operations_rls.sql`.
@@ -1770,7 +1794,7 @@ returns jsonb
 
 ### 3.20 Customer Mini App: session, join, wallet and claims (phase 18a)
 
-Migrations `customer_session` (#261) and `customer_wallet` (#264) add the functions of the customer Mini App; `customer_app_answers` refuses a join without an open programme as an answer, names the programme's status on the home and reads a released reward hold as reversed in the wallet. The wire shapes are those of `packages/zalo-mini/src/loyalty/contract.ts` and [apps/zalo-customer/README.md](../apps/zalo-customer/README.md#the-loyalty-contract).
+Migrations `customer_session` (#261) and `customer_wallet` (#264) add the functions of the customer Mini App; `customer_app_answers` refuses a join without an open programme as an answer, names the programme's status on the home and reads a released reward hold as reversed in the wallet; `customer_deletion_request_state` adds the deletion request to the wallet and the deadlines to its answer, and `store_receipt_numbers_reset` gives each store of the home its receipt numbering. The wire shapes are those of `packages/zalo-mini/src/loyalty/contract.ts` and [apps/zalo-customer/README.md](../apps/zalo-customer/README.md#the-loyalty-contract).
 
 **The customer session.** The customer branch of `zalo-session` (section 5) calls two RPCs that only `service_role` may execute, so they are not part of this page's check:
 - `zalo_customer_sign_in(p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text default null, p_new_user_id uuid default null)` answers the customer login of a Zalo user of an active Zalo App. With no login it answers `{"status": "login_needed"}`. The function then creates a login with `app_metadata` `{"kind": "customer", "tenant_id", "customer_id": null}` and calls again with its id. That login must have no `tenant_members` row, no staff Zalo identity and no other customer login (`22023` otherwise), and the first binding wins a race. The answer is `{"status": "customer", "user_id", "tenant_id", "customer_id", "display_name"}`: `customer_id` is null until the customer has joined, and `display_name` is the customer's name, else the Zalo name.
@@ -1807,6 +1831,7 @@ returns jsonb
   - `oa_id` is the brand's OA id.
   - `legal` is `{"entity_name"`: the tenant's name, `"policy_version"`: the published Vietnamese privacy notice version, `"documents"}`: the published `privacy_notice` and `mini_app_terms` in every language.
   - `stores` are the brand's active stores with their link key, name, address and opening hours; the address and hours are null when unknown.
+  - Each store also has `receipt_numbers_reset`: `daily`, `yearly`, `never` or `unknown`. It is the owner's `stores.tran_no_reset_period` when set, else what the POS reports in `stores.receipt_numbers_reset`. For `daily` the claim form warns, without blocking, when a receipt number does not start with the chosen date's day of month.
   - `menu` is empty until the highlights have a source. No amount or price is ever returned.
 
 #### `public.customer_wallet`
@@ -1830,6 +1855,7 @@ returns jsonb
     - Each row also has the ledger `reason`, `store_name`, the invoice's `receipt_no` and `matched_path`: `phone`, `member_code`, `receipt_claim`, `voucher`, `welcome` or `manual`, and null for a redeem row and for the `redemption_released` adjustment, which the app words "Hoàn lại quà chưa dùng".
   - `claims`: the latest 50 receipt claims with `state` and `reason` as `receipt_claims` stores them.
   - `claims_today` (every submission of the business day, refused ones included) and `claims_per_day`.
+  - `deletion_request`: the customer's deletion request as `customer_request_deletion` answers it. It is the open one (`received` or `in_progress`), else the latest whatever its status (a `rejected` one, so the app can offer a new request), else null. The app reads it after a restart.
 
 #### `public.customer_member_code`
 
@@ -1882,9 +1908,9 @@ returns jsonb
 
 - **Status:** built (phase 18a, #263); called by `apps/zalo-customer`.
 - **Who may call:** a joined customer session.
-- **Notes:** records a `data_subject_requests` row: subject `customer`, type `deletion`, contact `mini_app`, deadlines filled by the ledger's trigger. It answers `{"request_id", "status", "requested_at"}`. An open (`received` or `in_progress`) deletion request of the customer is answered again instead of a second one. An owner carries the deletion out with [`dsr_delete`](#publicdsr_delete).
+- **Notes:** records a `data_subject_requests` row: subject `customer`, type `deletion`, contact `mini_app`, deadlines filled by the ledger's trigger. It answers `{"request_id", "status", "requested_at", "first_response_due_at", "completion_due_at"}`, the two deadlines as the trigger filled them (2 working days; 20 days, 30 with a processor). An open (`received` or `in_progress`) deletion request of the customer is answered again instead of a second one. An owner carries the deletion out with [`dsr_delete`](#publicdsr_delete).
 
-Tests: pgTAP `66_customer_join.sql`, `67_customer_wallet.sql` and `93_customer_app_answers.sql`.
+Tests: pgTAP `66_customer_join.sql`, `67_customer_wallet.sql`, `93_customer_app_answers.sql`, `115_customer_deletion_state.sql` and `116_store_receipt_numbers.sql`.
 
 ### 3.21 Staff loyalty tools (phase 17b)
 

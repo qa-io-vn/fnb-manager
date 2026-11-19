@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { mapCatalog, mapSale, mergeCatalogs } from "../../src/index.js";
+import {
+	mapCatalog,
+	mapSale,
+	mergeCatalogs,
+	toStoreUpsert,
+} from "../../src/index.js";
 import { EMPTY_CATALOG } from "../support/fake-connector.js";
 import { cashPayment, itemLine, sale } from "../support/sales.js";
 
@@ -9,6 +14,30 @@ const context = {
 	posAccountId: "account-1",
 	businessDate: "2026-11-01",
 };
+
+describe("toStoreUpsert", () => {
+	const store = {
+		externalId: "S-1",
+		name: "Cửa hàng",
+		timezone: "Asia/Ho_Chi_Minh",
+		dayStartMinutes: 0,
+		currency: "VND",
+	};
+
+	it("writes the receipt numbering the POS reports, unknown when the connector says nothing", () => {
+		expect(
+			toStoreUpsert({ ...store, receiptNumbersReset: "daily" }),
+		).toMatchObject({ external_id: "S-1", receipt_numbers_reset: "daily" });
+		expect(
+			toStoreUpsert({ ...store, receiptNumbersReset: "yearly" })
+				.receipt_numbers_reset,
+		).toBe("yearly");
+		expect(toStoreUpsert(store).receipt_numbers_reset).toBe("unknown");
+		expect(
+			toStoreUpsert({ ...store, receiptNumbersReset: "daily" }).raw,
+		).toMatchObject({ receiptNumbersReset: "daily" });
+	});
+});
 
 describe("mapSale", () => {
 	it("maps invoice fields with fixed numeric scale and explicit nulls", () => {

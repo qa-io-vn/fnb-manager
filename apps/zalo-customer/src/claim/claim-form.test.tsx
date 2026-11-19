@@ -8,6 +8,7 @@ import {
 	cleanAmount,
 	cleanReceiptNo,
 	groupedAmount,
+	receiptDayMismatch,
 } from "./model";
 
 afterEach(() => setSearch(""));
@@ -72,6 +73,31 @@ describe("the claim form's rules", () => {
 			amount: 85_000,
 			businessDate: "2026-11-17",
 		});
+	});
+
+	it("checks the day a daily-numbering store prints first, without refusing", () => {
+		expect(receiptDayMismatch("190042", TODAY, "daily")).toBeNull();
+		expect(receiptDayMismatch("180042", TODAY, "daily")).toBe("19");
+		expect(receiptDayMismatch("1001", TODAY, "daily")).toBe("19");
+		expect(receiptDayMismatch("50042", "2026-11-05", "daily")).toBeNull();
+		expect(receiptDayMismatch("050042", "2026-11-05", "daily")).toBeNull();
+		expect(receiptDayMismatch("60042", "2026-11-05", "daily")).toBe("05");
+		expect(receiptDayMismatch("19004200", TODAY, "daily")).toBeNull();
+		expect(receiptDayMismatch("A-1001", TODAY, "daily")).toBeNull();
+		for (const reset of ["yearly", "never", "unknown", null] as const) {
+			expect(receiptDayMismatch("1001", TODAY, reset)).toBeNull();
+		}
+		expect(
+			claimInput(
+				{
+					store: "mau-2",
+					receiptNo: "1001",
+					amount: "42000",
+					businessDate: TODAY,
+				},
+				DATES,
+			),
+		).not.toBeNull();
 	});
 
 	it("cleans what is typed", () => {
@@ -156,6 +182,86 @@ describe("claiming a receipt", () => {
 		const refused = await screen.findByTestId("claim-result");
 		expect(refused).toHaveAttribute("data-state", "rejected");
 		expect(refused).toHaveTextContent("Hóa đơn này đã được gửi trước đó.");
+	});
+
+	it("warns gently when a daily-numbering store's receipt does not start with the chosen day", async () => {
+		renderCustomerApp({ settings: { member: true }, search: "?store=mau-2" });
+		const form = within(await openForm());
+		const today = isoDateIn(Date.now());
+		const day = today.slice(8, 10);
+		const receipt = form.getByTestId("claim-receipt");
+		fireEvent.change(receipt, { target: { value: "1001" } });
+		expect(form.queryByTestId("claim-receipt-day")).not.toBeInTheDocument();
+		fireEvent.blur(receipt);
+		const warning = form.getByTestId("claim-receipt-day");
+		expect(warning).toHaveAttribute("data-day", day);
+		expect(warning).toHaveTextContent(
+			`Số hóa đơn ở cửa hàng này bắt đầu bằng ngày trong tháng (${day} cho ngày đã chọn).`,
+		);
+		expect(receipt).toHaveAccessibleDescription(
+			expect.stringContaining("Bạn vẫn gửi được."),
+		);
+		fireEvent.change(receipt, { target: { value: `${day}0042` } });
+		expect(form.queryByTestId("claim-receipt-day")).not.toBeInTheDocument();
+		const yesterday = addDays(today, -1);
+		fireEvent.change(form.getByTestId("claim-date"), {
+			target: { value: yesterday },
+		});
+		expect(form.getByTestId("claim-receipt-day")).toHaveAttribute(
+			"data-day",
+			yesterday.slice(8, 10),
+		);
+		fireEvent.change(receipt, {
+			target: { value: `${yesterday.slice(8, 10)}0042` },
+		});
+		expect(form.queryByTestId("claim-receipt-day")).not.toBeInTheDocument();
+		fireEvent.change(form.getByTestId("claim-amount"), {
+			target: { value: "42000" },
+		});
+		fireEvent.click(form.getByRole("button", { name: "Gửi hóa đơn" }));
+		expect(await screen.findByTestId("claim-result")).toHaveAttribute(
+			"data-state",
+			"matched",
+		);
+	});
+
+	it("still sends a receipt after the warning, and does not warn for a store that numbers by year", async () => {
+		renderCustomerApp({
+			settings: { member: true },
+			search: "?store=mau-2",
+			language: "en",
+		});
+		await screen.findByRole("heading", { name: /Cửa hàng Mẫu/ });
+		fireEvent.click(
+			screen.getByRole("button", { name: "Earn from a receipt" }),
+		);
+		const form = within(await screen.findByTestId("claim-form"));
+		fireEvent.change(form.getByTestId("claim-receipt"), {
+			target: { value: "8888" },
+		});
+		fireEvent.change(form.getByTestId("claim-amount"), {
+			target: { value: "30000" },
+		});
+		fireEvent.click(form.getByRole("button", { name: "Send the receipt" }));
+		expect(await screen.findByTestId("claim-result")).toHaveAttribute(
+			"data-state",
+			"pending",
+		);
+		fireEvent.click(
+			screen.getByRole("button", { name: "Send another receipt" }),
+		);
+		const again = within(await screen.findByTestId("claim-form"));
+		fireEvent.change(again.getByTestId("claim-receipt"), {
+			target: { value: "8889" },
+		});
+		fireEvent.blur(again.getByTestId("claim-receipt"));
+		expect(again.getByTestId("claim-receipt-day")).toHaveTextContent(
+			/^Receipt numbers at this store start with the day of the month \(\d{2} for the date you chose\)\./,
+		);
+		fireEvent.change(again.getByTestId("claim-store"), {
+			target: { value: "mau-1" },
+		});
+		expect(again.queryByTestId("claim-receipt-day")).not.toBeInTheDocument();
 	});
 
 	it("uses the last claim of the day and offers no other", async () => {

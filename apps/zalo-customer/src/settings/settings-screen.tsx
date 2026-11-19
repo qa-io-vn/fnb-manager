@@ -7,7 +7,7 @@ import type {
 import { Popup, ResultModal, useI18n } from "@fnb/zalo-mini/react";
 import { useCallback, useId, useState } from "react";
 import { useCustomerData, useLoad } from "../data/customer-data";
-import { shownInstant } from "../data/dates";
+import { isoDateIn, shownDate, shownInstant } from "../data/dates";
 import type { Failure } from "../data/source";
 import { JoinActions } from "../home/join-actions";
 import { LegalButtons } from "../legal/legal-popups";
@@ -44,6 +44,45 @@ export function deletionOpen(request: DeletionRequest): boolean {
 	return request.status === "received" || request.status === "in_progress";
 }
 
+export function shownDeletion(
+	fromWallet: DeletionRequest | null,
+	remembered: DeletionRequest | null,
+): DeletionRequest | null {
+	if (remembered === null) return fromWallet;
+	if (fromWallet === null) return remembered;
+	if (fromWallet.requestId === remembered.requestId) return fromWallet;
+	return Date.parse(remembered.requestedAt) > Date.parse(fromWallet.requestedAt)
+		? remembered
+		: fromWallet;
+}
+
+function dueDate(iso: string): string {
+	return shownDate(isoDateIn(Date.parse(iso)));
+}
+
+function DeletionDeadlines({ request }: { readonly request: DeletionRequest }) {
+	const { t } = useI18n();
+	const { firstResponseDueAt, completionDueAt } = request;
+	if (completionDueAt === null)
+		return (
+			<p className="text-base text-ink" data-testid="deletion-deadline">
+				{t("settings.deleteDeadline")}
+			</p>
+		);
+	return (
+		<div className="flex flex-col gap-1" data-testid="deletion-deadline">
+			{request.status === "received" && firstResponseDueAt !== null ? (
+				<p className="text-base text-ink" data-testid="deletion-reply-by">
+					{t("settings.deleteReplyBy", { date: dueDate(firstResponseDueAt) })}
+				</p>
+			) : null}
+			<p className="text-base text-ink" data-testid="deletion-done-by">
+				{t("settings.deleteDoneBy", { date: dueDate(completionDueAt) })}
+			</p>
+		</div>
+	);
+}
+
 export function DeletionState({
 	request,
 }: {
@@ -70,9 +109,7 @@ export function DeletionState({
 			</p>
 			{deletionOpen(request) ? (
 				<>
-					<p className="text-base text-ink" data-testid="deletion-deadline">
-						{t("settings.deleteDeadline")}
-					</p>
+					<DeletionDeadlines request={request} />
 					<p className="text-base text-ink">{t("settings.deleteUntil")}</p>
 				</>
 			) : (
@@ -92,7 +129,13 @@ function MemberSettings({
 	readonly onChanged: () => void;
 }) {
 	const { t } = useI18n();
-	const { client, recover, deletion, rememberDeletion } = useCustomerData();
+	const {
+		client,
+		recover,
+		deletion: remembered,
+		rememberDeletion,
+	} = useCustomerData();
+	const deletion = shownDeletion(wallet.deletionRequest, remembered);
 	const [confirm, setConfirm] = useState<Confirm>(null);
 	const [busy, setBusy] = useState(false);
 	const [failure, setFailure] = useState<Failure | null>(null);
@@ -141,7 +184,10 @@ function MemberSettings({
 			async (active) => {
 				rememberDeletion(await active.requestDeletion());
 			},
-			() => setResult(t("settings.deleteSent")),
+			() => {
+				setResult(t("settings.deleteSent"));
+				onChanged();
+			},
 		);
 
 	const deleting = confirm === "delete";

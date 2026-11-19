@@ -52,12 +52,14 @@ export const DEMO_STORES = [
 		name: "Cửa hàng Mẫu 1",
 		address: "12 Đường Số 1, Phường Mẫu, Thành phố Mẫu",
 		opening_hours: HOURS_EVERY_DAY,
+		receipt_numbers_reset: "yearly",
 	},
 	{
 		code: "mau-2",
 		name: "Cửa hàng Mẫu 2",
 		address: "34 Đường Số 2, Phường Mẫu, Thành phố Mẫu",
 		opening_hours: HOURS_SPLIT,
+		receipt_numbers_reset: "daily",
 	},
 ] as const;
 
@@ -176,6 +178,7 @@ export const DEMO_LEGAL = {
 
 export interface DemoInvoice {
 	readonly store: string;
+	/** "DD" stands for the two-digit day of month of the invoice's date, as a daily-numbering POS prints it */
 	readonly receiptNo: string;
 	readonly amount: number;
 	readonly daysAgo: number;
@@ -184,7 +187,13 @@ export interface DemoInvoice {
 
 export const DEMO_SYNCED_INVOICES: readonly DemoInvoice[] = [
 	{ store: "mau-1", receiptNo: "1001", amount: 85_000, daysAgo: 0, points: 85 },
-	{ store: "mau-2", receiptNo: "2002", amount: 42_000, daysAgo: 1, points: 42 },
+	{
+		store: "mau-2",
+		receiptNo: "DD0042",
+		amount: 42_000,
+		daysAgo: 1,
+		points: 42,
+	},
 ];
 
 export interface DemoReward {

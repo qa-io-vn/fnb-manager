@@ -50,6 +50,49 @@ describe("syncMasterData", () => {
 		expect(Object.values(kinds)).toContain("cash");
 	});
 
+	it("writes the receipt numbering the POS reports and follows it on every sync", async () => {
+		const bed = await createTestBed({ storeExternalId: "OLD-STORE" });
+		const store = {
+			name: "Cửa hàng",
+			timezone: "Asia/Ho_Chi_Minh",
+			dayStartMinutes: 0,
+			currency: "VND",
+		};
+		const connector = createFakeConnector({
+			stores: [
+				{ ...store, externalId: "DAILY", receiptNumbersReset: "daily" },
+				{ ...store, externalId: "YEARLY", receiptNumbersReset: "yearly" },
+				{ ...store, externalId: "SILENT" },
+			],
+		});
+		await bed.engine(connector).syncMasterData(bed.account);
+		const numbering = () =>
+			Object.fromEntries(
+				bed.repository.tables.stores.map((row) => [
+					row.external_id,
+					row.receipt_numbers_reset,
+				]),
+			);
+		expect(numbering()).toEqual({
+			DAILY: "daily",
+			YEARLY: "yearly",
+			SILENT: "unknown",
+			"OLD-STORE": "unknown",
+		});
+		connector.data.stores = [
+			{ ...store, externalId: "DAILY" },
+			{ ...store, externalId: "YEARLY", receiptNumbersReset: "daily" },
+			{ ...store, externalId: "SILENT", receiptNumbersReset: "daily" },
+		];
+		await bed.engine(connector).syncMasterData(bed.account);
+		expect(numbering()).toEqual({
+			DAILY: "unknown",
+			YEARLY: "daily",
+			SILENT: "daily",
+			"OLD-STORE": "unknown",
+		});
+	});
+
 	it("deactivates stores and catalogue rows the POS no longer lists", async () => {
 		const bed = await createTestBed({ storeExternalId: "OLD-STORE" });
 		const connector = createFakeConnector({

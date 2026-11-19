@@ -50,6 +50,7 @@ async function scenario(): Promise<void> {
 					timezone: "Asia/Ho_Chi_Minh",
 					dayStartMinutes: 0,
 					currency: "VND",
+					receiptNumbersReset: "daily",
 				},
 			],
 			sales,
@@ -74,6 +75,11 @@ async function scenario(): Promise<void> {
 		await engine.syncMasterData(account);
 		const stores = await repository.listStores(account.id);
 		expect(stores.map((store) => store.external_id)).toEqual(["STORE-1"]);
+		const [numbering] = await sql<{ reset: string; owner: string }[]>`
+			select receipt_numbers_reset::text as reset, tran_no_reset_period::text as owner
+			from public.stores where pos_account_id = ${account.id}
+		`;
+		expect(numbering).toEqual({ reset: "daily", owner: "unknown" });
 		const first = await engine.syncWindow(account, stores, WINDOW, "backfill");
 		expect(first.checks).toEqual({ available: true, matched: 2, unmatched: 0 });
 		const second = await engine.syncWindow(account, stores, WINDOW, "nightly");
