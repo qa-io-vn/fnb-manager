@@ -346,6 +346,7 @@ select is(
       'consent_records', (b ->> 'consent_records')::int,
       'outbound_messages_redacted', (b ->> 'outbound_messages')::int,
       'invoices_unlinked', (b ->> 'invoices_linked')::int,
+      'invoices_blanked', 2,
       'customer_logins', (b ->> 'customer_logins')::int,
       'auth_users', 1,
       'customers', 1

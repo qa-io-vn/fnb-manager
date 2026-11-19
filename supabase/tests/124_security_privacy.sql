@@ -496,8 +496,8 @@ select is(
   pg_temp.tainted((select customer_id from erased) || '|' || (select membership from erased)),
   'public.data_subject_requests',
   'nothing but the deletion request itself names the erased customer or its membership');
-select is(pg_temp.tainted('9000124(01|02)'), 'public.invoices',
-  'the erased customers'' phones remain only on the invoices the POS sent');
+select is(pg_temp.tainted('9000124(01|02)'), '',
+  'the erased customers'' phones remain on no table: the deletion blanks the invoices the POS sent (owner default, G-05)');
 select is(
   pg_temp.tainted((select zalo_user from erased)) || '|' || (select count(*) from auth.users where id = (select login::uuid from erased)),
   '|0',

@@ -10,7 +10,7 @@ const ALLOWED_GRAINS = new Set<string>(PACK_GRAINS);
 const ROW_LEVEL_GRAIN =
 	/(?:^|-)(?:invoice|line|payment|shift|customer|cashier)s?(?:-|$)/;
 
-const PERSON = "(?:customer|employee|cashier|staff|member|user)s?";
+const PERSON = "(?:customer|employee|cashier|staff|member|membership|user)s?";
 
 export const FORBIDDEN_COLUMNS: readonly (readonly [string, RegExp])[] = [
 	["person", new RegExp(`^${PERSON}$`)],
