@@ -15,12 +15,11 @@ import { todayIn } from "../../lib/business-dates";
 import { downloadTextFile } from "../../lib/csv";
 import type { LoyaltyAccess } from "../../loyalty/access";
 import {
-	balancesByMember,
+	lookupPhoneText,
 	loyaltyCsvName,
 	MEMBERSHIP_STATUS_KEYS,
 	memberColumns,
 	memberTableRows,
-	phoneText,
 } from "../../loyalty/models";
 import { useMemberLookup, useMemberPages } from "../../loyalty/queries";
 import { memberHref } from "../../loyalty/route";
@@ -44,13 +43,7 @@ function MetricsSlot() {
 	);
 }
 
-function LookupResult({
-	rows,
-	access,
-}: {
-	readonly rows: readonly MemberRow[];
-	readonly access: LoyaltyAccess;
-}) {
+function LookupResult({ rows }: { readonly rows: readonly MemberRow[] }) {
 	const t = useT();
 	const { tenant } = useReadyTenantScope();
 	const formatters = useFormatters(tenant);
@@ -73,7 +66,7 @@ function LookupResult({
 						className="font-medium tabular-nums"
 						data-testid="loyalty-lookup-phone"
 					>
-						{phoneText(t, row.phone, access.seesFullPhone)}
+						{lookupPhoneText(t, row)}
 					</span>
 					<span className="text-sm text-ink-muted">
 						{t("loyalty.lookup.joined", {
@@ -171,7 +164,7 @@ function Lookup({ access }: { readonly access: LoyaltyAccess }) {
 						{t("loyalty.lookup.failed")}
 					</p>
 				) : lookup.data !== undefined ? (
-					<LookupResult rows={lookup.data} access={access} />
+					<LookupResult rows={lookup.data} />
 				) : null}
 			</div>
 		</section>
@@ -275,13 +268,8 @@ function MembersList() {
 		() => pages.data?.pages.flatMap((page) => page.rows) ?? [],
 		[pages.data],
 	);
-	const balances = useMemo(
-		() =>
-			balancesByMember(pages.data?.pages.flatMap((page) => page.entries) ?? []),
-		[pages.data],
-	);
 	const columns = memberColumns(t);
-	const rows = memberTableRows(members, balances, {
+	const rows = memberTableRows(members, {
 		t,
 		formatters,
 		timeZone: tenant.timeZone,

@@ -3,20 +3,13 @@ import {
 	LOYALTY_PROGRAMME_STATUSES,
 	LOYALTY_REFUSAL_REASONS,
 	type LoyaltyParameters,
+	type LoyaltyRefusalReason,
 	MATCHED_PATHS,
 	NOTIFICATION_DECISIONS,
-	normalizeLoyaltyPhone,
 } from "@fnb/core";
-import type { IsoDate } from "@fnb/reports";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import {
-	fetchAllByKey,
-	fetchOnce,
-	type QueryResult,
-	quotedFilterValue,
-} from "../data/paginate";
-import { addDays } from "../lib/business-dates";
+import { fetchAllByKey, fetchOnce, type QueryResult } from "../data/paginate";
 import { SettingsWriteError } from "../settings/source";
 import {
 	createSupabaseAudits,
@@ -26,10 +19,8 @@ import {
 	type PostgrestFailure,
 	writeErrorOf,
 } from "../settings/supabase-common";
-import { phoneTail, samePhone } from "./mask-phone";
 import { PARAMETER_COLUMNS, refusedProgrammeField } from "./programme-columns";
 import {
-	type AnomalyInputs,
 	type CustomerSource,
 	type InvoiceReference,
 	type LedgerEntryRow,
@@ -42,12 +33,15 @@ import {
 	QUEUE_REASONS,
 	QUEUE_STATES,
 	type QueueItemRow,
+	type ShiftAnomaly,
 	type StaffPhoneRow,
 } from "./source";
 
 export const ID_CHUNK = 100;
 export const READ_PAGE = 1_000;
 export const CLOSED_QUEUE_ITEMS = 100;
+/** loyalty_shift_anomalies takes at most 50 stores per call, like every report function. */
+export const REPORT_STORE_CHUNK = 50;
 
 const PARAMETER_SELECT = Object.values(PARAMETER_COLUMNS).join(",");
 
@@ -96,21 +90,41 @@ const staffPhoneRow = z.object({
 	created_at: z.string(),
 });
 
-const customerEmbed = z
-	.object({ phone: z.string().nullable() })
-	.nullable()
-	.optional();
+export const MEMBERS_PAGE_FUNCTION = "loyalty_members_page";
+export const MEMBER_LOOKUP_FUNCTION = "loyalty_member_lookup";
+export const SHIFT_ANOMALIES_FUNCTION = "loyalty_shift_anomalies";
 
-const MEMBER_SELECT =
-	"id,programme_id,joined_at,status,channel,customer:customers(phone)";
-
-const memberRow = z.object({
-	id: z.string(),
+const memberColumns = {
+	membership_id: z.string(),
+	tenant_id: z.string(),
 	programme_id: z.string(),
+	phone_masked: z.string().nullable(),
 	joined_at: z.string(),
 	status: z.enum(MEMBERSHIP_STATUSES),
 	channel: z.string(),
-	customer: customerEmbed,
+	stamps: numeric,
+	points: numeric,
+	pending_stamps: numeric,
+	pending_points: numeric,
+	last_visit: z.string().nullable(),
+};
+
+const memberPageRow = z.object({ ...memberColumns, page_key: z.string() });
+
+const memberLookupRow = z.object({
+	...memberColumns,
+	phone_full: z.string().nullable(),
+});
+
+const anomalyRow = z.object({
+	store_id: z.string(),
+	business_date: z.string(),
+	shift_number: nullableNumeric,
+	earns: numeric,
+	refusals: z.record(z.string(), numeric),
+	refusals_total: numeric,
+	adjustments: numeric,
+	checkins_without_invoice: numeric,
 });
 
 const INVOICE_COLUMNS =
@@ -147,7 +161,7 @@ const ledgerRow = z.object({
 });
 
 const QUEUE_SELECT =
-	"id,store_id,membership_id,matched_path,candidate_invoice_ids,reason,state,created_at,resolved_at,resolved_by,chosen_invoice_id,resolution_reason,entry_id,membership:memberships(customer:customers(phone)),checkin:pending_checkins(recorded_at,amount),claim:receipt_claims(receipt_no,amount,business_date)";
+	"id,store_id,membership_id,matched_path,candidate_invoice_ids,reason,state,created_at,resolved_at,resolved_by,chosen_invoice_id,resolution_reason,entry_id,membership:memberships(phone_masked),checkin:pending_checkins(recorded_at,amount),claim:receipt_claims(receipt_no,amount,business_date)";
 
 const queueRow = z.object({
 	id: z.string(),
@@ -163,7 +177,10 @@ const queueRow = z.object({
 	chosen_invoice_id: z.string().nullable(),
 	resolution_reason: z.string().nullable(),
 	entry_id: z.string().nullable(),
-	membership: z.object({ customer: customerEmbed }).nullable().optional(),
+	membership: z
+		.object({ phone_masked: z.string().nullable() })
+		.nullable()
+		.optional(),
 	checkin: z
 		.object({ recorded_at: z.string().nullable(), amount: nullableNumeric })
 		.nullable()
@@ -182,50 +199,6 @@ const queueOutcome = z.object({
 	state: z.enum(["resolved", "dismissed"]),
 	entry_id: z.string().nullable(),
 	refusal: z.enum(LOYALTY_REFUSAL_REASONS).nullable(),
-});
-
-const shiftRow = z.object({
-	id: z.string(),
-	store_id: z.string(),
-	external_id: z.string(),
-	opened_at: z.string(),
-	closed_at: z.string().nullable(),
-});
-
-const shiftInvoice = z
-	.object({
-		shift_external_id: z.string().nullable(),
-		sold_at: z.string(),
-	})
-	.nullable()
-	.optional();
-
-const earnRow = z.object({
-	id: z.string(),
-	store_id: z.string(),
-	business_date: z.string(),
-	matched_path: z.enum(MATCHED_PATHS).nullable(),
-	invoice: shiftInvoice,
-});
-
-const refusalRow = z.object({
-	id: z.string(),
-	store_id: z.string(),
-	business_date: z.string(),
-	reason: z.enum(LOYALTY_REFUSAL_REASONS),
-	invoice: shiftInvoice,
-});
-
-const adjustmentRow = z.object({
-	id: z.string(),
-	store_id: z.string(),
-	occurred_at: z.string(),
-});
-
-const checkinRow = z.object({
-	id: z.string(),
-	store_id: z.string(),
-	recorded_at: z.string(),
 });
 
 function chunks<T>(values: readonly T[], size: number): T[][] {
@@ -324,14 +297,46 @@ function invoiceOf(row: z.infer<typeof invoiceRow>): InvoiceReference {
 	};
 }
 
-function memberOf(row: z.infer<typeof memberRow>): MemberRow {
+function memberOf(
+	row: z.infer<typeof memberPageRow> | z.infer<typeof memberLookupRow>,
+): MemberRow {
 	return {
-		membershipId: row.id,
+		membershipId: row.membership_id,
+		tenantId: row.tenant_id,
 		programmeId: row.programme_id,
-		phone: row.customer?.phone ?? null,
+		phoneMasked: row.phone_masked,
+		phoneFull: "phone_full" in row ? row.phone_full : null,
 		joinedAt: row.joined_at,
 		status: row.status,
 		channel: row.channel,
+		balance: {
+			stamps: row.stamps,
+			points: row.points,
+			pendingStamps: row.pending_stamps,
+			pendingPoints: row.pending_points,
+			lastVisit: row.last_visit,
+		},
+	};
+}
+
+function isRefusalReason(reason: string): reason is LoyaltyRefusalReason {
+	return (LOYALTY_REFUSAL_REASONS as readonly string[]).includes(reason);
+}
+
+function anomalyOf(row: z.infer<typeof anomalyRow>): ShiftAnomaly {
+	const refusals: Partial<Record<LoyaltyRefusalReason, number>> = {};
+	for (const [reason, count] of Object.entries(row.refusals)) {
+		if (isRefusalReason(reason)) refusals[reason] = count;
+	}
+	return {
+		storeId: row.store_id,
+		businessDate: row.business_date,
+		shiftNumber: row.shift_number,
+		earns: row.earns,
+		refusals,
+		refusalsTotal: row.refusals_total,
+		adjustments: row.adjustments,
+		checkinsWithoutInvoice: row.checkins_without_invoice,
 	};
 }
 
@@ -352,13 +357,6 @@ function ledgerEntryOf(row: z.infer<typeof ledgerRow>): LedgerEntryRow {
 		reason: row.reason,
 		occurredAt: row.occurred_at,
 		expiresAt: row.expires_at,
-	};
-}
-
-function windowOf(from: IsoDate, to: IsoDate) {
-	return {
-		start: `${addDays(from, -1)}T00:00:00Z`,
-		end: `${addDays(to, 2)}T00:00:00Z`,
 	};
 }
 
@@ -502,7 +500,7 @@ function queueItemOf(
 		id: row.id,
 		storeId: row.store_id,
 		membershipId: row.membership_id,
-		phone: row.membership?.customer?.phone ?? null,
+		phoneMasked: row.membership?.phone_masked ?? null,
 		matchedPath: row.matched_path,
 		reason: row.reason,
 		state: row.state,
@@ -555,76 +553,44 @@ function byId<Row extends { readonly id: string }>(
 export function createSupabaseCustomerSource(
 	client: SupabaseClient,
 ): CustomerSource {
+	const membersPage = (
+		storeIds: readonly string[],
+		after: string | null,
+		limit: number,
+		search: string | null,
+	) =>
+		fetchOnce(
+			memberPageRow,
+			client.rpc(MEMBERS_PAGE_FUNCTION, {
+				p_store_ids: [...storeIds],
+				p_after: after,
+				p_limit: limit,
+				p_search: search,
+			}),
+		);
 	return {
 		kind: "supabase",
-		async members(tenantId, after, pageSize) {
-			let query = client
-				.from("memberships")
-				.select(MEMBER_SELECT)
-				.eq("tenant_id", tenantId)
-				.order("joined_at", { ascending: false })
-				.order("id", { ascending: false })
-				.limit(pageSize + 1);
-			if (after !== null) {
-				const joined = quotedFilterValue(after.joinedAt);
-				const id = quotedFilterValue(after.membershipId);
-				query = query.or(
-					`joined_at.lt.${joined},and(joined_at.eq.${joined},id.lt.${id})`,
-				);
-			}
-			const rows = (await fetchOnce(memberRow, query)).map(memberOf);
+		async members(storeIds, after, pageSize) {
+			if (storeIds.length === 0) return { rows: [], next: null };
+			const rows = await membersPage(storeIds, after, pageSize + 1, null);
 			const page = rows.slice(0, pageSize);
 			const last = page.at(-1);
 			return {
-				rows: page,
+				rows: page.map(memberOf),
 				next:
-					rows.length > pageSize && last !== undefined
-						? { joinedAt: last.joinedAt, membershipId: last.membershipId }
-						: null,
+					rows.length > pageSize && last !== undefined ? last.page_key : null,
 			};
 		},
 		async lookup(tenantId, phone) {
-			const wanted = normalizeLoyaltyPhone(phone);
-			const tail = phoneTail(wanted);
-			if (wanted === null || tail === null) return [];
-			const customers = await byId(
-				z.object({ id: z.string(), phone: z.string().nullable() }),
-				() =>
-					client
-						.from("customers")
-						.select("id,phone")
-						.eq("tenant_id", tenantId)
-						.like("phone", `%${tail}`),
-			);
-			const matched = customers
-				.filter((customer) => samePhone(customer.phone, wanted))
-				.map((customer) => customer.id);
-			if (matched.length === 0) return [];
-			const members: MemberRow[] = [];
-			for (const part of chunks(matched, ID_CHUNK)) {
-				const rows = await fetchOnce(
-					memberRow,
-					client
-						.from("memberships")
-						.select(MEMBER_SELECT)
-						.eq("tenant_id", tenantId)
-						.in("customer_id", part)
-						.order("joined_at", { ascending: false }),
-				);
-				members.push(...rows.map(memberOf));
-			}
-			return members;
-		},
-		async member(membershipId) {
 			const rows = await fetchOnce(
-				memberRow,
-				client
-					.from("memberships")
-					.select(MEMBER_SELECT)
-					.eq("id", membershipId)
-					.limit(1),
+				memberLookupRow,
+				client.rpc(MEMBER_LOOKUP_FUNCTION, { p_phone: phone }),
 			);
-			const [row] = rows;
+			return rows.filter((row) => row.tenant_id === tenantId).map(memberOf);
+		},
+		async member(storeIds, membershipId) {
+			if (storeIds.length === 0) return null;
+			const [row] = await membersPage(storeIds, null, 1, membershipId);
 			return row === undefined ? null : memberOf(row);
 		},
 		async ledger(membershipIds) {
@@ -687,102 +653,20 @@ export function createSupabaseCustomerSource(
 				refusal: outcome.refusal,
 			};
 		},
-		async anomalies(storeIds, from, to): Promise<AnomalyInputs> {
-			if (storeIds.length === 0) {
-				return {
-					shifts: [],
-					earns: [],
-					refusals: [],
-					adjustments: [],
-					checkinsWithoutInvoice: [],
-				};
+		async anomalies(storeIds, from, to) {
+			const rows: ShiftAnomaly[] = [];
+			for (const part of chunks([...new Set(storeIds)], REPORT_STORE_CHUNK)) {
+				const found = await fetchOnce(
+					anomalyRow,
+					client.rpc(SHIFT_ANOMALIES_FUNCTION, {
+						p_store_ids: part,
+						p_from: from,
+						p_to: to,
+					}),
+				);
+				rows.push(...found.map(anomalyOf));
 			}
-			const stores = [...storeIds];
-			const window = windowOf(from, to);
-			const [shifts, earns, refusals, adjustments, checkins] =
-				await Promise.all([
-					byId(shiftRow, () =>
-						client
-							.from("shifts")
-							.select("id,store_id,external_id,opened_at,closed_at")
-							.in("store_id", stores)
-							.gte("opened_at", window.start)
-							.lt("opened_at", window.end),
-					),
-					byId(earnRow, () =>
-						client
-							.from("loyalty_ledger")
-							.select(
-								"id,store_id,business_date,matched_path,invoice:invoices(shift_external_id,sold_at)",
-							)
-							.in("store_id", stores)
-							.eq("entry_kind", "earn")
-							.gte("business_date", from)
-							.lte("business_date", to),
-					),
-					byId(refusalRow, () =>
-						client
-							.from("loyalty_refusals")
-							.select(
-								"id,store_id,business_date,reason,invoice:invoices(shift_external_id,sold_at)",
-							)
-							.in("store_id", stores)
-							.gte("business_date", from)
-							.lte("business_date", to),
-					),
-					byId(adjustmentRow, () =>
-						client
-							.from("loyalty_ledger")
-							.select("id,store_id,occurred_at")
-							.in("store_id", stores)
-							.eq("entry_kind", "adjust")
-							.neq("reason", "welcome")
-							.gte("occurred_at", window.start)
-							.lt("occurred_at", window.end),
-					),
-					byId(checkinRow, () =>
-						client
-							.from("pending_checkins")
-							.select("id,store_id,recorded_at")
-							.in("store_id", stores)
-							.not("recorded_at", "is", null)
-							.is("matched_invoice_id", null)
-							.neq("status", "queued")
-							.gte("recorded_at", window.start)
-							.lt("recorded_at", window.end),
-					),
-				]);
-			return {
-				shifts: shifts.map((row) => ({
-					id: row.id,
-					storeId: row.store_id,
-					externalId: row.external_id,
-					openedAt: row.opened_at,
-					closedAt: row.closed_at,
-				})),
-				earns: earns.map((row) => ({
-					storeId: row.store_id,
-					businessDate: row.business_date,
-					matchedPath: row.matched_path,
-					shiftExternalId: row.invoice?.shift_external_id ?? null,
-					soldAt: row.invoice?.sold_at ?? null,
-				})),
-				refusals: refusals.map((row) => ({
-					storeId: row.store_id,
-					businessDate: row.business_date,
-					reason: row.reason,
-					shiftExternalId: row.invoice?.shift_external_id ?? null,
-					soldAt: row.invoice?.sold_at ?? null,
-				})),
-				adjustments: adjustments.map((row) => ({
-					storeId: row.store_id,
-					at: row.occurred_at,
-				})),
-				checkinsWithoutInvoice: checkins.map((row) => ({
-					storeId: row.store_id,
-					at: row.recorded_at,
-				})),
-			};
+			return rows;
 		},
 	};
 }

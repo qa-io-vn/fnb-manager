@@ -18,24 +18,22 @@ import {
 	anomalyRows,
 	anomalySummary,
 	anomalyTable,
-	balanceOf,
-	balancesByMember,
 	candidatesInOrder,
 	closedQueueItems,
 	ledgerTable,
+	lookupPhoneText,
 	memberColumns,
 	memberTableRows,
-	numberedShifts,
 	openQueueItems,
 	resolutionIssue,
 } from "./models";
 import type {
-	AnomalyInputs,
 	CustomerSource,
 	InvoiceReference,
 	LedgerEntryRow,
 	MemberRow,
 	QueueItemRow,
+	ShiftAnomaly,
 } from "./source";
 
 const TENANT = {
@@ -59,8 +57,16 @@ const STORES = [STORE_1, STORE_2].map((id, index) => ({
 }));
 
 const COUNTRY = "+84";
+const MASK = "•••• •••";
 const phoneOf = (tail: string) => `${COUNTRY}90000${tail}`;
 const FULL_PHONES = [phoneOf("0101"), phoneOf("0102")];
+const NO_BALANCE = {
+	stamps: 0,
+	points: 0,
+	pendingStamps: 0,
+	pendingPoints: 0,
+	lastVisit: null,
+};
 
 const M1 = "aaaaaaaa-0000-4000-8000-000000000001";
 const M2 = "aaaaaaaa-0000-4000-8000-000000000002";
@@ -70,27 +76,42 @@ const PROGRAMME = "bbbbbbbb-0000-4000-8000-000000000001";
 const MEMBERS: MemberRow[] = [
 	{
 		membershipId: M1,
+		tenantId: TENANT.id,
 		programmeId: PROGRAMME,
-		phone: FULL_PHONES[0] ?? null,
+		phoneMasked: `${MASK} 101`,
+		phoneFull: null,
 		joinedAt: "2026-11-15T02:00:00Z",
 		status: "active",
 		channel: "mini_app",
+		balance: {
+			stamps: 3,
+			points: 6,
+			pendingStamps: 1,
+			pendingPoints: 3,
+			lastVisit: "2026-11-17",
+		},
 	},
 	{
 		membershipId: M2,
+		tenantId: TENANT.id,
 		programmeId: PROGRAMME,
-		phone: `0${FULL_PHONES[1]?.slice(3)}`,
+		phoneMasked: `${MASK} 102`,
+		phoneFull: null,
 		joinedAt: "2026-11-14T02:00:00Z",
 		status: "suspended",
 		channel: "till",
+		balance: NO_BALANCE,
 	},
 	{
 		membershipId: M3,
+		tenantId: TENANT.id,
 		programmeId: PROGRAMME,
-		phone: null,
+		phoneMasked: null,
+		phoneFull: null,
 		joinedAt: "2026-11-13T02:00:00Z",
 		status: "active",
 		channel: "staff",
+		balance: NO_BALANCE,
 	},
 ];
 
@@ -200,7 +221,7 @@ const ITEM: QueueItemRow = {
 	id: "cccccccc-0000-4000-8000-000000000001",
 	storeId: STORE_1,
 	membershipId: M1,
-	phone: FULL_PHONES[0] ?? null,
+	phoneMasked: `${MASK} 101`,
 	matchedPath: "B",
 	reason: "two_candidates",
 	state: "open",
@@ -229,24 +250,11 @@ const CLOSED: QueueItemRow = {
 };
 
 describe("the members page model", () => {
-	it("gives a balance like the ledger function: confirmed earns, adjustments and clawbacks spend, open pending earns wait", () => {
-		expect(balanceOf(LEDGER)).toEqual({
-			stamps: 3,
-			points: 6,
-			pendingStamps: 1,
-			pendingPoints: 3,
-			lastVisit: "2026-11-17",
-			entries: 6,
-		});
-		expect(balanceOf([])).toMatchObject({ stamps: 0, lastVisit: null });
-	});
-
-	it("lists members with masked phones only, in the table and in its CSV", () => {
-		const balances = balancesByMember(LEDGER);
-		const rows = memberTableRows(MEMBERS, balances, CONTEXT);
+	it("lists members with the masked phones and balances the database gives, in the table and in its CSV", () => {
+		const rows = memberTableRows(MEMBERS, CONTEXT);
 		expect(rows.map((row) => row.cells.phone)).toEqual([
-			`${COUNTRY} ••• ••• 101`,
-			`${COUNTRY} ••• ••• 102`,
+			`${MASK} 101`,
+			`${MASK} 102`,
 			"Không có số",
 		]);
 		expect(rows[0]?.cells).toMatchObject({
@@ -263,6 +271,18 @@ describe("the members page model", () => {
 			expect(csv).not.toContain(phone);
 			expect(csv).not.toContain(phone.slice(3));
 		}
+	});
+
+	it("shows the full phone of a lookup only when the database gave one, to an owner", () => {
+		const [first] = MEMBERS;
+		if (first === undefined) throw new Error("no member");
+		expect(lookupPhoneText(t, first)).toBe(`${MASK} 101`);
+		expect(
+			lookupPhoneText(t, { ...first, phoneFull: FULL_PHONES[0] ?? null }),
+		).toBe(`${COUNTRY} 90 000 0101`);
+		expect(
+			lookupPhoneText(t, { ...first, phoneMasked: null, phoneFull: null }),
+		).toBe("Không có số");
 	});
 });
 
@@ -342,129 +362,95 @@ describe("the reconciliation queue model", () => {
 });
 
 describe("the shift anomaly model", () => {
-	const inputs: AnomalyInputs = {
-		shifts: [
-			{
-				id: "s1",
-				storeId: STORE_1,
-				externalId: "pos-b",
-				openedAt: "2026-11-17T01:00:00Z",
-				closedAt: "2026-11-17T05:00:00Z",
-			},
-			{
-				id: "s2",
-				storeId: STORE_1,
-				externalId: "pos-a",
-				openedAt: "2026-11-17T05:00:00Z",
-				closedAt: "2026-11-17T10:00:00Z",
-			},
-			{
-				id: "s3",
-				storeId: STORE_2,
-				externalId: "pos-c",
-				openedAt: "2026-11-17T02:00:00Z",
-				closedAt: null,
-			},
-		],
-		earns: [
-			{
-				storeId: STORE_1,
-				businessDate: "2026-11-17",
-				matchedPath: "A",
-				shiftExternalId: "pos-b",
-				soldAt: "2026-11-17T02:00:00Z",
-			},
-			{
-				storeId: STORE_1,
-				businessDate: "2026-11-17",
-				matchedPath: "B",
-				shiftExternalId: "pos-b",
-				soldAt: "2026-11-17T03:00:00Z",
-			},
-			{
-				storeId: STORE_1,
-				businessDate: "2026-11-17",
-				matchedPath: "C",
-				shiftExternalId: null,
-				soldAt: "2026-11-17T06:00:00Z",
-			},
-			{
-				storeId: STORE_1,
-				businessDate: "2026-11-10",
-				matchedPath: "A",
-				shiftExternalId: null,
-				soldAt: "2026-11-10T06:00:00Z",
-			},
-		],
-		refusals: [
-			{
-				storeId: STORE_1,
-				businessDate: "2026-11-17",
-				reason: "excluded_phone",
-				shiftExternalId: "pos-a",
-				soldAt: "2026-11-17T07:00:00Z",
-			},
-			{
-				storeId: STORE_1,
-				businessDate: "2026-11-17",
-				reason: "below_minimum",
-				shiftExternalId: "pos-b",
-				soldAt: "2026-11-17T04:00:00Z",
-			},
-			{
-				storeId: STORE_2,
-				businessDate: "2026-11-17",
-				reason: "daily_cap",
-				shiftExternalId: null,
-				soldAt: "2026-11-17T09:00:00Z",
-			},
-		],
-		adjustments: [{ storeId: STORE_1, at: "2026-11-17T07:30:00Z" }],
-		checkinsWithoutInvoice: [{ storeId: STORE_1, at: "2026-11-17T11:00:00Z" }],
-	};
-
-	it("numbers the shifts of a store and day by opening time, never by the POS name", () => {
-		const numbered = numberedShifts(inputs.shifts, STORES);
-		expect(
-			numbered.map((shift) => [shift.id, shift.businessDate, shift.number]),
-		).toEqual(
-			expect.arrayContaining([
-				["s1", "2026-11-17", 1],
-				["s2", "2026-11-17", 2],
-				["s3", "2026-11-17", 1],
-			]),
-		);
+	const anomaly = (overrides: Partial<ShiftAnomaly>): ShiftAnomaly => ({
+		storeId: STORE_1,
+		businessDate: "2026-11-17",
+		shiftNumber: 1,
+		earns: 0,
+		refusals: {},
+		refusalsTotal: 0,
+		adjustments: 0,
+		checkinsWithoutInvoice: 0,
+		...overrides,
 	});
+	const rows = anomalyRows([
+		anomaly({ shiftNumber: null, checkinsWithoutInvoice: 1 }),
+		anomaly({
+			shiftNumber: 2,
+			earns: 1,
+			refusals: { excluded_phone: 1 },
+			refusalsTotal: 1,
+			adjustments: 1,
+		}),
+		anomaly({
+			earns: 2,
+			refusals: { below_minimum: 1 },
+			refusalsTotal: 1,
+		}),
+		anomaly({
+			storeId: STORE_2,
+			refusals: { daily_cap: 1 },
+			refusalsTotal: 1,
+		}),
+		anomaly({ businessDate: "2026-11-16", earns: 4 }),
+	]);
+	const of = (storeId: string, date: string, shiftNumber: number | null) =>
+		rows.find(
+			(row) =>
+				row.storeId === storeId &&
+				row.businessDate === date &&
+				row.shiftNumber === shiftNumber,
+		);
 
-	it("counts earns, refusals by reason, manual adjustments and check-ins without an invoice per shift within the range", () => {
-		const rows = anomalyRows(inputs, STORES, "2026-11-15", "2026-11-17");
-		const of = (storeId: string, shiftNumber: number | null) =>
-			rows.find(
-				(row) => row.storeId === storeId && row.shiftNumber === shiftNumber,
-			);
-		expect(rows).toHaveLength(4);
-		expect(of(STORE_1, 1)).toMatchObject({
+	it("takes the counts per shift from the database, with every refusal reason and the signals to review", () => {
+		expect(of(STORE_1, "2026-11-17", 1)).toMatchObject({
 			earns: 2,
 			refusalsTotal: 1,
 			adjustments: 0,
 			signals: 0,
 		});
-		expect(of(STORE_1, 1)?.refusals.below_minimum).toBe(1);
-		expect(of(STORE_1, 2)).toMatchObject({
+		expect(of(STORE_1, "2026-11-17", 1)?.refusals.below_minimum).toBe(1);
+		expect(of(STORE_1, "2026-11-17", 1)?.refusals.daily_cap).toBe(0);
+		expect(of(STORE_1, "2026-11-17", 2)).toMatchObject({
 			earns: 1,
 			refusalsTotal: 1,
 			adjustments: 1,
 			signals: 2,
 		});
-		expect(of(STORE_1, 2)?.refusals.excluded_phone).toBe(1);
-		expect(of(STORE_1, null)).toMatchObject({
+		expect(of(STORE_1, "2026-11-17", null)).toMatchObject({
 			checkinsWithoutInvoice: 1,
 			signals: 1,
 		});
-		expect(of(STORE_2, 1)?.refusals.daily_cap).toBe(1);
+		expect(of(STORE_2, "2026-11-17", 1)?.refusals.daily_cap).toBe(1);
+	});
+
+	it("orders the newest day first, then by store and shift, the rows outside a shift last", () => {
+		const [first, second] = [STORE_1, STORE_2].sort();
+		expect(
+			rows.map((row) => [row.businessDate, row.storeId, row.shiftNumber]),
+		).toEqual(
+			first === STORE_1
+				? [
+						["2026-11-17", first, 1],
+						["2026-11-17", first, 2],
+						["2026-11-17", first, null],
+						["2026-11-17", second, 1],
+						["2026-11-16", STORE_1, 1],
+					]
+				: [
+						["2026-11-17", first, 1],
+						["2026-11-17", second, 1],
+						["2026-11-17", second, 2],
+						["2026-11-17", second, null],
+						["2026-11-16", STORE_1, 1],
+					],
+		);
+	});
+
+	it("sums the report and shows only the refusal reasons that occurred", () => {
 		expect(anomalySummary(rows)).toEqual({
-			shifts: 4,
-			earns: 3,
+			shifts: 5,
+			earns: 7,
 			refusals: 3,
 			adjustments: 1,
 			checkinsWithoutInvoice: 1,
@@ -489,6 +475,7 @@ describe("the shift anomaly model", () => {
 			direction: "descending",
 		});
 		expect(table.rows.map((row) => row.cells.shift)).toContain("Ngoài ca");
+		expect(table.rows.map((row) => row.cells.shift)).toContain("Ca 2");
 	});
 });
 
@@ -513,7 +500,7 @@ interface FakeCustomers extends CustomerSource {
 	readonly calls: string[];
 }
 
-function fakeCustomers(): FakeCustomers {
+function fakeCustomers({ owner = true } = {}): FakeCustomers {
 	const calls: string[] = [];
 	return {
 		kind: "supabase",
@@ -524,10 +511,18 @@ function fakeCustomers(): FakeCustomers {
 		}),
 		lookup: vi.fn(async (_tenantId: string, phone: string) => {
 			calls.push("lookup");
-			return phone.endsWith("0101") ? [MEMBERS[0] as MemberRow] : [];
+			const [first] = MEMBERS;
+			return phone.endsWith("0101") && first !== undefined
+				? [
+						{
+							...first,
+							phoneFull: owner ? (FULL_PHONES[0] ?? null) : null,
+						} satisfies MemberRow,
+					]
+				: [];
 		}),
 		member: vi.fn(
-			async (id: string) =>
+			async (_storeIds: readonly string[], id: string) =>
 				MEMBERS.find((row) => row.membershipId === id) ?? null,
 		),
 		ledger: vi.fn(async () => {
@@ -543,13 +538,7 @@ function fakeCustomers(): FakeCustomers {
 			entryId: "e9",
 			refusal: null,
 		})),
-		anomalies: vi.fn(async () => ({
-			shifts: [],
-			earns: [],
-			refusals: [],
-			adjustments: [],
-			checkinsWithoutInvoice: [],
-		})),
+		anomalies: vi.fn(async (): Promise<ShiftAnomaly[]> => []),
 	};
 }
 
@@ -617,7 +606,7 @@ describe("the members page", () => {
 		const rows = await screen.findAllByTestId("loyalty-member-row");
 		expect(rows).toHaveLength(3);
 		const first = within(rows[0] as HTMLElement).getByRole("link");
-		expect(first).toHaveTextContent(`${COUNTRY} ••• ••• 101`);
+		expect(first).toHaveTextContent(`${MASK} 101`);
 		expect(first).toHaveAttribute("href", `/khach-hang/thanh-vien/${M1}`);
 		expect(screen.getByTestId("loyalty-metrics-slot")).toBeVisible();
 		expect(screen.getByTestId("loyalty-members-count")).toHaveTextContent(
@@ -625,6 +614,21 @@ describe("the members page", () => {
 		);
 		expect(document.title).toContain("Khách hàng · Thành viên");
 		expectNoFullPhone();
+	});
+
+	it("asks the database for a page over the tenant's stores and sums no ledger row", async () => {
+		const customers = renderPage(
+			<MembersPage />,
+			"/khach-hang/thanh-vien",
+			"/khach-hang/thanh-vien",
+		);
+		await screen.findAllByTestId("loyalty-member-row");
+		expect(customers?.members).toHaveBeenCalledWith(
+			[STORE_1, STORE_2],
+			null,
+			100,
+		);
+		expect(customers?.calls).not.toContain("ledger");
 	});
 
 	it("shows the full phone only in the owner's lookup result, and never puts it in the address", async () => {
@@ -653,7 +657,10 @@ describe("the members page", () => {
 			<MembersPage />,
 			"/khach-hang/thanh-vien",
 			"/khach-hang/thanh-vien",
-			{ membership: { role: "manager", storeIds: [STORE_1] } },
+			{
+				membership: { role: "manager", storeIds: [STORE_1] },
+				customers: fakeCustomers({ owner: false }),
+			},
 		);
 		const input = await screen.findByTestId("loyalty-lookup-input");
 		await user.type(input, "12");
@@ -664,7 +671,7 @@ describe("the members page", () => {
 		await user.type(input, "0900000101");
 		await user.click(screen.getByTestId("loyalty-lookup-submit"));
 		expect(await screen.findByTestId("loyalty-lookup-phone")).toHaveTextContent(
-			`${COUNTRY} ••• ••• 101`,
+			`${MASK} 101`,
 		);
 		expectNoFullPhone();
 	});
@@ -711,7 +718,10 @@ describe("the member ledger page", () => {
 		).toHaveTextContent("3");
 		expect(screen.getByTestId("loyalty-balance-points")).toHaveTextContent("6");
 		expect(screen.getByTestId("loyalty-member")).toHaveTextContent(
-			`Thành viên ${COUNTRY} ••• ••• 101`,
+			`Thành viên ${MASK} 101`,
+		);
+		expect(screen.getByTestId("loyalty-balance-pending")).toHaveTextContent(
+			"1 dấu · 3 điểm",
 		);
 		const ledger = screen.getByTestId("loyalty-ledger");
 		expect(within(ledger).getAllByRole("row")).toHaveLength(7);

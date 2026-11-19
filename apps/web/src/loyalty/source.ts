@@ -87,19 +87,36 @@ export const MEMBERSHIP_STATUSES = ["active", "suspended", "closed"] as const;
 
 export type MembershipStatus = (typeof MEMBERSHIP_STATUSES)[number];
 
+/**
+ * A member's balance as the database computes it (loyalty_members_page,
+ * loyalty_member_lookup): over the ledger rows of the stores in the caller's
+ * scope and the rows without a store, so a manager limited to some stores
+ * may see less than the member's whole balance.
+ */
+export interface Balance {
+	readonly stamps: number;
+	readonly points: number;
+	readonly pendingStamps: number;
+	readonly pendingPoints: number;
+	readonly lastVisit: IsoDate | null;
+}
+
 export interface MemberRow {
 	readonly membershipId: string;
+	readonly tenantId: string;
 	readonly programmeId: string;
-	readonly phone: string | null;
+	/** Always masked by the database: four and three dots and the last three digits. */
+	readonly phoneMasked: string | null;
+	/** The E.164 phone, only in an owner's lookup result; null everywhere else. */
+	readonly phoneFull: string | null;
 	readonly joinedAt: string;
 	readonly status: MembershipStatus;
 	readonly channel: string;
+	readonly balance: Balance;
 }
 
-export interface MemberCursor {
-	readonly joinedAt: string;
-	readonly membershipId: string;
-}
+/** The page_key of the last row of a page, opaque to the browser. */
+export type MemberCursor = string;
 
 export interface MemberPage {
 	readonly rows: readonly MemberRow[];
@@ -146,7 +163,7 @@ export interface QueueItemRow {
 	readonly id: string;
 	readonly storeId: string;
 	readonly membershipId: string;
-	readonly phone: string | null;
+	readonly phoneMasked: string | null;
 	readonly matchedPath: "B" | "C";
 	readonly reason: QueueReason;
 	readonly state: QueueState;
@@ -181,52 +198,36 @@ export interface QueueOutcome {
 	readonly refusal: LoyaltyRefusalReason | null;
 }
 
-export interface ShiftRow {
-	readonly id: string;
-	readonly storeId: string;
-	readonly externalId: string;
-	readonly openedAt: string;
-	readonly closedAt: string | null;
-}
-
-export interface EarnEvent {
+/**
+ * One row of loyalty_shift_anomalies: the counts of a store's shift (Ca n,
+ * null for events outside every shift) on a business date. Never a cashier
+ * name or the POS shift label.
+ */
+export interface ShiftAnomaly {
 	readonly storeId: string;
 	readonly businessDate: IsoDate;
-	readonly matchedPath: MatchedPath | null;
-	readonly shiftExternalId: string | null;
-	readonly soldAt: string | null;
-}
-
-export interface RefusalEvent {
-	readonly storeId: string;
-	readonly businessDate: IsoDate;
-	readonly reason: LoyaltyRefusalReason;
-	readonly shiftExternalId: string | null;
-	readonly soldAt: string | null;
-}
-
-export interface TimedEvent {
-	readonly storeId: string;
-	readonly at: string;
-}
-
-export interface AnomalyInputs {
-	readonly shifts: readonly ShiftRow[];
-	readonly earns: readonly EarnEvent[];
-	readonly refusals: readonly RefusalEvent[];
-	readonly adjustments: readonly TimedEvent[];
-	readonly checkinsWithoutInvoice: readonly TimedEvent[];
+	readonly shiftNumber: number | null;
+	readonly earns: number;
+	readonly refusals: Readonly<Partial<Record<LoyaltyRefusalReason, number>>>;
+	readonly refusalsTotal: number;
+	readonly adjustments: number;
+	readonly checkinsWithoutInvoice: number;
 }
 
 export interface CustomerSource {
 	readonly kind: "supabase";
+	/** The tenant's members, masked, newest first; storeIds are the tenant's stores in the caller's scope. */
 	members(
-		tenantId: string,
+		storeIds: readonly string[],
 		after: MemberCursor | null,
 		pageSize: number,
 	): Promise<MemberPage>;
+	/** Sent in a POST body; the full phone comes back for an owner only. */
 	lookup(tenantId: string, phone: string): Promise<MemberRow[]>;
-	member(membershipId: string): Promise<MemberRow | null>;
+	member(
+		storeIds: readonly string[],
+		membershipId: string,
+	): Promise<MemberRow | null>;
 	ledger(membershipIds: readonly string[]): Promise<LedgerEntryRow[]>;
 	queue(tenantId: string): Promise<QueueItemRow[]>;
 	resolveQueueItem(resolution: QueueResolution): Promise<QueueOutcome>;
@@ -234,7 +235,7 @@ export interface CustomerSource {
 		storeIds: readonly string[],
 		from: IsoDate,
 		to: IsoDate,
-	): Promise<AnomalyInputs>;
+	): Promise<ShiftAnomaly[]>;
 }
 
 export class LoyaltyWriteError extends SettingsWriteError {

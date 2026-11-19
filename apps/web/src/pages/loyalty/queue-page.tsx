@@ -137,7 +137,7 @@ function QueueItem({
 				{[
 					t(PATH_KEYS[item.matchedPath]),
 					t(QUEUE_REASON_KEYS[item.reason]),
-					t("loyalty.queue.member", { phone: phoneText(t, item.phone) }),
+					t("loyalty.queue.member", { phone: phoneText(t, item.phoneMasked) }),
 				].join(" · ")}
 			</p>
 			<p className="text-sm" data-testid="loyalty-queue-claim">

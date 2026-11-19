@@ -54,7 +54,7 @@ function AnomalyTable({ location }: { readonly location: AnomalyLocation }) {
 			</p>
 		);
 	} else {
-		const rows = anomalyRows(inputs.data, location.stores, from, to);
+		const rows = anomalyRows(inputs.data);
 		const summary = anomalySummary(rows);
 		body = (
 			<>

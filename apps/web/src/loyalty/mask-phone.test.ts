@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	formatFullPhone,
-	maskPhone,
-	phoneTail,
-	samePhone,
-	VISIBLE_PHONE_DIGITS,
-} from "./mask-phone";
+import { formatFullPhone, maskPhone, VISIBLE_PHONE_DIGITS } from "./mask-phone";
 
 const COUNTRY = "+84";
 const NATIONAL = "900001234";
@@ -63,20 +57,5 @@ describe("formatFullPhone", () => {
 		expect(formatFullPhone("+6591234567")).toBe("+6591234567");
 		expect(formatFullPhone("not a phone")).toBeNull();
 		expect(formatFullPhone(null)).toBeNull();
-	});
-});
-
-describe("phoneTail and samePhone", () => {
-	it("gives the last four digits used to narrow a lookup, never the full number", () => {
-		expect(phoneTail(LOCAL)).toBe("1234");
-		expect(phoneTail(E164)).toBe("1234");
-		expect(phoneTail("123")).toBeNull();
-	});
-
-	it("compares phones in E.164 form whatever form the till stored", () => {
-		expect(samePhone(LOCAL, E164)).toBe(true);
-		expect(samePhone(`84${NATIONAL}`, "090 000 1234")).toBe(true);
-		expect(samePhone(LOCAL, "0900001235")).toBe(false);
-		expect(samePhone(null, null)).toBe(false);
 	});
 });

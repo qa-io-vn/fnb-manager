@@ -6,7 +6,6 @@ import { TextLink } from "../../components/ui/text-link";
 import { useT } from "../../i18n";
 import { todayIn } from "../../lib/business-dates";
 import {
-	balanceOf,
 	ledgerTable,
 	loyaltyCsvName,
 	MEMBERSHIP_STATUS_KEYS,
@@ -79,7 +78,7 @@ function MemberLedger({ membershipId }: { readonly membershipId: string }) {
 			</Notice>
 		);
 	}
-	const balance = balanceOf(ledger.data);
+	const balance = member.data.balance;
 	const table = ledgerTable(ledger.data, {
 		t,
 		formatters,
@@ -95,7 +94,7 @@ function MemberLedger({ membershipId }: { readonly membershipId: string }) {
 			>
 				<h2 id={`${ids}-member`} className="text-base font-semibold">
 					{t("loyalty.member.heading", {
-						phone: phoneText(t, member.data.phone),
+						phone: phoneText(t, member.data.phoneMasked),
 					})}
 				</h2>
 				<p className="text-sm text-ink-muted">

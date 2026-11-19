@@ -11,15 +11,10 @@ import type {
 	TableSpec,
 } from "../components/report-card/types";
 import type { MessageKey, Translate } from "../i18n";
-import {
-	businessDateOf,
-	type StoreClock,
-	todayIn,
-} from "../lib/business-dates";
+import { todayIn } from "../lib/business-dates";
 import type { Formatters } from "../lib/format";
-import { formatFullPhone, maskPhone } from "./mask-phone";
+import { formatFullPhone } from "./mask-phone";
 import type {
-	AnomalyInputs,
 	InvoiceReference,
 	LedgerEntryRow,
 	MemberRow,
@@ -27,87 +22,8 @@ import type {
 	QueueItemRow,
 	QueueReason,
 	QueueState,
-	ShiftRow,
+	ShiftAnomaly,
 } from "./source";
-
-export interface Balance {
-	readonly stamps: number;
-	readonly points: number;
-	readonly pendingStamps: number;
-	readonly pendingPoints: number;
-	readonly lastVisit: IsoDate | null;
-	readonly entries: number;
-}
-
-export const EMPTY_BALANCE: Balance = {
-	stamps: 0,
-	points: 0,
-	pendingStamps: 0,
-	pendingPoints: 0,
-	lastVisit: null,
-	entries: 0,
-};
-
-export function balanceOf(entries: readonly LedgerEntryRow[]): Balance {
-	const confirmed = new Set(
-		entries
-			.filter((entry) => entry.entryKind === "confirm")
-			.map((entry) => entry.sourceEntryId),
-	);
-	const openPending = new Set(
-		entries
-			.filter(
-				(entry) =>
-					entry.pending &&
-					entry.entryKind === "earn" &&
-					!confirmed.has(entry.id),
-			)
-			.map((entry) => entry.id),
-	);
-	let stamps = 0;
-	let points = 0;
-	let pendingStamps = 0;
-	let pendingPoints = 0;
-	let lastVisit: IsoDate | null = null;
-	for (const entry of entries) {
-		const pending =
-			openPending.has(entry.id) ||
-			(entry.sourceEntryId !== null && openPending.has(entry.sourceEntryId));
-		if (pending) {
-			pendingStamps += entry.stampDelta;
-			pendingPoints += entry.pointDelta;
-		} else {
-			stamps += entry.stampDelta;
-			points += entry.pointDelta;
-		}
-		const visit = entry.entryKind === "earn" ? entry.businessDate : null;
-		if (visit !== null && (lastVisit === null || visit > lastVisit)) {
-			lastVisit = visit;
-		}
-	}
-	return {
-		stamps,
-		points,
-		pendingStamps,
-		pendingPoints,
-		lastVisit,
-		entries: entries.length,
-	};
-}
-
-export function balancesByMember(
-	entries: readonly LedgerEntryRow[],
-): Map<string, Balance> {
-	const grouped = new Map<string, LedgerEntryRow[]>();
-	for (const entry of entries) {
-		const list = grouped.get(entry.membershipId) ?? [];
-		list.push(entry);
-		grouped.set(entry.membershipId, list);
-	}
-	return new Map(
-		[...grouped].map(([membershipId, list]) => [membershipId, balanceOf(list)]),
-	);
-}
 
 export const MEMBERSHIP_STATUS_KEYS: Readonly<
 	Record<MembershipStatus, MessageKey>
@@ -170,13 +86,17 @@ export function reasonText(t: Translate, reason: string | null): string | null {
 	return key === undefined ? reason : t(key);
 }
 
-export function phoneText(
-	t: Translate,
-	phone: string | null,
-	full = false,
-): string {
-	const shown = full ? formatFullPhone(phone) : maskPhone(phone);
-	return shown ?? t("loyalty.phone.none");
+/** A phone as the database masked it; never unmasked in the browser. */
+export function phoneText(t: Translate, masked: string | null): string {
+	return masked ?? t("loyalty.phone.none");
+}
+
+/** The lookup result: the full phone the database gave an owner, else the masked one. */
+export function lookupPhoneText(t: Translate, member: MemberRow): string {
+	if (member.phoneFull !== null) {
+		return formatFullPhone(member.phoneFull) ?? member.phoneFull;
+	}
+	return phoneText(t, member.phoneMasked);
 }
 
 export interface StoreName {
@@ -227,24 +147,20 @@ export function memberColumns(t: Translate): TableColumn[] {
 
 export function memberTableRows(
 	members: readonly MemberRow[],
-	balances: ReadonlyMap<string, Balance>,
 	context: TableContext,
 ): TableRow[] {
-	return members.map((member) => {
-		const balance = balances.get(member.membershipId) ?? EMPTY_BALANCE;
-		return {
-			id: member.membershipId,
-			cells: {
-				phone: phoneText(context.t, member.phone),
-				joined: todayIn(context.timeZone, new Date(member.joinedAt)),
-				status: context.t(MEMBERSHIP_STATUS_KEYS[member.status]),
-				stamps: balance.stamps,
-				points: balance.points,
-				pending: balance.pendingStamps + balance.pendingPoints,
-				lastVisit: balance.lastVisit,
-			},
-		};
-	});
+	return members.map((member) => ({
+		id: member.membershipId,
+		cells: {
+			phone: phoneText(context.t, member.phoneMasked),
+			joined: todayIn(context.timeZone, new Date(member.joinedAt)),
+			status: context.t(MEMBERSHIP_STATUS_KEYS[member.status]),
+			stamps: member.balance.stamps,
+			points: member.balance.points,
+			pending: member.balance.pendingStamps + member.balance.pendingPoints,
+			lastVisit: member.balance.lastVisit,
+		},
+	}));
 }
 
 export function invoiceText(
@@ -400,7 +316,7 @@ export function queueHistoryTable(
 			cells: {
 				created: momentText(formatters, timeZone, item.createdAt),
 				store: storeName(t, context.stores, item.storeId),
-				phone: phoneText(t, item.phone),
+				phone: phoneText(t, item.phoneMasked),
 				path: t(PATH_KEYS[item.matchedPath]),
 				reason: t(QUEUE_REASON_KEYS[item.reason]),
 				state: t(QUEUE_STATE_KEYS[item.state]),
@@ -418,69 +334,6 @@ export function queueHistoryTable(
 	};
 }
 
-export interface StoreShiftClock extends StoreClock {
-	readonly id: string;
-	readonly name: string;
-}
-
-export interface NumberedShift extends ShiftRow {
-	readonly businessDate: IsoDate;
-	readonly number: number;
-}
-
-export function numberedShifts(
-	shifts: readonly ShiftRow[],
-	stores: readonly StoreShiftClock[],
-): NumberedShift[] {
-	const groups = new Map<string, (ShiftRow & { businessDate: IsoDate })[]>();
-	for (const shift of shifts) {
-		const store = stores.find((entry) => entry.id === shift.storeId);
-		if (store === undefined) continue;
-		const businessDate = businessDateOf(new Date(shift.openedAt), store);
-		const key = `${shift.storeId}|${businessDate}`;
-		const list = groups.get(key) ?? [];
-		list.push({ ...shift, businessDate });
-		groups.set(key, list);
-	}
-	const numbered: NumberedShift[] = [];
-	for (const list of groups.values()) {
-		list.sort((left, right) => {
-			const opened = Date.parse(left.openedAt) - Date.parse(right.openedAt);
-			if (opened !== 0) return opened;
-			return left.externalId < right.externalId
-				? -1
-				: left.externalId > right.externalId
-					? 1
-					: 0;
-		});
-		list.forEach((shift, index) => {
-			numbered.push({ ...shift, number: index + 1 });
-		});
-	}
-	return numbered;
-}
-
-function shiftAt(
-	shifts: readonly NumberedShift[],
-	storeId: string,
-	at: string | null,
-): NumberedShift | null {
-	if (at === null) return null;
-	const instant = Date.parse(at);
-	let found: NumberedShift | null = null;
-	for (const shift of shifts) {
-		if (shift.storeId !== storeId) continue;
-		const opened = Date.parse(shift.openedAt);
-		const closed =
-			shift.closedAt === null
-				? Number.POSITIVE_INFINITY
-				: Date.parse(shift.closedAt);
-		if (instant < opened || instant > closed) continue;
-		if (found === null || opened > Date.parse(found.openedAt)) found = shift;
-	}
-	return found;
-}
-
 export type RefusalCounts = Readonly<Record<LoyaltyRefusalReason, number>>;
 
 export interface AnomalyRow {
@@ -496,123 +349,34 @@ export interface AnomalyRow {
 	readonly signals: number;
 }
 
-interface MutableAnomaly {
-	storeId: string;
-	businessDate: IsoDate;
-	shiftNumber: number | null;
-	earns: number;
-	refusals: Record<LoyaltyRefusalReason, number>;
-	adjustments: number;
-	checkinsWithoutInvoice: number;
-}
-
-function noRefusals(): Record<LoyaltyRefusalReason, number> {
-	return Object.fromEntries(
-		LOYALTY_REFUSAL_REASONS.map((reason) => [reason, 0]),
-	) as Record<LoyaltyRefusalReason, number>;
-}
-
 export const SIGNAL_FREE_REFUSALS: readonly LoyaltyRefusalReason[] = [
 	"below_minimum",
 ];
 
-export function anomalyRows(
-	inputs: AnomalyInputs,
-	stores: readonly StoreShiftClock[],
-	from: IsoDate,
-	to: IsoDate,
-): AnomalyRow[] {
-	const shifts = numberedShifts(inputs.shifts, stores);
-	const byExternal = new Map(
-		shifts.map((shift) => [`${shift.storeId}|${shift.externalId}`, shift]),
-	);
-	const buckets = new Map<string, MutableAnomaly>();
-	const bucket = (
-		storeId: string,
-		businessDate: IsoDate,
-		shift: NumberedShift | null,
-	): MutableAnomaly | null => {
-		const date = shift?.businessDate ?? businessDate;
-		if (date < from || date > to) return null;
-		const number = shift?.number ?? null;
-		const key = `${storeId}|${date}|${number ?? ""}`;
-		let found = buckets.get(key);
-		if (found === undefined) {
-			found = {
-				storeId,
-				businessDate: date,
-				shiftNumber: number,
-				earns: 0,
-				refusals: noRefusals(),
-				adjustments: 0,
-				checkinsWithoutInvoice: 0,
-			};
-			buckets.set(key, found);
-		}
-		return found;
-	};
-	const invoiceShift = (
-		storeId: string,
-		externalId: string | null,
-		soldAt: string | null,
-	) =>
-		(externalId === null
-			? undefined
-			: byExternal.get(`${storeId}|${externalId}`)) ??
-		shiftAt(shifts, storeId, soldAt);
-	const clockOf = (storeId: string) =>
-		stores.find((store) => store.id === storeId);
-	for (const earn of inputs.earns) {
-		const target = bucket(
-			earn.storeId,
-			earn.businessDate,
-			invoiceShift(earn.storeId, earn.shiftExternalId, earn.soldAt),
-		);
-		if (target !== null) target.earns += 1;
-	}
-	for (const refusal of inputs.refusals) {
-		const target = bucket(
-			refusal.storeId,
-			refusal.businessDate,
-			invoiceShift(refusal.storeId, refusal.shiftExternalId, refusal.soldAt),
-		);
-		if (target !== null) target.refusals[refusal.reason] += 1;
-	}
-	const timed = (
-		events: AnomalyInputs["adjustments"],
-		add: (target: MutableAnomaly) => void,
-	) => {
-		for (const event of events) {
-			const clock = clockOf(event.storeId);
-			if (clock === undefined) continue;
-			const target = bucket(
-				event.storeId,
-				businessDateOf(new Date(event.at), clock),
-				shiftAt(shifts, event.storeId, event.at),
-			);
-			if (target !== null) add(target);
-		}
-	};
-	timed(inputs.adjustments, (target) => {
-		target.adjustments += 1;
-	});
-	timed(inputs.checkinsWithoutInvoice, (target) => {
-		target.checkinsWithoutInvoice += 1;
-	});
-	return [...buckets.entries()]
-		.map(([key, row]) => {
-			const refusalsTotal = LOYALTY_REFUSAL_REASONS.reduce(
-				(total, reason) => total + row.refusals[reason],
-				0,
-			);
+/** The rows of loyalty_shift_anomalies with every refusal reason and the signals to review. */
+export function anomalyRows(anomalies: readonly ShiftAnomaly[]): AnomalyRow[] {
+	return anomalies
+		.map((anomaly): AnomalyRow => {
+			const refusals = Object.fromEntries(
+				LOYALTY_REFUSAL_REASONS.map((reason) => [
+					reason,
+					anomaly.refusals[reason] ?? 0,
+				]),
+			) as Record<LoyaltyRefusalReason, number>;
 			const flagged = LOYALTY_REFUSAL_REASONS.filter(
 				(reason) => !SIGNAL_FREE_REFUSALS.includes(reason),
-			).reduce((total, reason) => total + row.refusals[reason], 0);
+			).reduce((total, reason) => total + refusals[reason], 0);
 			return {
-				key,
-				...row,
-				refusalsTotal,
-				signals: flagged + row.adjustments + row.checkinsWithoutInvoice,
+				key: `${anomaly.storeId}|${anomaly.businessDate}|${anomaly.shiftNumber ?? ""}`,
+				storeId: anomaly.storeId,
+				businessDate: anomaly.businessDate,
+				shiftNumber: anomaly.shiftNumber,
+				earns: anomaly.earns,
+				refusals,
+				refusalsTotal: anomaly.refusalsTotal,
+				adjustments: anomaly.adjustments,
+				checkinsWithoutInvoice: anomaly.checkinsWithoutInvoice,
+				signals: flagged + anomaly.adjustments + anomaly.checkinsWithoutInvoice,
 			};
 		})
 		.sort((left, right) => {

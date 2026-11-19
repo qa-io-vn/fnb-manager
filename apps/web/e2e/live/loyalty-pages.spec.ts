@@ -44,6 +44,8 @@ type Login = SettingsRole | "publisher";
 
 const RESOLUTION = "Khách đưa hóa đơn giấy";
 const ALL_PHONES = Object.values(LOYALTY_PHONES);
+const MASK = "•••• •••";
+const ANY_E164_VN = new RegExp(`\\${COUNTRY}\\d{9}`);
 
 let fixture: SettingsFixture | undefined;
 let loyalty: LoyaltyFixture | undefined;
@@ -116,6 +118,44 @@ async function expectNoFullPhone(page: Page, text = ""): Promise<void> {
 	expect(shown).not.toMatch(/(\+84|\b0)9\d{8}\b/);
 }
 
+interface Exchange {
+	readonly method: string;
+	readonly url: string;
+	readonly body: string;
+}
+
+/**
+ * Records every Data API answer the page receives, with the URL it asked;
+ * the returned function waits for the bodies read so far.
+ */
+function recordDataApi(page: Page): () => Promise<Exchange[]> {
+	const pending: Promise<Exchange>[] = [];
+	page.on("response", (response) => {
+		const url = response.url();
+		if (!/\/rest\/v1\//.test(url)) return;
+		const method = response.request().method();
+		pending.push(
+			response.text().then(
+				(body) => ({ method, url, body }),
+				() => ({ method, url, body: "" }),
+			),
+		);
+	});
+	return () => Promise.all(pending);
+}
+
+function expectNoFullPhoneIn(exchanges: readonly Exchange[]): void {
+	expect(exchanges.length).toBeGreaterThan(0);
+	for (const { url, body } of exchanges) {
+		const text = `${decodeURIComponent(url)} ${body}`;
+		for (const phone of ALL_PHONES) {
+			expect(text, url).not.toContain(phone);
+			expect(text, url).not.toContain(phone.slice(COUNTRY.length));
+		}
+		expect(text, url).not.toMatch(ANY_E164_VN);
+	}
+}
+
 function csvRows(csv: string): string[][] {
 	const [header = "", ...lines] = csv.trim().split(/\r?\n/);
 	const separator = header.includes(";") ? ";" : ",";
@@ -142,8 +182,30 @@ test("through PostgREST, each login reads the fixture's loyalty rows its role al
 		"publisher",
 	];
 	const reads: Record<string, string> = {};
+	const phones: Record<string, string> = {};
+	const local = `0${LOYALTY_PHONES.main.slice(COUNTRY.length)}`;
 	for (const login of logins) {
 		const client = await clientAs(login);
+		const { error: phoneError } = await client
+			.from("customers")
+			.select("phone")
+			.eq("tenant_id", settings().tenantId)
+			.limit(1);
+		const { data: found, error: lookupError } = await client.rpc(
+			"loyalty_member_lookup",
+			{ p_phone: local },
+		);
+		const [hit] = (found ?? []) as {
+			phone_full: string | null;
+			phone_masked: string | null;
+		}[];
+		phones[login] = [
+			phoneError?.code ?? "read",
+			lookupError?.code ??
+				(hit === undefined
+					? "none"
+					: `${hit.phone_full === LOYALTY_PHONES.main ? "full" : hit.phone_full === null ? "no-full" : "other"} ${hit.phone_masked}`),
+		].join(" | ");
 		const count = async (table: string, storeId?: string) => {
 			let query = client
 				.from(table)
@@ -181,6 +243,14 @@ test("through PostgREST, each login reads the fixture's loyalty rows its role al
 		),
 		publisher: "0 0 0 0",
 	});
+	expect(phones).toEqual({
+		owner: `42501 | full ${MASK} 201`,
+		manager: `42501 | no-full ${MASK} 201`,
+		"store-manager": `42501 | no-full ${MASK} 201`,
+		staff: "42501 | 42501",
+		viewer: `42501 | no-full ${MASK} 201`,
+		publisher: "42501 | 42501",
+	});
 	const [choice] = seeded().queueInvoices;
 	for (const login of ["staff", "viewer", "publisher"] as const) {
 		const client = await clientAs(login);
@@ -209,6 +279,7 @@ test("the owner lists the members masked in pages under the 1,000-row limit, loo
 	page,
 }) => {
 	await signedIn(page, "owner");
+	const answers = recordDataApi(page);
 	await page.goto("/#/khach-hang");
 	await expect(page).toHaveURL(/#\/khach-hang\/thanh-vien$/);
 	await expect(
@@ -220,9 +291,7 @@ test("the owner lists the members masked in pages under the 1,000-row limit, loo
 		"Đang hiện 100 thành viên mới nhất",
 	);
 	await expect(page.getByTestId("loyalty-metrics-slot")).toBeVisible();
-	await expect(rows.first().getByRole("link")).toHaveText(
-		/^\+84 ••• ••• \d{3}$/,
-	);
+	await expect(rows.first().getByRole("link")).toHaveText(/^•••• ••• \d{3}$/);
 	await page.getByTestId("loyalty-members-more").click();
 	await expect(rows).toHaveCount(seeded().memberCount);
 	await expect(page.getByTestId("loyalty-members-more")).toHaveCount(0);
@@ -231,7 +300,7 @@ test("the owner lists the members masked in pages under the 1,000-row limit, loo
 	);
 	const csv = await csvTextOf(page, "loyalty-members");
 	expect(csvRows(csv)).toHaveLength(seeded().memberCount + 1);
-	expect(csv).toContain(`${COUNTRY} ••• ••• 201`);
+	expect(csv).toContain(`${MASK} 201`);
 	await expectNoFullPhone(page, csv);
 	await checkPage(page);
 
@@ -243,12 +312,23 @@ test("the owner lists the members masked in pages under the 1,000-row limit, loo
 	);
 	await expect(page).toHaveURL(/#\/khach-hang\/thanh-vien$/);
 	expect(await page.title()).not.toContain("1201");
+	const exchanges = await answers();
+	const lookups = exchanges.filter((exchange) =>
+		exchange.url.includes("/rpc/loyalty_member_lookup"),
+	);
+	expect(lookups.map((exchange) => exchange.method)).toEqual(["POST"]);
+	expect(lookups[0]?.body).toContain(LOYALTY_PHONES.main);
+	expectNoFullPhoneIn(
+		exchanges
+			.filter((exchange) => !lookups.includes(exchange))
+			.concat(lookups.map((exchange) => ({ ...exchange, body: "" }))),
+	);
 	await page.getByTestId("loyalty-lookup-open").click();
 	await expect(page).toHaveURL(
 		new RegExp(`#/khach-hang/thanh-vien/${seeded().members.main}$`),
 	);
 	await expect(page.getByTestId("loyalty-member")).toContainText(
-		`Thành viên ${COUNTRY} ••• ••• 201`,
+		`Thành viên ${MASK} 201`,
 	);
 	const ledger = page.getByTestId("loyalty-ledger");
 	await expect(ledger).toContainText("A · Số điện thoại trên hóa đơn");
@@ -270,7 +350,7 @@ test("a store manager resolves the manufactured double-candidate item from the q
 	const item = page.getByTestId("loyalty-queue-item");
 	await expect(item).toHaveCount(1);
 	await expect(item).toContainText("Hai hóa đơn gần như nhau");
-	await expect(item).toContainText(`Thành viên ${COUNTRY} ••• ••• 202`);
+	await expect(item).toContainText(`Thành viên ${MASK} 202`);
 	await expect(item.getByTestId("loyalty-queue-candidate")).toHaveCount(2);
 	await expectNoFullPhone(page);
 	await checkPage(page);
@@ -351,8 +431,47 @@ test("a viewer reads the members but not the queue, and staff get the reason onl
 	page,
 }) => {
 	await signedIn(page, "viewer");
+	const answers = recordDataApi(page);
 	await page.goto("/#/khach-hang/thanh-vien");
 	await expect(page.getByTestId("loyalty-member-row")).toHaveCount(100);
+	await page.getByTestId("loyalty-members-more").click();
+	await expect(page.getByTestId("loyalty-member-row")).toHaveCount(
+		seeded().memberCount,
+	);
+	await page
+		.getByTestId("loyalty-lookup-input")
+		.fill(`0${LOYALTY_PHONES.main.slice(COUNTRY.length)}`);
+	await page.getByTestId("loyalty-lookup-submit").click();
+	await expect(page.getByTestId("loyalty-lookup-phone")).toHaveText(
+		`${MASK} 201`,
+	);
+	await page.getByTestId("loyalty-lookup-open").click();
+	await expect(page.getByTestId("loyalty-member")).toContainText(
+		`Thành viên ${MASK} 201`,
+	);
+	await expect(page.getByTestId("loyalty-ledger")).toContainText(
+		ADJUSTMENT_REASON,
+	);
+	await page.goto(
+		`/#/khach-hang/bat-thuong?from=${seeded().day}&to=${seeded().day}`,
+	);
+	await expect(page.getByTestId("loyalty-anomalies-summary")).toContainText(
+		"ca cần xem",
+	);
+	const exchanges = await answers();
+	expect(
+		exchanges
+			.filter((exchange) => exchange.url.includes("/rpc/loyalty_member_lookup"))
+			.map((exchange) => exchange.method),
+	).toEqual(["POST"]);
+	expect(
+		exchanges.some((exchange) =>
+			exchange.url.includes("/rpc/loyalty_members_page"),
+		),
+	).toBe(true);
+	expectNoFullPhoneIn(exchanges);
+	await expectNoFullPhone(page);
+	await page.goto("/#/khach-hang/thanh-vien");
 	await page
 		.getByTestId("loyalty-tabs")
 		.getByRole("link", { name: "Hàng chờ đối soát" })

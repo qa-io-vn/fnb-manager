@@ -29,17 +29,3 @@ export function formatFullPhone(raw: string | null | undefined): string | null {
 	if (national.length !== 9) return normalized;
 	return `${VIETNAM_PREFIX} ${national.slice(0, 2)} ${national.slice(2, 5)} ${national.slice(5)}`;
 }
-
-export function phoneTail(raw: string | null | undefined): string | null {
-	if (raw === null || raw === undefined) return null;
-	const digits = digitsOf(normalizeLoyaltyPhone(raw) ?? raw);
-	return digits.length < MIN_MASKABLE_DIGITS ? null : digits.slice(-4);
-}
-
-export function samePhone(
-	left: string | null | undefined,
-	right: string | null | undefined,
-): boolean {
-	const a = normalizeLoyaltyPhone(left ?? null);
-	return a !== null && a === normalizeLoyaltyPhone(right ?? null);
-}

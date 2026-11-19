@@ -16,8 +16,8 @@ import {
 import { useReadyTenantScope } from "../state/tenant-scope";
 import type {
 	CustomerSource,
-	LedgerEntryRow,
 	MemberCursor,
+	MemberPage,
 	MemberRow,
 } from "./source";
 
@@ -85,27 +85,35 @@ function useCustomerRead<T>(
 	});
 }
 
-export interface MemberPageWithLedger {
-	readonly rows: readonly MemberRow[];
-	readonly next: MemberCursor | null;
-	readonly entries: readonly LedgerEntryRow[];
+function storesPart(storeIds: readonly string[]): string {
+	return [...storeIds].sort().join(",");
+}
+
+/**
+ * The stores whose ledger rows make a member's balance: every store of the
+ * tenant in the caller's scope (the members list is tenant-wide).
+ */
+function useScopeStoreIds(): readonly string[] {
+	const { stores } = useReadyTenantScope();
+	return stores.map((store) => store.id);
 }
 
 export function useMemberPages(enabled = true) {
 	const state = useCustomerSource();
 	const { tenant } = useReadyTenantScope();
+	const storeIds = useScopeStoreIds();
 	const source = state.status === "ready" ? state.source : null;
 	return useInfiniteQuery({
-		queryKey: loyaltyQueryKey(tenant.id, "members", MEMBER_PAGE_SIZE),
+		queryKey: loyaltyQueryKey(
+			tenant.id,
+			"members",
+			storesPart(storeIds),
+			MEMBER_PAGE_SIZE,
+		),
 		initialPageParam: null as MemberCursor | null,
-		queryFn: async ({ pageParam }): Promise<MemberPageWithLedger> => {
+		queryFn: async ({ pageParam }): Promise<MemberPage> => {
 			if (source === null) throw new Error("customer source not ready");
-			const page = await source.members(tenant.id, pageParam, MEMBER_PAGE_SIZE);
-			const entries =
-				page.rows.length === 0
-					? []
-					: await source.ledger(page.rows.map((row) => row.membershipId));
-			return { rows: page.rows, next: page.next, entries };
+			return source.members(storeIds, pageParam, MEMBER_PAGE_SIZE);
 		},
 		getNextPageParam: (last) => last.next,
 		enabled: source !== null && enabled,
@@ -113,8 +121,11 @@ export function useMemberPages(enabled = true) {
 }
 
 export function useMember(membershipId: string) {
-	return useCustomerRead("member", [membershipId], (source) =>
-		source.member(membershipId),
+	const storeIds = useScopeStoreIds();
+	return useCustomerRead(
+		"member",
+		[membershipId, storesPart(storeIds)],
+		(source) => source.member(storeIds, membershipId),
 	);
 }
 
@@ -131,10 +142,6 @@ export function useQueue(enabled: boolean) {
 		(source, tenantId) => source.queue(tenantId),
 		enabled,
 	);
-}
-
-function storesPart(storeIds: readonly string[]): string {
-	return [...storeIds].sort().join(",");
 }
 
 export function useAnomalies(
