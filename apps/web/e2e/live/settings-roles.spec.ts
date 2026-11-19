@@ -1067,6 +1067,12 @@ interface ManualTab {
 	readonly ready: string;
 	readonly rows: string;
 	readonly scope: string;
+	/**
+	 * The attribute that marks a scope's rows as loaded, on the `ready` element,
+	 * for a tab that reloads its rows when the scope changes: until then the rows
+	 * are not on the page, and they come back with every disclosure closed.
+	 */
+	readonly loaded?: { readonly attribute: string; readonly value: string };
 	readonly readOnlyControls: readonly string[];
 }
 
@@ -1077,6 +1083,7 @@ const MANUAL_TABS: readonly ManualTab[] = [
 		ready: "costs-form",
 		rows: "cost-row",
 		scope: "cost-scope",
+		loaded: { attribute: "data-sales", value: "ready" },
 		readOnlyControls: [
 			"button:cost-history-toggle",
 			"button:costs-template",
@@ -1284,6 +1291,12 @@ test.describe("the settings pages for each login", () => {
 					await scope.selectOption(value);
 					await expect(scope).toHaveValue(value);
 					const what = `${role} on ${tab.name} for ${value}`;
+					if (tab.loaded !== undefined) {
+						await expect(
+							content.getByTestId(tab.ready),
+							`${what}: rows loaded`,
+						).toHaveAttribute(tab.loaded.attribute, tab.loaded.value);
+					}
 					const access = settingsAccess(
 						"manualData",
 						membership,

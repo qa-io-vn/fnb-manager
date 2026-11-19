@@ -138,14 +138,20 @@ async function marginItems(page: Page): Promise<string[]> {
 	return (await cells.allTextContents()).map((text) => text.trim());
 }
 
-async function marginCell(
+// Back on Thực đơn after a save, the card shows its cached figures (or, before
+// any cost, no table at all) until its refetch lands, so this waits for the
+// column and retries until the item's cost reads the amount.
+async function expectMarginCost(
 	page: Page,
 	item: string,
-	column: string,
-): Promise<string> {
+	amount: number,
+): Promise<void> {
+	const column = "Giá vốn mỗi món";
 	const table = marginsTable(page);
-	const headers = (await table.locator("thead th").allTextContents()).map(
-		(text) => text.replace(/[↑↓↕]/g, "").trim(),
+	const headerCells = table.locator("thead th");
+	await expect(headerCells.filter({ hasText: column })).toHaveCount(1);
+	const headers = (await headerCells.allTextContents()).map((text) =>
+		text.replace(/[↑↓↕]/g, "").trim(),
 	);
 	const index = headers.indexOf(column);
 	expect(index, column).toBeGreaterThan(0);
@@ -153,7 +159,9 @@ async function marginCell(
 		has: page.locator("td:first-child", { hasText: item }),
 	});
 	await expect(row).toHaveCount(1);
-	return ((await row.locator("td").nth(index).textContent()) ?? "").trim();
+	await expect(row.locator("td").nth(index), `${item}: ${column}`).toHaveText(
+		new RegExp(`^${money(amount).source}$`),
+	);
 }
 
 async function enterCost(row: Locator, amount: number): Promise<void> {
@@ -243,9 +251,7 @@ test("with Thực đơn open for store 1, five costs for that store entered with
 	await expect(marginsTable(page).locator("tbody tr")).toHaveCount(5);
 	expect((await marginItems(page)).sort()).toEqual([...names].sort());
 	for (const [index, amount] of FIVE_COSTS.entries()) {
-		expect(
-			await marginCell(page, names[index] ?? "", "Giá vốn mỗi món"),
-		).toMatch(new RegExp(`^${money(amount).source}$`));
+		await expectMarginCost(page, names[index] ?? "", amount);
 	}
 	await expect(
 		themeCard(page, "menu", "margins").getByTestId("headline"),
@@ -292,9 +298,7 @@ test("a later cost defaults to today and leaves the earlier days at the earlier 
 	await dateField(saved).fill(TODAY);
 
 	await openMenuThroughTheApp(page);
-	expect(await marginCell(page, name, "Giá vốn mỗi món")).toMatch(
-		new RegExp(`^${money(20_000).source}$`),
-	);
+	await expectMarginCost(page, name, 20_000);
 
 	await openCostsThroughTheApp(page);
 	const again = costRow(page, itemId);
@@ -401,13 +405,9 @@ test("a store's own cost dated back over the cost for all stores replaces it on 
 
 	await openMenuThroughTheApp(page);
 	await expect(page).toHaveURL(new RegExp(`store=${ESTABLISHED}`));
-	expect(await marginCell(page, name, "Giá vốn mỗi món")).toMatch(
-		new RegExp(`^${money(22_000).source}$`),
-	);
+	await expectMarginCost(page, name, 22_000);
 	await chooseOnlyStore(page, YOUNG);
-	expect(await marginCell(page, name, "Giá vốn mỗi món")).toMatch(
-		new RegExp(`^${money(20_000).source}$`),
-	);
+	await expectMarginCost(page, name, 20_000);
 	await expectSameDocument(page);
 	expectNoConsoleErrors(page);
 });

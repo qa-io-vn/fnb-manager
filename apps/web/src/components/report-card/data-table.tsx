@@ -236,28 +236,39 @@ function cellClass(
 	return `snap-start border-b border-line ${alignment} ${width} ${isFirst ? stickyColumnClass : ""}`;
 }
 
+// A table with this many columns prints in the heat tables' smaller type and
+// padding, so that its last columns stay on an A4 page with a wide system font.
+const DENSE_PRINT_COLUMNS = 10;
+
+function cellPadding(compact: boolean, densePrint: boolean): string {
+	return `${compact ? "px-1.5" : "px-2"} ${densePrint ? "print:px-0.5" : "print:px-1"}`;
+}
+
 function headerClass(
 	column: TableColumn,
 	isFirst: boolean,
 	compact: boolean,
+	densePrint: boolean,
 ): string {
 	const longNumericLabel =
 		!isFirst &&
 		column.kind !== "text" &&
 		column.label.length > LONG_HEADER_CHARACTERS;
-	return `${compact ? "px-1.5 print:px-0.5" : "px-2 print:px-1"} py-0 align-bottom font-medium ${cellClass(column, isFirst, compact)} ${longNumericLabel && !compact ? "min-w-24 print:min-w-0" : ""}`;
+	return `${cellPadding(compact, densePrint)} py-0 align-bottom font-medium ${cellClass(column, isFirst, compact)} ${longNumericLabel && !compact ? "min-w-24 print:min-w-0" : ""}`;
 }
 
 function SortableHeader({
 	column,
 	isFirst,
 	compact,
+	densePrint,
 	sort,
 	onSort,
 }: {
 	column: TableColumn;
 	isFirst: boolean;
 	compact: boolean;
+	densePrint: boolean;
 	sort: TableSort | null;
 	onSort: (key: string) => void;
 }) {
@@ -267,7 +278,7 @@ function SortableHeader({
 		<th
 			scope="col"
 			aria-sort={active ? sort.direction : "none"}
-			className={headerClass(column, isFirst, compact)}
+			className={headerClass(column, isFirst, compact, densePrint)}
 			{...(isFirst ? { "data-sticky-column": "" } : {})}
 		>
 			<button
@@ -327,6 +338,7 @@ export function DataTable({
 		[table.heatColumns],
 	);
 	const isHeatTable = heatKeys.size > 0;
+	const densePrint = isHeatTable || table.columns.length >= DENSE_PRINT_COLUMNS;
 	const longText = useMemo(
 		() => longTextColumns(table.columns, table.rows),
 		[table.columns, table.rows],
@@ -353,7 +365,7 @@ export function DataTable({
 		<div className="space-y-2">
 			<TableScroller>
 				<table
-					className={`w-full border-separate border-spacing-0 ${isHeatTable ? "text-xs print:text-[7pt]" : "text-sm print:text-[8pt]"}`}
+					className={`w-full border-separate border-spacing-0 ${isHeatTable ? "text-xs" : "text-sm"} ${densePrint ? "print:text-[7pt]" : "print:text-[8pt]"}`}
 				>
 					<caption className="sr-only">{table.caption}</caption>
 					<thead>
@@ -364,6 +376,7 @@ export function DataTable({
 									column={column}
 									isFirst={index === 0}
 									compact={isHeatTable}
+									densePrint={densePrint}
 									sort={sort}
 									onSort={(key) => setSort((current) => nextSort(current, key))}
 								/>
@@ -394,7 +407,7 @@ export function DataTable({
 										return (
 											<td
 												key={column.key}
-												className={`py-1.5 ${isHeatTable ? "px-1.5 print:px-0.5" : "px-2 print:px-1"} ${cellClass(column, index === 0, isHeatTable, wide, longText.has(column.key))} ${level === undefined ? "" : "heat-cell"}`}
+												className={`py-1.5 ${cellPadding(isHeatTable, densePrint)} ${cellClass(column, index === 0, isHeatTable, wide, longText.has(column.key))} ${level === undefined ? "" : "heat-cell"}`}
 												{...(level === undefined
 													? {}
 													: { "data-heat": String(level) })}

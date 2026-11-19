@@ -25,10 +25,14 @@ test("Khách hàng thân thiết shows the demo's sample programme read only, af
 }) => {
 	await openSettings(page, "khach-hang-than-thiet");
 	await expectCurrentSettingsPage(page, "Khách hàng thân thiết");
-	const names = await settingsNav(page).getByRole("link").allTextContents();
-	expect(names.indexOf("Khách hàng thân thiết")).toBe(
-		names.indexOf("Checklist") + 1,
-	);
+	// Checklist, a managers-only page, joins the list once the membership loads.
+	await expect
+		.poll(async () => {
+			const names = await settingsNav(page).getByRole("link").allTextContents();
+			const checklist = names.indexOf("Checklist");
+			return checklist === -1 ? [] : names.slice(checklist, checklist + 2);
+		})
+		.toEqual(["Checklist", "Khách hàng thân thiết"]);
 	await expect(page.getByTestId("loyalty-demo")).toContainText(
 		"Bản demo cho xem một chương trình mẫu, chỉ để đọc.",
 	);

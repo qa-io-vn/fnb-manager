@@ -290,6 +290,41 @@ describe("ReportCard", () => {
 		expect(screen.queryByTestId("table-preview-toggle")).toBeNull();
 	});
 
+	it("prints a table of ten columns or more in smaller type and padding, so its last columns stay on the page", () => {
+		const printClasses = (spec: TableSpec) => {
+			const { unmount } = renderWithLanguage(
+				<ReportCard {...props({ table: spec })} />,
+			);
+			const dataTable = screen.getByRole("table", { name: "Doanh thu thuần" });
+			const header = within(dataTable).getAllByRole("columnheader")[1];
+			const cell = within(dataTable).getAllByRole("cell")[1];
+			const classes = {
+				table: dataTable.className,
+				header: header?.className ?? "",
+				cell: cell?.className ?? "",
+			};
+			unmount();
+			return classes;
+		};
+		const extras = Array.from({ length: 8 }, (_, index) => `extra${index}`);
+		const wideTable: TableSpec = {
+			...table,
+			columns: [
+				...table.columns.slice(0, 2),
+				...extras.map((key) => ({ key, label: key, kind: "money" as const })),
+			],
+		};
+		const narrow = printClasses(table);
+		const wide = printClasses(wideTable);
+		expect(narrow.table).toContain("print:text-[8pt]");
+		expect(wide.table).toContain("print:text-[7pt]");
+		for (const part of ["header", "cell"] as const) {
+			expect(narrow[part]).toContain("print:px-1");
+			expect(wide[part]).toContain("print:px-0.5");
+			expect(wide[part]).toContain("px-2");
+		}
+	});
+
 	it("keeps text cells on one line in a wide card", () => {
 		const twoTextColumns: TableSpec = {
 			...table,
