@@ -5,6 +5,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPOSITORY_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+// On Windows pnpm is pnpm.cmd, which execFileSync starts only through a shell.
+const PNPM = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const SHELL = process.platform === "win32";
 const OUTPUT_IN_REPOSITORY = "docs/api/openapi.json";
 const OUTPUT = join(REPOSITORY_ROOT, OUTPUT_IN_REPOSITORY);
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
@@ -16,11 +19,12 @@ const DOCUMENTED_DESCRIPTION =
 
 function localStackStatus() {
 	const output = execFileSync(
-		"pnpm",
+		PNPM,
 		["exec", "supabase", "status", "-o", "env"],
 		{
 			cwd: REPOSITORY_ROOT,
 			encoding: "utf8",
+			shell: SHELL,
 			stdio: ["ignore", "pipe", "ignore"],
 		},
 	);
@@ -80,11 +84,12 @@ function sortedDeep(value) {
 
 function assertMigrationsMatchTheRepository() {
 	const output = execFileSync(
-		"pnpm",
+		PNPM,
 		["exec", "supabase", "migration", "list", "--output-format", "json"],
 		{
 			cwd: REPOSITORY_ROOT,
 			encoding: "utf8",
+			shell: SHELL,
 			stdio: ["ignore", "pipe", "ignore"],
 		},
 	);
@@ -107,14 +112,22 @@ function assertMigrationsMatchTheRepository() {
 const FORMAT_OUTPUT_LIMIT_BYTES = 16 * 1024 * 1024;
 
 function formatWithBiome(source) {
+	// A shell splits an unquoted path at spaces, so quote it on Windows.
+	const biome = join(
+		REPOSITORY_ROOT,
+		"node_modules",
+		".bin",
+		SHELL ? "biome.cmd" : "biome",
+	);
 	return execFileSync(
-		join(REPOSITORY_ROOT, "node_modules", ".bin", "biome"),
+		SHELL ? `"${biome}"` : biome,
 		["format", `--stdin-file-path=${OUTPUT_IN_REPOSITORY}`],
 		{
 			input: source,
 			encoding: "utf8",
 			cwd: REPOSITORY_ROOT,
 			maxBuffer: FORMAT_OUTPUT_LIMIT_BYTES,
+			shell: SHELL,
 		},
 	);
 }
