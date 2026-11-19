@@ -97,6 +97,7 @@ export const displaySeries = {
 	cash_count_flags: { unit: "count", direction: "lower" },
 	shifts_without_count: { unit: "count", direction: "lower" },
 	open_reports: { unit: "count", direction: "lower" },
+	reward_cost: { unit: "money", direction: "neutral" },
 } as const satisfies Record<
 	string,
 	{ unit: MetricUnit; direction: MetricDirection }

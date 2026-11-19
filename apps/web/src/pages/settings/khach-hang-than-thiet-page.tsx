@@ -1,8 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { TextLink } from "../../components/ui/text-link";
-import { useT } from "../../i18n";
+import { type MessageKey, useT } from "../../i18n";
 import { todayIn } from "../../lib/business-dates";
 import { loyaltyReadAccess } from "../../loyalty/access";
 import type {
@@ -25,6 +26,7 @@ import {
 	useMembership,
 } from "../../settings/queries";
 import { ReadOnlyNotice } from "../../settings/read-only-notice";
+import { RewardsTab } from "../../settings/rewards/rewards-tab";
 import { SectionLoadState, useSectionLoad } from "../../settings/section-load";
 import { useSettingsSourceState } from "../../settings/settings-source-context";
 import { type SettingsSource, SettingsWriteError } from "../../settings/source";
@@ -236,17 +238,64 @@ function MembersLink() {
 	);
 }
 
+export const LOYALTY_TABS = [
+	{ slug: "chuong-trinh", titleKey: "settings.loyalty.tab.programme" },
+	{ slug: "uu-dai", titleKey: "settings.loyalty.tab.rewards" },
+] as const satisfies readonly {
+	slug: string;
+	titleKey: MessageKey;
+}[];
+
+type LoyaltyTab = (typeof LOYALTY_TABS)[number];
+
+export function loyaltyTabOf(slug: string | null): LoyaltyTab {
+	return LOYALTY_TABS.find((tab) => tab.slug === slug) ?? LOYALTY_TABS[0];
+}
+
+function LoyaltyTabs({ current }: { readonly current: LoyaltyTab }) {
+	const t = useT();
+	return (
+		<nav
+			aria-label={t("settings.loyalty.tabs.label")}
+			data-testid="loyalty-tabs"
+		>
+			<ul className="flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface-raised p-1">
+				{LOYALTY_TABS.map((tab) => (
+					<li key={tab.slug} className="shrink-0">
+						<Link
+							to={`?tab=${tab.slug}`}
+							aria-current={tab.slug === current.slug ? "page" : undefined}
+							className="flex min-h-11 items-center whitespace-nowrap rounded-lg px-3 text-sm font-medium text-ink-muted hover:bg-surface-sunken aria-[current=page]:bg-accent aria-[current=page]:text-accent-ink"
+						>
+							{t(tab.titleKey)}
+						</Link>
+					</li>
+				))}
+			</ul>
+		</nav>
+	);
+}
+
 export default function KhachHangThanThietPage() {
 	const t = useT();
 	const { tenant } = useReadyTenantScope();
+	const [search] = useSearchParams();
+	const tab = loyaltyTabOf(search.get("tab"));
 	return (
 		<div className="space-y-6" data-testid="loyalty-settings-page">
 			<p className="text-sm text-ink-muted" data-testid="loyalty-intro">
 				{t("settings.loyalty.intro")}
 			</p>
-			<ProgrammeSection key={`programme-${tenant.id}`} />
-			<StaffPhonesSection key={`phones-${tenant.id}`} />
-			<MembersLink />
+			<LoyaltyTabs current={tab} />
+			{tab.slug === "uu-dai" ? (
+				<RewardsTab key={`rewards-${tenant.id}`} />
+			) : (
+				<>
+					<ProgrammeSection key={`programme-${tenant.id}`} />
+					<StaffPhonesSection key={`phones-${tenant.id}`} />
+					<MembersLink />
+				</>
+			)}
 		</div>
 	);
 }

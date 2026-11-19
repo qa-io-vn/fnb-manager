@@ -67,7 +67,7 @@ function followUps(
 }
 
 describe("the Khuyến mãi theme", () => {
-	it("is registered under its slug with a 28-day default, at most 400 days and six cards", () => {
+	it("is registered under its slug with a 28-day default, at most 400 days and seven cards", () => {
 		expect(themeDefinitionOf("promotions")).toBe(promotionsTheme);
 		expect(promotionsTheme.slug).toBe("khuyen-mai");
 		expect(promotionsTheme.defaultPreset).toBe("28d");
@@ -79,6 +79,7 @@ describe("the Khuyến mãi theme", () => {
 			"catalogue",
 			"rule_cap",
 			"rule_days",
+			"redemptions",
 		]);
 		expect(promotionsTheme.params.map((spec) => spec.id)).toEqual([
 			"promo",
@@ -100,7 +101,14 @@ describe("the Khuyến mãi theme", () => {
 			"compliance.1",
 			"discountDays",
 			"discountDaysUnderRule",
+			"redemptions",
+			"redemptionsPrevious",
 		]);
+		expect(
+			promotionsTheme
+				.primaryCalls(themeContext("28d", [STORE_A], { sample: true }))
+				.map((call) => call.key),
+		).not.toContain("redemptions");
 		const range = callOf(calls, "promotions");
 		const window = callOf(calls, "promotionsW92");
 		expect(range && window && reportCallIdentity(range)).toBe(

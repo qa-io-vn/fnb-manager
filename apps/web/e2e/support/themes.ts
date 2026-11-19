@@ -49,6 +49,7 @@ export const themeCardIds: Record<ThemeKind, readonly string[]> = {
 		"catalogue",
 		"rule_cap",
 		"rule_days",
+		"redemptions",
 	],
 	shifts: ["shift_sales", "drawer", "adjustments", "cashiers"],
 	stores: ["kpis", "same_day", "since_opening"],

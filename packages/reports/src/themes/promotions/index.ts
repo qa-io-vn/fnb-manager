@@ -20,6 +20,19 @@ export {
 	liftFigures,
 } from "./cards/lift.js";
 export {
+	buildRedemptionsCard,
+	mostRedeemed,
+	REDEMPTIONS_ID,
+	REWARD_COST_METRIC,
+	type RedemptionRow,
+	type RedemptionTotals,
+	type RewardTotal,
+	redemptionRows,
+	redemptionsCard,
+	redemptionTotals,
+	rewardTotals,
+} from "./cards/redemptions.js";
+export {
 	buildRuleCapCard,
 	type ComplianceRow,
 	complianceRows,
@@ -85,6 +98,9 @@ export {
 	liftWindow,
 	PROMOTIONS_SLUG,
 	promotionsCalls,
+	type RedemptionWindows,
+	redemptionCalls,
+	redemptionWindows,
 	ruleCalls,
 	themeCapPeriods,
 	themeDiscountDaysPlan,

@@ -36,6 +36,8 @@ import settingsManualEn from "./messages/settings-manual.en.json";
 import settingsManualVi from "./messages/settings-manual.vi.json";
 import settingsMappingEn from "./messages/settings-mapping.en.json";
 import settingsMappingVi from "./messages/settings-mapping.vi.json";
+import settingsRewardsEn from "./messages/settings-rewards.en.json";
+import settingsRewardsVi from "./messages/settings-rewards.vi.json";
 import settingsStaffEn from "./messages/settings-staff.en.json";
 import settingsStaffVi from "./messages/settings-staff.vi.json";
 import settingsStoreEn from "./messages/settings-store.en.json";
@@ -83,6 +85,7 @@ export type MessageKey =
 	| keyof typeof settingsStaffVi
 	| keyof typeof settingsChecklistsVi
 	| keyof typeof settingsLoyaltyVi
+	| keyof typeof settingsRewardsVi
 	| keyof typeof loyaltyVi
 	| keyof typeof operationsVi
 	| keyof typeof themesVi
@@ -122,6 +125,7 @@ const settingsFilePrefixes = [
 	"settings.staff.",
 	"settings.checklists.",
 	"settings.loyalty.",
+	"settings.rewards.",
 ] as const;
 
 const reportFilePrefixes = [
@@ -336,6 +340,13 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: settingsLoyaltyVi,
 		en: settingsLoyaltyEn,
+	},
+	{
+		name: "settings-rewards",
+		prefix: "settings.rewards.",
+		excludedPrefixes: [],
+		vi: settingsRewardsVi,
+		en: settingsRewardsEn,
 	},
 	{
 		name: "loyalty",

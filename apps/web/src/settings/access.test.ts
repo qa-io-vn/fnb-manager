@@ -290,6 +290,24 @@ describe("settingsAccess", () => {
 			viewer: "ownerOnly ownerOnly ownerOnly",
 			publisher: "ownerOnly ownerOnly ownerOnly",
 		},
+		rewards: {
+			owner: "write write write",
+			"store-limited owner": "scope scope scope",
+			manager: "write write write",
+			"store-limited manager": "scope scope scope",
+			staff: "role role role",
+			viewer: "role role role",
+			publisher: "role role role",
+		},
+		rewardApproval: {
+			owner: "write write write",
+			"store-limited owner": "ownerOnly ownerOnly ownerOnly",
+			manager: "ownerOnly ownerOnly ownerOnly",
+			"store-limited manager": "ownerOnly ownerOnly ownerOnly",
+			staff: "ownerOnly ownerOnly ownerOnly",
+			viewer: "ownerOnly ownerOnly ownerOnly",
+			publisher: "ownerOnly ownerOnly ownerOnly",
+		},
 	};
 
 	it.each(

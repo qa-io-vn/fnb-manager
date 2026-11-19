@@ -66,6 +66,7 @@ import {
 	promotionLift,
 } from "./functions/promotion-lift.js";
 import { rangeTotals } from "./functions/range-totals.js";
+import { redemptionSummary } from "./functions/redemption-summary.js";
 import { reportSettingsOf } from "./functions/report-settings-of.js";
 import {
 	SHIFT_ADJUSTMENTS_MAX_DAYS,
@@ -128,6 +129,7 @@ export const themeHandlers: ThemeHandlers = {
 	metric_windows: metricWindows,
 	holiday_calendar: holidayCalendar,
 	plan_kpi_review: planKpiReview,
+	redemption_summary: redemptionSummary,
 };
 
 function span(
@@ -304,6 +306,7 @@ export const themeReads: ThemeReads = {
 	},
 	holiday_calendar: () => [],
 	plan_kpi_review: () => [],
+	redemption_summary: () => [],
 };
 
 function issues(error: z.ZodError): string {

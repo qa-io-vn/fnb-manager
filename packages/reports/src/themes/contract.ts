@@ -554,6 +554,35 @@ export const planKpiReviewRow = z.object({
 	current_value: numericValue,
 });
 
+export const REDEMPTION_SUMMARY_MAX_DAYS = 92;
+export const COUPON_REWARD_KINDS = [
+	"free_item",
+	"percent_off",
+	"amount_off",
+	"free_upgrade",
+] as const;
+
+export type CouponRewardKind = (typeof COUPON_REWARD_KINDS)[number];
+
+export const redemptionSummaryArgs = z.object(storeRange);
+
+export const redemptionSummaryRow = z.object({
+	store_id: storeIdValue,
+	coupon_id: textValue,
+	reward_key: textValue,
+	coupon_name: textValue,
+	reward_kind: z.enum(COUPON_REWARD_KINDS),
+	redemptions: countValue,
+	held: countValue,
+	confirmed: countValue,
+	released: countValue,
+	stamps_redeemed: countValue,
+	points_redeemed: countValue,
+	reward_cost_amount: requiredNumericValue,
+	member_invoices: countValue,
+	confirmed_share: numericValue,
+});
+
 export const themeFunctions = {
 	report_settings_of: { args: reportSettingsOfArgs, row: reportSettingsOfRow },
 	range_totals: { args: rangeTotalsArgs, row: rangeTotalsRow },
@@ -605,6 +634,10 @@ export const themeFunctions = {
 	metric_windows: { args: metricWindowsArgs, row: metricWindowsRow },
 	holiday_calendar: { args: holidayCalendarArgs, row: holidayCalendarRow },
 	plan_kpi_review: { args: planKpiReviewArgs, row: planKpiReviewRow },
+	redemption_summary: {
+		args: redemptionSummaryArgs,
+		row: redemptionSummaryRow,
+	},
 } as const;
 
 export type ThemeFunctionName = keyof typeof themeFunctions;

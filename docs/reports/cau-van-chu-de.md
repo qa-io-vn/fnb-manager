@@ -1,6 +1,6 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (923 entries, 299 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (947 entries, 303 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
 The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-promotions`, `theme-shifts`, `theme-stores`, `theme-quality`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
@@ -766,7 +766,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `theme.payments.table.previousShare` | Tỷ trọng kỳ trước | Previous share | — |
 | `theme.payments.table.weekFrom` | Tuần từ | Week from | — |
 
-## Khuyến mãi & giảm giá · Promotions and discounts (`theme-promotions.vi.json`, 147 mục)
+## Khuyến mãi & giảm giá · Promotions and discounts (`theme-promotions.vi.json`, 171 mục)
 
 ### Tiêu đề · title (`theme.promotions.title`)
 
@@ -974,6 +974,35 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `theme.promotions.table.reference` | Mốc so sánh | Reference | — |
 | `theme.promotions.table.voucher` | Voucher | Voucher | — |
 | `theme.promotions.table.voucherDays` | Ngày dùng voucher | Voucher days | — |
+
+### Thẻ «Ưu đãi thành viên đã đổi» (`theme.promotions.redemptions.*`)
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.promotions.redemptions.chart` | Lượt đổi theo ưu đãi | Redemptions by reward | — |
+| `theme.promotions.redemptions.confirmed` | Đã dùng | Used | — |
+| `theme.promotions.redemptions.confirmedShare` | Đã dùng / hóa đơn thành viên | Used / member invoices | — |
+| `theme.promotions.redemptions.cost` | Chi phí ưu đãi | Reward cost | — |
+| `theme.promotions.redemptions.demo` | Chưa có dữ liệu ưu đãi thành viên: bản demo không có chương trình khách hàng thân thiết. | No member reward data: the demo has no loyalty programme. | — |
+| `theme.promotions.redemptions.held` | Đang giữ | Held | — |
+| `theme.promotions.redemptions.kind` | Loại | Type | — |
+| `theme.promotions.redemptions.main` | Trong {range}, khách đổi {redemptions} lượt ưu đãi; {confirmed} lượt đã dùng trên hóa đơn với chi phí {cost}. | In {range}, members redeemed {redemptions} rewards; {confirmed} were used on an invoice, costing {cost}. | `{range}` `{redemptions}` `{confirmed}` `{cost}` |
+| `theme.promotions.redemptions.memberInvoices` | Hóa đơn có thành viên | Member invoices | — |
+| `theme.promotions.redemptions.noMembers` | Chưa có hóa đơn nào của thành viên được tích điểm trong kỳ. | No member invoice earned in the range. | — |
+| `theme.promotions.redemptions.none` | Chưa có lượt đổi ưu đãi nào trong {range}. | No reward was redeemed in {range}. | `{range}` |
+| `theme.promotions.redemptions.points` | Điểm đã đổi | Points redeemed | — |
+| `theme.promotions.redemptions.redemptions` | Lượt đổi | Redemptions | — |
+| `theme.promotions.redemptions.released` | Đã hoàn lại | Given back | — |
+| `theme.promotions.redemptions.reward` | Ưu đãi | Reward | — |
+| `theme.promotions.redemptions.rewardKind.amount_off` | Giảm một số tiền | Amount off | — |
+| `theme.promotions.redemptions.rewardKind.free_item` | Tặng món | Free item | — |
+| `theme.promotions.redemptions.rewardKind.free_upgrade` | Lên size hoặc thêm topping | Free upgrade or topping | — |
+| `theme.promotions.redemptions.rewardKind.percent_off` | Giảm theo phần trăm | Percentage off | — |
+| `theme.promotions.redemptions.share` | Lượt đã dùng bằng {share} số hóa đơn có thành viên tích điểm ({confirmed} trên {invoices} hóa đơn). | Rewards used equal {share} of the invoices that earned for a member ({confirmed} of {invoices} invoices). | `{share}` `{confirmed}` `{invoices}` |
+| `theme.promotions.redemptions.stamps` | Dấu đã đổi | Stamps redeemed | — |
+| `theme.promotions.redemptions.table` | Lượt đổi theo ưu đãi và cửa hàng | Redemptions by reward and store | — |
+| `theme.promotions.redemptions.title` | Ưu đãi thành viên đã đổi | Member rewards redeemed | — |
+| `theme.promotions.redemptions.top` | Được đổi nhiều nhất là {reward} ({kind}): {redemptions} lượt. | The most redeemed was {reward} ({kind}): {redemptions} redemptions. | `{reward}` `{kind}` `{redemptions}` |
 
 ## Ca & két tiền · Shifts and cash drawer (`theme-shifts.vi.json`, 56 mục)
 

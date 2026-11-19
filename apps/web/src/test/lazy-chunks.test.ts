@@ -30,6 +30,8 @@ const manifestKeys = [
 	"src/pages/loyalty/members-page.tsx",
 	"src/loyalty/supabase-loyalty-source.ts",
 	"src/loyalty/demo-loyalty-source.ts",
+	"src/settings/rewards/supabase-rewards-source.ts",
+	"src/settings/rewards/demo-rewards-source.ts",
 	"../../node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
 ];
 

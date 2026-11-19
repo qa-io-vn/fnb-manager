@@ -56,7 +56,7 @@ async function expectLiftSubtitle(page: Page, text: string): Promise<void> {
 	await expect(liftCard(page)).toContainText(text);
 }
 
-test("Khuyến mãi opens on the last four weeks with its six cards settled and the lift of the costliest promotion", async ({
+test("Khuyến mãi opens on the last four weeks with its seven cards settled and the lift of the costliest promotion", async ({
 	page,
 }) => {
 	await openTheme(page, "promotions");
@@ -68,6 +68,14 @@ test("Khuyến mãi opens on the last four weeks with its six cards settled and 
 		themeCardIds.promotions.length,
 	);
 	await expectEveryThemeCardSettled(page, "promotions");
+	const redemptions = themeCard(page, "promotions", "redemptions");
+	await expect(redemptions).toContainText("Ưu đãi thành viên đã đổi");
+	await expect(redemptions.getByTestId("headline")).toHaveText("—");
+	await expect(redemptions.getByTestId("sentence")).toHaveText(
+		"Chưa có dữ liệu ưu đãi thành viên: bản demo không có chương trình khách hàng thân thiết.",
+	);
+	await expect(redemptions.getByTestId("comparison-chip")).toHaveCount(0);
+	await expect(redemptions.locator("table")).toHaveCount(0);
 	const cost = themeCard(page, "promotions", "discount_cost");
 	await expect(cost.getByTestId("comparison-chip")).toHaveCount(4);
 	await expect(cost.getByTestId("comparison-chip").first()).toContainText(

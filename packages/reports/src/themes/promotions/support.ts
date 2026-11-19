@@ -10,11 +10,13 @@ import {
 	type SentencePart,
 	textValue,
 } from "../../model/values.js";
+import { addDays, daysBetween } from "../../period/dates.js";
 import { UNNAMED_PROMOTION_KEY } from "../../reports/week/cards/promotions.js";
 import type { ThemeContext } from "../context.js";
 import {
 	PROMOTION_COMPARATORS,
 	type PromotionComparator,
+	REDEMPTION_SUMMARY_MAX_DAYS,
 	type ThemeRow,
 } from "../contract.js";
 import {
@@ -68,6 +70,8 @@ export const promotionsCalls = {
 	catalogue: "catalogue",
 	discountDays: "discountDays",
 	discountDaysUnderRule: "discountDaysUnderRule",
+	redemptions: "redemptions",
+	redemptionsPrevious: "redemptionsPrevious",
 } as const;
 
 export const COMPLIANCE_CALL_PREFIX = "compliance.";
@@ -105,11 +109,68 @@ export const promotionsNeeds = {
 		promotionsCalls.discountDays,
 		promotionsCalls.discountDaysUnderRule,
 	],
+	redemptions: [
+		promotionsCalls.coverage,
+		promotionsCalls.redemptions,
+		promotionsCalls.redemptionsPrevious,
+	],
 } as const;
 
 export type PromotionRow = AnalyticsRow<"promotion_summary">;
 export type SeriesRow = AnalyticsRow<"period_series">;
 export type SettingsRow = ThemeRow<"report_settings_of">;
+
+export interface RedemptionWindows {
+	readonly current: DateRange & { readonly days: number };
+	readonly previous: DateRange;
+	readonly clipped: boolean;
+}
+
+export function redemptionWindows(
+	context: Pick<ThemeContext, "range">,
+): RedemptionWindows {
+	const { range } = context;
+	const previousDays = daysBetween(range.previous.from, range.previous.to) + 1;
+	if (
+		range.days <= REDEMPTION_SUMMARY_MAX_DAYS &&
+		previousDays <= REDEMPTION_SUMMARY_MAX_DAYS
+	) {
+		return {
+			current: { from: range.from, to: range.to, days: range.days },
+			previous: range.previous,
+			clipped: false,
+		};
+	}
+	const current = lastDaysWindow(range, REDEMPTION_SUMMARY_MAX_DAYS);
+	return {
+		current,
+		previous: {
+			from: addDays(current.from, -current.days),
+			to: addDays(current.from, -1),
+		},
+		clipped: current.days < range.days,
+	};
+}
+
+export function redemptionCalls(
+	context: ThemeContext,
+): readonly ReportCallSpec[] {
+	if (context.sample) return [];
+	const storeIds = themeStoreIds(context);
+	const windows = redemptionWindows(context);
+	return [
+		reportCall(promotionsCalls.redemptions, "redemption_summary", {
+			store_ids: storeIds,
+			from_date: windows.current.from,
+			to_date: windows.current.to,
+		}),
+		reportCall(promotionsCalls.redemptionsPrevious, "redemption_summary", {
+			store_ids: storeIds,
+			from_date: windows.previous.from,
+			to_date: windows.previous.to,
+		}),
+	];
+}
 
 export function liftWindow(
 	context: Pick<ThemeContext, "range">,
@@ -233,6 +294,7 @@ export function promotionsPrimaryCalls(
 			store_ids: storeIds,
 		}),
 		...ruleCalls(context),
+		...redemptionCalls(context),
 	];
 }
 

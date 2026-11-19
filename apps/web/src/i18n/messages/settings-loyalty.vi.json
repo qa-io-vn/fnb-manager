@@ -1,6 +1,9 @@
 {
 	"settings.loyalty.title": "Khách hàng thân thiết",
 	"settings.loyalty.intro": "Chương trình khách hàng thân thiết: thời gian, ngân sách quà, cách tích dấu và tích điểm, quyết định thông báo Sở Công Thương và danh sách số điện thoại nhân viên không được tích điểm. Mỗi thay đổi áp dụng từ lần tích điểm tiếp theo.",
+	"settings.loyalty.tabs.label": "Các phần của Khách hàng thân thiết",
+	"settings.loyalty.tab.programme": "Chương trình",
+	"settings.loyalty.tab.rewards": "Ưu đãi",
 	"settings.loyalty.programme.title": "Chương trình",
 	"settings.loyalty.demo": "Bản demo cho xem một chương trình mẫu, chỉ để đọc. Khi dùng dữ liệu thật, chủ và quản lý toàn chuỗi sửa chương trình ở đây.",
 	"settings.loyalty.readOnly.role": "Bạn chỉ xem được chương trình. Chỉ chủ và quản lý toàn chuỗi mới sửa được.",

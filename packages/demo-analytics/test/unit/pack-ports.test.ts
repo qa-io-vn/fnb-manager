@@ -148,4 +148,21 @@ describe("the demo ports of the data pack functions", () => {
 		).toEqual([]);
 		expect(themeReads.store_profiles({ store_ids: STORES })).toEqual([]);
 	});
+
+	it("redemption_summary answers no redemption in the demo, reads no day and keeps the 92-day limit", async () => {
+		const demo = source();
+		const args = {
+			store_ids: STORES,
+			from_date: "2026-08-04",
+			to_date: AS_OF,
+		};
+		expect(await demo.callTheme("redemption_summary", args)).toEqual([]);
+		expect(themeReads.redemption_summary(args)).toEqual([]);
+		await expect(
+			demo.callTheme("redemption_summary", {
+				...args,
+				from_date: "2026-08-03",
+			}),
+		).rejects.toMatchObject({ code: "22023" });
+	});
 });

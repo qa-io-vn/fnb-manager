@@ -15,7 +15,9 @@ export type SettingsArea =
 	| "staffRevenue"
 	| "staffContact"
 	| "checklists"
-	| "loyalty";
+	| "loyalty"
+	| "rewards"
+	| "rewardApproval";
 
 export type ReadOnlyReason =
 	| "notMember"
@@ -105,6 +107,8 @@ const AREA_ACCESS: Readonly<
 	staffContact: unlimitedOwnerAccess,
 	checklists: manualDataAccess,
 	loyalty: rolesAccess,
+	rewards: rolesAccess,
+	rewardApproval: unlimitedOwnerAccess,
 };
 
 export function settingsAccess(

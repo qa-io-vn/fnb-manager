@@ -1,6 +1,9 @@
 {
 	"settings.loyalty.title": "Loyalty programme",
 	"settings.loyalty.intro": "The loyalty programme: its period, reward budget, how stamps and points are earned, the decision on the Department of Industry and Trade notification and the staff phones that never earn. Each change applies from the next earn.",
+	"settings.loyalty.tabs.label": "Loyalty programme sections",
+	"settings.loyalty.tab.programme": "Programme",
+	"settings.loyalty.tab.rewards": "Rewards",
 	"settings.loyalty.programme.title": "Programme",
 	"settings.loyalty.demo": "The demo shows a sample programme, read only. With live data, the owner and managers of every store edit the programme here.",
 	"settings.loyalty.readOnly.role": "You can view the programme. Only the owner and managers of every store can change it.",

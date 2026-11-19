@@ -314,5 +314,9 @@
 	"metric.open_reports.label": "Mục chưa xem",
 	"metric.open_reports.formula": "Số sự cố, báo hết hàng và ghi chú bàn giao mà chưa có chủ hoặc quản lý nào đánh dấu đã xem.",
 	"metric.open_reports.grain": "Mỗi báo cáo của nhân viên.",
-	"metric.open_reports.convention": "Người viết không tự đánh dấu báo cáo của mình."
+	"metric.open_reports.convention": "Người viết không tự đánh dấu báo cáo của mình.",
+	"metric.reward_cost.label": "Chi phí ưu đãi thành viên",
+	"metric.reward_cost.formula": "Tổng số tiền giảm của các hóa đơn đã dùng ưu đãi: chiết khấu thanh toán trên kênh chiết khấu POS, số tiền voucher trên kênh mã CRM.",
+	"metric.reward_cost.grain": "Cửa hàng và ưu đãi, theo ngày kinh doanh lúc khách đổi; nhiều cửa hàng được cộng lại.",
+	"metric.reward_cost.convention": "Chỉ tính lượt đã dùng trên hóa đơn đã đồng bộ; lượt đang giữ hoặc đã hoàn lại không có chi phí. Món tặng bằng dòng 0 đồng không có số tiền giảm."
 }

@@ -18,6 +18,8 @@ export const lazySources = [
 	/src\/pages\/loyalty\/[a-z-]+-page\.tsx$/,
 	/src\/loyalty\/supabase-loyalty-source\.ts$/,
 	/src\/loyalty\/demo-loyalty-source\.ts$/,
+	/src\/settings\/rewards\/supabase-rewards-source\.ts$/,
+	/src\/settings\/rewards\/demo-rewards-source\.ts$/,
 ];
 
 export const eagerSources = [];

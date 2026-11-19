@@ -31,7 +31,10 @@ export type SettingsRead =
 	| "staffContact"
 	| "checklistTemplates"
 	| "loyaltyProgrammes"
-	| "loyaltyStaffPhones";
+	| "loyaltyStaffPhones"
+	| "rewards"
+	| "rewardRails"
+	| "rewardDiscountDays";
 
 export function settingsQueryKey(
 	sourceKind: SettingsSource["kind"],

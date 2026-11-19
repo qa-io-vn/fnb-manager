@@ -118,10 +118,16 @@ const minimalArgs: { [N in ThemeFunctionName]: ThemeArgs<N> } = {
 		to_date: "2026-12-31",
 	},
 	plan_kpi_review: { store_ids: STORES, as_of_date: AS_OF },
+	redemption_summary: {
+		store_ids: STORES,
+		from_date: "2026-10-28",
+		to_date: AS_OF,
+	},
 };
 
 const NO_ROWS_IN_THE_DEMO: ReadonlySet<ThemeFunctionName> = new Set([
 	"plan_kpi_review",
+	"redemption_summary",
 ]);
 
 describe("createDemoReportSource", () => {

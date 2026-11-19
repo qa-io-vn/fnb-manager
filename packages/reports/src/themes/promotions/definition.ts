@@ -3,6 +3,7 @@ import { MAX_THEME_RANGE_DAYS } from "../range.js";
 import { catalogueCard } from "./cards/catalogue.js";
 import { discountCostCard } from "./cards/discount-cost.js";
 import { liftCard } from "./cards/lift.js";
+import { redemptionsCard } from "./cards/redemptions.js";
 import { ruleCapCard } from "./cards/rule-cap.js";
 import { ruleDaysCard } from "./cards/rule-days.js";
 import { vouchersCard } from "./cards/vouchers.js";
@@ -21,6 +22,7 @@ export const promotionsCards: readonly ThemeCardDefinition[] = [
 	catalogueCard,
 	ruleCapCard,
 	ruleDaysCard,
+	redemptionsCard,
 ];
 
 export const promotionsTheme: ThemeDefinition = {

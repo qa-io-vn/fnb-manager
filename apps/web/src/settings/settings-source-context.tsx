@@ -14,6 +14,7 @@ import { useSession } from "../auth/session";
 import type { CustomerSource, LoyaltySource } from "../loyalty/source";
 import type { OperationsSource } from "../operations/source";
 import type { ManualSettingsSource } from "./manual/source";
+import type { RewardsSource } from "./rewards/source";
 import type { SettingsSource } from "./source";
 import type { StaffSettingsSource } from "./staff/source";
 
@@ -24,6 +25,7 @@ export interface SettingsSources {
 	readonly operations: OperationsSource | null;
 	readonly loyalty?: LoyaltySource | null;
 	readonly customers?: CustomerSource | null;
+	readonly rewards?: RewardsSource | null;
 }
 
 export type SettingsSourceState =
@@ -44,12 +46,13 @@ const SettingsSourceContext = createContext<SettingsSourceHandle>({
 });
 
 export async function loadDemoSettingsSource(): Promise<SettingsSources> {
-	const [demo, manual, staff, store, loyalty] = await Promise.all([
+	const [demo, manual, staff, store, loyalty, rewards] = await Promise.all([
 		import("./demo-settings-source"),
 		import("./manual/demo-manual-source"),
 		import("./staff/demo-staff-source"),
 		import("../demo/demo-settings"),
 		import("../loyalty/demo-loyalty-source"),
+		import("./rewards/demo-rewards-source"),
 	]);
 	const settings = store.sharedDemoSettings();
 	return {
@@ -59,19 +62,23 @@ export async function loadDemoSettingsSource(): Promise<SettingsSources> {
 		operations: null,
 		loyalty: loyalty.createDemoLoyaltySource(),
 		customers: null,
+		rewards: rewards.createDemoRewardsSource(),
 	};
 }
 
 export async function loadSupabaseSettingsSource(
 	client: SupabaseClient,
 ): Promise<SettingsSources> {
-	const [live, manual, staff, operations, loyalty] = await Promise.all([
-		import("./supabase-settings-source"),
-		import("./manual/supabase-manual-source"),
-		import("./staff/supabase-staff-source"),
-		import("../operations/supabase-operations-source"),
-		import("../loyalty/supabase-loyalty-source"),
-	]);
+	const [live, manual, staff, operations, loyalty, rewards] = await Promise.all(
+		[
+			import("./supabase-settings-source"),
+			import("./manual/supabase-manual-source"),
+			import("./staff/supabase-staff-source"),
+			import("../operations/supabase-operations-source"),
+			import("../loyalty/supabase-loyalty-source"),
+			import("./rewards/supabase-rewards-source"),
+		],
+	);
 	return {
 		source: live.createSupabaseSettingsSource(client),
 		manual: manual.createSupabaseManualSource(client),
@@ -79,6 +86,7 @@ export async function loadSupabaseSettingsSource(
 		operations: operations.createSupabaseOperationsSource(client),
 		loyalty: loyalty.createSupabaseLoyaltySource(client),
 		customers: loyalty.createSupabaseCustomerSource(client),
+		rewards: rewards.createSupabaseRewardsSource(client),
 	};
 }
 

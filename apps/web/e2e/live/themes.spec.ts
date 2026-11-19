@@ -11,9 +11,18 @@ import {
 	visibleStores,
 } from "../support/local-stack";
 import {
+	expectNoConsoleErrors,
 	expectShiftsLabelledByNumber,
 	watchConsoleErrors,
 } from "../support/reports";
+import {
+	createRewardsFixture,
+	FREE_ITEM_REWARD,
+	PERCENT_REWARD,
+	retireActiveRewards,
+	seedRedemptions,
+} from "../support/rewards-fixture";
+import { createSettingsFixture } from "../support/settings-fixture";
 import {
 	expectEveryThemeCardSettled,
 	shiftNumberedCardIds,
@@ -205,4 +214,78 @@ test("Chất lượng dữ liệu flags the seeded coffee store, whose e-invoice
 	await action.click();
 	await expect(page).toHaveURL(/#\/cai-dat\/cua-hang$/);
 	await expect(page.getByTestId("store-page")).toBeVisible();
+});
+
+interface SummaryRow {
+	readonly store_id: string;
+	readonly coupon_name: string;
+	readonly redemptions: number;
+	readonly confirmed: number;
+	readonly held: number;
+	readonly reward_cost_amount: number | string;
+	readonly member_invoices: number;
+}
+
+test("Khuyến mãi shows the member rewards redeemed on a fixture tenant exactly as redemption_summary counts them for the same stores and range", async ({
+	page,
+}) => {
+	const fixture = await createSettingsFixture();
+	try {
+		const rewards = await createRewardsFixture(fixture);
+		await seedRedemptions(fixture, rewards);
+		const to = rewards.day;
+		const from = shiftDate(to, -27);
+		const owner = await fixture.clientAs("owner");
+		const { data, error } = await owner.rpc("redemption_summary", {
+			store_ids: [...fixture.storeIds],
+			from_date: from,
+			to_date: to,
+		});
+		await owner.auth.signOut();
+		if (error) throw error;
+		const rows = data as SummaryRow[];
+		expect(rows.map((row) => [row.coupon_name, row.redemptions])).toEqual([
+			[PERCENT_REWARD.name, 2],
+			[FREE_ITEM_REWARD.name, 1],
+		]);
+		const cost = rows.reduce(
+			(sum, row) => sum + Number(row.reward_cost_amount),
+			0,
+		);
+		expect(cost).toBe(11_000);
+		watchConsoleErrors(page);
+		await fixture.signIn(page, "owner");
+		await page.goto(themeUrl("promotions", `from=${from}&to=${to}`));
+		await waitForSettledThemeCards(page);
+		await expectEveryThemeCardSettled(page, "promotions");
+		const card = themeCard(page, "promotions", "redemptions");
+		await expect(card.getByTestId("headline")).toHaveText(/^11\.000\s?₫$/);
+		await expect(card.getByTestId("comparison-chip")).toHaveCount(1);
+		await expect(card.getByTestId("sentence")).toContainText(
+			"khách đổi 3 lượt ưu đãi; 2 lượt đã dùng trên hóa đơn với chi phí 11.000",
+		);
+		await expect(card.getByTestId("sentence")).toContainText(
+			`Được đổi nhiều nhất là ${PERCENT_REWARD.name} (Giảm theo phần trăm): 2 lượt.`,
+		);
+		const table = card.getByRole("table", {
+			name: "Lượt đổi theo ưu đãi và cửa hàng",
+			exact: true,
+		});
+		await expect(table.locator("tbody tr")).toHaveCount(rows.length);
+		for (const row of rows) {
+			await expect(
+				table.locator("tbody tr").filter({ hasText: row.coupon_name }),
+			).toContainText(String(row.redemptions));
+		}
+		await card.getByTestId("headline").scrollIntoViewIfNeeded();
+		await expect(card.getByTestId("echarts")).toHaveCount(1);
+		await checkPage(page);
+		expectNoConsoleErrors(page);
+	} finally {
+		try {
+			await retireActiveRewards(fixture);
+		} finally {
+			await fixture.teardown();
+		}
+	}
 });

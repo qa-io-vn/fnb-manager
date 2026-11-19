@@ -314,5 +314,9 @@
 	"metric.open_reports.label": "Entries not seen",
 	"metric.open_reports.formula": "Incidents, stock-outs and handover notes that no owner or manager has marked as seen.",
 	"metric.open_reports.grain": "Each report written by staff.",
-	"metric.open_reports.convention": "A writer never marks their own report."
+	"metric.open_reports.convention": "A writer never marks their own report.",
+	"metric.reward_cost.label": "Member reward cost",
+	"metric.reward_cost.formula": "The discount of the invoices that used a reward: the payment discount on the POS discount rail, the voucher amount on the CRM code rails.",
+	"metric.reward_cost.grain": "Store and reward, by the business date of the redemption; several stores are summed.",
+	"metric.reward_cost.convention": "Only redemptions used on a synced invoice count; held and given-back redemptions cost nothing. A free item rung as a 0-price line has no discount amount."
 }
