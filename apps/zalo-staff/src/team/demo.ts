@@ -5,7 +5,15 @@ import {
 	MAX_TITLE_LENGTH,
 	type ReaderRole,
 } from "../announcements/contract";
-import type { Destination } from "../notifications/contract";
+import {
+	type Destination,
+	type LinkCode,
+	type MutableRule,
+	NOTICE_VERSION,
+	type NotificationConsent,
+	type NotificationSettings,
+	RULE_KEYS,
+} from "../notifications/contract";
 import {
 	MAX_DETAILS_LENGTH,
 	MAX_REFUSAL_LENGTH,
@@ -28,23 +36,87 @@ export const DEMO_TITLES = {
 } as const;
 export const DEMO_LINK_TEXT = "www.vidu-bao-tri.vn";
 export const DEMO_MEMBER_NAME = "Thành viên thử";
+export const DEMO_TENANT_NAME = "Cửa hàng Mẫu";
+export const DEMO_BOT_NAME = "Bot Mẫu";
+export const DEMO_LINK_CODES = [
+	"FNB-MAUTHU27",
+	"FNB-MAUTHU35",
+	"FNB-MAUTHU48",
+	"FNB-MAUTHU59",
+	"FNB-MAUTHU62",
+] as const;
+export const DEMO_NOTICE_TEMPLATE =
+	"Khi liên kết, {tenant} chỉ dùng mã tài khoản Zalo hoặc địa chỉ e-mail đăng nhập của bạn để gửi bản tin số liệu hằng ngày và cảnh báo vận hành. Tin do hệ thống tự động gửi qua Zalo Bot. Việc liên kết là tự nguyện và không ảnh hưởng đến công việc của bạn. Bạn có thể ngừng bất cứ lúc nào trong Cài đặt → Cảnh báo, hoặc nhờ chủ cửa hàng gỡ liên kết. Nhật ký gửi tin được lưu khoảng 13 tháng.";
+
+export function demoNoticeText(tenantName: string): string {
+	return DEMO_NOTICE_TEMPLATE.replace("{tenant}", tenantName).normalize("NFC");
+}
 
 const MAX_DEMO_DELAY_MS = 10_000;
 const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
+const LINK_LIFETIME_MS = 15 * MINUTE;
+const LINKS_PER_HOUR = 5;
+
+export type DemoNotify = "linked" | "unlinked";
 
 export interface TeamDemoSettings {
 	readonly delayMs: number;
+	readonly notify?: DemoNotify;
 }
 
 export function teamDemoSettingsFrom(search: string): TeamDemoSettings {
-	const delay = Number(new URLSearchParams(search).get("dataDelay") ?? "0");
+	const params = new URLSearchParams(search);
+	const delay = Number(params.get("dataDelay") ?? "0");
 	return {
 		delayMs:
 			Number.isInteger(delay) && delay > 0
 				? Math.min(delay, MAX_DEMO_DELAY_MS)
 				: 0,
+		notify: params.get("notify") === "unlinked" ? "unlinked" : "linked",
 	};
+}
+
+const STAFF_RULES: readonly MutableRule[] = [
+	{ key: "staff_sync_stale", category: "sync" },
+	{ key: "checklist_unfinished", category: "operations" },
+	{ key: "staff_daily_digest", category: "digest" },
+];
+
+const MANAGER_RULES: readonly MutableRule[] = [
+	{ key: "daily_digest", category: "digest" },
+	{ key: "revenue_below_baseline", category: "business" },
+	{ key: "zero_sales_open", category: "business" },
+	{ key: "cash_count_variance", category: "business" },
+	{ key: "staff_sync_stale", category: "sync" },
+	{ key: "checklist_unfinished", category: "operations" },
+];
+
+const OWNER_RULES: readonly MutableRule[] = [
+	{ key: "daily_digest", category: "digest" },
+	{ key: "revenue_below_baseline", category: "business" },
+	{ key: "zero_sales_open", category: "business" },
+	{ key: "sync_failed", category: "sync" },
+	{ key: "sync_stale", category: "sync" },
+	{ key: "channel_failed", category: "channel" },
+	{ key: "cash_count_variance", category: "business" },
+];
+
+export function demoRules(role: MemberRole): readonly MutableRule[] {
+	switch (role) {
+		case "owner":
+			return OWNER_RULES;
+		case "manager":
+			return MANAGER_RULES;
+		case "staff":
+			return STAFF_RULES;
+		default:
+			return [];
+	}
+}
+
+function catalogueOrder(keys: readonly string[]): string[] {
+	return RULE_KEYS.filter((key) => keys.includes(key));
 }
 
 export const DEMO_KINDS: readonly RequestKind[] = [
@@ -270,19 +342,101 @@ export function createDemoTeamClient(options: {
 				},
 			]
 		: [];
-	const destinations: Destination[] = [
-		{
-			id: demoId("g", 1),
+	const unlinked = options.settings.notify === "unlinked";
+	let consent: NotificationConsent = unlinked
+		? { state: "none", grantedAt: null, revokedAt: null }
+		: { state: "active", grantedAt: ago(10 * DAY), revokedAt: null };
+	let destinations: Destination[] = unlinked
+		? []
+		: [
+				{
+					id: demoId("g", 1),
+					kind: "zalo_bot",
+					label: "Zalo Bot",
+					hint: "…3f7a",
+					status: "active",
+					paused: false,
+					mutedRules: [],
+					linkedAt: ago(10 * DAY),
+					disabledReason: null,
+					linkStage: null,
+					linkExpiresAt: null,
+				},
+			];
+	const linkStarts: number[] = [];
+	const shownDestination = (destination: Destination): Destination =>
+		destination.linkExpiresAt !== null &&
+		Date.parse(destination.linkExpiresAt) <= clock().getTime()
+			? { ...destination, linkStage: null, linkExpiresAt: null }
+			: { ...destination };
+	const settingsNow = (): NotificationSettings => {
+		const rules = demoRules(options.role);
+		const muted = catalogueOrder(
+			destinations.flatMap((destination) => destination.mutedRules),
+		).filter((key) => !rules.some((rule) => rule.key === key));
+		return {
+			consent: { ...consent },
+			destinations: destinations.map(shownDestination),
+			rules: [...rules, ...muted.map((key) => ({ key, category: null }))],
+			notice: {
+				version: NOTICE_VERSION,
+				text: demoNoticeText(DEMO_TENANT_NAME),
+			},
+			botName: DEMO_BOT_NAME,
+		};
+	};
+	const replaceDestination = (changed: Destination) => {
+		destinations = destinations.map((destination) =>
+			destination.id === changed.id ? changed : destination,
+		);
+	};
+	const startLink = (noticeVersion: string): LinkCode => {
+		if (noticeVersion !== NOTICE_VERSION) refuse(REFUSAL.invalid);
+		if (options.role === "publisher") refuse(REFUSAL.notAllowed, 403);
+		if (
+			destinations.some(
+				(destination) =>
+					destination.kind === "zalo_bot" &&
+					(destination.status === "active" || destination.status === "failing"),
+			)
+		)
+			refuse(REFUSAL.duplicate, 409);
+		const now = clock().getTime();
+		const recent = linkStarts.filter((at) => at > now - 60 * MINUTE);
+		if (recent.length >= LINKS_PER_HOUR) refuse(REFUSAL.state);
+		const earlier = destinations.find(
+			(destination) => destination.kind === "zalo_bot",
+		);
+		if (earlier?.disabledReason === "owner_request")
+			refuse(REFUSAL.notAllowed, 403);
+		const code =
+			DEMO_LINK_CODES[linkStarts.length % DEMO_LINK_CODES.length] ??
+			DEMO_LINK_CODES[0];
+		linkStarts.push(now);
+		const expiresAt = new Date(now + LINK_LIFETIME_MS).toISOString();
+		const pending: Destination = {
+			id: earlier?.id ?? next("g"),
 			kind: "zalo_bot",
 			label: "Zalo Bot",
-			hint: "…3f7a",
-			status: "active",
+			hint: null,
+			status: "pending",
 			paused: false,
-			mutedRules: 0,
-			linkedAt: ago(10 * DAY),
+			mutedRules: earlier?.mutedRules ?? [],
+			linkedAt: null,
 			disabledReason: null,
-		},
-	];
+			linkStage: "code",
+			linkExpiresAt: expiresAt,
+		};
+		if (earlier === undefined) destinations = [...destinations, pending];
+		else replaceDestination(pending);
+		return {
+			channelId: pending.id,
+			noticeVersion: NOTICE_VERSION,
+			code,
+			expiresAt,
+			botName: DEMO_BOT_NAME,
+		};
+	};
 	const visible = (storeIds: readonly string[] | null) =>
 		meets(storeIds, stores);
 	const viewOf = (entry: DemoAnnouncement): Announcement => {
@@ -480,9 +634,50 @@ export function createDemoTeamClient(options: {
 			queue.splice(index, 1);
 			return { id, status: input.decision };
 		},
-		async destinations() {
+		async notificationSettings() {
 			await pause();
-			return destinations.map((destination) => ({ ...destination }));
+			return settingsNow();
+		},
+		async startBotLink(_tenantId, noticeVersion) {
+			await pause();
+			return startLink(noticeVersion);
+		},
+		async setMutedRules(channelId, rules) {
+			await pause();
+			const destination = destinations.find(
+				(candidate) => candidate.id === channelId,
+			);
+			if (destination === undefined) return refuse(REFUSAL.notAllowed, 403);
+			if (rules.some((key) => !(RULE_KEYS as readonly string[]).includes(key)))
+				refuse(REFUSAL.invalid);
+			const muted = catalogueOrder(rules);
+			replaceDestination({ ...destination, mutedRules: muted });
+			return muted;
+		},
+		async stopNotifications() {
+			await pause();
+			const cancelled = destinations.filter(
+				(destination) =>
+					destination.status === "active" || destination.status === "failing",
+			).length;
+			if (consent.state === "active")
+				consent = {
+					...consent,
+					state: "withdrawn",
+					revokedAt: clock().toISOString(),
+				};
+			destinations = destinations
+				.filter((destination) => destination.status !== "pending")
+				.map((destination) =>
+					destination.status === "disabled"
+						? destination
+						: {
+								...destination,
+								status: "disabled",
+								disabledReason: "consent_withdrawn",
+							},
+				);
+			return cancelled;
 		},
 		async followTarget() {
 			await pause();

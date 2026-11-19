@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { catalogs } from "../i18n/catalog";
 import {
+	CONSENT_STATES,
 	DESTINATION_STATES_SHOWN,
 	DISABLED_REASONS,
+	RULE_CATEGORIES,
+	RULE_KEYS,
 } from "../notifications/contract";
 import { REQUEST_DECISIONS, REQUEST_STATUSES } from "../requests/contract";
 import teamEn from "./i18n/en.json";
@@ -44,6 +47,11 @@ function dynamicKeys(): string[] {
 		...["empty", "long"].map((problem) => `approvals.problem.${problem}`),
 		...DESTINATION_STATES_SHOWN.map((state) => `notify.state.${state}`),
 		...DISABLED_REASONS.map((reason) => `notify.reason.${reason}`),
+		...CONSENT_STATES.map((state) => `notify.consent.${state}`),
+		"notify.consent.activeAt",
+		"notify.consent.withdrawnAt",
+		...RULE_KEYS.map((key) => `notify.rule.${key}`),
+		...RULE_CATEGORIES.map((category) => `notify.category.${category}`),
 	];
 }
 

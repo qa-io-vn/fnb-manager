@@ -12,10 +12,16 @@ import {
 	readReadReceipt,
 } from "../announcements/contract";
 import {
-	DESTINATION_TABLE,
-	destinationQuery,
+	muteArgs,
+	NOTIFY_FUNCTIONS,
 	type NotificationsApi,
-	readDestinations,
+	readCancelled,
+	readFollowTarget,
+	readLinkCode,
+	readMutedRules,
+	readSettings,
+	startArgs,
+	tenantArgs,
 } from "../notifications/contract";
 import {
 	decideArgs,
@@ -40,12 +46,10 @@ export interface TeamClient
 	kinds(tenantId: string): ReturnType<RequestsApi["kinds"]>;
 }
 
-export function createRestTeamClient(
-	rest: RestClient,
-	memberId: string | null,
-): TeamClient {
+export function createRestTeamClient(rest: RestClient): TeamClient {
 	const a = ANNOUNCEMENT_FUNCTIONS;
 	const r = REQUEST_FUNCTIONS;
+	const n = NOTIFY_FUNCTIONS;
 	return {
 		async feed(storeId) {
 			return readFeed(await rest.rpc(a.feed, feedArgs(storeId)));
@@ -85,14 +89,26 @@ export function createRestTeamClient(
 				await rest.rpc(r.decide, decideArgs(id, input)),
 			);
 		},
-		async destinations() {
-			if (memberId === null) return [];
-			return readDestinations(
-				await rest.select(DESTINATION_TABLE, destinationQuery(memberId)),
+		async notificationSettings(tenantId) {
+			return readSettings(await rest.rpc(n.settings, tenantArgs(tenantId)));
+		},
+		async startBotLink(tenantId, noticeVersion) {
+			return readLinkCode(
+				await rest.rpc(n.startBotLink, startArgs(tenantId, noticeVersion)),
 			);
 		},
-		async followTarget() {
-			return null;
+		async setMutedRules(channelId, rules) {
+			return readMutedRules(
+				await rest.rpc(n.setMutedRules, muteArgs(channelId, rules)),
+			);
+		},
+		async stopNotifications(tenantId) {
+			return readCancelled(await rest.rpc(n.stop, tenantArgs(tenantId)));
+		},
+		async followTarget(tenantId) {
+			return readFollowTarget(
+				await rest.rpc(n.followTarget, tenantArgs(tenantId)),
+			);
 		},
 	};
 }

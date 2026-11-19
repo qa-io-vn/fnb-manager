@@ -74,7 +74,7 @@ export function createRestTeamSource(
 	});
 	const memberId = tokenSubject(session.accessToken);
 	return {
-		client: createRestTeamClient(rest, memberId),
+		client: createRestTeamClient(rest),
 		memberId,
 		context: (query, now) => loadShiftContext(rest, query, now),
 	};
