@@ -8,6 +8,7 @@ export type SettingsPageId =
 	| "thresholds"
 	| "legal"
 	| "staff"
+	| "checklists"
 	| "alerts"
 	| "digests";
 
@@ -78,6 +79,15 @@ export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
 		phase: "14a",
 		status: "built",
 		load: () => import("../pages/settings/nhan-vien-page"),
+		managersOnly: true,
+	},
+	{
+		id: "checklists",
+		slug: "checklist",
+		titleKey: "settings.checklists.title",
+		phase: "14b",
+		status: "built",
+		load: () => import("../pages/settings/checklist-page"),
 		managersOnly: true,
 	},
 	{

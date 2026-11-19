@@ -69,5 +69,10 @@ export interface StaffSettingsSource {
 		visibility: StaffRevenueVisibility,
 	): Promise<StaffRevenueVisibility>;
 	staffApps(tenantId: string): Promise<StaffApp[]>;
+	staffContact(tenantId: string): Promise<string | null>;
+	setStaffContact(
+		tenantId: string,
+		text: string | null,
+	): Promise<string | null>;
 	issuePairingCode(tenantId: string, rosterId: string): Promise<PairingCode>;
 }

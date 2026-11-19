@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useAppMode } from "../app-mode/app-mode";
 import { useSession } from "../auth/session";
+import type { OperationsSource } from "../operations/source";
 import type { ManualSettingsSource } from "./manual/source";
 import type { SettingsSource } from "./source";
 import type { StaffSettingsSource } from "./staff/source";
@@ -19,6 +20,7 @@ export interface SettingsSources {
 	readonly source: SettingsSource;
 	readonly manual: ManualSettingsSource;
 	readonly staff: StaffSettingsSource;
+	readonly operations: OperationsSource | null;
 }
 
 export type SettingsSourceState =
@@ -50,21 +52,24 @@ export async function loadDemoSettingsSource(): Promise<SettingsSources> {
 		source: demo.createDemoSettingsSource(settings),
 		manual: manual.createDemoManualSource(settings),
 		staff: staff.createDemoStaffSource(settings),
+		operations: null,
 	};
 }
 
 export async function loadSupabaseSettingsSource(
 	client: SupabaseClient,
 ): Promise<SettingsSources> {
-	const [live, manual, staff] = await Promise.all([
+	const [live, manual, staff, operations] = await Promise.all([
 		import("./supabase-settings-source"),
 		import("./manual/supabase-manual-source"),
 		import("./staff/supabase-staff-source"),
+		import("../operations/supabase-operations-source"),
 	]);
 	return {
 		source: live.createSupabaseSettingsSource(client),
 		manual: manual.createSupabaseManualSource(client),
 		staff: staff.createSupabaseStaffSource(client),
+		operations: operations.createSupabaseOperationsSource(client),
 	};
 }
 

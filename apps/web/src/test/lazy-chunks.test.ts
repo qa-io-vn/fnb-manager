@@ -25,6 +25,8 @@ const manifestKeys = [
 	"src/pages/exports/exports-page.tsx",
 	"src/datapack/browser-pack.ts",
 	"src/pages/plans/paste-page.tsx",
+	"src/pages/operations/checklist-compliance-page.tsx",
+	"src/operations/supabase-operations-source.ts",
 	"../../node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
 ];
 
@@ -88,5 +90,24 @@ describe("the size check's lazy chunks", () => {
 		expect(isLazySource("src/plans/paste-check.ts")).toBe(false);
 		expect(isLazySource("src/pages/plans/plans-page.tsx")).toBe(false);
 		expect(isEagerSource("src/pages/plans/paste-page.tsx")).toBe(false);
+	});
+});
+
+describe("the operations pages' chunks", () => {
+	it("keeps the three operations pages and the live operations source out of the initial JS", () => {
+		for (const page of [
+			"checklist-compliance-page",
+			"cash-counts-page",
+			"incident-log-page",
+		]) {
+			expect(isLazySource(`src/pages/operations/${page}.tsx`)).toBe(true);
+		}
+		expect(isLazySource("src/pages/operations/operations-layout.tsx")).toBe(
+			false,
+		);
+		expect(isLazySource("src/operations/supabase-operations-source.ts")).toBe(
+			true,
+		);
+		expect(isLazySource("src/pages/settings/checklist-page.tsx")).toBe(true);
 	});
 });

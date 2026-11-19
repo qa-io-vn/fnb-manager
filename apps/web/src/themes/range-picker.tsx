@@ -12,7 +12,7 @@ import {
 } from "@fnb/reports";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { fieldVariants } from "../components/ui/field";
-import { useT } from "../i18n";
+import { type MessageKey, useT } from "../i18n";
 import type { Formatters } from "../lib/format";
 import { DATE_IDLE_COMMIT_MS, pickableDate } from "../reports/period-navigator";
 import { formatParts, translateKey } from "../reports/typed-values";
@@ -146,11 +146,13 @@ export function RangePicker({
 	maxDays,
 	formatters,
 	onChange,
+	summaryKey,
 }: {
 	range: ReportRange;
 	maxDays: number;
 	formatters: Formatters;
 	onChange: RangeChange;
+	summaryKey?: MessageKey;
 }) {
 	const t = useT();
 	const labelId = useId();
@@ -183,16 +185,22 @@ export function RangePicker({
 					aria-atomic="true"
 				>
 					<p className="font-semibold" data-testid="range-label">
-						{t(themeKeys.range.summary, {
-							from: formatters.date(range.from),
-							to: formatters.date(range.to),
-							days: formatters.count(range.days),
-							reference: formatParts(
-								[referenceLabel(range, "previous")],
-								t,
-								formatters,
-							),
-						})}
+						{summaryKey === undefined
+							? t(themeKeys.range.summary, {
+									from: formatters.date(range.from),
+									to: formatters.date(range.to),
+									days: formatters.count(range.days),
+									reference: formatParts(
+										[referenceLabel(range, "previous")],
+										t,
+										formatters,
+									),
+								})
+							: t(summaryKey, {
+									from: formatters.date(range.from),
+									to: formatters.date(range.to),
+									days: formatters.count(range.days),
+								})}
 					</p>
 				</div>
 				<StepButton

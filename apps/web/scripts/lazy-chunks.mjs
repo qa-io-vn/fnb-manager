@@ -13,6 +13,8 @@ export const lazySources = [
 	/src\/datapack\/browser-pack\.ts$/,
 	/src\/pages\/plans\/paste-page\.tsx$/,
 	/node_modules\/fflate\/esm\/browser\.js$/,
+	/src\/pages\/operations\/[a-z-]+-page\.tsx$/,
+	/src\/operations\/supabase-operations-source\.ts$/,
 ];
 
 export const eagerSources = [];

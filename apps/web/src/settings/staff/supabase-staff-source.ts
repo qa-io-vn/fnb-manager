@@ -47,6 +47,10 @@ const visibility = z.enum(STAFF_REVENUE_VISIBILITIES);
 
 const visibilityRow = z.object({ staff_revenue_visibility: visibility });
 
+const contactRow = z.object({
+	staff_contact_instructions: z.string().nullable(),
+});
+
 const staffAppRow = z.object({
 	brand_id: z.string(),
 	external_id: z.string(),
@@ -210,6 +214,28 @@ export function createSupabaseStaffSource(
 					.order("brand_id"),
 			);
 			return rows.map(staffAppOf);
+		},
+
+		async staffContact(tenantId): Promise<string | null> {
+			const [row] = await fetchOnce(
+				contactRow,
+				client
+					.from("tenants")
+					.select("staff_contact_instructions")
+					.eq("id", tenantId),
+			);
+			if (row === undefined) throw new Error("tenant not readable");
+			return row.staff_contact_instructions;
+		},
+
+		setStaffContact(tenantId, text) {
+			return called(
+				z.string().nullable(),
+				client.rpc("set_staff_contact_instructions", {
+					p_tenant_id: tenantId,
+					p_text: text,
+				}),
+			);
 		},
 
 		async issuePairingCode(_tenantId, rosterId): Promise<PairingCode> {

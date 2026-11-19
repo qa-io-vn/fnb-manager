@@ -8,6 +8,7 @@ export const settingsSlugs = [
 	"bao-cao",
 	"phap-ly",
 	"nhan-vien",
+	"checklist",
 	"canh-bao",
 	"ban-tin",
 ] as const;

@@ -6,6 +6,7 @@ import type { ManualSettingsSource } from "../../settings/manual/source";
 import {
 	settingsQueryKey,
 	useMembership,
+	useStaffContact,
 	useStaffRevenueVisibility,
 } from "../../settings/queries";
 import { ReadOnlyNotice } from "../../settings/read-only-notice";
@@ -17,6 +18,7 @@ import type {
 	StaffSettingsSource,
 } from "../../settings/staff/source";
 import { StaffAppSection } from "../../settings/staff/staff-app-section";
+import { StaffContactForm } from "../../settings/staff/staff-contact-form";
 import { StaffRoster } from "../../settings/staff/staff-roster";
 import { profileOutcomeOf } from "../../settings/store/profile-outcome";
 import { useSettingsAccess } from "../../settings/use-settings-access";
@@ -75,6 +77,59 @@ function RevenueSection() {
 	);
 }
 
+export function contactErrorKey(
+	errorCode: SettingsWriteCode | null,
+	errorKey: MessageKey | null,
+): MessageKey | null {
+	if (errorCode === "forbidden")
+		return "settings.staff.contact.error.forbidden";
+	if (errorCode === "invalid") return "settings.staff.contact.error.invalid";
+	return errorKey;
+}
+
+function ContactSection() {
+	const access = useSettingsAccess("staffContact");
+	const contact = useStaffContact();
+	const load = useSectionLoad([contact]);
+	const queryClient = useQueryClient();
+	const write = useCallback(
+		async (
+			_source: SettingsSource,
+			tenantId: string,
+			text: string | null,
+			_manual: ManualSettingsSource,
+			staff: StaffSettingsSource,
+		) => {
+			const saved = await staff.setStaffContact(tenantId, text);
+			queryClient.setQueryData<string | null>(
+				settingsQueryKey(staff.kind, tenantId, "staffContact"),
+				saved,
+			);
+		},
+		[queryClient],
+	);
+	const mutation = useSettingsMutation(write);
+	if (contact.data === undefined) {
+		return (
+			<SectionLoadState load={load} failedTestId="staff-contact-load-failed" />
+		);
+	}
+	const errorKey = contactErrorKey(mutation.errorCode, mutation.errorKey);
+	const outcome = profileOutcomeOf({ ...mutation, errorKey });
+	return (
+		<StaffContactForm
+			saved={contact.data}
+			access={access}
+			saving={mutation.saving}
+			outcome={outcome}
+			onSave={(text) => void mutation.save(text)}
+			onEdit={() => {
+				if (outcome.kind !== "idle" && !mutation.saving) mutation.reset();
+			}}
+		/>
+	);
+}
+
 function StaffBody() {
 	const t = useT();
 	const membership = useMembership();
@@ -96,6 +151,7 @@ function StaffBody() {
 				<>
 					<StaffRoster />
 					<StaffAppSection />
+					<ContactSection />
 					{member?.role === "owner" ? <RevenueSection /> : null}
 				</>
 			) : null}

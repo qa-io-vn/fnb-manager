@@ -196,6 +196,40 @@ export const routes: RouteObject[] = [
 						],
 					},
 					{
+						path: "van-hanh",
+						hydrateFallbackElement: <ReportRouteLoading />,
+						children: [
+							{ index: true, element: <Navigate to="checklist" replace /> },
+							{
+								path: "checklist",
+								lazy: () =>
+									import("./pages/operations/checklist-compliance-page").then(
+										(module) => ({
+											Component: module.ChecklistCompliancePage,
+										}),
+									),
+							},
+							{
+								path: "ket-tien",
+								lazy: () =>
+									import("./pages/operations/cash-counts-page").then(
+										(module) => ({ Component: module.CashCountsPage }),
+									),
+							},
+							{
+								path: "su-co",
+								lazy: () =>
+									import("./pages/operations/incident-log-page").then(
+										(module) => ({ Component: module.IncidentLogPage }),
+									),
+							},
+							{
+								path: "*",
+								element: <Navigate to="/van-hanh/checklist" replace />,
+							},
+						],
+					},
+					{
 						path: "xuat-du-lieu",
 						hydrateFallbackElement: <ReportRouteLoading />,
 						lazy: () =>

@@ -4,6 +4,8 @@ import exportsEn from "./messages/exports.en.json";
 import exportsVi from "./messages/exports.vi.json";
 import metricsEn from "./messages/metrics.en.json";
 import metricsVi from "./messages/metrics.vi.json";
+import operationsEn from "./messages/operations.en.json";
+import operationsVi from "./messages/operations.vi.json";
 import plansEn from "./messages/plans.en.json";
 import plansVi from "./messages/plans.vi.json";
 import reportDayEn from "./messages/report-day.en.json";
@@ -18,6 +20,8 @@ import reportsEn from "./messages/reports.en.json";
 import reportsVi from "./messages/reports.vi.json";
 import settingsEn from "./messages/settings.en.json";
 import settingsVi from "./messages/settings.vi.json";
+import settingsChecklistsEn from "./messages/settings-checklists.en.json";
+import settingsChecklistsVi from "./messages/settings-checklists.vi.json";
 import settingsFeesEn from "./messages/settings-fees.en.json";
 import settingsFeesVi from "./messages/settings-fees.vi.json";
 import settingsHolidaysEn from "./messages/settings-holidays.en.json";
@@ -73,6 +77,8 @@ export type MessageKey =
 	| keyof typeof settingsTargetsVi
 	| keyof typeof settingsFeesVi
 	| keyof typeof settingsStaffVi
+	| keyof typeof settingsChecklistsVi
+	| keyof typeof operationsVi
 	| keyof typeof themesVi
 	| keyof typeof themeRevenueVi
 	| keyof typeof themeHoursVi
@@ -108,6 +114,7 @@ const settingsFilePrefixes = [
 	"settings.targets.",
 	"settings.fees.",
 	"settings.staff.",
+	"settings.checklists.",
 ] as const;
 
 const reportFilePrefixes = [
@@ -128,6 +135,7 @@ export const messageFiles: readonly MessageFile[] = [
 			"settings.",
 			"exports.",
 			"plans.",
+			"operations.",
 		],
 		vi: coreVi,
 		en: coreEn,
@@ -306,6 +314,20 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: settingsStaffVi,
 		en: settingsStaffEn,
+	},
+	{
+		name: "settings-checklists",
+		prefix: "settings.checklists.",
+		excludedPrefixes: [],
+		vi: settingsChecklistsVi,
+		en: settingsChecklistsEn,
+	},
+	{
+		name: "operations",
+		prefix: "operations.",
+		excludedPrefixes: [],
+		vi: operationsVi,
+		en: operationsEn,
 	},
 	{
 		name: "exports",

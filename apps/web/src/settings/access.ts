@@ -12,7 +12,9 @@ export type SettingsArea =
 	| "manualData"
 	| "legal"
 	| "staff"
-	| "staffRevenue";
+	| "staffRevenue"
+	| "staffContact"
+	| "checklists";
 
 export type ReadOnlyReason =
 	| "notMember"
@@ -99,6 +101,8 @@ const AREA_ACCESS: Readonly<
 	legal: unlimitedOwnerAccess,
 	staff: manualDataAccess,
 	staffRevenue: unlimitedOwnerAccess,
+	staffContact: unlimitedOwnerAccess,
+	checklists: manualDataAccess,
 };
 
 export function settingsAccess(

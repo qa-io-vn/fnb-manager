@@ -17,7 +17,11 @@ import {
 	type StaffSettingsSource,
 	type StaffStatus,
 } from "./source";
+import { normalisedContact, staffContactIssue } from "./staff-contact-rules";
 import { staffChangeProblem } from "./staff-rules";
+
+export const DEMO_STAFF_CONTACT =
+	"Gặp quản lý ca tại quầy để nhận mã ghép nối. Ngoài giờ làm, nhắn quản lý qua Zalo.";
 
 interface DemoStaffRow extends StaffChange {
 	readonly id: string;
@@ -31,6 +35,7 @@ interface DemoStaffRow extends StaffChange {
 interface DemoStaffState {
 	rows: DemoStaffRow[];
 	visibility: StaffRevenueVisibility;
+	contact: string | null;
 	next: number;
 }
 
@@ -97,6 +102,7 @@ function stateOf(store: DemoSettingsStore): DemoStaffState {
 		state = {
 			rows,
 			visibility: DEFAULT_STAFF_REVENUE_VISIBILITY,
+			contact: DEMO_STAFF_CONTACT,
 			next: rows.length + 1,
 		};
 		states.set(store, state);
@@ -226,6 +232,19 @@ export function createDemoStaffSource(
 
 		async staffApps() {
 			return [];
+		},
+
+		async staffContact() {
+			return stateOf(store).contact;
+		},
+
+		async setStaffContact(_tenantId, text) {
+			if (text !== null && staffContactIssue(text) !== null) {
+				throw new SettingsWriteError("invalid", "staff_contact_instructions");
+			}
+			const stored = text === null ? null : normalisedContact(text);
+			stateOf(store).contact = stored;
+			return stored;
 		},
 
 		async issuePairingCode(_tenantId, rosterId): Promise<PairingCode> {

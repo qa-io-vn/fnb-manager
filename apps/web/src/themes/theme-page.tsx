@@ -8,7 +8,13 @@ import {
 	themeParamOptions,
 	themeParamsOfCard,
 } from "@fnb/reports";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { Button } from "../components/ui/button";
 import { useT } from "../i18n";
 import { ReportCardView } from "../reports/report-card-view";
@@ -124,12 +130,16 @@ function CardControls({
 	);
 }
 
+export type ThemeExtraCards = (context: ThemeContext) => ReactNode;
+
 function ThemeCards({
 	definition,
 	location,
+	extraCards,
 }: {
 	definition: ThemeDefinition;
 	location: ThemeLocation;
+	extraCards?: ThemeExtraCards;
 }) {
 	const t = useT();
 	const scope = useReadyTenantScope();
@@ -210,12 +220,19 @@ function ThemeCards({
 						}
 					/>
 				))}
+				{extraCards?.(context) ?? null}
 			</div>
 		</>
 	);
 }
 
-export function ThemePage({ definition }: { definition: ThemeDefinition }) {
+export function ThemePage({
+	definition,
+	extraCards,
+}: {
+	definition: ThemeDefinition;
+	extraCards?: ThemeExtraCards;
+}) {
 	const t = useT();
 	const scope = useReadyTenantScope();
 	const formatters = useFormatters(scope.tenant);
@@ -260,7 +277,11 @@ export function ThemePage({ definition }: { definition: ThemeDefinition }) {
 					<p>{t(themeKeys.page.noStores)}</p>
 				</StatusMessage>
 			) : (
-				<ThemeCards definition={definition} location={location} />
+				<ThemeCards
+					definition={definition}
+					location={location}
+					{...(extraCards === undefined ? {} : { extraCards })}
+				/>
 			)}
 		</div>
 	);

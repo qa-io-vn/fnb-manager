@@ -92,6 +92,11 @@ export const displaySeries = {
 	store_findings: { unit: "count", direction: "lower" },
 	promotions_used: { unit: "count", direction: "neutral" },
 	over_cap_promotions: { unit: "count", direction: "lower" },
+	checklist_compliance: { unit: "fraction", direction: "higher" },
+	checklists_missing: { unit: "count", direction: "lower" },
+	cash_count_flags: { unit: "count", direction: "lower" },
+	shifts_without_count: { unit: "count", direction: "lower" },
+	open_reports: { unit: "count", direction: "lower" },
 } as const satisfies Record<
 	string,
 	{ unit: MetricUnit; direction: MetricDirection }

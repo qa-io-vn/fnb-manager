@@ -327,3 +327,53 @@ describe("the Supabase staff source", () => {
 		).rejects.toBeDefined();
 	});
 });
+
+describe("the Supabase staff contact note", () => {
+	it("reads the tenant's note through row-level security and writes it only through set_staff_contact_instructions", async () => {
+		const { client, log } = fakeClient((recorded) =>
+			recorded.table === "tenants"
+				? {
+						data: [{ staff_contact_instructions: "Gặp quản lý ca." }],
+						error: null,
+					}
+				: { data: "Gặp quản lý ca.\nGọi 0901 234 567.", error: null },
+		);
+		const source = createSupabaseStaffSource(client);
+		expect(await source.staffContact(TENANT)).toBe("Gặp quản lý ca.");
+		const read = log.find((entry) => entry.table === "tenants");
+		expect(called(read, "select")).toEqual([["staff_contact_instructions"]]);
+		expect(called(read, "eq")).toEqual([["id", TENANT]]);
+		expect(
+			await source.setStaffContact(
+				TENANT,
+				"Gặp quản lý ca.\nGọi 0901 234 567.",
+			),
+		).toBe("Gặp quản lý ca.\nGọi 0901 234 567.");
+		const write = log.find(
+			(entry) => entry.table === "rpc:set_staff_contact_instructions",
+		);
+		expect(called(write, "rpc")).toEqual([
+			[{ p_tenant_id: TENANT, p_text: "Gặp quản lý ca.\nGọi 0901 234 567." }],
+		]);
+	});
+
+	it("reports an owner-only refusal as forbidden and a link or a long text as invalid", async () => {
+		const refuse = (code: string) =>
+			createSupabaseStaffSource(
+				fakeClient(() => ({ data: null, error: { code, message: "refused" } }))
+					.client,
+			);
+		await expect(
+			refuse("42501").setStaffContact(TENANT, "Gặp quản lý").catch(writeCodeOf),
+		).resolves.toBe("forbidden");
+		await expect(
+			refuse("22023")
+				.setStaffContact(TENANT, "Xem example.com")
+				.catch(writeCodeOf),
+		).resolves.toBe("invalid");
+		const cleared = createSupabaseStaffSource(
+			fakeClient(() => ({ data: null, error: null })).client,
+		);
+		expect(await cleared.setStaffContact(TENANT, null)).toBeNull();
+	});
+});

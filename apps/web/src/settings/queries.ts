@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
+import type { OperationsSource } from "../operations/source";
 import { useReadyTenantScope } from "../state/tenant-scope";
 import type { ManualSettingsSource } from "./manual/source";
 import { useSettingsSourceState } from "./settings-source-context";
@@ -25,7 +26,9 @@ export type SettingsRead =
 	| "legalDocuments"
 	| "staffRoster"
 	| "staffRevenue"
-	| "staffApps";
+	| "staffApps"
+	| "staffContact"
+	| "checklistTemplates";
 
 export function settingsQueryKey(
 	sourceKind: SettingsSource["kind"],
@@ -57,6 +60,7 @@ type SettingsLoad<T> = (
 	tenantId: string,
 	manual: ManualSettingsSource,
 	staff: StaffSettingsSource,
+	operations: OperationsSource | null,
 ) => Promise<T>;
 
 function useSettingsRead<T>(
@@ -78,7 +82,13 @@ function useSettingsRead<T>(
 		),
 		queryFn: () => {
 			if (ready === null) throw new Error("settings source not ready");
-			return load(ready.source, tenant.id, ready.manual, ready.staff);
+			return load(
+				ready.source,
+				tenant.id,
+				ready.manual,
+				ready.staff,
+				ready.operations ?? null,
+			);
 		},
 		enabled: ready !== null,
 		refetchInterval: (query) =>
@@ -177,6 +187,24 @@ export function useStaffRevenueVisibility() {
 export function useStaffApps() {
 	return useSettingsRead("staffApps", (_source, tenantId, _manual, staff) =>
 		staff.staffApps(tenantId),
+	);
+}
+
+export function useStaffContact() {
+	return useSettingsRead("staffContact", (_source, tenantId, _manual, staff) =>
+		staff.staffContact(tenantId),
+	);
+}
+
+export function useChecklistTemplates() {
+	return useSettingsRead(
+		"checklistTemplates",
+		(_source, tenantId, _manual, _staff, operations) => {
+			if (operations === null) {
+				return Promise.reject(new Error("no operations data in this mode"));
+			}
+			return operations.checklistTemplates(tenantId);
+		},
 	);
 }
 

@@ -35,6 +35,7 @@ vi.mock("./settings-source-context", () => ({
 		source: { kind: "demo" },
 		manual: { kind: "demo", manual: true },
 		staff: { kind: "demo", staff: true },
+		operations: { kind: "supabase", operations: true },
 	}),
 }));
 
@@ -144,6 +145,7 @@ describe("useSettingsMutation", () => {
 			{ value: 1 },
 			{ kind: "demo", manual: true },
 			{ kind: "demo", staff: true },
+			{ kind: "supabase", operations: true },
 		);
 		await waitFor(() => expect(result.current.saved).toBe(true));
 		expect(stale(["analytics", "demo", TENANT, "item_summary", {}])).toBe(true);
@@ -282,6 +284,7 @@ describe("useSettingsMutation", () => {
 			{ value: 7 },
 			{ kind: "demo", manual: true },
 			{ kind: "demo", staff: true },
+			{ kind: "supabase", operations: true },
 		);
 		await waitFor(() => expect(result.current.saved).toBe(true));
 		expect(result.current.errorKey).toBeNull();

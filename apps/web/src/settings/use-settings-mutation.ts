@@ -5,6 +5,7 @@ import {
 	invalidateTodayReport,
 } from "../data/invalidate-analytics";
 import type { MessageKey } from "../i18n";
+import type { OperationsSource } from "../operations/source";
 import { useReadyTenantScope } from "../state/tenant-scope";
 import { useCatchUpRunner } from "./catch-up/catch-up-context";
 import type { ManualSettingsSource } from "./manual/source";
@@ -24,6 +25,7 @@ export type SettingsWrite<Args> = (
 	args: Args,
 	manual: ManualSettingsSource,
 	staff: StaffSettingsSource,
+	operations: OperationsSource | null,
 ) => Promise<unknown>;
 
 export const WRITE_ERROR_KEYS: Readonly<Record<SettingsWriteCode, MessageKey>> =
@@ -83,7 +85,14 @@ export function useSettingsMutation<Args>(
 		mutationFn: async (args) => {
 			lastArgs.current = { args };
 			if (state.status !== "ready") throw new SettingsWriteError("network");
-			await write(state.source, tenant.id, args, state.manual, state.staff);
+			await write(
+				state.source,
+				tenant.id,
+				args,
+				state.manual,
+				state.staff,
+				state.operations ?? null,
+			);
 		},
 		onSuccess: async () => {
 			await Promise.all([

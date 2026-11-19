@@ -182,3 +182,35 @@ describe("the demo staff source", () => {
 		).toBe("store_totals");
 	});
 });
+
+describe("the demo's staff contact note", () => {
+	it("starts with a neutral sample note, saves a new one for the session and clears it with an empty text", async () => {
+		const source = createDemoStaffSource(new DemoSettingsStore());
+		expect(await source.staffContact("demo")).toMatch(/^Gặp quản lý ca/);
+		expect(
+			await source.setStaffContact(
+				"demo",
+				" Gặp chị quản lý ở quầy.\r\nGọi 0901 234 567. ",
+			),
+		).toBe("Gặp chị quản lý ở quầy.\nGọi 0901 234 567.");
+		expect(await source.staffContact("demo")).toBe(
+			"Gặp chị quản lý ở quầy.\nGọi 0901 234 567.",
+		);
+		expect(await source.setStaffContact("demo", " \n ")).toBeNull();
+		expect(await source.setStaffContact("demo", null)).toBeNull();
+		expect(await source.staffContact("demo")).toBeNull();
+	});
+
+	it("refuses a link or a text over 500 characters as the database does", async () => {
+		const source = createDemoStaffSource(new DemoSettingsStore());
+		await expect(
+			source
+				.setStaffContact("demo", "Xem https://example.com")
+				.catch(writeCodeOf),
+		).resolves.toBe("invalid");
+		await expect(
+			source.setStaffContact("demo", "x".repeat(501)).catch(writeCodeOf),
+		).resolves.toBe("invalid");
+		expect(await source.staffContact("demo")).toMatch(/^Gặp quản lý ca/);
+	});
+});

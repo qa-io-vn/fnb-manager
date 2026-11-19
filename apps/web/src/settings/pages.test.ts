@@ -48,8 +48,23 @@ describe("SETTINGS_PAGES", () => {
 			SETTINGS_PAGES.filter((page) => page.managersOnly).map(
 				(page) => page.slug,
 			),
-		).toEqual(["nhan-vien"]);
+		).toEqual(["nhan-vien", "checklist"]);
 		expect(inSharedSettingsFile("settings.staff.title")).toBe(false);
+	});
+
+	it("builds Checklist as a lazy page of 14b after Nhân viên, listed for owners and managers only, with its keys in its own file", () => {
+		const checklists = settingsPageOf("checklist");
+		expect(checklists).toMatchObject({
+			id: "checklists",
+			status: "built",
+			phase: "14b",
+			titleKey: "settings.checklists.title",
+			managersOnly: true,
+		});
+		expect(checklists?.load).toBeTypeOf("function");
+		const slugs = SETTINGS_PAGES.map((page) => page.slug);
+		expect(slugs.indexOf("checklist")).toBe(slugs.indexOf("nhan-vien") + 1);
+		expect(inSharedSettingsFile("settings.checklists.title")).toBe(false);
 	});
 
 	it("builds Ngày lễ as a lazy page of 10b", () => {

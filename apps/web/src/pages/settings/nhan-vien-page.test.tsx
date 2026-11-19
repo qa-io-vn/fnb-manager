@@ -16,7 +16,10 @@ import {
 	PAIRING_CODE_TTL_MS,
 	type StaffSettingsSource,
 } from "../../settings/staff/source";
-import NhanVienPage, { revenueErrorKey } from "./nhan-vien-page";
+import NhanVienPage, {
+	contactErrorKey,
+	revenueErrorKey,
+} from "./nhan-vien-page";
 
 const TENANT = {
 	id: "33333333-3333-4333-8333-333333333333",
@@ -661,5 +664,93 @@ describe("the Nhân viên page", () => {
 		);
 		expect(screen.queryByTestId("pairing-code")).toBeNull();
 		Reflect.deleteProperty(navigator, "clipboard");
+	});
+});
+
+describe("the staff app's contact note on Nhân viên", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("lets an owner with every store change the note, holding back a link before sending", async () => {
+		const user = userEvent.setup();
+		const staff = renderPage();
+		const section = await screen.findByTestId("staff-contact");
+		const field = within(section).getByLabelText("Lời nhắn");
+		expect(field).toHaveValue(
+			"Gặp quản lý ca tại quầy để nhận mã ghép nối. Ngoài giờ làm, nhắn quản lý qua Zalo.",
+		);
+		await user.clear(field);
+		await user.type(field, "Xem www.example.com");
+		expect(
+			within(section).getByTestId("settings-field-error"),
+		).toHaveTextContent("Lời nhắn không được chứa đường link");
+		const save = within(section).getByRole("button", { name: "Lưu" });
+		expect(save).toHaveAttribute("aria-disabled", "true");
+		await user.clear(field);
+		await user.type(field, "Gặp chị quản lý ở quầy.{Enter}Gọi 0901 234 567.");
+		expect(within(section).queryByTestId("settings-field-error")).toBeNull();
+		await user.click(within(section).getByRole("button", { name: "Lưu" }));
+		await waitFor(() =>
+			expect(
+				within(section).getByTestId("settings-save-bar"),
+			).toHaveTextContent("Đã lưu."),
+		);
+		expect(await staff.staffContact(TENANT.id)).toBe(
+			"Gặp chị quản lý ở quầy.\nGọi 0901 234 567.",
+		);
+	});
+
+	it.each([
+		["a manager", { role: "manager", storeIds: null }],
+		["a store-limited owner", { role: "owner", storeIds: ["MOCK-S1"] }],
+	] as const)(
+		"shows %s the note read-only with the reason",
+		async (_who, membership) => {
+			renderPage({
+				membership: {
+					role: membership.role,
+					storeIds:
+						membership.storeIds === null ? null : [...membership.storeIds],
+				},
+			});
+			const section = await screen.findByTestId("staff-contact");
+			await waitFor(() =>
+				expect(
+					within(section).getByTestId("staff-contact-read-only"),
+				).toHaveTextContent(
+					"Chỉ chủ quán quản lý tất cả cửa hàng sửa lời nhắn này.",
+				),
+			);
+			expect(
+				within(section).getByTestId("staff-contact-current"),
+			).toHaveTextContent("Gặp quản lý ca tại quầy");
+			expect(within(section).queryByRole("textbox")).toBeNull();
+			expect(within(section).queryByTestId("settings-save-bar")).toBeNull();
+		},
+	);
+
+	it("says when no note is set", async () => {
+		renderPage({
+			membership: { role: "manager", storeIds: null },
+			staff: { staffContact: async () => null },
+		});
+		expect(
+			await screen.findByTestId("staff-contact-current"),
+		).toHaveTextContent(
+			"Chưa có lời nhắn; ứng dụng đang hiện lời nhắn mặc định.",
+		);
+	});
+
+	it("names the owner-only and invalid refusals of the note", () => {
+		expect(contactErrorKey("forbidden", "settings.error.forbidden")).toBe(
+			"settings.staff.contact.error.forbidden",
+		);
+		expect(contactErrorKey("invalid", "settings.error.invalid")).toBe(
+			"settings.staff.contact.error.invalid",
+		);
+		expect(contactErrorKey("network", "settings.error.network")).toBe(
+			"settings.error.network",
+		);
 	});
 });
