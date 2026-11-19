@@ -21,12 +21,23 @@ import {
 	DEMO_PHONE_MASKED,
 	DEMO_PHONE_TOKEN,
 	DEMO_PROGRAMME,
+	DEMO_REDEEM_CODES,
+	DEMO_REWARDS,
 	DEMO_STAMPS_PER_CARD,
 	DEMO_STORES,
 	DEMO_SYNCED_INVOICES,
 	DEMO_TENANT_ID,
 	DEMO_WELCOME_STAMPS,
+	type DemoReward,
 } from "./fixtures";
+
+export const DEMO_PROGRAMME_STATES = [
+	"active",
+	"paused",
+	"ended",
+	"none",
+] as const;
+export type DemoProgrammeState = (typeof DEMO_PROGRAMME_STATES)[number];
 
 export interface DemoSettings {
 	readonly member: boolean;
@@ -34,6 +45,9 @@ export interface DemoSettings {
 	readonly sessionFailure: boolean;
 	readonly claimsUsed: number;
 	readonly delayMs: number;
+	readonly programme: DemoProgrammeState;
+	readonly privacy: boolean;
+	readonly vouchers: boolean;
 }
 
 export const DEMO_DEFAULTS: DemoSettings = {
@@ -42,6 +56,9 @@ export const DEMO_DEFAULTS: DemoSettings = {
 	sessionFailure: false,
 	claimsUsed: 0,
 	delayMs: 0,
+	programme: "active",
+	privacy: true,
+	vouchers: false,
 };
 
 const MAX_DEMO_DELAY_MS = 10_000;
@@ -53,6 +70,9 @@ export function demoSettingsFrom(search: string): DemoSettings {
 	const delay = Number(params.get("dataDelay") ?? "0");
 	const claims = Number(params.get("claims") ?? "0");
 	const member = params.get("member") === "1";
+	const programme =
+		DEMO_PROGRAMME_STATES.find((state) => state === params.get("programme")) ??
+		"active";
 	return {
 		member,
 		marketing: member && params.get("marketing") === "1",
@@ -65,19 +85,36 @@ export function demoSettingsFrom(search: string): DemoSettings {
 			Number.isInteger(delay) && delay > 0
 				? Math.min(delay, MAX_DEMO_DELAY_MS)
 				: 0,
+		programme: member && programme === "none" ? "active" : programme,
+		privacy: params.get("privacy") !== "none",
+		vouchers: member && params.get("vouchers") === "1",
 	};
 }
 
 interface Entry {
 	id: string;
 	at: number;
-	kind: "welcome" | "earn" | "reversal";
+	kind: "welcome" | "earn" | "reversal" | "redeem" | "adjust";
 	state: "pending" | "confirmed" | "reversed";
 	stamps: number;
 	points: number;
 	store: string | null;
 	receiptNo: string | null;
 	path: "welcome" | "phone" | "member_code" | "receipt_claim" | null;
+	reason?: string;
+}
+
+interface DemoVoucher {
+	readonly id: string;
+	readonly reward: DemoReward;
+	readonly store: string;
+	readonly code: string;
+	readonly heldAt: number;
+	readonly holdExpiresAt: number;
+	state: "held" | "confirmed" | "released";
+	confirmedAt: number | null;
+	releasedAt: number | null;
+	readonly entryId: string;
 }
 
 interface Claim {
@@ -149,6 +186,8 @@ export function createDemoWorld(
 	let offline = false;
 	const entries: Entry[] = [];
 	const claims: Claim[] = [];
+	const vouchers: DemoVoucher[] = [];
+	let voucherCount = 0;
 	const extraClaimsToday = settings.claimsUsed;
 	const claimsDay = isoDateIn(now());
 
@@ -211,6 +250,80 @@ export function createDemoWorld(
 		});
 	}
 
+	const addVoucher = (
+		reward: DemoReward,
+		store: string,
+		heldAt: number,
+	): DemoVoucher => {
+		voucherCount += 1;
+		entry({
+			at: heldAt,
+			kind: "redeem",
+			state: "pending",
+			stamps: -reward.cost_stamps,
+			points: -reward.cost_points,
+			store,
+			receiptNo: null,
+			path: null,
+			reason: "redemption",
+		});
+		const voucher: DemoVoucher = {
+			id: `00000000-0000-4000-8000-${String(voucherCount).padStart(12, "0")}`,
+			reward,
+			store,
+			code:
+				DEMO_REDEEM_CODES[(voucherCount - 1) % DEMO_REDEEM_CODES.length] ??
+				"K7M2Q9TX",
+			heldAt,
+			holdExpiresAt: heldAt + reward.hold_hours * HOUR_MS,
+			state: "held",
+			confirmedAt: null,
+			releasedAt: null,
+			entryId: `demo-entry-${entryCount}`,
+		};
+		vouchers.push(voucher);
+		return voucher;
+	};
+
+	const settle = (
+		voucher: DemoVoucher,
+		state: "confirmed" | "released",
+		at: number,
+	): void => {
+		const held = entries.find((value) => value.id === voucher.entryId);
+		if (held !== undefined) held.state = "confirmed";
+		voucher.state = state;
+		if (state === "confirmed") {
+			voucher.confirmedAt = at;
+			return;
+		}
+		voucher.releasedAt = at;
+		entry({
+			at,
+			kind: "adjust",
+			state: "confirmed",
+			stamps: voucher.reward.cost_stamps,
+			points: voucher.reward.cost_points,
+			store: null,
+			receiptNo: null,
+			path: null,
+			reason: "redemption_released",
+		});
+	};
+
+	if (settings.vouchers) {
+		const start = now();
+		const [coffee, cookie] = DEMO_REWARDS;
+		if (cookie !== undefined) {
+			const used = addVoucher(cookie, "mau-1", start - 5 * DAY_MS);
+			settle(used, "confirmed", start - 5 * DAY_MS + 20 * 60_000);
+		}
+		if (coffee !== undefined) {
+			const returned = addVoucher(coffee, "mau-2", start - 3 * DAY_MS);
+			settle(returned, "released", returned.holdExpiresAt);
+		}
+	}
+
 	const pause = (): Promise<void> =>
 		settings.delayMs > 0
 			? new Promise((resolve) => setTimeout(resolve, settings.delayMs))
@@ -236,8 +349,13 @@ export function createDemoWorld(
 	const joinAnswer = (join: Readonly<Record<string, unknown>>): Response => {
 		if (join.loyalty_consent !== true)
 			return json({ error: "loyalty_consent_required" }, 400);
-		if (textField(join, "policy_version") !== DEMO_LEGAL.policy_version)
+		if (
+			!settings.privacy ||
+			textField(join, "policy_version") !== DEMO_LEGAL.policy_version
+		)
 			return json({ error: "policy_outdated" }, 409);
+		if (settings.programme !== "active")
+			return json({ error: "no_programme" }, 409);
 		const store = join.store;
 		if (
 			store !== null &&
@@ -290,24 +408,182 @@ export function createDemoWorld(
 	};
 
 	const confirmed = (value: Entry) => value.state === "confirmed";
+	const counted = (value: Entry) => confirmed(value) || value.kind === "redeem";
+	const waiting = (value: Entry) =>
+		value.state === "pending" && value.kind === "earn";
 
 	const claimsToday = (): number =>
 		extraClaimsToday +
 		claims.filter((claim) => isoDateIn(claim.submittedAt) === isoDateIn(now()))
 			.length;
 
+	const balance = (): { readonly stamps: number; readonly points: number } => ({
+		stamps: entries
+			.filter(counted)
+			.reduce((sum, value) => sum + value.stamps, 0),
+		points: entries
+			.filter(counted)
+			.reduce((sum, value) => sum + value.points, 0),
+	});
+
+	const rewardAt = (store: string | null) => (reward: DemoReward) =>
+		store === null ||
+		reward.store_codes === null ||
+		reward.store_codes.includes(store);
+
+	const liveVoucher = (reward: DemoReward): DemoVoucher | undefined =>
+		vouchers.find(
+			(voucher) =>
+				voucher.reward.coupon_id === reward.coupon_id &&
+				voucher.state === "held" &&
+				voucher.holdExpiresAt > now(),
+		);
+
+	const redeemedCount = (reward: DemoReward): number =>
+		vouchers.filter(
+			(voucher) =>
+				voucher.reward.coupon_id === reward.coupon_id &&
+				voucher.state !== "released",
+		).length;
+
+	const rewardReason = (reward: DemoReward): string | null => {
+		const { stamps, points } = balance();
+		if (liveVoucher(reward) !== undefined) return "already_held";
+		if (
+			reward.per_member_limit !== null &&
+			redeemedCount(reward) >= reward.per_member_limit
+		)
+			return "member_limit_reached";
+		if (reward.cost_stamps > stamps) return "insufficient_stamps";
+		if (reward.cost_points > points) return "insufficient_points";
+		return null;
+	};
+
+	const rewards = (store: unknown): unknown[] => {
+		if (store !== null && store !== undefined) {
+			if (typeof store !== "string" || storeName(store) === null)
+				throw new RestError(400, REFUSAL_INVALID);
+		}
+		const { stamps, points } = balance();
+		const at = typeof store === "string" ? store : null;
+		return DEMO_REWARDS.filter(rewardAt(at)).map((reward) => {
+			const reason = rewardReason(reward);
+			return {
+				...reward,
+				redeemed: redeemedCount(reward),
+				live_redemption_id: liveVoucher(reward)?.id ?? null,
+				affordable:
+					reward.cost_stamps <= stamps && reward.cost_points <= points,
+				stamps_short: Math.max(reward.cost_stamps - stamps, 0),
+				points_short: Math.max(reward.cost_points - points, 0),
+				available: reason === null,
+				unavailable_reason: reason,
+			};
+		});
+	};
+
+	const redeem = (
+		args: Readonly<Record<string, unknown>>,
+	): Record<string, unknown> => {
+		const store = textField(args, "p_store");
+		const reward = DEMO_REWARDS.find(
+			(candidate) => candidate.coupon_id === args.p_coupon,
+		);
+		if (store === null || storeName(store) === null || reward === undefined)
+			throw new RestError(400, REFUSAL_INVALID);
+		const refusal = rewardAt(store)(reward)
+			? rewardReason(reward)
+			: "store_unavailable";
+		if (refusal !== null) {
+			const { stamps, points } = balance();
+			return {
+				redemption_id: null,
+				state: null,
+				refusal,
+				store_code: store,
+				store_name: storeName(store),
+				stamps,
+				points,
+			};
+		}
+		const voucher = addVoucher(reward, store, now());
+		const { stamps, points } = balance();
+		return {
+			redemption_id: voucher.id,
+			state: "held",
+			refusal: null,
+			code: voucher.code,
+			qr_payload: `fnb-redeem:1:${voucher.code}`,
+			rail: "pos_payment_discount",
+			coupon_id: reward.coupon_id,
+			store_id: `demo-store-${store}`,
+			store_code: store,
+			store_name: storeName(store),
+			held_at: new Date(voucher.heldAt).toISOString(),
+			hold_expires_at: new Date(voucher.holdExpiresAt).toISOString(),
+			seconds_left: Math.floor((voucher.holdExpiresAt - now()) / 1000),
+			stamps_spent: reward.cost_stamps,
+			points_spent: reward.cost_points,
+			stamps,
+			points,
+		};
+	};
+
+	const voucherList = (): unknown[] => {
+		const at = now();
+		const live = (voucher: DemoVoucher) =>
+			voucher.state === "held" && voucher.holdExpiresAt > at;
+		return [...vouchers]
+			.sort(
+				(left, right) =>
+					Number(right.state === "held") - Number(left.state === "held") ||
+					right.heldAt - left.heldAt,
+			)
+			.map((voucher) => ({
+				redemption_id: voucher.id,
+				coupon_id: voucher.reward.coupon_id,
+				coupon_name: voucher.reward.name,
+				reward_kind: voucher.reward.reward_kind,
+				reward_percent: voucher.reward.reward_percent,
+				store_code: voucher.store,
+				store_name: storeName(voucher.store),
+				code: live(voucher) ? voucher.code : null,
+				qr_payload: live(voucher) ? `fnb-redeem:1:${voucher.code}` : null,
+				state: voucher.state,
+				display_state: live(voucher)
+					? "held"
+					: voucher.state === "held"
+						? "expired"
+						: voucher.state === "confirmed"
+							? "used"
+							: "returned",
+				held_at: new Date(voucher.heldAt).toISOString(),
+				hold_expires_at: new Date(voucher.holdExpiresAt).toISOString(),
+				seconds_left:
+					voucher.state === "held"
+						? Math.max(Math.floor((voucher.holdExpiresAt - at) / 1000), 0)
+						: null,
+				verified: voucher.state === "confirmed",
+				confirmed_at:
+					voucher.confirmedAt === null
+						? null
+						: new Date(voucher.confirmedAt).toISOString(),
+				released_at:
+					voucher.releasedAt === null
+						? null
+						: new Date(voucher.releasedAt).toISOString(),
+				stamps_spent: voucher.reward.cost_stamps,
+				points_spent: voucher.reward.cost_points,
+			}));
+	};
+
 	const wallet = (): Record<string, unknown> => {
-		const stamps = entries
-			.filter(confirmed)
-			.reduce((sum, value) => sum + value.stamps, 0);
+		const { stamps, points } = balance();
 		const pendingStamps = entries
-			.filter((value) => value.state === "pending")
+			.filter(waiting)
 			.reduce((sum, value) => sum + value.stamps, 0);
-		const points = entries
-			.filter(confirmed)
-			.reduce((sum, value) => sum + value.points, 0);
 		const pendingPoints = entries
-			.filter((value) => value.state === "pending")
+			.filter(waiting)
 			.reduce((sum, value) => sum + value.points, 0);
 		const tiers = DEMO_PROGRAMME.tiers;
 		const tierIndex = tiers.reduce(
@@ -371,7 +647,7 @@ export function createDemoWorld(
 					points: value.points,
 					store_name: storeName(value.store),
 					receipt_no: value.receiptNo,
-					reason: value.kind === "welcome" ? "welcome" : null,
+					reason: value.reason ?? (value.kind === "welcome" ? "welcome" : null),
 					matched_path: value.path,
 				})),
 			claims: [...claims]
@@ -491,9 +767,22 @@ export function createDemoWorld(
 	};
 
 	const home = () => ({
-		programme: DEMO_PROGRAMME,
+		programme:
+			settings.programme === "none"
+				? null
+				: settings.programme === "active"
+					? DEMO_PROGRAMME
+					: { ...DEMO_PROGRAMME, status: settings.programme },
 		oa_id: DEMO_OA_ID,
-		legal: DEMO_LEGAL,
+		legal: settings.privacy
+			? DEMO_LEGAL
+			: {
+					entity_name: DEMO_LEGAL.entity_name,
+					policy_version: null,
+					documents: DEMO_LEGAL.documents.filter(
+						(document) => document.kind !== "privacy_notice",
+					),
+				},
 		stores: DEMO_STORES,
 		menu: DEMO_MENU,
 	});
@@ -512,6 +801,12 @@ export function createDemoWorld(
 				return memberCode(args.p_store);
 			case CUSTOMER_FUNCTIONS.submitClaim:
 				return submitClaim(args);
+			case CUSTOMER_FUNCTIONS.rewards:
+				return rewards(args.p_store);
+			case CUSTOMER_FUNCTIONS.redeem:
+				return redeem(args);
+			case CUSTOMER_FUNCTIONS.vouchers:
+				return voucherList();
 			case CUSTOMER_FUNCTIONS.stopMarketing:
 				marketing = false;
 				return {

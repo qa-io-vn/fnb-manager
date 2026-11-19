@@ -62,9 +62,11 @@ function LegalBody({
 	}
 	return (
 		<div className="flex flex-col gap-3" data-testid="legal-document">
-			<p className="text-base text-ink" data-testid="legal-entity">
-				{t("legal.entity", { entity: legal.entityName })}
-			</p>
+			{legal.entityName === null ? null : (
+				<p className="text-base text-ink" data-testid="legal-entity">
+					{t("legal.entity", { entity: legal.entityName })}
+				</p>
+			)}
 			<p className="text-sm text-ink-muted" data-testid="legal-version">
 				{t("legal.version", {
 					version: document.version,

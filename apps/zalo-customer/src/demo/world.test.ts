@@ -67,8 +67,22 @@ describe("demo settings", () => {
 			sessionFailure: true,
 			claimsUsed: MAX_CLAIMS_PER_DAY,
 			delayMs: 10_000,
+			programme: "active",
+			privacy: true,
+			vouchers: false,
 		});
+		expect(demoSettingsFrom("?member=1&vouchers=1").vouchers).toBe(true);
+		expect(demoSettingsFrom("?vouchers=1").vouchers).toBe(false);
 		expect(demoSettingsFrom("?marketing=1").marketing).toBe(false);
+		expect(demoSettingsFrom("?programme=paused&privacy=none")).toMatchObject({
+			programme: "paused",
+			privacy: false,
+		});
+		expect(demoSettingsFrom("?programme=none").programme).toBe("none");
+		expect(demoSettingsFrom("?member=1&programme=none").programme).toBe(
+			"active",
+		);
+		expect(demoSettingsFrom("?programme=draft").programme).toBe("active");
 	});
 });
 
@@ -261,5 +275,89 @@ describe("the demo source", () => {
 			status: "failed",
 			reason: "network",
 		});
+	});
+});
+
+describe("the demo voucher wallet", () => {
+	it("lists the rewards with what each costs and why one cannot be redeemed, holds one and returns it", async () => {
+		const demo = setup({ member: true });
+		const state = await demo.session.connect();
+		if (state.status !== "ready") throw new Error("no session");
+		const client = demo.client(state.session.accessToken);
+		const rewards = await client.rewards("mau-2");
+		expect(
+			rewards.map((reward) => [
+				reward.rewardKey,
+				reward.available,
+				reward.unavailableReason,
+				reward.stampsShort,
+				reward.pointsShort,
+			]),
+		).toEqual([
+			["free-coffee", true, null, 0, 0],
+			["cookie", true, null, 0, 0],
+			["size-up", false, "insufficient_stamps", 2, 0],
+		]);
+		expect(
+			(await client.rewards("mau-1")).map((reward) => reward.rewardKey),
+		).toContain("ten-percent");
+		await expect(client.rewards("mau-9")).rejects.toMatchObject({
+			code: "22023",
+		});
+		const coffee = rewards[0];
+		if (coffee === undefined) throw new Error("no reward");
+		const held = await client.redeem(coffee.id, "mau-2");
+		if (held.outcome !== "held") throw new Error("not held");
+		expect(held.voucher).toMatchObject({
+			code: "K7M2Q9TX",
+			qrPayload: "fnb-redeem:1:K7M2Q9TX",
+			storeCode: "mau-2",
+			stampsSpent: 3,
+		});
+		expect(held.voucher.holdExpiresAt - held.voucher.heldAt).toBe(
+			24 * 3_600_000,
+		);
+		expect(held.stamps).toBe(0);
+		expect(await client.redeem(coffee.id, "mau-2")).toMatchObject({
+			outcome: "refused",
+			refusal: "already_held",
+		});
+		const vouchers = await client.vouchers();
+		expect(vouchers.map((voucher) => [voucher.state, voucher.code])).toEqual([
+			["held", "K7M2Q9TX"],
+		]);
+		demo.tick(25 * 3_600_000);
+		expect((await client.vouchers())[0]).toMatchObject({
+			state: "expired",
+			code: null,
+		});
+	});
+
+	it("starts with a used and a returned voucher behind ?vouchers=1", async () => {
+		const demo = setup({ member: true, vouchers: true });
+		const state = await demo.session.connect();
+		if (state.status !== "ready") throw new Error("no session");
+		const client = demo.client(state.session.accessToken);
+		const vouchers = await client.vouchers();
+		expect(vouchers.map((voucher) => [voucher.name, voucher.state])).toEqual([
+			["Tặng 1 ly cà phê sữa", "returned"],
+			["Tặng bánh quy bơ", "used"],
+		]);
+		const wallet = await client.wallet();
+		expect(wallet.stampCards[0]?.stamps).toBe(3);
+		expect(wallet.points.balance).toBe(55);
+		expect(
+			wallet.history
+				.filter((entry) => entry.kind !== "earn" && entry.kind !== "welcome")
+				.map((entry) => [entry.kind, entry.reason]),
+		).toEqual([
+			["adjust", "redemption_released"],
+			["redeem", "redemption"],
+			["redeem", "redemption"],
+		]);
+		const cookie = (await client.rewards("mau-1")).find(
+			(reward) => reward.rewardKey === "cookie",
+		);
+		expect(cookie?.unavailableReason).toBe("member_limit_reached");
 	});
 });

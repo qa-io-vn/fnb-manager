@@ -11,6 +11,9 @@ export const CUSTOMER_FUNCTIONS = {
 	submitClaim: "customer_submit_claim",
 	stopMarketing: "customer_stop_marketing",
 	requestDeletion: "customer_request_deletion",
+	rewards: "customer_coupons",
+	redeem: "customer_redeem",
+	vouchers: "customer_vouchers",
 } as const;
 
 export type CustomerFunction =
@@ -102,6 +105,39 @@ export const CLAIM_REASONS = [
 ] as const;
 export type KnownClaimReason = (typeof CLAIM_REASONS)[number];
 
+export const REWARD_KINDS = [
+	"free_item",
+	"percent_off",
+	"amount_off",
+	"free_upgrade",
+] as const;
+export type RewardKind = (typeof REWARD_KINDS)[number];
+
+export const REDEEM_REFUSALS = [
+	"membership_inactive",
+	"store_unavailable",
+	"programme_inactive",
+	"coupon_unavailable",
+	"rail_not_ready",
+	"already_held",
+	"member_limit_reached",
+	"insufficient_stamps",
+	"insufficient_points",
+	"no_code_available",
+] as const;
+export type KnownRedeemRefusal = (typeof REDEEM_REFUSALS)[number];
+
+export const VOUCHER_STATES = [
+	"held",
+	"expired",
+	"used",
+	"returned",
+	"cancelled",
+] as const;
+export type VoucherState = (typeof VOUCHER_STATES)[number];
+
+export const REDEEM_PAYLOAD_PREFIX = "fnb-redeem:1:";
+
 export const DELETION_STATUSES = [
 	"received",
 	"in_progress",
@@ -118,10 +154,14 @@ export const JOIN_REFUSALS = [
 	"phone_token_used",
 	"phone_token_refused",
 	"zalo_unavailable",
+	"no_programme",
 ] as const;
 export type JoinRefusal = (typeof JOIN_REFUSALS)[number];
 
 export type IsoDate = string;
+
+export const PROGRAMME_STATUSES = ["active", "paused", "ended"] as const;
+export type ProgrammeStatus = (typeof PROGRAMME_STATUSES)[number];
 
 export interface ProgrammeTier {
 	readonly code: string;
@@ -131,6 +171,7 @@ export interface ProgrammeTier {
 
 export interface Programme {
 	readonly name: string;
+	readonly status: ProgrammeStatus | null;
 	readonly startsOn: IsoDate | null;
 	readonly endsOn: IsoDate | null;
 	readonly stampsPerCard: number;
@@ -164,13 +205,19 @@ export interface MenuHighlight {
 }
 
 export interface CustomerLegal {
-	readonly entityName: string;
-	readonly policyVersion: string;
+	readonly entityName: string | null;
+	readonly policyVersion: string | null;
 	readonly documents: readonly LegalDocument[];
 }
 
+export const NO_LEGAL: CustomerLegal = {
+	entityName: null,
+	policyVersion: null,
+	documents: [],
+};
+
 export interface CustomerHome {
-	readonly programme: Programme;
+	readonly programme: Programme | null;
 	readonly oaId: string | null;
 	readonly legal: CustomerLegal;
 	readonly stores: readonly CustomerStore[];
@@ -311,8 +358,82 @@ export interface CustomerSessionAnswer {
 	readonly joined: JoinOutcome | null;
 }
 
+export interface Reward {
+	readonly id: string;
+	readonly rewardKey: string;
+	readonly name: string;
+	readonly description: string | null;
+	readonly kind: RewardKind;
+	readonly percent: number | null;
+	readonly itemNames: readonly string[];
+	readonly costStamps: number;
+	readonly costPoints: number;
+	readonly storeCodes: readonly string[] | null;
+	readonly validFrom: IsoDate | null;
+	readonly validUntil: IsoDate | null;
+	readonly holdHours: number;
+	readonly perMemberLimit: number | null;
+	readonly redeemed: number;
+	readonly liveRedemptionId: string | null;
+	readonly affordable: boolean;
+	readonly stampsShort: number;
+	readonly pointsShort: number;
+	readonly available: boolean;
+	readonly unavailableReason: string | null;
+}
+
+export interface HeldVoucher {
+	readonly redemptionId: string;
+	readonly couponId: string;
+	readonly code: string;
+	readonly qrPayload: string;
+	readonly storeCode: string | null;
+	readonly storeName: string | null;
+	readonly heldAt: number;
+	readonly holdExpiresAt: number;
+	readonly stampsSpent: number;
+	readonly pointsSpent: number;
+}
+
+export type RedeemResult =
+	| {
+			readonly outcome: "held";
+			readonly voucher: HeldVoucher;
+			readonly stamps: number | null;
+			readonly points: number | null;
+	  }
+	| {
+			readonly outcome: "refused";
+			readonly refusal: string;
+			readonly stamps: number | null;
+			readonly points: number | null;
+	  };
+
+export interface Voucher {
+	readonly redemptionId: string;
+	readonly couponId: string;
+	readonly name: string;
+	readonly kind: RewardKind;
+	readonly percent: number | null;
+	readonly storeCode: string | null;
+	readonly storeName: string | null;
+	readonly code: string | null;
+	readonly qrPayload: string | null;
+	readonly state: VoucherState;
+	readonly heldAt: number;
+	readonly holdExpiresAt: number | null;
+	readonly verified: boolean;
+	readonly confirmedAt: number | null;
+	readonly releasedAt: number | null;
+	readonly stampsSpent: number;
+	readonly pointsSpent: number;
+}
+
 export interface LoyaltyClient {
 	home(): Promise<CustomerHome>;
+	rewards(store: string | null): Promise<readonly Reward[]>;
+	redeem(couponId: string, store: string): Promise<RedeemResult>;
+	vouchers(): Promise<readonly Voucher[]>;
 	wallet(): Promise<Wallet>;
 	memberCode(store: string): Promise<MemberCode>;
 	submitClaim(input: ClaimInput): Promise<ClaimResult>;
@@ -474,6 +595,7 @@ export function readProgramme(value: unknown): Programme {
 	const pointsRule = optionalText(row.points_rule, "points rule");
 	return {
 		name: text(row.name, "programme name"),
+		status: optionalOneOf(PROGRAMME_STATUSES, row.status, "programme status"),
 		startsOn: optionalIsoDate(row.starts_on, "programme start"),
 		endsOn: optionalIsoDate(row.ends_on, "programme end"),
 		stampsPerCard,
@@ -534,11 +656,13 @@ export function readMenuHighlight(value: unknown): MenuHighlight {
 }
 
 export function readCustomerLegal(value: unknown): CustomerLegal {
+	if (value === null || value === undefined) return NO_LEGAL;
 	const row = record(value, "legal texts");
-	const policyVersion = text(row.policy_version, "policy version");
-	if (!POLICY_VERSION_PATTERN.test(policyVersion)) invalid("policy version");
+	const policyVersion = optionalText(row.policy_version, "policy version");
+	if (policyVersion !== null && !POLICY_VERSION_PATTERN.test(policyVersion))
+		invalid("policy version");
 	return {
-		entityName: text(row.entity_name, "legal entity"),
+		entityName: optionalText(row.entity_name, "legal entity"),
 		policyVersion,
 		documents: list(row.documents ?? [], "legal documents").map(
 			(document) => readLegalDocument(document) ?? invalid("legal document"),
@@ -549,7 +673,10 @@ export function readCustomerLegal(value: unknown): CustomerLegal {
 export function readCustomerHome(value: unknown): CustomerHome {
 	const row = record(value, "home");
 	return {
-		programme: readProgramme(row.programme),
+		programme:
+			row.programme === null || row.programme === undefined
+				? null
+				: readProgramme(row.programme),
 		oaId: optionalText(row.oa_id, "Official Account"),
 		legal: readCustomerLegal(row.legal),
 		stores: list(row.stores, "stores").map(readCustomerStore),
@@ -720,6 +847,157 @@ export function readDeletionRequest(value: unknown): DeletionRequest {
 				: oneOf(DELETION_STATUSES, row.status, "deletion request status"),
 		requestedAt: instant(row.requested_at, "deletion request time"),
 	};
+}
+
+function numberOrNull(value: unknown, what: string): number | null {
+	if (value === null || value === undefined) return null;
+	const parsed =
+		typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+	return typeof parsed === "number" && Number.isFinite(parsed)
+		? parsed
+		: invalid(what);
+}
+
+function textList(value: unknown, what: string): readonly string[] {
+	if (value === null || value === undefined) return [];
+	return list(value, what).map((entry) => text(entry, what));
+}
+
+function optionalInstantMs(value: unknown, what: string): number | null {
+	return value === null || value === undefined ? null : instantMs(value, what);
+}
+
+export function knownRedeemRefusal(
+	refusal: string | null,
+): KnownRedeemRefusal | null {
+	return REDEEM_REFUSALS.find((name) => name === refusal) ?? null;
+}
+
+export function readReward(value: unknown): Reward {
+	const row = record(value, "reward");
+	const costStamps = count(row.cost_stamps ?? 0, "reward stamps");
+	const costPoints = count(row.cost_points ?? 0, "reward points");
+	if (costStamps === 0 && costPoints === 0) invalid("reward cost");
+	return {
+		id: text(row.coupon_id, "reward id"),
+		rewardKey: text(row.reward_key, "reward key"),
+		name: text(row.name, "reward name"),
+		description: optionalText(row.description, "reward description"),
+		kind: oneOf(REWARD_KINDS, row.reward_kind, "reward kind"),
+		percent: numberOrNull(row.reward_percent, "reward percentage"),
+		itemNames: textList(row.reward_item_names, "reward items"),
+		costStamps,
+		costPoints,
+		storeCodes:
+			row.store_codes === null || row.store_codes === undefined
+				? null
+				: textList(row.store_codes, "reward stores"),
+		validFrom: optionalIsoDate(row.valid_from, "reward start"),
+		validUntil: optionalIsoDate(row.valid_until, "reward end"),
+		holdHours: count(row.hold_hours ?? 24, "hold hours"),
+		perMemberLimit: optionalCount(row.per_member_limit, "member limit"),
+		redeemed: count(row.redeemed ?? 0, "redeemed count"),
+		liveRedemptionId: optionalText(row.live_redemption_id, "live redemption"),
+		affordable: flag(row.affordable, "affordability"),
+		stampsShort: count(row.stamps_short ?? 0, "stamps short"),
+		pointsShort: count(row.points_short ?? 0, "points short"),
+		available: flag(row.available, "availability"),
+		unavailableReason: optionalReason(
+			row.unavailable_reason,
+			"unavailable reason",
+		),
+	};
+}
+
+export function readRewards(value: unknown): readonly Reward[] {
+	return list(value, "rewards").map(readReward);
+}
+
+function balanceOrNull(value: unknown, what: string): number | null {
+	return value === null || value === undefined
+		? null
+		: signedCount(value, what);
+}
+
+export function readRedeemResult(value: unknown): RedeemResult {
+	const row = record(value, "redemption");
+	const stamps = balanceOrNull(row.stamps, "stamps after redeeming");
+	const points = balanceOrNull(row.points, "points after redeeming");
+	if (row.state !== "held") {
+		const refusal = optionalReason(row.refusal, "redemption refusal");
+		if (refusal === null) invalid("redemption refusal");
+		return { outcome: "refused", refusal, stamps, points };
+	}
+	const code = text(row.code, "reward code");
+	const heldAt = instantMs(row.held_at, "hold time");
+	const holdExpiresAt = instantMs(row.hold_expires_at, "hold end");
+	if (holdExpiresAt <= heldAt) invalid("hold end");
+	return {
+		outcome: "held",
+		voucher: {
+			redemptionId: text(row.redemption_id, "redemption id"),
+			couponId: text(row.coupon_id, "reward id"),
+			code,
+			qrPayload:
+				optionalText(row.qr_payload, "reward QR payload") ??
+				`${REDEEM_PAYLOAD_PREFIX}${code}`,
+			storeCode: optionalText(row.store_code, "reward store"),
+			storeName: optionalText(row.store_name, "reward store name"),
+			heldAt,
+			holdExpiresAt,
+			stampsSpent: count(row.stamps_spent ?? 0, "stamps spent"),
+			pointsSpent: count(row.points_spent ?? 0, "points spent"),
+		},
+		stamps,
+		points,
+	};
+}
+
+export function readVoucher(value: unknown): Voucher {
+	const row = record(value, "voucher");
+	const state = oneOf(VOUCHER_STATES, row.display_state, "voucher state");
+	const code = state === "held" ? optionalText(row.code, "voucher code") : null;
+	if (state === "held" && code === null) invalid("voucher code");
+	return {
+		redemptionId: text(row.redemption_id, "voucher id"),
+		couponId: text(row.coupon_id, "voucher reward"),
+		name: text(row.coupon_name, "voucher name"),
+		kind: oneOf(REWARD_KINDS, row.reward_kind, "voucher kind"),
+		percent: numberOrNull(row.reward_percent, "voucher percentage"),
+		storeCode: optionalText(row.store_code, "voucher store"),
+		storeName: optionalText(row.store_name, "voucher store name"),
+		code,
+		qrPayload:
+			code === null
+				? null
+				: (optionalText(row.qr_payload, "voucher QR payload") ??
+					`${REDEEM_PAYLOAD_PREFIX}${code}`),
+		state,
+		heldAt: instantMs(row.held_at, "voucher hold time"),
+		holdExpiresAt: optionalInstantMs(row.hold_expires_at, "voucher hold end"),
+		verified: row.verified === true,
+		confirmedAt: optionalInstantMs(row.confirmed_at, "voucher use time"),
+		releasedAt: optionalInstantMs(row.released_at, "voucher return time"),
+		stampsSpent: count(row.stamps_spent ?? 0, "voucher stamps"),
+		pointsSpent: count(row.points_spent ?? 0, "voucher points"),
+	};
+}
+
+export function readVouchers(value: unknown): readonly Voucher[] {
+	return list(value, "vouchers").map(readVoucher);
+}
+
+export function rewardsArgs(
+	store: string | null,
+): Readonly<Record<string, unknown>> {
+	return { p_store: store };
+}
+
+export function redeemArgs(
+	couponId: string,
+	store: string,
+): Readonly<Record<string, unknown>> {
+	return { p_coupon: couponId, p_store: store };
 }
 
 export function claimArgs(

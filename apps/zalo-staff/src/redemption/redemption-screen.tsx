@@ -1,7 +1,10 @@
 import { ResultModal, useI18n } from "@fnb/zalo-mini/react";
 import { type FormEvent, useId, useRef, useState } from "react";
 import type { RedemptionAnswer } from "../loyalty/contract";
-import { MAX_REDEMPTION_CODE_LENGTH } from "../loyalty/contract";
+import {
+	ALREADY_VERIFIED,
+	MAX_REDEMPTION_CODE_LENGTH,
+} from "../loyalty/contract";
 import { useLoyaltyAction, useLoyaltyEnv } from "../loyalty/env";
 import {
 	isoDayIn,
@@ -78,6 +81,16 @@ function AcceptedView({
 					</div>
 					<VisitChip state="pending" testId="redeem-state" />
 				</div>
+				{answer.firstVerification || answer.verifiedAt === null ? null : (
+					<p
+						className="text-base font-semibold text-ink"
+						data-testid="redeem-checked-before"
+					>
+						{t("redeem.checkedBefore", {
+							time: formatters.time(new Date(answer.verifiedAt)),
+						})}
+					</p>
+				)}
 				<Instruction answer={answer} />
 				{answer.minBillAmount === null ? null : (
 					<p className="text-base text-ink" data-testid="redeem-min-bill">
@@ -123,10 +136,16 @@ function RefusedView({ answer }: { readonly answer: Refused }) {
 			time: formatters.time(usedAt),
 			date: formatters.date(isoDayIn(usedAt, context.timeZone)),
 		};
+		const verified = answer.reason === ALREADY_VERIFIED;
 		detail =
 			answer.usedStoreName === null
-				? t("redeem.refusal.usedAtNoStore", params)
-				: t("redeem.refusal.usedAt", {
+				? t(
+						verified
+							? "redeem.refusal.verifiedAtNoStore"
+							: "redeem.refusal.usedAtNoStore",
+						params,
+					)
+				: t(verified ? "redeem.refusal.verifiedAt" : "redeem.refusal.usedAt", {
 						...params,
 						store: answer.usedStoreName,
 					});

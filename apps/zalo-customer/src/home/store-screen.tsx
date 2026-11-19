@@ -15,6 +15,7 @@ import {
 	secondaryButton,
 } from "../ui";
 import { MenuList } from "./home-screen";
+import { JoinActions } from "./join-actions";
 import { hoursKnown, menuAt, spansText, weekRows } from "./model";
 
 function StoreDetails({
@@ -90,24 +91,7 @@ function StoreDetails({
 						</button>
 					</>
 				) : (
-					<>
-						<button
-							type="button"
-							className={primaryButton}
-							onClick={() => navigate("/tham-gia")}
-						>
-							{t("home.join")}
-						</button>
-						<button
-							type="button"
-							className={secondaryButton}
-							onClick={() =>
-								navigate("/tham-gia", { state: { next: "claim" } })
-							}
-						>
-							{t("home.claim")}
-						</button>
-					</>
+					<JoinActions claim />
 				)}
 			</div>
 			{menu.length === 0 ? null : (

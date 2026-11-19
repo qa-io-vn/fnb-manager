@@ -9,7 +9,12 @@ import {
 	readDeletionRequest,
 	readMarketingStop,
 	readMemberCode,
+	readRedeemResult,
+	readRewards,
+	readVouchers,
 	readWallet,
+	redeemArgs,
+	rewardsArgs,
 } from "./contract";
 
 export function createRestLoyaltyClient(rest: RestClient): LoyaltyClient {
@@ -19,6 +24,19 @@ export function createRestLoyaltyClient(rest: RestClient): LoyaltyClient {
 		},
 		async wallet() {
 			return readWallet(await rest.rpc(CUSTOMER_FUNCTIONS.wallet));
+		},
+		async rewards(store) {
+			return readRewards(
+				await rest.rpc(CUSTOMER_FUNCTIONS.rewards, rewardsArgs(store)),
+			);
+		},
+		async redeem(couponId, store) {
+			return readRedeemResult(
+				await rest.rpc(CUSTOMER_FUNCTIONS.redeem, redeemArgs(couponId, store)),
+			);
+		},
+		async vouchers() {
+			return readVouchers(await rest.rpc(CUSTOMER_FUNCTIONS.vouchers));
 		},
 		async memberCode(store) {
 			return readMemberCode(

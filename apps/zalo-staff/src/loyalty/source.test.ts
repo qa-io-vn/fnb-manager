@@ -4,7 +4,8 @@ import { createDemoLoyaltyClient, DEMO_CODES, DEMO_PHONES } from "./demo";
 import { STAND_IN_SCANS, standInScanTools } from "./scan";
 import {
 	createRestLoyaltyClient,
-	LOCAL_LOOP_LOYALTY,
+	LOCAL_LOOP_LOYALTY_VARIABLE,
+	localLoopLoyalty,
 	loyaltyModeFrom,
 	loyaltySourceFor,
 	sampleLoyaltyContext,
@@ -145,8 +146,14 @@ describe("the REST loyalty client", () => {
 });
 
 describe("choosing the loyalty source", () => {
-	it("uses the live functions in the Zalo runtime, and the demo in the local loop until asked", () => {
-		expect(LOCAL_LOOP_LOYALTY).toBe("demo");
+	it("uses the live functions in the Zalo runtime, and in the local loop when its stack has them", () => {
+		expect(LOCAL_LOOP_LOYALTY_VARIABLE).toBe("VITE_STAFF_LOYALTY");
+		expect(localLoopLoyalty("live")).toBe("live");
+		expect(localLoopLoyalty("demo")).toBe("demo");
+		expect(localLoopLoyalty(undefined)).toBe("demo");
+		expect(loyaltyModeFrom("", "browser", "live")).toBe("live");
+		expect(loyaltyModeFrom("?loyalty=demo", "browser", "live")).toBe("demo");
+		expect(loyaltyModeFrom("?loyalty=other", "browser", "live")).toBe("live");
 		expect(loyaltyModeFrom("", "zalo")).toBe("live");
 		expect(loyaltyModeFrom("?loyalty=demo", "zalo")).toBe("live");
 		expect(loyaltyModeFrom("", "browser")).toBe("demo");

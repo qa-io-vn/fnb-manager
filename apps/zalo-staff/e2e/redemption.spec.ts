@@ -78,7 +78,7 @@ test("a reused code is refused with the store and time, never the customer", asy
 	await expect(refused).toHaveAttribute("data-refusal", "used");
 	await expect(refused).toContainText("Mã đã được sử dụng");
 	await expect(refused).toContainText(
-		"Đã dùng lúc 12:00 ngày 19/11/2026 tại Cửa hàng Mẫu 1.",
+		"Mã đã được nhân viên kiểm tra lúc 12:00 ngày 19/11/2026 tại Cửa hàng Mẫu 1 và đang chờ hóa đơn.",
 	);
 	await expect(refused).not.toContainText("•");
 	await expect(page.getByTestId("redeem-instruction")).toHaveCount(0);

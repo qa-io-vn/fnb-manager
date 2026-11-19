@@ -1,8 +1,18 @@
 import { RestError } from "@fnb/zalo-mini";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import {
+	cleanup,
+	fireEvent,
+	screen,
+	waitFor,
+	within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nativeStorage } from "zmp-sdk";
-import type { CheckinAnswer, LoyaltyClient } from "../loyalty/contract";
+import type {
+	CheckinAnswer,
+	CheckinRefusal,
+	LoyaltyClient,
+} from "../loyalty/contract";
 import { DEMO_CODES } from "../loyalty/demo";
 import { LOYALTY_PATHS } from "../loyalty/env";
 import {
@@ -158,6 +168,33 @@ describe("Ghi nhận khách: the phone path", () => {
 			expect(screen.getByTestId("checkin-entry")).toHaveValue(phone);
 		}
 		expect(screen.queryByTestId("checkin-result")).toBeNull();
+	});
+
+	it("words the database's other refusals and keeps the general message for an unknown one", async () => {
+		const cases: readonly [CheckinRefusal | null, string][] = [
+			["already_recorded", "Khách này vừa được ghi nhận ở cửa hàng này."],
+			["no_programme", "Chương trình thành viên đang tạm dừng"],
+			["below_minimum", "Hóa đơn chưa đạt mức tối thiểu"],
+			["excluded_source", "Đơn từ kênh bán này không được tích"],
+			["programme_inactive", "nằm ngoài thời gian của chương trình"],
+			["membership_inactive", "Thẻ thành viên này đang tạm khóa"],
+			[null, "Chưa ghi nhận được khách. Hãy thử lại."],
+		];
+		for (const [refusal, message] of cases) {
+			cleanup();
+			renderLoyalty({
+				path: LOYALTY_PATHS.checkIn,
+				client: fakeClient({ outcome: "refused", refusal, textKey: null }),
+			});
+			await entry();
+			type(DEMO_PHONES.member);
+			record();
+			await waitFor(() =>
+				expect(screen.getByTestId("checkin-problem")).toHaveTextContent(
+					message,
+				),
+			);
+		}
 	});
 
 	it("sends the store and the national phone, and shows a matched or queued answer as such", async () => {

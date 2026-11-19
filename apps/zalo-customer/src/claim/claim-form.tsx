@@ -1,7 +1,8 @@
-import type {
-	ClaimResult,
-	CustomerStore,
-	LoyaltyClient,
+import {
+	CLAIM_WINDOW_HOURS,
+	type ClaimResult,
+	type CustomerStore,
+	type LoyaltyClient,
 } from "@fnb/zalo-mini/loyalty";
 import { useI18n } from "@fnb/zalo-mini/react";
 import {
@@ -300,7 +301,10 @@ function ClaimView() {
 	if (home.status === "failed")
 		return <Failed failure={home.failure} onRetry={reloadHome} />;
 	const stores = home.data.stores;
-	const dates = claimDates(Date.now(), home.data.programme.claimWindowHours);
+	const dates = claimDates(
+		Date.now(),
+		home.data.programme?.claimWindowHours ?? CLAIM_WINDOW_HOURS,
+	);
 	const initialStore =
 		stores.find((store) => store.code === currentStore)?.code ??
 		(stores.length === 1 ? (stores[0]?.code ?? null) : null);

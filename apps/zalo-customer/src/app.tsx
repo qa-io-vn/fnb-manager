@@ -9,6 +9,11 @@ import { AccountIcon, CardIcon, HomeIcon } from "./icons";
 import { JoinFlow } from "./join/join-flow";
 import { SettingsScreen } from "./settings/settings-screen";
 import { MemberCodeScreen } from "./wallet/member-code-screen";
+import {
+	RewardsScreen,
+	VoucherScreen,
+	VouchersScreen,
+} from "./wallet/vouchers";
 import { WalletScreen } from "./wallet/wallet-screen";
 
 export { demoSessionClient } from "./data/source";
@@ -60,6 +65,9 @@ export const routes: readonly MiniAppRoute[] = [
 	{ path: "/tham-gia", element: <JoinFlow /> },
 	{ path: "/ma-thanh-vien", element: <MemberCodeScreen /> },
 	{ path: "/nhan-diem", element: <ClaimScreen /> },
+	{ path: "/doi-qua", element: <RewardsScreen /> },
+	{ path: "/vi-voucher", element: <VouchersScreen /> },
+	{ path: "/voucher/:id", element: <VoucherScreen /> },
 	...developmentRoutes(),
 ];
 

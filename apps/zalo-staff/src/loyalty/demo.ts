@@ -3,6 +3,7 @@ import { SAMPLE_STORES } from "../home/sample";
 import { canManage } from "../shift/model";
 import {
 	type AdjustLimits,
+	ALREADY_VERIFIED,
 	type CheckinAnswer,
 	type LookupAnswer,
 	type LoyaltyClient,
@@ -471,6 +472,7 @@ export function createDemoLoyaltyClient(
 			): RedemptionAnswer => ({
 				outcome: "refused",
 				refusal,
+				reason: null,
 				textKey: null,
 				usedAt: null,
 				usedStoreName: null,
@@ -480,6 +482,7 @@ export function createDemoLoyaltyClient(
 			const verifiedAt = storeWorld.verified.get(code);
 			if (verifiedAt !== undefined)
 				return refused("used", {
+					reason: ALREADY_VERIFIED,
 					usedAt: verifiedAt,
 					usedStoreName: storeName(storeId),
 				});
@@ -504,6 +507,10 @@ export function createDemoLoyaltyClient(
 				outcome: "accepted",
 				redemptionId: next("b"),
 				rewardName: reward.rewardName,
+				rewardKind: "free_item",
+				rewardPercent: null,
+				firstVerification: true,
+				verifiedAt: now.toISOString(),
 				rail:
 					reward.instruction.kind === "pos_discount"
 						? "pos_payment_discount"

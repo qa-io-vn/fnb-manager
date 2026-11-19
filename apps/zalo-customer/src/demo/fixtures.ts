@@ -186,3 +186,98 @@ export const DEMO_SYNCED_INVOICES: readonly DemoInvoice[] = [
 	{ store: "mau-1", receiptNo: "1001", amount: 85_000, daysAgo: 0, points: 85 },
 	{ store: "mau-2", receiptNo: "2002", amount: 42_000, daysAgo: 1, points: 42 },
 ];
+
+export interface DemoReward {
+	readonly coupon_id: string;
+	readonly reward_key: string;
+	readonly name: string;
+	readonly description: string | null;
+	readonly reward_kind:
+		| "free_item"
+		| "percent_off"
+		| "amount_off"
+		| "free_upgrade";
+	readonly reward_percent: number | null;
+	readonly reward_item_names: readonly string[] | null;
+	readonly cost_stamps: number;
+	readonly cost_points: number;
+	readonly store_codes: readonly string[] | null;
+	readonly valid_from: string | null;
+	readonly valid_until: string | null;
+	readonly hold_hours: number;
+	readonly per_member_limit: number | null;
+}
+
+export const DEMO_REWARDS: readonly DemoReward[] = [
+	{
+		coupon_id: "00000000-0000-4000-8000-000000000a01",
+		reward_key: "free-coffee",
+		name: "Tặng 1 ly cà phê sữa",
+		description: "Một ly cà phê sữa đá cỡ vừa, dùng tại quầy.",
+		reward_kind: "free_item",
+		reward_percent: null,
+		reward_item_names: ["Cà phê sữa đá"],
+		cost_stamps: 3,
+		cost_points: 0,
+		store_codes: null,
+		valid_from: "2026-11-01",
+		valid_until: null,
+		hold_hours: 24,
+		per_member_limit: null,
+	},
+	{
+		coupon_id: "00000000-0000-4000-8000-000000000a02",
+		reward_key: "cookie",
+		name: "Tặng bánh quy bơ",
+		description: null,
+		reward_kind: "free_item",
+		reward_percent: null,
+		reward_item_names: ["Bánh quy bơ"],
+		cost_stamps: 0,
+		cost_points: 50,
+		store_codes: null,
+		valid_from: null,
+		valid_until: null,
+		hold_hours: 24,
+		per_member_limit: 1,
+	},
+	{
+		coupon_id: "00000000-0000-4000-8000-000000000a03",
+		reward_key: "ten-percent",
+		name: "Giảm 10% hóa đơn",
+		description: "Áp dụng cho hóa đơn tại Cửa hàng Mẫu 1.",
+		reward_kind: "percent_off",
+		reward_percent: 10,
+		reward_item_names: null,
+		cost_stamps: 0,
+		cost_points: 150,
+		store_codes: ["mau-1"],
+		valid_from: null,
+		valid_until: null,
+		hold_hours: 24,
+		per_member_limit: null,
+	},
+	{
+		coupon_id: "00000000-0000-4000-8000-000000000a04",
+		reward_key: "size-up",
+		name: "Nâng cỡ ly miễn phí",
+		description: null,
+		reward_kind: "free_upgrade",
+		reward_percent: null,
+		reward_item_names: null,
+		cost_stamps: 5,
+		cost_points: 0,
+		store_codes: null,
+		valid_from: null,
+		valid_until: null,
+		hold_hours: 24,
+		per_member_limit: null,
+	},
+];
+
+export const DEMO_REDEEM_CODES: readonly string[] = [
+	"K7M2Q9TX",
+	"P4R8W3HN",
+	"T6Y2C9VB",
+	"H3N7X5QM",
+];

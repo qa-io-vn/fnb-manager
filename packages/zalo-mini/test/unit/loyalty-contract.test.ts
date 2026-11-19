@@ -4,14 +4,24 @@ import {
 	CLAIM_REASONS,
 	CUSTOMER_FUNCTIONS,
 	DELETION_STATUSES,
+	joinRefusalOf,
 	knownClaimReason,
+	knownRedeemRefusal,
+	NO_LEGAL,
 	parseCustomerSessionAnswer,
+	REDEEM_PAYLOAD_PREFIX,
+	REDEEM_REFUSALS,
 	readClaimResult,
 	readCustomerHome,
 	readDeletionRequest,
 	readMemberCode,
 	readOpeningHours,
+	readRedeemResult,
+	readRewards,
+	readVoucher,
+	readVouchers,
 	readWallet,
+	VOUCHER_STATES,
 } from "../../src/loyalty/contract";
 import { createRestLoyaltyClient } from "../../src/loyalty/rest-loyalty-client";
 
@@ -143,7 +153,7 @@ const CODE = {
 describe("the loyalty contract's readers", () => {
 	it("read the home a visitor sees, with no price field and opening hours checked", () => {
 		const home = readCustomerHome(HOME);
-		expect(home.programme.stampsPerCard).toBe(10);
+		expect(home.programme?.stampsPerCard).toBe(10);
 		expect(home.legal.documents[0]?.bodyMarkdown).toBe("Văn bản");
 		expect(home.stores[0]?.openingHours.mon).toEqual([["07:00", "22:00"]]);
 		expect(home.stores[0]?.openingHours.tue).toEqual([]);
@@ -280,6 +290,7 @@ describe("the contract read against the loyalty tables", () => {
 			...HOME,
 			programme: {
 				name: "Synthetic programme",
+				status: "active",
 				starts_on: "2026-01-01",
 				ends_on: null,
 				stamps_per_card: 8,
@@ -307,6 +318,7 @@ describe("the contract read against the loyalty tables", () => {
 		});
 		expect(home.programme).toEqual({
 			name: "Synthetic programme",
+			status: "active",
 			startsOn: "2026-01-01",
 			endsOn: null,
 			stampsPerCard: 8,
@@ -328,11 +340,49 @@ describe("the contract read against the loyalty tables", () => {
 			["CH.02_A", "2 Đường Mẫu"],
 		]);
 		expect(readCustomerHome(HOME).programme).toMatchObject({
+			status: null,
 			startsOn: null,
 			pointsEnabled: false,
 			claimsPerDay: 3,
 			claimWindowHours: 72,
 		});
+	});
+
+	it("reads a tenant without a programme or a published privacy notice, so browsing still works", () => {
+		const home = readCustomerHome({
+			...HOME,
+			programme: null,
+			legal: {
+				entity_name: "Synthetic loyalty shop",
+				policy_version: null,
+				documents: [],
+			},
+		});
+		expect(home.programme).toBeNull();
+		expect(home.legal).toEqual({
+			entityName: "Synthetic loyalty shop",
+			policyVersion: null,
+			documents: [],
+		});
+		expect(home.stores).toHaveLength(1);
+		expect(readCustomerHome({ ...HOME, legal: null }).legal).toEqual(NO_LEGAL);
+		expect(
+			readCustomerHome({
+				...HOME,
+				programme: { ...HOME.programme, status: "paused" },
+			}).programme?.status,
+		).toBe("paused");
+		expect(() =>
+			readCustomerHome({
+				...HOME,
+				programme: { ...HOME.programme, status: "draft" },
+			}),
+		).toThrow("programme status");
+	});
+
+	it("knows the join refused for want of an active programme", () => {
+		expect(joinRefusalOf("no_programme")).toBe("no_programme");
+		expect(joinRefusalOf("backend_unavailable")).toBeNull();
 	});
 
 	it("keeps any reason of the server and knows the ones the app words", () => {
@@ -477,6 +527,230 @@ describe("the REST loyalty client", () => {
 			],
 			["customer_stop_marketing", undefined],
 			["customer_request_deletion", undefined],
+		]);
+	});
+});
+
+const REWARD = {
+	coupon_id: "11111111-1111-4111-8111-111111111111",
+	reward_key: "free-drink",
+	name: "Tặng 1 ly cà phê",
+	description: "Một ly cà phê sữa đá cỡ vừa.",
+	reward_kind: "free_item",
+	reward_percent: null,
+	reward_item_names: ["Cà phê sữa đá"],
+	cost_stamps: 3,
+	cost_points: 0,
+	store_codes: null,
+	valid_from: "2026-11-01",
+	valid_until: null,
+	hold_hours: 24,
+	per_member_limit: null,
+	redeemed: 0,
+	live_redemption_id: null,
+	affordable: true,
+	stamps_short: 0,
+	points_short: 0,
+	available: true,
+	unavailable_reason: null,
+};
+
+const HELD = {
+	redemption_id: "22222222-2222-4222-8222-222222222222",
+	state: "held",
+	refusal: null,
+	code: "K7M2Q9TX",
+	qr_payload: "fnb-redeem:1:K7M2Q9TX",
+	rail: "pos_payment_discount",
+	coupon_id: REWARD.coupon_id,
+	store_id: "33333333-3333-4333-8333-333333333333",
+	store_code: "sim-1",
+	store_name: "Synthetic store 1",
+	held_at: "2026-11-19T03:00:00+00:00",
+	hold_expires_at: "2026-11-20T03:00:00+00:00",
+	seconds_left: 86_400,
+	stamps_spent: 3,
+	points_spent: 0,
+	stamps: 0,
+	points: 6,
+};
+
+const VOUCHER = {
+	redemption_id: HELD.redemption_id,
+	coupon_id: REWARD.coupon_id,
+	coupon_name: REWARD.name,
+	reward_kind: "percent_off",
+	reward_percent: 10,
+	store_code: "sim-1",
+	store_name: "Synthetic store 1",
+	code: "K7M2Q9TX",
+	qr_payload: "fnb-redeem:1:K7M2Q9TX",
+	state: "held",
+	display_state: "held",
+	held_at: HELD.held_at,
+	hold_expires_at: HELD.hold_expires_at,
+	seconds_left: 86_400,
+	verified: false,
+	confirmed_at: null,
+	released_at: null,
+	stamps_spent: 3,
+	points_spent: 0,
+};
+
+describe("the voucher wallet's answers", () => {
+	it("reads a reward of customer_coupons, described by kind and items and never by an amount", () => {
+		const [reward] = readRewards([
+			REWARD,
+			{
+				...REWARD,
+				coupon_id: "44444444-4444-4444-8444-444444444444",
+				reward_key: "ten-off",
+				reward_kind: "percent_off",
+				reward_percent: "10.00",
+				reward_item_names: null,
+				cost_stamps: 0,
+				cost_points: 200,
+				store_codes: ["sim-1"],
+				affordable: false,
+				points_short: 140,
+				available: false,
+				unavailable_reason: "insufficient_points",
+			},
+		]);
+		expect(reward).toEqual({
+			id: REWARD.coupon_id,
+			rewardKey: "free-drink",
+			name: "Tặng 1 ly cà phê",
+			description: "Một ly cà phê sữa đá cỡ vừa.",
+			kind: "free_item",
+			percent: null,
+			itemNames: ["Cà phê sữa đá"],
+			costStamps: 3,
+			costPoints: 0,
+			storeCodes: null,
+			validFrom: "2026-11-01",
+			validUntil: null,
+			holdHours: 24,
+			perMemberLimit: null,
+			redeemed: 0,
+			liveRedemptionId: null,
+			affordable: true,
+			stampsShort: 0,
+			pointsShort: 0,
+			available: true,
+			unavailableReason: null,
+		});
+		expect(
+			readRewards([
+				{ ...REWARD, reward_kind: "percent_off", reward_percent: "10.00" },
+			])[0]?.percent,
+		).toBe(10);
+		expect(() => readRewards([{ ...REWARD, reward_kind: "cash" }])).toThrow(
+			"reward kind",
+		);
+		expect(() =>
+			readRewards([{ ...REWARD, cost_stamps: 0, cost_points: 0 }]),
+		).toThrow("reward cost");
+	});
+
+	it("reads a hold with its code, QR payload and end, or a refusal with its reason", () => {
+		expect(readRedeemResult(HELD)).toEqual({
+			outcome: "held",
+			voucher: {
+				redemptionId: HELD.redemption_id,
+				couponId: REWARD.coupon_id,
+				code: "K7M2Q9TX",
+				qrPayload: "fnb-redeem:1:K7M2Q9TX",
+				storeCode: "sim-1",
+				storeName: "Synthetic store 1",
+				heldAt: Date.parse(HELD.held_at),
+				holdExpiresAt: Date.parse(HELD.hold_expires_at),
+				stampsSpent: 3,
+				pointsSpent: 0,
+			},
+			stamps: 0,
+			points: 6,
+		});
+		expect(readRedeemResult({ ...HELD, qr_payload: undefined })).toMatchObject({
+			voucher: { qrPayload: `${REDEEM_PAYLOAD_PREFIX}K7M2Q9TX` },
+		});
+		for (const refusal of REDEEM_REFUSALS) {
+			expect(
+				readRedeemResult({
+					redemption_id: null,
+					state: null,
+					refusal,
+					store_code: "sim-1",
+					store_name: "Synthetic store 1",
+					stamps: 1,
+					points: 0,
+				}),
+			).toEqual({ outcome: "refused", refusal, stamps: 1, points: 0 });
+			expect(knownRedeemRefusal(refusal)).toBe(refusal);
+		}
+		expect(knownRedeemRefusal("a_new_reason")).toBeNull();
+		expect(() => readRedeemResult({ state: null, refusal: null })).toThrow(
+			"redemption refusal",
+		);
+		expect(() =>
+			readRedeemResult({ ...HELD, hold_expires_at: HELD.held_at }),
+		).toThrow("hold end");
+	});
+
+	it("reads each voucher state, with the code only while the hold runs", () => {
+		expect(readVouchers([VOUCHER])[0]).toMatchObject({
+			state: "held",
+			code: "K7M2Q9TX",
+			qrPayload: "fnb-redeem:1:K7M2Q9TX",
+			kind: "percent_off",
+			percent: 10,
+			holdExpiresAt: Date.parse(HELD.hold_expires_at),
+		});
+		for (const display of VOUCHER_STATES.filter((state) => state !== "held")) {
+			const voucher = readVoucher({
+				...VOUCHER,
+				display_state: display,
+				code: "K7M2Q9TX",
+				confirmed_at: display === "used" ? "2026-11-19T04:00:00Z" : null,
+			});
+			expect(voucher.state).toBe(display);
+			expect(voucher.code).toBeNull();
+			expect(voucher.qrPayload).toBeNull();
+		}
+		expect(() => readVoucher({ ...VOUCHER, code: null })).toThrow(
+			"voucher code",
+		);
+		expect(() =>
+			readVoucher({ ...VOUCHER, display_state: "approved" }),
+		).toThrow("voucher state");
+	});
+
+	it("calls the redemption functions with the database's parameter names", async () => {
+		const calls: [string, unknown][] = [];
+		const answers: Record<string, unknown> = {
+			[CUSTOMER_FUNCTIONS.rewards]: [REWARD],
+			[CUSTOMER_FUNCTIONS.redeem]: HELD,
+			[CUSTOMER_FUNCTIONS.vouchers]: [VOUCHER],
+		};
+		const rest: RestClient = {
+			select: async () => [],
+			rpc: async (fn, args) => {
+				calls.push([fn, args]);
+				return answers[fn];
+			},
+		};
+		const client = createRestLoyaltyClient(rest);
+		expect(await client.rewards("sim-1")).toHaveLength(1);
+		expect(await client.rewards(null)).toHaveLength(1);
+		expect((await client.redeem(REWARD.coupon_id, "sim-1")).outcome).toBe(
+			"held",
+		);
+		expect(await client.vouchers()).toHaveLength(1);
+		expect(calls).toEqual([
+			["customer_coupons", { p_store: "sim-1" }],
+			["customer_coupons", { p_store: null }],
+			["customer_redeem", { p_coupon: REWARD.coupon_id, p_store: "sim-1" }],
+			["customer_vouchers", undefined],
 		]);
 	});
 });

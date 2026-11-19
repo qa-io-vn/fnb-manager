@@ -27,6 +27,7 @@ import {
 import {
 	localStackFrom,
 	passthroughEnvironment,
+	type StaffLoyaltyMode,
 	sessionFunctionEnvironment,
 	staffAppEnvironment,
 } from "./environment.js";
@@ -58,6 +59,30 @@ import { isSeedableTenant, seedSyntheticBrand } from "./seed.js";
 const START_TIMEOUT_MS = 180_000;
 export const LOCAL_PHONE_TOKEN = "mock-phone-token";
 export const LOCAL_PHONE_NUMBER = "84900000789";
+export const STAFF_LOYALTY_FUNCTIONS: readonly string[] = [
+	"staff_record_checkin",
+	"staff_verify_redemption",
+	"staff_member_lookup",
+	"staff_request",
+	"staff_loyalty_queue",
+	"staff_decide_loyalty_request",
+	"staff_my_loyalty_requests",
+	"resolve_loyalty_queue_item",
+];
+
+export function mockPhoneNumber(national: string | undefined): string {
+	return national === undefined ? LOCAL_PHONE_NUMBER : `84${national.slice(1)}`;
+}
+
+export async function staffLoyaltyMode(sql: Sql): Promise<StaffLoyaltyMode> {
+	const [row] = await sql<{ found: number }[]>`
+		select count(distinct p.proname)::integer as found
+		from pg_catalog.pg_proc p
+		join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+		where n.nspname = 'public' and p.proname = any(${STAFF_LOYALTY_FUNCTIONS as string[]})
+	`;
+	return row?.found === STAFF_LOYALTY_FUNCTIONS.length ? "live" : "demo";
+}
 const TUNNEL_REACH_TIMEOUT_MS = 120_000;
 const VITE_ADDRESS_LINE = /(Local|Network)\S*:\s.*https?:\/\//;
 
@@ -104,6 +129,8 @@ export interface LocalLoopReady {
 	readonly role: MemberRole | "customer";
 	readonly stores: number;
 	readonly boundNow: boolean;
+	readonly loyalty?: StaffLoyaltyMode;
+	readonly mockPhone: string;
 }
 
 export interface LocalLoop {
@@ -281,7 +308,7 @@ export async function startLocalLoop(
 			id: options.mockUser,
 			name: options.mockName,
 		});
-		mock.issuePhoneToken(accessToken, LOCAL_PHONE_NUMBER, {
+		mock.issuePhoneToken(accessToken, mockPhoneNumber(options.mockPhone), {
 			token: LOCAL_PHONE_TOKEN,
 			reusable: true,
 		});
@@ -351,6 +378,7 @@ export async function startLocalLoop(
 			member === null
 				? { role: "customer", stores: target.storeCount }
 				: await memberProfile(sql, target, member.userId, member.role);
+		const loyalty = app === "staff" ? await staffLoyaltyMode(sql) : undefined;
 		await sql.end();
 
 		let appConfigPath: string | null = null;
@@ -405,6 +433,7 @@ export async function startLocalLoop(
 				cwd: appDir,
 				env: staffAppEnvironment(environment, {
 					brand: options.brand,
+					...(loyalty === undefined ? {} : { loyalty }),
 					publishableKey: stack.publishableKey,
 					functionUrl,
 					phoneFunctionUrl,
@@ -487,6 +516,8 @@ export async function startLocalLoop(
 				role: profile.role,
 				stores: profile.stores,
 				boundNow,
+				...(loyalty === undefined ? {} : { loyalty }),
+				mockPhone: `0${mockPhoneNumber(options.mockPhone).slice(2)}`,
 			},
 			failed,
 			stop,

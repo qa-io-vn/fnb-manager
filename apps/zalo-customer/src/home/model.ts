@@ -1,8 +1,11 @@
 import type {
+	CustomerHome,
+	CustomerLegal,
 	CustomerStore,
 	IsoDate,
 	MenuHighlight,
 	OpeningSpan,
+	Programme,
 	Weekday,
 } from "@fnb/zalo-mini/loyalty";
 import { WEEKDAYS } from "@fnb/zalo-mini/loyalty";
@@ -59,4 +62,37 @@ const MONEY =
 
 export function looksLikePrice(text: string): boolean {
 	return MONEY.test(text);
+}
+
+export type JoinBlock = "no-programme" | "no-privacy";
+
+export function programmeOpen(
+	programme: Programme | null,
+	today: IsoDate,
+): programme is Programme {
+	if (programme === null) return false;
+	if (programme.status === "paused" || programme.status === "ended")
+		return false;
+	if (programme.startsOn !== null && programme.startsOn > today) return false;
+	return programme.endsOn === null || programme.endsOn >= today;
+}
+
+export function joinBlock(
+	home: CustomerHome,
+	today: IsoDate,
+): JoinBlock | null {
+	if (!programmeOpen(home.programme, today)) return "no-programme";
+	return home.legal.policyVersion === null ? "no-privacy" : null;
+}
+
+export interface JoinableHome extends CustomerHome {
+	readonly programme: Programme;
+	readonly legal: CustomerLegal & { readonly policyVersion: string };
+}
+
+export function joinableHome(
+	home: CustomerHome,
+	today: IsoDate,
+): JoinableHome | null {
+	return joinBlock(home, today) === null ? (home as JoinableHome) : null;
 }

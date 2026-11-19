@@ -181,8 +181,12 @@ export function sessionFunctionEnvironment(
 	};
 }
 
+export type StaffLoyaltyMode = "live" | "demo";
+export const STAFF_LOYALTY_VARIABLE = "VITE_STAFF_LOYALTY";
+
 export interface StaffAppInput {
 	readonly brand: string;
+	readonly loyalty?: StaffLoyaltyMode;
 	readonly publishableKey: string;
 	readonly functionUrl: string;
 	readonly phoneFunctionUrl: string;
@@ -210,6 +214,9 @@ export function staffAppEnvironment(
 		[LOCAL_SESSION_URL_VARIABLE]: input.functionUrl,
 		[LOCAL_PHONE_URL_VARIABLE]: input.phoneFunctionUrl,
 		[LOCAL_ACCESS_TOKEN_VARIABLE]: input.accessToken,
+		...(input.loyalty === undefined
+			? {}
+			: { [STAFF_LOYALTY_VARIABLE]: input.loyalty }),
 		...(input.appConfigPath === null
 			? {}
 			: { MINI_APP_CONFIG: input.appConfigPath }),

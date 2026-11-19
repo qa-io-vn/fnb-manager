@@ -120,7 +120,7 @@ function readyLines(
 ): string[] {
 	const member =
 		ready.app === "customer"
-			? "a customer, joining with the mock phone token"
+			? `a customer, joining with the mock phone token (${ready.mockPhone})`
 			: options.member === null
 				? `the member in ${MEMBER_EMAIL_VARIABLE}`
 				: "the member given with --member";
@@ -136,6 +136,13 @@ function readyLines(
 					"  first run: the mock user was bound to the member with a one-time binding code",
 				]
 			: []),
+		...(ready.loyalty === undefined
+			? []
+			: [
+					ready.loyalty === "live"
+						? "  loyalty tools: the staff loyalty functions of the local stack (add ?loyalty=demo for the demo data)"
+						: "  loyalty tools: demo data marked Dữ liệu mẫu, because the local stack lacks the staff loyalty functions",
+				]),
 		`  zalo-session and zalo-phone run under Deno with ZALO_LOCAL_DEV=1 on ${ready.functionUrl} and ${ready.phoneFunctionUrl}; the mock Zalo graph answers on ${ready.graphUrl}, phone linking included`,
 		"  stop with Ctrl+C, or type q and Enter",
 	];

@@ -125,6 +125,10 @@ describe("Kiểm tra ưu đãi: the instruction per rail", () => {
 			outcome: "accepted",
 			redemptionId: "00000000-0000-4000-8000-00000000b001",
 			rewardName: "Giảm 15.000 ₫",
+			rewardKind: "amount_off",
+			rewardPercent: null,
+			firstVerification: true,
+			verifiedAt: null,
 			rail: "crm_callback",
 			instruction: { kind: "voucher_code", voucherCode: "CB-7781" },
 			minBillAmount: null,
@@ -145,7 +149,7 @@ describe("Kiểm tra ưu đãi: the instruction per rail", () => {
 });
 
 describe("Kiểm tra ưu đãi: refusals", () => {
-	it("refuses a code checked twice as used, with the store and time and never the customer", async () => {
+	it("refuses a code checked twice as used, saying when staff checked it, and never names the customer", async () => {
 		renderLoyalty({ path: LOYALTY_PATHS.redeem });
 		await codeField();
 		check(DEMO_CODES.posReward);
@@ -161,7 +165,7 @@ describe("Kiểm tra ưu đãi: refusals", () => {
 		expect(refused).toHaveAttribute("data-refusal", "used");
 		expect(refused).toHaveTextContent("Mã đã được sử dụng");
 		expect(refused).toHaveTextContent(
-			"Đã dùng lúc 12:00 ngày 19/11/2026 tại Cửa hàng Mẫu 1.",
+			"Mã đã được nhân viên kiểm tra lúc 12:00 ngày 19/11/2026 tại Cửa hàng Mẫu 1 và đang chờ hóa đơn.",
 		);
 		expect(refused).toHaveTextContent("Không áp dụng ưu đãi cho hóa đơn này.");
 		expect(refused.textContent).not.toMatch(/•|234|Khách/);
@@ -207,6 +211,7 @@ describe("Kiểm tra ưu đãi: refusals", () => {
 		const client = answering({
 			outcome: "refused",
 			refusal: "unknown",
+			reason: null,
 			textKey: null,
 			usedAt: null,
 			usedStoreName: null,

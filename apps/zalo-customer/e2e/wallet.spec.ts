@@ -107,3 +107,65 @@ test("a receipt claim is validated, sent and credited, within the day's limit", 
 	expect(await nativeStorageKeys(page)).toEqual(["fnb.customer-session"]);
 	await checkCustomerScreen(page);
 });
+
+test("a reward is redeemed with a confirmation of its cost, its code counts down, and used and returned vouchers say so", async ({
+	page,
+}) => {
+	await page.goto("./?member=1&vouchers=1&store=mau-1&src=qr");
+	await expect(
+		page.getByRole("heading", { name: "Cửa hàng Mẫu 1" }),
+	).toBeVisible();
+	await openTab(page, "Thẻ thành viên");
+	await page.getByRole("button", { name: "Ví voucher" }).click();
+	const vouchers = page.getByTestId("voucher-item");
+	await expect(vouchers).toHaveCount(2);
+	await expect(vouchers.nth(0)).toHaveAttribute("data-state", "returned");
+	await expect(vouchers.nth(0)).toContainText("Đã hoàn lại");
+	await expect(vouchers.nth(0)).toContainText(
+		"Mã chưa được dùng nên 3 dấu đã được hoàn lại vào thẻ của bạn.",
+	);
+	await expect(vouchers.nth(1)).toHaveAttribute("data-state", "used");
+	await expect(vouchers.nth(1)).toContainText("Đã dùng");
+	await checkCustomerScreen(page);
+
+	await page.getByRole("button", { name: "Đổi quà" }).click();
+	await expect(page.getByTestId("reward-store-picker")).toHaveValue("mau-1");
+	const rewards = page.getByTestId("reward");
+	await expect(rewards).toHaveCount(4);
+	await expect(rewards.nth(1).getByTestId("reward-state")).toHaveText(
+		"Bạn đã đổi quà này đủ số lần cho phép.",
+	);
+	await expect(rewards.nth(3).getByTestId("reward-state")).toHaveText(
+		"Cần thêm 2 dấu để đổi.",
+	);
+	await expect(
+		rewards.nth(3).getByRole("button", { name: "Đổi quà" }),
+	).toBeDisabled();
+	await checkCustomerScreen(page);
+	await rewards.nth(0).getByRole("button", { name: "Đổi quà" }).click();
+	const dialog = page.getByRole("dialog", {
+		name: "Đổi Tặng 1 ly cà phê sữa?",
+	});
+	await expect(dialog.getByTestId("redeem-cost")).toHaveText(
+		"Bạn dùng 3 dấu để đổi quà này tại Cửa hàng Mẫu 1.",
+	);
+	await checkCustomerScreen(page);
+	await dialog.getByRole("button", { name: "Xác nhận đổi" }).click();
+	await expect(page.getByTestId("voucher-code")).toHaveText(/^[A-Z0-9]{8}$/);
+	await expect(page.getByTestId("voucher-qr")).toBeVisible();
+	await expect(page.getByTestId("voucher-countdown")).toHaveText(
+		/^Còn (24:00:00|23:59:5\d)$/,
+	);
+	await checkCustomerScreen(page);
+	await page.clock.fastForward(90_000);
+	await expect(page.getByTestId("voucher-countdown")).toHaveText(
+		/^Còn 23:58:(2\d|30)$/,
+	);
+	await page.getByRole("button", { name: "Ví voucher" }).click();
+	await expect(vouchers).toHaveCount(3);
+	await expect(vouchers.first()).toHaveAttribute("data-state", "held");
+	await checkCustomerScreen(page);
+	await openTab(page, "Thẻ thành viên");
+	await expect(page.getByTestId("stamp-count")).toHaveText("0/10 dấu");
+	expect(await nativeStorageKeys(page)).toEqual(["fnb.customer-session"]);
+});

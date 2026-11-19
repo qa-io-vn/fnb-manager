@@ -14,6 +14,7 @@ import {
 	Screen,
 	secondaryButton,
 } from "../ui";
+import { JoinActions } from "./join-actions";
 import { hoursOn, spansText } from "./model";
 import { programmeTexts } from "./programme";
 
@@ -80,25 +81,35 @@ function ReadyHome({ home }: { readonly home: CustomerHome }) {
 	const titleId = useId();
 	const storesId = useId();
 	const menuId = useId();
-	const texts = programmeTexts(home.programme, t);
+	const texts =
+		home.programme === null ? null : programmeTexts(home.programme, t);
 	return (
 		<Screen testId="home">
 			{declined === undefined ? null : <DeclinedNotice reason={declined} />}
 			<Card labelledBy={titleId} testId="programme">
 				<h1 id={titleId} className="text-xl font-semibold text-ink">
-					{home.programme.name}
+					{home.programme?.name ?? t("home.noProgrammeTitle")}
 				</h1>
-				<p className="text-base text-ink">{texts.summary}</p>
-				<p className="text-base font-semibold text-ink">{texts.reward}</p>
-				<ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-ink-muted">
-					{texts.rules.map((rule) => (
-						<li key={rule}>{rule}</li>
-					))}
-				</ul>
-				{texts.period === null ? null : (
-					<p className="text-sm text-ink-muted" data-testid="programme-period">
-						{texts.period}
-					</p>
+				{texts === null ? (
+					<p className="text-base text-ink">{t("home.noProgrammeBody")}</p>
+				) : (
+					<>
+						<p className="text-base text-ink">{texts.summary}</p>
+						<p className="text-base font-semibold text-ink">{texts.reward}</p>
+						<ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-ink-muted">
+							{texts.rules.map((rule) => (
+								<li key={rule}>{rule}</li>
+							))}
+						</ul>
+						{texts.period === null ? null : (
+							<p
+								className="text-sm text-ink-muted"
+								data-testid="programme-period"
+							>
+								{texts.period}
+							</p>
+						)}
+					</>
 				)}
 				{member ? (
 					<div className="flex flex-col gap-2">
@@ -121,24 +132,7 @@ function ReadyHome({ home }: { readonly home: CustomerHome }) {
 						</button>
 					</div>
 				) : (
-					<div className="flex flex-col gap-2">
-						<button
-							type="button"
-							className={primaryButton}
-							onClick={() => navigate("/tham-gia")}
-						>
-							{t("home.join")}
-						</button>
-						<button
-							type="button"
-							className={secondaryButton}
-							onClick={() =>
-								navigate("/tham-gia", { state: { next: "claim" } })
-							}
-						>
-							{t("home.claim")}
-						</button>
-					</div>
+					<JoinActions claim />
 				)}
 			</Card>
 			<section aria-labelledby={storesId} className="flex flex-col gap-2">

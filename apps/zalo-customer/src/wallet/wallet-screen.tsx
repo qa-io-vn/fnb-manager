@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { claimReasonKey } from "../claim/model";
 import { useCustomerData, useLoad } from "../data/customer-data";
 import { shownDate, shownInstant } from "../data/dates";
+import { JoinActions } from "../home/join-actions";
 import { programmeTexts } from "../home/programme";
 import {
 	Badge,
@@ -19,6 +20,7 @@ import {
 	Failed,
 	Loading,
 	primaryButton,
+	rowButton,
 	Screen,
 	secondaryButton,
 } from "../ui";
@@ -46,7 +48,11 @@ function signed(value: number): string {
 	return value > 0 ? `+${value}` : String(value);
 }
 
+export const RELEASED_REASON = "redemption_released";
+
 export function entryTitleKey(entry: LedgerEntry): string {
+	if (entry.kind === "adjust" && entry.reason === RELEASED_REASON)
+		return "wallet.kind.returned";
 	if (entry.kind === "earn")
 		return entry.storeName === null ? "wallet.kind.earn" : "wallet.kind.earnAt";
 	return `wallet.kind.${entry.kind}`;
@@ -80,7 +86,7 @@ function HistoryItem({ entry }: { readonly entry: LedgerEntry }) {
 			<span className="text-sm text-ink-muted">
 				{[
 					shownInstant(entry.at),
-					entry.matchedPath === null
+					entry.matchedPath === null || entry.reason === RELEASED_REASON
 						? null
 						: t(`wallet.path.${entry.matchedPath}`),
 					entry.receiptNo === null
@@ -160,6 +166,7 @@ function WalletView({ wallet }: { readonly wallet: Wallet }) {
 	const navigate = useNavigate();
 	const historyId = useId();
 	const claimsId = useId();
+	const rewardsId = useId();
 	return (
 		<Screen testId="wallet">
 			<h1 className="text-xl font-semibold text-ink">{t("wallet.title")}</h1>
@@ -250,6 +257,29 @@ function WalletView({ wallet }: { readonly wallet: Wallet }) {
 					{t("home.claim")}
 				</button>
 			</div>
+			<section
+				aria-labelledby={rewardsId}
+				className="flex flex-col gap-2"
+				data-testid="rewards-entry"
+			>
+				<h2 id={rewardsId} className="text-lg font-semibold text-ink">
+					{t("reward.section")}
+				</h2>
+				<button
+					type="button"
+					className={rowButton}
+					onClick={() => navigate("/doi-qua")}
+				>
+					{t("reward.open")}
+				</button>
+				<button
+					type="button"
+					className={rowButton}
+					onClick={() => navigate("/vi-voucher")}
+				>
+					{t("voucher.wallet")}
+				</button>
+			</section>
 			{wallet.claims.length === 0 ? null : (
 				<section aria-labelledby={claimsId} className="flex flex-col gap-2">
 					<h2 id={claimsId} className="text-lg font-semibold text-ink">
@@ -282,25 +312,19 @@ function WalletView({ wallet }: { readonly wallet: Wallet }) {
 
 export function JoinPrompt({ next }: { readonly next: "card" | "claim" }) {
 	const { t } = useI18n();
-	const navigate = useNavigate();
 	const { home } = useCustomerData();
+	const programme = home.status === "ready" ? home.data.programme : null;
 	return (
 		<Screen testId="join-prompt">
 			<h1 className="text-xl font-semibold text-ink">
 				{t("wallet.notMemberTitle")}
 			</h1>
 			<p className="text-base text-ink">
-				{home.status === "ready"
-					? programmeTexts(home.data.programme, t).summary
-					: t("wallet.notMemberBody")}
+				{programme === null
+					? t("wallet.notMemberBody")
+					: programmeTexts(programme, t).summary}
 			</p>
-			<button
-				type="button"
-				className={primaryButton}
-				onClick={() => navigate("/tham-gia", { state: { next } })}
-			>
-				{t("home.join")}
-			</button>
+			<JoinActions next={next} claim={false} />
 		</Screen>
 	);
 }

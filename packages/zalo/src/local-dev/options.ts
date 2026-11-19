@@ -4,6 +4,7 @@ import { BRAND_KEY_PATTERN } from "../session.js";
 
 export const MOCK_ID_PREFIX = "mock-";
 export const MOCK_USER_PATTERN = /^mock-[A-Za-z0-9_-]{1,59}$/;
+export const MOCK_PHONE_PATTERN = /^0900000[0-9]{3}$/;
 export const TENANT_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}$/;
 export const MEMBER_EMAIL_VARIABLE = "FNB_MEMBER_EMAIL";
 export const LOCAL_LOOP_DEFAULTS = {
@@ -22,12 +23,13 @@ export const CUSTOMER_LIVE_TENANT = "loyalty-sim";
 
 export const LOCAL_LOOP_USAGE = [
 	"Usage:",
-	"  pnpm zalo:dev [--tenant <slug>] [--brand <key>] [--member <login e-mail>] [--mock-user mock-<id>] [--mock-name <name>] [--port <port>] [--lan [--host <ipv4>] | --tunnel [--tunnel-hours <n>]]",
-	"  pnpm zalo:dev --app customer [--live [--tenant <slug>] [--brand <key>] [--mock-user mock-<id>] [--mock-name <name>]] [--port <port>] [--lan [--host <ipv4>] | --tunnel [--tunnel-hours <n>]]",
+	"  pnpm zalo:dev [--tenant <slug>] [--brand <key>] [--member <login e-mail>] [--mock-user mock-<id>] [--mock-name <name>] [--mock-phone 0900000xxx] [--port <port>] [--lan [--host <ipv4>] | --tunnel [--tunnel-hours <n>]]",
+	"  pnpm zalo:dev --app customer [--live [--tenant <slug>] [--brand <key>] [--mock-user mock-<id>] [--mock-name <name>] [--mock-phone 0900000xxx]] [--port <port>] [--lan [--host <ipv4>] | --tunnel [--tunnel-hours <n>]]",
 	"  pnpm zalo:dev forget [--tenant <slug>] [--brand <key>]",
 	"",
 	`Runs the staff Mini App in the browser against the real zalo-session on this PC: a mock Zalo graph, zalo-session and zalo-phone under Deno with ZALO_LOCAL_DEV=1 on the local stack, and the app's dev server. Defaults: --tenant ${LOCAL_LOOP_DEFAULTS.tenant}, --brand ${LOCAL_LOOP_DEFAULTS.brand}, --mock-user ${LOCAL_LOOP_DEFAULTS.mockUser}, --port ${LOCAL_LOOP_DEFAULTS.port}; the member is the login in ${MEMBER_EMAIL_VARIABLE}.`,
-	"The brand needs its Zalo rows first (fnb zalo config set) with a mock Zalo App id (mock-…). On the first run the mock user is bound to the member with a one-time binding code.",
+	"The brand needs its Zalo rows first (fnb zalo config set) with a mock Zalo App id (mock-…). On the first run the mock user is bound to the member with a one-time binding code. The staff app's loyalty tools call the staff loyalty functions of the local stack when it has them, and show the demo data otherwise (?loyalty=demo or ?loyalty=live in the address switches).",
+	"--mock-phone sets the synthetic number the mock Zalo graph answers for the phone permission (default 0900000789); it must be one of 0900000000 to 0900000999.",
 	`--lan serves the staff app on this PC's home network address (or --host <ipv4>) for a phone on the same Wi-Fi. --tunnel serves it on a public https link through a Cloudflare quick tunnel that stops after --tunnel-hours (default ${LOCAL_LOOP_DEFAULTS.tunnelHours}, at most ${MAX_TUNNEL_HOURS}). Both print a link with a one-time key and its QR code; without the key every request gets 403.`,
 	`--app customer runs the customer Mini App instead, on port ${CUSTOMER_LOOP_PORT} by default: with its demo data and the stand-in session (no database or .env needed), or with --live against the real zalo-session, zalo-phone and the customer functions of the local stack as the mock user, who is a customer and needs no binding code. --live targets ${CUSTOMER_LIVE_TENANT} by default and seeds a synthetic brand with mock Zalo ids into a synthetic tenant (${CUSTOMER_LIVE_TENANT} or zalo-it-…) that has none.`,
 	"forget removes the brand's Zalo rows and mock identities when every Zalo id is a mock id, so fnb zalo config set can store the real ids.",
@@ -49,6 +51,7 @@ export interface LocalLoopOptions {
 	readonly tunnelHours: number;
 	readonly app?: "customer";
 	readonly live?: boolean;
+	readonly mockPhone?: string;
 }
 
 export class LocalLoopError extends Error {
@@ -177,6 +180,12 @@ export function parseLocalLoopArgs(
 			`--mock-name must be 1 to ${DISPLAY_NAME_MAX_LENGTH} characters without control characters`,
 		);
 	}
+	const mockPhone = values["mock-phone"]?.trim();
+	if (mockPhone !== undefined && !MOCK_PHONE_PATTERN.test(mockPhone)) {
+		throw new LocalLoopError(
+			"--mock-phone must be a synthetic number from 0900000000 to 0900000999",
+		);
+	}
 	const member = values.member?.trim() ?? "";
 	const lan = values.lan === true;
 	const tunnel = values.tunnel === true;
@@ -213,6 +222,7 @@ export function parseLocalLoopArgs(
 		host: hostOf(values.host, lan),
 		tunnelHours: tunnelHoursOf(values["tunnel-hours"], tunnel),
 		...(app === "customer" ? { app, live } : {}),
+		...(mockPhone === undefined ? {} : { mockPhone }),
 	};
 }
 
@@ -227,6 +237,7 @@ function parse(argv: readonly string[]) {
 			member: { type: "string" },
 			"mock-user": { type: "string" },
 			"mock-name": { type: "string" },
+			"mock-phone": { type: "string" },
 			port: { type: "string" },
 			lan: { type: "boolean" },
 			host: { type: "string" },

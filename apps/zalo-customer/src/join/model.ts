@@ -9,6 +9,7 @@ export type JoinProblem =
 	| "policy-outdated"
 	| "phone-in-use"
 	| "unknown-store"
+	| "no-programme"
 	| "network"
 	| "unknown";
 
@@ -104,6 +105,8 @@ export function problemOf(failure: JoinFailure): JoinProblem {
 			return "phone-in-use";
 		case "unknown_store":
 			return "unknown-store";
+		case "no_programme":
+			return "no-programme";
 		case "network":
 		case "zalo_unavailable":
 			return "network";

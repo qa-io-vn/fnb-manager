@@ -55,7 +55,11 @@ export type LoyaltySourceFactory = (
 
 export type LoyaltyMode = "demo" | "live";
 
-export const LOCAL_LOOP_LOYALTY: LoyaltyMode = "demo";
+export const LOCAL_LOOP_LOYALTY_VARIABLE = "VITE_STAFF_LOYALTY";
+
+export function localLoopLoyalty(value: unknown): LoyaltyMode {
+	return value === "live" ? "live" : "demo";
+}
 
 export function createRestLoyaltyClient(rest: RestClient): LoyaltyClient {
 	const fn = STAFF_LOYALTY_FUNCTIONS;
@@ -154,12 +158,13 @@ export function createDemoLoyaltySource(
 export function loyaltyModeFrom(
 	search: string,
 	runtime: string | undefined,
+	local: LoyaltyMode = localLoopLoyalty(
+		import.meta.env[LOCAL_LOOP_LOYALTY_VARIABLE],
+	),
 ): LoyaltyMode {
 	if (runtime === "zalo") return "live";
 	const requested = new URLSearchParams(search).get("loyalty");
-	return requested === "live" || requested === "demo"
-		? requested
-		: LOCAL_LOOP_LOYALTY;
+	return requested === "live" || requested === "demo" ? requested : local;
 }
 
 const sources = new WeakMap<StoredSession, LoyaltySource>();

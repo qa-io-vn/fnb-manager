@@ -115,3 +115,50 @@ test("the app speaks English when Zalo does", async ({ page }) => {
 	);
 	await checkCustomerScreen(page);
 });
+
+test("without a published privacy notice the visitor browses on and joining waits, with the reason", async ({
+	page,
+}) => {
+	await openHome(page, "?privacy=none");
+	const note = page.getByTestId("join-closed");
+	await expect(note).toHaveAttribute("data-reason", "no-privacy");
+	await expect(note).toContainText("chưa công bố Chính sách bảo mật");
+	for (const name of ["Tham gia thành viên", "Nhận điểm từ hóa đơn"]) {
+		await expect(page.getByRole("button", { name })).toBeDisabled();
+	}
+	await expect(page.getByTestId("menu-item")).toHaveCount(4);
+	await checkCustomerScreen(page);
+	await page.getByRole("button", { name: /Cửa hàng Mẫu 2/ }).click();
+	await expect(
+		page.getByRole("heading", { name: "Cửa hàng Mẫu 2" }),
+	).toBeVisible();
+	await expect(page.getByTestId("join-closed")).toBeVisible();
+	await checkCustomerScreen(page);
+	expect(await sdkCalls(page)).toEqual(["getAccessToken"]);
+});
+
+test("without an active programme the home shows the stores and says joining is not open", async ({
+	page,
+}) => {
+	await page.goto("./?programme=none");
+	await expect(
+		page.getByRole("heading", { name: "Chương trình thành viên" }),
+	).toBeVisible();
+	await expect(page.getByTestId("join-closed")).toHaveAttribute(
+		"data-reason",
+		"no-programme",
+	);
+	await expect(
+		page.getByRole("button", { name: "Tham gia thành viên" }),
+	).toBeDisabled();
+	await expect(page.getByTestId("store-list").getByRole("button")).toHaveCount(
+		2,
+	);
+	await checkCustomerScreen(page);
+	await openTab(page, "Thẻ thành viên");
+	await expect(page.getByTestId("join-prompt")).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: "Tham gia thành viên" }),
+	).toBeDisabled();
+	await checkCustomerScreen(page);
+});

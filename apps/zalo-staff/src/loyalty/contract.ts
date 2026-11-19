@@ -30,8 +30,26 @@ export const CHECKIN_REFUSALS = [
 	"daily_limit",
 	"membership_inactive",
 	"invalid_phone",
+	"already_recorded",
+	"no_programme",
+	"programme_inactive",
+	"below_minimum",
+	"excluded_source",
+	"already_earned",
+	"invoice_not_completed",
 ] as const;
 export type CheckinRefusal = (typeof CHECKIN_REFUSALS)[number];
+
+const CHECKIN_REFUSAL_ALIASES: Readonly<Record<string, CheckinRefusal>> = {
+	daily_cap: "daily_limit",
+	excluded_phone: "staff_phone",
+};
+
+export function checkinRefusalOf(value: unknown): CheckinRefusal | null {
+	if (typeof value === "string" && CHECKIN_REFUSAL_ALIASES[value] !== undefined)
+		return CHECKIN_REFUSAL_ALIASES[value];
+	return CHECKIN_REFUSALS.find((name) => name === value) ?? null;
+}
 
 export const REDEMPTION_RAILS = [
 	"pos_payment_discount",
@@ -39,6 +57,16 @@ export const REDEMPTION_RAILS = [
 	"crm_callback",
 ] as const;
 export type RedemptionRail = (typeof REDEMPTION_RAILS)[number];
+
+export const REWARD_KINDS = [
+	"free_item",
+	"percent_off",
+	"amount_off",
+	"free_upgrade",
+] as const;
+export type RewardKind = (typeof REWARD_KINDS)[number];
+
+export const ALREADY_VERIFIED = "already_verified";
 
 export const REDEMPTION_REFUSALS = [
 	"used",
@@ -150,6 +178,10 @@ export type RedemptionAnswer =
 			readonly outcome: "accepted";
 			readonly redemptionId: string;
 			readonly rewardName: string;
+			readonly rewardKind: RewardKind | null;
+			readonly rewardPercent: number | null;
+			readonly firstVerification: boolean;
+			readonly verifiedAt: IsoInstant | null;
 			readonly rail: RedemptionRail;
 			readonly instruction: RedemptionInstruction;
 			readonly minBillAmount: number | null;
@@ -160,6 +192,7 @@ export type RedemptionAnswer =
 	| {
 			readonly outcome: "refused";
 			readonly refusal: RedemptionRefusal | null;
+			readonly reason: string | null;
 			readonly textKey: string | null;
 			readonly usedAt: IsoInstant | null;
 			readonly usedStoreName: string | null;
@@ -494,7 +527,7 @@ export function readCheckinAnswer(value: unknown): CheckinAnswer {
 	if (refused(row)) {
 		return {
 			outcome: "refused",
-			refusal: known(CHECKIN_REFUSALS, row.refusal),
+			refusal: checkinRefusalOf(row.refusal),
 			textKey: textOrNull(row.text_key, "refusal text key"),
 		};
 	}
@@ -530,6 +563,7 @@ export function readRedemptionAnswer(value: unknown): RedemptionAnswer {
 		return {
 			outcome: "refused",
 			refusal: known(REDEMPTION_REFUSALS, row.refusal),
+			reason: textOrNull(row.reason, "refusal reason"),
 			textKey: textOrNull(row.text_key, "refusal text key"),
 			usedAt: instantOrNull(row.used_at, "use time"),
 			usedStoreName: textOrNull(row.used_store_name, "use store"),
@@ -541,6 +575,10 @@ export function readRedemptionAnswer(value: unknown): RedemptionAnswer {
 		outcome: "accepted",
 		redemptionId: text(row.redemption_id, "redemption id"),
 		rewardName: text(row.reward_name, "reward name"),
+		rewardKind: known(REWARD_KINDS, row.reward_kind),
+		rewardPercent: numberOrNull(row.reward_percent, "reward percentage"),
+		firstVerification: row.first_verification !== false,
+		verifiedAt: instantOrNull(row.verified_at, "verification time"),
 		rail,
 		instruction: readInstruction(row, rail),
 		minBillAmount: numberOrNull(row.min_bill_amount, "minimum bill"),

@@ -19,10 +19,12 @@ export function QrCode({
 	payload,
 	label,
 	dimmed,
+	testId = "member-qr",
 }: {
 	readonly payload: string;
 	readonly label: string;
 	readonly dimmed: boolean;
+	readonly testId?: string;
 }) {
 	const { size, path } = useMemo(() => qrPath(payload), [payload]);
 	return (
@@ -34,7 +36,7 @@ export function QrCode({
 			height="216"
 			shapeRendering="crispEdges"
 			className={`rounded-xl bg-white ${dimmed ? "opacity-30" : ""}`}
-			data-testid="member-qr"
+			data-testid={testId}
 			data-payload={payload}
 		>
 			<rect width={size} height={size} fill="#FFFFFF" />

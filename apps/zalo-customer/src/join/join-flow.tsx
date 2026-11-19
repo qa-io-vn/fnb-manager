@@ -1,11 +1,18 @@
-import type { CustomerHome } from "@fnb/zalo-mini/loyalty";
 import { useI18n } from "@fnb/zalo-mini/react";
 import { useEffect, useId, useReducer, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { followOA, getPhoneNumber } from "zmp-sdk";
 import { useCustomerData } from "../data/customer-data";
+import { isoDateIn } from "../data/dates";
 import { useStoreLink } from "../data/store-link";
 import type { DeclineReason, HomeLocationState } from "../home/home-screen";
+import { JoinClosedNote } from "../home/join-actions";
+import {
+	type JoinableHome,
+	type JoinBlock,
+	joinableHome,
+	joinBlock,
+} from "../home/model";
 import { retentionText } from "../home/programme";
 import { useLegalPopup } from "../legal/legal-popups";
 import {
@@ -44,7 +51,7 @@ function PurposeScreen({
 	onContinue,
 	onLater,
 }: {
-	readonly home: CustomerHome;
+	readonly home: JoinableHome;
 	readonly next: JoinNext;
 	readonly onContinue: () => void;
 	readonly onLater: () => void;
@@ -85,7 +92,9 @@ function PurposeScreen({
 					<dt className="text-sm text-ink-muted">
 						{t("join.purpose.whoLabel")}
 					</dt>
-					<dd className="text-base text-ink">{home.legal.entityName}</dd>
+					<dd className="text-base text-ink">
+						{home.legal.entityName ?? t("join.entityUnknown")}
+					</dd>
 				</div>
 			</dl>
 			<p className="text-sm text-ink-muted">{t("join.purpose.zaloAsks")}</p>
@@ -117,7 +126,7 @@ function ConsentScreen({
 	onSubmit,
 	onCancel,
 }: {
-	readonly home: CustomerHome;
+	readonly home: JoinableHome;
 	readonly state: Extract<JoinState, { step: "consent" }>;
 	readonly onLoyalty: (value: boolean) => void;
 	readonly onMarketing: (value: boolean) => void;
@@ -145,7 +154,9 @@ function ConsentScreen({
 						testId="consent-loyalty"
 					/>
 					<label htmlFor={loyaltyId} className="pt-2 text-base text-ink">
-						{t("join.consent.loyalty", { entity: home.legal.entityName })}
+						{t("join.consent.loyalty", {
+							entity: home.legal.entityName ?? t("join.entityUnknown"),
+						})}
 					</label>
 				</div>
 				<div className="flex items-start gap-3">
@@ -212,13 +223,26 @@ function ConsentScreen({
 	);
 }
 
+function JoinClosedScreen({ block }: { readonly block: JoinBlock }) {
+	const { t } = useI18n();
+	return (
+		<Screen testId="join-unavailable">
+			<BackButton to="/" />
+			<h1 className="text-xl font-semibold text-ink">
+				{t("join.closed.title")}
+			</h1>
+			<JoinClosedNote block={block} />
+		</Screen>
+	);
+}
+
 function JoinedScreen({
 	home,
 	state,
 	onFollow,
 	onDone,
 }: {
-	readonly home: CustomerHome;
+	readonly home: JoinableHome;
 	readonly state: Extract<JoinState, { step: "joined" }>;
 	readonly onFollow: () => void;
 	readonly onDone: () => void;
@@ -308,7 +332,15 @@ export function JoinFlow({
 	if (home.status === "loading") return <Loading />;
 	if (home.status === "failed")
 		return <Failed failure={home.failure} onRetry={reloadHome} />;
-	const data = home.data;
+	const today = isoDateIn(Date.now());
+	const data = joinableHome(home.data, today);
+	if (data === null || (member && state.step !== "joined")) {
+		return member ? (
+			<Loading />
+		) : (
+			<JoinClosedScreen block={joinBlock(home.data, today) ?? "no-programme"} />
+		);
+	}
 
 	const decline = (reason: DeclineReason) => {
 		const homeState: HomeLocationState = { declined: reason };
@@ -348,7 +380,12 @@ export function JoinFlow({
 			return;
 		}
 		const problem = problemOf(result.failure);
-		if (problem === "policy-outdated") reloadHome();
+		if (
+			problem === "policy-outdated" ||
+			problem === "no-programme" ||
+			problem === "unknown"
+		)
+			reloadHome();
 		dispatch({ type: "failed", problem });
 	};
 

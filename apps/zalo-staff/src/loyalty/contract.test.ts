@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	actionCall,
 	checkinArgs,
+	checkinRefusalOf,
 	lookupArgs,
 	queueArgs,
 	readCheckinAnswer,
@@ -182,9 +183,104 @@ describe("the staff loyalty contract", () => {
 		).toEqual({
 			outcome: "refused",
 			refusal: "used",
+			reason: null,
 			textKey: null,
 			usedAt: AT,
 			usedStoreName: "Cửa hàng Mẫu 2",
+			expiredAt: null,
+		});
+	});
+
+	it("reads every refusal of staff_record_checkin, the earn refusals of a check-in matched at once included", () => {
+		for (const refusal of [
+			"invalid_phone",
+			"not_member",
+			"staff_phone",
+			"code_unknown",
+			"code_expired",
+			"code_used",
+			"wrong_store",
+			"no_programme",
+			"membership_inactive",
+			"already_recorded",
+			"daily_limit",
+			"below_minimum",
+			"excluded_source",
+			"programme_inactive",
+			"already_earned",
+			"invoice_not_completed",
+		]) {
+			expect(
+				readCheckinAnswer({
+					state: "refused",
+					refusal,
+					text_key: `checkin.refusal.${refusal}`,
+					checkin_id: null,
+				}),
+			).toEqual({
+				outcome: "refused",
+				refusal,
+				textKey: `checkin.refusal.${refusal}`,
+			});
+		}
+		expect(checkinRefusalOf("daily_cap")).toBe("daily_limit");
+		expect(checkinRefusalOf("excluded_phone")).toBe("staff_phone");
+		expect(checkinRefusalOf("a_reason_from_tomorrow")).toBeNull();
+	});
+
+	it("reads staff_verify_redemption's answers as the database gives them", () => {
+		expect(
+			readRedemptionAnswer({
+				state: "verified",
+				refusal: null,
+				text_key: "redeem.valid",
+				first_verification: false,
+				redemption_id: ITEM,
+				reward_name: "Giảm 10%",
+				reward_kind: "percent_off",
+				reward_percent: 10,
+				rail: "pos_payment_discount",
+				pos_discount_name: "Quà thành viên 10%",
+				pos_free_item_external_id: null,
+				voucher_code: null,
+				min_bill_amount: null,
+				hold_until: AT,
+				confirm_by: AT,
+				verified_at: AT,
+				phone_masked: "•••• ••• 789",
+			}),
+		).toEqual({
+			outcome: "accepted",
+			redemptionId: ITEM,
+			rewardName: "Giảm 10%",
+			rewardKind: "percent_off",
+			rewardPercent: 10,
+			firstVerification: false,
+			verifiedAt: AT,
+			rail: "pos_payment_discount",
+			instruction: { kind: "pos_discount", discountName: "Quà thành viên 10%" },
+			minBillAmount: null,
+			holdUntil: AT,
+			confirmBy: AT,
+			phoneMasked: "•••• ••• 789",
+		});
+		expect(
+			readRedemptionAnswer({
+				state: "refused",
+				refusal: "used",
+				reason: "already_verified",
+				text_key: "redeem.refusal.used",
+				used_at: AT,
+				used_store_name: "Synthetic store 1",
+				expired_at: null,
+			}),
+		).toEqual({
+			outcome: "refused",
+			refusal: "used",
+			reason: "already_verified",
+			textKey: "redeem.refusal.used",
+			usedAt: AT,
+			usedStoreName: "Synthetic store 1",
 			expiredAt: null,
 		});
 	});

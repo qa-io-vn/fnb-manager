@@ -1,9 +1,9 @@
 import type { LoyaltyClient, Wallet } from "@fnb/zalo-mini/loyalty";
 import { Popup, ResultModal, useI18n } from "@fnb/zalo-mini/react";
 import { useCallback, useId, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useCustomerData, useLoad } from "../data/customer-data";
 import type { Failure } from "../data/source";
+import { JoinActions } from "../home/join-actions";
 import { LegalButtons } from "../legal/legal-popups";
 import {
 	Card,
@@ -185,7 +185,6 @@ function MemberPart() {
 
 export function SettingsScreen() {
 	const { t } = useI18n();
-	const navigate = useNavigate();
 	const { member, session } = useCustomerData();
 	return (
 		<Screen testId="settings">
@@ -195,13 +194,7 @@ export function SettingsScreen() {
 			) : (
 				<Card testId="settings-visitor">
 					<p className="text-base text-ink">{t("settings.notMember")}</p>
-					<button
-						type="button"
-						className={primaryButton}
-						onClick={() => navigate("/tham-gia")}
-					>
-						{t("home.join")}
-					</button>
+					<JoinActions claim={false} />
 				</Card>
 			)}
 			<p className="text-sm text-ink-muted">{t("settings.language")}</p>
