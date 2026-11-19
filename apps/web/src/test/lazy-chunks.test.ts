@@ -27,6 +27,9 @@ const manifestKeys = [
 	"src/pages/plans/paste-page.tsx",
 	"src/pages/operations/checklist-compliance-page.tsx",
 	"src/operations/supabase-operations-source.ts",
+	"src/pages/loyalty/members-page.tsx",
+	"src/loyalty/supabase-loyalty-source.ts",
+	"src/loyalty/demo-loyalty-source.ts",
 	"../../node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
 ];
 
@@ -109,5 +112,25 @@ describe("the operations pages' chunks", () => {
 			true,
 		);
 		expect(isLazySource("src/pages/settings/checklist-page.tsx")).toBe(true);
+	});
+});
+
+describe("the loyalty pages' chunks", () => {
+	it("keeps the customer pages, the loyalty sources and the loyalty settings page out of the initial JS", () => {
+		for (const page of [
+			"members-page",
+			"member-page",
+			"queue-page",
+			"anomalies-page",
+		]) {
+			expect(isLazySource(`src/pages/loyalty/${page}.tsx`)).toBe(true);
+		}
+		expect(isLazySource("src/pages/loyalty/customers-layout.tsx")).toBe(false);
+		expect(isLazySource("src/loyalty/supabase-loyalty-source.ts")).toBe(true);
+		expect(isLazySource("src/loyalty/demo-loyalty-source.ts")).toBe(true);
+		expect(isLazySource("src/loyalty/models.ts")).toBe(false);
+		expect(
+			isLazySource("src/pages/settings/khach-hang-than-thiet-page.tsx"),
+		).toBe(true);
 	});
 });

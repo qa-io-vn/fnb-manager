@@ -15,6 +15,9 @@ export const lazySources = [
 	/node_modules\/fflate\/esm\/browser\.js$/,
 	/src\/pages\/operations\/[a-z-]+-page\.tsx$/,
 	/src\/operations\/supabase-operations-source\.ts$/,
+	/src\/pages\/loyalty\/[a-z-]+-page\.tsx$/,
+	/src\/loyalty\/supabase-loyalty-source\.ts$/,
+	/src\/loyalty\/demo-loyalty-source\.ts$/,
 ];
 
 export const eagerSources = [];

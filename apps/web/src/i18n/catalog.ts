@@ -2,6 +2,8 @@ import coreEn from "./messages/core.en.json";
 import coreVi from "./messages/core.vi.json";
 import exportsEn from "./messages/exports.en.json";
 import exportsVi from "./messages/exports.vi.json";
+import loyaltyEn from "./messages/loyalty.en.json";
+import loyaltyVi from "./messages/loyalty.vi.json";
 import metricsEn from "./messages/metrics.en.json";
 import metricsVi from "./messages/metrics.vi.json";
 import operationsEn from "./messages/operations.en.json";
@@ -28,6 +30,8 @@ import settingsHolidaysEn from "./messages/settings-holidays.en.json";
 import settingsHolidaysVi from "./messages/settings-holidays.vi.json";
 import settingsLegalEn from "./messages/settings-legal.en.json";
 import settingsLegalVi from "./messages/settings-legal.vi.json";
+import settingsLoyaltyEn from "./messages/settings-loyalty.en.json";
+import settingsLoyaltyVi from "./messages/settings-loyalty.vi.json";
 import settingsManualEn from "./messages/settings-manual.en.json";
 import settingsManualVi from "./messages/settings-manual.vi.json";
 import settingsMappingEn from "./messages/settings-mapping.en.json";
@@ -78,6 +82,8 @@ export type MessageKey =
 	| keyof typeof settingsFeesVi
 	| keyof typeof settingsStaffVi
 	| keyof typeof settingsChecklistsVi
+	| keyof typeof settingsLoyaltyVi
+	| keyof typeof loyaltyVi
 	| keyof typeof operationsVi
 	| keyof typeof themesVi
 	| keyof typeof themeRevenueVi
@@ -115,6 +121,7 @@ const settingsFilePrefixes = [
 	"settings.fees.",
 	"settings.staff.",
 	"settings.checklists.",
+	"settings.loyalty.",
 ] as const;
 
 const reportFilePrefixes = [
@@ -136,6 +143,7 @@ export const messageFiles: readonly MessageFile[] = [
 			"exports.",
 			"plans.",
 			"operations.",
+			"loyalty.",
 		],
 		vi: coreVi,
 		en: coreEn,
@@ -321,6 +329,20 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: settingsChecklistsVi,
 		en: settingsChecklistsEn,
+	},
+	{
+		name: "settings-loyalty",
+		prefix: "settings.loyalty.",
+		excludedPrefixes: [],
+		vi: settingsLoyaltyVi,
+		en: settingsLoyaltyEn,
+	},
+	{
+		name: "loyalty",
+		prefix: "loyalty.",
+		excludedPrefixes: [],
+		vi: loyaltyVi,
+		en: loyaltyEn,
 	},
 	{
 		name: "operations",

@@ -230,6 +230,45 @@ export const routes: RouteObject[] = [
 						],
 					},
 					{
+						path: "khach-hang",
+						hydrateFallbackElement: <ReportRouteLoading />,
+						children: [
+							{ index: true, element: <Navigate to="thanh-vien" replace /> },
+							{
+								path: "thanh-vien",
+								lazy: () =>
+									import("./pages/loyalty/members-page").then((module) => ({
+										Component: module.MembersPage,
+									})),
+							},
+							{
+								path: "thanh-vien/:membershipId",
+								lazy: () =>
+									import("./pages/loyalty/member-page").then((module) => ({
+										Component: module.MemberPage,
+									})),
+							},
+							{
+								path: "doi-soat",
+								lazy: () =>
+									import("./pages/loyalty/queue-page").then((module) => ({
+										Component: module.QueuePage,
+									})),
+							},
+							{
+								path: "bat-thuong",
+								lazy: () =>
+									import("./pages/loyalty/anomalies-page").then((module) => ({
+										Component: module.AnomaliesPage,
+									})),
+							},
+							{
+								path: "*",
+								element: <Navigate to="/khach-hang/thanh-vien" replace />,
+							},
+						],
+					},
+					{
 						path: "xuat-du-lieu",
 						hydrateFallbackElement: <ReportRouteLoading />,
 						lazy: () =>

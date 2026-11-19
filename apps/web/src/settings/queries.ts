@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
+import type { LoyaltySource } from "../loyalty/source";
 import type { OperationsSource } from "../operations/source";
 import { useReadyTenantScope } from "../state/tenant-scope";
 import type { ManualSettingsSource } from "./manual/source";
@@ -28,7 +29,9 @@ export type SettingsRead =
 	| "staffRevenue"
 	| "staffApps"
 	| "staffContact"
-	| "checklistTemplates";
+	| "checklistTemplates"
+	| "loyaltyProgrammes"
+	| "loyaltyStaffPhones";
 
 export function settingsQueryKey(
 	sourceKind: SettingsSource["kind"],
@@ -61,6 +64,7 @@ type SettingsLoad<T> = (
 	manual: ManualSettingsSource,
 	staff: StaffSettingsSource,
 	operations: OperationsSource | null,
+	loyalty: LoyaltySource | null,
 ) => Promise<T>;
 
 function useSettingsRead<T>(
@@ -68,6 +72,7 @@ function useSettingsRead<T>(
 	load: SettingsLoad<T>,
 	pollEvery: (data: T | undefined, failed: boolean) => number | false = () =>
 		false,
+	enabled = true,
 ) {
 	const state = useSettingsSourceState();
 	const { tenant } = useReadyTenantScope();
@@ -88,9 +93,10 @@ function useSettingsRead<T>(
 				ready.manual,
 				ready.staff,
 				ready.operations ?? null,
+				ready.loyalty ?? null,
 			);
 		},
-		enabled: ready !== null,
+		enabled: ready !== null && enabled,
 		refetchInterval: (query) =>
 			pollEvery(query.state.data, query.state.status === "error"),
 	});
@@ -205,6 +211,29 @@ export function useChecklistTemplates() {
 			}
 			return operations.checklistTemplates(tenantId);
 		},
+	);
+}
+
+function loyaltyOf(loyalty: LoyaltySource | null): LoyaltySource {
+	if (loyalty === null) throw new Error("no loyalty data in this mode");
+	return loyalty;
+}
+
+export function useLoyaltyProgrammes() {
+	return useSettingsRead(
+		"loyaltyProgrammes",
+		(_source, tenantId, _manual, _staff, _operations, loyalty) =>
+			loyaltyOf(loyalty).programmes(tenantId),
+	);
+}
+
+export function useLoyaltyStaffPhones(enabled: boolean) {
+	return useSettingsRead(
+		"loyaltyStaffPhones",
+		(_source, tenantId, _manual, _staff, _operations, loyalty) =>
+			loyaltyOf(loyalty).staffPhones(tenantId),
+		() => false,
+		enabled,
 	);
 }
 

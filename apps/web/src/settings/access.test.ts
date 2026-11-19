@@ -272,6 +272,15 @@ describe("settingsAccess", () => {
 			viewer: "role role role",
 			publisher: "role role role",
 		},
+		loyalty: {
+			owner: "write write write",
+			"store-limited owner": "scope scope scope",
+			manager: "write write write",
+			"store-limited manager": "scope scope scope",
+			staff: "role role role",
+			viewer: "role role role",
+			publisher: "role role role",
+		},
 		staffRevenue: {
 			owner: "write write write",
 			"store-limited owner": "ownerOnly ownerOnly ownerOnly",

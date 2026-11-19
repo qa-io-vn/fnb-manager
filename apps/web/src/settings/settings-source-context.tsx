@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useAppMode } from "../app-mode/app-mode";
 import { useSession } from "../auth/session";
+import type { CustomerSource, LoyaltySource } from "../loyalty/source";
 import type { OperationsSource } from "../operations/source";
 import type { ManualSettingsSource } from "./manual/source";
 import type { SettingsSource } from "./source";
@@ -21,6 +22,8 @@ export interface SettingsSources {
 	readonly manual: ManualSettingsSource;
 	readonly staff: StaffSettingsSource;
 	readonly operations: OperationsSource | null;
+	readonly loyalty?: LoyaltySource | null;
+	readonly customers?: CustomerSource | null;
 }
 
 export type SettingsSourceState =
@@ -41,11 +44,12 @@ const SettingsSourceContext = createContext<SettingsSourceHandle>({
 });
 
 export async function loadDemoSettingsSource(): Promise<SettingsSources> {
-	const [demo, manual, staff, store] = await Promise.all([
+	const [demo, manual, staff, store, loyalty] = await Promise.all([
 		import("./demo-settings-source"),
 		import("./manual/demo-manual-source"),
 		import("./staff/demo-staff-source"),
 		import("../demo/demo-settings"),
+		import("../loyalty/demo-loyalty-source"),
 	]);
 	const settings = store.sharedDemoSettings();
 	return {
@@ -53,23 +57,28 @@ export async function loadDemoSettingsSource(): Promise<SettingsSources> {
 		manual: manual.createDemoManualSource(settings),
 		staff: staff.createDemoStaffSource(settings),
 		operations: null,
+		loyalty: loyalty.createDemoLoyaltySource(),
+		customers: null,
 	};
 }
 
 export async function loadSupabaseSettingsSource(
 	client: SupabaseClient,
 ): Promise<SettingsSources> {
-	const [live, manual, staff, operations] = await Promise.all([
+	const [live, manual, staff, operations, loyalty] = await Promise.all([
 		import("./supabase-settings-source"),
 		import("./manual/supabase-manual-source"),
 		import("./staff/supabase-staff-source"),
 		import("../operations/supabase-operations-source"),
+		import("../loyalty/supabase-loyalty-source"),
 	]);
 	return {
 		source: live.createSupabaseSettingsSource(client),
 		manual: manual.createSupabaseManualSource(client),
 		staff: staff.createSupabaseStaffSource(client),
 		operations: operations.createSupabaseOperationsSource(client),
+		loyalty: loyalty.createSupabaseLoyaltySource(client),
+		customers: loyalty.createSupabaseCustomerSource(client),
 	};
 }
 

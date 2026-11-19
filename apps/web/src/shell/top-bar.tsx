@@ -22,6 +22,7 @@ const sectionsWithFixedPeriod = new Set([
 	"chu-de",
 	"cai-dat",
 	"van-hanh",
+	"khach-hang",
 ]);
 
 function ScopeControls() {

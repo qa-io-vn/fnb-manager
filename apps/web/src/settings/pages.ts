@@ -9,6 +9,7 @@ export type SettingsPageId =
 	| "legal"
 	| "staff"
 	| "checklists"
+	| "loyalty"
 	| "alerts"
 	| "digests";
 
@@ -89,6 +90,14 @@ export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
 		status: "built",
 		load: () => import("../pages/settings/checklist-page"),
 		managersOnly: true,
+	},
+	{
+		id: "loyalty",
+		slug: "khach-hang-than-thiet",
+		titleKey: "settings.loyalty.title",
+		phase: "16a",
+		status: "built",
+		load: () => import("../pages/settings/khach-hang-than-thiet-page"),
 	},
 	{
 		id: "alerts",

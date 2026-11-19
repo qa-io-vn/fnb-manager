@@ -67,6 +67,23 @@ describe("SETTINGS_PAGES", () => {
 		expect(inSharedSettingsFile("settings.checklists.title")).toBe(false);
 	});
 
+	it("builds Khách hàng thân thiết as a lazy page of 16a after Checklist, listed for every member, with its keys in its own file", () => {
+		const loyalty = settingsPageOf("khach-hang-than-thiet");
+		expect(loyalty).toMatchObject({
+			id: "loyalty",
+			status: "built",
+			phase: "16a",
+			titleKey: "settings.loyalty.title",
+		});
+		expect(loyalty?.managersOnly).toBeUndefined();
+		expect(loyalty?.load).toBeTypeOf("function");
+		const slugs = SETTINGS_PAGES.map((page) => page.slug);
+		expect(slugs.indexOf("khach-hang-than-thiet")).toBe(
+			slugs.indexOf("checklist") + 1,
+		);
+		expect(inSharedSettingsFile("settings.loyalty.title")).toBe(false);
+	});
+
 	it("builds Ngày lễ as a lazy page of 10b", () => {
 		const holidays = settingsPageOf("ngay-le");
 		expect(holidays).toMatchObject({
