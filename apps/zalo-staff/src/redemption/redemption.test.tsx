@@ -149,7 +149,7 @@ describe("Kiểm tra ưu đãi: the instruction per rail", () => {
 });
 
 describe("Kiểm tra ưu đãi: refusals", () => {
-	it("refuses a code checked twice as used, saying when staff checked it, and never names the customer", async () => {
+	it("gives the same staff member the same answer again, saying it was checked before (a lost answer, a second tap)", async () => {
 		renderLoyalty({ path: LOYALTY_PATHS.redeem });
 		await codeField();
 		check(DEMO_CODES.posReward);
@@ -161,11 +161,25 @@ describe("Kiểm tra ưu đãi: refusals", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Kiểm tra mã khác" }));
 		await codeField();
 		check(DEMO_CODES.posReward);
+		await screen.findByTestId("redeem-accepted");
+		expect(screen.getByTestId("redeem-checked-before")).toHaveTextContent(
+			"12:00",
+		);
+		expect(screen.getByTestId("redeem-apply")).toHaveTextContent(
+			"Thành viên - Tặng 1 ly",
+		);
+		expect(screen.queryByTestId("redeem-refused")).toBeNull();
+	}, 10_000);
+
+	it("refuses a code another staff member checked, saying when, and never names the customer", async () => {
+		renderLoyalty({ path: LOYALTY_PATHS.redeem });
+		await codeField();
+		check(DEMO_CODES.verifiedByOther);
 		const refused = await screen.findByTestId("redeem-refused");
 		expect(refused).toHaveAttribute("data-refusal", "used");
 		expect(refused).toHaveTextContent("Mã đã được sử dụng");
 		expect(refused).toHaveTextContent(
-			"Mã đã được nhân viên kiểm tra lúc 12:00 ngày 19/11/2026 tại Cửa hàng Mẫu 1 và đang chờ hóa đơn.",
+			"Mã đã được nhân viên kiểm tra lúc 11:40 ngày 19/11/2026 tại Cửa hàng Mẫu 1 và đang chờ hóa đơn.",
 		);
 		expect(refused).toHaveTextContent("Không áp dụng ưu đãi cho hóa đơn này.");
 		expect(refused.textContent).not.toMatch(/•|234|Khách/);

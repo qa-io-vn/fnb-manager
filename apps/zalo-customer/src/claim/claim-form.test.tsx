@@ -2,6 +2,7 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { addDays, claimDates, isoDateIn } from "../data/dates";
 import { renderCustomerApp, setSearch } from "../test/render-app";
+import { firstClaimOf } from "./claim-form";
 import {
 	claimInput,
 	claimProblems,
@@ -307,5 +308,72 @@ describe("claiming a receipt", () => {
 		expect(
 			within(form).getByRole("button", { name: "Gửi hóa đơn" }),
 		).toBeDisabled();
+	});
+});
+
+describe("a claim whose answer was lost and is sent again (equivalence classes of the stored claims)", () => {
+	const input = {
+		store: "mau-1",
+		receiptNo: "004321",
+		amount: 52_000,
+		businessDate: TODAY,
+	};
+	const claim = (
+		id: string,
+		submittedAt: string,
+		state: "pending" | "matched" | "rejected",
+		reason: string | null,
+		receiptNo = "4321",
+	) => ({
+		id,
+		storeName: "Cửa hàng Mẫu 1",
+		receiptNo,
+		businessDate: TODAY,
+		submittedAt,
+		state,
+		reason,
+	});
+
+	it("finds the first claim of the receipt, ignoring leading zeros and the refusals for a receipt claimed again", () => {
+		const claims = [
+			claim(
+				"second",
+				"2026-11-19T03:01:00.000Z",
+				"rejected",
+				"already_claimed",
+			),
+			claim("first", "2026-11-19T03:00:00.000Z", "pending", null),
+		];
+		expect(firstClaimOf(claims, input, "Cửa hàng Mẫu 1")?.id).toBe("first");
+	});
+
+	it("finds nothing for another receipt, store or day, so the refusal stays what it is", () => {
+		const claims = [
+			claim("other", "2026-11-19T03:00:00.000Z", "pending", null, "9999"),
+		];
+		expect(firstClaimOf(claims, input, "Cửa hàng Mẫu 1")).toBeNull();
+		expect(
+			firstClaimOf(
+				[claim("x", "2026-11-19T03:00:00.000Z", "pending", null)],
+				input,
+				"Cửa hàng Mẫu 2",
+			),
+		).toBeNull();
+		expect(
+			firstClaimOf(
+				[claim("x", "2026-11-19T03:00:00.000Z", "pending", null)],
+				{ ...input, businessDate: "2026-11-18" },
+				"Cửa hàng Mẫu 1",
+			),
+		).toBeNull();
+	});
+
+	it("keeps the refusal of an earlier rejected claim as the first claim's state", () => {
+		const claims = [
+			claim("first", "2026-11-19T03:00:00.000Z", "rejected", "amount_mismatch"),
+		];
+		expect(firstClaimOf(claims, input, "Cửa hàng Mẫu 1")?.reason).toBe(
+			"amount_mismatch",
+		);
 	});
 });

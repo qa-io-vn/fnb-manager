@@ -14,6 +14,7 @@ const NOON = new Date("2026-11-19T12:00:00+07:00");
 const POS_REWARD = "UD2468";
 const VOUCHER_REWARD = "UD3579";
 const USED_ELSEWHERE = "UD1111";
+const CHECKED_BY_OTHER = "UD4444";
 const MEMBER_PHONE = "0900001234";
 
 test.beforeEach(async ({ page }) => {
@@ -63,7 +64,7 @@ test("a valid code shows the POS discount to choose and stays pending until the 
 	await checkScreen(page);
 });
 
-test("a reused code is refused with the store and time, never the customer", async ({
+test("a code checked again by the same staff gets the same answer; one checked by another is refused with the store and time, never the customer", async ({
 	page,
 }) => {
 	await openTool(page, "Kiểm tra ưu đãi");
@@ -74,11 +75,21 @@ test("a reused code is refused with the store and time, never the customer", asy
 	});
 	await page.getByRole("button", { name: "Kiểm tra mã khác" }).click();
 	await checkCode(page, POS_REWARD);
+	await expect(page.getByTestId("redeem-checked-before")).toHaveText(
+		"Bạn đã kiểm tra mã này lúc 12:00. Chỉ áp dụng ưu đãi một lần.",
+	);
+	await expect(page.getByTestId("redeem-apply")).toHaveText(
+		"Thành viên - Tặng 1 ly",
+	);
+	await expect(page.getByTestId("redeem-refused")).toHaveCount(0);
+	await checkScreen(page);
+	await page.getByRole("button", { name: "Kiểm tra mã khác" }).click();
+	await checkCode(page, CHECKED_BY_OTHER);
 	const refused = page.getByTestId("redeem-refused");
 	await expect(refused).toHaveAttribute("data-refusal", "used");
 	await expect(refused).toContainText("Mã đã được sử dụng");
 	await expect(refused).toContainText(
-		"Mã đã được nhân viên kiểm tra lúc 12:00 ngày 19/11/2026 tại Cửa hàng Mẫu 1 và đang chờ hóa đơn.",
+		"Mã đã được nhân viên kiểm tra lúc 11:40 ngày 19/11/2026 tại Cửa hàng Mẫu 1 và đang chờ hóa đơn.",
 	);
 	await expect(refused).not.toContainText("•");
 	await expect(page.getByTestId("redeem-instruction")).toHaveCount(0);

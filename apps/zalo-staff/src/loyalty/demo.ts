@@ -36,6 +36,7 @@ export const DEMO_CODES = {
 	expiredReward: "UD0000",
 	otherStoreReward: "UD9753",
 	releasedReward: "UD5555",
+	verifiedByOther: "UD4444",
 } as const;
 
 export const DEMO_VOUCHER_CODE = "VC8F3K2Q";
@@ -43,6 +44,7 @@ export const DEMO_DISCOUNT_NAME = "Thành viên - Tặng 1 ly";
 export const DEMO_LIMITS: AdjustLimits = { stamps: 2, points: 20 };
 export const DEMO_CONFIRM_MINUTES = 10;
 export const DEMO_HOLD_MINUTES = 30;
+export const DEMO_CHECKIN_WINDOW_MINUTES = 15;
 export const DEMO_DAILY_CAP = 3;
 export const DEMO_OTHER_STORE_NAME = "Cửa hàng Mẫu 2";
 const MAX_DEMO_DELAY_MS = 10_000;
@@ -362,9 +364,24 @@ export function createDemoLoyaltyClient(
 				refusal: "membership_inactive",
 				textKey: null,
 			};
+		const now = clock();
+		// the database refuses the same member recorded again while the first visit still waits for its receipt
+		if (
+			storeWorld.visits.some(
+				(visit) =>
+					visit.membershipId === member.membershipId &&
+					visit.state === "pending" &&
+					now.getTime() - new Date(visit.at).getTime() <=
+						DEMO_CHECKIN_WINDOW_MINUTES * MINUTE,
+			)
+		)
+			return {
+				outcome: "refused",
+				refusal: "already_recorded",
+				textKey: null,
+			};
 		if (earningToday(storeWorld, member.membershipId) >= DEMO_DAILY_CAP)
 			return { outcome: "refused", refusal: "daily_limit", textKey: null };
-		const now = clock();
 		storeWorld.visits.push({
 			membershipId: member.membershipId,
 			at: now.toISOString(),
@@ -390,6 +407,41 @@ export function createDemoLoyaltyClient(
 				stampsPerCard: 8,
 				points: member.points,
 			},
+		};
+	}
+
+	function accepted(
+		reward: DemoReward,
+		verifiedAt: Date,
+		first: boolean,
+	): RedemptionAnswer {
+		return {
+			outcome: "accepted",
+			redemptionId: next("b"),
+			rewardName: reward.rewardName,
+			rewardKind: "free_item",
+			rewardPercent: null,
+			firstVerification: first,
+			verifiedAt: verifiedAt.toISOString(),
+			rail:
+				reward.instruction.kind === "pos_discount"
+					? "pos_payment_discount"
+					: "crm_code_pool",
+			instruction:
+				reward.instruction.kind === "pos_discount"
+					? { kind: "pos_discount", discountName: DEMO_DISCOUNT_NAME }
+					: {
+							kind: "voucher_code",
+							voucherCode: reward.instruction.voucherCode,
+						},
+			minBillAmount: reward.minBillAmount,
+			holdUntil: new Date(
+				verifiedAt.getTime() + DEMO_HOLD_MINUTES * MINUTE,
+			).toISOString(),
+			confirmBy: new Date(
+				verifiedAt.getTime() + DEMO_CONFIRM_MINUTES * MINUTE,
+			).toISOString(),
+			phoneMasked: maskPhone(reward.phone),
 		};
 	}
 
@@ -480,13 +532,17 @@ export function createDemoLoyaltyClient(
 				...extra,
 			});
 			const verifiedAt = storeWorld.verified.get(code);
-			if (verifiedAt !== undefined)
-				return refused("used", {
-					reason: ALREADY_VERIFIED,
-					usedAt: verifiedAt,
-					usedStoreName: storeName(storeId),
-				});
+			const earlier = REWARDS[code];
+			// the same staff member checking again (a lost answer, a second tap) gets the same answer as the database gives
+			if (verifiedAt !== undefined && earlier !== undefined)
+				return accepted(earlier, new Date(verifiedAt), false);
 			switch (code) {
+				case DEMO_CODES.verifiedByOther:
+					return refused("used", {
+						reason: ALREADY_VERIFIED,
+						usedAt: at(20),
+						usedStoreName: storeName(storeId),
+					});
 				case DEMO_CODES.used:
 					return refused("used", {
 						usedAt: at(165),
@@ -503,34 +559,7 @@ export function createDemoLoyaltyClient(
 			if (reward === undefined) return refused("unknown");
 			const now = clock();
 			storeWorld.verified.set(code, now.toISOString());
-			return {
-				outcome: "accepted",
-				redemptionId: next("b"),
-				rewardName: reward.rewardName,
-				rewardKind: "free_item",
-				rewardPercent: null,
-				firstVerification: true,
-				verifiedAt: now.toISOString(),
-				rail:
-					reward.instruction.kind === "pos_discount"
-						? "pos_payment_discount"
-						: "crm_code_pool",
-				instruction:
-					reward.instruction.kind === "pos_discount"
-						? { kind: "pos_discount", discountName: DEMO_DISCOUNT_NAME }
-						: {
-								kind: "voucher_code",
-								voucherCode: reward.instruction.voucherCode,
-							},
-				minBillAmount: reward.minBillAmount,
-				holdUntil: new Date(
-					now.getTime() + DEMO_HOLD_MINUTES * MINUTE,
-				).toISOString(),
-				confirmBy: new Date(
-					now.getTime() + DEMO_CONFIRM_MINUTES * MINUTE,
-				).toISOString(),
-				phoneMasked: maskPhone(reward.phone),
-			};
+			return accepted(reward, now, true);
 		},
 		async lookupMember(storeId, query): Promise<LookupAnswer> {
 			await pause();

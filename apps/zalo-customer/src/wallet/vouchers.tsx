@@ -191,7 +191,7 @@ function RewardList({
 		return <Failed failure={state.failure} onRetry={reload} />;
 	return (
 		<>
-			{problem === null ? null : (
+			{problem === null || confirming !== null ? null : (
 				<p
 					role="alert"
 					className="rounded-xl bg-negative-soft px-4 py-3 text-base text-ink"
@@ -250,6 +250,15 @@ function RewardList({
 					}
 				>
 					<div className="flex flex-col gap-2">
+						{problem === null ? null : (
+							<p
+								role="alert"
+								className="rounded-xl bg-negative-soft px-4 py-3 text-base text-ink"
+								data-testid="redeem-problem"
+							>
+								{problem}
+							</p>
+						)}
 						<p className="text-base text-ink" data-testid="redeem-cost">
 							{t("reward.confirm.body", {
 								cost: costText(rewardCost(confirming), t),

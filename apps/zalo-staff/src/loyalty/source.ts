@@ -41,6 +41,11 @@ import {
 	type LoyaltyDemoSettings,
 	loyaltyDemoSettingsFrom,
 } from "./demo";
+import {
+	type DemoNetwork,
+	demoNetworkFrom,
+	withDemoNetwork,
+} from "./demo-network";
 
 export interface LoyaltySource {
 	readonly client: LoyaltyClient;
@@ -138,12 +143,17 @@ export function createDemoLoyaltySource(
 	) => sampleLoyaltyContext(query, now),
 	clock?: () => Date,
 	sampleBadge = false,
+	network: DemoNetwork = { fault: "none", delayMs: 0, answerDelayMs: 0 },
 ): LoyaltySource & { readonly client: DemoLoyaltyClient } {
-	const client = createDemoLoyaltyClient({
-		settings,
-		role: session.member.role,
-		...(clock === undefined ? {} : { clock }),
-	});
+	const client = withDemoNetwork(
+		createDemoLoyaltyClient({
+			settings:
+				network.fault === "none" ? settings : { ...settings, delayMs: 0 },
+			role: session.member.role,
+			...(clock === undefined ? {} : { clock }),
+		}),
+		network,
+	);
 	return {
 		client,
 		sampleBadge,
@@ -177,9 +187,17 @@ export function loyaltySourceFor(
 	if (known !== undefined) return known;
 	const search = typeof window === "undefined" ? "" : window.location.search;
 	const settings = loyaltyDemoSettingsFrom(search);
+	const network = demoNetworkFrom(search);
 	let created: LoyaltySource;
 	if (endpoint.kind === "stand-in") {
-		created = createDemoLoyaltySource(settings, session);
+		created = createDemoLoyaltySource(
+			settings,
+			session,
+			undefined,
+			undefined,
+			false,
+			network,
+		);
 	} else {
 		const rest = createRestClient({
 			url: endpoint.url,
@@ -191,7 +209,14 @@ export function loyaltySourceFor(
 		created =
 			loyaltyModeFrom(search, import.meta.env.VITE_ZALO_RUNTIME) === "live"
 				? { client: createRestLoyaltyClient(rest), sampleBadge: false, context }
-				: createDemoLoyaltySource(settings, session, context, undefined, true);
+				: createDemoLoyaltySource(
+						settings,
+						session,
+						context,
+						undefined,
+						true,
+						network,
+					);
 	}
 	sources.set(session, created);
 	return created;

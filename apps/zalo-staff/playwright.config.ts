@@ -1,5 +1,5 @@
 import { MINI_APP_VIEWPORT } from "@fnb/zalo-mini/testing/design-checks";
-import { defineConfig } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 
 const portOffset = Number(process.env.E2E_PORT_OFFSET ?? "0");
 const port = 5742 + portOffset;
@@ -30,14 +30,20 @@ export default defineConfig({
 		{
 			name: "phone-light",
 			testMatch:
-				/(session|home|onboarding|checklists|shift-close|incidents|check-in|redemption|loyalty-queue|announcements|requests|notification-settings)\.spec\.ts/,
+				/(session|home|onboarding|checklists|shift-close|incidents|check-in|redemption|loyalty-queue|announcements|requests|notification-settings|network)\.spec\.ts/,
 			use: { ...phone, colorScheme: "light" },
 		},
 		{
 			name: "phone-dark",
 			testMatch:
-				/(session|home|onboarding|checklists|shift-close|incidents|check-in|redemption|loyalty-queue|announcements|requests|notification-settings)\.spec\.ts/,
+				/(session|home|onboarding|checklists|shift-close|incidents|check-in|redemption|loyalty-queue|announcements|requests|notification-settings|network)\.spec\.ts/,
 			use: { ...phone, colorScheme: "dark" },
+		},
+		{
+			// WebKit as an iPhone, light mode only to keep CI time down (test-gaps G-35)
+			name: "phone-webkit",
+			testMatch: /(home|check-in|redemption|network).spec.ts/,
+			use: { ...devices["iPhone 14"], colorScheme: "light" },
 		},
 		{
 			name: "budget",

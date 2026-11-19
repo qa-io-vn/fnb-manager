@@ -1,5 +1,7 @@
 import {
 	CLAIM_WINDOW_HOURS,
+	type ClaimInput,
+	type ClaimRecord,
 	type ClaimResult,
 	type CustomerStore,
 	type LoyaltyClient,
@@ -10,6 +12,7 @@ import {
 	type ReactNode,
 	useCallback,
 	useId,
+	useRef,
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
@@ -263,6 +266,35 @@ export function ClaimFormView({
 	);
 }
 
+const WITHOUT_ZEROS = /^0+/;
+
+function sameReceipt(claim: ClaimRecord, input: ClaimInput, store: string) {
+	return (
+		claim.storeName === store &&
+		claim.businessDate === input.businessDate &&
+		claim.receiptNo.replace(WITHOUT_ZEROS, "") ===
+			input.receiptNo.trim().replace(WITHOUT_ZEROS, "")
+	);
+}
+
+/**
+ * A claim whose answer was lost and is sent again comes back refused as already claimed. The first claim
+ * is the one that counts, so show its state instead of a refusal the customer did not cause.
+ */
+export function firstClaimOf(
+	claims: readonly ClaimRecord[],
+	input: ClaimInput,
+	store: string,
+): ClaimRecord | null {
+	const earlier = claims
+		.filter(
+			(claim) =>
+				sameReceipt(claim, input, store) && claim.reason !== "already_claimed",
+		)
+		.sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
+	return earlier[0] ?? null;
+}
+
 export function ClaimResultView({
 	result,
 	onAnother,
@@ -327,6 +359,7 @@ function ClaimView() {
 	const wallet = useLoad(loadWallet);
 	const [result, setResult] = useState<ClaimResult | null>(null);
 	const [round, setRound] = useState(0);
+	const unsure = useRef<string | null>(null);
 	if (home.status === "loading") return <Loading />;
 	if (home.status === "failed")
 		return <Failed failure={home.failure} onRetry={reloadHome} />;
@@ -347,11 +380,44 @@ function ClaimView() {
 		const input = claimInput(draft, dates);
 		if (input === null || client === null)
 			return { failure: "unknown" as const };
+		const key = JSON.stringify([
+			input.store,
+			input.receiptNo.replace(WITHOUT_ZEROS, ""),
+			input.businessDate,
+		]);
 		try {
-			setResult(await client.submitClaim(input));
+			const answer = await client.submitClaim(input);
+			const resent = unsure.current === key;
+			unsure.current = null;
+			if (
+				resent &&
+				answer.state === "rejected" &&
+				answer.reason === "already_claimed"
+			) {
+				const name = stores.find((store) => store.code === input.store)?.name;
+				let first: ClaimRecord | null = null;
+				try {
+					if (name !== undefined)
+						first = firstClaimOf((await client.wallet()).claims, input, name);
+				} catch {
+					first = null;
+				}
+				if (first !== null) {
+					setResult({
+						claimId: first.id,
+						state: first.state,
+						reason: first.reason,
+						claimsLeftToday: answer.claimsLeftToday,
+					});
+					return null;
+				}
+			}
+			setResult(answer);
 			return null;
 		} catch (error) {
-			return { failure: recover(error) };
+			const failure = recover(error);
+			if (failure === "network") unsure.current = key;
+			return { failure };
 		}
 	};
 	return (

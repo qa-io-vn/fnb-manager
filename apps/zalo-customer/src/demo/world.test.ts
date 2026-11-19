@@ -74,7 +74,14 @@ describe("demo settings", () => {
 			vouchers: false,
 			stores: true,
 			deletion: null,
+			network: "none",
+			answerDelayMs: 0,
 		});
+		expect(demoSettingsFrom("?net=lost-once&answerDelay=50000")).toMatchObject({
+			network: "lost-once",
+			answerDelayMs: 10_000,
+		});
+		expect(demoSettingsFrom("?net=banana").network).toBe("none");
 		expect(demoSettingsFrom("?stores=none").stores).toBe(false);
 		expect(demoSettingsFrom("?member=1&deletion=in_progress").deletion).toBe(
 			"in_progress",

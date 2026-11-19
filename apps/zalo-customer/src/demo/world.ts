@@ -47,6 +47,19 @@ export const DEMO_DELETION_STATES = [
 ] as const;
 export type DemoDeletionState = (typeof DEMO_DELETION_STATES)[number];
 
+/**
+ * How the stand-in network behaves. Off by default: the world answers at once and never fails. For the network failure
+ * tests (`?net=` in the address): strict fails a call made or answered while the browser is offline like a dropped
+ * request; lost-once commits the first change and loses its answer; error-once refuses it with a server error.
+ */
+export const DEMO_NETWORKS = [
+	"none",
+	"strict",
+	"lost-once",
+	"error-once",
+] as const;
+export type DemoNetwork = (typeof DEMO_NETWORKS)[number];
+
 export interface DemoSettings {
 	readonly member: boolean;
 	readonly marketing: boolean;
@@ -58,6 +71,8 @@ export interface DemoSettings {
 	readonly vouchers: boolean;
 	readonly stores: boolean;
 	readonly deletion: DemoDeletionState | null;
+	readonly network: DemoNetwork;
+	readonly answerDelayMs: number;
 }
 
 export const DEMO_DEFAULTS: DemoSettings = {
@@ -71,6 +86,8 @@ export const DEMO_DEFAULTS: DemoSettings = {
 	vouchers: false,
 	stores: true,
 	deletion: null,
+	network: "none",
+	answerDelayMs: 0,
 };
 
 const MAX_DEMO_DELAY_MS = 10_000;
@@ -84,6 +101,7 @@ export function demoSettingsFrom(search: string): DemoSettings {
 	const params = new URLSearchParams(search);
 	const delay = Number(params.get("dataDelay") ?? "0");
 	const claims = Number(params.get("claims") ?? "0");
+	const answerDelay = Number(params.get("answerDelay") ?? "0");
 	const member = params.get("member") === "1";
 	const programme =
 		DEMO_PROGRAMME_STATES.find((state) => state === params.get("programme")) ??
@@ -108,6 +126,11 @@ export function demoSettingsFrom(search: string): DemoSettings {
 		vouchers: member && params.get("vouchers") === "1",
 		stores: params.get("stores") !== "none",
 		deletion: member ? deletion : null,
+		network: DEMO_NETWORKS.find((name) => name === params.get("net")) ?? "none",
+		answerDelayMs:
+			Number.isInteger(answerDelay) && answerDelay > 0
+				? Math.min(answerDelay, MAX_DEMO_DELAY_MS)
+				: 0,
 	};
 }
 
@@ -145,6 +168,17 @@ interface Claim {
 	submittedAt: number;
 	state: "pending" | "matched" | "rejected";
 	reason: string | null;
+}
+
+const CHANGING_FUNCTIONS: ReadonlySet<string> = new Set([
+	CUSTOMER_FUNCTIONS.submitClaim,
+	CUSTOMER_FUNCTIONS.redeem,
+	CUSTOMER_FUNCTIONS.stopMarketing,
+	CUSTOMER_FUNCTIONS.requestDeletion,
+]);
+
+function browserOffline(): boolean {
+	return typeof navigator !== "undefined" && navigator.onLine === false;
 }
 
 export interface DemoWorld {
@@ -251,6 +285,8 @@ export function createDemoWorld(
 					now() - DAY_MS,
 				);
 	let offline = false;
+	let faultSpent = false;
+	const strict = settings.network !== "none";
 	const entries: Entry[] = [];
 	const claims: Claim[] = [];
 	const vouchers: DemoVoucher[] = [];
@@ -897,7 +933,7 @@ export function createDemoWorld(
 		sessionFetch,
 		rest(accessToken) {
 			const check = (): boolean => {
-				if (offline) throw new RestError(0);
+				if (offline || (strict && browserOffline())) throw new RestError(0);
 				const member = tokens.get(accessToken);
 				if (member === undefined) throw new RestError(401, UNKNOWN_TOKEN);
 				return member && joined;
@@ -911,7 +947,22 @@ export function createDemoWorld(
 				async rpc(fn, args = {}) {
 					await pause();
 					const member = check();
-					return JSON.parse(JSON.stringify(answer(fn, args, member)));
+					const changes = CHANGING_FUNCTIONS.has(fn);
+					if (settings.network === "error-once" && changes && !faultSpent) {
+						faultSpent = true;
+						throw new RestError(500, "XX000");
+					}
+					const reply = JSON.parse(JSON.stringify(answer(fn, args, member)));
+					if (settings.answerDelayMs > 0)
+						await new Promise((resolve) =>
+							setTimeout(resolve, settings.answerDelayMs),
+						);
+					if (strict && browserOffline()) throw new RestError(0);
+					if (settings.network === "lost-once" && changes && !faultSpent) {
+						faultSpent = true;
+						throw new RestError(0);
+					}
+					return reply;
 				},
 			};
 		},
