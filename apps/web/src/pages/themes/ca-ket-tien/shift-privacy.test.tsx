@@ -311,7 +311,10 @@ describe("Ca & két tiền with e-mail-shaped shift and cashier names", () => {
 			expect(props.table?.rows.map((row) => row.cells.shift)).toEqual([
 				translate(language, "report.label.shiftNumber", { number: 1 }),
 				translate(language, "report.label.shiftNumber", { number: 2 }),
-				translate(language, "theme.shifts.memberShare.unknownShift"),
+				translate(
+					language,
+					"theme.shifts.memberShare.unknownShift" as MessageKey,
+				),
 			]);
 		}
 	});
