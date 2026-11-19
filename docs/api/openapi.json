@@ -5318,6 +5318,110 @@
 			],
 			"type": "object"
 		},
+		"oa_menus": {
+			"description": "the chat menu and the messages of a brand's OA, one row per OA and so per brand: the buttons (join, points, vouchers, open the Mini App; a Mini App deep link or the join keyword, nothing else), the welcome sent once per follow, the texts of the join replies and the request_user_info form; fnb zalo oa-menu apply pushes the buttons and keeps what it pushed in applied_*",
+			"properties": {
+				"applied_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"applied_buttons": {
+					"description": "the Zalo buttons the last fnb zalo oa-menu apply pushed, the base of the next dry run's diff; written only by app.record_oa_menu_applied",
+					"format": "jsonb"
+				},
+				"applied_sha256": {
+					"format": "text",
+					"type": "string"
+				},
+				"buttons": {
+					"description": "the configured buttons, checked by app.oa_menu_buttons_valid; rendered to Zalo buttons with the brand's customer Mini App id",
+					"format": "jsonb"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"form_image_url": {
+					"description": "the https image Zalo requires in the request_user_info form; needed when join is an OA keyword",
+					"format": "text",
+					"type": "string"
+				},
+				"form_subtitle": {
+					"format": "text",
+					"type": "string"
+				},
+				"form_title": {
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"joined_text": {
+					"description": "the reply after an enrolment through the OA form, inside the interaction window: says the customer is a member and how to opt in to promotions from the Mini App, which the form never implies",
+					"format": "text",
+					"type": "string"
+				},
+				"member_text": {
+					"description": "the reply to the join keyword of an OA user already linked to a member",
+					"format": "text",
+					"type": "string"
+				},
+				"oa_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"welcome_enabled": {
+					"default": true,
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"welcome_text": {
+					"description": "the consultation message a follow earns, sent once per follow with the menu buttons; never promotional",
+					"format": "text",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"oa_id",
+				"buttons",
+				"welcome_enabled",
+				"welcome_text",
+				"joined_text",
+				"member_text",
+				"form_title",
+				"form_subtitle",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"oas": {
 			"description": "the Official Account of a brand (ADR-017): its id, package and expiry, verification, the name of the secret holding its OA secret key and the webhook signature mode",
 			"properties": {
@@ -8336,6 +8440,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/notification_channels"
+			}
+		},
+		"body.oa_menus": {
+			"description": "oa_menus",
+			"in": "body",
+			"name": "oa_menus",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/oa_menus"
 			}
 		},
 		"body.oas": {
@@ -14095,6 +14208,120 @@
 		"rowFilter.notification_channels.user_id": {
 			"in": "query",
 			"name": "user_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.applied_at": {
+			"in": "query",
+			"name": "applied_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.applied_buttons": {
+			"description": "the Zalo buttons the last fnb zalo oa-menu apply pushed, the base of the next dry run's diff; written only by app.record_oa_menu_applied",
+			"in": "query",
+			"name": "applied_buttons",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.applied_sha256": {
+			"in": "query",
+			"name": "applied_sha256",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.buttons": {
+			"description": "the configured buttons, checked by app.oa_menu_buttons_valid; rendered to Zalo buttons with the brand's customer Mini App id",
+			"in": "query",
+			"name": "buttons",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.form_image_url": {
+			"description": "the https image Zalo requires in the request_user_info form; needed when join is an OA keyword",
+			"in": "query",
+			"name": "form_image_url",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.form_subtitle": {
+			"in": "query",
+			"name": "form_subtitle",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.form_title": {
+			"in": "query",
+			"name": "form_title",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.joined_text": {
+			"description": "the reply after an enrolment through the OA form, inside the interaction window: says the customer is a member and how to opt in to promotions from the Mini App, which the form never implies",
+			"in": "query",
+			"name": "joined_text",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.member_text": {
+			"description": "the reply to the join keyword of an OA user already linked to a member",
+			"in": "query",
+			"name": "member_text",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.oa_id": {
+			"in": "query",
+			"name": "oa_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.welcome_enabled": {
+			"in": "query",
+			"name": "welcome_enabled",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.oa_menus.welcome_text": {
+			"description": "the consultation message a follow earns, sent once per follow with the menu buttons; never promotional",
+			"in": "query",
+			"name": "welcome_text",
 			"required": false,
 			"type": "string"
 		},
@@ -30482,6 +30709,262 @@
 				},
 				"summary": "destinations: one row per place a message can go, the member it belongs to (deleted with the member), the provider and the name of the secret holding its credential; written only by service-side code and security definer functions, and address, secret_name and config are not selectable by authenticated",
 				"tags": ["notification_channels"]
+			}
+		},
+		"/oa_menus": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.oa_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.buttons"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.welcome_enabled"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.welcome_text"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.joined_text"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.member_text"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.form_title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.form_subtitle"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.form_image_url"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.applied_buttons"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.applied_sha256"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.applied_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the chat menu and the messages of a brand's OA, one row per OA and so per brand: the buttons (join, points, vouchers, open the Mini App; a Mini App deep link or the join keyword, nothing else), the welcome sent once per follow, the texts of the join replies and the request_user_info form; fnb zalo oa-menu apply pushes the buttons and keeps what it pushed in applied_*",
+				"tags": ["oa_menus"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.oa_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.buttons"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.welcome_enabled"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.welcome_text"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.joined_text"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.member_text"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.form_title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.form_subtitle"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.form_image_url"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.applied_buttons"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.applied_sha256"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.applied_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/oa_menus"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the chat menu and the messages of a brand's OA, one row per OA and so per brand: the buttons (join, points, vouchers, open the Mini App; a Mini App deep link or the join keyword, nothing else), the welcome sent once per follow, the texts of the join replies and the request_user_info form; fnb zalo oa-menu apply pushes the buttons and keeps what it pushed in applied_*",
+				"tags": ["oa_menus"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.oa_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.buttons"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.welcome_enabled"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.welcome_text"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.joined_text"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.member_text"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.form_title"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.form_subtitle"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.form_image_url"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.applied_buttons"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.applied_sha256"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.applied_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.oa_menus.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.oa_menus"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the chat menu and the messages of a brand's OA, one row per OA and so per brand: the buttons (join, points, vouchers, open the Mini App; a Mini App deep link or the join keyword, nothing else), the welcome sent once per follow, the texts of the join replies and the request_user_info form; fnb zalo oa-menu apply pushes the buttons and keeps what it pushed in applied_*",
+				"tags": ["oa_menus"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.oa_menus"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the chat menu and the messages of a brand's OA, one row per OA and so per brand: the buttons (join, points, vouchers, open the Mini App; a Mini App deep link or the join keyword, nothing else), the welcome sent once per follow, the texts of the join replies and the request_user_info form; fnb zalo oa-menu apply pushes the buttons and keeps what it pushed in applied_*",
+				"tags": ["oa_menus"]
 			}
 		},
 		"/oas": {
