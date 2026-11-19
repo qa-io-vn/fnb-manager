@@ -46,6 +46,13 @@ const BILL_DISCOUNT_NAME = "Giảm giá hoá đơn";
 const CASHIER = { id: "E-01", name: "Thu ngân" };
 const MINUTE_MS = 60_000;
 
+export const SYNTHETIC_PHONE_PREFIX = "0900000";
+export const SYNTHETIC_PHONE_PATTERN = /^0900000\d{3}$/;
+
+export function syntheticPhone(rng: Rng): string {
+	return `${SYNTHETIC_PHONE_PREFIX}${String(rng.int(0, 999)).padStart(3, "0")}`;
+}
+
 export function mockStore(index: number, profile: MockProfile): CanonicalStore {
 	return {
 		externalId: `MOCK-S${index}`,
@@ -353,7 +360,7 @@ function buildSale(
 		guestCount,
 		...(captured
 			? {
-					customerPhone: `09${rng.int(10_000_000, 99_999_999)}`,
+					customerPhone: syntheticPhone(rng),
 					customerName: "Khách quen",
 				}
 			: {}),

@@ -410,6 +410,8 @@ Ca & két tiền looks at each shift of the range, at most the last 92 days: a l
 
 ![The cashier card: the shifts over the drawer thresholds of the cashier with the most, the sentence naming that cashier, the caution and the table per cashier](user-guide/theme-ca-ket-tien-cashiers.png)
 
+**Tỷ lệ hóa đơn có hội viên theo ca** (built on 2026-11-19) shows how often the till attaches a customer to the bill. The big number is the share of the range's invoices (voided ones left out) that carry a member's phone, added with "Thêm khách hàng" on the POS before the bill prints, with the count under it and a chip against the same number of days before. The sentence names the shift with the lowest share ("Ca 2 thấp nhất: …", with the store when several are chosen) so you know which shift to remind; it never names a cashier. The bars give the share of each shift number, and the table every shift, newest first, with its invoices, the invoices with a member and the share; invoices that the POS tied to no shift sit in a row "Không rõ ca". No phone ever shows, on screen or in the CSV. Before any invoice carries a phone, the card says so plainly and reminds you of "Thêm khách hàng". The capture card of Chất lượng dữ liệu links here ("Xem tỷ lệ hóa đơn có hội viên theo ca"). How cashiers ask for the number is in [Loyalty at the till](#loyalty-at-the-till). This card has no screenshot yet.
+
 **Số đếm két trên ứng dụng** (built on 2026-11-19) puts the cash your staff counted at shift close in the Zalo staff app beside the POS. The big number is the shifts whose count is off from the expected cash by more than your cash thresholds, under the line "… ca đã đóng có số đếm"; the sentence adds how many closed shifts have no count yet. The table shows the first 10 shifts with the counted cash, the expected cash, the POS drawer and the difference (all of them in the CSV), and "Xem lịch sử két tiền" opens [Vận hành → Két tiền](#két-tiền-cash-counts) on the same days. Only owners and managers see the figures; other members read "Mục này chỉ dành cho chủ và quản lý.", and the demo, which has no staff app, says "Mục này cần ứng dụng nhân viên; bản demo không có nên chưa có số liệu." This card has no screenshot yet.
 
 More detail: [reports/ca-ket-tien.md](reports/ca-ket-tien.md).
@@ -816,6 +818,16 @@ The **Ưu đãi** tab (`#/cai-dat/khach-hang-than-thiet?tab=uu-dai`) is the rewa
 - In the demo the tab shows a sample catalogue, read-only.
 
 **At the till.** A member chooses a reward in the Mini App and gets a single-use code with its QR in their voucher wallet. Staff check the code in the staff app, which says what to do (the POS discount to choose, or the code to type) or why it cannot be used (already used, expired, another store). The synced invoice then marks it used; a code not used within the hold time gives the stamps and points back. **Ưu đãi thành viên đã đổi** on [Khuyến mãi & giảm giá](#khuyến-mãi--giảm-giá-promotions-and-discounts) adds up the exchanges and their cost.
+
+### Loyalty at the till
+
+Path A works only when the cashier attaches the customer before the bill prints. Three short documents, written for any shop, prepare the till; print your own copies from them, with your shop's details, and keep those outside the app:
+
+- [Cashier script](loyalty/cashier-script.md): what to say when asking for a phone number, what the customer gets, and that saying no is fine.
+- [One-page procedure for "Thêm khách hàng"](loyalty/sop-them-khach-hang.md): ask before payment, search or create the member on the POS, the three things never to do, and how the share per shift is measured.
+- [Receipt template guide](loyalty/receipt-template.md): the bill number printed large so a customer can still claim from the receipt, and the optional claim QR, with the test to run in the POS template editor.
+
+During the capture week, follow **Tỷ lệ hóa đơn có hội viên theo ca** on [Ca & két tiền](#ca--két-tiền-shifts-and-cash-drawer).
 
 ### Khách hàng (members, ledger, queue and shift activity)
 

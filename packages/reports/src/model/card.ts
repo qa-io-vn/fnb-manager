@@ -155,7 +155,8 @@ export type NoticeAction =
 	| "settings_payment_kinds"
 	| "settings_holidays"
 	| "settings_thresholds"
-	| "settings_legal";
+	| "settings_legal"
+	| "theme_member_share";
 
 export interface NoticeModel {
 	readonly tone: "info" | "warning";

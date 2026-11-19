@@ -108,6 +108,13 @@ export interface ShiftSales {
 	readonly itemLines: number;
 }
 
+export interface ShiftMembers {
+	readonly shiftExternalId: string | null;
+	readonly invoices: number;
+	readonly memberInvoices: number;
+	readonly identifiedInvoices: number;
+}
+
 export interface DiscountRow {
 	readonly invoiceExternalId: string;
 	readonly kind: PromotionKind;
@@ -181,6 +188,7 @@ export interface StoreDayAggregates {
 	readonly itemLinesByExternalId: ReadonlyMap<string, number>;
 	readonly removedLinesByDate: ReadonlyMap<IsoDate, number>;
 	readonly shiftSales: readonly ShiftSales[];
+	readonly shiftMembers: readonly ShiftMembers[];
 	readonly discounts: readonly DiscountRow[];
 	readonly discountedInvoices: readonly DiscountedInvoice[];
 	readonly events: readonly AdjustmentEvent[];
@@ -501,6 +509,7 @@ export function aggregateStoreDay(
 	const sizes = new Map<string, Writable<SizeAggregate>>();
 	const promotions = new Map<string, Accumulating<PromotionUsage>>();
 	const shiftSales = new Map<string, Writable<ShiftSales>>();
+	const shiftMembers = new Map<string | null, Writable<ShiftMembers>>();
 	const discounts: DiscountRow[] = [];
 	const discountedInvoices: DiscountedInvoice[] = [];
 	const itemLinesByExternalId = new Map<string, number>();
@@ -704,6 +713,18 @@ export function aggregateStoreDay(
 		}
 		itemLines += saleItemLines;
 		const saleShift = textOrNull(sale.shiftExternalId);
+		const members = shiftMembers.get(saleShift) ?? {
+			shiftExternalId: saleShift,
+			invoices: 0,
+			memberInvoices: 0,
+			identifiedInvoices: 0,
+		};
+		members.invoices += 1;
+		if (phone !== null) {
+			members.memberInvoices += 1;
+			members.identifiedInvoices += 1;
+		}
+		shiftMembers.set(saleShift, members);
 		if (saleShift !== null) {
 			const known = shiftSales.get(saleShift);
 			if (known === undefined) {
@@ -941,6 +962,7 @@ export function aggregateStoreDay(
 		itemLinesByExternalId,
 		removedLinesByDate,
 		shiftSales: [...shiftSales.values()],
+		shiftMembers: [...shiftMembers.values()],
 		discounts,
 		discountedInvoices,
 		events: adjustmentEventsOf(store, day),

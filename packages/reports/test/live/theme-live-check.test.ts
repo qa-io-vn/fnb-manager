@@ -86,6 +86,16 @@ const MENU_MIN_WINDOW_DAYS = 7;
 const QUANTITY_EPSILON = 1e-6;
 const DEFAULT_WINDOW_PRESET = "28d";
 const PROMOTION_DAYS_FUNCTION = "promotion_days";
+const MEMBER_SHARE_STORE_DAYS = 3;
+const MEMBER_SHARE_SEED = Number(process.env.LIVE_SEED ?? "20261119");
+
+function seededRandom(seed: number): () => number {
+	let state = seed >>> 0;
+	return () => {
+		state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0;
+		return state / 4_294_967_296;
+	};
+}
 
 type RangeShape = Pick<ThemeDefinition, "defaultPreset" | "maxRangeDays">;
 
@@ -998,7 +1008,84 @@ describe.skipIf(!LIVE)("live check of the thematic reports", () => {
 		expect(failures).toEqual([]);
 	});
 
-	it("9. the real tenant's row counts are the same after the run", async () => {
+	it("9. member_share_by_shift adds up, on three seeded-random store-days, to the day's member_invoices of agg_daily_sales, allowing for invoices whose shift opened on another day (FR-LOY-01)", async () => {
+		const active = live();
+		const to = active.asOf;
+		const from = addDays(to, 1 - SHIFT_DAYS);
+		const days = await asMember(active.sql, active.userId, (transaction) =>
+			transaction.unsafe(
+				`select a.store_id::text as store_id, a.business_date::text as business_date,
+					a.invoices, a.member_invoices
+				from public.agg_daily_sales a
+				where a.store_id = any($1::uuid[]) and a.business_date between $2::date and $3::date
+				order by a.business_date, a.store_id`,
+				[uuidArray(active.stores), from, to],
+			),
+		);
+		expect(days.length).toBeGreaterThan(0);
+		const random = seededRandom(MEMBER_SHARE_SEED);
+		const picked = new Set<number>();
+		while (picked.size < Math.min(MEMBER_SHARE_STORE_DAYS, days.length)) {
+			picked.add(Math.floor(random() * days.length));
+		}
+		const outcomes: boolean[] = [];
+		for (const index of [...picked].sort((left, right) => left - right)) {
+			const day = days[index];
+			if (day === undefined) continue;
+			const storeId = String(day.store_id);
+			const date = String(day.business_date);
+			const rows = await active.source.callTheme("member_share_by_shift", {
+				store_ids: [storeId],
+				from_date: date,
+				to_date: date,
+			});
+			const [moved] = await asMember(active.sql, active.userId, (transaction) =>
+				transaction.unsafe(
+					`select
+						count(*) filter (where i.business_date = $2::date and x.shift_date <> $2::date)::integer as moved_out,
+						count(*) filter (where i.business_date <> $2::date and x.shift_date = $2::date)::integer as moved_in
+					from public.invoices i
+					join public.shifts sh on sh.store_id = i.store_id and sh.external_id = i.shift_external_id
+					join public.stores st on st.id = sh.store_id
+					cross join lateral (
+						select ((sh.opened_at at time zone st.timezone) - make_interval(mins => st.business_day_start_minutes))::date as shift_date
+					) x
+					where i.store_id = $1::uuid
+						and i.status <> 'voided'
+						and i.has_customer_phone
+						and i.business_date between $2::date - 2 and $2::date + 2`,
+					[storeId, date],
+				),
+			);
+			const shiftMembers = rows.reduce(
+				(sum, row) => sum + row.member_invoices,
+				0,
+			);
+			const aggregateMembers = Number(day.member_invoices);
+			const movedOut = Number(moved?.moved_out ?? 0);
+			const movedIn = Number(moved?.moved_in ?? 0);
+			const agree = shiftMembers === aggregateMembers - movedOut + movedIn;
+			report("member share by shift", {
+				storePosition:
+					active.stores.findIndex((store) => store.id === storeId) + 1,
+				shifts: rows.filter((row) => row.shift_ordinal !== null).length,
+				unknownShiftRows: rows.filter((row) => row.shift_ordinal === null)
+					.length,
+				aggregateMembers,
+				shiftMembers,
+				movedOut,
+				movedIn,
+				agree,
+			});
+			outcomes.push(agree);
+		}
+		expect(outcomes).toHaveLength(
+			Math.min(MEMBER_SHARE_STORE_DAYS, days.length),
+		);
+		expect(outcomes.every(Boolean)).toBe(true);
+	});
+
+	it("10. the real tenant's row counts are the same after the run", async () => {
 		const active = live();
 		const after = await rowCountsOf(active.sql, active.tenantId);
 		const changed = [...after].filter(

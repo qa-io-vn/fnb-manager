@@ -51,7 +51,7 @@ export const themeCardIds: Record<ThemeKind, readonly string[]> = {
 		"rule_days",
 		"redemptions",
 	],
-	shifts: ["shift_sales", "drawer", "adjustments", "cashiers"],
+	shifts: ["shift_sales", "drawer", "adjustments", "cashiers", "member_share"],
 	stores: ["kpis", "same_day", "since_opening"],
 	quality: [
 		"compliance",
@@ -68,6 +68,7 @@ export const shiftNumberedCardIds: readonly string[] = [
 	"shift_sales",
 	"drawer",
 	"adjustments",
+	"member_share",
 ];
 
 const RAW_KEY = /\b(report|metric|theme)\.[a-z]+[A-Za-z_]*\./;

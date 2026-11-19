@@ -1,6 +1,6 @@
 # Câu văn báo cáo — bảng duyệt câu chữ
 
-Owner review of the wording of the periodic reports Ngày, Tuần, Tháng and Năm (roadmap phase 9, open question Q9). It lists every Vietnamese template the four reports use (691 entries, 251 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The shared file also holds the Settings links of `report.action.*` that the thematic cards use (or that later Settings pages will), so they are listed here with the rest of `reports.vi.json`; the thematic reports' own sentences are in [cau-van-chu-de.md](cau-van-chu-de.md).
+Owner review of the wording of the periodic reports Ngày, Tuần, Tháng and Năm (roadmap phase 9, open question Q9). It lists every Vietnamese template the four reports use (692 entries, 251 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The shared file also holds the Settings links of `report.action.*` that the thematic cards use (or that later Settings pages will), so they are listed here with the rest of `reports.vi.json`; the thematic reports' own sentences are in [cau-van-chu-de.md](cau-van-chu-de.md).
 
 The source of truth is the message files in `apps/web/src/i18n/messages/`: `reports.vi.json` (shared by the four reports) and `report-day`, `report-week`, `report-month`, `report-year` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins. Metric names and explanations ("Giải thích chỉ số") live in `metrics.vi.json` and are reviewed with the metric registry, not here.
 
@@ -88,7 +88,7 @@ The common placeholders; every other one is named after what it holds, and the E
 - "đi ngược chiều" for a contribution against the trend.
 - "đang cập nhật" (`report.marker.stale`) for item, payment and shift figures whose aggregates are catching up.
 
-## Dùng chung cho cả bốn báo cáo · Shared by all four reports (`reports.vi.json`, 207 mục)
+## Dùng chung cho cả bốn báo cáo · Shared by all four reports (`reports.vi.json`, 208 mục)
 
 ### Thẻ chọn báo cáo · report tabs (`report.tabs.*`)
 
@@ -260,6 +260,7 @@ The common placeholders; every other one is named after what it holds, and the E
 | `report.action.settings_thresholds` | Đổi ngưỡng báo cáo | Change report thresholds | — |
 | `report.action.settings_legal` | Xem văn bản pháp lý | Review legal documents | — |
 | `report.action.today` | Xem Hôm nay | Open Today | — |
+| `report.action.theme_member_share` | Xem tỷ lệ hóa đơn có hội viên theo ca | See the member invoice share per shift | — |
 
 ### Tên cột bảng · table columns (`report.table.*`)
 

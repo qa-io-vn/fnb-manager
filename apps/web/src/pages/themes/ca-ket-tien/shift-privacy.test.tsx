@@ -89,6 +89,26 @@ function adjustmentRow(
 	};
 }
 
+function memberRow(
+	ordinal: number | null,
+	openedAt: string | null,
+	invoices: number,
+	members: number,
+): ThemeRow<"member_share_by_shift"> {
+	return {
+		store_id: STORE,
+		business_date: "2026-10-20",
+		shift_ordinal: ordinal,
+		opened_at: openedAt,
+		closed_at: null,
+		invoices,
+		member_invoices: members,
+		identified_invoices: members,
+		member_share: members / invoices,
+		identified_share: members / invoices,
+	};
+}
+
 const context: ThemeContext = {
 	tenantId: "33333333-3333-4333-8333-333333333333",
 	stores: [
@@ -127,6 +147,12 @@ const answers: Answers = {
 		adjustmentRow("early", "2026-10-20T01:00:00Z"),
 	],
 	[shiftsCalls.settings]: [],
+	[shiftsCalls.memberShare]: [
+		memberRow(1, "2026-10-20T01:00:00Z", 40, 12),
+		memberRow(2, "2026-10-20T08:00:00Z", 30, 3),
+		memberRow(null, null, 4, 1),
+	],
+	[shiftsCalls.memberSharePrevious]: [],
 };
 
 const unnamedAnswers: Answers = {
@@ -165,6 +191,7 @@ describe("Ca & két tiền with e-mail-shaped shift and cashier names", () => {
 			"drawer",
 			"adjustments",
 			"cashiers",
+			"member_share",
 		]);
 		for (const language of ["vi", "en"] as const) {
 			const formatters = vndFormatters(language === "vi" ? "vi-VN" : "en-GB");
@@ -267,6 +294,25 @@ describe("Ca & két tiền with e-mail-shaped shift and cashier names", () => {
 				expect(markup, `${notice} ${language}`).not.toMatch(EMAIL_LIKE);
 				unmount();
 			}
+		}
+	});
+
+	it("reads the member share table's shift column as Ca n, and Không rõ ca for invoices tied to no shift, in both languages", async () => {
+		const cards = await runTheme(shiftsTheme, context, fixtureSource());
+		const card = cards.find((entry) => entry.id === "member_share");
+		expect(card).toBeDefined();
+		for (const language of ["vi", "en"] as const) {
+			const props = toReportCardProps(
+				card as NonNullable<typeof card>,
+				"shifts",
+				(key, params) => translate(language, key, params),
+				vndFormatters(language === "vi" ? "vi-VN" : "en-GB"),
+			);
+			expect(props.table?.rows.map((row) => row.cells.shift)).toEqual([
+				translate(language, "report.label.shiftNumber", { number: 1 }),
+				translate(language, "report.label.shiftNumber", { number: 2 }),
+				translate(language, "theme.shifts.memberShare.unknownShift"),
+			]);
 		}
 	});
 });

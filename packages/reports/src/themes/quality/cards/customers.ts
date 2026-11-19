@@ -74,14 +74,14 @@ function noticeOf(
 		return {
 			tone: "warning",
 			part: part(qualityKeys.customers.featureNotice),
-			action: null,
+			action: "theme_member_share",
 		};
 	}
 	if (stores.some(({ row }) => customerFixKey(row) !== null)) {
 		return {
 			tone: "info",
 			part: part(qualityKeys.customers.notice),
-			action: null,
+			action: "theme_member_share",
 		};
 	}
 	return null;

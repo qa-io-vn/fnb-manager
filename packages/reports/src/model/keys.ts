@@ -139,6 +139,7 @@ export const reportKeys = {
 		settings_thresholds: "report.action.settings_thresholds",
 		settings_legal: "report.action.settings_legal",
 		today: "report.action.today",
+		theme_member_share: "report.action.theme_member_share",
 	},
 	page: {
 		todayClamped: "report.page.todayClamped",

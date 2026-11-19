@@ -85,6 +85,7 @@
 	"report.action.settings_thresholds": "Change report thresholds",
 	"report.action.settings_legal": "Review legal documents",
 	"report.action.today": "Open Today",
+	"report.action.theme_member_share": "See the member invoice share per shift",
 	"report.table.store": "Store",
 	"report.table.period": "Period",
 	"report.table.date": "Date",

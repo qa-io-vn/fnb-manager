@@ -50,6 +50,7 @@ describe("the Chất lượng dữ liệu customer card", () => {
 			}
 		}
 		expect(model.notice?.part.key).toBe(qualityKeys.customers.notice);
+		expect(model.notice?.action).toBe("theme_member_share");
 	});
 
 	it("names the state without identified customers instead of a 0 % coverage", () => {
@@ -78,7 +79,7 @@ describe("the Chất lượng dữ liệu customer card", () => {
 		expect(model.notice).toEqual({
 			tone: "warning",
 			part: { key: qualityKeys.customers.featureNotice, values: {} },
-			action: null,
+			action: "theme_member_share",
 		});
 	});
 

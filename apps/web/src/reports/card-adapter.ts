@@ -57,6 +57,7 @@ export const noticeRoutes: Readonly<Record<NoticeAction, string>> = {
 	settings_holidays: "/cai-dat/ngay-le",
 	settings_thresholds: "/cai-dat/bao-cao",
 	settings_legal: "/cai-dat/phap-ly",
+	theme_member_share: "/chu-de/ca-ket-tien",
 };
 
 const actionKeys: Readonly<Record<NoticeAction, string>> = {
@@ -73,6 +74,7 @@ const actionKeys: Readonly<Record<NoticeAction, string>> = {
 	settings_holidays: "report.action.settings_holidays",
 	settings_thresholds: "report.action.settings_thresholds",
 	settings_legal: "report.action.settings_legal",
+	theme_member_share: "report.action.theme_member_share",
 };
 
 export function headlineKindOf(unit: ValueUnit): Exclude<ValueKind, "text"> {
@@ -321,6 +323,9 @@ export function tableOf(table: TableModel, t: Translate): TableSpec {
 		}
 		if (shiftColumns.has(key) && typeof value === "number") {
 			return translateKey(t, SHIFT_NUMBER_KEY, { number: value });
+		}
+		if (shiftColumns.has(key) && typeof value === "string") {
+			return translateKey(t, value);
 		}
 		return value;
 	};

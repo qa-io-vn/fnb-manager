@@ -1,6 +1,6 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (947 entries, 303 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (961 entries, 310 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
 The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-promotions`, `theme-shifts`, `theme-stores`, `theme-quality`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
@@ -43,8 +43,9 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{cashier}` | 2 | `theme.shifts.adjustments.main` |
 | `{category}` | 2 | `theme.menu.categoryMix.caption` |
 | `{checked}` | 5 | `theme.promotions.catalogue.luckyDraw` |
-| `{cost}` | 3 | `theme.promotions.lift.caption` |
-| `{count}` | 41 | `theme.menu.preferences.otherOnly` |
+| `{confirmed}` | 2 | `theme.promotions.redemptions.main` |
+| `{cost}` | 4 | `theme.promotions.lift.caption` |
+| `{count}` | 42 | `theme.menu.preferences.otherOnly` |
 | `{coverage}` | 2 | `theme.quality.costs.coverage` |
 | `{covered}` | 2 | `theme.menu.movers.captionLikeForLike` |
 | `{customers}` | 1 | `theme.quality.customers.coverage` |
@@ -77,11 +78,11 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{ice}` | 2 | `theme.menu.preferences.iceOnly` |
 | `{iceShare}` | 2 | `theme.menu.preferences.iceOnly` |
 | `{instrument}` | 2 | `theme.promotions.rules.basisMany` |
-| `{invoices}` | 4 | `theme.menu.pairs.main` |
+| `{invoices}` | 9 | `theme.menu.pairs.main` |
 | `{item}` | 7 | `theme.menu.movers.caption` |
 | `{items}` | 3 | `theme.menu.margins.rate` |
 | `{keyword}` | 2 | `theme.promotions.catalogue.luckyDrawMatch` |
-| `{kind}` | 4 | `theme.promotions.discountCost.largestUnnamed` |
+| `{kind}` | 5 | `theme.promotions.discountCost.largestUnnamed` |
 | `{last}` | 1 | `theme.promotions.rules.basisMany` |
 | `{level}` | 1 | `theme.menu.preferences.caption` |
 | `{lift}` | 1 | `theme.menu.pairs.main` |
@@ -91,6 +92,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{matches}` | 1 | `theme.promotions.catalogue.luckyDraw` |
 | `{max}` | 4 | `settings.validation.atMost` |
 | `{measured}` | 1 | `theme.shifts.adjustments.none` |
+| `{members}` | 3 | `theme.shifts.memberShare.caption` |
 | `{method}` | 1 | `theme.payments.fees.costliest` |
 | `{min}` | 3 | `settings.validation.atLeast` |
 | `{minimum}` | 5 | `theme.menu.matrix.lowSample` |
@@ -115,20 +117,22 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{quiet}` | 1 | `theme.hours.heatmap.main` |
 | `{quietDay}` | 1 | `theme.hours.heatmap.main` |
 | `{quietHour}` | 1 | `theme.hours.heatmap.main` |
-| `{range}` | 104 | `theme.print.summary` |
+| `{range}` | 109 | `theme.print.summary` |
 | `{rate}` | 8 | `theme.menu.margins.rate` |
 | `{reasons}` | 1 | `theme.shifts.adjustments.main` |
+| `{redemptions}` | 2 | `theme.promotions.redemptions.main` |
 | `{reference}` | 26 | `theme.range.summary` |
 | `{rel}` | 1 | `theme.payments.drawer.thresholds` |
 | `{report}` | 1 | `theme.print.summary` |
 | `{rest}` | 1 | `theme.promotions.rules.basisList` |
+| `{reward}` | 1 | `theme.promotions.redemptions.top` |
 | `{riser}` | 2 | `theme.menu.movers.main` |
 | `{riserChange}` | 2 | `theme.menu.movers.main` |
 | `{role}` | 2 | `settings.audit.byRole` |
 | `{rows}` | 2 | `theme.promotions.ruleCap.gifts` |
 | `{seats}` | 1 | `theme.hours.productivity.revpash` |
-| `{share}` | 14 | `theme.revenue.storeShare.main` |
-| `{shift}` | 3 | `theme.payments.drawer.shiftOn` |
+| `{share}` | 18 | `theme.revenue.storeShare.main` |
+| `{shift}` | 4 | `theme.payments.drawer.shiftOn` |
 | `{shifts}` | 1 | `theme.shifts.cashiers.main` |
 | `{shown}` | 1 | `settings.mapping.categories.search.more` |
 | `{size}` | 1 | `settings.mapping.categories.withSize` |
@@ -165,6 +169,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 - "đáng xem lại" for the shifts Ca & két tiền flags, and the caution that a z-score compares a shift with earlier shifts and is no verdict on a person (`theme.shifts.adjustments.main`, `theme.shifts.adjustments.basis`).
 - The lift words "lãi ròng" and "lỗ ròng" for the net lift, "doanh thu gộp tăng thêm" for the gross lift, and "đối chứng" for what each comparator compares with (`theme.promotions.lift.*`); the headline always comes with the gross lift and the discount cost in its caption.
 - So sánh cửa hàng: the store-day index read as "bằng … lần mức trung bình của mình" (`theme.stores.sameDay.main`), the like-for-like all-stores row "Tất cả cửa hàng (so với kỳ trước: cùng cửa hàng)" (`theme.stores.kpis.allStoresLikeForLike`), and the sentence that skips the Tết weeks (`theme.stores.sinceOpening.tetSkipped`).
+- "hội viên" in the member share card of Ca & két tiền (`theme.shifts.memberShare.*`), where the metric registry says "thành viên" (`member_invoice_share`, "Tỷ lệ hóa đơn có thành viên"); and the coaching line that names only the lowest shift by its number, never a cashier (`theme.shifts.memberShare.lowest`).
 - How the card "Theo thu ngân" speaks of people: it names a cashier only when one named cashier alone has the most shifts over the drawer thresholds, never the "chưa rõ thu ngân" row, always adds that figures per cashier are a prompt to look again and no conclusion about a person, asks for individual POS logins when a store's shifts all carry one login, and asks for display names when the logins differ but none has one (`theme.shifts.cashiers.main`, `.tied`, `.unnamed`, `.caution`, `.single`, `.singlePerStore`, `.logins`, `.unnamedAll`, `.displayNames`).
 - On Chất lượng dữ liệu, the "Sửa trong POS: …" hints (`theme.quality.fix.pos.*`), the legal line of the e-invoice notice (`theme.quality.compliance.eInvoiceNotice`), "Chưa rõ" for an e-invoice status not yet recorded (the word Cài đặt → Cửa hàng uses), and "danh sách khách hàng" for the customers an invoice is linked to, as against an invoice that only carries a phone number (`theme.quality.customers.*`).
 - The legal wording of the rule cards of Khuyến mãi: "được cho là đã bãi bỏ … còn đang được kiểm tra" for the reported repeal of the 120-day limit by Nghị định 239/2026/NĐ-CP, "chỉ để theo dõi" for the count after it, "món tặng" and "hóa đơn miễn phí" for full discounts and "Voucher được ghi riêng" for vouchers, all kept apart from the cap, "chương trình khuyến mại tập trung do cơ quan nhà nước tổ chức" for the 100 % exception, "chương trình may rủi" for lucky draws with the reported change of procedure by Nghị định 239/2026/NĐ-CP, and the closing "Đối chiếu với quy định đến ngày {checked}; không thay cho tư vấn pháp lý." (`theme.promotions.ruleDays.*`, `theme.promotions.ruleCap.*`, `theme.promotions.catalogue.luckyDraw`). The final wording of the repeal sentence follows the legal read (#50).
@@ -1004,7 +1009,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `theme.promotions.redemptions.title` | Ưu đãi thành viên đã đổi | Member rewards redeemed | — |
 | `theme.promotions.redemptions.top` | Được đổi nhiều nhất là {reward} ({kind}): {redemptions} lượt. | The most redeemed was {reward} ({kind}): {redemptions} redemptions. | `{reward}` `{kind}` `{redemptions}` |
 
-## Ca & két tiền · Shifts and cash drawer (`theme-shifts.vi.json`, 56 mục)
+## Ca & két tiền · Shifts and cash drawer (`theme-shifts.vi.json`, 70 mục)
 
 ### Tiêu đề và thông báo chung · title and shared notices (`theme.shifts.title`, `theme.shifts.noData`, `theme.shifts.noShifts`)
 
@@ -1071,6 +1076,27 @@ The table's column names are the shared ones of `theme.shifts.table.*` below and
 | `theme.shifts.cashiers.title` | Theo thu ngân | By cashier | — |
 | `theme.shifts.cashiers.unnamed` | {count} ca chưa rõ thu ngân nằm trong bảng nhưng không được xếp hạng. | {count} shifts with an unknown cashier are in the table but not ranked. | `{count}` |
 | `theme.shifts.cashiers.unnamedAll` | Trong {range}, thu ngân của cả {count} ca đều không có tên hiển thị (để trống hoặc là địa chỉ e-mail) nên chưa phân biệt được từng người. | In {range}, the cashiers of all {count} shifts have no display name (empty or an e-mail address), so they cannot be told apart. | `{range}` `{count}` |
+
+### Thẻ «Tỷ lệ hóa đơn có hội viên theo ca» (`theme.shifts.memberShare.*`)
+
+The card of the phone-capture week (#237): the share of invoices with a member attached ("hội viên", a customer phone added with «Thêm khách hàng» before the bill prints), per shift and store, from `member_share_by_shift`. Shifts read "Ca {n}" (`report.label.shiftNumber` of the report sheet); invoices tied to no shift read "Không rõ ca". Column names other than the two below are the report sheet's "Ngày", "Ca" and "Hóa đơn". The capture-rate card of Chất lượng dữ liệu links here with `report.action.theme_member_share`.
+
+| Khóa · key | Tiếng Việt | English | Chỗ điền · placeholders |
+| --- | --- | --- | --- |
+| `theme.shifts.memberShare.caption` | {members} trên {invoices} hóa đơn có hội viên | {members} of {invoices} invoices with a member | `{members}` `{invoices}` |
+| `theme.shifts.memberShare.chart` | Tỷ lệ hóa đơn có hội viên của từng ca | Member invoice share of each shift | — |
+| `theme.shifts.memberShare.even` | Các ca có cùng tỷ lệ {share}. | Every shift has the same share, {share}. | `{share}` |
+| `theme.shifts.memberShare.lowest` | {shift} thấp nhất: {share} ({members} trên {invoices} hóa đơn); nhắc ca này hỏi số điện thoại trước khi in hóa đơn. | {shift} is lowest: {share} ({members} of {invoices} invoices); remind this shift to ask for the phone number before the bill prints. | `{shift}` `{share}` `{members}` `{invoices}` |
+| `theme.shifts.memberShare.main` | Trong {range}, {share} hóa đơn có hội viên ({members} trên {invoices} hóa đơn). | In {range}, {share} of invoices had a member attached ({members} of {invoices} invoices). | `{range}` `{share}` `{members}` `{invoices}` |
+| `theme.shifts.memberShare.memberInvoices` | Hóa đơn có hội viên | Invoices with a member | — |
+| `theme.shifts.memberShare.noInvoices` | Chưa có hóa đơn nào trong {range}. | No invoice in {range}. | `{range}` |
+| `theme.shifts.memberShare.none` | Trong {range}, chưa hóa đơn nào trong {invoices} hóa đơn có hội viên; thu ngân gắn khách bằng «Thêm khách hàng» trên POS trước khi in hóa đơn. | In {range}, none of the {invoices} invoices had a member attached; cashiers attach the customer with «Thêm khách hàng» on the POS before the bill prints. | `{range}` `{invoices}` |
+| `theme.shifts.memberShare.series` | Tỷ lệ có hội viên | Member share | — |
+| `theme.shifts.memberShare.share` | Tỷ lệ có hội viên | Member share | — |
+| `theme.shifts.memberShare.table` | Các ca và hóa đơn có hội viên, mới nhất trước | Shifts and their member invoices, newest first | — |
+| `theme.shifts.memberShare.title` | Tỷ lệ hóa đơn có hội viên theo ca | Member invoice share per shift | — |
+| `theme.shifts.memberShare.unknown` | {count} hóa đơn không gắn với ca nào nằm ở dòng «Không rõ ca». | {count} invoices tied to no shift are in the row «Unknown shift». | `{count}` |
+| `theme.shifts.memberShare.unknownShift` | Không rõ ca | Unknown shift | — |
 
 ### Lý do đánh dấu ca · reasons a shift is flagged (`theme.shifts.reasons.*`)
 

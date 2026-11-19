@@ -56,6 +56,7 @@ describe("Ca & két tiền on the demo engine", () => {
 					"drawer",
 					"adjustments",
 					"cashiers",
+					"member_share",
 				]);
 				expect(missingKeys(cards, catalogs)).toEqual([]);
 				expect(unfilledPlaceholders(cards, catalogs)).toEqual([]);

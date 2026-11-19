@@ -183,6 +183,25 @@ test("each Settings action opens the right page and tab", async ({ page }) => {
 	expectNoConsoleErrors(page);
 });
 
+test("the capture card links to the member invoice share per shift of Ca & két tiền", async ({
+	page,
+}) => {
+	await openTheme(page, "quality");
+	await noticeLink(
+		card(page, "customers"),
+		"Xem tỷ lệ hóa đơn có hội viên theo ca",
+	).click();
+	await expect(page).toHaveURL(/#\/chu-de\/ca-ket-tien/);
+	await expect(
+		page.getByRole("heading", { level: 1, name: "Ca & két tiền" }),
+	).toBeVisible();
+	await waitForSettledThemeCards(page);
+	await expect(
+		page.getByTestId("card-shifts-member_share").getByTestId("headline"),
+	).toHaveText(/\d.*%/);
+	expectNoConsoleErrors(page);
+});
+
 test("re-mapping the uncategorised item from its action takes it out of the table on the next visit, through the app's own links (acceptance A6)", async ({
 	page,
 }) => {

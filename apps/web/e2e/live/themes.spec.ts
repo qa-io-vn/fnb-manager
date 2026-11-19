@@ -216,6 +216,80 @@ test("Chất lượng dữ liệu flags the seeded coffee store, whose e-invoice
 	await expect(page.getByTestId("store-page")).toBeVisible();
 });
 
+async function countedInvoices(
+	storeIds: readonly string[],
+	from: string,
+	to: string,
+	membersOnly: boolean,
+): Promise<number> {
+	const client = await signedInClient();
+	const query = client
+		.from("invoices")
+		.select("id", { count: "exact", head: true })
+		.in("store_id", [...storeIds])
+		.gte("business_date", from)
+		.lte("business_date", to)
+		.neq("status", "voided");
+	const { count, error } = await (membersOnly
+		? query.eq("has_customer_phone", true)
+		: query);
+	if (error) throw error;
+	return count ?? 0;
+}
+
+test("Ca & két tiền shows the member invoice share per shift on the seed as the invoices read through RLS count it, labels shifts Ca n without a phone, and the capture card of Chất lượng dữ liệu links to it", async ({
+	page,
+}) => {
+	const client = await signedInClient();
+	const stores = await visibleStores(client);
+	const clock = await seededClock();
+	await signIn(page, clock);
+	const to = shiftDate(clock.yesterday, -1);
+	const from = shiftDate(to, -6);
+	const storeIds = stores.map((store) => store.id);
+	const invoices = await countedInvoices(storeIds, from, to, false);
+	const members = await countedInvoices(storeIds, from, to, true);
+	expect(invoices).toBeGreaterThan(0);
+	await page.goto(themeUrl("shifts", `from=${from}&to=${to}`));
+	await waitForSettledThemeCards(page);
+	const card = themeCard(page, "shifts", "member_share");
+	await card.scrollIntoViewIfNeeded();
+	await expect(
+		card.getByRole("heading", {
+			level: 3,
+			name: "Tỷ lệ hóa đơn có hội viên theo ca",
+		}),
+	).toBeVisible();
+	const headline = card.getByTestId("headline");
+	await expect(headline.locator("..")).toContainText(
+		`${members.toLocaleString("vi-VN")} trên ${invoices.toLocaleString("vi-VN")} hóa đơn có hội viên`,
+	);
+	const exact = Number(
+		((await headline.getAttribute("data-exact")) ?? "")
+			.replace(/[^\d,]/g, "")
+			.replace(",", "."),
+	);
+	expect(Math.abs(exact - (100 * members) / invoices)).toBeLessThan(0.1);
+	await expect(card.getByTestId("sentence")).toContainText(
+		members === 0 ? "chưa hóa đơn nào" : /Ca \d/,
+	);
+	await expect(card).not.toContainText(/0\d{9}|\+84/);
+	await expect(card).not.toContainText(SEEDED_SHIFT_NAMES);
+	await checkPage(page);
+
+	await page.goto(themeUrl("quality", `from=${from}&to=${to}`));
+	await waitForSettledThemeCards(page);
+	const link = themeCard(page, "quality", "customers")
+		.getByTestId("card-notice")
+		.getByRole("link", { name: "Xem tỷ lệ hóa đơn có hội viên theo ca" });
+	await expect(link).toHaveAttribute("href", /#\/chu-de\/ca-ket-tien$/);
+	await link.click();
+	await expect(page).toHaveURL(/#\/chu-de\/ca-ket-tien/);
+	await waitForSettledThemeCards(page);
+	await expect(themeCard(page, "shifts", "member_share")).toBeVisible();
+	expectNoConsoleErrors(page);
+});
+
 interface SummaryRow {
 	readonly store_id: string;
 	readonly coupon_name: string;

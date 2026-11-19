@@ -4,6 +4,7 @@ import {
 	INVALID_ARGUMENTS_CODE,
 	INVALID_ROWS_CODE,
 	type IsoDate,
+	MEMBER_SHARE_BY_SHIFT_MAX_DAYS,
 	type ReportSource,
 	type ThemeArgs,
 	ThemeCallError,
@@ -40,6 +41,10 @@ import {
 	ITEM_MARGINS_MAX_DAYS,
 	itemMargins,
 } from "./functions/item-margins.js";
+import {
+	MEMBER_SHARE_DAYS_AROUND,
+	memberShareByShift,
+} from "./functions/member-share-by-shift.js";
 import { menuEngineering } from "./functions/menu-engineering.js";
 import {
 	METRIC_WINDOWS_MAX_DAYS,
@@ -130,6 +135,7 @@ export const themeHandlers: ThemeHandlers = {
 	holiday_calendar: holidayCalendar,
 	plan_kpi_review: planKpiReview,
 	redemption_summary: redemptionSummary,
+	member_share_by_shift: memberShareByShift,
 };
 
 function span(
@@ -307,6 +313,13 @@ export const themeReads: ThemeReads = {
 	holiday_calendar: () => [],
 	plan_kpi_review: () => [],
 	redemption_summary: () => [],
+	member_share_by_shift: (args) =>
+		limitedSpan(
+			args.store_ids,
+			addDays(args.from_date, -MEMBER_SHARE_DAYS_AROUND),
+			addDays(args.to_date, MEMBER_SHARE_DAYS_AROUND),
+			MEMBER_SHARE_BY_SHIFT_MAX_DAYS + 2 * MEMBER_SHARE_DAYS_AROUND,
+		),
 };
 
 function issues(error: z.ZodError): string {

@@ -123,6 +123,11 @@ const minimalArgs: { [N in ThemeFunctionName]: ThemeArgs<N> } = {
 		from_date: "2026-10-28",
 		to_date: AS_OF,
 	},
+	member_share_by_shift: {
+		store_ids: STORES,
+		from_date: "2026-10-28",
+		to_date: AS_OF,
+	},
 };
 
 const NO_ROWS_IN_THE_DEMO: ReadonlySet<ThemeFunctionName> = new Set([

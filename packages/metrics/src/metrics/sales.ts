@@ -144,11 +144,11 @@ export const salesMetrics = [
 		unit: "fraction",
 		formula:
 			"invoices with a `customer_phone` ÷ `invoices`; phone only, the POS member rail (compare `customer_capture_rate`, which also counts invoices identified by `customer_id` alone)",
-		grains: ["store-period"],
+		grains: ["store-period", "shift"],
 		direction: "higher",
 		source:
-			"`period_summary().member_share`, `agg_daily_sales.member_invoices`",
-		reports: ["day", "customers", "month"],
+			"`period_summary().member_share`, `agg_daily_sales.member_invoices`; per shift `member_share_by_shift()` (`member_share`), from the stored flag `invoices.has_customer_phone`",
+		reports: ["day", "customers", "month", "shifts"],
 		status: "available now",
 	},
 	{

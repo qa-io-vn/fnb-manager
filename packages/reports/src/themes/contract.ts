@@ -583,6 +583,23 @@ export const redemptionSummaryRow = z.object({
 	confirmed_share: numericValue,
 });
 
+export const MEMBER_SHARE_BY_SHIFT_MAX_DAYS = 92;
+
+export const memberShareByShiftArgs = z.object(storeRange);
+
+export const memberShareByShiftRow = z.object({
+	store_id: storeIdValue,
+	business_date: isoDateValue,
+	shift_ordinal: optionalCountValue,
+	opened_at: optionalTimestampValue,
+	closed_at: optionalTimestampValue,
+	invoices: countValue,
+	member_invoices: countValue,
+	identified_invoices: countValue,
+	member_share: numericValue,
+	identified_share: numericValue,
+});
+
 export const themeFunctions = {
 	report_settings_of: { args: reportSettingsOfArgs, row: reportSettingsOfRow },
 	range_totals: { args: rangeTotalsArgs, row: rangeTotalsRow },
@@ -637,6 +654,10 @@ export const themeFunctions = {
 	redemption_summary: {
 		args: redemptionSummaryArgs,
 		row: redemptionSummaryRow,
+	},
+	member_share_by_shift: {
+		args: memberShareByShiftArgs,
+		row: memberShareByShiftRow,
 	},
 } as const;
 

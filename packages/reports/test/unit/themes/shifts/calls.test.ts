@@ -20,7 +20,7 @@ function callOf(
 }
 
 describe("the Ca & két tiền definition", () => {
-	it("opens on 28 days, allows at most 92 and lists its four cards", () => {
+	it("opens on 28 days, allows at most 92 and lists its five cards", () => {
 		expect(shiftsTheme.slug).toBe("ca-ket-tien");
 		expect(shiftsTheme.defaultPreset).toBe("28d");
 		expect(shiftsTheme.maxRangeDays).toBe(SHIFT_THEME_RANGE_DAYS);
@@ -31,10 +31,11 @@ describe("the Ca & két tiền definition", () => {
 			"drawer",
 			"adjustments",
 			"cashiers",
+			"member_share",
 		]);
 	});
 
-	it("calls coverage, shift_review and shift_adjustments over the range without thresholds, and the tenant's settings", () => {
+	it("calls coverage, shift_review and shift_adjustments over the range without thresholds, the tenant's settings, and member_share_by_shift over the range and the range before", () => {
 		const context = themeContext("28d", [STORE_A]);
 		const calls = shiftsTheme.primaryCalls(context);
 		expect(calls.map((call) => call.key)).toEqual([
@@ -42,6 +43,8 @@ describe("the Ca & két tiền definition", () => {
 			shiftsCalls.shifts,
 			shiftsCalls.adjustments,
 			shiftsCalls.settings,
+			shiftsCalls.memberShare,
+			shiftsCalls.memberSharePrevious,
 		]);
 		const span = {
 			store_ids: [STORE_A],
@@ -62,6 +65,20 @@ describe("the Ca & két tiền definition", () => {
 			key: shiftsCalls.settings,
 			name: "report_settings_of",
 			args: { store_ids: [STORE_A] },
+		});
+		expect(callOf(calls, shiftsCalls.memberShare)).toEqual({
+			key: shiftsCalls.memberShare,
+			name: "member_share_by_shift",
+			args: span,
+		});
+		expect(callOf(calls, shiftsCalls.memberSharePrevious)).toEqual({
+			key: shiftsCalls.memberSharePrevious,
+			name: "member_share_by_shift",
+			args: {
+				store_ids: [STORE_A],
+				from_date: context.range.previous.from,
+				to_date: context.range.previous.to,
+			},
 		});
 		expect(
 			shiftsTheme.followUpCalls(context, coverageModel([], context), {
@@ -103,7 +120,11 @@ describe("the Ca & két tiền definition", () => {
 			range: customRange("2025-11-07", THEME_AS_OF, THEME_AS_OF),
 		};
 		for (const call of shiftsTheme.primaryCalls(year)) {
-			if (call.key === COVERAGE_CALL_KEY || call.key === shiftsCalls.settings)
+			if (
+				call.key === COVERAGE_CALL_KEY ||
+				call.key === shiftsCalls.settings ||
+				call.key === shiftsCalls.memberSharePrevious
+			)
 				continue;
 			expect(call.args).toMatchObject({
 				from_date: "2026-08-07",

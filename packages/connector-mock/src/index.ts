@@ -12,6 +12,9 @@ export {
 	generateDay,
 	generateDays,
 	mockStore,
+	SYNTHETIC_PHONE_PATTERN,
+	SYNTHETIC_PHONE_PREFIX,
+	syntheticPhone,
 } from "./generate.js";
 export {
 	buildMenu,
