@@ -37420,6 +37420,126 @@
 				"tags": ["(rpc) month_pace"]
 			}
 		},
+		"/rpc/my_follow_oa": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_tenant_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the OA id the staff app passes to the SDK's followOA: the OA of the brand whose Mini App the signed-in member last signed in through, else the one OA of the brands meeting their store scope, else null (no OA, or more than one); nothing else of oas; 42501 for anyone who is not a member of the tenant",
+				"tags": ["(rpc) my_follow_oa"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the OA id the staff app passes to the SDK's followOA: the OA of the brand whose Mini App the signed-in member last signed in through, else the one OA of the brands meeting their store scope, else null (no OA, or more than one); nothing else of oas; 42501 for anyone who is not a member of the tenant",
+							"properties": {
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the OA id the staff app passes to the SDK's followOA: the OA of the brand whose Mini App the signed-in member last signed in through, else the one OA of the brands meeting their store scope, else null (no OA, or more than one); nothing else of oas; 42501 for anyone who is not a member of the tenant",
+				"tags": ["(rpc) my_follow_oa"]
+			}
+		},
+		"/rpc/my_notifications": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_tenant_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "Nhận thông báo of the signed-in member: their notifications consent (active, withdrawn or none, with its times and channel), their own destinations without address, secret or configuration (with the link stage and expiry of a pending one), the catalogue rules their role receives or they muted, the notice ops-notifications-v1 to show before a link code, and the display name of the bot they would link; 42501 for anyone who is not a member of the tenant",
+				"tags": ["(rpc) my_notifications"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "Nhận thông báo of the signed-in member: their notifications consent (active, withdrawn or none, with its times and channel), their own destinations without address, secret or configuration (with the link stage and expiry of a pending one), the catalogue rules their role receives or they muted, the notice ops-notifications-v1 to show before a link code, and the display name of the bot they would link; 42501 for anyone who is not a member of the tenant",
+							"properties": {
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "Nhận thông báo of the signed-in member: their notifications consent (active, withdrawn or none, with its times and channel), their own destinations without address, secret or configuration (with the link stage and expiry of a pending one), the catalogue rules their role receives or they muted, the notice ops-notifications-v1 to show before a link code, and the display name of the bot they would link; 42501 for anyone who is not a member of the tenant",
+				"tags": ["(rpc) my_notifications"]
+			}
+		},
 		"/rpc/my_requests": {
 			"get": {
 				"produces": [
@@ -39833,6 +39953,50 @@
 				"tags": ["(rpc) set_loyalty_adjust_limits"]
 			}
 		},
+		"/rpc/set_my_muted_rules": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the signed-in member sets the catalogue rules one of their own destinations does not want, replacing the list (an empty list unmutes all); returned without duplicates in catalogue order; the send decision cancels a waiting message of a muted rule as unsubscribed; 42501 for a destination that is not the caller's, 22023 for a key outside the catalogue",
+							"properties": {
+								"p_channel_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_muted_rules": {
+									"format": "text[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": ["p_channel_id", "p_muted_rules"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the signed-in member sets the catalogue rules one of their own destinations does not want, replacing the list (an empty list unmutes all); returned without duplicates in catalogue order; the send decision cancels a waiting message of a muted rule as unsubscribed; 42501 for a destination that is not the caller's, 22023 for a key outside the catalogue",
+				"tags": ["(rpc) set_my_muted_rules"]
+			}
+		},
 		"/rpc/set_ops_photo_retention_days": {
 			"post": {
 				"parameters": [
@@ -40543,6 +40707,47 @@
 				"tags": ["(rpc) staff_verify_redemption"]
 			}
 		},
+		"/rpc/start_bot_link": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the signed-in member links their own Zalo Bot chat from the staff app, after the app showed the notice ops-notifications-v1 (p_notice_version): reuses their pending or self-stopped Zalo Bot destination, or creates one on the bot of app.member_bot_secret_name, issues a code valid 15 minutes that is returned once and kept only as a hash, and wakes the dispatcher; the destination becomes active, and the notifications consent is recorded, only when the member answers the bot's notice with ĐỒNG Ý; 23505 when their Zalo Bot is already linked, 42501 for a non-member, a publisher or a link the owner removed, 22023 for another notice version, 55000 past 5 codes an hour",
+							"properties": {
+								"p_notice_version": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id", "p_notice_version"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the signed-in member links their own Zalo Bot chat from the staff app, after the app showed the notice ops-notifications-v1 (p_notice_version): reuses their pending or self-stopped Zalo Bot destination, or creates one on the bot of app.member_bot_secret_name, issues a code valid 15 minutes that is returned once and kept only as a hash, and wakes the dispatcher; the destination becomes active, and the notifications consent is recorded, only when the member answers the bot's notice with ĐỒNG Ý; 23505 when their Zalo Bot is already linked, 42501 for a non-member, a publisher or a link the owner removed, 22023 for another notice version, 55000 past 5 codes an hour",
+				"tags": ["(rpc) start_bot_link"]
+			}
+		},
 		"/rpc/start_checklist_run": {
 			"post": {
 				"parameters": [
@@ -40582,6 +40787,43 @@
 				},
 				"summary": "starts a run of an active checklist at a store in the caller's operations scope, or returns the caller's open run of it for today; the run reads the template's current version; 42501 outside scope, 55000 for a retired checklist, 23505 while another member has it open today",
 				"tags": ["(rpc) start_checklist_run"]
+			}
+		},
+		"/rpc/stop_my_notifications": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "Dừng nhận thông báo: the signed-in member withdraws their own notifications consent through app.withdraw_notifications, in one transaction: the consent revoked, the waiting messages of every destination of theirs cancelled as no_consent, destinations still pending a link deleted and the others disabled as consent_withdrawn; returns the number of messages cancelled; the staff_ops consent, the membership and the staff app session stay as they were; 42501 for anyone who is not a member of the tenant",
+							"properties": {
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "Dừng nhận thông báo: the signed-in member withdraws their own notifications consent through app.withdraw_notifications, in one transaction: the consent revoked, the waiting messages of every destination of theirs cancelled as no_consent, destinations still pending a link deleted and the others disabled as consent_withdrawn; returns the number of messages cancelled; the staff_ops consent, the membership and the staff app session stay as they were; 42501 for anyone who is not a member of the tenant",
+				"tags": ["(rpc) stop_my_notifications"]
 			}
 		},
 		"/rpc/store_coverage": {
