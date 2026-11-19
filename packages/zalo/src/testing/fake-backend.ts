@@ -113,6 +113,7 @@ export interface FakeBackend extends SupabaseBackend {
 	failNext(call: FakeBackendCall): void;
 	addCustomerStore(tenantId: string, code: string): void;
 	setCustomerPolicy(tenantId: string, version: string): void;
+	closeCustomerProgramme(tenantId: string): void;
 	customers(): readonly FakeCustomer[];
 	customerConsents(): readonly FakeCustomerConsent[];
 	appMetadataOf(userId: string): Readonly<Record<string, unknown>> | undefined;
@@ -161,6 +162,7 @@ export function createFakeBackend(): FakeBackend {
 	const customerConsents: FakeCustomerConsent[] = [];
 	const customerStores = new Map<string, Set<string>>();
 	const customerPolicies = new Map<string, string>();
+	const closedProgrammes = new Set<string>();
 	const metadata = new Map<string, Readonly<Record<string, unknown>>>();
 	let customerCounter = 0;
 	let counter = 0;
@@ -536,6 +538,9 @@ export function createFakeBackend(): FakeBackend {
 		) {
 			return { status: "refused", reason: "unknown_store" };
 		}
+		if (closedProgrammes.has(app.tenantId)) {
+			return { status: "refused", reason: "no_programme" };
+		}
 		const phone = String(args.p_phone);
 		const holder = [...customers.values()].find(
 			(customer) =>
@@ -793,6 +798,9 @@ export function createFakeBackend(): FakeBackend {
 		},
 		setCustomerPolicy(tenantId, version) {
 			customerPolicies.set(tenantId, version);
+		},
+		closeCustomerProgramme(tenantId) {
+			closedProgrammes.add(tenantId);
 		},
 		customers() {
 			return [...customers.values()];

@@ -1698,18 +1698,18 @@ returns jsonb
 
 ### 3.20 Customer Mini App: session, join, wallet and claims (phase 18a)
 
-Migrations `customer_session` (#261) and `customer_wallet` (#264) add the functions of the customer Mini App. The wire shapes are those of `packages/zalo-mini/src/loyalty/contract.ts` and [apps/zalo-customer/README.md](../apps/zalo-customer/README.md#the-loyalty-contract).
+Migrations `customer_session` (#261) and `customer_wallet` (#264) add the functions of the customer Mini App; `customer_app_answers` refuses a join without an open programme as an answer, names the programme's status on the home and reads a released reward hold as reversed in the wallet. The wire shapes are those of `packages/zalo-mini/src/loyalty/contract.ts` and [apps/zalo-customer/README.md](../apps/zalo-customer/README.md#the-loyalty-contract).
 
 **The customer session.** The customer branch of `zalo-session` (section 5) calls two RPCs that only `service_role` may execute, so they are not part of this page's check:
 - `zalo_customer_sign_in(p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text default null, p_new_user_id uuid default null)` answers the customer login of a Zalo user of an active Zalo App. With no login it answers `{"status": "login_needed"}`. The function then creates a login with `app_metadata` `{"kind": "customer", "tenant_id", "customer_id": null}` and calls again with its id. That login must have no `tenant_members` row, no staff Zalo identity and no other customer login (`22023` otherwise), and the first binding wins a race. The answer is `{"status": "customer", "user_id", "tenant_id", "customer_id", "display_name"}`: `customer_id` is null until the customer has joined, and `display_name` is the customer's name, else the Zalo name.
 - `customer_join(p_user_id uuid, p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text, p_phone text, p_loyalty_consent boolean, p_marketing_consent boolean, p_policy_version text, p_screen_version text, p_shown_at timestamp with time zone, p_store_code text, p_channel text)` takes the phone that `zalo-phone`'s exchange decoded.
-  - **Refusals:** `{"status": "refused", "reason"}` with `consent_required` (no loyalty consent), `policy_outdated` (not a published `privacy_notice` version of the tenant), `unknown_store` (not a link key of the app's brand) or `phone_in_use` (another Zalo user of the brand joined with that phone).
+  - **Refusals:** `{"status": "refused", "reason"}` with `consent_required` (no loyalty consent), `policy_outdated` (not a published `privacy_notice` version of the tenant), `unknown_store` (not a link key of the app's brand), `no_programme` (no active programme covers the tenant's today: none, paused, ended, or a period not started or over) or `phone_in_use` (another Zalo user of the brand joined with that phone). A refusal writes nothing; `zalo-session` answers `no_programme` with 409.
   - **On success:**
     - It finds or creates the customer by its E.164 phone (`loyalty_normalize_phone`), keeping the Zalo name only when the customer has none.
     - It enrols the customer in the active programme through `app.loyalty_join`, with the welcome stamps; a staff phone gets none.
     - It records the `loyalty` consent and, only when its toggle was ticked, the `marketing` consent. Each record has the channel `mini_app` and the evidence `{"screen_version", "shown_at", "accepted_at", "channel", "zalo_app_id", "store_id", "toggle", "ticked"}`, and the loyalty record also holds `"marketing_ticked"`.
     - It answers `{"status": "joined", "customer_id", "membership_id", "welcome_stamps", "already_member"}`.
-  - **Bad input:** a malformed phone, version or time, a login of another Zalo user, a channel other than `mini_app`, or a tenant with no active programme gives `22023`.
+  - **Bad input:** a malformed phone, version or time, a login of another Zalo user, or a channel other than `mini_app` gives `22023`.
 - The login rows live in `app.customer_logins` ([schema.md](schema.md)), which no API role reads. `zalo-session` then sets `app_metadata` `{"kind": "customer", "tenant_id", "customer_id"}`: exactly the claims `app.current_customer_id()` reads for RLS.
 
 **Who may call the six RPCs below.**
@@ -1730,7 +1730,7 @@ returns jsonb
 - **Who may call:** any customer session, joined or not (browse first, FR-LOY-17).
 - **Notes:**
   - `{"programme", "oa_id", "legal", "stores", "menu"}`.
-  - The programme is the tenant's active one, else the latest that is not a draft. It gives the facts of `loyalty_programmes`: `name`, `starts_on`, `ends_on`, `stamps_per_card`, `welcome_stamps`, `stamp_validity_months`, `points_enabled`, `points_expiry_months`, `receipt_claims_per_day` and `receipt_claim_window_hours`.
+  - The programme is the tenant's active one, else the latest that is not a draft, or null when the tenant has none. It gives the facts of `loyalty_programmes`: `name`, `status` (`active`, `paused` or `ended` as stored, so a paused programme does not look open; the app also checks the period), `starts_on`, `ends_on`, `stamps_per_card`, `welcome_stamps`, `stamp_validity_months`, `points_enabled`, `points_expiry_months`, `receipt_claims_per_day` and `receipt_claim_window_hours`.
   - `reward_summary` lists the active rewards, else it is null. `summary`, `stamp_rule`, `points_rule` and `retention_months` are null, so the app words them, and `tiers` is empty: the programme holds none of these yet.
   - `oa_id` is the brand's OA id.
   - `legal` is `{"entity_name"`: the tenant's name, `"policy_version"`: the published Vietnamese privacy notice version, `"documents"}`: the published `privacy_notice` and `mini_app_terms` in every language.
@@ -1754,8 +1754,8 @@ returns jsonb
   - `marketing_consent`: whether the active `marketing` consent exists.
   - `history`: the latest 100 ledger rows other than confirm rows.
     - `kind` is `welcome`, `earn`, `redeem`, `adjust`, `expire` or `reversal`.
-    - `state` is `pending` (an earn or hold without its confirm), `confirmed`, or `reversed` (an earn a clawback points at).
-    - Each row also has the ledger `reason`, `store_name`, the invoice's `receipt_no` and `matched_path`: `phone`, `member_code`, `receipt_claim`, `voucher`, `welcome` or `manual`.
+    - `state` is `pending` (an earn or a reward hold without its confirm), `confirmed` (a reward hold once the synced invoice confirmed it: Đã dùng), or `reversed` (an earn a clawback points at, or a reward hold that the `redemption_released` adjustment gave back: Đã hoàn lại).
+    - Each row also has the ledger `reason`, `store_name`, the invoice's `receipt_no` and `matched_path`: `phone`, `member_code`, `receipt_claim`, `voucher`, `welcome` or `manual`, and null for a redeem row and for the `redemption_released` adjustment, which the app words "Hoàn lại quà chưa dùng".
   - `claims`: the latest 50 receipt claims with `state` and `reason` as `receipt_claims` stores them.
   - `claims_today` (every submission of the business day, refused ones included) and `claims_per_day`.
 
@@ -1812,7 +1812,7 @@ returns jsonb
 - **Who may call:** a joined customer session.
 - **Notes:** records a `data_subject_requests` row: subject `customer`, type `deletion`, contact `mini_app`, deadlines filled by the ledger's trigger. It answers `{"request_id", "status", "requested_at"}`. An open (`received` or `in_progress`) deletion request of the customer is answered again instead of a second one. An owner carries the deletion out with [`dsr_delete`](#publicdsr_delete).
 
-Tests: pgTAP `66_customer_join.sql` and `67_customer_wallet.sql`.
+Tests: pgTAP `66_customer_join.sql`, `67_customer_wallet.sql` and `93_customer_app_answers.sql`.
 
 ### 3.21 Staff loyalty tools (phase 17b)
 
@@ -1944,7 +1944,7 @@ Migrations `coupon_catalogue` (#269), `redemption_flow` (#271) and `redemption_r
 - Refusals are answered, not raised, with a reason key. Customer reasons: `membership_inactive`, `store_unavailable`, `programme_inactive`, `coupon_unavailable`, `rail_not_ready`, `already_held`, `member_limit_reached`, `insufficient_stamps`, `insufficient_points`, `no_code_available`. Staff refusals use the staff app's names and come with `text_key` `redeem.refusal.<refusal>`: `unknown`, `wrong_store`, `used`, `expired`, `released`.
 - The redemption mismatches (a code verified at the till without an invoice after `grace_hours`, an invoice carrying a reward discount without a redemption, an invoice discount that differs from the reward) are listed in `loyalty_queue` on path `D` for [`resolve_loyalty_queue_item`](#publicresolve_loyalty_queue_item) to dismiss, and open the store-scoped alert rule `redemption_mismatch` with count-only facts.
 
-Tests: pgTAP `70_coupons.sql`, `71_redemptions.sql` and `72_redemption_reconciliation.sql`.
+Tests: pgTAP `70_coupons.sql`, `71_redemptions.sql`, `72_redemption_reconciliation.sql`, `93_customer_app_answers.sql` (the wallet's reading of a released or confirmed hold) and `94_coupon_guard_cascades.sql` (migration `coupon_guard_cascades`: deleting an approving Auth user sets `coupons.approved_by` null, and deleting a tenant or store cascades past an active reward's mapping, while a direct delete of that mapping is still refused).
 
 #### `public.customer_coupons`
 

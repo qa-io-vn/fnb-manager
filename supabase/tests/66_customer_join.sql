@@ -363,7 +363,7 @@ select pg_temp.as_customer((select login_3 from fx), (select tenant_c from fx), 
 select is(public.customer_home() -> 'programme' ->> 'name', 'Synthetic programme', 'a visitor session reads the programme before joining');
 select is(
   (public.customer_home() -> 'programme') - 'name'::text - 'starts_on'::text - 'ends_on'::text,
-  '{"tiers": [], "summary": null, "stamp_rule": null, "points_rule": null, "points_enabled": true, "reward_summary": null, "welcome_stamps": 2, "stamps_per_card": 8, "retention_months": null, "points_expiry_months": 12, "stamp_validity_months": 6, "receipt_claims_per_day": 3, "receipt_claim_window_hours": 72}'::jsonb,
+  '{"tiers": [], "status": "active", "summary": null, "stamp_rule": null, "points_rule": null, "points_enabled": true, "reward_summary": null, "welcome_stamps": 2, "stamps_per_card": 8, "retention_months": null, "points_expiry_months": 12, "stamp_validity_months": 6, "receipt_claims_per_day": 3, "receipt_claim_window_hours": 72}'::jsonb,
   'the programme facts come from the programme row'
 );
 select is(

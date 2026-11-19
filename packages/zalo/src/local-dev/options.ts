@@ -26,6 +26,7 @@ export const LOCAL_LOOP_USAGE = [
 	"  pnpm zalo:dev [--tenant <slug>] [--brand <key>] [--member <login e-mail>] [--mock-user mock-<id>] [--mock-name <name>] [--mock-phone 0900000xxx] [--port <port>] [--lan [--host <ipv4>] | --tunnel [--tunnel-hours <n>]]",
 	"  pnpm zalo:dev --app customer [--live [--tenant <slug>] [--brand <key>] [--mock-user mock-<id>] [--mock-name <name>] [--mock-phone 0900000xxx]] [--port <port>] [--lan [--host <ipv4>] | --tunnel [--tunnel-hours <n>]]",
 	"  pnpm zalo:dev forget [--tenant <slug>] [--brand <key>]",
+	"  pnpm zalo:dev setup-staff [--tenant <slug>] [--brand <key>] [--new-password]",
 	"",
 	`Runs the staff Mini App in the browser against the real zalo-session on this PC: a mock Zalo graph, zalo-session and zalo-phone under Deno with ZALO_LOCAL_DEV=1 on the local stack, and the app's dev server. Defaults: --tenant ${LOCAL_LOOP_DEFAULTS.tenant}, --brand ${LOCAL_LOOP_DEFAULTS.brand}, --mock-user ${LOCAL_LOOP_DEFAULTS.mockUser}, --port ${LOCAL_LOOP_DEFAULTS.port}; the member is the login in ${MEMBER_EMAIL_VARIABLE}.`,
 	"The brand needs its Zalo rows first (fnb zalo config set) with a mock Zalo App id (mock-…). On the first run the mock user is bound to the member with a one-time binding code. The staff app's loyalty tools call the staff loyalty functions of the local stack when it has them, and show the demo data otherwise (?loyalty=demo or ?loyalty=live in the address switches).",
@@ -33,9 +34,11 @@ export const LOCAL_LOOP_USAGE = [
 	`--lan serves the staff app on this PC's home network address (or --host <ipv4>) for a phone on the same Wi-Fi. --tunnel serves it on a public https link through a Cloudflare quick tunnel that stops after --tunnel-hours (default ${LOCAL_LOOP_DEFAULTS.tunnelHours}, at most ${MAX_TUNNEL_HOURS}). Both print a link with a one-time key and its QR code; without the key every request gets 403.`,
 	`--app customer runs the customer Mini App instead, on port ${CUSTOMER_LOOP_PORT} by default: with its demo data and the stand-in session (no database or .env needed), or with --live against the real zalo-session, zalo-phone and the customer functions of the local stack as the mock user, who is a customer and needs no binding code. --live targets ${CUSTOMER_LIVE_TENANT} by default and seeds a synthetic brand with mock Zalo ids into a synthetic tenant (${CUSTOMER_LIVE_TENANT} or zalo-it-…) that has none.`,
 	"forget removes the brand's Zalo rows and mock identities when every Zalo id is a mock id, so fnb zalo config set can store the real ids.",
+	`setup-staff gives a synthetic tenant (${CUSTOMER_LIVE_TENANT} by default, or zalo-it-…) of the local stack a synthetic manager login of every active store, <slug>-manager@example.com, seeding the brand first when it has none, and prints the command that opens the staff app as that manager; the generated password is printed once, when the login is created or with --new-password, and stored nowhere else. It is idempotent.`,
 ].join("\n");
 
-export type LocalLoopCommand = "start" | "forget";
+export const LOCAL_LOOP_COMMANDS = ["start", "forget", "setup-staff"] as const;
+export type LocalLoopCommand = (typeof LOCAL_LOOP_COMMANDS)[number];
 export type LocalLoopExposure = "loopback" | "lan" | "tunnel";
 
 export interface LocalLoopOptions {
@@ -52,6 +55,7 @@ export interface LocalLoopOptions {
 	readonly app?: "customer";
 	readonly live?: boolean;
 	readonly mockPhone?: string;
+	readonly newPassword?: true;
 }
 
 export class LocalLoopError extends Error {
@@ -145,14 +149,21 @@ export function parseLocalLoopArgs(
 	if (values.help) {
 		return "help";
 	}
-	if (words.length > 1 || (words[0] !== undefined && words[0] !== "forget")) {
+	const command = LOCAL_LOOP_COMMANDS.find(
+		(name) => name !== "start" && name === words[0],
+	);
+	if (words.length > 1 || (words[0] !== undefined && command === undefined)) {
 		throw new LocalLoopError(
 			`unknown command "${words.join(" ")}"; run pnpm zalo:dev --help`,
 		);
 	}
+	if (values["new-password"] === true && command !== "setup-staff") {
+		throw new LocalLoopError("--new-password goes with setup-staff");
+	}
 	const tenant =
 		values.tenant ??
-		(values.app === "customer" && values.live === true
+		((values.app === "customer" && values.live === true) ||
+		command === "setup-staff"
 			? CUSTOMER_LIVE_TENANT
 			: LOCAL_LOOP_DEFAULTS.tenant);
 	if (!TENANT_SLUG_PATTERN.test(tenant)) {
@@ -208,7 +219,7 @@ export function parseLocalLoopArgs(
 		);
 	}
 	return {
-		command: words[0] === "forget" ? "forget" : "start",
+		command: command ?? "start",
 		tenant,
 		brand,
 		member: member === "" ? null : member,
@@ -223,6 +234,7 @@ export function parseLocalLoopArgs(
 		tunnelHours: tunnelHoursOf(values["tunnel-hours"], tunnel),
 		...(app === "customer" ? { app, live } : {}),
 		...(mockPhone === undefined ? {} : { mockPhone }),
+		...(values["new-password"] === true ? { newPassword: true as const } : {}),
 	};
 }
 
@@ -245,6 +257,7 @@ function parse(argv: readonly string[]) {
 			"tunnel-hours": { type: "string" },
 			app: { type: "string" },
 			live: { type: "boolean" },
+			"new-password": { type: "boolean" },
 		},
 	});
 }

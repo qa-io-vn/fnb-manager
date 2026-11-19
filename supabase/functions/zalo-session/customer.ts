@@ -38,6 +38,7 @@ export const JOIN_REFUSALS: Readonly<
 	policy_outdated: { status: 409, code: "policy_outdated" },
 	unknown_store: { status: 404, code: "unknown_store" },
 	phone_in_use: { status: 409, code: "phone_in_use" },
+	no_programme: { status: 409, code: "no_programme" },
 };
 
 export interface CustomerJoinInput {

@@ -144,6 +144,7 @@ describe("customer sign-in and join answers", () => {
 			"policy_outdated",
 			"unknown_store",
 			"phone_in_use",
+			"no_programme",
 		]) {
 			expect(parseCustomerJoin({ status: "refused", reason })).toEqual({
 				status: "refused",

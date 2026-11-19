@@ -21,6 +21,7 @@ import {
 	MEMBER_EMAIL_VARIABLE,
 	parseLocalLoopArgs,
 } from "./options.js";
+import { setUpLocalStaff } from "./staff-setup.js";
 
 const STOP_SIGNALS = ["SIGINT", "SIGTERM", "SIGBREAK"] as const;
 const SIGNAL_GRACE_MS = 1000;
@@ -255,6 +256,10 @@ export async function runLocalLoopCli(
 	try {
 		if (options.command === "forget") {
 			await forgetLocalBrand(options, env, io);
+			return 0;
+		}
+		if (options.command === "setup-staff") {
+			await setUpLocalStaff(options, env, io);
 			return 0;
 		}
 		if (options.app === "customer" && options.live !== true) {

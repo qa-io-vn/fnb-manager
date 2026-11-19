@@ -365,6 +365,7 @@ export const CUSTOMER_JOIN_REASONS = [
 	"policy_outdated",
 	"unknown_store",
 	"phone_in_use",
+	"no_programme",
 ] as const;
 
 export type CustomerJoinReason = (typeof CUSTOMER_JOIN_REASONS)[number];

@@ -346,6 +346,46 @@ Deno.test("an old policy version, an unknown store and a phone of another Zalo u
 	assertEquals(test.backend.customers().length, 1, "one customer");
 });
 
+Deno.test("a join while the tenant has no open programme is refused with 409 no_programme and joins nothing", async () => {
+	const test = harness();
+	test.backend.closeCustomerProgramme(TENANT);
+	const phoneToken = test.zalo.issuePhoneToken(test.token, PHONE_LOCAL);
+	const response = await test.send({
+		kind: "customer",
+		access_token: test.token,
+		brand: "brand-1",
+		join: join(phoneToken),
+	});
+	assertEquals(response.status, 409, "status");
+	const body = await response.json();
+	assertEquals(body.error, "no_programme", "error");
+	assertEquals(body.request_id, "request-1", "request id");
+	assertEquals(test.backend.customers().length, 0, "no customer");
+	assertEquals(test.backend.customerConsents().length, 0, "no consent");
+	assertEquals(test.backend.minted().length, 0, "no session minted");
+	assert(
+		test.lines.some((line) => line.includes("join refused: no_programme")),
+		"the refusal is logged by its reason",
+	);
+	const visitor = await test.send({
+		kind: "customer",
+		access_token: test.token,
+		brand: "brand-1",
+	});
+	assertEquals(visitor.status, 200, "browsing still signs in");
+	assertEquals(
+		(await visitor.json()).customer.customer_id,
+		null,
+		"as a visitor",
+	);
+	assertNoPersonalData(test.lines, [
+		PHONE,
+		PHONE_LOCAL,
+		phoneToken,
+		test.token,
+	]);
+});
+
 Deno.test("a refused Zalo token, a wrong kind and staff fields on a customer request are refused", async () => {
 	const test = harness();
 	const refused = await test.send({

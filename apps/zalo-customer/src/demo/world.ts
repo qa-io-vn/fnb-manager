@@ -291,7 +291,8 @@ export function createDemoWorld(
 		at: number,
 	): void => {
 		const held = entries.find((value) => value.id === voucher.entryId);
-		if (held !== undefined) held.state = "confirmed";
+		if (held !== undefined)
+			held.state = state === "confirmed" ? "confirmed" : "reversed";
 		voucher.state = state;
 		if (state === "confirmed") {
 			voucher.confirmedAt = at;
