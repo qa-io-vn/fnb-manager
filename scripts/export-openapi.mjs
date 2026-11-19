@@ -102,11 +102,20 @@ function assertMigrationsMatchTheRepository() {
 	}
 }
 
+// The description is over 1 MiB, execFileSync's default output buffer, so
+// the formatted text needs a larger one or the call fails with ENOBUFS.
+const FORMAT_OUTPUT_LIMIT_BYTES = 16 * 1024 * 1024;
+
 function formatWithBiome(source) {
 	return execFileSync(
 		join(REPOSITORY_ROOT, "node_modules", ".bin", "biome"),
 		["format", `--stdin-file-path=${OUTPUT_IN_REPOSITORY}`],
-		{ input: source, encoding: "utf8", cwd: REPOSITORY_ROOT },
+		{
+			input: source,
+			encoding: "utf8",
+			cwd: REPOSITORY_ROOT,
+			maxBuffer: FORMAT_OUTPUT_LIMIT_BYTES,
+		},
 	);
 }
 
