@@ -1,5 +1,6 @@
 import type { IsoDate } from "@fnb/reports";
 import type { AuditEntry, TenantRole } from "../settings/source";
+import type { AnnouncementsSource } from "./announcements-source";
 
 export const SHIFT_PHASES = ["opening", "midshift", "closing"] as const;
 
@@ -205,7 +206,7 @@ export interface Actors {
 	readonly byId: ReadonlyMap<string, Actor>;
 }
 
-export interface OperationsSource {
+export interface OperationsSource extends AnnouncementsSource {
 	readonly kind: "supabase";
 	checklistTemplates(tenantId: string): Promise<ChecklistTemplate[]>;
 	saveChecklistTemplate(

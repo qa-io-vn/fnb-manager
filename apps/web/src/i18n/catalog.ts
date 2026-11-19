@@ -8,6 +8,8 @@ import metricsEn from "./messages/metrics.en.json";
 import metricsVi from "./messages/metrics.vi.json";
 import operationsEn from "./messages/operations.en.json";
 import operationsVi from "./messages/operations.vi.json";
+import operationsAnnouncementsEn from "./messages/operations-announcements.en.json";
+import operationsAnnouncementsVi from "./messages/operations-announcements.vi.json";
 import plansEn from "./messages/plans.en.json";
 import plansVi from "./messages/plans.vi.json";
 import reportDayEn from "./messages/report-day.en.json";
@@ -88,6 +90,7 @@ export type MessageKey =
 	| keyof typeof settingsRewardsVi
 	| keyof typeof loyaltyVi
 	| keyof typeof operationsVi
+	| keyof typeof operationsAnnouncementsVi
 	| keyof typeof themesVi
 	| keyof typeof themeRevenueVi
 	| keyof typeof themeHoursVi
@@ -358,9 +361,16 @@ export const messageFiles: readonly MessageFile[] = [
 	{
 		name: "operations",
 		prefix: "operations.",
-		excludedPrefixes: [],
+		excludedPrefixes: ["operations.announcements."],
 		vi: operationsVi,
 		en: operationsEn,
+	},
+	{
+		name: "operations-announcements",
+		prefix: "operations.announcements.",
+		excludedPrefixes: [],
+		vi: operationsAnnouncementsVi,
+		en: operationsAnnouncementsEn,
 	},
 	{
 		name: "exports",

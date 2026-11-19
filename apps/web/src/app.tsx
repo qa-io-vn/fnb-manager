@@ -224,6 +224,13 @@ export const routes: RouteObject[] = [
 									),
 							},
 							{
+								path: "thong-bao",
+								lazy: () =>
+									import("./pages/operations/announcements-page").then(
+										(module) => ({ Component: module.AnnouncementsPage }),
+									),
+							},
+							{
 								path: "*",
 								element: <Navigate to="/van-hanh/checklist" replace />,
 							},

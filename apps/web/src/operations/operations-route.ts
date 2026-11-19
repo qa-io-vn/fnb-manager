@@ -11,7 +11,12 @@ import { businessDateOf, type StoreClock } from "../lib/business-dates";
 import { STORE_PARAM } from "../reports/report-route";
 import { FROM_PARAM, RANGE_PARAM, TO_PARAM } from "../themes/theme-route";
 
-export const OPERATIONS_PAGES = ["checklist", "ket-tien", "su-co"] as const;
+export const OPERATIONS_PAGES = [
+	"checklist",
+	"ket-tien",
+	"su-co",
+	"thong-bao",
+] as const;
 
 export type OperationsPage = (typeof OPERATIONS_PAGES)[number];
 

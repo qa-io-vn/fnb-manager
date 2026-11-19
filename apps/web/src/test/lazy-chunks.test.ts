@@ -99,11 +99,12 @@ describe("the size check's lazy chunks", () => {
 });
 
 describe("the operations pages' chunks", () => {
-	it("keeps the three operations pages and the live operations source out of the initial JS", () => {
+	it("keeps the four operations pages and the live operations source out of the initial JS", () => {
 		for (const page of [
 			"checklist-compliance-page",
 			"cash-counts-page",
 			"incident-log-page",
+			"announcements-page",
 		]) {
 			expect(isLazySource(`src/pages/operations/${page}.tsx`)).toBe(true);
 		}

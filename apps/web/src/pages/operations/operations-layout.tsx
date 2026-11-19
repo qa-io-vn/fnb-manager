@@ -28,12 +28,14 @@ const TABS: readonly {
 	{ page: "checklist", key: "operations.tab.checklist" },
 	{ page: "ket-tien", key: "operations.tab.cash" },
 	{ page: "su-co", key: "operations.tab.log" },
+	{ page: "thong-bao", key: "operations.announcements.tab" },
 ];
 
 export const TAB_KEYS: Readonly<Record<OperationsPage, MessageKey>> = {
 	checklist: "operations.tab.checklist",
 	"ket-tien": "operations.tab.cash",
 	"su-co": "operations.tab.log",
+	"thong-bao": "operations.announcements.tab",
 };
 
 function OperationsTabs({
@@ -108,9 +110,15 @@ function PrintSummary({ location }: { readonly location: OperationsLocation }) {
 
 export function OperationsLayout({
 	page,
+	ranged = true,
+	introKey = "operations.intro",
+	demoKey = "operations.demo",
 	children,
 }: {
 	readonly page: OperationsPage;
+	readonly ranged?: boolean;
+	readonly introKey?: MessageKey;
+	readonly demoKey?: MessageKey;
 	readonly children: (location: OperationsLocation) => ReactNode;
 }) {
 	const t = useT();
@@ -133,7 +141,7 @@ export function OperationsLayout({
 			/>
 			<OperationsTabs current={page} hrefFor={location.hrefFor} />
 			{operations.status === "unavailable" ? (
-				<Notice testId="operations-demo">{t("operations.demo")}</Notice>
+				<Notice testId="operations-demo">{t(demoKey)}</Notice>
 			) : operations.status === "failed" ? (
 				<StatusMessage>
 					<p role="alert" className="mb-3">
@@ -145,27 +153,29 @@ export function OperationsLayout({
 				</StatusMessage>
 			) : (
 				<>
-					<p className="text-sm text-ink-muted print:hidden">
-						{t("operations.intro")}
-					</p>
-					<RangePicker
-						range={location.range}
-						maxDays={OPERATIONS_MAX_DAYS}
-						formatters={formatters}
-						summaryKey="operations.range.summary"
-						onChange={(range, options) => location.goTo(range, options)}
-					/>
-					{location.rangeClamped ? (
-						<Notice testId="range-clamped">
-							{t(themeKeys.page.rangeClamped, {
-								days: formatters.count(OPERATIONS_MAX_DAYS),
-							})}
-						</Notice>
-					) : null}
-					{location.invalid ? (
-						<Notice testId="range-invalid">
-							{t(themeKeys.page.invalidRange)}
-						</Notice>
+					<p className="text-sm text-ink-muted print:hidden">{t(introKey)}</p>
+					{ranged ? (
+						<>
+							<RangePicker
+								range={location.range}
+								maxDays={OPERATIONS_MAX_DAYS}
+								formatters={formatters}
+								summaryKey="operations.range.summary"
+								onChange={(range, options) => location.goTo(range, options)}
+							/>
+							{location.rangeClamped ? (
+								<Notice testId="range-clamped">
+									{t(themeKeys.page.rangeClamped, {
+										days: formatters.count(OPERATIONS_MAX_DAYS),
+									})}
+								</Notice>
+							) : null}
+							{location.invalid ? (
+								<Notice testId="range-invalid">
+									{t(themeKeys.page.invalidRange)}
+								</Notice>
+							) : null}
+						</>
 					) : null}
 					<ReadOnlyNotice
 						access={access}
@@ -180,7 +190,7 @@ export function OperationsLayout({
 						<p role="status">{t("app.loading")}</p>
 					) : (
 						<>
-							<PrintSummary location={location} />
+							{ranged ? <PrintSummary location={location} /> : null}
 							{children(location)}
 						</>
 					)}

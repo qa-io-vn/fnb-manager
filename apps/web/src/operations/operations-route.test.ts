@@ -73,6 +73,7 @@ describe("the operations address", () => {
 			"/van-hanh/su-co?from=2026-10-02&to=2026-10-31&status=open",
 		);
 		expect(isOperationsPage("checklist")).toBe(true);
+		expect(isOperationsPage("thong-bao")).toBe(true);
 		expect(isOperationsPage("bao-cao")).toBe(false);
 	});
 

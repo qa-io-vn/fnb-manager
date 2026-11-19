@@ -15,7 +15,10 @@ export type OperationsRead =
 	| "incidents"
 	| "handovers"
 	| "categories"
-	| "actors";
+	| "actors"
+	| "announcements"
+	| "announcementReadRate"
+	| "announcementReaders";
 
 export function operationsQueryKey(
 	tenantId: string,
@@ -157,5 +160,29 @@ export function useIncidentCategories() {
 export function useActors() {
 	return useOperationsRead("actors", [], (source, tenantId) =>
 		source.actors(tenantId),
+	);
+}
+
+export function useAnnouncements() {
+	return useOperationsRead("announcements", [], (source) =>
+		source.announcements(),
+	);
+}
+
+export function useAnnouncementReadRate(announcementId: string) {
+	return useOperationsRead("announcementReadRate", [announcementId], (source) =>
+		source.announcementReadRate(announcementId),
+	);
+}
+
+export function useAnnouncementReaders(
+	announcementId: string,
+	enabled: boolean,
+) {
+	return useOperationsRead(
+		"announcementReaders",
+		[announcementId],
+		(source) => source.announcementReaders(announcementId),
+		{ enabled },
 	);
 }

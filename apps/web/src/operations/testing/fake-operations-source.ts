@@ -14,8 +14,13 @@ import type {
 	OperationsSource,
 	RunDetail,
 } from "../source";
+import {
+	emptyAnnouncementsData,
+	type FakeAnnouncementsData,
+	fakeAnnouncementMethods,
+} from "./fake-announcements";
 
-export interface FakeOperationsData {
+export interface FakeOperationsData extends FakeAnnouncementsData {
 	templates: ChecklistTemplate[];
 	runs: ChecklistRun[];
 	details: Map<string, RunDetail>;
@@ -50,6 +55,7 @@ export function createFakeOperations(
 		handovers: [],
 		categories: DEFAULT_CATEGORIES,
 		actors: { currentUserId: "owner-1", byId: new Map() },
+		...emptyAnnouncementsData(),
 		...seed,
 	};
 	const calls: [string, unknown][] = [];
@@ -65,6 +71,7 @@ export function createFakeOperations(
 	return {
 		kind: "supabase",
 		data,
+		...fakeAnnouncementMethods(data, record, () => data.actors.currentUserId),
 		calls,
 		refuse(method, code) {
 			refusals.set(method, code);

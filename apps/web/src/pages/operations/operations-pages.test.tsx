@@ -425,7 +425,7 @@ describe("the operations pages", () => {
 		expect(current.selectStores).toHaveBeenCalledWith([STORE_2]);
 	});
 
-	it("links the three pages with the range kept and marks the open one", async () => {
+	it("links the four pages with the range kept and marks the open one", async () => {
 		renderPage(<CashCountsPage />, "/van-hanh/ket-tien");
 		const tabs = within(
 			await screen.findByTestId("operations-tabs"),
@@ -434,11 +434,16 @@ describe("the operations pages", () => {
 			"Checklist",
 			"Két tiền",
 			"Sự cố & bàn giao",
+			"Thông báo",
 		]);
 		expect(tabs[1]).toHaveAttribute("aria-current", "page");
 		expect(tabs[0]).toHaveAttribute(
 			"href",
 			`/van-hanh/checklist?from=${DAY}&to=${DAY}`,
+		);
+		expect(tabs[3]).toHaveAttribute(
+			"href",
+			`/van-hanh/thong-bao?from=${DAY}&to=${DAY}`,
 		);
 	});
 

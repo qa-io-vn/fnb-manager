@@ -28,6 +28,7 @@ import {
 	type RunDetail,
 	SHIFT_PHASES,
 } from "./source";
+import { createSupabaseAnnouncements } from "./supabase-announcements-source";
 
 export const RUN_ID_CHUNK = 120;
 
@@ -313,6 +314,7 @@ export function createSupabaseOperationsSource(
 
 	return {
 		kind: "supabase",
+		...createSupabaseAnnouncements(client),
 
 		async checklistTemplates(tenantId): Promise<ChecklistTemplate[]> {
 			const [templates, items, auditOf] = await Promise.all([
