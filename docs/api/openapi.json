@@ -2361,6 +2361,15 @@
 					"format": "boolean",
 					"type": "boolean"
 				},
+				"approved_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"approved_by": {
+					"description": "the owner who approved the reward's current terms; null when the service role or the database owner approved it",
+					"format": "uuid",
+					"type": "string"
+				},
 				"cost_points": {
 					"default": 0,
 					"format": "int32",
@@ -2380,6 +2389,18 @@
 					"default": "auth.uid()",
 					"format": "uuid",
 					"type": "string"
+				},
+				"description": {
+					"format": "text",
+					"type": "string"
+				},
+				"excluded_item_external_ids": {
+					"description": "POS items (external ids) the reward never discounts",
+					"format": "text[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
 				},
 				"hold_hours": {
 					"default": 24,
@@ -2401,12 +2422,49 @@
 					"format": "text",
 					"type": "string"
 				},
+				"per_member_limit": {
+					"description": "how many held or confirmed redemptions one membership may have of this reward; null for no limit",
+					"format": "int32",
+					"type": "integer"
+				},
 				"programme_id": {
 					"format": "uuid",
 					"type": "string"
 				},
+				"reward_amount": {
+					"description": "the amount of an amount_off reward, at most the dated discount cap times min_bill_amount, the price it reduces (FR-CMP-12)",
+					"format": "numeric",
+					"type": "number"
+				},
+				"reward_item_external_ids": {
+					"description": "the POS items (external ids) the reward gives or discounts; null for the whole bill",
+					"format": "text[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
 				"reward_key": {
 					"format": "text",
+					"type": "string"
+				},
+				"reward_kind": {
+					"default": "free_item",
+					"description": "what the reward gives: free_item (an item free, a gift), percent_off (reward_percent off the bill or the reward items), amount_off (reward_amount off a bill of at least min_bill_amount) or free_upgrade (a larger size or an extra, a gift); no cash-like kind (payout, stored value, top-up) exists (FR-CMP-13)",
+					"enum": ["free_item", "percent_off", "amount_off", "free_upgrade"],
+					"format": "public.coupon_reward_kind",
+					"type": "string"
+				},
+				"reward_percent": {
+					"description": "the percentage of a percent_off reward, at most the dated discount cap (FR-CMP-12)",
+					"format": "numeric",
+					"type": "number"
+				},
+				"status": {
+					"default": "draft",
+					"description": "draft, approved (by an owner), active (in the catalogue; active mirrors it) or retired (final)",
+					"enum": ["draft", "approved", "active", "retired"],
+					"format": "public.coupon_status",
 					"type": "string"
 				},
 				"store_ids": {
@@ -2436,6 +2494,16 @@
 					"default": 30,
 					"format": "int32",
 					"type": "integer"
+				},
+				"valid_from": {
+					"description": "first business day the reward may be redeemed (fixed dates); null for no start",
+					"format": "date",
+					"type": "string"
+				},
+				"valid_until": {
+					"description": "last business day the reward may be redeemed (fixed dates); null for no end; valid_days still bounds each hold after issue",
+					"format": "date",
+					"type": "string"
 				}
 			},
 			"required": [
@@ -2451,7 +2519,10 @@
 				"hold_hours",
 				"active",
 				"created_at",
-				"updated_at"
+				"updated_at",
+				"reward_kind",
+				"excluded_item_external_ids",
+				"status"
 			],
 			"type": "object"
 		},
@@ -4584,7 +4655,7 @@
 			"type": "object"
 		},
 		"loyalty_queue": {
-			"description": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed; an owner or manager of the store resolves it with resolve_loyalty_queue_item",
+			"description": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed (paths B and C), and a redemption the synced invoices disagree with is listed here (path D: verified_without_invoice, discount_without_redemption, amount_mismatch); an owner or manager of the store resolves or dismisses it with resolve_loyalty_queue_item",
 			"properties": {
 				"candidate_invoice_ids": {
 					"format": "uuid[]",
@@ -4620,6 +4691,11 @@
 					"format": "uuid",
 					"type": "string"
 				},
+				"invoice_id": {
+					"description": "path D: the invoice the item is about (discount_without_redemption, amount_mismatch)",
+					"format": "uuid",
+					"type": "string"
+				},
 				"matched_path": {
 					"format": "text",
 					"type": "string"
@@ -4630,6 +4706,11 @@
 				},
 				"reason": {
 					"format": "text",
+					"type": "string"
+				},
+				"redemption_id": {
+					"description": "path D: the redemption the item is about (verified_without_invoice, amount_mismatch)",
+					"format": "uuid",
 					"type": "string"
 				},
 				"resolution_reason": {
@@ -4664,7 +4745,6 @@
 				"id",
 				"tenant_id",
 				"store_id",
-				"membership_id",
 				"matched_path",
 				"candidate_invoice_ids",
 				"reason",
@@ -6028,8 +6108,33 @@
 					"format": "uuid",
 					"type": "string"
 				},
+				"pos_discount_name": {
+					"description": "pos_payment_discount: the POS payment discount entry the cashier applies, copied from coupon_rail_rewards at hold time; a synced invoice of the store carrying it confirms the redemption",
+					"format": "text",
+					"type": "string"
+				},
+				"pos_free_item_external_id": {
+					"description": "pos_payment_discount without a discount name: the 0-price promotional item whose line confirms the redemption",
+					"format": "text",
+					"type": "string"
+				},
+				"rail": {
+					"description": "the store's coupon rail when the hold was made: the code is a pool code (crm_code_pool) or a generated code (crm_callback, pos_payment_discount); null on rows written before phase 18b",
+					"enum": ["crm_code_pool", "crm_callback", "pos_payment_discount"],
+					"format": "public.coupon_rail",
+					"type": "string"
+				},
 				"redeem_entry_id": {
 					"format": "uuid",
+					"type": "string"
+				},
+				"release_entry_id": {
+					"description": "the ledger adjust row (reason redemption_released) that gave the held stamps and points back",
+					"format": "uuid",
+					"type": "string"
+				},
+				"release_reason": {
+					"format": "text",
 					"type": "string"
 				},
 				"released_at": {
@@ -6048,6 +6153,15 @@
 				},
 				"tenant_id": {
 					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"verified_at": {
+					"description": "when staff verified the code at the till (staff_verify_redemption); the redemption stays held until the synced invoice confirms it",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"verified_by": {
 					"format": "uuid",
 					"type": "string"
 				}
@@ -7108,6 +7222,18 @@
 					"format": "public.legal_form",
 					"type": "string"
 				},
+				"loyalty_adjust_max_points": {
+					"default": 0,
+					"description": "the largest points adjustment (either sign) recorded at once with staff_request; a larger one waits for an owner or manager of the store",
+					"format": "int32",
+					"type": "integer"
+				},
+				"loyalty_adjust_max_stamps": {
+					"default": 1,
+					"description": "the largest stamp adjustment (either sign) a member of the staff app records at once with staff_request; a larger one waits for an owner or manager of the store; written by an owner with an unlimited scope through set_loyalty_adjust_limits",
+					"format": "int32",
+					"type": "integer"
+				},
 				"name": {
 					"format": "text",
 					"type": "string"
@@ -7159,7 +7285,9 @@
 				"analytics_inputs_version",
 				"default_language",
 				"staff_revenue_visibility",
-				"ops_photo_retention_days"
+				"ops_photo_retention_days",
+				"loyalty_adjust_max_stamps",
+				"loyalty_adjust_max_points"
 			],
 			"type": "object"
 		},
@@ -10782,6 +10910,19 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.coupons.approved_at": {
+			"in": "query",
+			"name": "approved_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.approved_by": {
+			"description": "the owner who approved the reward's current terms; null when the service role or the database owner approved it",
+			"in": "query",
+			"name": "approved_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.coupons.cost_points": {
 			"in": "query",
 			"name": "cost_points",
@@ -10803,6 +10944,19 @@
 		"rowFilter.coupons.created_by": {
 			"in": "query",
 			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.description": {
+			"in": "query",
+			"name": "description",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.excluded_item_external_ids": {
+			"description": "POS items (external ids) the reward never discounts",
+			"in": "query",
+			"name": "excluded_item_external_ids",
 			"required": false,
 			"type": "string"
 		},
@@ -10830,15 +10984,57 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.coupons.per_member_limit": {
+			"description": "how many held or confirmed redemptions one membership may have of this reward; null for no limit",
+			"in": "query",
+			"name": "per_member_limit",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.coupons.programme_id": {
 			"in": "query",
 			"name": "programme_id",
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.coupons.reward_amount": {
+			"description": "the amount of an amount_off reward, at most the dated discount cap times min_bill_amount, the price it reduces (FR-CMP-12)",
+			"in": "query",
+			"name": "reward_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.reward_item_external_ids": {
+			"description": "the POS items (external ids) the reward gives or discounts; null for the whole bill",
+			"in": "query",
+			"name": "reward_item_external_ids",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.coupons.reward_key": {
 			"in": "query",
 			"name": "reward_key",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.reward_kind": {
+			"description": "what the reward gives: free_item (an item free, a gift), percent_off (reward_percent off the bill or the reward items), amount_off (reward_amount off a bill of at least min_bill_amount) or free_upgrade (a larger size or an extra, a gift); no cash-like kind (payout, stored value, top-up) exists (FR-CMP-13)",
+			"in": "query",
+			"name": "reward_kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.reward_percent": {
+			"description": "the percentage of a percent_off reward, at most the dated discount cap (FR-CMP-12)",
+			"in": "query",
+			"name": "reward_percent",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.status": {
+			"description": "draft, approved (by an owner), active (in the catalogue; active mirrors it) or retired (final)",
+			"in": "query",
+			"name": "status",
 			"required": false,
 			"type": "string"
 		},
@@ -10870,6 +11066,20 @@
 		"rowFilter.coupons.valid_days": {
 			"in": "query",
 			"name": "valid_days",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.valid_from": {
+			"description": "first business day the reward may be redeemed (fixed dates); null for no start",
+			"in": "query",
+			"name": "valid_from",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.coupons.valid_until": {
+			"description": "last business day the reward may be redeemed (fixed dates); null for no end; valid_days still bounds each hold after issue",
+			"in": "query",
+			"name": "valid_until",
 			"required": false,
 			"type": "string"
 		},
@@ -13130,6 +13340,13 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.loyalty_queue.invoice_id": {
+			"description": "path D: the invoice the item is about (discount_without_redemption, amount_mismatch)",
+			"in": "query",
+			"name": "invoice_id",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.loyalty_queue.matched_path": {
 			"in": "query",
 			"name": "matched_path",
@@ -13145,6 +13362,13 @@
 		"rowFilter.loyalty_queue.reason": {
 			"in": "query",
 			"name": "reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_queue.redemption_id": {
+			"description": "path D: the redemption the item is about (verified_without_invoice, amount_mismatch)",
+			"in": "query",
+			"name": "redemption_id",
 			"required": false,
 			"type": "string"
 		},
@@ -14580,9 +14804,43 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.redemptions.pos_discount_name": {
+			"description": "pos_payment_discount: the POS payment discount entry the cashier applies, copied from coupon_rail_rewards at hold time; a synced invoice of the store carrying it confirms the redemption",
+			"in": "query",
+			"name": "pos_discount_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.pos_free_item_external_id": {
+			"description": "pos_payment_discount without a discount name: the 0-price promotional item whose line confirms the redemption",
+			"in": "query",
+			"name": "pos_free_item_external_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.rail": {
+			"description": "the store's coupon rail when the hold was made: the code is a pool code (crm_code_pool) or a generated code (crm_callback, pos_payment_discount); null on rows written before phase 18b",
+			"in": "query",
+			"name": "rail",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.redemptions.redeem_entry_id": {
 			"in": "query",
 			"name": "redeem_entry_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.release_entry_id": {
+			"description": "the ledger adjust row (reason redemption_released) that gave the held stamps and points back",
+			"in": "query",
+			"name": "release_entry_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.release_reason": {
+			"in": "query",
+			"name": "release_reason",
 			"required": false,
 			"type": "string"
 		},
@@ -14607,6 +14865,19 @@
 		"rowFilter.redemptions.tenant_id": {
 			"in": "query",
 			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.verified_at": {
+			"description": "when staff verified the code at the till (staff_verify_redemption); the redemption stays held until the synced invoice confirms it",
+			"in": "query",
+			"name": "verified_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.verified_by": {
+			"in": "query",
+			"name": "verified_by",
 			"required": false,
 			"type": "string"
 		},
@@ -15674,6 +15945,20 @@
 		"rowFilter.tenants.legal_form": {
 			"in": "query",
 			"name": "legal_form",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.tenants.loyalty_adjust_max_points": {
+			"description": "the largest points adjustment (either sign) recorded at once with staff_request; a larger one waits for an owner or manager of the store",
+			"in": "query",
+			"name": "loyalty_adjust_max_points",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.tenants.loyalty_adjust_max_stamps": {
+			"description": "the largest stamp adjustment (either sign) a member of the staff app records at once with staff_request; a larger one waits for an owner or manager of the store; written by an owner with an unlimited scope through set_loyalty_adjust_limits",
+			"in": "query",
+			"name": "loyalty_adjust_max_stamps",
 			"required": false,
 			"type": "string"
 		},
@@ -22456,6 +22741,42 @@
 						"$ref": "#/parameters/rowFilter.coupons.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_percent"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_item_external_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.excluded_item_external_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.description"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.valid_from"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.valid_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.per_member_limit"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.approved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.approved_at"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -22516,6 +22837,42 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.coupons.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_percent"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_item_external_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.excluded_item_external_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.description"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.valid_from"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.valid_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.per_member_limit"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.approved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.approved_at"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -22605,6 +22962,42 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.coupons.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_percent"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.reward_item_external_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.excluded_item_external_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.description"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.valid_from"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.valid_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.per_member_limit"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.approved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.coupons.approved_at"
 					},
 					{
 						"$ref": "#/parameters/body.coupons"
@@ -28171,6 +28564,12 @@
 						"$ref": "#/parameters/rowFilter.loyalty_queue.entry_id"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.redemption_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.invoice_id"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -28179,7 +28578,7 @@
 						"description": "No Content"
 					}
 				},
-				"summary": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed; an owner or manager of the store resolves it with resolve_loyalty_queue_item",
+				"summary": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed (paths B and C), and a redemption the synced invoices disagree with is listed here (path D: verified_without_invoice, discount_without_redemption, amount_mismatch); an owner or manager of the store resolves or dismisses it with resolve_loyalty_queue_item",
 				"tags": ["loyalty_queue"]
 			},
 			"get": {
@@ -28233,6 +28632,12 @@
 						"$ref": "#/parameters/rowFilter.loyalty_queue.entry_id"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.redemption_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.invoice_id"
+					},
+					{
 						"$ref": "#/parameters/select"
 					},
 					{
@@ -28268,7 +28673,7 @@
 						"description": "Partial Content"
 					}
 				},
-				"summary": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed; an owner or manager of the store resolves it with resolve_loyalty_queue_item",
+				"summary": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed (paths B and C), and a redemption the synced invoices disagree with is listed here (path D: verified_without_invoice, discount_without_redemption, amount_mismatch); an owner or manager of the store resolves or dismisses it with resolve_loyalty_queue_item",
 				"tags": ["loyalty_queue"]
 			},
 			"patch": {
@@ -28322,6 +28727,12 @@
 						"$ref": "#/parameters/rowFilter.loyalty_queue.entry_id"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.redemption_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_queue.invoice_id"
+					},
+					{
 						"$ref": "#/parameters/body.loyalty_queue"
 					},
 					{
@@ -28333,7 +28744,7 @@
 						"description": "No Content"
 					}
 				},
-				"summary": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed; an owner or manager of the store resolves it with resolve_loyalty_queue_item",
+				"summary": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed (paths B and C), and a redemption the synced invoices disagree with is listed here (path D: verified_without_invoice, discount_without_redemption, amount_mismatch); an owner or manager of the store resolves or dismisses it with resolve_loyalty_queue_item",
 				"tags": ["loyalty_queue"]
 			},
 			"post": {
@@ -28353,7 +28764,7 @@
 						"description": "Created"
 					}
 				},
-				"summary": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed; an owner or manager of the store resolves it with resolve_loyalty_queue_item",
+				"summary": "the manager queue: a check-in or receipt claim with two candidate invoices within tolerance waits here instead of being guessed (paths B and C), and a redemption the synced invoices disagree with is listed here (path D: verified_without_invoice, discount_without_redemption, amount_mismatch); an owner or manager of the store resolves or dismisses it with resolve_loyalty_queue_item",
 				"tags": ["loyalty_queue"]
 			}
 		},
@@ -31858,6 +32269,27 @@
 						"$ref": "#/parameters/rowFilter.redemptions.released_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.redemptions.rail"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.pos_discount_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.pos_free_item_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.verified_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.verified_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.release_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.release_entry_id"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -31912,6 +32344,27 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.redemptions.released_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.rail"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.pos_discount_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.pos_free_item_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.verified_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.verified_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.release_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.release_entry_id"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -31995,6 +32448,27 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.redemptions.released_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.rail"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.pos_discount_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.pos_free_item_external_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.verified_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.verified_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.release_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.release_entry_id"
 					},
 					{
 						"$ref": "#/parameters/body.redemptions"
@@ -33149,6 +33623,455 @@
 				},
 				"summary": "a checklist run the caller may read with its items in order, the wording of the run's version, and each answer; null for a run the caller cannot read",
 				"tags": ["(rpc) checklist_run_detail"]
+			}
+		},
+		"/rpc/coupon_discount_days": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_coupon_id",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "p_calendar_year",
+						"required": true,
+						"type": "integer"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "information only (FR-CMP-12): the discount days of a calendar year of the items a reward discounts (its reward items, or every item but the excluded ones), from item_discount_days over the reward's stores (every active store for a tenant-wide reward, at most 50), with the dated discount-days limit in force at the year's end or today and whether an item is over it; never blocks a save; as the caller",
+				"tags": ["(rpc) coupon_discount_days"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "information only (FR-CMP-12): the discount days of a calendar year of the items a reward discounts (its reward items, or every item but the excluded ones), from item_discount_days over the reward's stores (every active store for a tenant-wide reward, at most 50), with the dated discount-days limit in force at the year's end or today and whether an item is over it; never blocks a save; as the caller",
+							"properties": {
+								"p_calendar_year": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_coupon_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_coupon_id", "p_calendar_year"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "information only (FR-CMP-12): the discount days of a calendar year of the items a reward discounts (its reward items, or every item but the excluded ones), from item_discount_days over the reward's stores (every active store for a tenant-wide reward, at most 50), with the dated discount-days limit in force at the year's end or today and whether an item is over it; never blocks a save; as the caller",
+				"tags": ["(rpc) coupon_discount_days"]
+			}
+		},
+		"/rpc/customer_coupons": {
+			"get": {
+				"parameters": [
+					{
+						"format": "text",
+						"in": "query",
+						"name": "p_store",
+						"required": false,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_coupons at the current time",
+				"tags": ["(rpc) customer_coupons"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_coupons at the current time",
+							"properties": {
+								"p_store": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_coupons at the current time",
+				"tags": ["(rpc) customer_coupons"]
+			}
+		},
+		"/rpc/customer_home": {
+			"get": {
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_home",
+				"tags": ["(rpc) customer_home"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_home",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_home",
+				"tags": ["(rpc) customer_home"]
+			}
+		},
+		"/rpc/customer_member_code": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_member_code at the current time",
+							"properties": {
+								"p_store": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_store"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_member_code at the current time",
+				"tags": ["(rpc) customer_member_code"]
+			}
+		},
+		"/rpc/customer_redeem": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_redeem at the current time",
+							"properties": {
+								"p_coupon": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_store": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_coupon", "p_store"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_redeem at the current time",
+				"tags": ["(rpc) customer_redeem"]
+			}
+		},
+		"/rpc/customer_request_deletion": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_request_deletion at the current time",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_request_deletion at the current time",
+				"tags": ["(rpc) customer_request_deletion"]
+			}
+		},
+		"/rpc/customer_stop_marketing": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_stop_marketing at the current time",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_stop_marketing at the current time",
+				"tags": ["(rpc) customer_stop_marketing"]
+			}
+		},
+		"/rpc/customer_submit_claim": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_submit_claim at the current time",
+							"properties": {
+								"p_amount": {
+									"format": "numeric",
+									"type": "number"
+								},
+								"p_business_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"p_receipt_no": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_store", "p_receipt_no", "p_amount"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_submit_claim at the current time",
+				"tags": ["(rpc) customer_submit_claim"]
+			}
+		},
+		"/rpc/customer_vouchers": {
+			"get": {
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_vouchers at the current time",
+				"tags": ["(rpc) customer_vouchers"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_vouchers at the current time",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_vouchers at the current time",
+				"tags": ["(rpc) customer_vouchers"]
+			}
+		},
+		"/rpc/customer_wallet": {
+			"get": {
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_wallet at the current time",
+				"tags": ["(rpc) customer_wallet"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_wallet at the current time",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_wallet at the current time",
+				"tags": ["(rpc) customer_wallet"]
 			}
 		},
 		"/rpc/daily_baselines": {
@@ -37214,6 +38137,91 @@
 				"tags": ["(rpc) record_cash_count"]
 			}
 		},
+		"/rpc/redemption_summary": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "from_date",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "to_date",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "report function for Khuyến mãi & giảm giá (FR-LOY-24): per visible store and reward, the redemptions held on the business days of the range (by the store's business date of the hold) with how many are still held, confirmed and released, the stamps and points the confirmed ones spent, their reward cost (the payment discount of the confirming invoice on the fallback rail, its voucher amount on the code rails), the store's member invoices of the range (invoices that earned and were not clawed back) and the confirmed share of them; as the caller, so staff and the publisher get no row; 0 to 50 stores, at most 92 days, at most 900 rows, else 22023",
+				"tags": ["(rpc) redemption_summary"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "report function for Khuyến mãi & giảm giá (FR-LOY-24): per visible store and reward, the redemptions held on the business days of the range (by the store's business date of the hold) with how many are still held, confirmed and released, the stamps and points the confirmed ones spent, their reward cost (the payment discount of the confirming invoice on the fallback rail, its voucher amount on the code rails), the store's member invoices of the range (invoices that earned and were not clawed back) and the confirmed share of them; as the caller, so staff and the publisher get no row; 0 to 50 stores, at most 92 days, at most 900 rows, else 22023",
+							"properties": {
+								"from_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"to_date": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["store_ids", "from_date", "to_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "report function for Khuyến mãi & giảm giá (FR-LOY-24): per visible store and reward, the redemptions held on the business days of the range (by the store's business date of the hold) with how many are still held, confirmed and released, the stamps and points the confirmed ones spent, their reward cost (the payment discount of the confirming invoice on the fallback rail, its voucher amount on the code rails), the store's member invoices of the range (invoices that earned and were not clawed back) and the confirmed share of them; as the caller, so staff and the publisher get no row; 0 to 50 stores, at most 92 days, at most 900 rows, else 22023",
+				"tags": ["(rpc) redemption_summary"]
+			}
+		},
 		"/rpc/refresh_my_analytics": {
 			"post": {
 				"parameters": [
@@ -37890,6 +38898,51 @@
 				"tags": ["(rpc) set_checklist_template_active"]
 			}
 		},
+		"/rpc/set_loyalty_adjust_limits": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the web app: app.set_loyalty_adjust_limits",
+							"properties": {
+								"p_max_points": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_max_stamps": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id", "p_max_stamps", "p_max_points"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the web app: app.set_loyalty_adjust_limits",
+				"tags": ["(rpc) set_loyalty_adjust_limits"]
+			}
+		},
 		"/rpc/set_ops_photo_retention_days": {
 			"post": {
 				"parameters": [
@@ -38208,6 +39261,396 @@
 					}
 				},
 				"tags": ["(rpc) shift_review"]
+			}
+		},
+		"/rpc/staff_decide_loyalty_request": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the staff app and the web app: app.staff_decide_loyalty_request at the current time",
+							"properties": {
+								"p_decision": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_points": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_reason": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_request_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_stamps": {
+									"format": "int32",
+									"type": "integer"
+								}
+							},
+							"required": ["p_request_id", "p_decision"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the staff app and the web app: app.staff_decide_loyalty_request at the current time",
+				"tags": ["(rpc) staff_decide_loyalty_request"]
+			}
+		},
+		"/rpc/staff_loyalty_queue": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store_id",
+						"required": false,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the staff app and the web app: app.staff_loyalty_queue",
+				"tags": ["(rpc) staff_loyalty_queue"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the staff app and the web app: app.staff_loyalty_queue",
+							"properties": {
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the staff app and the web app: app.staff_loyalty_queue",
+				"tags": ["(rpc) staff_loyalty_queue"]
+			}
+		},
+		"/rpc/staff_member_lookup": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store_id",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "text",
+						"in": "query",
+						"name": "p_phone",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_membership_id",
+						"required": false,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the staff app: app.staff_member_lookup at the current time",
+				"tags": ["(rpc) staff_member_lookup"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the staff app: app.staff_member_lookup at the current time",
+							"properties": {
+								"p_membership_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_phone": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the staff app: app.staff_member_lookup at the current time",
+				"tags": ["(rpc) staff_member_lookup"]
+			}
+		},
+		"/rpc/staff_my_loyalty_requests": {
+			"get": {
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the staff app: app.staff_my_loyalty_requests",
+				"tags": ["(rpc) staff_my_loyalty_requests"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the staff app: app.staff_my_loyalty_requests",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the staff app: app.staff_my_loyalty_requests",
+				"tags": ["(rpc) staff_my_loyalty_requests"]
+			}
+		},
+		"/rpc/staff_record_checkin": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the staff app: app.staff_record_checkin at the current time",
+							"properties": {
+								"p_amount": {
+									"format": "numeric",
+									"type": "number"
+								},
+								"p_code": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_phone": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the staff app: app.staff_record_checkin at the current time",
+				"tags": ["(rpc) staff_record_checkin"]
+			}
+		},
+		"/rpc/staff_request": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the staff app: app.staff_request at the current time",
+							"properties": {
+								"p_kind": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_membership_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_points": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_reason": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_stamps": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"p_store_id",
+								"p_kind",
+								"p_membership_id",
+								"p_reason"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the staff app: app.staff_request at the current time",
+				"tags": ["(rpc) staff_request"]
+			}
+		},
+		"/rpc/staff_verify_redemption": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the staff app: app.staff_verify_redemption at the current time",
+							"properties": {
+								"p_code": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_id", "p_code"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the staff app: app.staff_verify_redemption at the current time",
+				"tags": ["(rpc) staff_verify_redemption"]
 			}
 		},
 		"/rpc/start_checklist_run": {
@@ -41413,6 +42856,12 @@
 						"$ref": "#/parameters/rowFilter.tenants.staff_contact_instructions"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.tenants.loyalty_adjust_max_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.loyalty_adjust_max_points"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -41478,6 +42927,12 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.tenants.staff_contact_instructions"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.loyalty_adjust_max_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.loyalty_adjust_max_points"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -41572,6 +43027,12 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.tenants.staff_contact_instructions"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.loyalty_adjust_max_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.tenants.loyalty_adjust_max_points"
 					},
 					{
 						"$ref": "#/parameters/body.tenants"

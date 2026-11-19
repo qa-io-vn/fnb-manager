@@ -555,9 +555,13 @@ select is(
         'app.reactivate_staff', 'app.reopen_cash_count', 'app.resolve_incident', 'app.resolve_loyalty_queue_item', 'app.save_checklist_template', 'app.set_announcement_pin',
         'app.set_checklist_template_active', 'app.set_ops_photo_retention_days',
         'app.set_staff_contact_instructions', 'app.set_staff_revenue_visibility', 'app.today_store_totals', 'app.update_staff',
-        'app.withdraw_staff_ops_consent', 'public.oa_event_counts', 'public.publish_legal_document', 'public.refresh_my_analytics',
-        'public.retire_legal_document'],
-  'the only security definer functions a member may call are the membership helpers, the roster, pairing, staff notice and phone functions, settings and legal functions, today_store_totals, the phase 14b checklist editor, acknowledgement, reopening, photo retention and photo policy functions, the phase 15 announcement and request writers, the loyalty and customer-session membership helpers and the loyalty queue resolution, so no other function reads revenue past RLS'
+        'app.withdraw_staff_ops_consent', 'public.customer_coupons', 'public.customer_home', 'public.customer_member_code', 'public.customer_redeem', 'public.customer_request_deletion',
+        'public.customer_stop_marketing', 'public.customer_submit_claim', 'public.customer_vouchers', 'public.customer_wallet',
+        'public.oa_event_counts', 'public.publish_legal_document', 'public.refresh_my_analytics',
+        'public.retire_legal_document', 'public.set_loyalty_adjust_limits', 'public.staff_decide_loyalty_request', 'public.staff_loyalty_queue',
+        'public.staff_member_lookup', 'public.staff_my_loyalty_requests', 'public.staff_record_checkin', 'public.staff_request',
+        'public.staff_verify_redemption'],
+  'the only security definer functions a member may call are the membership helpers, the roster, pairing, staff notice and phone functions, settings and legal functions, today_store_totals, the phase 14b checklist editor, acknowledgement, reopening, photo retention and photo policy functions, the phase 15 announcement and request writers, the loyalty and customer-session membership helpers, the loyalty queue resolution and the customer and staff loyalty RPCs, so no other function reads revenue past RLS'
 );
 select col_type_is('public', 'tenants', 'staff_revenue_visibility', 'text', 'tenants.staff_revenue_visibility is text');
 select col_default_is('public', 'tenants', 'staff_revenue_visibility', 'all', 'staff see their stores'' revenue until the owner restricts it');

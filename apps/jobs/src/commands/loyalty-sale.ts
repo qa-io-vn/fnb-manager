@@ -81,6 +81,63 @@ export function nextReceiptNumber(
 	return String(highest + 1).padStart(4, "0");
 }
 
+export interface SaleReward {
+	readonly discountName: string | null;
+	readonly voucherCode: string | null;
+	readonly discountAmount: number;
+}
+
+export const NO_REWARD: SaleReward = {
+	discountName: null,
+	voucherCode: null,
+	discountAmount: 0,
+};
+
+const DISCOUNT_NAME_PATTERN = /^[^\p{Cc}]{1,200}$/u;
+const VOUCHER_CODE_PATTERN = /^[^\s\p{Cc}]{1,64}$/u;
+
+export function parseSaleReward(
+	values: {
+		readonly discountName: string | undefined;
+		readonly voucherCode: string | undefined;
+		readonly discountAmount: string | undefined;
+	},
+	amount: number,
+): SaleReward {
+	const discountName = values.discountName?.trim() ?? null;
+	const voucherCode = values.voucherCode?.trim() ?? null;
+	if (discountName !== null && !DISCOUNT_NAME_PATTERN.test(discountName)) {
+		throw new UsageError(
+			"--discount-name takes the POS discount entry name, 1 to 200 characters",
+		);
+	}
+	if (voucherCode !== null && !VOUCHER_CODE_PATTERN.test(voucherCode)) {
+		throw new UsageError(
+			"--voucher-code takes a code of 1 to 64 characters without spaces",
+		);
+	}
+	let discountAmount = 0;
+	if (values.discountAmount !== undefined) {
+		if (discountName === null && voucherCode === null) {
+			throw new UsageError(
+				"--discount-amount goes with --discount-name or --voucher-code",
+			);
+		}
+		const cleaned = values.discountAmount.replace(/[.,_\s]/g, "");
+		discountAmount = Number(cleaned);
+		if (
+			!/^\d+$/.test(cleaned) ||
+			!Number.isSafeInteger(discountAmount) ||
+			discountAmount > amount
+		) {
+			throw new UsageError(
+				`--discount-amount takes a whole amount in dong from 0 to the sale amount (${amount})`,
+			);
+		}
+	}
+	return { discountName, voucherCode, discountAmount };
+}
+
 export function simulatedSale(input: {
 	readonly externalId: string;
 	readonly receiptNo: string;
@@ -88,7 +145,15 @@ export function simulatedSale(input: {
 	readonly businessDate: string;
 	readonly amount: number;
 	readonly phone: string | null;
+	readonly reward?: SaleReward;
 }): CanonicalSale {
+	const reward = input.reward ?? NO_REWARD;
+	const billDiscount = reward.discountName === null ? 0 : reward.discountAmount;
+	const voucherDiscount =
+		reward.discountName === null && reward.voucherCode !== null
+			? reward.discountAmount
+			: 0;
+	const net = input.amount - billDiscount - voucherDiscount;
 	return {
 		externalId: input.externalId,
 		receiptNo: input.receiptNo,
@@ -102,14 +167,18 @@ export function simulatedSale(input: {
 		...(input.phone === null ? {} : { customerPhone: input.phone }),
 		grossAmount: input.amount,
 		itemDiscountAmount: 0,
-		billDiscountAmount: 0,
-		voucherAmount: 0,
+		billDiscountAmount: billDiscount,
+		...(reward.discountName === null
+			? {}
+			: { billDiscountName: reward.discountName }),
+		...(reward.voucherCode === null ? {} : { voucherCode: reward.voucherCode }),
+		voucherAmount: voucherDiscount,
 		partnerMarketingAmount: 0,
 		serviceChargeAmount: 0,
 		shippingFeeAmount: 0,
 		vatAmount: 0,
-		netAmount: input.amount,
-		paidAmount: input.amount,
+		netAmount: net,
+		paidAmount: net,
 		status: "completed",
 		lines: [
 			{
@@ -130,7 +199,7 @@ export function simulatedSale(input: {
 				methodExternalId: "simulated-cash",
 				methodName: "Simulated cash",
 				kind: "cash",
-				amount: input.amount,
+				amount: net,
 				feeAmount: 0,
 				raw: { simulated: true },
 			},
@@ -204,6 +273,7 @@ export interface SaleReceipt {
 	readonly businessDate: string;
 	readonly receiptNo: string;
 	readonly amount: number;
+	readonly netAmount: number;
 	readonly soldAt: Date;
 	readonly invoiceExternalId: string;
 }
@@ -216,6 +286,7 @@ export async function recordSimulatedSale(
 	amount: number,
 	phone: string | null,
 	at: Date,
+	reward: SaleReward = NO_REWARD,
 ): Promise<SaleReceipt> {
 	const date = businessDate(at, store.timezone, store.businessDayStartMinutes);
 	const sameDayOnly = store.tranNoResetPeriod === "daily";
@@ -228,22 +299,21 @@ export async function recordSimulatedSale(
 	`;
 	const receiptNo = nextReceiptNumber(previous.map((row) => row.receipt_no));
 	const externalId = `sim-${at.getTime()}-${randomUUID().slice(0, 8)}`;
-	const mapped = mapSale(
-		simulatedSale({
-			externalId,
-			receiptNo,
-			soldAt: at,
-			businessDate: date,
-			amount,
-			phone,
-		}),
-		{
-			tenantId,
-			storeId: store.id,
-			posAccountId: store.posAccountId,
-			businessDate: date,
-		},
-	);
+	const sale = simulatedSale({
+		externalId,
+		receiptNo,
+		soldAt: at,
+		businessDate: date,
+		amount,
+		phone,
+		reward,
+	});
+	const mapped = mapSale(sale, {
+		tenantId,
+		storeId: store.id,
+		posAccountId: store.posAccountId,
+		businessDate: date,
+	});
 	await repository.applyStoreDay({
 		tenant_id: tenantId,
 		store_id: store.id,
@@ -257,6 +327,7 @@ export async function recordSimulatedSale(
 		businessDate: date,
 		receiptNo,
 		amount,
+		netAmount: sale.netAmount,
 		soldAt: at,
 		invoiceExternalId: externalId,
 	};
@@ -278,6 +349,14 @@ async function loyaltySale(
 	if (phoneText !== undefined && phone === null) {
 		throw new UsageError("--phone takes a phone number, such as 0900001234");
 	}
+	const reward = parseSaleReward(
+		{
+			discountName: stringOption(values, "discount-name"),
+			voucherCode: stringOption(values, "voucher-code"),
+			discountAmount: stringOption(values, "discount-amount"),
+		},
+		amount,
+	);
 	const { sql, repository, runner, setting } = context.services.db();
 	if (!isLocalDatabaseUrl(setting.url)) {
 		throw new ConfigError(
@@ -333,6 +412,7 @@ async function loyaltySale(
 		amount,
 		phone,
 		context.now(),
+		reward,
 	);
 	const loyalty = await reconcileLoyaltySafely(
 		runner,
@@ -352,12 +432,25 @@ async function loyaltySale(
 		`  business date: ${receipt.businessDate}`,
 		`  receipt no:    ${receipt.receiptNo}`,
 		`  amount:        ${receipt.amount}`,
+		...(reward.discountName === null
+			? []
+			: [
+					`  discount:      "${reward.discountName}" of ${reward.discountAmount} (payment discount entry)`,
+				]),
+		...(reward.voucherCode === null
+			? []
+			: [
+					`  voucher code:  ${reward.voucherCode}${reward.discountName === null ? ` of ${reward.discountAmount}` : ""}`,
+				]),
+		...(receipt.netAmount === receipt.amount
+			? []
+			: [`  net amount:    ${receipt.netAmount}`]),
 		`  sold at:       ${local} (${store.timezone})`,
 		...(phone === null
 			? []
 			: [`  phone:         ${phoneHint(phone)} on the invoice (path A)`]),
 		`  ${loyaltyLine(loyalty)}`,
-		"claim it in the customer app with this store, business date, receipt number and amount",
+		"claim it in the customer app with this store, business date, receipt number and net amount",
 	];
 	for (const line of lines) {
 		context.output.line(line);
@@ -370,18 +463,22 @@ export const loyaltySaleCommand: CommandSpec = {
 	summary:
 		"Simulated till: write one synthetic sale to a local synthetic tenant through the sync's write path, then reconcile",
 	usage:
-		"fnb loyalty sale --tenant <slug> --amount <dong> [--store <external id>] [--phone <phone>] [--setup]",
+		"fnb loyalty sale --tenant <slug> --amount <dong> [--store <external id>] [--phone <phone>] [--discount-name <entry name>] [--voucher-code <code>] [--discount-amount <dong>] [--setup]",
 	options: {
 		...HELP_OPTION,
 		tenant: { type: "string" },
 		amount: { type: "string" },
 		store: { type: "string" },
 		phone: { type: "string" },
+		"discount-name": { type: "string" },
+		"voucher-code": { type: "string" },
+		"discount-amount": { type: "string" },
 		setup: { type: "boolean" },
 	},
 	details: [
 		"Writes one completed sale, sold now, with the next receipt number of the store (per business day for a store that resets daily, per year otherwise), through the same store-day write the sync uses, then runs the loyalty reconciliation of that business day. It prints the store, business date, receipt number and amount, so a person can claim the receipt in the customer app.",
 		"--phone puts the number on the invoice as a cashier would with a member attached (path A). --setup creates a missing loyalty-sim tenant with a mock account, two stores (receipt numbers resetting daily and yearly) and an active synthetic programme.",
+		"--discount-name puts a payment discount entry (Chiết khấu thanh toán) of that name on the invoice, as the cashier does on the fallback rail after staff verified a reward code; --voucher-code puts a voucher code on it, as a code-pool or callback rail does. --discount-amount (0 by default) is the discount in dong: the payment discount with --discount-name, else the voucher amount; the net is the amount less it. The reconciliation then confirms the matching redemption.",
 		`Calls no POS. Refuses a database that is not the local stack, the ${REAL_TENANT_SLUG} tenant and any tenant registered in app.tenant_ipos_sources as fed by the real iPOS API.`,
 	],
 	run: loyaltySale,

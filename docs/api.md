@@ -1696,6 +1696,328 @@ returns jsonb
 - **Who may call:** an owner or a manager whose scope holds the item's store; anyone else, or an unknown item, gets `42501`. A closed item, a reason outside 1 to 200 characters or with a control character, or a `p_choice` that is not one of the item's `candidate_invoice_ids` gives `22023`.
 - **Notes:** `p_choice` earns the chosen invoice for the member on the item's path (`B` or `C`) with the caller as `approved_by`, the anti-fraud rules applied as for any earn, and closes the check-in or claim as `matched` (or `rejected` with the refusal reason); `null` dismisses the item and rejects the check-in or claim with reason `dismissed`. Returns `{"state", "entry_id", "refusal"}`.
 
+### 3.20 Customer Mini App: session, join, wallet and claims (phase 18a)
+
+Migrations `customer_session` (#261) and `customer_wallet` (#264) add the functions of the customer Mini App. The wire shapes are those of `packages/zalo-mini/src/loyalty/contract.ts` and [apps/zalo-customer/README.md](../apps/zalo-customer/README.md#the-loyalty-contract).
+
+**The customer session.** The customer branch of `zalo-session` (section 5) calls two RPCs that only `service_role` may execute, so they are not part of this page's check:
+- `zalo_customer_sign_in(p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text default null, p_new_user_id uuid default null)` answers the customer login of a Zalo user of an active Zalo App. With no login it answers `{"status": "login_needed"}`. The function then creates a login with `app_metadata` `{"kind": "customer", "tenant_id", "customer_id": null}` and calls again with its id. That login must have no `tenant_members` row, no staff Zalo identity and no other customer login (`22023` otherwise), and the first binding wins a race. The answer is `{"status": "customer", "user_id", "tenant_id", "customer_id", "display_name"}`: `customer_id` is null until the customer has joined, and `display_name` is the customer's name, else the Zalo name.
+- `customer_join(p_user_id uuid, p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text, p_phone text, p_loyalty_consent boolean, p_marketing_consent boolean, p_policy_version text, p_screen_version text, p_shown_at timestamp with time zone, p_store_code text, p_channel text)` takes the phone that `zalo-phone`'s exchange decoded.
+  - **Refusals:** `{"status": "refused", "reason"}` with `consent_required` (no loyalty consent), `policy_outdated` (not a published `privacy_notice` version of the tenant), `unknown_store` (not a link key of the app's brand) or `phone_in_use` (another Zalo user of the brand joined with that phone).
+  - **On success:**
+    - It finds or creates the customer by its E.164 phone (`loyalty_normalize_phone`), keeping the Zalo name only when the customer has none.
+    - It enrols the customer in the active programme through `app.loyalty_join`, with the welcome stamps; a staff phone gets none.
+    - It records the `loyalty` consent and, only when its toggle was ticked, the `marketing` consent. Each record has the channel `mini_app` and the evidence `{"screen_version", "shown_at", "accepted_at", "channel", "zalo_app_id", "store_id", "toggle", "ticked"}`, and the loyalty record also holds `"marketing_ticked"`.
+    - It answers `{"status": "joined", "customer_id", "membership_id", "welcome_stamps", "already_member"}`.
+  - **Bad input:** a malformed phone, version or time, a login of another Zalo user, a channel other than `mini_app`, or a tenant with no active programme gives `22023`.
+- The login rows live in `app.customer_logins` ([schema.md](schema.md)), which no API role reads. `zalo-session` then sets `app_metadata` `{"kind": "customer", "tenant_id", "customer_id"}`: exactly the claims `app.current_customer_id()` reads for RLS.
+
+**Who may call the six RPCs below.**
+- They are `security definer` functions that take no time argument, executable by `authenticated` only.
+- Each checks for a customer session itself: a JWT whose `app_metadata.kind` is `customer` and whose `tenant_id` is the tenant of a login of `app.customer_logins` of an active Zalo App, with no `tenant_members` row.
+- Every other caller gets `42501`, staff and owners included.
+- `customer_home` also answers a visitor, whose `customer_id` is null. The other five need a joined customer whose `app_metadata.customer_id` is the login's customer, and answer a visitor with `42501`, which the app reads as "not a member".
+- A store is named by its link key: `stores.code`, else `external_id`, 1 to 64 of `A-Z a-z 0-9 . _ -`, compared exactly, among the active stores of the app's brand.
+
+#### `public.customer_home`
+
+```sql
+public.customer_home()
+returns jsonb
+```
+
+- **Status:** built (phase 18a, #261, #262); called by `apps/zalo-customer`.
+- **Who may call:** any customer session, joined or not (browse first, FR-LOY-17).
+- **Notes:**
+  - `{"programme", "oa_id", "legal", "stores", "menu"}`.
+  - The programme is the tenant's active one, else the latest that is not a draft. It gives the facts of `loyalty_programmes`: `name`, `starts_on`, `ends_on`, `stamps_per_card`, `welcome_stamps`, `stamp_validity_months`, `points_enabled`, `points_expiry_months`, `receipt_claims_per_day` and `receipt_claim_window_hours`.
+  - `reward_summary` lists the active rewards, else it is null. `summary`, `stamp_rule`, `points_rule` and `retention_months` are null, so the app words them, and `tiers` is empty: the programme holds none of these yet.
+  - `oa_id` is the brand's OA id.
+  - `legal` is `{"entity_name"`: the tenant's name, `"policy_version"`: the published Vietnamese privacy notice version, `"documents"}`: the published `privacy_notice` and `mini_app_terms` in every language.
+  - `stores` are the brand's active stores with their link key, name, address and opening hours; the address and hours are null when unknown.
+  - `menu` is empty until the highlights have a source. No amount or price is ever returned.
+
+#### `public.customer_wallet`
+
+```sql
+public.customer_wallet()
+returns jsonb
+```
+
+- **Status:** built (phase 18a, #264); called by `apps/zalo-customer`.
+- **Who may call:** a joined customer session.
+- **Notes:** the wallet from the ledger, as of the call.
+  - `card`: the FR-CMP-19 content: `programme_name`, `display_name`, `phone_masked` (`•••• ••• ` and the last three digits), `member_since` and `purchases`, the confirmed earns not reversed.
+  - `stamp_cards`: one card from `loyalty_balance`: `stamps_on_card`, `stamps_per_card`, `pending_stamps` and the day of `next_stamp_expiry`.
+  - `points`: the spendable `balance`, `pending` and `expiring`, the points that expire on the next expiry day, oldest first.
+  - `tier` is null.
+  - `marketing_consent`: whether the active `marketing` consent exists.
+  - `history`: the latest 100 ledger rows other than confirm rows.
+    - `kind` is `welcome`, `earn`, `redeem`, `adjust`, `expire` or `reversal`.
+    - `state` is `pending` (an earn or hold without its confirm), `confirmed`, or `reversed` (an earn a clawback points at).
+    - Each row also has the ledger `reason`, `store_name`, the invoice's `receipt_no` and `matched_path`: `phone`, `member_code`, `receipt_claim`, `voucher`, `welcome` or `manual`.
+  - `claims`: the latest 50 receipt claims with `state` and `reason` as `receipt_claims` stores them.
+  - `claims_today` (every submission of the business day, refused ones included) and `claims_per_day`.
+
+#### `public.customer_member_code`
+
+```sql
+public.customer_member_code(p_store text)
+returns jsonb
+```
+
+- **Status:** built (phase 18a, #264, with the issuer of #255); called by `apps/zalo-customer`.
+- **Who may call:** a joined customer session whose membership is active (`42501` otherwise). A link key the app does not offer, or a programme that is not active, gives `22023`.
+- **Notes:**
+  - It returns `{"code", "qr_payload", "store_code", "store_name", "issued_at", "refresh_at", "expires_at"}`.
+  - `code` is a 6-digit check-in code from `app.loyalty_issue_checkin_code`, bound to the store and valid for the programme's `checkin_code_ttl_seconds` (120 by default). `refresh_at` is 60 seconds after issue, and `qr_payload` is `fnb-member:1:<link key>:<code>`.
+  - A new code replaces the member's previous live code at the store; a call within 30 seconds of the last code answers that code again.
+  - The code is a random server-side token checked at the till against `pending_checkins`, not a signed token.
+
+#### `public.customer_submit_claim`
+
+```sql
+public.customer_submit_claim(p_store text, p_receipt_no text, p_amount numeric, p_business_date date DEFAULT NULL::date)
+returns jsonb
+```
+
+- **Status:** built (phase 18a, #264); called by `apps/zalo-customer`.
+- **Who may call:** a joined customer session.
+- **Bad input:** a link key the app does not offer, a receipt number outside 1 to 40 characters or with a space or control character, or an amount not above 0 or above 100,000,000 gives `22023`.
+- **Notes:**
+  - "Nhận điểm từ hóa đơn" through `app.loyalty_submit_claim`; the business date defaults to the store's today.
+  - It returns `{"claim_id", "state", "reason", "claims_left_today"}`, with `state` `pending`, `matched`, `queued`, `rejected` or `expired` as stored.
+  - A synced receipt is matched at once. Otherwise the claim waits and a fast-lane run is requested; that is a row in `app.loyalty_fast_lane_runs` only, never a POS call, which only `fnb loyalty fast-lane` with `LOYALTY_FAST_LANE=on` runs.
+  - Refusals are answers, not errors, with the ledger's reason. Among them is `daily_cap`: the programme's `receipt_claims_per_phone_per_day` (3) submissions in a business day, refused ones counted.
+
+#### `public.customer_stop_marketing`
+
+```sql
+public.customer_stop_marketing()
+returns jsonb
+```
+
+- **Status:** built (phase 18a, #261); called by `apps/zalo-customer`.
+- **Who may call:** a joined customer session.
+- **Notes:** "Dừng nhận tin": sets `revoked_at` on the customer's active `marketing` consent at once (none to revoke is not an error) and answers `{"marketing_consent": false, "stopped_at"}`. The loyalty consent stays. No promotional message passes the consent check afterwards.
+
+#### `public.customer_request_deletion`
+
+```sql
+public.customer_request_deletion()
+returns jsonb
+```
+
+- **Status:** built (phase 18a, #263); called by `apps/zalo-customer`.
+- **Who may call:** a joined customer session.
+- **Notes:** records a `data_subject_requests` row: subject `customer`, type `deletion`, contact `mini_app`, deadlines filled by the ledger's trigger. It answers `{"request_id", "status", "requested_at"}`. An open (`received` or `in_progress`) deletion request of the customer is answered again instead of a second one. The deletion itself stays an owner's step (`app.erase_loyalty_membership`).
+
+Tests: pgTAP `66_customer_join.sql` and `67_customer_wallet.sql`.
+
+### 3.21 Staff loyalty tools (phase 17b)
+
+Migration `staff_loyalty` (#255) adds the functions behind "Ghi nhận khách", the member lookup, loyalty requests and the manager queue, with the names and shapes of `apps/zalo-staff/src/loyalty/contract.ts`.
+- They are `security definer` functions without a time argument, executable by `authenticated` only.
+- Each checks the caller's store itself: an owner, manager or staff member whose scope holds the store, through `app.has_store_scope`. Everyone else, a customer session included, gets `42501`, and nothing outside the caller's store is answered.
+- A staff phone never earns. That is a phone on `loyalty_staff_phones`, or the linked phone of an active `staff_roster` row.
+- The adjustment threshold is `tenants.loyalty_adjust_max_stamps` (1 by default) and `loyalty_adjust_max_points` (0 by default).
+- The redemption check (`staff_verify_redemption`) is in section 3.22.
+
+#### `public.staff_record_checkin`
+
+```sql
+public.staff_record_checkin(p_store_id uuid, p_phone text DEFAULT NULL::text, p_code text DEFAULT NULL::text, p_amount numeric DEFAULT NULL::numeric)
+returns jsonb
+```
+
+- **Status:** built (phase 17b, #255); the screen is #256.
+- **Who may call:** an owner, manager or staff member with the store in scope (`42501` otherwise).
+- **Bad input:** both or neither of phone and code, a code that is neither 6 digits nor such a payload, or an amount outside 0 to 100,000,000 gives `22023`.
+- **Notes:**
+  - "Ghi nhận khách" (path B) takes either a phone or a code.
+    - A phone means the member of the tenant's active programme with that phone; a fresh check-in code is issued for it.
+    - A code is the customer's live member code, or its QR payload `fnb-member:1:<link key>:<code>`.
+  - It records the check-in through `app.loyalty_record_checkin`, with the caller as recorder and the optional bill amount. A synced invoice matches at once; otherwise a fast-lane run is requested (a row only).
+  - A recording answers `{"state", "refusal": null, "checkin_id", "recorded_at", "confirm_by", "member", "stamps_earned", "points_earned"}`:
+    - `state` is `pending`, `matched` or `queued`.
+    - `confirm_by` is 10 minutes after a recording that waits.
+    - `member` is `{"membership_id", "phone_masked", "display_name", "stamps", "stamps_per_card", "points"}`, with the spendable balance.
+  - A refusal answers `{"state": "refused", "refusal", "text_key": "checkin.refusal.<refusal>", "checkin_id"}`. The refusals are:
+    - `invalid_phone`, `not_member` and `staff_phone`;
+    - `code_unknown`, `code_expired`, `code_used` and `wrong_store` (the code or the payload belongs to another store);
+    - `no_programme`, `membership_inactive` and `already_recorded` (the member was recorded at the store within the programme's check-in window);
+    - for a check-in matched at once but refused by the ledger, the earn refusal, with `daily_cap` as `daily_limit`.
+
+#### `public.staff_member_lookup`
+
+```sql
+public.staff_member_lookup(p_store_id uuid, p_phone text DEFAULT NULL::text, p_membership_id uuid DEFAULT NULL::uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 17b, #255); the screen is #257.
+- **Who may call:** an owner, manager or staff member with the store in scope (`42501` otherwise). Both or neither of phone and membership give `22023`.
+- **Notes:**
+  - It answers `{"found": true, "store_name", "business_date", "card", "today", "adjust_limit_stamps", "adjust_limit_points"}`.
+  - `card` is `{"membership_id", "phone_masked", "display_name", "member_since", "status", "tier_name"}`, with `tier_name` null, plus the balance from `loyalty_balance`: `stamps` (spendable), `stamps_per_card`, `stamps_on_card`, `cards_completed`, `stamps_pending`, `points` and `points_pending`.
+  - `today` lists the check-ins, earns, open receipt claims and manual adjustments of the member at this store on its business day. Each is `{"at", "path", "state", "stamps", "points", "receipt_no"}`, with `path` `phone`, `member_code`, `receipt_claim`, `voucher` or `manual` and `state` `pending`, `confirmed`, `queued` or `rejected`.
+  - A phone that does not read, a staff phone, no membership in the active programme or a membership of another tenant answer `{"found": false}`. The lookup never says whether a non-member is a customer and never shows the full phone.
+
+#### `public.staff_request`
+
+```sql
+public.staff_request(p_store_id uuid, p_kind text, p_membership_id uuid, p_reason text, p_stamps integer DEFAULT 0, p_points integer DEFAULT 0)
+returns jsonb
+```
+
+- **Status:** built (phase 17b, #255); the screens are #257 and #258.
+- **Who may call:** an owner, manager or staff member with the store in scope (`42501` otherwise).
+- **Bad input:** another kind, a membership outside the store's tenant, a reason outside 1 to 200 characters, more than 20 stamps or 100,000 points, an adjustment that moves nothing, or a dispute that takes stamps or points gives `22023`.
+- **Notes:**
+  - `p_kind` is `adjustment` or `dispute`. It returns `{"request_id", "kind", "state", "entry_id", "requested_at"}`.
+  - An adjustment within both thresholds is applied at once: state `applied`, a ledger `adjust` row with the reason and the caller as `approved_by`.
+    - Added stamps get `stamps` rows with the programme's validity.
+    - Removed stamps close the oldest active ones as `clawed_back`.
+    - Added points expire after `points_expiry_months`.
+  - A larger adjustment and every dispute stay `pending` for an owner or manager of the store.
+
+#### `public.staff_decide_loyalty_request`
+
+```sql
+public.staff_decide_loyalty_request(p_request_id uuid, p_decision text, p_reason text DEFAULT NULL::text, p_stamps integer DEFAULT NULL::integer, p_points integer DEFAULT NULL::integer)
+returns jsonb
+```
+
+- **Status:** built (phase 17b, #255); the manager queue is #258.
+- **Who may call:** an owner or manager of the request's store who is not the requester. Anyone else, or an unknown request, gets `42501`.
+- **Bad input:** a decision other than `approved` or `refused`, a refusal without a reason, a reason over 500 characters, amounts beyond 20 stamps or 100,000 points, or an approved dispute that takes gives `22023`. A decided request gives `55000`.
+- **Notes:** an approval writes the ledger `adjust` row with the request's reason and the caller as `approved_by`, using `p_stamps` and `p_points` when given (the requested amounts otherwise). It returns `{"state", "refusal": null, "request_id", "entry_id", "decided_at"}`.
+
+#### `public.staff_loyalty_queue`
+
+```sql
+public.staff_loyalty_queue(p_store_id uuid DEFAULT NULL::uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 17b, #255); the manager queue is #258.
+- **Who may call:** any signed-in member; only an owner or manager with the store in scope gets items, everyone else an empty list.
+- **Notes:**
+  - It lists, for one store or all, oldest first and at most 200:
+    - the pending disputes and adjustments the caller may decide (never the caller's own);
+    - the open match items of `loyalty_queue`.
+  - Each item is `{"id", "kind", "store_id", "created_at", "phone_masked", "requested_by_name", "reason", "stamps", "points", "match"}`, with `kind` `adjustment`, `dispute` or `match`; the requester's name comes from the roster, else the Zalo display name.
+  - `match` is `{"path", "recorded_at", "amount", "receipt_no", "candidates"}`, where `path` is `member_code` or `receipt_claim` and each candidate is `{"invoice_id", "receipt_no", "sold_at", "amount"}`.
+  - A match is resolved with `resolve_loyalty_queue_item` (section 3.19), a request with `staff_decide_loyalty_request`.
+
+#### `public.staff_my_loyalty_requests`
+
+```sql
+public.staff_my_loyalty_requests()
+returns jsonb
+```
+
+- **Status:** built (phase 17b, #255); the screen is #257.
+- **Who may call:** any signed-in member; it lists the caller's own requests at stores still in scope.
+- **Notes:** newest first, at most 200, each `{"id", "kind", "created_at", "phone_masked", "reason", "stamps", "points", "state", "decided_at", "decision_reason", "store_name"}`.
+
+#### `public.set_loyalty_adjust_limits`
+
+```sql
+public.set_loyalty_adjust_limits(p_tenant_id uuid, p_max_stamps integer, p_max_points integer)
+returns jsonb
+```
+
+- **Status:** built (phase 17b, #255); no screen yet.
+- **Who may call:** an owner with every store (`42501` otherwise). Limits outside 0 to 20 stamps or 0 to 100,000 points give `22023`.
+- **Notes:** sets `tenants.loyalty_adjust_max_stamps` and `loyalty_adjust_max_points` and answers `{"max_stamps", "max_points"}`.
+
+Tests: pgTAP `68_staff_loyalty.sql`.
+
+### 3.22 Rewards and redemptions (phase 18b)
+
+Migrations `coupon_catalogue` (#269), `redemption_flow` (#271) and `redemption_reconciliation` (#273) complete the reward catalogue and add the redemption lifecycle: a member redeems a reward in the customer Mini App, staff verify the code at the till, the cashier applies it at the POS, and the synced invoice confirms it.
+- The customer and staff RPCs are `security definer` functions without a time argument, executable by `authenticated` only, like those of 3.20 and 3.21. The customer ones take the session from `app.customer_session()` (`42501` for a visitor, an unjoined customer and every other caller) and name a store by its customer store code (`22023` for a store the app does not offer).
+- The rail of the store decides the code. `pos_payment_discount` (the fallback, without CRM) generates an 8-character code without look-alike characters, and staff are told the POS payment discount entry to apply (Chiết khấu thanh toán). `crm_code_pool` hands out the store's oldest available pool code; `crm_callback` generates a code for the voucher callback (#243) to validate.
+- A hold is a pending `redeem` row of the ledger: the stamps and points are held at once. A synced invoice confirms it after every sync (`app.reconcile_loyalty`): the code as the invoice's voucher code on the code rails; on the fallback rail, the discount entry name (or the 0-price line of the free item) on an invoice of the store sold within the programme's check-in window around the staff verification. The nightly step releases a hold unused after `hold_hours` (24 by default) with a reversing ledger row that gives everything back, and quarantines its pool code.
+- Rewards are described by kind, percentage and item names; the customer functions never return an amount (FR-LOY-17).
+- Refusals are answered, not raised, with a reason key. Customer reasons: `membership_inactive`, `store_unavailable`, `programme_inactive`, `coupon_unavailable`, `rail_not_ready`, `already_held`, `member_limit_reached`, `insufficient_stamps`, `insufficient_points`, `no_code_available`. Staff refusals use the staff app's names and come with `text_key` `redeem.refusal.<refusal>`: `unknown`, `wrong_store`, `used`, `expired`, `released`.
+- The redemption mismatches (a code verified at the till without an invoice after `grace_hours`, an invoice carrying a reward discount without a redemption, an invoice discount that differs from the reward) are listed in `loyalty_queue` on path `D` for [`resolve_loyalty_queue_item`](#publicresolve_loyalty_queue_item) to dismiss, and open the store-scoped alert rule `redemption_mismatch` with count-only facts.
+
+Tests: pgTAP `70_coupons.sql`, `71_redemptions.sql` and `72_redemption_reconciliation.sql`.
+
+#### `public.customer_coupons`
+
+```sql
+public.customer_coupons(p_store text DEFAULT NULL::text)
+returns TABLE(coupon_id uuid, reward_key text, name text, description text, reward_kind coupon_reward_kind, reward_percent numeric, reward_item_names text[], cost_stamps smallint, cost_points integer, store_codes text[], valid_from date, valid_until date, hold_hours smallint, per_member_limit smallint, redeemed integer, live_redemption_id uuid, affordable boolean, stamps_short integer, points_short integer, available boolean, unavailable_reason text)
+```
+
+- **Status:** built (phase 18b, #271); the wallet screens are #272.
+- **Who may call:** a joined customer session (`42501` otherwise). A store the app does not offer gives `22023`.
+- **Notes:** Đổi quà: the active rewards of the member's programme valid today, at one store (`p_store`) or at every store of the app (`null`). `store_codes` is null for a reward of every store. `affordable` compares the costs with the spendable stamps and points (confirmed, not held, not expired), with `stamps_short` and `points_short` missing. `available` is true when the reward can be redeemed now; otherwise `unavailable_reason` says why: `membership_inactive`, `already_held` (`live_redemption_id` is that hold), `member_limit_reached` (`redeemed` holds and confirmed redemptions against `per_member_limit`), `rail_not_ready` (the store's rail cannot carry it), `insufficient_stamps` or `insufficient_points`. Cheapest first.
+
+#### `public.customer_redeem`
+
+```sql
+public.customer_redeem(p_coupon uuid, p_store text)
+returns jsonb
+```
+
+- **Status:** built (phase 18b, #271); the wallet screens are #272.
+- **Who may call:** a joined customer session (`42501` otherwise). A missing reward or a store the app does not offer gives `22023`.
+- **Notes:** Đổi quà: holds the reward for the member at the store. A hold answers `{"redemption_id", "state": "held", "refusal": null, "code", "qr_payload", "rail", "coupon_id", "store_id", "store_code", "store_name", "held_at", "hold_expires_at", "seconds_left", "stamps_spent", "points_spent", "stamps", "points"}`, `stamps` and `points` being the spendable balance after the hold and `qr_payload` `fnb-redeem:1:<code>` for the staff app to scan. A refusal answers `{"redemption_id": null, "state": null, "refusal", "store_code", "store_name", "stamps", "points"}` with one of the customer reasons above, and changes nothing.
+
+#### `public.customer_vouchers`
+
+```sql
+public.customer_vouchers()
+returns TABLE(redemption_id uuid, coupon_id uuid, coupon_name text, reward_kind coupon_reward_kind, reward_percent numeric, store_code text, store_name text, code text, qr_payload text, state redemption_state, display_state text, held_at timestamp with time zone, hold_expires_at timestamp with time zone, seconds_left integer, verified boolean, confirmed_at timestamp with time zone, released_at timestamp with time zone, stamps_spent integer, points_spent integer)
+```
+
+- **Status:** built (phase 18b, #271); the wallet screens are #272.
+- **Who may call:** a joined customer session (`42501` otherwise); the customer's own redemptions only.
+- **Notes:** Ví voucher: the held redemptions first, then the others of the last 90 days, newest first, at most 100. `display_state` is `held` (the code and `qr_payload` are given and `seconds_left` counts down), `expired` (the hold ended and the nightly release is pending; no code), `used` (Đã dùng: confirmed by the synced invoice), `returned` (Đã hoàn lại: released with the stamps and points given back) or `cancelled`. `verified` is true once staff checked the code at the till.
+
+#### `public.staff_verify_redemption`
+
+```sql
+public.staff_verify_redemption(p_store_id uuid, p_code text)
+returns jsonb
+```
+
+- **Status:** built (phase 18b, #271); the staff app's Kiểm tra ưu đãi screen (#257) calls it.
+- **Who may call:** an owner, manager or staff member whose scope holds `p_store_id`, the store the app has selected; anyone else, a customer session, a viewer and the publisher included, gets `42501`. A code that is not 1 to 64 characters without spaces, or its QR payload `fnb-redeem:1:<code>`, gives `22023`.
+- **Notes:** checks a reward code typed or scanned at the till. A held, unexpired redemption of that store is marked verified (the first time) and stays held until the synced invoice confirms it. The answer is `{"state": "verified", "refusal": null, "text_key": "redeem.valid", "first_verification", "redemption_id", "reward_name", "reward_kind", "reward_percent", "rail", "pos_discount_name", "pos_free_item_external_id", "voucher_code", "min_bill_amount", "hold_until", "confirm_by", "verified_at", "phone_masked"}`. On `pos_payment_discount`, `pos_discount_name` is the POS payment discount entry to apply (or the 0-price item's name when the mapping uses a free line) and `confirm_by` the end of the programme's check-in window after the verification, by which the sale should be rung; on the CRM rails, `voucher_code` is the code to type. `min_bill_amount` is null without a minimum. The phone shows its last three digits only.
+- **Refusals** are answered, never raised: `{"state": "refused", "refusal", "reason", "text_key", "used_at", "used_store_name", "expired_at"}`.
+  - `unknown`: no such code in the tenant.
+  - `wrong_store`: the code belongs to another store; nothing more is said.
+  - `used`: confirmed by an invoice (`used_at` the confirmation), or already verified by someone else, or by the same person longer ago than the check-in window (15 minutes by default; `reason` `already_verified`, `used_at` the verification), so a code is not applied twice on the fallback rail.
+  - `expired`: the hold ended (`expired_at`).
+  - `released`: the hold was given back, or cancelled.
+
+#### `public.coupon_discount_days`
+
+```sql
+public.coupon_discount_days(p_coupon_id uuid, p_calendar_year integer)
+returns TABLE(item_external_id text, item_name text, price_discount_days integer, line_price_discount_days integer, bill_discount_days integer, gift_days integer, voucher_days integer, limit_days integer, over_limit boolean)
+```
+
+- **Status:** built (phase 18b, #269); the editor is #270.
+- **Who may call:** anyone signed in; `security invoker`, so a reward the caller does not read gives `22023`, and the counts follow the caller's revenue access as `item_discount_days` does.
+- **Notes:** information only (FR-CMP-12): the discount days of the calendar year of the items the reward discounts (its reward items, or every item but the excluded ones), from [`item_discount_days`](#publicitem_discount_days) over the reward's stores (every active store, at most 50, for a reward of every store). `limit_days` is the dated discount-days limit in force at the year's end or today, whichever is earlier (120 to 25 June 2026, then null while Decree 239/2026 is reported to repeal it); `over_limit` is never true without a limit and never blocks a save.
+
+#### `public.redemption_summary`
+
+```sql
+public.redemption_summary(store_ids uuid[], from_date date, to_date date)
+returns TABLE(store_id uuid, coupon_id uuid, reward_key text, coupon_name text, reward_kind coupon_reward_kind, redemptions bigint, held bigint, confirmed bigint, released bigint, stamps_redeemed bigint, points_redeemed bigint, reward_cost_amount numeric, member_invoices bigint, confirmed_share numeric)
+```
+
+- **Status:** built (phase 18b, #273); the web card is #274.
+- **Who may call:** anyone signed in; a report function (`security invoker`), so owners, managers and viewers get the stores in their scope and staff and the publisher no row.
+- **Notes:** for Khuyến mãi & giảm giá: per store and reward, the redemptions held on the business days of the range (the store's business date of the hold) with how many are still `held`, `confirmed` and `released`, the stamps and points the confirmed ones spent, `reward_cost_amount` (the payment discount of the confirming invoice on the fallback rail, its voucher amount on the code rails), the store's `member_invoices` of the range (invoices that earned and were not clawed back) and `confirmed_share` of them (null without member invoices). 0 to 50 stores, at most 92 days and 900 rows, else `22023`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
