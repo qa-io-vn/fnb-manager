@@ -736,4 +736,128 @@ describe.skipIf(!ENABLED)("digests and alerts on the local stack", () => {
 			"Đã khôi phục",
 		);
 	}, 300_000);
+
+	it("redemption mismatch", async () => {
+		const storeId = fixture.manager.storeIds?.[0] ?? "";
+		const managerChat = `synthetic-chat-redeem-${today.replaceAll("-", "")}`;
+		const manager = await fixture.addMember("manager", [storeId]);
+		const managerChannel = await fixture.linkZaloBot(manager, {
+			chatId: managerChat,
+		});
+		const day = shiftIsoDate(today, -1);
+		const discountName = "Doi thuong IT";
+		const [invoice] = await sql<{ id: string; store_name: string }[]>`
+			select i.id::text as id, s.name as store_name
+			from public.invoices i
+			join public.stores s on s.id = i.store_id
+			where i.store_id = ${storeId}::uuid and i.business_date = ${day}::date and i.status = 'completed'
+			order by i.sold_at desc, i.id
+			limit 1
+		`;
+		if (invoice === undefined) {
+			throw new Error("the fixture store has no completed invoice yesterday");
+		}
+		await sql`
+			insert into public.coupon_rail_rewards (tenant_id, store_id, reward_key, pos_discount_name, einvoice_display)
+			values (${fixture.tenantId}::uuid, ${storeId}::uuid, 'it-reward', ${discountName}, 'discount')
+		`;
+		await sql`
+			update public.invoices
+			set bill_discount_name = ${` ${discountName.toUpperCase()} `}
+			where id = ${invoice.id}::uuid
+		`;
+		const reconcile = async (at: Date) => {
+			const [row] = await sql<{ result: Record<string, number> }[]>`
+				select app.reconcile_redemptions(${fixture.tenantId}::uuid, ${day}::date, ${day}::date, ${at}::timestamptz) as result
+			`;
+			return row?.result ?? {};
+		};
+		const dedupeKey = `redemption_mismatch:store:${storeId}`;
+		const episodes = () =>
+			sql<
+				{
+					id: string;
+					state: string;
+					resolution: string | null;
+					facts: Record<string, unknown>;
+				}[]
+			>`
+				select id::text as id, state, resolution, facts
+				from public.alert_events
+				where tenant_id = ${fixture.tenantId}::uuid and dedupe_key = ${dedupeKey}
+			`;
+		const alertMessages = (episodeId: string) =>
+			sql<
+				{ channel_id: string; kind: string; params: Record<string, unknown> }[]
+			>`
+				select channel_id::text as channel_id, kind, params
+				from public.outbound_messages
+				where tenant_id = ${fixture.tenantId}::uuid and alert_event_id = ${episodeId}::uuid
+			`;
+		const managerAlerts = () =>
+			chatTexts(mock, managerChat).filter((text) =>
+				text.startsWith("Cảnh báo:"),
+			);
+
+		const first = await reconcile(new Date());
+		expect(first.mismatches_found).toBe(1);
+		expect(first.mismatch_alerts).toBe(1);
+		const [opened] = await episodes();
+		expect(opened?.state).toBe("open");
+		expect(opened?.facts).toEqual({
+			open_items: 1,
+			verified_without_invoice: 0,
+			discount_without_redemption: 1,
+			amount_mismatch: 0,
+		});
+		const queued = await alertMessages(opened?.id ?? "");
+		expect(
+			queued.filter((row) => row.channel_id === managerChannel),
+		).toHaveLength(1);
+		expect(queued.some((row) => row.channel_id === ownerChannel)).toBe(true);
+		for (const row of queued) {
+			expect(row.kind).toBe("alert");
+			const params = JSON.stringify(row.params);
+			expect(params).not.toContain(invoice.id);
+			expect(params.toLowerCase()).not.toContain(discountName.toLowerCase());
+		}
+
+		const soon = new Date(Date.now() + MINUTE);
+		const quietEnds = localInstant(localIsoDate(soon, ZONE), 6, 1);
+		const deliverAt = soon.getTime() < quietEnds.getTime() ? quietEnds : soon;
+		await fixture.cycle({ at: deliverAt });
+		const delivered = managerAlerts();
+		expect(delivered).toHaveLength(1);
+		const text = delivered[0] ?? "";
+		expect(text).toBe(
+			`Cảnh báo: ${invoice.store_name} có 1 mục đổi thưởng chưa khớp với hóa đơn POS: 1 hóa đơn có giảm giá đổi thưởng nhưng không có lượt đổi nào. Đối chiếu với POS rồi xử lý các mục này trong hàng chờ đối soát.\nTắt hoặc đổi kênh nhận: Cài đặt → Cảnh báo.`,
+		);
+		expect(text).not.toMatch(/₫|\d{1,3}(\.\d{3})+|https?:/);
+		expect(text).not.toContain(discountName);
+		expect(text.length).toBeLessThanOrEqual(1900);
+
+		const again = await reconcile(new Date());
+		expect(again.mismatches_found).toBe(0);
+		expect(again.mismatch_alerts).toBe(0);
+		expect(await alertMessages(opened?.id ?? "")).toHaveLength(queued.length);
+
+		const [item] = await sql<{ id: string }[]>`
+			select id::text as id from public.loyalty_queue
+			where invoice_id = ${invoice.id}::uuid and reason = 'discount_without_redemption' and state = 'open'
+		`;
+		await asOwner(sql, fixture.owner.userId, (transaction) =>
+			transaction`select public.resolve_loyalty_queue_item(${item?.id ?? ""}::uuid, null, 'checked with the POS')`.then(
+				() => undefined,
+			),
+		);
+		await reconcile(new Date());
+		const [cleared] = await episodes();
+		expect(cleared?.state).toBe("resolved");
+		expect(cleared?.resolution).toBe("cleared");
+		await fixture.cycle({ at: new Date(deliverAt.getTime() + MINUTE) });
+		expect(managerAlerts()).toHaveLength(1);
+		expect(chatTexts(mock, managerChat).join("\n")).not.toContain(
+			"Đã khôi phục",
+		);
+	}, 300_000);
 });

@@ -183,6 +183,16 @@ export const EN_MESSAGES: Readonly<Record<MessageKey, string>> = {
 		"Alert: on {date} the OA webhook received {count} events with a wrong signature (threshold {threshold} a day). Observe mode still stores them; check the OA secret key in the Edge Function secrets before switching to enforce mode.",
 	"alert.zalo_webhook_unverified.enforce":
 		"Alert: on {date} the OA webhook refused {count} events with a wrong signature (threshold {threshold} a day). Check the OA secret key in the Edge Function secrets; if the key is right, someone may be sending forged events.",
+	"alert.redemption_mismatch":
+		"Alert: {store} has {count} reward redemption items that do not match the POS invoices: {kinds}. Check them against the POS, then settle them in the reconciliation queue.",
+	"alert.redemption_mismatch.unsorted":
+		"Alert: {store} has {count} reward redemption items that do not match the POS invoices. Check them against the POS, then settle them in the reconciliation queue.",
+	"alert.redemption_mismatch.verified_without_invoice":
+		"{count} codes verified at the till without an invoice",
+	"alert.redemption_mismatch.discount_without_redemption":
+		"{count} invoices with a reward discount but no redemption",
+	"alert.redemption_mismatch.amount_mismatch":
+		"{count} invoices whose discount differs from the reward",
 	"alert.generic": "Operational alert: {rule}.",
 	"alert.generic.resolved": "Recovered: {rule}.",
 	"alert.footer": "Turn off or change the channel: Settings → Alerts.",

@@ -2,7 +2,7 @@
 
 This page is the reference for anyone who builds a client of the FNB Manager database. It covers how to call the database, how sign-in and roles decide what a caller sees, every function in the `public` schema that a signed-in user may execute, the tables and views that PostgREST serves, and the Edge Function endpoints. It is written for a developer taking the work over, for reviewers and testers, and for whoever runs the platform after go-live. The owner needs only [Authentication and roles](#2-authentication-and-roles). Column meanings and computation rules stay in [`schema.md`](schema.md), metric definitions in [`metrics.md`](metrics.md) and the numbered requirements in [`requirements.md`](requirements.md); this page says how to call them.
 
-Last updated 2026-11-18
+Last updated 2026-11-19
 
 **Status on 2026-11-12.** The 25 functions on this page and the tables of phases 2, 7, 8 and 9 are verified locally on the Supabase stack (pgTAP, the parity suite and the end-to-end tests). The notification tables of phase 12 are verified locally for step 12a and in build for step 12b. The functions for the Settings → Cảnh báo screen and the Bản tin panel are planned for step 12c. Those of phases 10 and 11 are designed at roadmap level; their detailed design is pending. No cloud project exists yet, so every cloud endpoint below waits for owner ([`go-live.md`](go-live.md)). `pnpm docs:check-api` compares every signature on this page with the database ([section 7](#7-keeping-this-page-current)).
 
@@ -1810,7 +1810,7 @@ returns jsonb
 
 - **Status:** built (phase 18a, #263); called by `apps/zalo-customer`.
 - **Who may call:** a joined customer session.
-- **Notes:** records a `data_subject_requests` row: subject `customer`, type `deletion`, contact `mini_app`, deadlines filled by the ledger's trigger. It answers `{"request_id", "status", "requested_at"}`. An open (`received` or `in_progress`) deletion request of the customer is answered again instead of a second one. The deletion itself stays an owner's step (`app.erase_loyalty_membership`).
+- **Notes:** records a `data_subject_requests` row: subject `customer`, type `deletion`, contact `mini_app`, deadlines filled by the ledger's trigger. It answers `{"request_id", "status", "requested_at"}`. An open (`received` or `in_progress`) deletion request of the customer is answered again instead of a second one. An owner carries the deletion out with [`dsr_delete`](#publicdsr_delete).
 
 Tests: pgTAP `66_customer_join.sql` and `67_customer_wallet.sql`.
 
@@ -2018,6 +2018,73 @@ returns TABLE(store_id uuid, coupon_id uuid, reward_key text, coupon_name text, 
 - **Who may call:** anyone signed in; a report function (`security invoker`), so owners, managers and viewers get the stores in their scope and staff and the publisher no row.
 - **Notes:** for Khuyến mãi & giảm giá: per store and reward, the redemptions held on the business days of the range (the store's business date of the hold) with how many are still `held`, `confirmed` and `released`, the stamps and points the confirmed ones spent, `reward_cost_amount` (the payment discount of the confirming invoice on the fallback rail, its voucher amount on the code rails), the store's `member_invoices` of the range (invoices that earned and were not clawed back) and `confirmed_share` of them (null without member invoices). 0 to 50 stores, at most 92 days and 900 rows, else `22023`.
 
+### 3.23 Customer phones and the Khách hàng section (#253, NFR-PRV)
+
+Migrations `customer_phone_privacy`, `loyalty_member_reads` and `loyalty_shift_anomalies` keep a customer's full phone in the database. No API role may select `customers.phone` any more (a column grant: `authenticated` selects every other column of `customers`, the policies are unchanged), so a PostgREST read of that column or an embed `customers(phone)` answers `42501` for everyone, owners included. The web section Khách hàng reads members, balances and shift counts through the functions below instead of raw rows; the phone is masked in the database as the staff and customer apps show it (`•••• ••• 234`, four and three dots and the last three digits), and only an owner's phone lookup answers with the full phone. The service role keeps the whole table. Tests: pgTAP `80_customer_phone_privacy.sql` and `81_loyalty_shift_anomalies.sql`, and the live Playwright spec `loyalty-pages.spec.ts`, which also checks that no Data API answer to a viewer holds a full phone.
+
+**The balance of a store-limited caller.** `loyalty_members_page` and `loyalty_member_lookup` compute the balance as [`loyalty_balance`](#publicloyalty_balance) does (spendable stamps and points; pending ones are earns waiting for their confirm row), over the ledger rows at the stores in the caller's loyalty scope and the rows without a store (welcome stamps given off-store, adjustments made off-store). An owner, or a manager or viewer of every store, gets the member's whole balance. A manager or viewer limited to some stores gets what the member earned, redeemed, was adjusted, clawed back and lost to expiry at those stores, plus the store-less rows: it may be less than the whole balance, as the page's note says. `last_visit` is the latest business date of an earn among the same rows.
+
+#### `public.loyalty_members_page`
+
+```sql
+public.loyalty_members_page(p_store_ids uuid[] DEFAULT NULL::uuid[], p_after text DEFAULT NULL::text, p_limit integer DEFAULT 100, p_search text DEFAULT NULL::text)
+returns TABLE(membership_id uuid, tenant_id uuid, programme_id uuid, phone_masked text, joined_at timestamp with time zone, status membership_status, channel text, stamps integer, points integer, pending_stamps integer, pending_points integer, last_visit date, page_key text)
+```
+
+- **Status:** built (#253); the web's Khách hàng → Thành viên list and the member page call it.
+- **Who may call:** owners, managers and viewers (`security definer` with an explicit check through `app.current_user_loyalty_tenant_ids()` and `app.current_user_loyalty_store_ids()`); staff, the publisher, a customer session and a login of no tenant get `42501`.
+- **Notes:** the memberships of the tenants of `p_store_ids` (the web passes the tenant's stores in scope; `null` means every store in the caller's loyalty scope, so every tenant where it reads loyalty), newest first by `joined_at` then membership id. Stores outside the caller's scope are ignored, so a store of another tenant gives no row. Membership is tenant-wide: a store-limited manager lists every member of the tenant, and its balances are scoped as above. Keyset paging: pass the `page_key` of the last row as `p_after` for the next page; `p_limit` is 1 to 1,000 (the web asks for 101 to know whether a next page exists). `p_search` narrows to one membership id, or to the members whose phone ends in 1 to 3 digits, the digits the masked phone already shows. A limit outside 1 to 1,000, a `p_after` that is not a `page_key`, or any other search text gives `22023`. No column holds a full phone.
+
+#### `public.loyalty_member_lookup`
+
+```sql
+public.loyalty_member_lookup(p_phone text)
+returns TABLE(membership_id uuid, tenant_id uuid, programme_id uuid, phone_full text, phone_masked text, joined_at timestamp with time zone, status membership_status, channel text, stamps integer, points integer, pending_stamps integer, pending_points integer, last_visit date)
+```
+
+- **Status:** built (#253); the lookup of Khách hàng → Thành viên calls it.
+- **Who may call:** owners, managers and viewers; everyone else gets `42501`. Through PostgREST only by POST, so the phone travels in the request body: a GET, which would put the phone in the URL, is refused with `PT405` (HTTP 405) before anything is read.
+- **Notes:** the memberships, in every tenant where the caller reads loyalty, of the customer whose phone reads as `p_phone` in E.164 form whatever form the till stored (spaces, dots, a leading 0 or 84 are accepted), newest first, at most 100; nothing for a text that is not a phone or a phone no member has. `phone_full` is the E.164 phone for an owner of the membership's tenant and null for everyone else, so an owner who is a viewer elsewhere gets the other tenant's row masked; `phone_masked` is always given. The web keeps the rows of the selected tenant and never puts the phone in the address, the title or the console. The balance is scoped as above.
+
+#### `public.loyalty_shift_anomalies`
+
+```sql
+public.loyalty_shift_anomalies(p_store_ids uuid[], p_from date, p_to date)
+returns TABLE(store_id uuid, business_date date, shift_number integer, earns integer, refusals jsonb, refusals_total integer, adjustments integer, checkins_without_invoice integer)
+```
+
+- **Status:** built (#253); Khách hàng → Bất thường theo ca calls it.
+- **Who may call:** anyone signed in; a report function (`security invoker`), so owners, managers and viewers get the stores in their loyalty scope and staff and the publisher no row.
+- **Notes:** per store, business date and shift: `shift_number` is the n of Ca {n}, the shift's place by opening time (then external id) among the store's shifts of that business date, as `app.shift_number` numbers it, null for events outside every shift. `earns` counts the earn rows, `refusals` the refusals by reason (`{"daily_cap": 1}`, only the reasons that occurred) with `refusals_total`, `adjustments` the manual adjustments (adjust rows whose reason is not `welcome`) and `checkins_without_invoice` the check-ins recorded without a matched invoice and not queued. An earn or a refusal belongs to the shift its invoice names, else to the shift open when the invoice was sold; an adjustment or a check-in to the shift open at that moment; a row takes the business date of its shift, else its own. Only shifts with an event come back. Never a cashier name, the POS shift label or its external id. 0 to 50 stores and at most 92 days, else `22023`; the web asks in groups of 50 stores.
+
+#### `public.phone_masked`
+
+```sql
+public.phone_masked(p_membership memberships)
+returns text
+```
+
+- **Status:** built (#253); the reconciliation queue embeds it as `membership:memberships(phone_masked)`.
+- **Who may call:** anyone signed in; `security definer`, it answers only for a membership the caller reads (owners, managers and viewers of its tenant, a customer session its own) and null otherwise.
+- **Notes:** a computed column of `memberships` for PostgREST (`select=id,phone_masked`): the member's phone masked as above, null without a phone. It looks the membership up again by id, so a row passed through `/rpc/phone_masked` reveals nothing the caller could not read.
+
+### 3.24 Data-subject requests (phase 17a)
+
+Migration `data_subject_deletion` (#252, the database part) carries out a customer's deletion request; the look-up, export and correction functions and the web pages (#254) are still to come. Rules and the log are in [schema.md](schema.md#data-subject-deletion).
+
+#### `public.dsr_delete`
+
+```sql
+public.dsr_delete(p_request_id uuid)
+returns jsonb
+```
+
+- **Status:** built (phase 17a, #252); no caller yet (the owner runs it in the SQL editor, operations 4.15; the web page is #254).
+- **Who may call:** an owner with an unlimited scope of the request's tenant; everyone else, managers included, gets `42501`. `anon` and `service_role` may not execute it.
+- **Notes:** takes a `deletion` request of subject `customer` that names the customer, as [`customer_request_deletion`](#publiccustomer_request_deletion) records it (`22023` for any other type, a staff subject, a request without a subject and a rejected request). In one transaction it removes the customer's memberships with their ledger rows, stamps, claims, check-ins, redemptions (a held pool code is quarantined), queue items, refusals and loyalty requests, the consent records, the Mini App logins with their Auth users and the `customers` row, and redacts the customer's message rows; it is the only way past the append-only rules of `loyalty_ledger` and `consent_records`. It completes the request and answers `{"request_id", "action": "deletion", "status": "completed", "already_done", "acted_at", "counts", "first_response_due_at", "completion_due_at", "responded_on_time", "completed_on_time"}`, where `counts` gives the rows per table; the same object is logged in `data_subject_request_actions`. A second call answers the logged action with `already_done` true and deletes nothing. Invoices keep the customer fields the POS sent until the POS is corrected and the days are synced again.
+
+Tests: pgTAP `91_data_subject_deletion.sql`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -2043,7 +2110,7 @@ Every table in `public` has RLS enabled, and `anon` holds no privilege on any ta
 | `stores` | store profile: time zone, business-day start, opening hours, seats, opening date, e-invoice status, receipt-number reset, settings | every member, stores in scope | none (store settings designed for 10b) | web app (store picker) |
 | `items`, `item_types`, `item_classes`, `units`, `packages`, `customizations`, `sources`, `payment_methods`, `promotions`, `devices` | the POS catalogue, synced per POS account | data roles of the tenant | none | web app reads `payment_methods` |
 | `store_items` | per-store price overrides | data roles, stores in scope | none | none |
-| `customers` | customers attached to invoices | data roles of the tenant | none | none |
+| `customers` | customers attached to invoices and loyalty members | data roles of the tenant, every column but `phone` (column grant); no API role selects `phone`, which reaches screens masked or through an owner's [`loyalty_member_lookup`](#publicloyalty_member_lookup) | none | none |
 
 ### Sales facts
 
@@ -2082,6 +2149,7 @@ Every table in `public` has RLS enabled, and `anon` holds no privilege on any ta
 |---|---|---|---|---|
 | `consent_records` | append-only consent ledger per subject and purpose | data roles of the tenant | [yes](#writes-through-tables), except `notifications` and `staff_ops` | none |
 | `data_subject_requests` | requests of data subjects, with statutory deadlines | owners and managers with an unlimited scope | [yes](#writes-through-tables) | none |
+| `data_subject_request_actions` | what was done for a request (a deletion's counts per table), logged against both deadlines | owners and managers with an unlimited scope | none ([`dsr_delete`](#publicdsr_delete)) | none |
 
 ### Analytics
 
@@ -2162,7 +2230,7 @@ Built locally (migrations `loyalty_programmes` to `loyalty_jobs`, pgTAP `60` to 
 | `coupon_rails` | the rail of each store (`crm_code_pool`, `crm_callback`, `pos_payment_discount`) with its history | data roles, stores in scope | owners and managers with an unlimited scope; switching inserts a row | none |
 | `coupon_rail_rewards` | the POS side of each reward per store and its e-invoice display | data roles, stores in scope | owners and managers with an unlimited scope | none |
 | `coupon_codes` | single-use POS codes of a reward per store and their state | owners and managers, stores in scope | none | none |
-| `memberships` | a customer's membership of a programme, with the per-brand Zalo user id only | owners, managers and viewers of the tenant; a customer session its own | none (`app.loyalty_join`) | none |
+| `memberships` | a customer's membership of a programme, with the per-brand Zalo user id only; the computed column [`phone_masked`](#publicphone_masked) gives the masked phone | owners, managers and viewers of the tenant; a customer session its own | none (`app.loyalty_join`) | web app (the queue embeds `phone_masked`; the list goes through [`loyalty_members_page`](#publicloyalty_members_page)) |
 | `loyalty_ledger` | the append-only ledger: earn, confirm, clawback, redeem, adjust, expire, with the value at issue and the matched path | owners, managers and viewers, stores in scope (rows without a store: the tenant); a customer session its own | none | none |
 | `stamps` | one row per stamp with its expiry and state | owners, managers and viewers of the tenant; a customer session its own | none | none |
 | `pending_checkins` | path B check-in codes, their recording by staff and their match | owners, managers and viewers, stores in scope; a customer session its own | none | none |

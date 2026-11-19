@@ -2553,6 +2553,7 @@
 					"type": "string"
 				},
 				"phone": {
+					"description": "phone number as captured at the till, E.164 for a loyalty customer; no API role selects it (column grant, #253): screens read memberships.phone_masked, loyalty_members_page and loyalty_member_lookup, and only an owner's lookup answers with the full phone",
 					"format": "text",
 					"type": "string"
 				},
@@ -2621,6 +2622,79 @@
 			],
 			"type": "object"
 		},
+		"data_subject_request_actions": {
+			"description": "what was done for a data-subject request, logged against its deadlines: one row per request and action (deletion today), with the rows removed or redacted per table (counts only), who acted and when, both deadlines of the request and whether the first response and the completion met them; written only by app.dsr_erase_customer",
+			"properties": {
+				"acted_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"acted_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"action": {
+					"format": "text",
+					"type": "string"
+				},
+				"completed_on_time": {
+					"description": "this action was no later than completion_due_at (20 days, 30 with a processor)",
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"completion_due_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"counts": {
+					"description": "rows per table, counts only: memberships, loyalty_ledger, stamps, redemptions, receipt_claims, pending_checkins, loyalty_queue, loyalty_refusals, loyalty_requests, coupon_codes_quarantined, redemption_invoices_settled, consent_records, outbound_messages_redacted, invoices_unlinked, customer_logins, auth_users, customers",
+					"format": "jsonb"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"first_response_due_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"request_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"responded_on_time": {
+					"description": "the request's responded_at (or this action, when no response was recorded before) was no later than first_response_due_at (2 working days)",
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"request_id",
+				"action",
+				"acted_at",
+				"counts",
+				"first_response_due_at",
+				"completion_due_at",
+				"responded_on_time",
+				"completed_on_time",
+				"created_at"
+			],
+			"type": "object"
+		},
 		"data_subject_requests": {
 			"properties": {
 				"completed_at": {
@@ -2673,6 +2747,11 @@
 						"withdraw_consent"
 					],
 					"format": "public.dsr_type",
+					"type": "string"
+				},
+				"responded_at": {
+					"description": "when the first response was given, compared with first_response_due_at: stamped when the status first leaves received (app.stamp_dsr_response) or by the deletion, unless given; set once",
+					"format": "timestamp with time zone",
 					"type": "string"
 				},
 				"status": {
@@ -7967,6 +8046,15 @@
 				"$ref": "#/definitions/customizations"
 			}
 		},
+		"body.data_subject_request_actions": {
+			"description": "data_subject_request_actions",
+			"in": "body",
+			"name": "data_subject_request_actions",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/data_subject_request_actions"
+			}
+		},
 		"body.data_subject_requests": {
 			"description": "data_subject_requests",
 			"in": "body",
@@ -11114,6 +11202,7 @@
 			"type": "string"
 		},
 		"rowFilter.customers.phone": {
+			"description": "phone number as captured at the till, E.164 for a loyalty customer; no API role selects it (column grant, #253): screens read memberships.phone_masked, loyalty_members_page and loyalty_member_lookup, and only an owner's lookup answers with the full phone",
 			"in": "query",
 			"name": "phone",
 			"required": false,
@@ -11179,6 +11268,81 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.data_subject_request_actions.acted_at": {
+			"in": "query",
+			"name": "acted_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.data_subject_request_actions.acted_by": {
+			"in": "query",
+			"name": "acted_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.data_subject_request_actions.action": {
+			"in": "query",
+			"name": "action",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.data_subject_request_actions.completed_on_time": {
+			"description": "this action was no later than completion_due_at (20 days, 30 with a processor)",
+			"in": "query",
+			"name": "completed_on_time",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.data_subject_request_actions.completion_due_at": {
+			"in": "query",
+			"name": "completion_due_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.data_subject_request_actions.counts": {
+			"description": "rows per table, counts only: memberships, loyalty_ledger, stamps, redemptions, receipt_claims, pending_checkins, loyalty_queue, loyalty_refusals, loyalty_requests, coupon_codes_quarantined, redemption_invoices_settled, consent_records, outbound_messages_redacted, invoices_unlinked, customer_logins, auth_users, customers",
+			"in": "query",
+			"name": "counts",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.data_subject_request_actions.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.data_subject_request_actions.first_response_due_at": {
+			"in": "query",
+			"name": "first_response_due_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.data_subject_request_actions.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.data_subject_request_actions.request_id": {
+			"in": "query",
+			"name": "request_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.data_subject_request_actions.responded_on_time": {
+			"description": "the request's responded_at (or this action, when no response was recorded before) was no later than first_response_due_at (2 working days)",
+			"in": "query",
+			"name": "responded_on_time",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.data_subject_request_actions.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.data_subject_requests.completed_at": {
 			"in": "query",
 			"name": "completed_at",
@@ -11236,6 +11400,13 @@
 		"rowFilter.data_subject_requests.request_type": {
 			"in": "query",
 			"name": "request_type",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.data_subject_requests.responded_at": {
+			"description": "when the first response was given, compared with first_response_due_at: stamped when the status first leaves received (app.stamp_dsr_response) or by the deletion, unless given; set once",
+			"in": "query",
+			"name": "responded_at",
 			"required": false,
 			"type": "string"
 		},
@@ -23359,6 +23530,208 @@
 				"tags": ["customizations"]
 			}
 		},
+		"/data_subject_request_actions": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.action"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.acted_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.acted_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.counts"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.first_response_due_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.completion_due_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.responded_on_time"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.completed_on_time"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.created_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "what was done for a data-subject request, logged against its deadlines: one row per request and action (deletion today), with the rows removed or redacted per table (counts only), who acted and when, both deadlines of the request and whether the first response and the completion met them; written only by app.dsr_erase_customer",
+				"tags": ["data_subject_request_actions"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.action"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.acted_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.acted_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.counts"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.first_response_due_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.completion_due_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.responded_on_time"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.completed_on_time"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.created_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/data_subject_request_actions"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "what was done for a data-subject request, logged against its deadlines: one row per request and action (deletion today), with the rows removed or redacted per table (counts only), who acted and when, both deadlines of the request and whether the first response and the completion met them; written only by app.dsr_erase_customer",
+				"tags": ["data_subject_request_actions"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.action"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.acted_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.acted_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.counts"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.first_response_due_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.completion_due_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.responded_on_time"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.completed_on_time"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_request_actions.created_at"
+					},
+					{
+						"$ref": "#/parameters/body.data_subject_request_actions"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "what was done for a data-subject request, logged against its deadlines: one row per request and action (deletion today), with the rows removed or redacted per table (counts only), who acted and when, both deadlines of the request and whether the first response and the completion met them; written only by app.dsr_erase_customer",
+				"tags": ["data_subject_request_actions"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.data_subject_request_actions"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "what was done for a data-subject request, logged against its deadlines: one row per request and action (deletion today), with the rows removed or redacted per table (counts only), who acted and when, both deadlines of the request and whether the first response and the completion met them; written only by app.dsr_erase_customer",
+				"tags": ["data_subject_request_actions"]
+			}
+		},
 		"/data_subject_requests": {
 			"delete": {
 				"parameters": [
@@ -23409,6 +23782,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.data_subject_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_requests.responded_at"
 					},
 					{
 						"$ref": "#/parameters/preferReturn"
@@ -23470,6 +23846,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.data_subject_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_requests.responded_at"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -23558,6 +23937,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.data_subject_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.data_subject_requests.responded_at"
 					},
 					{
 						"$ref": "#/parameters/body.data_subject_requests"
@@ -34495,6 +34877,43 @@
 				"tags": ["(rpc) decide_request"]
 			}
 		},
+		"/rpc/dsr_delete": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for owners with an unlimited scope (42501 for every other caller, including managers): app.dsr_erase_customer of a deletion request of their tenant at the current time, returning the logged counts and deadlines",
+							"properties": {
+								"p_request_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_request_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners with an unlimited scope (42501 for every other caller, including managers): app.dsr_erase_customer of a deletion request of their tenant at the current time, returning the logged counts and deadlines",
+				"tags": ["(rpc) dsr_delete"]
+			}
+		},
 		"/rpc/due_checklists": {
 			"get": {
 				"parameters": [
@@ -35824,6 +36243,161 @@
 				"tags": ["(rpc) loyalty_balance"]
 			}
 		},
+		"/rpc/loyalty_member_lookup": {
+			"get": {
+				"parameters": [
+					{
+						"format": "text",
+						"in": "query",
+						"name": "p_phone",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the phone lookup of the web section Khách hàng (#253) for owners, managers and viewers (42501 for everyone else): the memberships, in the tenants where the caller reads loyalty, of the customer whose phone reads as p_phone in E.164 form whatever form the till stored, newest first, at most 100; nothing for a phone that does not read or that no member has. phone_full is the E.164 phone for an owner of the membership's tenant and null for everyone else; phone_masked is always the masked form. The balance is scoped as in loyalty_members_page (the caller's loyalty stores and the rows without a store). Through PostgREST it answers POST only (the phone travels in the request body); a GET, which would carry the phone in the URL, is refused with PT405 (HTTP 405) before anything is read",
+				"tags": ["(rpc) loyalty_member_lookup"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the phone lookup of the web section Khách hàng (#253) for owners, managers and viewers (42501 for everyone else): the memberships, in the tenants where the caller reads loyalty, of the customer whose phone reads as p_phone in E.164 form whatever form the till stored, newest first, at most 100; nothing for a phone that does not read or that no member has. phone_full is the E.164 phone for an owner of the membership's tenant and null for everyone else; phone_masked is always the masked form. The balance is scoped as in loyalty_members_page (the caller's loyalty stores and the rows without a store). Through PostgREST it answers POST only (the phone travels in the request body); a GET, which would carry the phone in the URL, is refused with PT405 (HTTP 405) before anything is read",
+							"properties": {
+								"p_phone": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_phone"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the phone lookup of the web section Khách hàng (#253) for owners, managers and viewers (42501 for everyone else): the memberships, in the tenants where the caller reads loyalty, of the customer whose phone reads as p_phone in E.164 form whatever form the till stored, newest first, at most 100; nothing for a phone that does not read or that no member has. phone_full is the E.164 phone for an owner of the membership's tenant and null for everyone else; phone_masked is always the masked form. The balance is scoped as in loyalty_members_page (the caller's loyalty stores and the rows without a store). Through PostgREST it answers POST only (the phone travels in the request body); a GET, which would carry the phone in the URL, is refused with PT405 (HTTP 405) before anything is read",
+				"tags": ["(rpc) loyalty_member_lookup"]
+			}
+		},
+		"/rpc/loyalty_members_page": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "p_store_ids",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"format": "text",
+						"in": "query",
+						"name": "p_after",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "p_limit",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"format": "text",
+						"in": "query",
+						"name": "p_search",
+						"required": false,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the members list of the web section Khách hàng (#253) for owners, managers and viewers (42501 for everyone else): the memberships of the tenants of p_store_ids (every store in the caller's loyalty scope when null; stores outside it are ignored), newest first by joined_at then id, at most p_limit rows (1 to 1,000, else 22023) after p_after, the page_key of the last row of the previous page (keyset paging; anything else is 22023). p_search narrows to one membership id or to the members whose phone ends in 1 to 3 digits, the digits the masked phone shows (anything else is 22023). The phone is masked (four and three dots and the last three digits), never full. The balance follows app.loyalty_balance over the ledger rows at the given stores in scope and the rows without a store: an owner or a manager or viewer of every store sees the whole balance; a manager or viewer limited to some stores sees the stamps and points earned, redeemed, adjusted, clawed back and expired at those stores plus the welcome stamps and off-store adjustments, which may be less than the member's whole balance; last_visit is the latest business date of an earn among the same rows",
+				"tags": ["(rpc) loyalty_members_page"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the members list of the web section Khách hàng (#253) for owners, managers and viewers (42501 for everyone else): the memberships of the tenants of p_store_ids (every store in the caller's loyalty scope when null; stores outside it are ignored), newest first by joined_at then id, at most p_limit rows (1 to 1,000, else 22023) after p_after, the page_key of the last row of the previous page (keyset paging; anything else is 22023). p_search narrows to one membership id or to the members whose phone ends in 1 to 3 digits, the digits the masked phone shows (anything else is 22023). The phone is masked (four and three dots and the last three digits), never full. The balance follows app.loyalty_balance over the ledger rows at the given stores in scope and the rows without a store: an owner or a manager or viewer of every store sees the whole balance; a manager or viewer limited to some stores sees the stamps and points earned, redeemed, adjusted, clawed back and expired at those stores plus the welcome stamps and off-store adjustments, which may be less than the member's whole balance; last_visit is the latest business date of an earn among the same rows",
+							"properties": {
+								"p_after": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_limit": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_search": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the members list of the web section Khách hàng (#253) for owners, managers and viewers (42501 for everyone else): the memberships of the tenants of p_store_ids (every store in the caller's loyalty scope when null; stores outside it are ignored), newest first by joined_at then id, at most p_limit rows (1 to 1,000, else 22023) after p_after, the page_key of the last row of the previous page (keyset paging; anything else is 22023). p_search narrows to one membership id or to the members whose phone ends in 1 to 3 digits, the digits the masked phone shows (anything else is 22023). The phone is masked (four and three dots and the last three digits), never full. The balance follows app.loyalty_balance over the ledger rows at the given stores in scope and the rows without a store: an owner or a manager or viewer of every store sees the whole balance; a manager or viewer limited to some stores sees the stamps and points earned, redeemed, adjusted, clawed back and expired at those stores plus the welcome stamps and off-store adjustments, which may be less than the member's whole balance; last_visit is the latest business date of an earn among the same rows",
+				"tags": ["(rpc) loyalty_members_page"]
+			}
+		},
 		"/rpc/loyalty_rail_flags": {
 			"get": {
 				"parameters": [
@@ -35885,6 +36459,91 @@
 				},
 				"summary": "the active loyalty rail of each given store the caller reads, with the store's e-invoice status; flagged when a store with a rail does not issue cash-register e-invoices (status other than configured), for the data-quality page",
 				"tags": ["(rpc) loyalty_rail_flags"]
+			}
+		},
+		"/rpc/loyalty_shift_anomalies": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "p_store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_from",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_to",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the shift anomaly report of the web section Khách hàng (#253): per store, business date and shift (shift_number n of Ca {n}, numbered by opening time then external id among the store's shifts of that business date, as app.shift_number does; null for events outside every shift), the earns, the refusals by reason ({\"reason\": count}, only reasons that occurred) and their total, the manual adjustments (adjust rows whose reason is not welcome) and the check-ins recorded without an invoice (not matched, not queued). An earn or refusal belongs to the shift its invoice names, else to the shift open when the invoice was sold; an adjustment or a check-in to the shift open at that moment. A row belongs to the business date of its shift, else to its own. Only rows with an event come back, never a cashier name or the POS shift label. A report function: security invoker, 0 to 50 stores and at most 92 days (22023 otherwise); stores outside the caller's loyalty scope (owners, managers and viewers) give nothing, so staff and the publisher get no row",
+				"tags": ["(rpc) loyalty_shift_anomalies"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the shift anomaly report of the web section Khách hàng (#253): per store, business date and shift (shift_number n of Ca {n}, numbered by opening time then external id among the store's shifts of that business date, as app.shift_number does; null for events outside every shift), the earns, the refusals by reason ({\"reason\": count}, only reasons that occurred) and their total, the manual adjustments (adjust rows whose reason is not welcome) and the check-ins recorded without an invoice (not matched, not queued). An earn or refusal belongs to the shift its invoice names, else to the shift open when the invoice was sold; an adjustment or a check-in to the shift open at that moment. A row belongs to the business date of its shift, else to its own. Only rows with an event come back, never a cashier name or the POS shift label. A report function: security invoker, 0 to 50 stores and at most 92 days (22023 otherwise); stores outside the caller's loyalty scope (owners, managers and viewers) give nothing, so staff and the publisher get no row",
+							"properties": {
+								"p_from": {
+									"format": "date",
+									"type": "string"
+								},
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"p_to": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_ids", "p_from", "p_to"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the shift anomaly report of the web section Khách hàng (#253): per store, business date and shift (shift_number n of Ca {n}, numbered by opening time then external id among the store's shifts of that business date, as app.shift_number does; null for events outside every shift), the earns, the refusals by reason ({\"reason\": count}, only reasons that occurred) and their total, the manual adjustments (adjust rows whose reason is not welcome) and the check-ins recorded without an invoice (not matched, not queued). An earn or refusal belongs to the shift its invoice names, else to the shift open when the invoice was sold; an adjustment or a check-in to the shift open at that moment. A row belongs to the business date of its shift, else to its own. Only rows with an event come back, never a cashier name or the POS shift label. A report function: security invoker, 0 to 50 stores and at most 92 days (22023 otherwise); stores outside the caller's loyalty scope (owners, managers and viewers) give nothing, so staff and the publisher get no row",
+				"tags": ["(rpc) loyalty_shift_anomalies"]
 			}
 		},
 		"/rpc/mark_announcement_read": {
@@ -37373,6 +38032,66 @@
 					}
 				},
 				"tags": ["(rpc) period_summary"]
+			}
+		},
+		"/rpc/phone_masked": {
+			"get": {
+				"parameters": [
+					{
+						"format": "memberships",
+						"in": "query",
+						"name": "p_membership",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "computed column memberships.phone_masked for PostgREST (select=phone_masked, or memberships(phone_masked) in an embed): the member's phone as the apps show it, four and three dots and the last three digits; null without a phone and for a membership the caller does not read (owners, managers and viewers of its tenant, a customer session its own). The membership is looked up again by id, so a row passed through /rpc reveals nothing more",
+				"tags": ["(rpc) phone_masked"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "computed column memberships.phone_masked for PostgREST (select=phone_masked, or memberships(phone_masked) in an embed): the member's phone as the apps show it, four and three dots and the last three digits; null without a phone and for a membership the caller does not read (owners, managers and viewers of its tenant, a customer session its own). The membership is looked up again by id, so a row passed through /rpc reveals nothing more",
+							"properties": {
+								"p_membership": {
+									"format": "memberships",
+									"type": "string"
+								}
+							},
+							"required": ["p_membership"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "computed column memberships.phone_masked for PostgREST (select=phone_masked, or memberships(phone_masked) in an embed): the member's phone as the apps show it, four and three dots and the last three digits; null without a phone and for a membership the caller does not read (owners, managers and viewers of its tenant, a customer session its own). The membership is looked up again by id, so a row passed through /rpc reveals nothing more",
+				"tags": ["(rpc) phone_masked"]
 			}
 		},
 		"/rpc/promotion_catalogue": {

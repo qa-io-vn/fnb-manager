@@ -261,9 +261,28 @@ const RULES_BY_COUNTRY: Readonly<Record<string, readonly PromotionRule[]>> = {
 	VN: VIETNAM_RULES,
 };
 
+export const PROMOTION_RULE_COUNTRIES: readonly string[] =
+	Object.keys(RULES_BY_COUNTRY);
+
 export function promotionRules(countryCode: string): readonly PromotionRule[] {
 	const code = countryCode.trim().toUpperCase();
 	return Object.hasOwn(RULES_BY_COUNTRY, code)
 		? (RULES_BY_COUNTRY[code] ?? [])
 		: [];
+}
+
+export function promotionDiscountCap(
+	countryCode: string,
+	from: string | null,
+	to: string | null,
+): number | null {
+	const caps = promotionRules(countryCode)
+		.filter(
+			(rule): rule is DiscountCapRule =>
+				rule.id === "discount_cap" &&
+				(to === null || rule.validFrom <= to) &&
+				(from === null || rule.validTo === null || rule.validTo >= from),
+		)
+		.map((rule) => rule.parameters.maxDiscountRate);
+	return caps.length === 0 ? null : Math.min(...caps);
 }

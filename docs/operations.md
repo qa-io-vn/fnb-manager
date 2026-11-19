@@ -216,6 +216,7 @@ Unknown opening hours count every minute. A store that is inactive, belongs to a
 | `channel_failed` | immediate | warning | owner | 24 h | a destination that keeps failing (12b) |
 | `digest_failed` | immediate | warning | owner | 24 h | a digest that could not be built (12b) |
 | `zalo_webhook_unverified` | immediate | warning | owner | 24 h | `oa-webhook` (#207, built): more OA calls in one tenant-local day than `max_per_day` (default 10) whose signature was missing or wrong, counted whether observe mode stored them or enforce mode refused them; raised once, at the first call over the limit (runbook 4.18) |
+| `redemption_mismatch` | immediate | warning | owner, manager (store-scoped) | – | `app.reconcile_redemptions` after each sync (#273, built): a code verified at the till without an invoice `grace_hours` (24) later, an invoice carrying a reward discount without a redemption, or a discount that differs from the reward by more than `amount_tolerance` (1,000 ₫); the message counts each kind, names the store and carries no amount, code or link; it clears without a notice once no path D item of the store is open in `loyalty_queue` |
 
 ```sh
 CI=1 pnpm --filter @fnb/jobs fnb -- notify status --tenant <tenant-slug>
@@ -608,7 +609,13 @@ returning id, first_response_due_at, completion_due_at;
 3. **Act.**
    - Access or export: collect the rows privately and hand them over through a private channel, never through the repository.
    - Correction: members in Auth and `tenant_members`; POS data in the POS itself, then run those days again (4.6).
-   - Deletion of a member: 4.14. Of a customer: remove the data in the POS first, because a re-sync of those days brings back what the POS still holds; then the delivery team removes our copies. Message rows of any subject can be redacted with `select app.redact_outbound_for_subject('<tenant id>', '<customer or staff>', '<subject id>');`.
+   - Deletion of a member: 4.14. Of a customer: remove the data in the POS first, because a re-sync of those days brings back what the POS still holds. Then an owner with every store runs the deletion on the request (the customer's own "Rời chương trình" in the Mini App records one with the customer named; a request recorded by hand needs `subject_id` set to the `customers.id` first):
+
+```sql
+select public.dsr_delete('<request id>');
+```
+
+   It removes, in one transaction, the customer's memberships with their ledger rows, stamps, claims, check-ins, redemptions (a held pool code is quarantined), queue items, refusals and loyalty requests, the consent records, the Mini App logins with their Auth users, and the `customers` row; it redacts the customer's message rows; it completes the request and logs the counts per table with both deadlines in `data_subject_request_actions`. Running it again answers the logged result and deletes nothing. Invoices keep the customer fields the POS sent, and `sale_payloads` the raw documents, until the POS is corrected and those days are synced again (4.6). Message rows of any other subject can be redacted with `select app.redact_outbound_for_subject('<tenant id>', '<customer or staff>', '<subject id>');`.
    - Objection or withdrawal of consent: for notifications, `fnb notify unlink --member <login e-mail> --all` (4.14, step 1); for `staff_ops`, only the person withdraws it, in their own session (`withdraw_staff_ops_consent`; the app's screen for it is still to come), which unpairs their Zalo identities and ends their sessions; when they ask the owner instead, deactivate them on Nhân viên (4.14), which ends their access the same way. The loyalty and marketing purposes arrive with Track C.
 4. **Close** the request:
 

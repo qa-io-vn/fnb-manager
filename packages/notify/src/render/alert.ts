@@ -111,6 +111,12 @@ const WEBHOOK_MODE_KEYS: Readonly<Record<string, MessageKey>> = {
 	enforce: "alert.zalo_webhook_unverified.enforce",
 };
 
+const REDEMPTION_MISMATCH_KINDS = [
+	"verified_without_invoice",
+	"discount_without_redemption",
+	"amount_mismatch",
+] as const;
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const UNKNOWN = "?";
 const STORE_FALLBACK = "cửa hàng";
@@ -361,6 +367,33 @@ function webhookUnverifiedText(facts: AlertFacts): string {
 	);
 }
 
+function redemptionMismatchText(facts: AlertFacts): string {
+	const counted = REDEMPTION_MISMATCH_KINDS.flatMap((kind) => {
+		const count = numberParam(facts.params, kind);
+		return count !== null && Number.isInteger(count) && count > 0
+			? [{ kind, count }]
+			: [];
+	});
+	const total =
+		numberParam(facts.params, "open_items") ??
+		(counted.length === 0
+			? null
+			: counted.reduce((sum, entry) => sum + entry.count, 0));
+	const values = { store: store(facts), count: countText(total) };
+	return counted.length === 0
+		? message("alert.redemption_mismatch.unsorted", values)
+		: message("alert.redemption_mismatch", {
+				...values,
+				kinds: listText(
+					counted.map(({ kind, count }) =>
+						message(`alert.redemption_mismatch.${kind}` as MessageKey, {
+							count: formatViCount(count),
+						}),
+					),
+				),
+			});
+}
+
 function openingText(facts: AlertFacts): string {
 	const rule = ruleOf(facts);
 	const params = facts.params;
@@ -449,6 +482,8 @@ function openingText(facts: AlertFacts): string {
 			return oaPackageText(facts);
 		case "zalo_webhook_unverified":
 			return webhookUnverifiedText(facts);
+		case "redemption_mismatch":
+			return redemptionMismatchText(facts);
 		default:
 			return message("alert.generic", { rule });
 	}

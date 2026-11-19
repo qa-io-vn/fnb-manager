@@ -78,9 +78,11 @@ export {
 	LUCKY_DRAW_KEYWORDS,
 	type LuckyDrawParameters,
 	type LuckyDrawRule,
+	PROMOTION_RULE_COUNTRIES,
 	PROMOTION_RULES_CHECKED_ON,
 	type PromotionRule,
 	type PromotionRuleId,
+	promotionDiscountCap,
 	promotionRules,
 	type RuleNote,
 } from "./rules/promotion-rules.js";

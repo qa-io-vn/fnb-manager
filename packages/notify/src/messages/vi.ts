@@ -178,6 +178,16 @@ export const VI_MESSAGES = {
 		"Cảnh báo: ngày {date}, webhook OA nhận {count} sự kiện sai chữ ký (ngưỡng {threshold} mỗi ngày). Chế độ quan sát vẫn lưu các sự kiện này; kiểm tra khóa bí mật OA trong secret Edge Function trước khi chuyển sang chế độ chặn.",
 	"alert.zalo_webhook_unverified.enforce":
 		"Cảnh báo: ngày {date}, webhook OA từ chối {count} sự kiện sai chữ ký (ngưỡng {threshold} mỗi ngày). Kiểm tra khóa bí mật OA trong secret Edge Function; nếu khóa đúng, có thể có người gửi sự kiện giả.",
+	"alert.redemption_mismatch":
+		"Cảnh báo: {store} có {count} mục đổi thưởng chưa khớp với hóa đơn POS: {kinds}. Đối chiếu với POS rồi xử lý các mục này trong hàng chờ đối soát.",
+	"alert.redemption_mismatch.unsorted":
+		"Cảnh báo: {store} có {count} mục đổi thưởng chưa khớp với hóa đơn POS. Đối chiếu với POS rồi xử lý các mục này trong hàng chờ đối soát.",
+	"alert.redemption_mismatch.verified_without_invoice":
+		"{count} mã đã xác nhận tại quầy nhưng chưa có hóa đơn",
+	"alert.redemption_mismatch.discount_without_redemption":
+		"{count} hóa đơn có giảm giá đổi thưởng nhưng không có lượt đổi nào",
+	"alert.redemption_mismatch.amount_mismatch":
+		"{count} hóa đơn có mức giảm khác với phần thưởng",
 	"alert.generic": "Cảnh báo vận hành: {rule}.",
 	"alert.generic.resolved": "Đã khôi phục: {rule}.",
 	"alert.footer": "Tắt hoặc đổi kênh nhận: Cài đặt → Cảnh báo.",
