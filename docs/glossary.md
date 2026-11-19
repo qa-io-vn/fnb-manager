@@ -2,7 +2,7 @@
 
 This page explains the words that the app, the reports and the technical documents use: the Vietnamese terms of the interface with their English meaning and the code ids behind them, the domain terms of shop analytics, and the technical terms of the platform. It is for the owner, who reads the app in Vietnamese and these documents in English, for a developer taking the work over, for reviewers and testers, and for whoever runs the platform after go-live. The terms come from the i18n message files (`apps/web/src/i18n/messages/`), the metric registry ([`metrics.md`](metrics.md), `packages/metrics`), the report cards (`@fnb/reports`) and the code; where a document and the code differ, the code wins.
 
-Last updated 2026-11-18
+Last updated 2026-11-19
 
 **How to read the code ids.** A route is a hash URL of the web app (`#/bao-cao/ngay`). A key such as `nav.today` is an i18n key in `apps/web/src/i18n/messages/`. A report id (`day`) comes from `reportNames` in `packages/metrics/src/vocabulary.ts`. A card id (`top_items`) is the id of a report card in `@fnb/reports`. A metric id (`avg_ticket`) is a registry metric; a display series id (`cash_to_count`) is a series that only the web app names (`displaySeries` in `apps/web/src/metrics/registry.ts`). Status words are the six that [requirements.md, section 1.5](requirements.md#15-conventions) defines: verified locally, built, in build, designed, planned, waits for owner ([section 7](#status-words)).
 
@@ -29,7 +29,9 @@ Last updated 2026-11-18
 | Năm · Báo cáo năm | Year · Yearly report | route `#/bao-cao/nam?year=YYYY`; report id `year` | a calendar year; verified locally (phase 9) |
 | Chủ đề · Báo cáo chủ đề | Topics · Thematic reports | route `#/chu-de/*`; `nav.topics`; links carry `range=<preset>` or `from=YYYY-MM-DD&to=YYYY-MM-DD`, and `store=<id>,<id>` | one subject over any range of days; four built (10a), four more in 10b ([below](#thematic-reports-phase-10)) |
 | Kế hoạch | Plans | route `#/ke-hoach/*`; `nav.plans` | saved strategy plans, KPI follow-up and the paste box; designed (phase 11b) |
-| Cài đặt | Settings | route `#/cai-dat/*` (`#/cai-dat` opens Cửa hàng); `nav.settings` | in build: the layout, the settings source, Ngưỡng báo cáo, the roles tab of Phân loại and the catch-up line are built (10a); the other pages in 10b and 12; Nhân viên built in 14a (#214), for owners and managers only |
+| Vận hành: Checklist · Két tiền · Sự cố & bàn giao | Operations: checklists · cash drawer · incidents and handovers | routes `#/van-hanh/checklist`, `#/van-hanh/ket-tien`, `#/van-hanh/su-co` (`#/van-hanh` opens Checklist); `operations.*` | what the staff app recorded per store, day and shift: checklist compliance, the app's cash counts beside the POS drawer, and the incident and handover log; owners and managers only; built (14b, #225); no navigation item |
+| Khách hàng: Thành viên · Hàng chờ đối soát · Bất thường theo ca | Customers: members · reconciliation queue · shift anomalies | routes `#/khach-hang/thanh-vien`, `#/khach-hang/thanh-vien/:membershipId`, `#/khach-hang/doi-soat`, `#/khach-hang/bat-thuong` (`#/khach-hang` opens Thành viên); `loyalty.*` | the loyalty members with masked phones and their ledgers, the cases a manager decides, and earns and refusals per shift; owners, managers and viewers; live data only, the demo explains it; built (17a, #253); no navigation item. Not the planned customer report `customers` |
+| Cài đặt | Settings | route `#/cai-dat/*` (`#/cai-dat` opens Cửa hàng); `nav.settings` | in build: the layout, the settings source, Ngưỡng báo cáo, the roles tab of Phân loại and the catch-up line are built (10a); the other pages in 10b and 12; Nhân viên built in 14a (#214) and Checklist in 14b (#220), both for owners and managers only; Khách hàng thân thiết built in 16a and 18b (#240, #270) |
 | Xuất dữ liệu | Exports | route `#/xuat-du-lieu`, tabs `?tab=goi` and `?tab=xuat`; `exports.*` | two tabs: "Gói dữ liệu cho AI" (the aggregate [data pack](#data-pack), the default tab, built in the browser and downloaded or copied with its prompt; built in 11a, #142) and "Xuất dữ liệu" (CSV or JSON files of invoices, lines, payments, shifts and the daily summary by month, each proven equal to the database; built in 11a, [exports.md](exports.md)); owners and managers only; no navigation item |
 | Đăng nhập | Sign in | route `#/dang-nhap`; `auth.login.title` | |
 | Quên mật khẩu? · Đặt lại mật khẩu | Forgot your password? · Reset password | route `#/quen-mat-khau`; `auth.forgot`, `auth.reset.title` | the reset e-mail links back to `#/mat-khau-moi` |
@@ -76,7 +78,9 @@ Names from `reportNames`; routes from [`web-app.md`](web-app.md).
 | Ngày lễ | Holidays | `#/cai-dat/ngay-le` | 10b |
 | Cảnh báo | Alerts: destinations, rules and a test button | `#/cai-dat/canh-bao` | after step 12c |
 | Pháp lý | Legal texts (the consent view comes in phase 17a) | `#/cai-dat/phap-ly` | 10b |
-| Nhân viên | Staff: the roster, pairing codes, the staff app's QR code per store and the staff revenue level | `#/cai-dat/nhan-vien`; `settings.staff.*` | built (14a, #214); listed for owners and managers only ([below](#staff-and-the-staff-app-phase-14a)) |
+| Nhân viên | Staff: the roster, pairing codes, the staff app's QR code per store and the staff revenue level | `#/cai-dat/nhan-vien`; `settings.staff.*` | built (14a, #214); listed for owners and managers only ([below](#staff-and-the-staff-app-phase-14a)); the owner's contact note for staff added in 14b |
+| Checklist | Checklists: the opening, mid-shift and closing checklists of each store | `#/cai-dat/checklist`; `settings.checklists.*` | built (14b, #220); listed for owners and managers only ([below](#shift-operations-phase-14b)) |
+| Khách hàng thân thiết | Loyalty programme: tabs Chương trình (`?tab=chuong-trinh`) and Ưu đãi (`?tab=uu-dai`) | `#/cai-dat/khach-hang-than-thiet`; `settings.loyalty.*`, `settings.rewards.*` | built (16a #240, 18b #270) ([below](#loyalty-phases-16-to-18)) |
 
 ## 2. Report cards
 
@@ -245,6 +249,50 @@ Each card has an id in `@fnb/reports` and a title key `report.<report>.<name>.ti
 | Ứng dụng nhân viên trên Zalo · In mã QR | Staff app on Zalo · Print the QR codes | `settings.staff.app.*` | the section of Cài đặt → Nhân viên with each store's QR code of the staff Mini App (`zalo.me/s/<Mini App id>/?store=<store code>`), drawn in the browser |
 | Trang chủ | Home | staff app route `/`; `tab.home` | the staff app's first tab: the greeting and role, the store, today's figures as the role and the revenue level allow, today's opening hours and the freshness stamp (#217, built) |
 | Cập nhật lúc · Chưa đồng bộ | Updated at · Not synced yet | `home.freshness.*` | the staff home's stamp of the tenant's latest successful sync |
+
+### Shift operations (phase 14b)
+
+| Vietnamese | English | Code id | Meaning |
+|---|---|---|---|
+| checklist mở ca · giữa ca · đóng ca | opening · mid-shift · closing checklist | `checklist_templates.shift_phase` `opening`, `midshift`, `closing`; `operations.phase.*` | the steps a store's staff tick off in the staff app; written on Cài đặt → Checklist for one store or every store. Each save is a new version that applies from the next run, and a run keeps the wording it was done with |
+| Đang dùng · Đã ngừng dùng | In use · Taken out of use | `checklist_templates.active`; `settings.checklists.active`, `.retired` | a checklist the staff app offers, or one kept only for its past runs ("Dùng lại" puts it back) |
+| Xong · Xong muộn · Đang làm · Chưa đến hạn · Bị bỏ | done · done late · in progress · not due yet · missed | `ComplianceStatus` `done`, `late`, `inProgress`, `due`, `missing`; `operations.compliance.*` | a checklist's status on a day, by the deadline from the store's opening hours ([metrics.md](metrics.md#checklist-status-rule)) |
+| Tỷ lệ checklist xong · Checklist bị bỏ | checklists done · missed checklists | display series `checklist_compliance`, `checklists_missing` | done and done late ÷ every decided checklist; the missed ones |
+| Số đếm két · Đếm trên ứng dụng · Két POS · Chênh lệch đếm | cash count · counted in the app · POS drawer · count difference | `cash_count_review`; `operations.column.*` | the cash a staff member counted at the close in the staff app, beside what the cashier typed on the POS and the expected cash; the difference is the count less the expected cash |
+| Chưa đếm · Chưa khớp ca · Vượt ngưỡng · Trong ngưỡng · POS không có số dự kiến | no count · not matched to a shift · over a threshold · within the thresholds · no expected cash from the POS | `cash_count_review.state` `no_count`, `unmatched`, `over`, `within`, `no_reference` (and `recorded` for a reader not allowed the figures); `operations.cashState.*` | a shift's count state; a count waits "Chưa khớp ca" until its shift is synced |
+| Ca đếm két vượt ngưỡng · Ca đã đóng chưa đếm két | cash counts over a threshold · closed shifts without a count | display series `cash_count_flags`, `shifts_without_count` | see [metrics.md](metrics.md#display-series) |
+| Mở lại để đếm lại | Reopen for a recount | `operations.reopen.*` | an owner or manager of the store reopens a count so staff count that shift again; who and when are recorded |
+| Sự cố · Hết hàng · Bàn giao ca | incident · stock-out · shift handover | `incidents.kind` `incident`, `stock_out`; `shift_handovers`; `operations.kind.*` | what staff report in the staff app, and the note one shift leaves the next |
+| Chưa xem · Đã xem · Đã xử lý | not seen · seen · resolved | `operations.status.*`; display series `open_reports` | a report's state: an owner or manager of the store marks it seen or resolved, never the person who wrote it |
+| Lời nhắn liên hệ trên ứng dụng nhân viên | Contact note in the staff app | `set_staff_contact_instructions`; `settings.staff.contact.*` | the owner's note telling staff whom to contact, on Cài đặt → Nhân viên: plain text and line breaks, at most 500 characters, no link; without one the app shows its default note; an owner with every store writes it |
+
+### Loyalty (phases 16 to 18)
+
+| Vietnamese | English | Code id | Meaning |
+|---|---|---|---|
+| Khách hàng thân thiết · chương trình | loyalty programme | table `loyalty_programmes`; `settings.loyalty.*` | a tenant's programme: name, period, reward budget, status and every value of the mechanic, read when each earn is written ([metrics.md](metrics.md#loyalty-counting)) |
+| Bản nháp · Đang chạy · Tạm dừng · Đã kết thúc | draft · active · paused · ended | `loyalty_programmes.status` | only an active programme earns |
+| Đang giữ chưa ra mắt · quyết định thông báo | launch hold · notification decision | `notification_decision` `pending`, `notified`, `below_threshold`, `not_required`; `settings.loyalty.hold.*`, `.decision.*` | while the decision on notifying the provincial Department of Industry and Trade is pending, the programme cannot become active; `not_required` needs its legal basis |
+| thành viên · thẻ thành viên | member · member card | table `memberships` | a customer's membership of the programme; the phone stays on the customer row and no API role reads it |
+| dấu | stamp | `loyalty_ledger.stamp_delta`; table `stamps`; `loyalty.column.stamps` | one per invoice that reaches the minimum bill; a full card (8 by default) is exchanged for a reward; each stamp has its own expiry |
+| điểm | point | `loyalty_ledger.point_delta`; `loyalty.column.points` | earned per whole unit of the net amount (1 per 10,000 by default), worth the point value; expire first in first out |
+| dấu chào mừng | welcome stamps | `welcome_stamps`; ledger `adjust` row with reason `welcome` | the stamps a new member gets once on joining (2 by default); none for a staff phone |
+| sổ điểm | ledger | table `loyalty_ledger`; `loyalty.ledger.*` | the append-only rows of every stamp and point movement: Tích (`earn`), Xác nhận (`confirm`), Thu hồi (`clawback`), Đổi quà (`redeem`), Điều chỉnh (`adjust`), Hết hạn (`expire`); a correction is a new row |
+| Đang chờ xác nhận · Đã xác nhận · Đã thu hồi (web) · Đã hoàn lại (customer app) | waiting for confirmation · confirmed · reversed | `loyalty.entryState.*`; customer app `wallet.state.*` | an entry or check-in still waiting for its synced invoice; confirmed by it; reversed by a clawback |
+| cách khớp A · B · C · D | matched path A · B · C · D | `loyalty_ledger.matched_path`; `loyalty.path.*` | how an earn's invoice was tied to the member: A the phone on the invoice, B a check-in code staff recorded, C a receipt the member sent, D the reward code on the invoice |
+| Ghi nhận khách | record a customer (check-in) | `staff_record_checkin`; table `pending_checkins`; staff app `checkin.*` | the staff app records a member at the till by phone or member code (path B); it waits "đang chờ xác nhận" until the synced invoice matches |
+| Mã thành viên | member code | `customer_member_code`; QR `fnb-member:1:<store>:<code>` | the customer app's 6-digit code and QR for one store, refreshed every 60 seconds and valid 2 minutes |
+| Nhận điểm từ hóa đơn | receipt claim | `customer_submit_claim`; table `receipt_claims` | a member sends the store, receipt number, net amount and date of a purchase (path C); matched to a synced invoice while the claim window lasts (72 hours by default), at most 3 a day by default |
+| Hàng chờ đối soát · Hàng chờ thành viên | reconciliation queue · member queue | table `loyalty_queue`; `resolve_loyalty_queue_item`; `staff_loyalty_queue` | the cases a manager decides: a check-in or claim that fits two invoices equally, and in the staff app also disputes and adjustments above the tenant's limits |
+| số điện thoại nhân viên | staff phones | table `loyalty_staff_phones`; refusal `excluded_phone` | the owner's exclusion list; with the phones of active roster staff, they never earn on any path |
+| lý do từ chối | refusal reason | table `loyalty_refusals`; `loyalty.refusal.*` | why an invoice did not earn: below the minimum bill (points only), daily cap, staff phone, excluded order source, already earned, invoice not completed, programme or membership not active |
+| ưu đãi · Danh mục ưu đãi | reward · reward catalogue | table `coupons`; `settings.rewards.*` | what a member exchanges stamps or points for: Tặng món, Giảm theo phần trăm, Giảm một số tiền, Lên size hoặc thêm topping (`reward_kind`), never cash; draft, approved, active or retired, approved by an owner with every store |
+| Đổi quà · Ví voucher | redeem · voucher wallet | `customer_redeem`, `customer_vouchers` | the customer app's redemption and the list of the member's codes |
+| giữ · Đang giữ · Đã dùng · Đã hoàn lại · Đã hủy | hold · held · used · given back · cancelled | `redemptions.state` `held`, `confirmed`, `released`, `cancelled`; `voucher.state.*` | a redemption holds its stamps or points under a single-use code (24 hours by default); a synced invoice carrying it makes it used, and an unused hold is released by the nightly step with the stamps and points given back |
+| Kiểm tra ưu đãi | check a reward code | `staff_verify_redemption`; staff app `redeem.*` | the staff app checks a code at its store and answers with what to do on the POS, or why not (unknown, other store, used, expired, released) |
+| kênh ưu đãi | rail | table `coupon_rails` `pos_payment_discount`, `crm_code_pool`, `crm_callback`; `settings.rewards.rails.*` | how a store's rewards reach the till: a POS payment discount entry by name (or a 0-price item), single-use codes from a CRM pool, or codes checked through the CRM; a reward can be active only where every store of its scope has a rail and a mapping (`coupon_rail_rewards`) |
+| Chi phí ưu đãi thành viên | member reward cost | display series `reward_cost`; `redemption_summary` | the discount of the invoices that used a reward, on Khuyến mãi & giảm giá |
+| Dừng nhận tin · Rời chương trình | stop messages · leave the programme | `customer_stop_marketing`, `customer_request_deletion` | the member withdraws the marketing consent, or asks for deletion; an owner with every store carries out the request with `dsr_delete` |
 
 ### Exports (phase 11a)
 

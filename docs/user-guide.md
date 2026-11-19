@@ -1,10 +1,10 @@
 # User guide
 
-Purpose and audience: what the FNB Manager app shows and how to read it, for the owner and the store managers. The app speaks Vietnamese by default; this guide is in English and quotes the Vietnamese labels exactly as the app shows them, with the app's own English label in brackets where it helps. It describes the app as built and verified on 2026-11-15, and Xuất dữ liệu, Cài đặt → Nhân viên and the first screen of the staff app on Zalo as built on 2026-11-18; parts that are designed or planned say so.
+Purpose and audience: what the FNB Manager app shows and how to read it, for the owner and the store managers. The app speaks Vietnamese by default; this guide is in English and quotes the Vietnamese labels exactly as the app shows them, with the app's own English label in brackets where it helps. It describes the app as built and verified on 2026-11-15, Xuất dữ liệu, Cài đặt → Nhân viên and the first screen of the staff app on Zalo as built on 2026-11-18, and Cài đặt → Checklist, the Vận hành pages, Cài đặt → Khách hàng thân thiết and the Khách hàng pages as built on 2026-11-19; parts that are designed or planned say so.
 
 The screenshots come from the demo, so they show the sample stores "Cửa hàng mẫu 1" and "Cửa hàng mẫu 2" and generated numbers, never a real shop. They are taken on 4 November 2026 at 12:30 in Vietnam, in Vietnamese unless a caption says otherwise, and are retaken whenever a screen changes (`pnpm --filter @fnb/web docs:screenshots`).
 
-Last updated 2026-11-18
+Last updated 2026-11-19
 
 ## What the app is for
 
@@ -55,10 +55,11 @@ The navigation sits at the bottom on a phone and on the left on a wide screen.
 | Báo cáo | Reports | Ngày, Tuần, Tháng, Năm | verified locally |
 | Chủ đề | Topics | thematic reports: Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt, Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng | the first four verified locally; Khuyến mãi & giảm giá, Ca & két tiền and So sánh cửa hàng built |
 | Kế hoạch | Plans | saved strategy plans | "Sắp có" |
-| Cài đặt | Settings | Cửa hàng (the business and store profiles), Dữ liệu nhập tay (item costs and their CSV import, monthly targets and payment fees), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (the national holidays and your own days off), Ngưỡng báo cáo (the report thresholds and this device's CSV format), Pháp lý (the legal texts and their versions) and, for owners and managers, Nhân viên (the staff of the Zalo staff app); the other settings pages say which phase brings them | Phân loại and Ngưỡng báo cáo verified locally; Cửa hàng, Dữ liệu nhập tay, Ngày lễ, Pháp lý and Nhân viên built; the other pages planned |
+| Cài đặt | Settings | Cửa hàng (the business and store profiles), Dữ liệu nhập tay (item costs and their CSV import, monthly targets and payment fees), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (the national holidays and your own days off), Ngưỡng báo cáo (the report thresholds and this device's CSV format), Pháp lý (the legal texts and their versions), for owners and managers Nhân viên (the staff of the Zalo staff app) and Checklist (the shift checklists of the staff app), and Khách hàng thân thiết (the loyalty programme and its rewards); the other settings pages say which phase brings them | Phân loại and Ngưỡng báo cáo verified locally; Cửa hàng, Dữ liệu nhập tay, Ngày lễ, Pháp lý and Nhân viên built; Checklist and Khách hàng thân thiết built on 2026-11-19; the other pages planned |
 
 - A page that is not built yet says "Sắp có" and names the roadmap phase that brings it ("Dự kiến ở giai đoạn … của lộ trình.").
 - Xuất dữ liệu (Exports) has no item in the navigation yet; [Xuất dữ liệu](#xuất-dữ-liệu-exports) below says how to open it.
+- Vận hành (shift operations) and Khách hàng (loyalty members) have no item in the navigation either; [Vận hành](#vận-hành-shift-operations) and [Khách hàng](#khách-hàng-members-ledger-queue-and-shift-activity) below say how to open them.
 - The top bar holds the language switch (**VI** / **EN**), "Đăng xuất", the store choice and the freshness badge. On a phone the store choice folds into one summary button; tap it to open.
 - **VI** is the default. **EN** switches every label, sentence and number format to English. The browser remembers the choice.
 - When a new version is published, a prompt says "Có phiên bản mới — tải lại"; tap it to reload.
@@ -371,7 +372,7 @@ The card then shows the net result in big type, "+" for a gain and "−" for a l
 
 Your choices are in the address (`&promo=…&cmp=prior_weeks`), so a link opens the same comparison.
 
-The last three cards check your promotions against the Vietnamese promotion rules that apply on each date. They inform; they never say you broke a rule, and each legal sentence names the decree or circular and its article, the date the rules were last checked (12/11/2026) and that it is not legal advice.
+The next three cards check your promotions against the Vietnamese promotion rules that apply on each date. They inform; they never say you broke a rule, and each legal sentence names the decree or circular and its article, the date the rules were last checked (12/11/2026) and that it is not legal advice.
 
 **Danh mục khuyến mãi** counts the promotions used in the range and lists every promotion, voucher and named bill discount with whether it is in the POS catalogue, whether it is switched on, when it was last used and its days and discount over the last 365 days. It names how many catalogue promotions that are still switched on have not been used for more than 90 days, which you may switch off in the POS. When the name of a promotion holds a word of a lucky draw ("bốc thăm", "quay số", "trúng thưởng", "lucky draw" and the like, also written without tone marks), a yellow note reminds you that a promotion with an element of chance must be registered with the Sở Công Thương, or with the Bộ Công Thương when it runs in several provinces, and that Decree 239/2026/NĐ-CP is reported to have changed this procedure. In the demo, the catalogue promotion "Vòng quay may mắn" shows the note.
 
@@ -384,6 +385,8 @@ The last three cards check your promotions against the Vietnamese promotion rule
 | | |
 |---|---|
 | ![The maximum discount card: the cap with its circular and check date, no item or bill discount over it, the vouchers listed apart, the note on state-run programmes and the table ending with whole invoices](user-guide/theme-khuyen-mai-rule-cap.png) | ![The discount days card: the item with the most discount days marked for information only, the reported repeal, the days up to 25/06/2026 and the items with their line, bill, gift and voucher days](user-guide/theme-khuyen-mai-rule-days.png) |
+
+**Ưu đãi thành viên đã đổi** (built on 2026-11-19) shows the rewards your loyalty members exchanged for stamps or points ([Khách hàng thân thiết](#khách-hàng-thân-thiết-loyalty-programme) below), over the last 92 days of the range at most. The big number is **Chi phí ưu đãi**: the discount given on the invoices that used a reward, with a chip against the same number of days just before. The sentences say how many rewards were exchanged and how many were used on an invoice at what cost, which reward was exchanged most, and how the rewards used compare with the invoices of members who earned stamps or points ("Lượt đã dùng bằng … số hóa đơn có thành viên tích điểm"). The bars show the exchanges per reward, and the table lists each reward and store with its kind, **Lượt đổi**, **Đã dùng**, **Đang giữ**, **Đã hoàn lại**, the stamps and points exchanged and the cost, with "Tải CSV". Only rewards used on a synced invoice cost anything: a code still held, or returned because it was not used in time, costs nothing, and a free item rung up as a 0 ₫ line has no discount amount. In the demo the card says "Chưa có dữ liệu ưu đãi thành viên: bản demo không có chương trình khách hàng thân thiết." This card has no screenshot yet.
 
 More detail: [reports/khuyen-mai.md](reports/khuyen-mai.md).
 
@@ -406,6 +409,8 @@ Ca & két tiền looks at each shift of the range, at most the last 92 days: a l
 **Theo thu ngân** puts the same shifts side by side per cashier, to show where a pattern repeats across shifts: for each cashier the shifts, net revenue, shifts over your drawer thresholds, total drawer variance counted without its sign, voids, removed lines and edits after the close. The headline counts the shifts over the drawer thresholds of the cashier with the most, and the sentence names that cashier; when several share the most, the card names nobody. A cashier entered as an e-mail address, or not entered at all, reads "chưa rõ thu ngân": those shifts keep their row in the table, but that row is never named as the cashier with the most, and the sentence says how many shifts it holds. It is a prompt to look again, not a conclusion about a person, and the card says so. When every shift of a store carries the same cashier login, as when all cashiers share one POS login, the card shows no ranking and says that figures per cashier need each cashier's own POS login. When the logins differ but none has a display name (each is an e-mail address or empty), it shows no ranking either and asks you to give each cashier login a display name in the POS.
 
 ![The cashier card: the shifts over the drawer thresholds of the cashier with the most, the sentence naming that cashier, the caution and the table per cashier](user-guide/theme-ca-ket-tien-cashiers.png)
+
+**Số đếm két trên ứng dụng** (built on 2026-11-19) puts the cash your staff counted at shift close in the Zalo staff app beside the POS. The big number is the shifts whose count is off from the expected cash by more than your cash thresholds, under the line "… ca đã đóng có số đếm"; the sentence adds how many closed shifts have no count yet. The table shows the first 10 shifts with the counted cash, the expected cash, the POS drawer and the difference (all of them in the CSV), and "Xem lịch sử két tiền" opens [Vận hành → Két tiền](#két-tiền-cash-counts) on the same days. Only owners and managers see the figures; other members read "Mục này chỉ dành cho chủ và quản lý.", and the demo, which has no staff app, says "Mục này cần ứng dụng nhân viên; bản demo không có nên chưa có số liệu." This card has no screenshot yet.
 
 More detail: [reports/ca-ket-tien.md](reports/ca-ket-tien.md).
 
@@ -443,6 +448,8 @@ Chất lượng dữ liệu lists what is missing or wrong in your data, so that
 
 ![The verification card of the demo: two store-days not verified, each with its state and the hint to run the sync again](user-guide/theme-chat-luong-verification.png)
 
+Two cards, built on 2026-11-19, look at what your staff record in the Zalo staff app, over the last 92 days of the range at most (the card says so when the range is longer). **Ca đã đóng chưa đếm két** lists the shifts closed on the POS without a cash count in the app, with the date, store, shift, closing time and the POS drawer; "Xem lịch sử két tiền" opens Vận hành → Két tiền. **Checklist bị bỏ** lists the checklists that were due and never finished, with the date, store, part of the shift and checklist, the rule for when a checklist is due (see [Vận hành → Checklist](#checklist-compliance)), and "Xem tuân thủ checklist". As on Ca & két tiền, only owners and managers see them, and the demo explains that it has no staff app. These cards have no screenshot yet.
+
 More detail: [reports/chat-luong.md](reports/chat-luong.md).
 
 ### Links, printing and CSV
@@ -451,7 +458,7 @@ The address names the range (`#/chu-de/gio-ngay?range=28d`, or `?from=2026-10-08
 
 ## Cài đặt (Settings)
 
-"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. Seven pages are open today, **Cửa hàng**, **Dữ liệu nhập tay** (item costs, monthly targets and payment fees), **Phân loại** (item-type roles, item categories and payment kinds), **Ngày lễ**, **Ngưỡng báo cáo**, **Pháp lý** and **Nhân viên**, which only owners and managers find in the list ([Nhân viên và ứng dụng Zalo](#nhân-viên-và-ứng-dụng-zalo-staff-and-the-zalo-staff-app) below). **Cảnh báo** (alerts) and **Bản tin** (the daily digest) are already in the list: each says what it will hold and that it comes with phase 12.
+"Cài đặt" in the navigation opens the settings. The page names sit in a row under the heading on a phone and stand as a column on the left on a wide screen. Nine pages are open today, **Cửa hàng**, **Dữ liệu nhập tay** (item costs, monthly targets and payment fees), **Phân loại** (item-type roles, item categories and payment kinds), **Ngày lễ**, **Ngưỡng báo cáo**, **Pháp lý**, **Nhân viên** and **Checklist**, which only owners and managers find in the list ([Nhân viên và ứng dụng Zalo](#nhân-viên-và-ứng-dụng-zalo-staff-and-the-zalo-staff-app) below), and **Khách hàng thân thiết** ([Khách hàng thân thiết](#khách-hàng-thân-thiết-loyalty-programme) below). **Cảnh báo** (alerts) and **Bản tin** (the daily digest) are already in the list: each says what it will hold and that it comes with phase 12.
 
 ### Cửa hàng (Stores)
 
@@ -647,6 +654,14 @@ The staff app is a Zalo Mini App for your staff and managers: they open it insid
 4. **What the person does.** They scan the QR code with Zalo, read the staff notice and press **Đồng ý**, then type the six digits. Their Zalo account is then paired with their card: the card reads "Đang hoạt động" and "Đã ghép nối ngày …", and the app opens on their stores. They never get a password. A wrong, used or expired code gets the same answer, without saying which; after five wrong codes in 15 minutes that Zalo account must wait 15 minutes. **Not yet in the app:** the screens that show the notice before pairing and take the six-digit code come with the next piece of work (#215); the database and the sign-in function already accept them. Until then the app's "Tài khoản chưa được liên kết" screen takes only the older "Mã liên kết" that whoever runs the system creates with `fnb zalo bind`.
 5. **Withdrawing.** Only the person can withdraw their agreement to the staff notice; owners and managers cannot do it for them. They are then signed out and need a new code to pair again. Their agreement to receive the digest and alerts is not touched.
 
+### Lời nhắn liên hệ (the contact note)
+
+**Lời nhắn liên hệ trên ứng dụng nhân viên**, below the QR codes on Cài đặt → Nhân viên, is the note the staff app shows before a person pairs and whenever they cannot get in: write whom to see or how to reach you to get a pairing code. Left empty, the app shows its own default note ("Chưa có lời nhắn; ứng dụng đang hiện lời nhắn mặc định."). One note serves the staff app of every brand of the business.
+
+- Plain text, line breaks allowed, at most 500 characters; the counter under the box shows "Đã nhập …/500 ký tự". A link is refused ("Lời nhắn không được chứa đường link; ghi tên người hoặc số điện thoại thay vào."): write a name or a phone number instead.
+- Press **Lưu** on the bar "Lưu lời nhắn liên hệ".
+- Only an owner who sees every store can change it. Managers, and an owner of some stores, read it with "Chỉ chủ quán quản lý tất cả cửa hàng sửa lời nhắn này."
+
 ### What staff see of revenue
 
 **Doanh thu nhân viên được xem**, at the foot of Cài đặt → Nhân viên, decides what people with the role Nhân viên see of the sales. It applies to every staff member of the business; owners, managers and viewers always see what their role allows.
@@ -659,9 +674,21 @@ The staff app is a Zalo Mini App for your staff and managers: they open it insid
 
 Only an owner who sees every store can change it: choose and press **Lưu** on the bar "Lưu mức doanh thu nhân viên được xem". An owner of some stores sees the choice in force with a note saying why it cannot be changed; managers do not see this part. The database applies the choice to every sales figure and report a staff login can reach, not only to the app's screen.
 
+### Cài đặt → Checklist
+
+**Checklist** (`#/cai-dat/checklist`) holds the checklists your staff tick off in the staff app: one for opening (**Mở ca**), one for the middle of the shift (**Giữa ca**) and one for closing (**Đóng ca**), for one store or for every store ("Mọi cửa hàng"). The page was built on 2026-11-19; staff work through the checklists in the app's **Ca làm** tab, and [Vận hành](#vận-hành-shift-operations) shows what they did. This section has no screenshots yet.
+
+- **Who sees it.** Owners and managers, as for Nhân viên; anyone else who opens the address reads "Trang Checklist chỉ dành cho chủ và quản lý." A manager edits the checklists of their own stores; a checklist for every store, or for a store outside their stores, shows "Checklist này thuộc cửa hàng ngoài phạm vi của bạn hoặc dùng cho mọi cửa hàng; chỉ chủ hoặc quản lý của tất cả cửa hàng sửa được." and no button.
+- **Danh sách checklist** groups the checklists by store, each with its part of the shift, **Phiên bản …**, **Đang dùng** or **Đã ngừng dùng**, how many items and how many need a photo.
+- **Creating one.** Press **Tạo checklist**, choose the **Cửa hàng** and the **Ca** (Mở ca, Giữa ca or Đóng ca), give it a **Tên checklist** (at most 120 characters), and list the items in the order staff do them. Each item has its text (at most 200 characters) and two ticks: **Cần ảnh** (staff must take a photo) and **Có số đo** (staff type a number, such as a fridge temperature, with its unit, for example °C or phần). Move items up or down, delete them, or add more with **Thêm mục**; a checklist holds 1 to 60 items. On an empty checklist, **Tạo từ khung** fills in the usual steps of that part of the shift (opening on the POS and counting the float, cleaning, reporting incidents, counting waste, the handover note, closing on the POS and counting the drawer); read the wording before you use it. The store and the part of the shift cannot be changed afterwards.
+- **Changing one.** **Sửa** opens the same form; **Lưu phiên bản mới** saves a new version ("Đã lưu phiên bản … của …; áp dụng từ lần làm tiếp theo."). The staff app uses it from the next time the checklist is started, without an app update; a checklist already started, and every past one, keeps the words of its own version.
+- **Ngừng dùng** stops a checklist: it is no longer due ("… checklist này không còn đến hạn."). **Dùng lại** brings it back.
+- **Sao chép** copies a checklist to another store, as a new checklist with the same part of the shift, name and items.
+- **In the demo** the page says that the demo has no staff app and so no checklists.
+
 ### The staff app's home (Trang chủ)
 
-What a person sees after pairing, on the first of the four tabs (Trang chủ, Ca làm, Thông báo, Cá nhân; the other three come in later steps):
+What a person sees after pairing, on the first of the four tabs (Trang chủ, Ca làm, Thông báo, Cá nhân; Thông báo stays empty until phase 15):
 
 - "Xin chào, …" with their role, and **Cửa hàng**: their store, or a choice when they work in several stores of the brand.
 - "Cập nhật lúc HH:mm" (with the date when it was an earlier day): when your business's last sync succeeded. "Chưa đồng bộ" means no sync has succeeded yet.
@@ -669,7 +696,7 @@ What a person sees after pairing, on the first of the four tabs (Trang chủ, Ca
 - **Việc hôm nay · …**: the store's opening hours today, "Hôm nay cửa hàng nghỉ", or "Chưa có giờ mở cửa". Everyone sees this.
 - A figure without sales yet reads "Chưa có dữ liệu", never 0. The numbers refresh every 5 minutes and when the app comes back to the front.
 
-The comparison with the usual level, the cash-drawer card and the shift cards are not there yet; they come with the shift work of phase 14b.
+Since the shift work of phase 14b, **Việc hôm nay** also shows the checklist that is due and the shift close of the chosen store and opens them in **Ca làm**, the second tab, where staff do the checklists, count the cash at close, write the handover note and report incidents and items that ran out. [Vận hành](#vận-hành-shift-operations) shows you what they recorded.
 
 ### Trying the staff app on this computer or a phone
 
@@ -681,6 +708,125 @@ Before the Zalo accounts exist, whoever runs the system can open the staff app i
 - **Stopping:** Ctrl+C, or type q and press Enter.
 
 **Keep the link to yourself.** Whoever opens a `--lan` or `--tunnel` link is signed in as that member, with their role, their stores and the real figures. With `--tunnel` that means anyone on the internet who gets the link, until it stops. Do not post it in a group chat or a ticket. Each link carries a key that is new every time the tool starts: without it the app answers only "403 Forbidden", and once opened the browser keeps the key and drops it from the address bar. Stop the tool as soon as you are done.
+
+## Vận hành (Shift operations)
+
+Vận hành shows what your staff recorded in the Zalo staff app during their shifts: the checklists, the cash counted at shift close, and the incidents, items that ran out and handover notes. It was built on 2026-11-19 and tried on a test business; it fills up once your staff use the staff app. This section has no screenshots yet.
+
+- **Opening it.** The page has no item in the navigation yet. The links "Xem lịch sử két tiền" and "Xem tuân thủ checklist" on the cards of Ca & két tiền and Chất lượng dữ liệu lead here, or add `#/van-hanh` after the app's address (`http://localhost:5173/#/van-hanh` on the local app). It has three tabs: **Checklist** (`#/van-hanh/checklist`, the first), **Két tiền** (`#/van-hanh/ket-tien`) and **Sự cố & bàn giao** (`#/van-hanh/su-co`).
+- **Who can use it.** Owners and managers, for the stores they see. Anyone else reads "Trang Vận hành chỉ dành cho chủ và quản lý."
+- **Stores and days.** The stores are the ones chosen in the top bar. The range picker works as on the thematic reports, with the last 7 days at first and at most 92 days, but here the days run up to today ("… ngày, tính cả hôm nay"), so this morning's shift is already there. The address keeps the days, the stores and the filters, so a link opens the same view.
+- **Shifts** read "Ca 1", "Ca 2"… as on Ca & két tiền.
+- **Printing and CSV.** Every table has "Tải CSV" (files named `van-hanh-checklist-<from>_<to>.csv`, `van-hanh-ket-tien-…` and `van-hanh-su-co-…`). Printing from the browser keeps the tables and adds a line naming the page, the days, the stores and the print date; the filters and the buttons are left out.
+- **In the demo** the page says that the demo has no staff app, so there is nothing to show.
+
+### Checklist (compliance)
+
+**Tuân thủ checklist** gives, as its big number, the share of the checklists that were due and got finished, on time or late (**Tỷ lệ checklist xong**). The sentence counts those finished on time, late and missed; today's checklists still in progress or not yet due are named apart and do not count yet. The table has one row per checklist, store, day and part of the shift, with its **Trạng thái**:
+
+| Trạng thái | Meaning |
+|---|---|
+| **Xong** | finished before its deadline |
+| **Xong muộn** | finished after its deadline |
+| **Đang làm** | started today, not finished yet |
+| **Chưa đến hạn** | today's, and its deadline has not passed |
+| **Bị bỏ** | a past day without a finished round, or today's after its deadline |
+
+The deadline comes from the opening hours on Cài đặt → Cửa hàng: an opening checklist is due by opening time, a mid-shift one by the middle of the opening hours, a closing one within 60 minutes after closing time. In a store without opening hours, finishing during the day counts as on time. A checklist you stopped using counts only on the days someone did it. The row also shows the items done, the photos, who did it, when it started and finished, the deadline and any change made after it was finished. When the chosen stores have no checklist, the card says so and links to Cài đặt → Checklist ("Soạn checklist ở Cài đặt").
+
+**Chi tiết từng lần làm** lists every round in the range. **Xem chi tiết** opens one: each item with its answer, its number and who answered when, in the words of the version that was used that day, and the changes made after it was finished ("… sửa mục … lúc …"). Photos load only when you open a round ("Ảnh chỉ tải khi mở."), straight from the app's private storage. A photo is kept 90 days by default; after that the item reads "Ảnh đã xóa theo thời hạn lưu."
+
+### Két tiền (cash counts)
+
+**Số đếm két theo ca** puts the cash counted in the staff app at each shift close beside the POS: the big number is the shifts whose count is off from the expected cash by more than your cash thresholds, the same thresholds and rule as Ca & két tiền ("… ca đã đóng có số đếm" under it), and the sentence adds the closed shifts without a count. Each row shows **Đếm trên ứng dụng**, **Tiền mặt dự kiến** (the opening float plus the cash taken), **Két POS** (what the cashier typed in the POS at close), **Chênh lệch đếm** (the count minus the expected cash), which threshold it went over, who counted, when, and how often the count was reopened. A row reads **Trong ngưỡng**, **Vượt ngưỡng**, **Chưa đếm**, or **POS không có số dự kiến**. A count made before its POS shift was synced reads "Chưa khớp ca"; the next sync matches it.
+
+**Mở lại để đếm lại**, below the table, lets an owner or a manager of that store reopen one count, so that staff count that shift again. Choose the count, press **Mở lại**, then **Mở lại số đếm** to confirm (or **Quay lại**). Who reopened it and when is recorded.
+
+### Sự cố & bàn giao (incidents and handovers)
+
+**Sự cố, hết hàng và bàn giao ca** lists what staff reported: **Sự cố** (incidents), **Hết hàng** (items that ran out) and **Bàn giao ca** (handover notes, "Ca 1 → Ca 2: …"), with who reported each, its photos and who saw or handled it. The big number is **Mục chưa xem**, the reports no owner or manager has marked as seen. Narrow the list with **Loại**, **Danh mục** and **Trạng thái** (**Chưa xem**, **Đã xem**, **Đã xử lý**). The text is written by your staff: the page reminds you not to copy it into messages or elsewhere.
+
+- **Cần xem hoặc xử lý** lists what is waiting: **Đánh dấu đã xem** on a report, then **Đã xử lý** once an incident or a missing item is dealt with; a handover note only needs to be seen. Only an owner or manager of the store can do this, and never on a report they wrote themselves.
+- **Xem ảnh (…)** shows a report's photos, loaded only when you ask; **Ẩn ảnh** hides them again.
+
+## Khách hàng thân thiết (Loyalty programme)
+
+Your customers join your loyalty programme in a Zalo Mini App, collect stamps (**dấu**) and points (**điểm**) on their purchases, and exchange them for rewards (**ưu đãi**) at the till. On the web you set up the programme and its rewards on Cài đặt → **Khách hàng thân thiết**, follow the members on the **Khách hàng** pages, and see the cost of the rewards on Khuyến mãi & giảm giá. All of it, with the customers' Mini App and the staff app's loyalty screens, was built on 2026-11-19 and tried on a test business with made-up customers. No real customer can join yet: the launch waits for your decisions (whether the programme must be notified to the Sở Công Thương, the programme's values, the staff phone list and the legal reading of the texts), your Zalo accounts, the reward setup on the POS and a trial at the till. This section has no screenshots yet.
+
+**How a purchase reaches a member.** The cashier rings up the sale on the POS as usual. After each sync, the app matches the invoice to a member in one of four ways, which the ledger shows as **Cách khớp**:
+
+| Cách khớp | How |
+|---|---|
+| **A · Số điện thoại trên hóa đơn** | the cashier entered the member's phone on the POS invoice |
+| **B · Mã check-in** | staff recorded the member at the till in the staff app ("Ghi nhận khách"), by the member's 6-digit code or phone, shortly before or after the sale (2 minutes before to 15 minutes after by default) |
+| **C · Khách gửi hóa đơn** | the member sent the bill number, amount and date from the Mini App, within the claim window (72 hours by default) |
+| **D · Mã quà trên hóa đơn** | the invoice carries the code of a reward the member exchanged |
+
+An invoice earns once, within the programme's limits (invoices per phone per day, excluded order sources; a bill under the stamp minimum earns points but no stamp), and a staff phone never earns. When a check-in or a sent bill fits two invoices, the app does not choose: the case waits in the [Hàng chờ đối soát](#khách-hàng-members-ledger-queue-and-shift-activity) for you. A voided or edited invoice later takes its stamps and points back ("Thu hồi").
+
+### Cài đặt → Khách hàng thân thiết: Chương trình
+
+The page has two tabs, **Chương trình** (the programme, `?tab=chuong-trinh`, the first) and **Ưu đãi** (the rewards, `?tab=uu-dai`). Every member can open it; only an owner or a manager who sees every store can change it. A manager of some stores reads "Bạn quản lý một số cửa hàng nên chỉ xem được chương trình…", other roles "Bạn chỉ xem được chương trình…". A change applies from the next stamp or point earned.
+
+- **Creating it.** **Tạo chương trình** opens an empty form with the platform's values filled in; each field's hint says its default ("Mặc định: …"). Only one programme runs at a time: **Tạo chương trình mới** appears once every earlier programme has ended, and "Đã có một chương trình khác đang chạy…" means you must pause or end the running one first. With several programmes, **Chương trình đang xem** chooses which one to read.
+- **Thông tin chương trình**: **Tên chương trình** (1 to 120 characters, shown to customers), **Ngân sách quà tặng** (the total value of the rewards you plan, used for the notification threshold), **Ngày bắt đầu** and **Ngày kết thúc** (empty when open-ended).
+- **Trạng thái**: **Bản nháp** (nothing is earned), **Đang chạy** (synced invoices earn), **Tạm dừng** and **Đã kết thúc** (earning stops).
+- **Tích dấu**: **Số dấu đầy một thẻ** (8 by default), **Hóa đơn tối thiểu để có dấu** (50.000 ₫; a smaller bill earns only points), **Dấu tặng khi tham gia** (2; fewer than a full card, and never to a staff phone) and **Hạn của mỗi dấu** (6 months).
+- **Tích điểm**: **Số tiền cho mỗi lần cộng điểm** (10.000 ₫ after discounts) and **Điểm cho mỗi khoản tiền** (1; 0 switches points off, leaving stamps only), with **Hạn của điểm** (12 months; the oldest points expire first).
+- **Giới hạn chống gian lận**: invoices that earn per phone per day (3), receipts a member may send per day (3), and **Nguồn đơn không tích điểm**, one POS order source per line (such as orders from a delivery app), at most 50.
+- **Mã check-in và gửi hóa đơn**: how many minutes before and after a check-in an invoice still matches (2 and 15), how long a member code is valid (120 seconds), how long a check-in waits for its invoice (24 hours) and how long after a purchase a member may send the bill (72 hours).
+- **Giá trị điểm và dự phòng**: **Giá trị một điểm** (500 ₫) and **Tỷ lệ điểm dự kiến không dùng** (20 %, 0 to 90 %), used to value the points given out and the points still owed.
+
+Each field is checked before anything is sent and again by the database; a value the database refuses shows its message next to the field. Press **Lưu** on the save bar.
+
+**The launch hold.** A promotion programme must be notified to the Sở Công Thương at least 3 working days before it starts, unless its rewards are worth less than 100 million đồng in total. Under **Quyết định thông báo Sở Công Thương**, record your **Quyết định**:
+
+| Quyết định | Meaning |
+|---|---|
+| **Chưa quyết định** | the programme is held and cannot run (the starting point) |
+| **Đã thông báo Sở Công Thương** | you sent the notification before launch; write the date it was sent |
+| **Dưới ngưỡng thông báo** | the rewards are worth less than 100 million đồng in total, so no notification is needed |
+| **Không phải thông báo** | another legal basis applies; **Căn cứ** is then required |
+
+**Ngày quyết định** is the day you sent the notification or recorded the decision (the day you save, when left empty). While the decision is **Chưa quyết định**, the page says "Đang giữ chưa ra mắt…" and choosing **Đang chạy** saves nothing: "Chưa thể chuyển sang Đang chạy khi quyết định thông báo còn chờ. Ghi quyết định trước; chưa có gì được lưu." Once a decision is recorded the line reads "Đã ghi quyết định thông báo; chương trình có thể chuyển sang Đang chạy." A link leads to the texts on Cài đặt → Pháp lý. The app records your decision; it does not decide for you.
+
+**Số điện thoại nhân viên.** Below the programme, owners and managers see the list of staff phones whose invoices and sent bills never earn. Phones are always shown hidden, with their last three digits only. An owner or manager who sees every store adds a number (a mobile number such as `0900000123`) with an optional **Ghi chú** such as the person's position (at most 100 characters, never their name) and presses **Thêm số**, or removes one with **Xóa**. A phone that a person on the staff roster (Cài đặt → Nhân viên) linked in the staff app never earns either while they are active, whether or not it is on this list. Other members do not see the list.
+
+At the foot of the tab, "Xem thành viên, sổ điểm và hàng chờ đối soát" opens the [Khách hàng](#khách-hàng-members-ledger-queue-and-shift-activity) pages.
+
+In the demo the tab shows a sample programme, read-only.
+
+### Ưu đãi (rewards)
+
+The **Ưu đãi** tab (`#/cai-dat/khach-hang-than-thiet?tab=uu-dai`) is the reward catalogue: what a member can get for their stamps or points. It needs a programme first ("Chưa có chương trình khách hàng thân thiết…"). **Thêm ưu đãi** opens the form; each reward in the list shows its status and its cost in stamps or points.
+
+- **Ưu đãi**: **Tên ưu đãi** (shown to customers), **Mã ưu đãi** (lower-case letters without accents, digits and hyphens, at most 64 characters; it ties the reward to its discount on the POS), the programme and an optional **Mô tả**.
+- **Loại phần thưởng**: **Tặng món** (a free item: choose at least one **Món được tặng**), **Giảm theo phần trăm** (on the whole bill, or on the **Món được áp dụng** you choose), **Giảm một số tiền** (from a minimum bill) or **Lên size hoặc thêm topping**. There is no cash, top-up or prepaid-wallet kind. **Món không áp dụng** lists items the reward never discounts.
+- **The 50 % cap.** A percentage may take at most the cap of the promotion rules off the price ("Tối đa … giá được giảm", with the circular named), the same 50 % as Khuyến mãi's **Mức giảm tối đa** card; an amount at most that share of the **Hóa đơn tối thiểu**, which is therefore required for **Giảm một số tiền**. The form checks this before saving and the database checks it again; a reward over the cap is not saved. A free item and an upgrade are gifts, not price cuts, so the cap does not apply to them.
+- **Giá đổi**: **Số dấu**, **Số điểm** or both (at least one above 0), and **Hóa đơn tối thiểu** (0 when not needed).
+- **Thời hạn**: **Áp dụng từ ngày** and **Áp dụng đến ngày** (empty for at once and for no end), **Hạn dùng sau khi đổi** (30 days by default), **Thời gian giữ mã** (24 hours by default: a code not used in that time gives the stamps and points back) and **Số lần mỗi khách** (empty for no limit).
+- **Cửa hàng áp dụng**: **Mọi cửa hàng đang mở** or the stores you choose.
+- **Số ngày giảm giá năm …** shows, for information only, how many days this year the reward's items were already sold at a discount; it never blocks a save.
+
+**From draft to the till.** A new reward is a **Bản nháp**. Only an owner who sees every store approves it (**Duyệt**); it then reads **Đã duyệt** with who approved it and when. **Kích hoạt** makes it **Đang áp dụng**, so members can exchange it; **Tạm ngưng** puts it back to Đã duyệt. Activation needs every chosen store to be ready: the page shows, per store, the way rewards reach its till (**Chiết khấu thanh toán trên POS**, **Mã từ kho mã CRM** or **Mã kiểm tra qua CRM**) and what the reward is tied to there ("Chiết khấu: …", "Món 0 đồng: …"), and names the stores that are not ready ("Chưa có kênh ưu đãi", "Chưa gắn với chiết khấu trên POS"). There is no page to set up a store's channel yet; it is set up for the till trials.
+
+- When a manager changes the terms of an approved or active reward, it goes back to Bản nháp and waits for the owner again ("Bạn đang đổi điều kiện của một ưu đãi đã duyệt…"). When the owner changes them, the reward is approved again on the new terms.
+- **Ngừng hẳn** retires a reward for good, after a question ("Ngừng hẳn ưu đãi này? Khách sẽ không đổi được nữa và không thể mở lại."): **Ngừng hẳn ưu đãi** confirms, **Giữ lại** keeps it. A retired reward cannot be reopened; create a new one instead.
+- Owners and managers who see every store write drafts; other members read the catalogue with the reason.
+- In the demo the tab shows a sample catalogue, read-only.
+
+**At the till.** A member chooses a reward in the Mini App and gets a single-use code with its QR in their voucher wallet. Staff check the code in the staff app, which says what to do (the POS discount to choose, or the code to type) or why it cannot be used (already used, expired, another store). The synced invoice then marks it used; a code not used within the hold time gives the stamps and points back. **Ưu đãi thành viên đã đổi** on [Khuyến mãi & giảm giá](#khuyến-mãi--giảm-giá-promotions-and-discounts) adds up the exchanges and their cost.
+
+### Khách hàng (members, ledger, queue and shift activity)
+
+The Khách hàng pages show your members and their stamps and points. They have no item in the navigation yet: open them with "Xem thành viên, sổ điểm và hàng chờ đối soát" on Cài đặt → Khách hàng thân thiết, or add `#/khach-hang` after the app's address. Owners, managers and viewers can open them; anyone else reads "Trang này chỉ dành cho chủ, quản lý và người xem số liệu." The demo has no members and says so. Phones are always hidden ("••• •••" and the last three digits).
+
+- **Thành viên** (`#/khach-hang/thanh-vien`) lists the members, newest first, 100 at a time (**Xem thêm** loads more), with the hidden phone, **Ngày tham gia**, **Trạng thái** (**Đang hoạt động**, **Tạm khóa**, **Đã đóng**), **Dấu**, **Điểm**, **Chờ xác nhận** and **Lần ghé gần nhất**, and "Tải CSV". A manager of some stores sees the stamps and points earned in those stores only, which can be less than the member's real balance. **Tra cứu theo số điện thoại** finds a member by their phone and opens their ledger; for an owner the result shows the whole number, to check with the customer, and the number never goes into the page's address. A place is kept at the top for the customer metric cards that come later.
+- **A member's ledger** (**Sổ điểm**, opened from the list) shows their stamps, points, what is still waiting for confirmation and their last visit, then one line for every stamp or point added or taken away: **Tích**, **Xác nhận**, **Thu hồi**, **Đổi quà**, **Điều chỉnh**, **Hết hạn**, with the amounts, the value, **Cách khớp**, the invoice ("Số … · …"), the store, the reason and the state (**Chờ xác nhận**, **Đã xác nhận**, **Đã thu hồi**). A mistake is corrected by a new line; the old one stays.
+- **Hàng chờ đối soát** (`#/khach-hang/doi-soat`) holds the cases the app would not decide alone: a check-in or a sent bill that fits two or more invoices ("Hai hóa đơn gần như nhau", "Trùng số hóa đơn và số tiền"). Each case shows the store, the time, the member, what was recorded and the invoices that fit. Choose the right invoice and press **Tích cho hóa đơn đã chọn**, or **Bỏ qua**; either way write the reason (**Lý do xử lý**, at most 200 characters, for example that the customer showed a paper bill). **Đã xử lý gần đây** lists the cases decided lately. Only owners and managers see the queue; viewers read "Chỉ chủ và quản lý cửa hàng xem và xử lý hàng chờ đối soát."
+- **Bất thường theo ca** (`#/khach-hang/bat-thuong`) counts, for each shift ("Ca 1", "Ca 2"…) of the stores chosen in the top bar, the earns (**Lượt tích**), the refusals by reason (such as **Số điện thoại nhân viên**, **Vượt số hóa đơn mỗi ngày** or **Hóa đơn đã được tích**), the manual adjustments and the check-ins that matched no invoice. The shifts with something to look at (**Tín hiệu cần xem**) come first; a bill below the stamp minimum is not counted as one. The days are chosen as on Vận hành (the last 7 days at first, at most 92, up to today), with "Tải CSV".
+
+Staff record customers, check reward codes, look up a member's card and ask for adjustments in the staff app; managers decide those requests there too. The web pages read what they did.
 
 ## Xuất dữ liệu (Exports)
 
@@ -787,6 +933,7 @@ The demo shows the app with sample numbers and no login.
 
 - The young store shows the states a new store goes through: no data from last year, a baseline still building, and the "Từ ngày khai trương" card.
 - The first screen can take a few seconds while the browser generates the sample days.
+- The demo has no staff app and no loyalty members. Cài đặt → Checklist, the Vận hành pages, the Khách hàng pages, and the staff-app cards of Ca & két tiền and Chất lượng dữ liệu say so instead of showing figures; Khuyến mãi's **Ưu đãi thành viên đã đổi** says there is no member reward data yet. Cài đặt → Khách hàng thân thiết shows a sample programme and a sample reward catalogue, read-only.
 - Before go-live the project's Pages address serves the demo. It is rebuilt from each published version; since 2026-11-13 it includes the four reports.
 
 ![The demo banner](user-guide/demo-banner.png)
@@ -802,8 +949,8 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
   - **Stopping the Zalo Bot messages.** Whoever runs the system links your Zalo chat to the Bot with a one-time code, and you accept by replying "ĐỒNG Ý". To stop, reply "DỪNG" in that chat (or "DUNG"; upper or lower case does not matter). The Bot then confirms once: "Đã dừng: bạn sẽ không nhận bản tin và cảnh báo qua Zalo này nữa. Muốn nhận lại, hãy nhờ chủ cửa hàng tạo mã liên kết mới." Your agreement to receive the messages is withdrawn, the messages still waiting for you are cancelled, and you stop receiving the digest and alerts everywhere, by e-mail too; to receive them again, ask the owner for a new link code. The reply is built and works once the Bot receives its messages through the new webhook (phase 13, not live yet).
 - **More settings and manual data** ("Cài đặt", phase 10): Cửa hàng (the store profile, opening hours and seat counts), Dữ liệu nhập tay (item costs, monthly targets and payment fees), Phân loại (item-type roles, item categories and payment kinds), Ngày lễ (your own days off), Ngưỡng báo cáo and Pháp lý (the legal texts) are open (see above). Target progress waits for a monthly target. The links "Gán vai trò món" and "Đặt mục tiêu tháng" on the report cards lead to these settings; until a page exists it says which phase brings it.
 - **Saved plans** ("Kế hoạch", phase 11b; the data pack, the plan check of "Dán kế hoạch" and the exports are open, see [Xuất dữ liệu](#xuất-dữ-liệu-exports)): saving a checked plan and keeping it in "Kế hoạch", where its KPIs are followed with live values.
-- **The Zalo staff app** (phase 14): the roster, the pairing codes, the staff notice and the home screen are built and tried in a browser ([above](#nhân-viên-và-ứng-dụng-zalo-staff-and-the-zalo-staff-app)); the app's first-time screens (why it needs a Zalo login, the notice, the code, a refusal screen, the privacy texts) are being built, and shift checklists, the cash count and incidents follow in phase 14b. Opening it inside Zalo waits for the owner's Zalo accounts and a check on a real phone.
-- **Later tracks**: the loyalty programme for customers waits for the owner's paperwork ([roadmap.md](roadmap.md), section 5).
+- **The Zalo staff app** (phase 14): the roster, the pairing codes, the staff notice and the home screen are built and tried in a browser ([above](#nhân-viên-và-ứng-dụng-zalo-staff-and-the-zalo-staff-app)), and so is the shift work of phase 14b: checklists with photos, the cash count at close, handover notes and incidents in the app's Ca làm tab, Cài đặt → Checklist and the [Vận hành](#vận-hành-shift-operations) pages on the web. Opening it inside Zalo waits for the owner's Zalo accounts and a check on a real phone, and the shift work waits for a full day's trial at one store.
+- **The loyalty programme** (phases 16 to 18): the programme and reward settings, the Khách hàng pages, the reward card on Khuyến mãi, the customers' Mini App and the staff app's loyalty screens are built and tried on a test business ([Khách hàng thân thiết](#khách-hàng-thân-thiết-loyalty-programme)). Launching it waits for your decisions (the notification decision, the programme's values, the staff phones and the legal reading of the texts), your Zalo accounts, the reward setup on the POS and the trials at the till. The customer metric cards, the members' share of invoices per shift on Ca & két tiền, and the pages for customers' consents and personal-data requests come later ([roadmap.md](roadmap.md)).
 
 ## Words you will see
 
@@ -847,6 +994,17 @@ No dates are promised here; [roadmap.md](roadmap.md) holds the plan and [status.
 | Ghép nối, Mã ghép nối | Pairing, Pairing code | linking a person's Zalo account to their card once, with the six-digit code you create for them, valid 10 minutes |
 | Thông báo cho nhân viên | Staff notice | the text staff read and accept before pairing; published on Cài đặt → Pháp lý |
 | Doanh thu nhân viên được xem | What staff see of revenue | everything for their stores, only today's totals, or nothing |
+| Checklist mở ca, giữa ca, đóng ca | Opening, mid-shift and closing checklist | the list of tasks staff tick off in the staff app; edited on Cài đặt → Checklist |
+| Xong, Xong muộn, Bị bỏ | Done, Done late, Missed | a checklist finished before its deadline, after it, or never |
+| Số đếm két, Chênh lệch đếm | Cash count, Count difference | the cash staff counted at shift close in the app, and that count minus the expected cash |
+| Mục chưa xem | Unseen items | incidents, missing items and handover notes no owner or manager has marked as seen |
+| Dấu, Điểm | Stamps, Points | what a member collects on a purchase: one stamp per bill from the minimum, points per amount spent |
+| Ưu đãi | Reward | what a member gets for their stamps or points: a free item, a percentage or an amount off, or an upgrade |
+| Kênh ưu đãi | Reward channel | how a reward reaches a store's till: a POS payment discount or a CRM voucher code |
+| Cách khớp A, B, C, D | Matched by A, B, C, D | how an invoice was tied to a member: phone on the invoice, check-in by staff, a bill the member sent, a reward code on the invoice |
+| Sổ điểm | Ledger | every stamp and point a member got or gave back, one line each; a mistake is corrected by a new line |
+| Hàng chờ đối soát | Reconciliation queue | the cases the app would not match alone, waiting for an owner or manager |
+| Đang giữ chưa ra mắt | Launch hold | the programme cannot run until the notification decision is recorded |
 
 | Kèm thông tin cá nhân | Include personal data | add the columns that name or reach a person to one export |
 | Đã đối chiếu với cơ sở dữ liệu: … — khớp | Checked against the database: … — matched | an exported month's files equal the database |

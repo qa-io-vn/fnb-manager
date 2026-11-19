@@ -257,6 +257,44 @@ Promotion rules are dated constants with their legal basis, sources and the date
 
 Per-opening-hour values use the store's opening hours from settings, split and overnight spans included (`app.opening_minutes`), and are null while a store with sales has none. RevPASH divides net revenue by seats × opening hours and is null while a store with sales has no seat count.
 
+## Staff operations and loyalty conventions
+
+The staff app (phase 14b) and the loyalty programme (phases 16 to 18) add figures that the web app shows but the registry above does not hold: they are display series (`displaySeries` in `apps/web/src/metrics/registry.ts`), each explained under "Giải thích chỉ số" by its `metric.<id>.*` texts in `apps/web/src/i18n/messages/metrics.vi.json` and `metrics.en.json`, and they are read by no data pack, digest or KPI follow-up. The registry metrics of loyalty (`loyalty_liability`, `breakage_rate`, `reward_cost_rate` and the customer metrics) keep their status until the customer metrics of #251 build them.
+
+### Display series
+
+| Display series | Tiếng Việt | English | Unit | Formula | Direction | Shown on |
+| --- | --- | --- | --- | --- | --- | --- |
+| `checklist_compliance` | Tỷ lệ checklist xong | Checklists done | fraction | (done + done late) ÷ (done + done late + missed), over each checklist in use at a store on a day, stores summed; checklists in progress or not due yet today are left out (`complianceSummary` in `apps/web/src/operations/compliance.ts`) | higher | Vận hành → Checklist; related on Chất lượng dữ liệu's "Checklist bị bỏ" |
+| `checklists_missing` | Checklist bị bỏ | Missed checklists | count | checklists due without a finished run: a past day without one, or today after the deadline | lower | Chất lượng dữ liệu; related on Vận hành → Checklist |
+| `cash_count_flags` | Ca đếm két vượt ngưỡng | Cash counts over a threshold | count | shifts whose count in the staff app differs from the expected cash (opening float plus cash tenders) by more than the absolute, relative or z-score threshold of Ca & két tiền (`cash_count_review`, state `over`); a shift without a count, or without the POS's expected cash, is not judged | lower | Vận hành → Két tiền, Ca & két tiền |
+| `shifts_without_count` | Ca đã đóng chưa đếm két | Closed shifts without a count | count | shifts closed on the POS with no cash count in the staff app (state `no_count`); a count is matched to the shift whose close is nearest within 60 minutes, and a count not matched yet does not mark a shift as counted | lower | Chất lượng dữ liệu; related on Vận hành → Két tiền and Ca & két tiền |
+| `open_reports` | Mục chưa xem | Entries not seen | count | incidents, stock-outs and handover notes that no owner or manager has marked as seen; a writer never marks their own report | lower | Vận hành → Sự cố |
+| `reward_cost` | Chi phí ưu đãi thành viên | Member reward cost | VND | the discount of the invoices that used a reward: the payment discount on the POS discount rail, the voucher amount on the CRM code rails; only redemptions used on a synced invoice count, so held and given-back redemptions cost nothing and a free item rung as a 0-price line has no amount (`redemption_summary`) | neutral | Khuyến mãi & giảm giá ([khuyen-mai.md](reports/khuyen-mai.md)) |
+
+Shifts are numbered "Ca 1", "Ca 2", … by opening time within the store's business day, as everywhere else. The cash series follow the drawer rule of Ca & két tiền under the tenant's thresholds, applied by `cash_count_review` in SQL; the checklist series are worked out in the browser from the templates, the runs and the opening hours.
+
+### Checklist status rule
+
+`statusOfRuns` and `phaseDeadline` in `apps/web/src/operations/compliance.ts` give each checklist in use at a store on a business day one status:
+
+- **Which checklists count.** A template counts at a store when it is for that store or for every store, on each day from the business date it was created, as long as it is still in use. A day on which the checklist was run counts even when the template has been taken out of use since. Days after the store's own business date of now are left out.
+- **The deadline** comes from the store's opening hours for that weekday in Cài đặt → Cửa hàng, counted from local midnight of the date: opening checklists by the earliest opening, mid-shift ones by the middle of the earliest opening and the latest closing, closing ones 60 minutes after the latest closing (`CLOSING_GRACE_MINUTES`; a span that closes at or before it opens runs past midnight). A store without opening hours, or closed that weekday, has no deadline.
+- **The status.** The first run finished decides: "Xong" (`done`) when it finished by the deadline or there is none, "Xong muộn" (`late`) after it. Without a finished run, a past day is "Bị bỏ" (`missing`); today is "Đang làm" (`inProgress`) while a run is open, "Bị bỏ" once the deadline has passed and "Chưa đến hạn" (`due`) before it, or all day when there is no deadline.
+- **What is counted.** `done`, `late` and `missing` are decided; `inProgress` and `due` are not counted in `checklist_compliance` or `checklists_missing` until they are.
+
+### Loyalty counting
+
+The programme's values are read when each earn is written, so a change applies from the next earn (`loyalty_programmes`, ranges in `LOYALTY_PARAMETER_RANGES` of `@fnb/core`, `packages/core/src/schemas/loyalty.ts`; the database checks the same ranges). Defaults are in brackets.
+
+- **Stamps** ("dấu"). One stamp for an invoice whose net amount reaches the minimum bill (50,000), never more than one per invoice; a card is full at the stamps per card (8, from 2 to 20). Joining credits the welcome stamps (2, fewer than a card) once, except for a staff phone. Each stamp keeps its own expiry, fixed when it is credited (6 months of validity), and a redemption uses the oldest spendable stamps first.
+- **Points** ("điểm"). The points per unit (1) for each whole unit of the net amount (10,000), rounded down, also below the minimum bill. Each credit's expiry is fixed at issue (12 months), and points expire first in first out. A point is worth the point value (500) when it is written, and that value at issue stays on its ledger row.
+- **Balance.** Only the append-only ledger gives a balance (`app.loyalty_balance`): earns, confirmations, clawbacks, redemptions, adjustments and expiries, each a row; a correction is a new row that names the one it corrects. A redemption hold already holds its stamps and points. A voided or edited invoice found by the nightly re-pull is clawed back, and stamps already redeemed stay redeemed, so a balance may go below zero.
+- **Refusals.** An invoice earns once for one member. It earns nothing when it is not completed, when the programme or the membership is not active, when its order source is excluded, when the member's or the invoice's phone is a staff phone (the owner's exclusion list or an active roster row, on every path A to D), or when the phone already earned the daily cap of invoices that business day (3); below the minimum bill it earns points without a stamp. Each refusal is kept per invoice, membership and reason (`loyalty_refusals`) and counted per shift on Khách hàng → Bất thường theo ca.
+- **Matched path.** Every earn records how its invoice was tied to the member: A, the phone or customer on the invoice; B, a check-in staff recorded at the till from the member's code or phone, matched to a sale of that store from 2 minutes before to 15 minutes after the recording; C, a receipt the member claimed by store, business date, receipt number and exact net amount, matched while the claim window lasts (72 hours); D, the invoice that used the member's reward. When two invoices fit a check-in or a claim equally, the case goes to the manager queue instead of being guessed.
+- **Redemptions and reward cost.** A redemption holds the reward's stamps or points for its hold (24 hours, at most the reward's validity), is used when a synced invoice carries it, and is otherwise released by the nightly step with the stamps and points given back; `reward_cost` counts only the used ones. A reward never takes more than the dated discount cap (50 %) off the price it reduces, and no reward is cash-like (FR-CMP-12, FR-CMP-13).
+- **Liability.** `loyalty_liability` is the outstanding confirmed points × the point value × (1 − expected breakage), stored nightly per programme (`loyalty_liability_daily`); the breakage is the programme's rate (0.2) until the first expiry is six months old, then the expired share of the points redeemed and expired over the last 12 months. A released hold nets out of the redeemed points.
+
 ## Benchmark context
 
 Published Vietnam market figures kept apart from tenant metrics and shown as dated context only. They are survey shares and chain averages, never targets for one shop; the sources are listed in `docs/deep-dives/fnb-kpi-standards.md`.
