@@ -1,0 +1,82 @@
+name: Regression
+
+# The full regression pack of docs/test-plan.md section 2.13 (pnpm test:regression)
+# on a fresh local stack, nightly and on demand, so the per-push CI time does not
+# grow. The pack never resets a database itself; this job resets its own fresh
+# CI stack once, as ci.yml does. Nothing here reaches the POS or Zalo: every
+# gated suite runs on fixture tenants with mock providers on 127.0.0.1.
+
+on:
+  schedule:
+    - cron: "40 19 * * *"
+  workflow_dispatch:
+    inputs:
+      pack:
+        description: Which pack to run
+        type: choice
+        options:
+          - regression
+          - smoke
+        default: regression
+
+concurrency:
+  group: regression-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  pack:
+    name: Regression pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      PARITY_POSTGRES: "1"
+      LOYALTY_INTEGRATION: "1"
+      NOTIFY_INTEGRATION: "1"
+      ZALO_INTEGRATION: "1"
+      REGRESSION_MAX_WORKERS: "2"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.7.3
+      - name: Install Chromium for the web and Mini App browser checks
+        run: pnpm --filter @fnb/web exec playwright install --with-deps chromium
+      - run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta
+      - name: Load the migrations and the seed on the fresh CI stack
+        run: pnpm exec supabase db reset
+      - name: Point the web app and the gated suites at the local stack
+        run: |
+          eval "$(pnpm exec supabase status -o env)"
+          test -n "$API_URL" && test -n "$PUBLISHABLE_KEY" && test -n "$SECRET_KEY"
+          echo "::add-mask::$SECRET_KEY"
+          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > apps/web/.env.local
+          {
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY"
+            echo "SUPABASE_SECRET_KEY=$SECRET_KEY"
+          } >> "$GITHUB_ENV"
+      - name: Run the pack
+        run: |
+          pack="${{ inputs.pack || 'regression' }}"
+          flag=""
+          if [ "$pack" = "smoke" ]; then flag="--smoke"; fi
+          node scripts/regression.mjs $flag --report-dir "$RUNNER_TEMP/regression-report"
+      - name: Keep the pack report and step logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-report
+          path: ${{ runner.temp }}/regression-report/
+          retention-days: 14
+      - if: always()
+        run: pnpm exec supabase stop --no-backup
