@@ -1,0 +1,61 @@
+name: Security
+
+# The security checks of docs/test-plan.md 2.11 that run on every push and pull request to main: the dependency audit
+# against its reviewed allow-list, the public-safety scan, Supabase's security advisors and plpgsql lint on a fresh
+# local stack, and the security pgTAP files (the authorization matrix, session spoofing, input abuse, privacy and
+# rate limits). It needs no secret and runs alongside ci.yml.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependencies:
+    name: Dependency audit and public-safety scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: The audit's allow-list rules
+        run: node --test scripts/security-audit.test.mjs
+      - name: pnpm audit --prod against .github/audit-allowlist.json
+        run: node scripts/security-audit.mjs
+      - name: Public-safety scan
+        run: node scripts/check-public-safe.mjs
+
+  database:
+    name: Advisors, lint and security pgTAP
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: A fresh local stack with every migration (the services the migrations and auth.users need)
+        run: pnpm exec supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta
+      - name: Supabase security advisors (fail on any warning)
+        run: pnpm exec supabase db advisors --type security --level warn --fail-on warn
+      - name: plpgsql lint of public and app (fail on errors)
+        run: pnpm exec supabase db lint --schema public,app --level error --fail-on error
+      - name: Security pgTAP files
+        run: pnpm exec supabase test db supabase/tests/120_security_function_matrix.sql supabase/tests/121_security_table_matrix.sql supabase/tests/122_security_session_spoofing.sql supabase/tests/123_security_input_abuse.sql supabase/tests/124_security_privacy.sql supabase/tests/125_security_rate_limits.sql
+      - if: always()
+        run: pnpm exec supabase stop --no-backup

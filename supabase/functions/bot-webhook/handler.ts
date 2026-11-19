@@ -34,6 +34,9 @@ export const STOP_CONFIRMATION =
 	"Đã dừng: bạn sẽ không nhận bản tin và cảnh báo qua Zalo này nữa. Muốn nhận lại, hãy nhờ chủ cửa hàng tạo mã liên kết mới.";
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{8,256}$/;
+// A chat id becomes a destination address and the recipient of every later message, so one with a space, a control
+// character or more than 128 characters is never linked, accepted or stopped (security test pack, #207).
+const CHAT_ID_PATTERN = /^[^\p{Cc}\p{Z}]{1,128}$/u;
 const EDGE_PUNCTUATION = /^[\s\p{P}\p{S}]+|[\s\p{P}\p{S}]+$/gu;
 const STOP_WORDS: ReadonlySet<string> = new Set(
 	["DỪNG", "DUNG"].map((word) => word.normalize("NFC")),
@@ -184,6 +187,9 @@ async function handleUpdate(
 	target: BotTarget,
 	update: InboundText,
 ): Promise<UpdateOutcome> {
+	if (!CHAT_ID_PATTERN.test(update.chatId)) {
+		return "dropped";
+	}
 	const at = dependencies.clock();
 	const code = findLinkCode(update.text);
 	if (code !== null) {

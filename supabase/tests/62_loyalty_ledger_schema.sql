@@ -149,6 +149,15 @@ exception when others then
 end;
 $$;
 
+-- Since migration customer_claims_bound_to_login a customer session reads rows only as the customer login of an
+-- active Zalo App bound to that customer, so the synthetic session gets one.
+insert into public.brands (id, tenant_id, brand_key, display_name, store_ids)
+select '44444444-4444-4444-8444-000000062091'::uuid, tenant_x, 'brand-91', 'Synthetic claims brand', array[store_x1] from fx;
+insert into public.zalo_apps (id, tenant_id, brand_id, external_id, secret_name, status)
+select '55555555-5555-4555-8555-000000062091'::uuid, tenant_x, '44444444-4444-4444-8444-000000062091'::uuid, 'synthetic-claims-app-62', 'ZALO_APP_SECRET_BRAND_91', 'active' from fx;
+insert into app.customer_logins (tenant_id, zalo_app_id, zalo_user_id, user_id, customer_id)
+select tenant_x, '55555555-5555-4555-8555-000000062091'::uuid, 'syn-claims-62', customer_user, customer_1 from fx;
+
 create function pg_temp.value_as_customer(p_user uuid, p_tenant uuid, p_customer uuid, p_query text)
 returns text
 language plpgsql

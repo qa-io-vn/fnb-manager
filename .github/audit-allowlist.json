@@ -1,0 +1,4 @@
+{
+	"$comment": "Reviewed acceptances of `pnpm audit --prod` advisories for scripts/security-audit.mjs. Each entry: id (GHSA id), package, reason (why it does not apply or cannot be fixed yet), reviewed_by, reviewed_on and expires_on (YYYY-MM-DD, at most six months later). An expired entry fails the security workflow until it is reviewed again.",
+	"accepted": []
+}

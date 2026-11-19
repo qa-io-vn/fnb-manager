@@ -1757,7 +1757,7 @@ Migration `staff_alert_rules` (#230) adds no function for members. It adds seven
 
 ### 3.19 Loyalty (phases 16 and 17)
 
-Migrations `loyalty_programmes` (#239), `coupon_rails` (#242, schema only), `loyalty_ledger` (#247), `loyalty_earn` (#248), `loyalty_matching` (#249) and `loyalty_jobs` (#250) add three functions a client may call. Everything else in the loyalty engine is an `app` function for the service role and the jobs ([schema.md](schema.md#loyalty-functions-phase-17), "Loyalty functions"): the earn, confirm, clawback and expiry functions, the reconciliation `app.reconcile_loyalty`, the customer-facing helpers `app.loyalty_join`, `app.loyalty_issue_checkin_code` and `app.loyalty_submit_claim` that a later customer function will wrap, the staff helper `app.loyalty_record_checkin`, the fast-lane requests and the nightly step. Owners and managers with an unlimited scope write `loyalty_programmes`, `coupon_rails`, `coupon_rail_rewards` and `coupons` directly, and owners and managers write `loyalty_staff_phones` ([section 4](#loyalty-phases-16-and-17)). A customer session (a JWT whose `app_metadata` holds `kind` `customer`, `tenant_id` and `customer_id`, the customer belonging to that tenant) reads only its own loyalty rows. No client calls these functions yet. Tests: pgTAP `60_loyalty_programmes.sql` to `65_loyalty_jobs.sql`.
+Migrations `loyalty_programmes` (#239), `coupon_rails` (#242, schema only), `loyalty_ledger` (#247), `loyalty_earn` (#248), `loyalty_matching` (#249) and `loyalty_jobs` (#250) add three functions a client may call. Everything else in the loyalty engine is an `app` function for the service role and the jobs ([schema.md](schema.md#loyalty-functions-phase-17), "Loyalty functions"): the earn, confirm, clawback and expiry functions, the reconciliation `app.reconcile_loyalty`, the customer-facing helpers `app.loyalty_join`, `app.loyalty_issue_checkin_code` and `app.loyalty_submit_claim` that a later customer function will wrap, the staff helper `app.loyalty_record_checkin`, the fast-lane requests and the nightly step. Owners and managers with an unlimited scope write `loyalty_programmes`, `coupon_rails`, `coupon_rail_rewards` and `coupons` directly, and owners and managers write `loyalty_staff_phones` ([section 4](#loyalty-phases-16-and-17)). A customer session (a JWT whose `app_metadata` holds `kind` `customer`, `tenant_id` and `customer_id`, the customer belonging to that tenant, signed in as that customer's own login of an active Zalo App and with no `tenant_members` row, since migration `customer_claims_bound_to_login`) reads only its own loyalty rows. No client calls these functions yet. Tests: pgTAP `60_loyalty_programmes.sql` to `65_loyalty_jobs.sql`.
 
 #### `public.loyalty_balance`
 
@@ -1930,7 +1930,7 @@ returns jsonb
 
 - **Status:** built (phase 17b, #255); the screen is #256.
 - **Who may call:** an owner, manager or staff member with the store in scope (`42501` otherwise).
-- **Bad input:** both or neither of phone and code, a code that is neither 6 digits nor such a payload, or an amount outside 0 to 100,000,000 gives `22023`.
+- **Bad input:** both or neither of phone and code, a code that is neither 6 digits nor such a payload, or an amount not above 0 or above 100,000,000 gives `22023`.
 - **Notes:**
   - "Ghi nhận khách" (path B) takes either a phone or a code.
     - A phone means the member of the tenant's active programme with that phone; a fresh check-in code is issued for it.
@@ -2063,7 +2063,7 @@ returns jsonb
 ```
 
 - **Status:** built (phase 18b, #271); the wallet screens are #272.
-- **Who may call:** a joined customer session (`42501` otherwise). A missing reward or a store the app does not offer gives `22023`.
+- **Who may call:** a joined customer session (`42501` otherwise). A store the app does not offer gives `22023`; a reward that does not exist is refused as `coupon_unavailable` and changes nothing.
 - **Notes:** Đổi quà: holds the reward for the member at the store. A hold answers `{"redemption_id", "state": "held", "refusal": null, "code", "qr_payload", "rail", "coupon_id", "store_id", "store_code", "store_name", "held_at", "hold_expires_at", "seconds_left", "stamps_spent", "points_spent", "stamps", "points"}`, `stamps` and `points` being the spendable balance after the hold and `qr_payload` `fnb-redeem:1:<code>` for the staff app to scan. A refusal answers `{"redemption_id": null, "state": null, "refusal", "store_code", "store_name", "stamps", "points"}` with one of the customer reasons above, and changes nothing.
 
 #### `public.customer_vouchers`
@@ -2102,7 +2102,7 @@ returns TABLE(item_external_id text, item_name text, price_discount_days integer
 ```
 
 - **Status:** built (phase 18b, #269); the editor is #270.
-- **Who may call:** anyone signed in; `security invoker`, so a reward the caller does not read gives `22023`, and the counts follow the caller's revenue access as `item_discount_days` does.
+- **Who may call:** anyone signed in; `security invoker`, so a reward the caller does not read gives `22023`, as does a year before 2023 or after next year (migration `coupon_discount_days_year`), and the counts follow the caller's revenue access as `item_discount_days` does.
 - **Notes:** information only (FR-CMP-12): the discount days of the calendar year of the items the reward discounts (its reward items, or every item but the excluded ones), from [`item_discount_days`](#publicitem_discount_days) over the reward's stores (every active store, at most 50, for a reward of every store). `limit_days` is the dated discount-days limit in force at the year's end or today, whichever is earlier (120 to 25 June 2026, then null while Decree 239/2026 is reported to repeal it); `over_limit` is never true without a limit and never blocks a save.
 
 #### `public.redemption_summary`
