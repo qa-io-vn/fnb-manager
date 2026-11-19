@@ -1,9 +1,11 @@
 import { Popup, useI18n, useSession } from "@fnb/zalo-mini/react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getPhoneNumber } from "zmp-sdk";
 import { LegalButtons } from "../legal/legal";
 import { sessionRefused } from "../onboarding/account";
 import { useEntry } from "../onboarding/entry-gate";
+import { TEAM_PATHS } from "../team/env";
 import { dangerButton, primaryButton, Spinner, secondaryButton } from "../ui";
 
 export type PhoneTokenRequest = () => Promise<string | null>;
@@ -197,6 +199,7 @@ export function ProfileScreen({
 	const { t } = useI18n();
 	const { state } = useSession();
 	const { check, loadLegal, showResult } = useEntry();
+	const navigate = useNavigate();
 	const headingId = useId();
 	const [view, setView] = useState<"tab" | "phone">("tab");
 	const [linkedHint, setLinkedHint] = useState<string | null>(null);
@@ -252,6 +255,16 @@ export function ProfileScreen({
 					</button>
 				</Section>
 			) : null}
+			<Section title={t("notify.title")} testId="profile-notifications">
+				<p className="text-base text-ink">{t("notify.profileBody")}</p>
+				<button
+					type="button"
+					className={secondaryButton}
+					onClick={() => navigate(TEAM_PATHS.notifications)}
+				>
+					{t("notify.open")}
+				</button>
+			</Section>
 			<Section title={t("profile.legal.title")} testId="profile-legal">
 				<LegalButtons load={loadLegal} />
 			</Section>

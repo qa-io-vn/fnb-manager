@@ -59,7 +59,7 @@ test("a failed connection shows one retry action", async ({ page }) => {
 	await checkMiniAppScreen(page);
 });
 
-test("the first of four tabs opens first, Ca làm shows the shift and Thông báo a plain state", async ({
+test("the first of four tabs opens first, Ca làm shows the shift and Thông báo the notices", async ({
 	page,
 }) => {
 	await page.goto("./");
@@ -77,7 +77,7 @@ test("the first of four tabs opens first, Ca làm shows the shift and Thông bá
 	await expect(page.getByTestId("shift-board")).toBeVisible();
 	await checkMiniAppScreen(page);
 	await navigation.getByRole("button", { name: "Thông báo" }).click();
-	await expect(page.getByTestId("plain-state")).toBeVisible();
+	await expect(page.getByTestId("notices-list")).toBeVisible();
 	await checkMiniAppScreen(page);
 	await navigation.getByRole("button", { name: "Cá nhân" }).click();
 	await expect(page.getByTestId("profile")).toBeVisible();

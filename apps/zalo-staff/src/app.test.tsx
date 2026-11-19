@@ -70,7 +70,7 @@ describe("staff Mini App shell", () => {
 		expect(screen.getAllByRole("button", { name: "Thử lại" })).toHaveLength(1);
 	});
 
-	it("opens the first of at most four tabs, the shift's tasks under Ca làm and a plain state under Thông báo", async () => {
+	it("opens the first of at most four tabs, the shift's tasks under Ca làm and the notices under Thông báo", async () => {
 		renderApp("bound");
 		const navigation = await screen.findByRole("navigation", {
 			name: "Điều hướng chính",
@@ -92,9 +92,10 @@ describe("staff Mini App shell", () => {
 			screen.getByRole("heading", { level: 1, name: "Ca làm" }),
 		).toBeInTheDocument();
 		fireEvent.click(buttons[2] as HTMLElement);
-		expect(await screen.findByTestId("plain-state")).toHaveTextContent(
-			"Chưa có nội dung ở mục này.",
-		);
+		expect(await screen.findByTestId("notices-list")).toBeInTheDocument();
+		expect(
+			screen.getByRole("heading", { level: 1, name: "Thông báo" }),
+		).toBeInTheDocument();
 	});
 
 	it("shows the checklist due and the shift close on the home, each opening Ca làm", async () => {
@@ -181,6 +182,11 @@ describe("staff Mini App shell", () => {
 		expect(standInMemberFrom("?role=staff&revenue=none")).toEqual({
 			...standInMember,
 			role: "staff",
+			stores: ["Cửa hàng Mẫu 1"],
+		});
+		expect(standInMemberFrom("?role=manager&stores=one")).toEqual({
+			...standInMember,
+			role: "manager",
 			stores: ["Cửa hàng Mẫu 1"],
 		});
 	});

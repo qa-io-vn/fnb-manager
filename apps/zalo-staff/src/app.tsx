@@ -1,9 +1,5 @@
 import type { MemberProfile } from "@fnb/zalo-mini";
-import {
-	type MiniAppRoute,
-	type MiniAppTab,
-	PlainState,
-} from "@fnb/zalo-mini/react";
+import type { MiniAppRoute, MiniAppTab } from "@fnb/zalo-mini/react";
 import { LoyaltyQueueScreen } from "./approvals/loyalty-queue";
 import { MyRequestsScreen } from "./approvals/my-requests";
 import { CheckInScreen } from "./check-in/check-in-screen";
@@ -19,6 +15,10 @@ import { RedemptionScreen } from "./redemption/redemption-screen";
 import { ShiftTaskCards } from "./shift/home-cards";
 import { HomeTasksContext } from "./shift/home-slot";
 import { ShiftScreen } from "./shift/shift-screen";
+import { TEAM_PATHS } from "./team/env";
+import { TEAM_HOME_PARTS } from "./team/home-cards";
+import { HomeTeamContext } from "./team/home-slot";
+import { teamRoutes } from "./team/screens";
 
 export { EntryGate } from "./onboarding/entry-gate";
 
@@ -27,15 +27,17 @@ export const routes: readonly MiniAppRoute[] = [
 		path: "/",
 		element: (
 			<HomeTasksContext.Provider value={ShiftTaskCards}>
-				<HomeLoyaltyContext.Provider value={LoyaltyHomeCard}>
-					<HomeScreen />
-				</HomeLoyaltyContext.Provider>
+				<HomeTeamContext.Provider value={TEAM_HOME_PARTS}>
+					<HomeLoyaltyContext.Provider value={LoyaltyHomeCard}>
+						<HomeScreen />
+					</HomeLoyaltyContext.Provider>
+				</HomeTeamContext.Provider>
 			</HomeTasksContext.Provider>
 		),
 	},
 	{ path: "/ca-lam", element: <ShiftScreen /> },
-	{ path: "/thong-bao", element: <PlainState /> },
 	{ path: "/ca-nhan", element: <ProfileScreen /> },
+	...teamRoutes(),
 	{
 		path: LOYALTY_PATHS.checkIn,
 		element: (
@@ -91,7 +93,7 @@ export const routes: readonly MiniAppRoute[] = [
 export const tabs: readonly MiniAppTab[] = [
 	{ path: "/", labelKey: "tab.home", icon: <HomeIcon /> },
 	{ path: "/ca-lam", labelKey: "tab.shifts", icon: <ShiftIcon /> },
-	{ path: "/thong-bao", labelKey: "tab.notices", icon: <NoticeIcon /> },
+	{ path: TEAM_PATHS.notices, labelKey: "tab.notices", icon: <NoticeIcon /> },
 	{ path: "/ca-nhan", labelKey: "tab.profile", icon: <ProfileIcon /> },
 ];
 
@@ -105,10 +107,11 @@ export const standInMember: MemberProfile = {
 export const STAND_IN_ROLES = ["owner", "manager", "staff"] as const;
 
 export function standInMemberFrom(search: string): MemberProfile {
-	const requested = new URLSearchParams(search).get("role");
+	const params = new URLSearchParams(search);
+	const requested = params.get("role");
 	const role = STAND_IN_ROLES.find((name) => name === requested);
 	if (role === undefined) return standInMember;
-	return role === "staff"
+	return role === "staff" || params.get("stores") === "one"
 		? { ...standInMember, role, stores: standInMember.stores.slice(0, 1) }
 		: { ...standInMember, role };
 }
