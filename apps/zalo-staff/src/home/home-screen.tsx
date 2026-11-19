@@ -18,6 +18,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { HomeLoyaltySlot } from "../loyalty/home-slot";
 import { HomeTaskSlot } from "../shift/home-slot";
 import { createHomeFormatters, type HomeFormatters } from "./format";
 import { type HomeCard, type HoursToday, homeCards } from "./model";
@@ -512,6 +513,7 @@ function HomeReady({
 						/>
 					) : null}
 					<TasksSection store={store} formatters={formatters} />
+					<HomeLoyaltySlot storeId={store.id} />
 				</div>
 			)}
 		</>

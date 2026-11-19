@@ -119,6 +119,43 @@ describe("staff Mini App shell", () => {
 		expect(await screen.findByTestId("close-count")).toBeInTheDocument();
 	});
 
+	it("puts Ghi nhận khách on the home as its one primary action, opening the tool at the selected store", async () => {
+		renderApp("bound");
+		const card = await screen.findByTestId("home-loyalty");
+		const picker = await screen.findByLabelText("Cửa hàng");
+		fireEvent.change(picker, {
+			target: { value: "00000000-0000-4000-8000-0000000005a2" },
+		});
+		const primary = [
+			...document.querySelectorAll<HTMLElement>("[data-action=primary]"),
+		];
+		expect(primary.map((element) => element.textContent)).toEqual([
+			"Ghi nhận khách",
+		]);
+		expect(within(card).getByTestId("home-loyalty-queue")).toBeInTheDocument();
+		fireEvent.click(
+			within(screen.getByTestId("home-loyalty")).getByRole("button", {
+				name: "Ghi nhận khách",
+			}),
+		);
+		expect(
+			await screen.findByTestId("checkin-entry", {}, { timeout: 4000 }),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("heading", { level: 1, name: "Ghi nhận khách" }),
+		).toBeInTheDocument();
+		expect(screen.getByTestId("loyalty-store-picker")).toHaveValue(
+			"00000000-0000-4000-8000-0000000005a2",
+		);
+		expect(
+			within(
+				screen.getByRole("navigation", { name: "Điều hướng chính" }),
+			).getAllByRole("button"),
+		).toHaveLength(4);
+		fireEvent.click(screen.getByRole("button", { name: "Quay lại" }));
+		expect(await screen.findByTestId("home-loyalty")).toBeInTheDocument();
+	});
+
 	it("speaks English when Zalo is set to English", async () => {
 		renderApp("bound", "en");
 		expect(screen.getByRole("status")).toHaveTextContent("Connecting…");
