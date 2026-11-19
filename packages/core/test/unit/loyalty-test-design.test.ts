@@ -133,7 +133,33 @@ describe("boundary value analysis: the daily cap of earning invoices (earning_in
 		expect(ledger.refusals.daily_cap).toBe(0);
 	});
 
-	it("BVA x + 1 after a clawback: the replay's cap counts the earn even when it is voided later (the SQL cap does not, see 130_loyalty_boundaries.sql)", () => {
+	it("a clawed-back earn frees its place from the moment the clawback is written (the SQL rule, G-42)", () => {
+		const ledger = computeExpectedLedger({
+			parameters: PARAMETERS,
+			members: [MEMBER],
+			staffPhones: [],
+			invoices: [
+				sale(1),
+				sale(2, {
+					voidedLater: true,
+					voidedAt: new Date(
+						Date.parse("2026-11-10T02:00:00.000Z") + 3.5 * 60_000,
+					).toISOString(),
+				}),
+				sale(3),
+				sale(4),
+				sale(5),
+				sale(6),
+			],
+		});
+		// The void is written between sale 3 and sale 4: sale 4 is the third earn
+		// again, sale 5 is x + 1 again.
+		expect(ledger.earns).toBe(4);
+		expect(ledger.clawbacks).toBe(1);
+		expect(ledger.refusals.daily_cap).toBe(2);
+	});
+
+	it("an earn voided after the later sales were decided still counted for them", () => {
 		const ledger = computeExpectedLedger({
 			parameters: PARAMETERS,
 			members: [MEMBER],

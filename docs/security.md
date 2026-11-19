@@ -456,6 +456,14 @@ The operational runbook for incidents, including security incidents, is [operati
 
 ## 12. Open security items
 
+Owner defaults in force for customer data since 2026-11-19 (the choices that closed G-03, G-05 and G-08 in [test-gaps.md](test-gaps.md); the owner may change any of them):
+
+- **Erasure blanks the POS fields.** A data-subject deletion blanks the phone and the name on the POS invoice rows of the customer and keeps a per-tenant memory of the erased phone as a hash only (`app.erased_phones`, migrations `erasure_blanks_invoice_phones`, `erased_phone_blank_before_rejoin` and `erased_phone_functions_internal`). The next sync or nightly re-pull that brings the phone back is blanked on arrival, so no customer, membership or ledger row is created from it. The hash is an unsalted sha-256 and the raw `sale_payloads` are not scrubbed: both are open below.
+- **A re-join starts clean.** When the same phone joins again, it gets a new membership with the welcome stamps and no earlier ledger row; invoices sold before the new membership stay blank, invoices sold from then on carry the phone again.
+- **A voided confirmed redemption is cancelled.** When the nightly re-pull voids the invoice that confirmed a redemption, the redemption is `cancelled`, the stamps and points are given back, the pool code is quarantined and the managers see a queue item and the `redemption_mismatch` alert ([schema.md](schema.md#a-voided-confirmed-redemption-migration-void_after_confirmation)).
+- **Staff phones cannot be adjusted.** A manual adjustment or dispute credit on the membership of a staff phone (the owner's list or an active roster row) is refused, whoever asks, like the earn paths. The refusal is not counted in `loyalty_shift_anomalies` yet (G-45).
+
+
 | Item | Why it matters | Owner | When |
 |---|---|---|---|
 | Create the cloud project with SSL enforcement, sign-ups off, custom SMTP and the redirect allow-list; run the two-tenant suite against it | None of the cloud settings exist yet | owner | go-live ([go-live.md](go-live.md)) |
@@ -473,6 +481,8 @@ The operational runbook for incidents, including security incidents, is [operati
 | Watch Edge Function invocations | Functions without JWT verification can be called by anyone; from phase 13 that is `sync-incremental`, `zalo-session`, `oa-webhook` and `bot-webhook` | operator | after go-live |
 | Read the voucher callback's source address from a header the platform sets, not the first `x-forwarded-for` entry | A caller can put any address first in `x-forwarded-for`, so `callback_ip_allowlist` can be bypassed once it is filled; it is empty today | backend stream | before the allow-list is used (hotline question 7) |
 | Make the three-a-day receipt-claim cap race-free | `app.loyalty_submit_claim` counts the day's claims without a lock, so parallel submissions of one member can pass the cap together | backend stream | before Track C goes public |
+| Salt or key the erased-phone hash | `app.phone_hash` is an unsalted sha-256 of the phone, so someone with database access can brute-force which numbers were erased (G-46) | backend stream, owner decision | before Track C goes public |
+| Scrub the raw `sale_payloads` of an erased customer, or record the decision to keep them | The stored POS payload still holds the phone and name after erasure (G-47) | owner, backend stream | before Track C goes public |
 | Add per-caller limits where there are none | No limit of its own on `staff_member_lookup` and `loyalty_member_lookup` (phone-to-member enumeration by a member of the shop), `staff_verify_redemption` (code guessing by a member), `staff_record_checkin`, `staff_request`, `customer_member_code`, `customer_redeem`, the voucher callback (code guessing by whoever holds the secret path; only the 2,500 ms budget), `zalo-phone`, the customer branch of `zalo-session`, and the two webhooks beyond their credentials | backend stream | before Track C goes public |
 | Correct the claim that no API role reaches the token caches | `service_role` holds Supabase's default grant on every `public` table, `pos_account_tokens`, `zalo_tokens`, `sale_payloads`, `oa_events` and `oa_users` included (pgTAP `42` relies on it for `zalo_tokens`); revoke what the service role does not use, or reword sections 2, 4.6 and 6 | backend stream | open |
 | Switch each OA's webhook from `observe` to `enforce` | Until then an unsigned or wrongly signed OA event is stored with its outcome; the switch waits for the device check that confirms the signed bytes | owner, with the builder | #210 |

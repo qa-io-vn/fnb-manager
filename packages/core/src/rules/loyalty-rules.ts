@@ -58,6 +58,13 @@ export interface ReplayInvoice {
 	readonly source: string | null;
 	readonly status: ReplayInvoiceStatus;
 	readonly voidedLater: boolean;
+	/**
+	 * When the clawback of a voided earn is written. A clawed-back earn does
+	 * not count toward the daily cap from that moment on (the SQL rule, G-42).
+	 * Left out, the void is taken to come after every sale of the replay, so the
+	 * earn still counted when later invoices were decided.
+	 */
+	readonly voidedAt?: string | null;
 }
 
 export interface LedgerReplayInput {
@@ -127,7 +134,9 @@ export function computeExpectedLedger(
 		});
 	}
 	const refusals = emptyRefusals();
-	const earnedPerDay = new Map<string, number>();
+	// Per phone and business date: the earns that count, each with the moment its
+	// clawback is written (Infinity when it never is within the replay).
+	const earnedPerDay = new Map<string, number[]>();
 	const earnsByInvoice = new Map<string, { phone: string } & EarnAmounts>();
 	let earns = 0;
 	for (const invoice of [...input.invoices].sort(compareInvoices)) {
@@ -148,8 +157,9 @@ export function computeExpectedLedger(
 		} else if (staff.has(invoice.phone)) {
 			refusal = "excluded_phone";
 		} else if (
-			(earnedPerDay.get(dayKey) ?? 0) >=
-			parameters.earningInvoicesPerPhonePerDay
+			(earnedPerDay.get(dayKey) ?? []).filter(
+				(clawedAt) => clawedAt > Date.parse(invoice.soldAt),
+			).length >= parameters.earningInvoicesPerPhonePerDay
 		) {
 			refusal = "daily_cap";
 		}
@@ -168,7 +178,12 @@ export function computeExpectedLedger(
 		member.points += amounts.points;
 		member.earns += 1;
 		earns += 1;
-		earnedPerDay.set(dayKey, (earnedPerDay.get(dayKey) ?? 0) + 1);
+		earnedPerDay.set(dayKey, [
+			...(earnedPerDay.get(dayKey) ?? []),
+			invoice.voidedLater && invoice.voidedAt
+				? Date.parse(invoice.voidedAt)
+				: Number.POSITIVE_INFINITY,
+		]);
 		earnsByInvoice.set(invoice.externalId, {
 			phone: invoice.phone,
 			...amounts,
