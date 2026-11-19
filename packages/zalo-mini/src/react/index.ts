@@ -12,6 +12,19 @@ export {
 } from "./boot";
 export { type ColorScheme, useColorScheme } from "./color-scheme";
 export {
+	bootCustomerMiniApp,
+	type CustomerBootOptions,
+	type CustomerEnvironment,
+	type CustomerStandIn,
+	customerMiniAppEnvironment,
+} from "./customer-boot";
+export {
+	CustomerSessionProvider,
+	type CustomerSessionProviderProps,
+	type CustomerSessionValue,
+	useCustomerSession,
+} from "./customer-session";
+export {
 	DataEndpointProvider,
 	type DataEndpointProviderProps,
 	useDataEndpoint,

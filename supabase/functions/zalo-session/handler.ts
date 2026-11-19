@@ -2,6 +2,7 @@ import {
 	asRefusal,
 	BINDING_CODE_PATTERN,
 	BRAND_KEY_PATTERN,
+	type BrandApp,
 	fetchZaloUser,
 	functionBackend,
 	functionSettings,
@@ -18,6 +19,7 @@ import {
 	UpstreamError,
 	type ZaloFetch,
 	type ZaloSettings,
+	type ZaloUser,
 } from "@fnb/zalo";
 import {
 	type FunctionEnvironment,
@@ -28,6 +30,7 @@ import {
 	requireMethod,
 	serveFunction,
 } from "../_shared/http.ts";
+import { customerRequest, customerSession } from "./customer.ts";
 
 export const FUNCTION_NAME = "zalo-session";
 export const DEFAULT_DISPLAY_NAME = "Thành viên";
@@ -255,6 +258,39 @@ async function signInOrPair(
 	return { signIn: second, loginCreated: used };
 }
 
+async function identify(
+	brand: string,
+	accessToken: string,
+	settings: ZaloSettings,
+	context: RequestContext,
+	dependencies: ZaloSessionDependencies,
+): Promise<{
+	readonly backend: SupabaseBackend;
+	readonly app: BrandApp;
+	readonly appSecret: string;
+	readonly me: ZaloUser;
+}> {
+	const backend =
+		dependencies.backend ??
+		functionBackend(context.environment, dependencies.fetch);
+	const app = await requireBrandApp(backend, settings, brand);
+	const appSecret = context.secret(app.secretName);
+	const me = await fetchZaloUser(
+		{ baseUrl: settings.graphBaseUrl, fetch: dependencies.fetch },
+		accessToken,
+		appSecret,
+	);
+	if (!me.ok) {
+		context.log(`the Zalo graph refused the access token (error ${me.error})`);
+		throw new HttpError(401, "zalo_token_refused");
+	}
+	context.protect(me.value.id);
+	if (me.value.name !== null) {
+		context.protect(me.value.name);
+	}
+	return { backend, app, appSecret, me: me.value };
+}
+
 async function zaloSession(
 	request: Request,
 	context: RequestContext,
@@ -272,6 +308,30 @@ async function zaloSession(
 				dependencies,
 			);
 		}
+		if (body.kind !== undefined) {
+			const customer = customerRequest(body);
+			context.protect(customer.accessToken);
+			const known = await identify(
+				customer.brand,
+				customer.accessToken,
+				settings,
+				context,
+				dependencies,
+			);
+			return await customerSession(
+				{
+					request: customer,
+					settings,
+					backend: known.backend,
+					app: known.app,
+					me: known.me,
+					appSecret: known.appSecret,
+					fetch: dependencies.fetch,
+					newLoginId: dependencies.newLoginId ?? (() => crypto.randomUUID()),
+				},
+				context,
+			);
+		}
 		const input = sessionRequest(body);
 		context.protect(input.accessToken);
 		if (input.bindingCode !== null) {
@@ -280,33 +340,20 @@ async function zaloSession(
 		if (input.pairingCode !== null) {
 			context.protect(input.pairingCode);
 		}
-		const backend =
-			dependencies.backend ??
-			functionBackend(context.environment, dependencies.fetch);
-		const app = await requireBrandApp(backend, settings, input.brand);
-		const appSecret = context.secret(app.secretName);
-		const me = await fetchZaloUser(
-			{ baseUrl: settings.graphBaseUrl, fetch: dependencies.fetch },
+		const { backend, app, me } = await identify(
+			input.brand,
 			input.accessToken,
-			appSecret,
+			settings,
+			context,
+			dependencies,
 		);
-		if (!me.ok) {
-			context.log(
-				`the Zalo graph refused the access token (error ${me.error})`,
-			);
-			throw new HttpError(401, "zalo_token_refused");
-		}
-		context.protect(me.value.id);
-		if (me.value.name !== null) {
-			context.protect(me.value.name);
-		}
 		const { signIn, loginCreated } = await signInOrPair(
 			backend,
 			input,
 			{
 				p_zalo_app_id: app.zaloAppId,
-				p_zalo_user_id: me.value.id,
-				p_display_name: me.value.name,
+				p_zalo_user_id: me.id,
+				p_display_name: me.name,
 			},
 			context,
 			dependencies.newLoginId ?? (() => crypto.randomUUID()),

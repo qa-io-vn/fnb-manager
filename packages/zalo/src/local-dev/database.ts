@@ -25,6 +25,7 @@ export interface LoopTarget {
 	readonly oaExternalId: string | null;
 	readonly miniAppExternalIds: readonly string[];
 	readonly staffMiniApp: StaffMiniAppRow | null;
+	readonly customerMiniApp?: StaffMiniAppRow | null;
 }
 
 export interface LoopMember {
@@ -67,6 +68,7 @@ export async function loadLoopTarget(
 			oa_external_id: string | null;
 			mini_app_ids: string[];
 			staff: StaffMiniAppRow | null;
+			customer: StaffMiniAppRow | null;
 		}[]
 	>`
 		select b.id::text as brand_id, cardinality(b.store_ids)::integer as store_count,
@@ -77,7 +79,12 @@ export async function loadLoopTarget(
 				'title', m.title, 'header_title_vi', m.header_title_vi, 'header_title_en', m.header_title_en,
 				'header_color_light', m.header_color_light, 'header_color_dark', m.header_color_dark,
 				'text_color_light', m.text_color_light, 'text_color_dark', m.text_color_dark)
-			 from public.mini_apps m where m.brand_id = b.id and m.kind = 'staff') as staff
+			 from public.mini_apps m where m.brand_id = b.id and m.kind = 'staff') as staff,
+			(select json_build_object(
+				'title', m.title, 'header_title_vi', m.header_title_vi, 'header_title_en', m.header_title_en,
+				'header_color_light', m.header_color_light, 'header_color_dark', m.header_color_dark,
+				'text_color_light', m.text_color_light, 'text_color_dark', m.text_color_dark)
+			 from public.mini_apps m where m.brand_id = b.id and m.kind = 'customer') as customer
 		from public.brands b
 		left join public.zalo_apps a on a.brand_id = b.id
 		left join public.oas o on o.brand_id = b.id
@@ -107,6 +114,7 @@ export async function loadLoopTarget(
 		oaExternalId: row.oa_external_id,
 		miniAppExternalIds: row.mini_app_ids,
 		staffMiniApp: row.staff,
+		customerMiniApp: row.customer,
 	};
 }
 

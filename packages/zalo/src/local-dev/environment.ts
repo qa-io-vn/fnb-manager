@@ -224,3 +224,31 @@ export function staffAppEnvironment(
 				}),
 	};
 }
+
+export interface CustomerDemoInput {
+	readonly brand: string;
+	readonly access: {
+		readonly key: string;
+		readonly tunnelHost: string | null;
+	} | null;
+}
+
+export function customerDemoEnvironment(
+	environment: ZaloEnvironment,
+	input: CustomerDemoInput,
+): Record<string, string> {
+	return {
+		...passthroughEnvironment(environment),
+		VITE_ZALO_RUNTIME: "browser",
+		VITE_ZALO_SESSION: "stand-in",
+		VITE_BRAND_KEY: input.brand,
+		...(input.access === null
+			? {}
+			: {
+					[LOCAL_ACCESS_KEY_VARIABLE]: input.access.key,
+					...(input.access.tunnelHost === null
+						? {}
+						: { [LOCAL_TUNNEL_HOST_VARIABLE]: input.access.tunnelHost }),
+				}),
+	};
+}

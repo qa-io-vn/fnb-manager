@@ -113,6 +113,19 @@ export {
 	mergeCatalogs,
 	type Translate,
 } from "./i18n/translate";
+export {
+	CUSTOMER_SESSION_STORAGE_KEY,
+	type CustomerSessionClient,
+	type CustomerSessionState,
+	type CustomerSessionStore,
+	createCustomerSessionStore,
+	createZaloCustomerSessionClient,
+	isCustomerSessionFresh,
+	type JoinFailure,
+	type JoinResult,
+	joinRequestProblems,
+	type ZaloCustomerSessionClientOptions,
+} from "./session/customer-session-client";
 export { ZALO_SESSION_PATH } from "./session/endpoint";
 export {
 	authorizationHeaders,

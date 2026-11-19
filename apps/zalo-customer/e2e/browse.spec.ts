@@ -1,0 +1,117 @@
+import { expect, test } from "@playwright/test";
+import {
+	checkCustomerScreen,
+	nativeStorageKeys,
+	openHome,
+	openTab,
+	PROGRAMME,
+	sdkCalls,
+	watchCustomerPage,
+} from "./customer-checks";
+
+test.beforeEach(async ({ page }) => {
+	await watchCustomerPage(page);
+});
+
+test("the home shows the programme, the stores and the menu without any permission prompt", async ({
+	page,
+}) => {
+	await page.goto("./?dataDelay=800");
+	await expect(page.getByRole("status")).toHaveText("Đang tải…");
+	await expect(page.getByRole("heading", { name: PROGRAMME })).toBeVisible();
+	await expect(page.getByTestId("store-list").getByRole("button")).toHaveCount(
+		2,
+	);
+	await expect(page.getByTestId("menu-at-counter")).toHaveText(
+		Array(4).fill("Xem tại quầy"),
+	);
+	await expect(
+		page.getByRole("button", { name: "Tham gia thành viên" }),
+	).toBeVisible();
+	expect(await sdkCalls(page)).toEqual(["getAccessToken"]);
+	expect(await nativeStorageKeys(page)).toEqual(["fnb.customer-session"]);
+	await checkCustomerScreen(page);
+});
+
+test("a store's QR link opens that store's page", async ({ page }) => {
+	await page.goto("./?store=mau-2&src=qr");
+	await expect(
+		page.getByRole("heading", { name: "Cửa hàng Mẫu 2" }),
+	).toBeVisible();
+	await expect(page.getByTestId("store-address")).toHaveText(
+		"34 Đường Số 2, Phường Mẫu, Thành phố Mẫu",
+	);
+	await expect(page.locator("[data-today=true]")).toContainText("Thứ Năm");
+	await expect(page.getByTestId("menu-item")).toHaveCount(3);
+	await checkCustomerScreen(page);
+	await page.getByRole("button", { name: "Quay lại" }).click();
+	await expect(page.getByRole("heading", { name: PROGRAMME })).toBeVisible();
+});
+
+test("Privacy and Terms open as popups titled with the Mini App's name", async ({
+	page,
+}) => {
+	await openHome(page);
+	await page.getByRole("button", { name: "Chính sách bảo mật" }).click();
+	const privacy = page.getByRole("dialog", {
+		name: "Chính sách bảo mật Mini App Thành viên Quán Mẫu Một",
+	});
+	await expect(privacy).toBeVisible();
+	await expect(privacy.getByTestId("legal-entity")).toHaveText(
+		"Đơn vị chịu trách nhiệm: Hộ kinh doanh Quán Mẫu Một",
+	);
+	await expect(privacy.getByTestId("legal-version")).toContainText(
+		"privacy-demo-1",
+	);
+	await checkCustomerScreen(page);
+	await privacy.getByRole("button", { name: "Đóng" }).click();
+	await page.getByRole("button", { name: "Điều khoản sử dụng" }).click();
+	await expect(
+		page.getByRole("dialog", {
+			name: "Điều khoản sử dụng Mini App Thành viên Quán Mẫu Một",
+		}),
+	).toBeVisible();
+	await checkCustomerScreen(page);
+});
+
+test("no screen a visitor can reach has an outbound link or a price", async ({
+	page,
+}) => {
+	await openHome(page);
+	await checkCustomerScreen(page);
+	await page.getByRole("button", { name: /Cửa hàng Mẫu 1/ }).click();
+	await expect(page.getByTestId("store")).toBeVisible();
+	await checkCustomerScreen(page);
+	await page.getByRole("button", { name: "Tham gia thành viên" }).click();
+	await expect(page.getByTestId("join-purpose")).toBeVisible();
+	await checkCustomerScreen(page);
+	await page.getByRole("button", { name: "Tiếp tục" }).click();
+	await expect(page.getByTestId("join-consent")).toBeVisible();
+	await checkCustomerScreen(page);
+	await page.getByRole("button", { name: "Hủy" }).click();
+	await openTab(page, "Thẻ thành viên");
+	await expect(page.getByTestId("join-prompt")).toBeVisible();
+	await checkCustomerScreen(page);
+	await openTab(page, "Tài khoản");
+	await expect(page.getByTestId("settings-visitor")).toBeVisible();
+	await checkCustomerScreen(page);
+	expect(await sdkCalls(page)).not.toContain("getPhoneNumber");
+});
+
+test("a lost connection says so and offers a retry", async ({ page }) => {
+	await page.goto("./?session=failed");
+	await expect(page.getByRole("alert")).toContainText("Mất kết nối mạng");
+	await expect(page.getByRole("button", { name: "Thử lại" })).toBeVisible();
+	await checkCustomerScreen(page);
+});
+
+test("the app speaks English when Zalo does", async ({ page }) => {
+	await page.goto("./?lang=en");
+	await expect(
+		page.getByRole("button", { name: "Become a member" }),
+	).toBeVisible();
+	await expect(page.getByTestId("menu-at-counter").first()).toHaveText(
+		"Ask at the counter",
+	);
+	await checkCustomerScreen(page);
+});

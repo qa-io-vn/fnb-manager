@@ -51,7 +51,27 @@ export interface FakeLogin {
 	readonly email: string;
 }
 
+export interface FakeCustomer {
+	readonly customerId: string;
+	readonly tenantId: string;
+	readonly zaloAppId: string;
+	readonly zaloUserId: string;
+	readonly phone: string;
+	readonly displayName: string | null;
+}
+
+export interface FakeCustomerConsent {
+	readonly customerId: string;
+	readonly purpose: "loyalty" | "marketing";
+	readonly policyVersion: string;
+	readonly screenVersion: string;
+	readonly shownAt: string;
+	readonly channel: "mini_app";
+	readonly active: boolean;
+}
+
 export const FAKE_PAIRING_ATTEMPTS = 5;
+export const FAKE_WELCOME_STAMPS = 1;
 export const FAKE_PAIRING_WAIT_SECONDS = 900;
 
 export type FakeBackendCall =
@@ -60,6 +80,7 @@ export type FakeBackendCall =
 	| "mintSession"
 	| "sessionUser"
 	| "createLogin"
+	| "setAppMetadata"
 	| "deleteLogin";
 
 export interface FakeBackend extends SupabaseBackend {
@@ -90,6 +111,11 @@ export interface FakeBackend extends SupabaseBackend {
 	minted(): readonly MintedSession[];
 	calls(): readonly string[];
 	failNext(call: FakeBackendCall): void;
+	addCustomerStore(tenantId: string, code: string): void;
+	setCustomerPolicy(tenantId: string, version: string): void;
+	customers(): readonly FakeCustomer[];
+	customerConsents(): readonly FakeCustomerConsent[];
+	appMetadataOf(userId: string): Readonly<Record<string, unknown>> | undefined;
 }
 
 interface PairingCode {
@@ -127,6 +153,16 @@ export function createFakeBackend(): FakeBackend {
 	>();
 	const log: string[] = [];
 	const failures = new Set<FakeBackendCall>();
+	const customerLogins = new Map<
+		string,
+		{ userId: string; displayName: string | null }
+	>();
+	const customers = new Map<string, FakeCustomer>();
+	const customerConsents: FakeCustomerConsent[] = [];
+	const customerStores = new Map<string, Set<string>>();
+	const customerPolicies = new Map<string, string>();
+	const metadata = new Map<string, Readonly<Record<string, unknown>>>();
+	let customerCounter = 0;
 	let counter = 0;
 	let loginCounter = 0;
 
@@ -435,6 +471,115 @@ export function createFakeBackend(): FakeBackend {
 			: unpaired(tenantId, "code_refused");
 	};
 
+	const customerOf = (userId: string): FakeCustomer | undefined =>
+		[...customers.values()].find(
+			(customer) =>
+				customerLogins.get(identityKey(customer.zaloAppId, customer.zaloUserId))
+					?.userId === userId,
+		);
+
+	const customerAnswer = (
+		tenantId: string,
+		userId: string,
+		displayName: string | null,
+	): Record<string, unknown> => ({
+		status: "customer",
+		user_id: userId,
+		tenant_id: tenantId,
+		customer_id: customerOf(userId)?.customerId ?? null,
+		display_name: displayName,
+	});
+
+	const customerSignIn = (args: Readonly<Record<string, unknown>>): unknown => {
+		const app = appOf(String(args.p_zalo_app_id));
+		const key = identityKey(app.zaloAppId, String(args.p_zalo_user_id));
+		const displayName = textArg(args.p_display_name);
+		const known = customerLogins.get(key);
+		if (known !== undefined) {
+			const updated = {
+				...known,
+				displayName: displayName ?? known.displayName,
+			};
+			customerLogins.set(key, updated);
+			return customerAnswer(app.tenantId, updated.userId, updated.displayName);
+		}
+		const newUserId = textArg(args.p_new_user_id);
+		if (newUserId === null) {
+			return { status: "login_needed" };
+		}
+		if (!logins.has(newUserId) || members.has(newUserId)) {
+			throw new UpstreamError("supabase", "status", 400);
+		}
+		customerLogins.set(key, { userId: newUserId, displayName });
+		return customerAnswer(app.tenantId, newUserId, displayName);
+	};
+
+	const customerJoin = (args: Readonly<Record<string, unknown>>): unknown => {
+		const app = appOf(String(args.p_zalo_app_id));
+		const zaloUserId = String(args.p_zalo_user_id);
+		const key = identityKey(app.zaloAppId, zaloUserId);
+		const login = customerLogins.get(key);
+		if (login === undefined || login.userId !== args.p_user_id) {
+			throw new UpstreamError("supabase", "status", 400);
+		}
+		if (args.p_loyalty_consent !== true) {
+			return { status: "refused", reason: "consent_required" };
+		}
+		const policy = customerPolicies.get(app.tenantId);
+		if (policy === undefined || args.p_policy_version !== policy) {
+			return { status: "refused", reason: "policy_outdated" };
+		}
+		const store = textArg(args.p_store_code);
+		if (
+			store !== null &&
+			!(customerStores.get(app.tenantId)?.has(store) ?? false)
+		) {
+			return { status: "refused", reason: "unknown_store" };
+		}
+		const phone = String(args.p_phone);
+		const holder = [...customers.values()].find(
+			(customer) =>
+				customer.tenantId === app.tenantId && customer.phone === phone,
+		);
+		if (holder !== undefined && holder.zaloUserId !== zaloUserId) {
+			return { status: "refused", reason: "phone_in_use" };
+		}
+		const already = holder ?? customerOf(login.userId);
+		customerCounter += already === undefined ? 1 : 0;
+		const customerId =
+			already?.customerId ??
+			`00000000-0000-4000-9000-${String(customerCounter).padStart(12, "0")}`;
+		customers.set(customerId, {
+			customerId,
+			tenantId: app.tenantId,
+			zaloAppId: app.zaloAppId,
+			zaloUserId,
+			phone,
+			displayName: textArg(args.p_display_name),
+		});
+		if (already === undefined) {
+			const evidence = {
+				customerId,
+				policyVersion: String(args.p_policy_version),
+				screenVersion: String(args.p_screen_version),
+				shownAt: String(args.p_shown_at),
+				channel: "mini_app" as const,
+				active: true,
+			};
+			customerConsents.push({ ...evidence, purpose: "loyalty" });
+			if (args.p_marketing_consent === true) {
+				customerConsents.push({ ...evidence, purpose: "marketing" });
+			}
+		}
+		return {
+			status: "joined",
+			customer_id: customerId,
+			membership_id: customerId.replace("-9000-", "-a000-"),
+			welcome_stamps: already === undefined ? FAKE_WELCOME_STAMPS : 0,
+			already_member: already !== undefined,
+		};
+	};
+
 	return {
 		async rpc(name, args) {
 			log.push(`rpc ${name}`);
@@ -464,20 +609,29 @@ export function createFakeBackend(): FakeBackend {
 			if (name === "zalo_session_texts") {
 				return textsOf(args);
 			}
+			if (name === "zalo_customer_sign_in") {
+				return customerSignIn(args);
+			}
+			if (name === "customer_join") {
+				return customerJoin(args);
+			}
 			throw new UpstreamError("supabase", "status", 404);
 		},
 		async userEmail(userId) {
 			log.push("userEmail");
 			maybeFail("userEmail");
 			const member = members.get(userId);
-			return member === undefined ? undefined : member.email;
+			if (member !== undefined) {
+				return member.email;
+			}
+			return logins.get(userId)?.email;
 		},
 		async mintSession(email) {
 			log.push("mintSession");
 			maybeFail("mintSession");
-			const member = [...members.values()].find(
-				(entry) => entry.email === email,
-			);
+			const member =
+				[...members.values()].find((entry) => entry.email === email) ??
+				[...logins.values()].find((entry) => entry.email === email);
 			if (member === undefined) {
 				throw new UpstreamError("supabase", "status", 404);
 			}
@@ -495,13 +649,24 @@ export function createFakeBackend(): FakeBackend {
 			maybeFail("sessionUser");
 			return sessions.get(accessToken)?.userId ?? null;
 		},
-		async createLogin(email) {
+		async createLogin(email, appMetadata) {
 			log.push("createLogin");
 			maybeFail("createLogin");
 			loginCounter += 1;
 			const userId = `00000000-0000-4000-8000-${String(loginCounter).padStart(12, "0")}`;
 			logins.set(userId, { userId, email });
+			if (appMetadata !== undefined) {
+				metadata.set(userId, { ...appMetadata });
+			}
 			return userId;
+		},
+		async setAppMetadata(userId, appMetadata) {
+			log.push("setAppMetadata");
+			maybeFail("setAppMetadata");
+			if (!logins.has(userId) && !members.has(userId)) {
+				throw new UpstreamError("supabase", "status", 404);
+			}
+			metadata.set(userId, { ...metadata.get(userId), ...appMetadata });
 		},
 		async deleteLogin(userId) {
 			log.push("deleteLogin");
@@ -620,6 +785,23 @@ export function createFakeBackend(): FakeBackend {
 		},
 		failNext(call) {
 			failures.add(call);
+		},
+		addCustomerStore(tenantId, code) {
+			const stores = customerStores.get(tenantId) ?? new Set<string>();
+			stores.add(code);
+			customerStores.set(tenantId, stores);
+		},
+		setCustomerPolicy(tenantId, version) {
+			customerPolicies.set(tenantId, version);
+		},
+		customers() {
+			return [...customers.values()];
+		},
+		customerConsents() {
+			return [...customerConsents];
+		},
+		appMetadataOf(userId) {
+			return metadata.get(userId);
 		},
 	};
 }

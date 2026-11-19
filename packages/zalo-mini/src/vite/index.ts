@@ -92,6 +92,7 @@ export interface MiniAppSettings {
 	readonly stage: MiniAppStage;
 	readonly session: MiniAppSession;
 	readonly local: LocalSessionSettings | null;
+	readonly standInAccess?: LocalAccess;
 	readonly brand: string;
 	readonly appConfigPath: string;
 }
@@ -150,15 +151,32 @@ export function miniAppSettings(
 			throw new Error(`a Zalo build needs ${missing.join(", ")}`);
 		}
 	}
+	const guarded =
+		session === "stand-in" &&
+		runtime === "browser" &&
+		command === "serve" &&
+		[LOCAL_ACCESS_KEY_VARIABLE, LOCAL_TUNNEL_HOST_VARIABLE].some(
+			(name) => (env[name]?.trim() ?? "") !== "",
+		);
 	return {
 		runtime,
 		stage,
 		session,
 		local:
 			session === "local" ? localSessionSettings(env, runtime, command) : null,
+		...(guarded ? { standInAccess: localAccess(env) } : {}),
 		brand: brand || SYNTHETIC_BRAND,
 		appConfigPath: resolve(appRoot, env.MINI_APP_CONFIG || "app-config.json"),
 	};
+}
+
+export function standInServerOptions(access: LocalAccess): {
+	readonly allowedHosts?: string[];
+	readonly hmr?: false;
+} {
+	return access.tunnelHost === null
+		? {}
+		: { allowedHosts: [access.tunnelHost], hmr: false };
 }
 
 function localSessionSettings(
@@ -460,7 +478,11 @@ export function miniApp(options: MiniAppPluginOptions): Plugin[] {
 						local?.accessToken ?? "",
 					),
 				},
-				...(local ? { server: localServerOptions(local) } : {}),
+				...(local
+					? { server: localServerOptions(local) }
+					: settings.standInAccess
+						? { server: standInServerOptions(settings.standInAccess) }
+						: {}),
 				resolve:
 					settings.runtime === "browser"
 						? { alias: [{ find: /^zmp-sdk$/, replacement: MOCK_SDK_PATH }] }
@@ -480,11 +502,12 @@ export function miniApp(options: MiniAppPluginOptions): Plugin[] {
 		configureServer: {
 			order: "pre",
 			handler(server) {
-				const local = current().settings.local;
-				if (!local) return;
-				server.middlewares.use(localAccessGuard(local.access));
+				const active = current().settings;
+				const access = active.local?.access ?? active.standInAccess;
+				if (!access) return;
+				server.middlewares.use(localAccessGuard(access));
 				return () => {
-					if (server.httpServer) guardUpgrades(server.httpServer, local.access);
+					if (server.httpServer) guardUpgrades(server.httpServer, access);
 				};
 			},
 		},

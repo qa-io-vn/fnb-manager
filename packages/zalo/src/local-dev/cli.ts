@@ -1,10 +1,14 @@
 import { createInterface } from "node:readline";
 import type { ZaloEnvironment } from "../settings.js";
+import {
+	type CustomerDemoReady,
+	customerDemoPaths,
+	startCustomerDemo,
+} from "./customer.js";
 import { findRepositoryRoot, withRepositoryEnv } from "./environment.js";
-import { qrCodeLines } from "./lan.js";
+import { type LanHost, qrCodeLines } from "./lan.js";
 import {
 	forgetLocalBrand,
-	type LocalLoop,
 	type LocalLoopReady,
 	localLoopPaths,
 	startLocalLoop,
@@ -12,6 +16,7 @@ import {
 import {
 	LOCAL_LOOP_USAGE,
 	LocalLoopError,
+	type LocalLoopExposure,
 	type LocalLoopOptions,
 	MEMBER_EMAIL_VARIABLE,
 	parseLocalLoopArgs,
@@ -46,8 +51,25 @@ function firewallHint(port: number): string {
 	return `  if the phone can't connect, allow TCP port ${port} on private networks in this PC's firewall`;
 }
 
+interface ExposureView {
+	readonly appUrl: string;
+	readonly exposure: LocalLoopExposure;
+	readonly phoneUrl: string | null;
+	readonly phoneHint: string | null;
+	readonly lan: LanHost | null;
+	readonly port: number;
+	readonly role: string;
+	readonly appName: string;
+	readonly behind: string;
+}
+
+const LOCAL_SERVICES =
+	"zalo-session, zalo-phone, the mock Zalo graph and the local Supabase API stay on 127.0.0.1 behind its proxy";
+const DEMO_SERVICES =
+	"the demo data and the stand-in session run inside the page, with no database";
+
 function exposureLines(
-	ready: LocalLoopReady,
+	ready: ExposureView,
 	stopsAt: Date | null,
 	terminal: boolean,
 ): string[] {
@@ -61,7 +83,7 @@ function exposureLines(
 			...qr(ready.phoneUrl),
 			`  public link: anyone with it can open the app as ${ready.role}; it stops ${stopsAt === null ? "" : `at ${clockTime(stopsAt)} `}or on Ctrl+C`,
 			"  the key in the link is new on every start; the dev server sets it as a cookie and drops it from the address, and any request without it gets 403",
-			`  the staff app listens on 127.0.0.1:${ready.port} behind a Cloudflare quick tunnel; zalo-session, zalo-phone, the mock Zalo graph and the local Supabase API stay on 127.0.0.1 behind its proxy`,
+			`  the ${ready.appName} listens on 127.0.0.1:${ready.port} behind a Cloudflare quick tunnel; ${ready.behind}`,
 		];
 	}
 	if (ready.exposure === "lan" && ready.phoneUrl !== null) {
@@ -69,8 +91,8 @@ function exposureLines(
 		return [
 			`zalo:dev: ready on the home network; on the phone (same Wi-Fi) open ${ready.phoneUrl}`,
 			...qr(ready.phoneUrl),
-			`  the link carries a one-time key, new on every start: whoever opens it is signed in as the member below (${ready.role}), so keep it to yourself; without it every request gets 403`,
-			`  the staff app listens on ${ready.lan?.host ?? ""}:${ready.port} only; zalo-session, zalo-phone, the mock Zalo graph and the local Supabase API stay on 127.0.0.1 behind its proxy`,
+			`  the link carries a one-time key, new on every start: whoever opens it is signed in as the ${ready.role === "customer" ? "mock customer" : "member below"} (${ready.role}), so keep it to yourself; without it every request gets 403`,
+			`  the ${ready.appName} listens on ${ready.lan?.host ?? ""}:${ready.port} only; ${ready.behind}`,
 			...(others.length === 0
 				? []
 				: [
@@ -81,7 +103,7 @@ function exposureLines(
 	}
 	if (ready.exposure === "lan") {
 		return [
-			`zalo:dev: ready; no Wi-Fi or LAN IPv4 address was found, so the staff app listens on every interface (${ready.lan?.host ?? ""})`,
+			`zalo:dev: ready; no Wi-Fi or LAN IPv4 address was found, so the ${ready.appName} listens on every interface (${ready.lan?.host ?? ""})`,
 			`  on the phone open ${ready.phoneHint ?? ""}, or restart with --host <ipv4>`,
 			`  on this PC open ${ready.appUrl}`,
 			firewallHint(ready.port),
@@ -97,11 +119,17 @@ function readyLines(
 	terminal: boolean,
 ): string[] {
 	const member =
-		options.member === null
-			? `the member in ${MEMBER_EMAIL_VARIABLE}`
-			: "the member given with --member";
+		ready.app === "customer"
+			? "a customer, joining with the mock phone token"
+			: options.member === null
+				? `the member in ${MEMBER_EMAIL_VARIABLE}`
+				: "the member given with --member";
 	return [
-		...exposureLines(ready, stopsAt, terminal),
+		...exposureLines(
+			{ ...ready, appName: `${ready.app} app`, behind: LOCAL_SERVICES },
+			stopsAt,
+			terminal,
+		),
 		`  ${ready.brand} of ${ready.tenant}: the mock Zalo user ${ready.mockUser} signs in as ${member} (${ready.role}, ${ready.stores} ${ready.stores === 1 ? "store" : "stores"})`,
 		...(ready.boundNow
 			? [
@@ -113,8 +141,29 @@ function readyLines(
 	];
 }
 
+function demoLines(
+	ready: CustomerDemoReady,
+	stopsAt: Date | null,
+	terminal: boolean,
+): string[] {
+	return [
+		...exposureLines(
+			{
+				...ready,
+				role: "customer",
+				appName: "customer app",
+				behind: DEMO_SERVICES,
+			},
+			stopsAt,
+			terminal,
+		),
+		`  ${ready.brand}: the customer app with its demo data (a visitor first; add ?member=1 to start as a member, ?phone=refused to refuse the phone, ?store=mau-1&src=qr for a store link)`,
+		"  stop with Ctrl+C, or type q and Enter",
+	];
+}
+
 function untilStopped(
-	loop: LocalLoop,
+	loop: { readonly failed: Promise<string> },
 	stopsAt: Date | null,
 ): Promise<string | null> {
 	return new Promise((resolve) => {
@@ -201,8 +250,49 @@ export async function runLocalLoopCli(
 			await forgetLocalBrand(options, env, io);
 			return 0;
 		}
+		if (options.app === "customer" && options.live !== true) {
+			console.log(
+				`zalo:dev: starting the customer app with its demo data for ${options.brand}`,
+			);
+			const demo = await startCustomerDemo(
+				options,
+				env,
+				io,
+				customerDemoPaths(rootDir),
+			);
+			const demoStopsAt =
+				options.exposure === "tunnel"
+					? new Date(Date.now() + options.tunnelHours * HOUR_MS)
+					: null;
+			for (const line of demoLines(
+				demo.ready,
+				demoStopsAt,
+				process.stdout.isTTY === true,
+			)) {
+				console.log(line);
+			}
+			const ready: LocalLoopReadyMessage = {
+				type: "ready",
+				appUrl: demo.ready.appUrl,
+				phoneUrl: demo.ready.phoneUrl,
+				role: "customer",
+				stores: 0,
+				mockName: "",
+				boundNow: false,
+			};
+			process.send?.(ready);
+			const stopped = await untilStopped(demo, demoStopsAt);
+			console.log("zalo:dev: stopping");
+			await demo.stop();
+			if (stopped !== null) {
+				console.error(`zalo:dev: ${stopped}`);
+				return 1;
+			}
+			console.log("zalo:dev: stopped");
+			return 0;
+		}
 		console.log(
-			`zalo:dev: starting the mock Zalo graph, zalo-session, zalo-phone and the staff app for ${options.brand} of ${options.tenant}`,
+			`zalo:dev: starting the mock Zalo graph, zalo-session, zalo-phone and the ${options.app ?? "staff"} app for ${options.brand} of ${options.tenant}`,
 		);
 		const loop = await startLocalLoop(
 			options,

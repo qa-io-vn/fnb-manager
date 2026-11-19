@@ -1,58 +1,56 @@
 import config from "virtual:mini-app-config";
-import {
-	createStandInSessionClient,
-	fromZmpNativeStorage,
-	type StandInScenario,
-} from "@fnb/zalo-mini";
-import { MiniApp, shellProblems } from "@fnb/zalo-mini/react";
-import { render, screen } from "@testing-library/react";
+import { shellProblems } from "@fnb/zalo-mini/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { getAccessToken, nativeStorage } from "zmp-sdk";
-import { routes, standInMember, tabs } from "./app";
-import { catalogs } from "./i18n/catalog";
-
-function renderApp(scenario: StandInScenario) {
-	nativeStorage.clear();
-	return render(
-		<MiniApp
-			language="vi"
-			catalogs={catalogs}
-			sessionClient={createStandInSessionClient({
-				settings: { scenario, delayMs: 0 },
-				member: standInMember,
-				storage: fromZmpNativeStorage(nativeStorage),
-				getAccessToken: () => getAccessToken(),
-			})}
-			routes={routes}
-			tabs={tabs}
-			standInHeader={config.app}
-		/>,
-	);
-}
+import { routes, tabs } from "./app";
+import { renderCustomerApp } from "./test/render-app";
 
 describe("customer Mini App shell", () => {
-	it("shows only the session check for the owner, with no bottom navigation", async () => {
-		renderApp("bound");
-		expect(screen.getByRole("status")).toHaveTextContent("Đang kết nối…");
+	it("opens on the home tab of three, within the design rules", async () => {
+		renderCustomerApp();
+		expect(await screen.findByTestId("loading")).toHaveTextContent("Đang tải…");
 		expect(
-			await screen.findByRole("heading", {
-				name: "Xin chào, Chủ cửa hàng thử",
-			}),
+			await screen.findByRole("heading", { name: "Thành viên Quán Mẫu Một" }),
 		).toBeInTheDocument();
-		expect(screen.getByTestId("member-role")).toHaveTextContent("Chủ cửa hàng");
-		expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
-		expect(tabs).toEqual([]);
+		const navigation = screen.getByRole("navigation");
+		expect(
+			within(navigation)
+				.getAllByText(/Trang chủ|Thẻ thành viên|Tài khoản/)
+				.map((node) => node.textContent),
+		).toEqual(["Trang chủ", "Thẻ thành viên", "Tài khoản"]);
+		expect(tabs.map((tab) => tab.path)).toEqual([
+			"/",
+			"/the-thanh-vien",
+			"/tai-khoan",
+		]);
 		expect(shellProblems(routes, tabs)).toEqual([]);
 	});
 
-	it("shows the unpaired instructions", async () => {
-		renderApp("unpaired");
+	it("asks a visitor to join on the card tab, without any permission call", async () => {
+		renderCustomerApp();
+		await screen.findByRole("heading", { name: "Thành viên Quán Mẫu Một" });
+		fireEvent.click(screen.getByText("Thẻ thành viên"));
 		expect(
-			await screen.findByRole("heading", {
-				name: "Tài khoản chưa được liên kết",
-			}),
+			await screen.findByRole("heading", { name: "Bạn chưa là thành viên" }),
 		).toBeInTheDocument();
-		expect(screen.getByLabelText("Mã liên kết")).toBeInTheDocument();
+		const { mockSdkCalls } = await import("@fnb/zalo-mini/testing/mock-sdk");
+		expect(mockSdkCalls().map((call) => call.api)).toEqual(["getAccessToken"]);
+	});
+
+	it("shows a lost connection with one retry", async () => {
+		renderCustomerApp({ settings: { sessionFailure: true } });
+		expect(await screen.findByRole("alert")).toHaveTextContent(
+			"Mất kết nối mạng",
+		);
+		expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
+	});
+
+	it("speaks English when Zalo does", async () => {
+		renderCustomerApp({ language: "en" });
+		expect(
+			await screen.findByRole("button", { name: "Become a member" }),
+		).toBeInTheDocument();
+		expect(screen.getAllByText("Ask at the counter").length).toBeGreaterThan(0);
 	});
 
 	it("builds its configuration for the customer app", () => {

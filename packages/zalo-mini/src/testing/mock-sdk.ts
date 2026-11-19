@@ -1,7 +1,18 @@
 import type * as Sdk from "zmp-sdk";
-import { MOCK_CALLS_GLOBAL } from "./constants";
+import {
+	MOCK_CALLS_GLOBAL,
+	MOCK_OPEN_APP_GLOBAL,
+	MOCK_STORAGE_KEYS_GLOBAL,
+	OPEN_APP_EVENT,
+} from "./constants";
 
-export { EXTERNAL_OPEN_APIS, MOCK_CALLS_GLOBAL } from "./constants";
+export {
+	EXTERNAL_OPEN_APIS,
+	MOCK_CALLS_GLOBAL,
+	MOCK_OPEN_APP_GLOBAL,
+	MOCK_STORAGE_KEYS_GLOBAL,
+	OPEN_APP_EVENT,
+} from "./constants";
 
 export interface MockSdkCall {
 	readonly api: string;
@@ -42,6 +53,7 @@ export function resetMockSdk(): void {
 	calls.length = 0;
 	storage.clear();
 	publish();
+	publishStorageKeys();
 }
 
 function searchParam(name: string): string | null {
@@ -62,16 +74,26 @@ function storedBytes(): number {
 	return total;
 }
 
+function publishStorageKeys(): void {
+	if (typeof window === "undefined") return;
+	Object.assign(window, {
+		[MOCK_STORAGE_KEYS_GLOBAL]: [...storage.keys()].sort(),
+	});
+}
+
 export const nativeStorage: typeof Sdk.nativeStorage = {
 	getItem: (key) => storage.get(key) ?? "",
 	setItem: (key, value) => {
 		storage.set(key, value);
+		publishStorageKeys();
 	},
 	removeItem: (key) => {
 		storage.delete(key);
+		publishStorageKeys();
 	},
 	clear: () => {
 		storage.clear();
+		publishStorageKeys();
 	},
 	getStorageInfo: () => ({
 		currentSize: Math.ceil(storedBytes() / 1024),
@@ -202,4 +224,67 @@ export const openChat: typeof Sdk.openChat = async (args) => {
 
 export const openProfile: typeof Sdk.openProfile = async (args) => {
 	record("openProfile", args);
+};
+
+export const EventName = {
+	AppPaused: "h5.event.paused",
+	AppResumed: "h5.event.resumed",
+	OpenApp: OPEN_APP_EVENT,
+} as const;
+
+type MockListener = (...args: unknown[]) => void;
+
+const listeners = new Map<string, Set<MockListener>>();
+
+const mockEvents = {
+	on(event: string, listener: MockListener) {
+		const set = listeners.get(event) ?? new Set<MockListener>();
+		set.add(listener);
+		listeners.set(event, set);
+		return mockEvents;
+	},
+	off(event: string, listener?: MockListener) {
+		if (listener === undefined) listeners.delete(event);
+		else listeners.get(event)?.delete(listener);
+		return mockEvents;
+	},
+	removeListener(event: string, listener?: MockListener) {
+		return mockEvents.off(event, listener);
+	},
+	emit(event: string, ...args: unknown[]) {
+		const set = listeners.get(event);
+		for (const listener of set === undefined ? [] : [...set]) listener(...args);
+		return set !== undefined && set.size > 0;
+	},
+	listenerCount(event: string) {
+		return listeners.get(event)?.size ?? 0;
+	},
+};
+
+export const events = mockEvents as unknown as typeof Sdk.events;
+
+export function emitMockOpenApp(path: string): void {
+	mockEvents.emit(OPEN_APP_EVENT, { path });
+}
+
+if (typeof window !== "undefined") {
+	Object.assign(window, { [MOCK_OPEN_APP_GLOBAL]: emitMockOpenApp });
+}
+
+export const getRouteParams: typeof Sdk.getRouteParams = () => {
+	if (typeof location === "undefined") return {};
+	return Object.fromEntries(new URLSearchParams(location.search));
+};
+
+export const followOA: typeof Sdk.followOA = async (args) => {
+	record("followOA", { id: args.id });
+	if (searchParam("follow") === "refused") {
+		const failure = {
+			code: MOCK_PERMISSION_DENIED_CODE,
+			message: "User denied following the Official Account",
+		};
+		args.fail?.(failure);
+		throw failure;
+	}
+	args.success?.();
 };

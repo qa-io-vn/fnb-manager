@@ -17,6 +17,10 @@
 			"types": "./src/app-config/index.ts",
 			"import": "./src/app-config/index.ts"
 		},
+		"./loyalty": {
+			"types": "./src/loyalty/index.ts",
+			"import": "./src/loyalty/index.ts"
+		},
 		"./vite": {
 			"types": "./src/vite/index.ts",
 			"import": "./src/vite/index.ts"
@@ -24,6 +28,10 @@
 		"./testing/mock-sdk": {
 			"types": "./src/testing/mock-sdk.ts",
 			"import": "./src/testing/mock-sdk.ts"
+		},
+		"./testing/constants": {
+			"types": "./src/testing/constants.ts",
+			"import": "./src/testing/constants.ts"
 		},
 		"./testing/design-checks": {
 			"types": "./src/testing/design-checks.ts",

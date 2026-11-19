@@ -357,3 +357,107 @@ export function bearerToken(header: string | null): string | null {
 	const match = /^Bearer\s+(\S+)$/i.exec(header.trim());
 	return match?.[1] ?? null;
 }
+
+export const CUSTOMER_LOGIN_DOMAIN = "zalo-customer.invalid";
+export const CUSTOMER_SESSION_KIND = "customer";
+export const CUSTOMER_JOIN_REASONS = [
+	"consent_required",
+	"policy_outdated",
+	"unknown_store",
+	"phone_in_use",
+] as const;
+
+export type CustomerJoinReason = (typeof CUSTOMER_JOIN_REASONS)[number];
+
+export type CustomerSignInResult =
+	| { readonly status: "login_needed" }
+	| {
+			readonly status: "customer";
+			readonly userId: string;
+			readonly tenantId: string;
+			readonly customerId: string | null;
+			readonly displayName: string | null;
+	  };
+
+export type CustomerJoinResult =
+	| {
+			readonly status: "joined";
+			readonly customerId: string;
+			readonly membershipId: string;
+			readonly welcomeStamps: number;
+			readonly alreadyMember: boolean;
+	  }
+	| { readonly status: "refused"; readonly reason: CustomerJoinReason };
+
+export function customerLoginEmail(loginId: string): string {
+	if (!LOGIN_ID_PATTERN.test(loginId)) {
+		throw new Error("a customer login id is a lower-case UUID");
+	}
+	return `customer-${loginId}@${CUSTOMER_LOGIN_DOMAIN}`;
+}
+
+export function customerAppMetadata(
+	tenantId: string,
+	customerId: string | null,
+): Record<string, string | null> {
+	return {
+		kind: CUSTOMER_SESSION_KIND,
+		tenant_id: tenantId,
+		customer_id: customerId,
+	};
+}
+
+export function parseCustomerSignIn(value: unknown): CustomerSignInResult {
+	if (!isRecord(value)) {
+		throw new UpstreamError("supabase", "invalid_answer");
+	}
+	if (value.status === "login_needed") {
+		return { status: "login_needed" };
+	}
+	if (value.status !== CUSTOMER_SESSION_KIND) {
+		throw new UpstreamError("supabase", "invalid_answer");
+	}
+	const customerId = value.customer_id;
+	const displayName = value.display_name;
+	return {
+		status: CUSTOMER_SESSION_KIND,
+		userId: text(value.user_id),
+		tenantId: text(value.tenant_id),
+		customerId:
+			customerId === null || customerId === undefined ? null : text(customerId),
+		displayName:
+			typeof displayName === "string" && displayName.trim() !== ""
+				? displayName
+				: null,
+	};
+}
+
+export function parseCustomerJoin(value: unknown): CustomerJoinResult {
+	if (!isRecord(value)) {
+		throw new UpstreamError("supabase", "invalid_answer");
+	}
+	if (value.status === "refused") {
+		const reason = CUSTOMER_JOIN_REASONS.find((name) => name === value.reason);
+		if (reason === undefined) {
+			throw new UpstreamError("supabase", "invalid_answer");
+		}
+		return { status: "refused", reason };
+	}
+	const welcome = value.welcome_stamps;
+	if (
+		value.status !== "joined" ||
+		typeof welcome !== "number" ||
+		!Number.isInteger(welcome) ||
+		welcome < 0 ||
+		typeof value.already_member !== "boolean"
+	) {
+		throw new UpstreamError("supabase", "invalid_answer");
+	}
+	return {
+		status: "joined",
+		customerId: text(value.customer_id),
+		membershipId: text(value.membership_id),
+		welcomeStamps: welcome,
+		alreadyMember: value.already_member,
+	};
+}

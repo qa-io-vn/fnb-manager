@@ -1,57 +1,78 @@
-import type { MemberProfile } from "@fnb/zalo-mini";
-import {
-	type MiniAppRoute,
-	type MiniAppTab,
-	SessionScreen,
-} from "@fnb/zalo-mini/react";
+import type { MiniAppRoute, MiniAppTab } from "@fnb/zalo-mini/react";
 import { lazy, type ReactNode, Suspense } from "react";
+import { ClaimScreen } from "./claim/claim-form";
+import { CustomerDataProvider } from "./data/customer-data";
+import { StoreLinkProvider } from "./data/store-link";
+import { HomeScreen } from "./home/home-screen";
+import { StoreScreen } from "./home/store-screen";
+import { AccountIcon, CardIcon, HomeIcon } from "./icons";
+import { JoinFlow } from "./join/join-flow";
+import { SettingsScreen } from "./settings/settings-screen";
+import { MemberCodeScreen } from "./wallet/member-code-screen";
+import { WalletScreen } from "./wallet/wallet-screen";
 
-function developmentScreens(): {
-	readonly home: ReactNode;
-	readonly routes: readonly MiniAppRoute[];
-} {
-	if (import.meta.env.VITE_MINI_APP_STAGE !== "development") {
-		return { home: <SessionScreen />, routes: [] };
-	}
-	const ProbeEntry = lazy(() =>
-		import("./probe/probe").then((module) => ({ default: module.ProbeEntry })),
-	);
+export { demoSessionClient } from "./data/source";
+
+function developmentRoutes(): readonly MiniAppRoute[] {
+	if (import.meta.env.VITE_MINI_APP_STAGE !== "development") return [];
 	const ProbeScreen = lazy(() =>
 		import("./probe/probe").then((module) => ({ default: module.ProbeScreen })),
 	);
-	return {
-		home: (
-			<>
-				<SessionScreen />
+	return [
+		{
+			path: "/probe",
+			element: (
 				<Suspense fallback={null}>
-					<ProbeEntry />
+					<ProbeScreen />
 				</Suspense>
-			</>
-		),
-		routes: [
-			{
-				path: "/probe",
-				element: (
-					<Suspense fallback={null}>
-						<ProbeScreen />
-					</Suspense>
-				),
-			},
-		],
-	};
+			),
+		},
+	];
 }
 
-const screens = developmentScreens();
+function developmentEntry(): ReactNode {
+	if (import.meta.env.VITE_MINI_APP_STAGE !== "development") return null;
+	const ProbeEntry = lazy(() =>
+		import("./probe/probe").then((module) => ({ default: module.ProbeEntry })),
+	);
+	return (
+		<Suspense fallback={null}>
+			<ProbeEntry />
+		</Suspense>
+	);
+}
+
+const probeEntry = developmentEntry();
 
 export const routes: readonly MiniAppRoute[] = [
-	{ path: "/", element: screens.home },
-	...screens.routes,
+	{ path: "/", element: <HomeScreen /> },
+	{ path: "/the-thanh-vien", element: <WalletScreen /> },
+	{
+		path: "/tai-khoan",
+		element: (
+			<>
+				<SettingsScreen />
+				{probeEntry}
+			</>
+		),
+	},
+	{ path: "/cua-hang/:code", element: <StoreScreen /> },
+	{ path: "/tham-gia", element: <JoinFlow /> },
+	{ path: "/ma-thanh-vien", element: <MemberCodeScreen /> },
+	{ path: "/nhan-diem", element: <ClaimScreen /> },
+	...developmentRoutes(),
 ];
 
-export const tabs: readonly MiniAppTab[] = [];
+export const tabs: readonly MiniAppTab[] = [
+	{ path: "/", labelKey: "tab.home", icon: <HomeIcon /> },
+	{ path: "/the-thanh-vien", labelKey: "tab.card", icon: <CardIcon /> },
+	{ path: "/tai-khoan", labelKey: "tab.account", icon: <AccountIcon /> },
+];
 
-export const standInMember: MemberProfile = {
-	displayName: "Chủ cửa hàng thử",
-	role: "owner",
-	stores: ["Cửa hàng Mẫu 1", "Cửa hàng Mẫu 2"],
-};
+export function CustomerGate({ children }: { readonly children: ReactNode }) {
+	return (
+		<CustomerDataProvider>
+			<StoreLinkProvider>{children}</StoreLinkProvider>
+		</CustomerDataProvider>
+	);
+}

@@ -1,7 +1,7 @@
 export const ZALO_HTTP_TIMEOUT_MS = 10_000;
 
 export interface ZaloRequestInit {
-	readonly method: "GET" | "POST" | "DELETE";
+	readonly method: "GET" | "POST" | "PUT" | "DELETE";
 	readonly headers: Readonly<Record<string, string>>;
 	readonly body?: string;
 	readonly signal?: AbortSignal;

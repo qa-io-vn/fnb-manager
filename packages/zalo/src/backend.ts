@@ -19,7 +19,14 @@ export interface SupabaseBackend {
 	userEmail(userId: string): Promise<string | null | undefined>;
 	mintSession(email: string): Promise<MintedSession>;
 	sessionUser(accessToken: string): Promise<string | null>;
-	createLogin(email: string): Promise<string>;
+	createLogin(
+		email: string,
+		appMetadata?: Readonly<Record<string, unknown>>,
+	): Promise<string>;
+	setAppMetadata(
+		userId: string,
+		appMetadata: Readonly<Record<string, unknown>>,
+	): Promise<void>;
 	deleteLogin(userId: string): Promise<void>;
 }
 
@@ -182,10 +189,14 @@ export function createSupabaseBackend(
 			}
 			return body.id;
 		},
-		async createLogin(email) {
+		async createLogin(email, appMetadata) {
 			const { status, body } = await call(
 				"/auth/v1/admin/users",
-				post({ email, email_confirm: true }),
+				post({
+					email,
+					email_confirm: true,
+					...(appMetadata === undefined ? {} : { app_metadata: appMetadata }),
+				}),
 			);
 			expectOk(status);
 			if (
@@ -196,6 +207,17 @@ export function createSupabaseBackend(
 				throw new UpstreamError("supabase", "invalid_answer", status);
 			}
 			return body.id;
+		},
+		async setAppMetadata(userId, appMetadata) {
+			if (!UUID_PATTERN.test(userId)) {
+				throw new UpstreamError("supabase", "invalid_answer");
+			}
+			const { status } = await call(`/auth/v1/admin/users/${userId}`, {
+				method: "PUT",
+				headers: { ...serviceHeaders, "content-type": "application/json" },
+				body: JSON.stringify({ app_metadata: appMetadata }),
+			});
+			expectOk(status);
 		},
 		async deleteLogin(userId) {
 			if (!UUID_PATTERN.test(userId)) {

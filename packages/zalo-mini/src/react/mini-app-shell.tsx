@@ -4,8 +4,10 @@ import { App, BottomNavigation, ZMPRouter } from "zmp-ui";
 import type { AppConfigApp } from "../app-config/index";
 import { type DataEndpoint, STAND_IN_DATA } from "../data/endpoint";
 import type { Catalog, Language } from "../i18n/translate";
+import type { CustomerSessionClient } from "../session/customer-session-client";
 import type { SessionClient } from "../session/types";
 import { type ColorScheme, useColorScheme } from "./color-scheme";
+import { CustomerSessionProvider } from "./customer-session";
 import { DataEndpointProvider } from "./data-endpoint";
 import { I18nProvider, useI18n } from "./i18n";
 import { SessionProvider } from "./session";
@@ -137,7 +139,8 @@ function Frame({
 export interface MiniAppProps {
 	readonly language: Language;
 	readonly catalogs: Readonly<Record<Language, Catalog>>;
-	readonly sessionClient: SessionClient;
+	readonly sessionClient?: SessionClient;
+	readonly customerSessionClient?: CustomerSessionClient;
 	readonly routes: readonly MiniAppRoute[];
 	readonly tabs: readonly MiniAppTab[];
 	readonly standInHeader: AppConfigApp | null;
@@ -145,10 +148,35 @@ export interface MiniAppProps {
 	readonly gate?: MiniAppGate;
 }
 
+function Sessions({
+	sessionClient,
+	customerSessionClient,
+	children,
+}: {
+	readonly sessionClient: SessionClient | undefined;
+	readonly customerSessionClient: CustomerSessionClient | undefined;
+	readonly children: ReactNode;
+}) {
+	const customer =
+		customerSessionClient === undefined ? (
+			children
+		) : (
+			<CustomerSessionProvider client={customerSessionClient}>
+				{children}
+			</CustomerSessionProvider>
+		);
+	return sessionClient === undefined ? (
+		customer
+	) : (
+		<SessionProvider client={sessionClient}>{customer}</SessionProvider>
+	);
+}
+
 export function MiniApp({
 	language,
 	catalogs,
 	sessionClient,
+	customerSessionClient,
 	routes,
 	tabs,
 	standInHeader,
@@ -164,7 +192,10 @@ export function MiniApp({
 	return (
 		<I18nProvider language={language} catalogs={catalogs}>
 			<DataEndpointProvider endpoint={dataEndpoint}>
-				<SessionProvider client={sessionClient}>
+				<Sessions
+					sessionClient={sessionClient}
+					customerSessionClient={customerSessionClient}
+				>
 					<App theme={scheme}>
 						<ZMPRouter memoryRouter>
 							<Frame
@@ -176,7 +207,7 @@ export function MiniApp({
 							/>
 						</ZMPRouter>
 					</App>
-				</SessionProvider>
+				</Sessions>
 			</DataEndpointProvider>
 		</I18nProvider>
 	);

@@ -15,15 +15,21 @@ export const LOCAL_LOOP_DEFAULTS = {
 	tunnelHours: 4,
 } as const;
 export const MAX_TUNNEL_HOURS = 12;
+export const LOCAL_LOOP_APPS = ["staff", "customer"] as const;
+export type LocalLoopApp = (typeof LOCAL_LOOP_APPS)[number];
+export const CUSTOMER_LOOP_PORT = 5751;
+export const CUSTOMER_LIVE_TENANT = "loyalty-sim";
 
 export const LOCAL_LOOP_USAGE = [
 	"Usage:",
 	"  pnpm zalo:dev [--tenant <slug>] [--brand <key>] [--member <login e-mail>] [--mock-user mock-<id>] [--mock-name <name>] [--port <port>] [--lan [--host <ipv4>] | --tunnel [--tunnel-hours <n>]]",
+	"  pnpm zalo:dev --app customer [--live [--tenant <slug>] [--brand <key>] [--mock-user mock-<id>] [--mock-name <name>]] [--port <port>] [--lan [--host <ipv4>] | --tunnel [--tunnel-hours <n>]]",
 	"  pnpm zalo:dev forget [--tenant <slug>] [--brand <key>]",
 	"",
 	`Runs the staff Mini App in the browser against the real zalo-session on this PC: a mock Zalo graph, zalo-session and zalo-phone under Deno with ZALO_LOCAL_DEV=1 on the local stack, and the app's dev server. Defaults: --tenant ${LOCAL_LOOP_DEFAULTS.tenant}, --brand ${LOCAL_LOOP_DEFAULTS.brand}, --mock-user ${LOCAL_LOOP_DEFAULTS.mockUser}, --port ${LOCAL_LOOP_DEFAULTS.port}; the member is the login in ${MEMBER_EMAIL_VARIABLE}.`,
 	"The brand needs its Zalo rows first (fnb zalo config set) with a mock Zalo App id (mock-…). On the first run the mock user is bound to the member with a one-time binding code.",
 	`--lan serves the staff app on this PC's home network address (or --host <ipv4>) for a phone on the same Wi-Fi. --tunnel serves it on a public https link through a Cloudflare quick tunnel that stops after --tunnel-hours (default ${LOCAL_LOOP_DEFAULTS.tunnelHours}, at most ${MAX_TUNNEL_HOURS}). Both print a link with a one-time key and its QR code; without the key every request gets 403.`,
+	`--app customer runs the customer Mini App instead, on port ${CUSTOMER_LOOP_PORT} by default: with its demo data and the stand-in session (no database or .env needed), or with --live against the real zalo-session, zalo-phone and the customer functions of the local stack as the mock user, who is a customer and needs no binding code. --live targets ${CUSTOMER_LIVE_TENANT} by default and seeds a synthetic brand with mock Zalo ids into a synthetic tenant (${CUSTOMER_LIVE_TENANT} or zalo-it-…) that has none.`,
 	"forget removes the brand's Zalo rows and mock identities when every Zalo id is a mock id, so fnb zalo config set can store the real ids.",
 ].join("\n");
 
@@ -41,6 +47,8 @@ export interface LocalLoopOptions {
 	readonly exposure: LocalLoopExposure;
 	readonly host: string | null;
 	readonly tunnelHours: number;
+	readonly app?: "customer";
+	readonly live?: boolean;
 }
 
 export class LocalLoopError extends Error {
@@ -139,7 +147,11 @@ export function parseLocalLoopArgs(
 			`unknown command "${words.join(" ")}"; run pnpm zalo:dev --help`,
 		);
 	}
-	const tenant = values.tenant ?? LOCAL_LOOP_DEFAULTS.tenant;
+	const tenant =
+		values.tenant ??
+		(values.app === "customer" && values.live === true
+			? CUSTOMER_LIVE_TENANT
+			: LOCAL_LOOP_DEFAULTS.tenant);
 	if (!TENANT_SLUG_PATTERN.test(tenant)) {
 		throw new LocalLoopError(
 			"--tenant must be a tenant slug such as live-local",
@@ -171,6 +183,21 @@ export function parseLocalLoopArgs(
 	if (lan && tunnel) {
 		throw new LocalLoopError("choose --lan or --tunnel, not both");
 	}
+	const app = LOCAL_LOOP_APPS.find((name) => name === (values.app ?? "staff"));
+	if (app === undefined) {
+		throw new LocalLoopError("--app must be staff or customer");
+	}
+	const live = values.live === true;
+	if (live && app !== "customer") {
+		throw new LocalLoopError(
+			"--live runs the customer app against the local stack; add --app customer",
+		);
+	}
+	if (app === "customer" && member !== "") {
+		throw new LocalLoopError(
+			"--member is for the staff app; the customer app's mock user is a customer",
+		);
+	}
 	return {
 		command: words[0] === "forget" ? "forget" : "start",
 		tenant,
@@ -178,10 +205,14 @@ export function parseLocalLoopArgs(
 		member: member === "" ? null : member,
 		mockUser,
 		mockName,
-		port: portOf(values.port),
+		port:
+			app === "customer" && values.port === undefined
+				? CUSTOMER_LOOP_PORT
+				: portOf(values.port),
 		exposure: tunnel ? "tunnel" : lan ? "lan" : "loopback",
 		host: hostOf(values.host, lan),
 		tunnelHours: tunnelHoursOf(values["tunnel-hours"], tunnel),
+		...(app === "customer" ? { app, live } : {}),
 	};
 }
 
@@ -201,6 +232,8 @@ function parse(argv: readonly string[]) {
 			host: { type: "string" },
 			tunnel: { type: "boolean" },
 			"tunnel-hours": { type: "string" },
+			app: { type: "string" },
+			live: { type: "boolean" },
 		},
 	});
 }

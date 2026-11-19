@@ -1,0 +1,109 @@
+import { expect, test } from "@playwright/test";
+import {
+	checkCustomerScreen,
+	nativeStorageKeys,
+	openHome,
+	openTab,
+	watchCustomerPage,
+} from "./customer-checks";
+
+test.beforeEach(async ({ page }) => {
+	await watchCustomerPage(page);
+});
+
+test("the wallet shows the card, stamps, points, tier, expiry and the history states", async ({
+	page,
+}) => {
+	await openHome(page, "?member=1");
+	await openTab(page, "Thẻ thành viên");
+	await expect(page.getByTestId("card-name")).toHaveText("Khách thử");
+	await expect(page.getByTestId("card-phone")).toHaveText("•••• ••• 789");
+	await expect(page.getByTestId("card-purchases")).toHaveText("Số lần mua: 2");
+	await expect(page.getByTestId("stamp-count")).toHaveText("3/10 dấu");
+	await expect(
+		page.getByRole("img", {
+			name: "3 trên 10 dấu, 1 dấu đang chờ xác nhận",
+		}),
+	).toBeVisible();
+	await expect(page.getByTestId("points-balance")).toHaveText("105");
+	await expect(page.getByTestId("points-expiring")).toContainText(
+		"45 điểm hết hạn ngày",
+	);
+	await expect(page.getByTestId("tier")).toHaveText(
+		"Hạng Thành viên. Còn 395 điểm để lên hạng Bạc.",
+	);
+	const states = page.getByTestId("history-item");
+	await expect(states).toHaveCount(5);
+	expect(
+		await states.evaluateAll((items) =>
+			items.map((item) => item.getAttribute("data-state")),
+		),
+	).toEqual(["pending", "confirmed", "reversed", "confirmed", "confirmed"]);
+	await expect(states.first()).toContainText("Đang chờ xác nhận");
+	await checkCustomerScreen(page);
+});
+
+test("the member code is bound to the linked store and refreshes every 60 seconds", async ({
+	page,
+}) => {
+	await page.goto("./?member=1&store=mau-1&src=standee");
+	await page
+		.getByRole("button", { name: "Mã thành viên tại cửa hàng này" })
+		.click();
+	const code = page.getByTestId("member-code");
+	await expect(code).toHaveText(/^\d{6}$/);
+	const first = (await code.textContent()) ?? "";
+	await expect(page.getByTestId("code-store")).toHaveText("Cửa hàng Mẫu 1");
+	await expect(page.getByTestId("member-qr")).toBeVisible();
+	await expect(page.getByTestId("code-valid-until")).toHaveText(
+		/^Dùng được đến 10:02:0\d$/,
+	);
+	await expect(page.getByTestId("code-countdown")).toHaveText(
+		/^Mã đổi sau (60|5\d) giây$/,
+	);
+	await checkCustomerScreen(page);
+	await page.clock.fastForward(30_000);
+	await expect(page.getByTestId("code-countdown")).toHaveText(
+		/^Mã đổi sau (30|2\d) giây$/,
+	);
+	await page.clock.fastForward(31_000);
+	await expect(code).not.toHaveText(first);
+	await expect(page.getByTestId("code-valid-until")).toHaveText(
+		/^Dùng được đến 10:03:\d\d$/,
+	);
+	await page.getByTestId("code-store-picker").selectOption("mau-2");
+	await expect(page.getByTestId("code-store")).toHaveText("Cửa hàng Mẫu 2");
+	await checkCustomerScreen(page);
+});
+
+test("a receipt claim is validated, sent and credited, within the day's limit", async ({
+	page,
+}) => {
+	await openHome(page, "?member=1&claims=2");
+	await page.getByRole("button", { name: "Nhận điểm từ hóa đơn" }).click();
+	const form = page.getByTestId("claim-form");
+	await expect(form.getByTestId("claim-date")).toHaveValue("2026-11-19");
+	await expect(form.getByTestId("claims-left")).toHaveText(
+		"Hôm nay bạn còn 1 lần gửi hóa đơn.",
+	);
+	await form.getByRole("button", { name: "Gửi hóa đơn" }).click();
+	await expect(form.getByText("Hãy chọn cửa hàng.")).toBeVisible();
+	await expect(form.getByText("Hãy nhập số hóa đơn.")).toBeVisible();
+	await checkCustomerScreen(page);
+	await form.getByTestId("claim-store").selectOption("mau-1");
+	await form.getByTestId("claim-receipt").fill("1001");
+	await form.getByTestId("claim-amount").fill("85000");
+	await expect(form.getByTestId("claim-amount")).toHaveValue("85.000");
+	await form.getByRole("button", { name: "Gửi hóa đơn" }).click();
+	const result = page.getByTestId("claim-result");
+	await expect(result).toHaveAttribute("data-state", "matched");
+	await expect(page.getByTestId("claims-left-after")).toContainText(
+		"Hôm nay bạn đã gửi đủ số hóa đơn cho phép.",
+	);
+	await checkCustomerScreen(page);
+	await page.getByRole("button", { name: "Xem thẻ thành viên" }).click();
+	await expect(page.getByTestId("stamp-count")).toHaveText("4/10 dấu");
+	await expect(page.getByTestId("claim-item")).toContainText("Đã cộng điểm");
+	expect(await nativeStorageKeys(page)).toEqual(["fnb.customer-session"]);
+	await checkCustomerScreen(page);
+});

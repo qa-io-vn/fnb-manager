@@ -40,6 +40,7 @@ import {
 	newAccessKey,
 } from "./lan.js";
 import {
+	type LocalLoopApp,
 	LocalLoopError,
 	type LocalLoopExposure,
 	type LocalLoopOptions,
@@ -52,6 +53,7 @@ import {
 	startProcess,
 	waitForHttp,
 } from "./processes.js";
+import { isSeedableTenant, seedSyntheticBrand } from "./seed.js";
 
 const START_TIMEOUT_MS = 180_000;
 export const LOCAL_PHONE_TOKEN = "mock-phone-token";
@@ -62,6 +64,7 @@ const VITE_ADDRESS_LINE = /(Local|Network)\S*:\s.*https?:\/\//;
 export interface LocalLoopPaths {
 	readonly rootDir: string;
 	readonly staffDir: string;
+	readonly customerDir: string;
 	readonly functionDir: string;
 	readonly phoneFunctionDir: string;
 	readonly cacheDir: string;
@@ -72,6 +75,7 @@ export function localLoopPaths(rootDir: string): LocalLoopPaths {
 	return {
 		rootDir,
 		staffDir,
+		customerDir: join(rootDir, "apps", "zalo-customer"),
 		functionDir: join(rootDir, "supabase", "functions", "zalo-session"),
 		phoneFunctionDir: join(rootDir, "supabase", "functions", "zalo-phone"),
 		cacheDir: join(staffDir, "node_modules", ".cache", "zalo-local"),
@@ -96,7 +100,8 @@ export interface LocalLoopReady {
 	readonly brand: string;
 	readonly mockUser: string;
 	readonly mockName: string;
-	readonly role: MemberRole;
+	readonly app: LocalLoopApp;
+	readonly role: MemberRole | "customer";
 	readonly stores: number;
 	readonly boundNow: boolean;
 }
@@ -108,7 +113,7 @@ export interface LocalLoop {
 }
 
 interface Profile {
-	readonly role: MemberRole;
+	readonly role: MemberRole | "customer";
 	readonly stores: number;
 }
 
@@ -174,7 +179,7 @@ function denoFunctionArgs(functionDir: string): string[] {
 	];
 }
 
-function viteBin(staffDir: string): string {
+export function viteBin(staffDir: string): string {
 	const require = createRequire(join(staffDir, "package.json"));
 	const manifestPath = require.resolve("vite/package.json");
 	const manifest: unknown = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -204,9 +209,11 @@ export async function startLocalLoop(
 	paths: LocalLoopPaths,
 ): Promise<LocalLoop> {
 	const stack = localStackFrom(environment);
+	const app: LocalLoopApp = options.app ?? "staff";
+	const appName = `${app} app`;
 	const email =
 		options.member ?? environment[MEMBER_EMAIL_VARIABLE]?.trim() ?? "";
-	if (email === "") {
+	if (app === "staff" && email === "") {
 		throw new LocalLoopError(
 			`set ${MEMBER_EMAIL_VARIABLE} in .env or pass --member <login e-mail>`,
 		);
@@ -227,24 +234,40 @@ export async function startLocalLoop(
 	};
 	const sql = connect(stack.databaseUrl);
 	try {
+		if (app === "customer" && isSeedableTenant(options.tenant)) {
+			const seeded = await seedSyntheticBrand(
+				sql,
+				options.tenant,
+				options.brand,
+			);
+			if (seeded) {
+				io.line(
+					`zalo:dev: seeded ${options.brand} into ${options.tenant}: a synthetic brand over its stores, a mock Zalo App, OA and the two Mini Apps`,
+				);
+			}
+		}
 		const target = await loadLoopTarget(sql, options.tenant, options.brand);
 		const problems = startProblems(target);
 		if (problems.length > 0) {
 			throw new LocalLoopError(problems.join("; "));
 		}
-		const member = await findMember(sql, target.tenantId, email);
-		if (member === null) {
+		const member =
+			app === "staff" ? await findMember(sql, target.tenantId, email) : null;
+		if (app === "staff" && member === null) {
 			throw new LocalLoopError(
 				`the member login is not a member of ${options.tenant}`,
 			);
 		}
-		if (member.role === "publisher") {
+		if (member?.role === "publisher") {
 			throw new LocalLoopError(
 				"a publisher login cannot be bound to a Zalo account",
 			);
 		}
-		const owner = await identityOwner(sql, target.zaloAppId, options.mockUser);
-		if (owner !== null && owner !== member.userId) {
+		const owner =
+			member === null
+				? null
+				: await identityOwner(sql, target.zaloAppId, options.mockUser);
+		if (member !== null && owner !== null && owner !== member.userId) {
 			throw new LocalLoopError(
 				`${options.mockUser} is bound to another login of ${options.tenant}; pass another --mock-user for this member`,
 			);
@@ -319,29 +342,29 @@ export async function startLocalLoop(
 			throw failure(phone, "zalo-phone did not start");
 		}
 
-		const boundNow = owner === null;
-		if (boundNow) {
+		const boundNow = member !== null && owner === null;
+		if (member !== null && boundNow) {
 			const code = await issueBindingCode(sql, target, member.userId);
 			await bindWithCode(functionUrl, accessToken, options.brand, code);
 		}
-		const profile = await memberProfile(
-			sql,
-			target,
-			member.userId,
-			member.role,
-		);
+		const profile: Profile =
+			member === null
+				? { role: "customer", stores: target.storeCount }
+				: await memberProfile(sql, target, member.userId, member.role);
 		await sql.end();
 
 		let appConfigPath: string | null = null;
-		if (target.staffMiniApp !== null) {
+		const miniAppRow =
+			app === "staff" ? target.staffMiniApp : (target.customerMiniApp ?? null);
+		if (miniAppRow !== null) {
 			mkdirSync(paths.cacheDir, { recursive: true });
 			const path = join(
 				paths.cacheDir,
-				`${options.brand}-staff-app-config.json`,
+				`${options.brand}-${app}-app-config.json`,
 			);
 			writeFileSync(
 				path,
-				`${JSON.stringify(staffAppConfig(target.staffMiniApp), null, "\t")}\n`,
+				`${JSON.stringify(staffAppConfig(miniAppRow), null, "\t")}\n`,
 			);
 			appConfigPath = path;
 			cleanups.push(() => rmSync(path, { force: true }));
@@ -366,11 +389,12 @@ export async function startLocalLoop(
 			tunnelHost = tunnel.host;
 		}
 		const bindHost = lan?.host ?? "127.0.0.1";
-		const app = startProcess(
-			"staff app",
+		const appDir = app === "staff" ? paths.staffDir : paths.customerDir;
+		const server = startProcess(
+			appName,
 			process.execPath,
 			[
-				viteBin(paths.staffDir),
+				viteBin(appDir),
 				"--host",
 				bindHost,
 				"--port",
@@ -378,7 +402,7 @@ export async function startLocalLoop(
 				"--strictPort",
 			],
 			{
-				cwd: paths.staffDir,
+				cwd: appDir,
 				env: staffAppEnvironment(environment, {
 					brand: options.brand,
 					publishableKey: stack.publishableKey,
@@ -393,24 +417,24 @@ export async function startLocalLoop(
 				}),
 				onLine: (line) => {
 					if (key === null || !VITE_ADDRESS_LINE.test(line)) {
-						io.line(`[staff app] ${line}`);
+						io.line(`[${appName}] ${line}`);
 					}
 				},
 			},
 		);
-		cleanups.push(() => app.stop());
-		parts.push(app);
+		cleanups.push(() => server.stop());
+		parts.push(server);
 		const localUrl = `http://${bindHost === ALL_INTERFACES ? "127.0.0.1" : bindHost}:${options.port}/`;
 		const guardedHere = options.exposure === "tunnel" || lan?.found === true;
 		const appUp = await waitForHttp(localUrl, {
 			accept: (status) => status === (guardedHere ? 403 : 200),
 			timeoutMs: START_TIMEOUT_MS,
-			alive: app.running,
+			alive: server.running,
 		});
 		if (!appUp) {
 			throw failure(
-				app,
-				`the staff app did not start on ${bindHost}:${options.port}`,
+				server,
+				`the ${appName} did not start on ${bindHost}:${options.port}`,
 			);
 		}
 		const appUrl = tunnelHost === null ? localUrl : `https://${tunnelHost}/`;
@@ -422,14 +446,14 @@ export async function startLocalLoop(
 			});
 			if (!reached) {
 				throw new LocalLoopError(
-					`the quick tunnel ${tunnelHost} did not reach the staff app within ${TUNNEL_REACH_TIMEOUT_MS / 1000} s`,
+					`the quick tunnel ${tunnelHost} did not reach the ${appName} within ${TUNNEL_REACH_TIMEOUT_MS / 1000} s`,
 				);
 			}
 		}
 		const checked = key !== null && guardedHere;
 		const problem = checked ? await accessProblem(appUrl, key) : null;
 		if (problem !== null) {
-			throw failure(app, `the staff app's access guard ${problem}`);
+			throw failure(server, `the ${appName}'s access guard ${problem}`);
 		}
 		const phoneUrl = checked ? keyedUrl(appUrl, key) : null;
 		const phoneHint =
@@ -459,6 +483,7 @@ export async function startLocalLoop(
 				brand: options.brand,
 				mockUser: options.mockUser,
 				mockName: options.mockName,
+				app,
 				role: profile.role,
 				stores: profile.stores,
 				boundNow,

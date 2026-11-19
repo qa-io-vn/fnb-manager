@@ -10,10 +10,9 @@ test("the first screen paints and loads within budget on a throttled phone", asy
 }) => {
 	await throttleLikeAMidRangePhone(page);
 	await page.goto("./", { waitUntil: "load" });
-	await expect(page.getByTestId("session-state")).toHaveAttribute(
-		"data-status",
-		"signed-in",
-	);
+	await expect(
+		page.getByRole("heading", { name: "Thành viên Quán Mẫu Một" }),
+	).toBeVisible();
 	const measured = await measurePaint(page);
 	test.info().annotations.push({
 		type: "paint",
