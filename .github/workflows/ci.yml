@@ -160,9 +160,7 @@ jobs:
         run: |
           eval "$(pnpm exec supabase status -o env)"
           test -n "$API_URL" && test -n "$PUBLISHABLE_KEY"
-          printf 'VITE_SUPABASE_URL=%s
-VITE_SUPABASE_PUBLISHABLE_KEY=%s
-' "$API_URL" "$PUBLISHABLE_KEY" > apps/web/.env.local
+          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > apps/web/.env.local
       - name: Playwright ${{ matrix.projects }} shard ${{ matrix.shard }}
         run: pnpm --filter @fnb/web exec playwright test ${{ matrix.projects }} --shard=${{ matrix.shard }}
         env:
