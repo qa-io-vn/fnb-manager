@@ -149,7 +149,8 @@ jobs:
         run: |
           VITE_MINI_APP_STAGE=development pnpm --filter @fnb/zalo-customer exec vite build --outDir dist/development --emptyOutDir
           grep -rq phone-probe apps/zalo-customer/dist/development
-      - run: pnpm --filter @fnb/zalo-staff exec playwright install --with-deps chromium
+      # Both Mini Apps also run on WebKit (the iPhone engine), so install it next to Chromium.
+      - run: pnpm --filter @fnb/zalo-staff exec playwright install --with-deps chromium webkit
       - name: Staff Mini App in the browser with the mocked SDK (360 px, light and dark, paint budget)
         run: pnpm --filter @fnb/zalo-staff test:e2e
       - name: Customer Mini App in the browser with the mocked SDK (360 px, light and dark, paint budget)
