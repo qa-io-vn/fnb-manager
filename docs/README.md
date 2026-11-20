@@ -65,6 +65,7 @@ Every public document of the repository, grouped by the reader who needs it, wit
 | [deep-dives/github-pages-and-actions.md](deep-dives/github-pages-and-actions.md) | What GitHub Pages and GitHub Actions offer as the hosting and compute layer |
 | [deep-dives/ipos-ecosystem-and-crm.md](deep-dives/ipos-ecosystem-and-crm.md) | The iPOS products around Fabi: CRM, vouchers, channels and partner feeds |
 | [deep-dives/ipos-loyalty-integration-design.md](deep-dives/ipos-loyalty-integration-design.md) | How loyalty points and coupons connect to real POS purchases |
+| [deep-dives/bill-verification-plan.md](deep-dives/bill-verification-plan.md) | Plan: reading the paper bill without the POS so staff-mode earning is accurate and cashier-proof |
 | [deep-dives/ipos-qr-reward-research.md](deep-dives/ipos-qr-reward-research.md) | Whether the till can accept a reward QR code from the Zalo app |
 | [deep-dives/loyalty-programme-design.md](deep-dives/loyalty-programme-design.md) | The loyalty programme design for tea and coffee shops on Zalo |
 | [deep-dives/zalo-chain-loyalty-benchmark.md](deep-dives/zalo-chain-loyalty-benchmark.md) | How Vietnamese chains identify loyalty members at the till |
