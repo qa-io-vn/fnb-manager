@@ -152,7 +152,9 @@ describe("the gaps", () => {
 			"low",
 			null,
 		]);
-		expect(customerIdentityMetricCount()).toBe(11);
+		// customer_metrics, cohort_retention and rfm_quintiles became measurable on 2026-11-20;
+		// only customer_ltv and the one other metric still wait for customer identity
+		expect(customerIdentityMetricCount()).toBe(2);
 		expect(rows["staff_hours/ALL"]).toEqual([null, "low", null]);
 	});
 

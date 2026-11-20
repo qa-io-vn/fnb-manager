@@ -1,7 +1,7 @@
 ---
 {
 	"format": "fnb-plan/1",
-	"pack": "931f12eb8ef5475b87c1828a5cda8aadd6972cf0ce83d9462098ec577422d618",
+	"pack": "d491ef2908796fa6856ac737c87ccdd2efda7bacd9efc949b0987c735728f69a",
 	"title": "Kế hoạch mẫu, tạo tự động để minh họa",
 	"horizon": "90d",
 	"language": "vi",

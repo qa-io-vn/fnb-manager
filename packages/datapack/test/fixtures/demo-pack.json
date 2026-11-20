@@ -93,7 +93,7 @@
 	},
 	"format": "fnb-datapack",
 	"generated_at": "2026-11-12T03:00:00Z",
-	"pack_id": "931f12eb8ef5475b87c1828a5cda8aadd6972cf0ce83d9462098ec577422d618",
+	"pack_id": "d491ef2908796fa6856ac737c87ccdd2efda7bacd9efc949b0987c735728f69a",
 	"prompt": {
 		"id": "fnb-strategy",
 		"language": "vi",
@@ -194,7 +194,7 @@
 				"fee_rates/S2": [null, "low", "settings_fees"],
 				"item_costs/S1": [null, "medium", "settings_costs"],
 				"item_costs/S2": [null, "medium", "settings_costs"],
-				"no_customer_identity/ALL": [11, "low", null],
+				"no_customer_identity/ALL": [2, "low", null],
 				"opening_hours/S2": [null, "medium", "settings_store"],
 				"partial_scope_window/ALL": [3, "medium", null],
 				"seat_count/S2": [null, "low", "settings_store"],
