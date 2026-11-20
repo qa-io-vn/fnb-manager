@@ -2,7 +2,8 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { parseSync } from "vite";
 import { describe, expect, it } from "vitest";
-import { messageFiles } from "./catalog";
+import { notifyMessageFiles } from "../settings/notify/messages";
+import { messageFiles as eagerMessageFiles } from "./catalog";
 import { interpolate, isMessageKey, messages, translate } from "./index";
 
 const sourceRoot = join(import.meta.dirname, "..");
@@ -149,6 +150,8 @@ function literalsBypassingTranslation(
 	visit(program);
 	return findings;
 }
+
+const messageFiles = [...eagerMessageFiles, ...notifyMessageFiles];
 
 describe("translations", () => {
 	const placeholders = (message: string) =>

@@ -26,8 +26,7 @@ import settingsEn from "./messages/settings.en.json";
 import settingsVi from "./messages/settings.vi.json";
 import settingsChecklistsEn from "./messages/settings-checklists.en.json";
 import settingsChecklistsVi from "./messages/settings-checklists.vi.json";
-import settingsDigestEn from "./messages/settings-digest.en.json";
-import settingsDigestVi from "./messages/settings-digest.vi.json";
+import type settingsDigestVi from "./messages/settings-digest.vi.json";
 import settingsFeesEn from "./messages/settings-fees.en.json";
 import settingsFeesVi from "./messages/settings-fees.vi.json";
 import settingsHolidaysEn from "./messages/settings-holidays.en.json";
@@ -40,8 +39,7 @@ import settingsManualEn from "./messages/settings-manual.en.json";
 import settingsManualVi from "./messages/settings-manual.vi.json";
 import settingsMappingEn from "./messages/settings-mapping.en.json";
 import settingsMappingVi from "./messages/settings-mapping.vi.json";
-import settingsNotifyEn from "./messages/settings-notify.en.json";
-import settingsNotifyVi from "./messages/settings-notify.vi.json";
+import type settingsNotifyVi from "./messages/settings-notify.vi.json";
 import settingsRewardsEn from "./messages/settings-rewards.en.json";
 import settingsRewardsVi from "./messages/settings-rewards.vi.json";
 import settingsStaffEn from "./messages/settings-staff.en.json";
@@ -344,20 +342,6 @@ export const messageFiles: readonly MessageFile[] = [
 		excludedPrefixes: [],
 		vi: settingsChecklistsVi,
 		en: settingsChecklistsEn,
-	},
-	{
-		name: "settings-notify",
-		prefix: "settings.notify.",
-		excludedPrefixes: [],
-		vi: settingsNotifyVi,
-		en: settingsNotifyEn,
-	},
-	{
-		name: "settings-digest",
-		prefix: "settings.digest.",
-		excludedPrefixes: [],
-		vi: settingsDigestVi,
-		en: settingsDigestEn,
 	},
 	{
 		name: "settings-loyalty",

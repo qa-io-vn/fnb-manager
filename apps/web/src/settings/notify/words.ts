@@ -1,3 +1,4 @@
+import "./messages";
 import type { MessageKey } from "../../i18n";
 import type { SettingsWriteCode } from "../source";
 import {

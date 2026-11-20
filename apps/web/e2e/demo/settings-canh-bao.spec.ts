@@ -104,7 +104,7 @@ test("a member links a Zalo Bot that turns active after the simulated acceptance
 	);
 	await removable.getByTestId("notify-remove").click();
 	await expect(removable.getByTestId("notify-remove-confirm")).toContainText(
-		"vẫn giữ nguyên",
+		"sự đồng ý vẫn giữ nguyên",
 	);
 	await removable.getByTestId("notify-remove-yes").click();
 	await expect(page.getByTestId("notify-removed")).toContainText("Đã gỡ");
@@ -136,7 +136,7 @@ test("a member links a Zalo Bot that turns active after the simulated acceptance
 	await expect(mail).toContainText("E-mail ca sáng");
 	await page.getByTestId("notify-stop-all").click();
 	await expect(page.getByTestId("notify-stop-confirm")).toContainText(
-		"rút lại sự đồng ý",
+		"Sự đồng ý bị rút lại",
 	);
 	await page.getByTestId("notify-stop-yes").click();
 	await expect(page.getByTestId("notify-stop-done")).toContainText(
