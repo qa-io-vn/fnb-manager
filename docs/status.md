@@ -4,6 +4,15 @@ Updated 2026-11-20. This page hands the work over between sessions and machines:
 
 Every phase so far went through the same loop: build, an independent review, fixes, then an independent verification that reruns everything CI runs plus checks against real data loaded on the local stack. Nothing below is called done unless that verification passed.
 
+## On `main` on 21 November 2026: loyalty without the POS (staff confirmation mode, bill verification phases 1-3)
+
+Built and verified by its builder on this machine (`b482c63`, `e056d68`, and the web, customer and staff app commits after them); an independent review is still to come.
+
+- **Per-store confirmation source** (ADR-043): `loyalty_store_settings.confirmation` is `pos_sync` for every existing store (unchanged) or `staff`. Owners switch it in Cài đặt → Khách hàng thân thiết → Xác nhận tại quầy, with the trade-off explained.
+- **Bills (path E)**: staff record the paper bill after scanning the member's QR; the customer's blind total confirms it at level 2, a disagreement or a large bill waits for a manager, a dispute or silence reverses it; dedupe on store + business date + bill number with a critical alert on a conflicting total; caps, a random audit, a reversal window, an audit trail and the `loyalty_staff_anomaly` alert. Counter-QR self claims are answered blind by staff. Rewards are confirmed by staff at once and voided by managers within the shift. An optional shadow check flags mismatches with a synced POS.
+- **Apps**: staff Mini App Ghi hóa đơn, Mã quầy, Duyệt hóa đơn and staff-confirmed rewards; customer Mini App Xác nhận hóa đơn and Quét mã tại quầy; web settings tab and the per-staff anomaly section.
+- **Tests**: pgTAP 220-226 (decision table, state transitions, boundaries, security, redemptions, anomalies and shadow; full suite green), the parallel-cap snippet, vitest and Playwright demo specs in the three apps. Open items: test-gaps.md section 3.15; owner questions in bill-verification-plan.md section 7.
+
 ## On `main` on 20 November 2026: phase 11b and the phase 11 acceptance runs
 
 Built and verified by its builder on this machine (`711692f`, `6d562c9`, `3aacf87`, `eb9d749`, `b45001a`); an independent review is still to come.

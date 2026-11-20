@@ -214,6 +214,18 @@ G-48 is not used; the numbers stay stable.
 | G-84 | system | usability | Kế hoạch numbers versions among the plans it has loaded: with archived plans hidden, or a store set split across pages of 50, "Bản n" can differ from the number shown with every plan listed. The report links on the KPI table carry `?store=`, which the report pages do not read yet. | low | number versions in SQL (`row_number()` over the store set) or load the whole store set; teach the reports the `store` parameter | `apps/web/src/pages/plans/plans-list-page.tsx`, `apps/web/src/plans/display.ts` |
 | G-85 | acceptance | functional | The A4 print of a plan is checked only with `emulateMedia({ media: "print" })` (the KPI table shows, the actions hide); no PDF is compared, and the browser pass at 360 and 1280 px on the real tenant was automated (counts only), not looked at by a person. | low | the owner prints one real plan and reads it on a phone | `apps/web/e2e/demo/plans.spec.ts` |
 
+### 3.15 Left open by the staff confirmation mode and bill verification phases 1-3 (2026-11-21)
+
+| ID | Level | Type | Gap | Priority | Plan | Where |
+| --- | --- | --- | --- | --- | --- | --- |
+| G-90 | integration | functional | The parallel-cap test runs only by hand (`bash supabase/snippets/bill-parallel-caps.sh`, passed on 2026-11-21: 8 parallel bills, cap 3, exactly 3 recorded); pgTAP 226 only checks that the store lock is held. | medium | add the script to `scripts/regression.mjs` (CI stream) | supabase/snippets |
+| G-91 | system | functional | The live-stack e2e loops (`playwright.local.config.ts` of both Mini Apps) were not extended to the bill RPCs; the REST clients are tested against fakes and the SQL by pgTAP only. | high | one live spec per app: staff records a bill, the customer confirms it, the wallet shows the stamp | apps/zalo-staff/e2e, apps/zalo-customer/e2e |
+| G-92 | system | usability | The customer app shows a pending counter claim only once (no wallet field for it); a lost answer to a blind total shows "already answered" instead of the first outcome. | medium | add counter claims to `customer_wallet`; remember the last outcome | customer app, SQL |
+| G-93 | component | functional | `LOYALTY_REFUSAL_REASONS` in `@fnb/core` does not list `staff_mode`; resolving an old queue item at a store that switched to staff mode returns it and the web reader rejects the row. | medium | add it with a regenerated 30-day replay fixture | packages/core |
+| G-94 | acceptance | functional | Owner decisions: the silence outcome (reverse or confirm), the required level (2 or 0), the caps from the reward value per stamp, auto-approval of counter claims, who audits and how often. | high | owner acceptance check in test-plan.md | owner |
+| G-95 | system | functional | Not built: the weekly redemption cap per member, a customer notification asking to confirm a bill (the app card is the only prompt), Zalo `keepScreen` on Mã quầy (browser wake lock only), the staff demo in staff mode by default (`?storeMode=staff`). | low | later batch with phases 4-8 | apps, SQL |
+| G-96 | integration | security | Phases 4-8 of the bill plan (camera capture, photo hash, private bucket and retention, mock and real reader, bill checks, level 1 and 3) are not built; `bill_reader_mode` is stored but unused. | planned | next batch | bill-verification-plan.md section 5 |
+
 ## 4. Closing a gap
 
 1. Pick the gap, check the "Where" file for work in progress, and write the test so that it fails first where the product is wrong.

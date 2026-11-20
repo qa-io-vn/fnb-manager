@@ -74,6 +74,23 @@ Any failed check holds the earn in the manager queue (reason keys on the existin
 | 7 | Customer's own photo as second reading, optional decoder for any QR on the bill | customer app | agreeing and disagreeing photos | level 2 without typing | no |
 | 8 | Optional shadow check if synced invoices exist | job | no double earn | never required | no |
 
+## 7. As built (2026-11-21)
+
+Phases 1 to 3 are built in migrations 20261120500000-20261120520000 with pgTAP 220-226, the three apps and the docs (schema.md, api.md, user-guide.md, loyalty/cashier-script.md, ADR-043). Decisions and deviations from sections 3 and 4:
+
+- **Path letter E** and `loyalty_ledger.bill_id`; the invoice check reads "invoice or bill". The earn is written pending when staff record the bill; the evidence level only decides when the confirm row (reason `bill_confirmed`) is written, as planned.
+- **Knob placement**: per store, in `loyalty_store_settings`, next to the mode (`confirmation`), not per programme. `bill_typed_amount_cap` and `bill_manager_approval_above` were merged into `bill_manager_approval_above` (a typed bill above it waits for a manager) plus a hard `max_bill_amount`. `bill_staff_shift_cap` counts a staff member's level 0-1 bills per business day (the POS-free store has no shift record); `bill_reader_budget_per_day` is left for phase 6; `bill_reader_mode` holds `off` or `mock` only.
+- **Silence**: section 3's table says a level 0 bill becomes spendable after 24 h without dispute, while its text and phase 2 say silence reverses. Built as a knob, `bill_silence_outcome`, defaulting to `reverse`; owners may choose `confirm`. **Owner question.**
+- **Required level**: `bill_evidence_required_level` defaults to 2 (two agreeing readings). An owner may set 0 to confirm the staff reading at once, which is the user's first request ("confirmed at once") and stays bounded by the caps and audits.
+- **Manager queue**: its own lists (`staff_bill_queue`, `staff_decide_bill`, `staff_close_bill_audit`) instead of `loyalty_queue`, whose path and reason checks and web readers are built around invoices. A manager may not approve a bill they recorded; an owner may.
+- **Customer blind confirmation**: one answer per bill; a disagreement queues it at once (no second try), so the answer never leaks the staff total.
+- **Counter claims** (the user's self-claim request): the customer's total is the first reading; a staff member types the total read from the bill blind as the second. Auto-approval up to a small amount is an owner-accepted level 0 confirmation with its own daily count. A counter QR lives `counter_code_ttl_seconds` (90) plus 120 s to type; printed QRs are not offered because they would allow remote claims.
+- **Earn by one, redeem by another**: `staff_confirm_redemption` refuses `same_staff` when the confirming staff member recorded a bill for that member the same business day. The weekly redemption cap per member is not built (open).
+- **Alerts**: one rule, `loyalty_staff_anomaly`, with kinds (cap warning at 70 %, cap reached, a critical bill conflict, dispute, timeout, reversal, failed audit, shadow mismatch).
+- **Anomaly report**: `bill_anomaly_report` per store, day and staff member with the flags peer_outlier, disagreements, disputes, timeouts, one_member, amount_outliers (store median + 5 MAD over the range), audit_failed and burst (most bills in one hour against the staff member's own hourly average).
+- **Phase 8 early**: the shadow check (`app.loyalty_shadow_reconcile`) runs after a sync only where staff mode and `shadow_reconcile` are on, links `bill_captures.invoice_id` by bill number and flags; a linked invoice cannot earn on paths A to D.
+- **Extension points for phases 4-8**: `bill_captures.photo_path`, `photo_hash`, `reading`, `printed_at`, `lines`, `flags`; `bill_confirmations.source = 'reader'` with `reading`; `evidence_level` 1 and 3; `bill_reader_mode`; `bill_photo_retention_days`.
+
 ## 6. Risks and open questions
 
 1. What reward value per stamp or point, and what loss per day is acceptable? The caps follow from it.

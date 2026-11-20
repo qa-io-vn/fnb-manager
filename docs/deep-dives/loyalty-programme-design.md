@@ -80,6 +80,10 @@ Give-back from the chain rules (inference): 1 point per 10,000 ₫ with a free M
 - Exact text of Decree 239/2026.
 - No repeat-visit or breakage benchmark exists for single-store Vietnamese tea or coffee shops; the owner's baseline comes first.
 
+## Confirmation source per store (2026-11-21)
+
+Every store chooses what confirms a stamp, points or a reward (ADR-043): the synced POS invoice (default) or staff at the till with the customer's blind confirmation of the paper bill, so the programme also runs without any POS link, as in the Anlene staff-scan case. The evidence ladder, caps, audits and alerts are in [bill-verification-plan.md](bill-verification-plan.md), the till routine in [../loyalty/cashier-script.md](../loyalty/cashier-script.md).
+
 ## Sources
 
 - https://www.highlandscoffee.com.vn/vn/chinh-sach-chuong-trinh-thanh-vien-highlandsdi.html

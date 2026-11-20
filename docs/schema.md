@@ -1931,6 +1931,59 @@ A released hold is netted out by `app.loyalty_expiring_points` (the returned poi
 
 The `app` functions of this section are executable by the service role (the hold, confirmation, release and reconciliation functions) or by no API role (the customer and staff functions behind the RPCs, the code generator and the spendable-stamp list). Staff read no `redemptions` row directly; they verify codes through the RPC, which keeps to their stores. `redemption_summary` is a `security invoker` report function.
 
+## Staff confirmation mode and bills (POS-independent loyalty, 2026-11-21)
+
+Migrations `loyalty_staff_confirmation` (20261120500000), `bill_captures` (20261120510000) and `bill_anomalies` (20261120520000). Design: [deep-dives/bill-verification-plan.md](deep-dives/bill-verification-plan.md) (section 7 lists what was built) and ADR-043. RPCs: [api.md](api.md).
+
+### `loyalty_store_settings`
+
+One row per store, created with the store by the trigger `stores_create_loyalty_settings` (every existing store was given one in `pos_sync`). Read by owners, managers and viewers of the store (RLS through `current_user_loyalty_store_ids`); written only by `set_loyalty_store_settings` (owners of the store).
+
+| Column | Default | Range | Meaning |
+| --- | --- | --- | --- |
+| `confirmation` | `pos_sync` | `pos_sync`, `staff` | what confirms an earn or a redemption at this store |
+| `max_bill_amount` | 2,000,000 | above 0, at most 100,000,000 | the largest bill a staff-mode earn may carry |
+| `bill_evidence_required_level` | 2 | 0 to 2 | 0: the staff reading alone confirms; 2: the customer's agreeing blind total is needed |
+| `bill_manager_approval_above` | 1,000,000 | above 0, at most `max_bill_amount` | a larger bill always waits in the manager queue |
+| `bill_amount_tolerance` | 1,000 | 0 to 100,000 | two totals agree within it |
+| `bill_unconfirmed_hours` | 24 | 1 to 168 | how long a bill waits for the customer |
+| `bill_silence_outcome` | `reverse` | `reverse`, `confirm` | what the deadline does to an unanswered bill |
+| `bill_staff_shift_cap` | 25 | 1 to 1,000 | unreviewed (level 0 or 1) bills one staff member may record a business day; alert at 70 % |
+| `staff_amount_per_day` | 30,000,000 | above 0, at most 1,000,000,000 | total of one staff member's bills a day |
+| `store_earns_per_day` | 400 | 1 to 5,000 | bills a store may record a day |
+| `staff_redemptions_per_day` | 50 | 1 to 1,000 | rewards one staff member may confirm a day |
+| `reverse_window_minutes` | 480 | 15 to 1,440 | how long a manager may still undo a bill or void a reward (the shift) |
+| `bill_audit_sample_pct` | 2 | 0 to 100 | share of confirmed bills put in a random audit |
+| `self_claim` | false | | whether customers may claim with the counter QR |
+| `counter_code_ttl_seconds` | 90 | 30 to 600 | life of one counter QR (plus 120 s of grace to type the bill) |
+| `auto_approve_max_amount`, `auto_approve_per_day` | 0, 0 | at most `max_bill_amount`; 0 to 500 | counter claims confirmed at once at level 0 |
+| `bill_photo_retention_days`, `bill_reader_mode` | 90, `off` | 1 to 365; `off`, `mock` | phase 4 knobs, stored now |
+| `shadow_reconcile` | true | | link bills to synced invoices when a POS sync exists |
+
+### `bill_captures`
+
+A paper bill at a staff-mode store (path E). `source` `staff_scan` (recorded by `captured_by` after a scan of the member's dynamic QR) or `counter_claim` (sent by the customer with `counter_code_id`; `captured_by` becomes the staff member who answers it). `bill_no`, `bill_key` (`app.bill_key`: trimmed, upper case, leading zeros dropped) and `business_date`: the unique index `bill_captures_dedupe_key` on store, business date and key covers every bill not rejected or expired. `total` is the first reading. `evidence_level` 0 to 3 (0 typed, 1 one reading, 2 two agreeing readings, 3 with clean bill checks). `state`: `awaiting_customer`, `awaiting_staff`, `queued` (with `queue_reason` `over_approval` or `disagreement`), `confirmed`, `reversed` (with `reversal_reason` `disputed`, `timed_out`, `manager_rejected`, `manager_reversed`, `audit_failed`), `rejected`, `expired`. `confirm_by` is the deadline. `invoice_id`, `shadow_state` (`matched`, `mismatch`, `no_invoice`) and `shadow_checked_at` come from the shadow check. `printed_at`, `lines`, `flags`, `photo_path`, `photo_hash` and `reading` are empty until the camera phases. RLS: loyalty readers of the store, and the recording staff member their own rows; no API writes.
+
+### `bill_confirmations`, `bill_audits`, `loyalty_counter_codes`, `loyalty_audit_events`
+
+- `bill_confirmations`: one reading per bill and source (`staff`, `customer`, later `reader` with its `reading`), with `entered_total` and `agrees`. Owners and managers of the store read it.
+- `bill_audits`: the random audit of a confirmed bill, `open`, `passed` or `failed` (with a note). Owners and managers read it.
+- `loyalty_counter_codes`: the rotating 12-character counter tokens; no API role reads them.
+- `loyalty_audit_events`: the audit trail of the mode (settings changes, every bill outcome, audits, counter QR issues, staff redemption confirmations and voids, shadow flags) with actor, subject, membership and amount; details never hold a phone, code or name. Owners and managers of the store read it; the data-subject erasure blanks `membership_id`.
+
+### Ledger and redemptions
+
+- `loyalty_ledger.bill_id` (foreign key to `bill_captures`); `matched_path` gains `E`; an earn, confirm or clawback names an invoice or a bill (a confirm of a staff-confirmed redemption carries reason `staff_confirmed` instead); one earn per bill (`loyalty_ledger_one_earn_per_bill_key`). A bill's earn is written pending at recording and confirmed by a confirm row with reason `bill_confirmed`, or reversed by a clawback with reason `bill_<reason>`.
+- `loyalty_refusals.reason` gains `staff_mode`: paths A to D do not earn at a staff-mode store, and no path earns an invoice a live bill is linked to.
+- `redemptions` gains `confirmed_by`, `voided_by` and `void_reason`; a confirmed redemption names an invoice or `confirmed_by`.
+- `app.code_attempt_policies` gains `staff_submit_bill` and `customer_counter_claim` (5 misses per caller, 20 per store and 50 per tenant in 15 minutes).
+- Alert rule `loyalty_staff_anomaly` (operations, owners and managers, one hour cool-down): kinds `cap_warning`, `cap_reached`, `bill_conflict` (critical), `disputed`, `timed_out`, `reversal`, `audit_failed`, `shadow_mismatch`, count-only facts.
+- pg_cron job `loyalty-bill-deadlines` runs `app.bill_expire_pending` every 10 minutes.
+
+### Tests
+
+pgTAP 220 (settings), 221 (decision table mode x action x role), 222 (bill state transitions), 223 (boundaries), 224 (security), 225 (staff redemption transitions), 226 (anomaly report, audits, shadow check, the store lock, erasure); `supabase/snippets/bill-parallel-caps.sh` runs eight bills in parallel sessions against a cap of three.
+
 ## Till-side rails (phase 16b)
 
 Built locally (migrations `voucher_callback`, `coupon_code_pools` and `rail_recognition`, pgTAP `95` to `97`; #243 to #245). Every table here is in schema `app` and revoked from every API role: only the jobs, the `voucher-callback` Edge Function (as `postgres`) and the service role through the functions below reach them. None stores a code value, a phone or a member reference.

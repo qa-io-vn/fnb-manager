@@ -261,3 +261,13 @@ Decision: `strategy_reports` rows are written only by `publish_strategy_plan` (`
 Date 2026-11-20 · Status accepted
 
 Decision: an export carries per store-month control totals and fingerprints that the browser checks against `export_totals` (#132, #141); a plan's every initiative cites pack cells by `[[table:row:column]]`, the lint checks each written number against its cell, Kế hoạch re-runs the lint against the stored pack, recomputes the pack id ("Mã gói khớp") and re-measures every KPI baseline from the database (shown with "≠" when the data changed). Not chosen: trusting the assistant's numbers; storing only the plan text (no way to recheck a citation later). Consequences: a reader can see whether a number in a plan came from the data, and a re-sync that changes history shows up beside the baseline instead of silently.
+
+## ADR-043 — Each store chooses what confirms loyalty: the POS sync or staff with the bill evidence ladder
+
+Date 2026-11-21 · Status accepted
+
+Context: earns of paths B and C and the discount-rail redemptions were confirmed only by a synced POS invoice, so a store without a POS link (or with a POS whose data we cannot read) could not run the programme, and confirmation waited for the sync. Zalo's Anlene case and the chains' staff-scan flows show the POS-free pattern; docs/deep-dives/bill-verification-plan.md designs its evidence ladder.
+
+Decision: `loyalty_store_settings.confirmation` per store, `pos_sync` by default (unchanged behaviour) or `staff`. In `staff` mode the paper bill recorded in the staff Mini App earns on path E (`bill_captures`, `loyalty_ledger.bill_id`), pending until the customer's blind total agrees (level 2) unless the owner accepts level 0; disagreements and large bills go to a manager, disputes and silence reverse; staff confirm rewards at once and managers void them within the window. The POS paths do not earn at a staff-mode store; a sync, if any, only feeds a non-blocking shadow check. Caps per staff member and store, dedupe on store + business date + bill number, a random audit, an audit trail and an alert bound what a dishonest pair can take.
+
+Consequences: no POS dependency and instant confirmation for members who answer; a colluding staff member and customer can still forge a bill, bounded by the caps (section 3 of the plan); phases 4-8 (camera, photo hash, reader, bill checks) build on the stored extension points.

@@ -857,6 +857,24 @@ The Khách hàng pages show your members and their stamps and points. They have 
 
 Staff record customers, check reward codes, look up a member's card and ask for adjustments in the staff app; managers decide those requests there too. The web pages read what they did.
 
+### Cài đặt → Khách hàng thân thiết: Xác nhận tại quầy
+
+Who: owners edit; managers and viewers read. The tab **Xác nhận tại quầy** (`?tab=xac-nhan`) sets, per store, what confirms a purchase for the loyalty programme.
+
+- **Theo máy POS** (`pos_sync`, the default): a stamp, points or a reward are confirmed when the synced POS invoice shows the purchase. Exact, but it waits for the sync (5 to 30 minutes) and needs a POS whose data we read.
+- **Nhân viên xác nhận** (`staff`): works with any POS or none. The staff member scans the member's QR in the staff Mini App and types the bill number and total; the customer types the total they paid in the customer Mini App without seeing the staff total. Two agreeing totals confirm the stamp at once; a different total goes to a manager; "Không đúng" reverses it; a bill nobody answers is reversed after 24 hours (or confirmed, if you choose). Rewards are confirmed by the staff member at the till and applied as a named manual discount.
+
+While a store is in staff mode its POS invoices no longer earn (they only feed an optional background check). The form groups the knobs: **Bằng chứng** (evidence level, what silence does, largest bill, manager approval above, allowed difference, waiting hours), **Hạn mức** (bills per staff member and store a day, total per staff member a day, rewards per staff member a day) and **Nâng cao** (undo window, audit share, counter QR life, auto-approval of counter claims, photo retention, self claims, the background check). Each hint says which trick it limits. Every change is kept in the audit trail and switching mode does not change bills already recorded.
+
+### Staff mode at the till
+
+- **Staff Mini App → Ghi hóa đơn**: scan the member's QR, type the bill number and total. The answer says whether the bill waits for the customer (with the deadline), is confirmed, or waits for a manager. The day's bills are listed below; a manager can undo one within the shift with a reason.
+- **Mã quầy**: a QR that changes every 45 seconds for customers who claim themselves. Their claims appear below; type the total you read on the bill (you never see what the customer typed), or reject with a reason.
+- **Duyệt hóa đơn** (owners and managers): bills whose totals disagree or that are above the approval amount, and the random audits. A manager cannot approve a bill they recorded.
+- **Kiểm tra ưu đãi**: after the code is valid, **Xác nhận đã dùng** confirms the reward at once; apply the named discount on the POS. The person who recorded a bill for that customer today cannot confirm their reward. A manager can **Hủy ưu đãi** within the shift.
+- **Customer Mini App**: the card **Xác nhận hóa đơn** lists the bills to confirm; **Quét mã tại quầy** (`/quet-ma-quay`) sends a claim with the counter QR.
+- **Khách hàng → Bất thường** shows per staff member and day: bills, share confirmed by customers, disagreements, disputes, reversals, failed audits and flags (far above peers, one member taking most bills, a burst within one hour, amount outliers). Alerts **Bất thường xác nhận tại quầy** reach owners and managers.
+
 ## Xuất dữ liệu (Exports)
 
 This page has two tabs. **Gói dữ liệu cho AI** (AI data pack) builds one file of your stores' summary figures for your own AI assistant to write a business plan from; the next section explains it. **Xuất dữ liệu** (Export data) takes your sales data out of the app as files: the invoices, their lines, the payments, the shifts and the daily summary, month by month, in one ZIP file. Every exported file is checked against the database before you download it, so what you open in Excel or a script is exactly what the app holds. Both tabs were built on 2026-11-18; the exports were also checked on real data that day, and the owner's check in Excel is still to come. [exports.md](exports.md) describes the files and the check in full, [strategy.md](strategy.md) the data pack.

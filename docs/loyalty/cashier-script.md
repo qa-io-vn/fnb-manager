@@ -69,3 +69,31 @@ A bill is never changed after it has printed to add a customer. Point the custom
 | Anh/chị giữ hóa đơn này, gửi số hóa đơn trong ứng dụng `[tên quán]` trên Zalo trong `[số giờ]` giờ là vẫn được tích ạ. | Keep this receipt and send its bill number in the `[shop name]` app on Zalo within `[hours]` hours, and it will still count. |
 
 The second line applies only once the receipt claim of the customer app is open for the shop; until then, say only the first line.
+
+## Cửa hàng xác nhận tại quầy · Staff-mode till routine
+
+For stores whose owner chose **Nhân viên xác nhận** in Cài đặt → Khách hàng thân thiết → Xác nhận tại quầy. No POS link is used: the paper bill, the staff member and the customer are the proof.
+
+**Tích điểm · Earning**
+
+1. Thu ngân in hóa đơn như thường lệ. *Print the bill as usual.*
+2. "Anh/chị mở thẻ thành viên trên Zalo giúp em để em quét mã ạ." *Ask the customer to open their member card in Zalo.*
+3. Mở **Ghi hóa đơn**, quét mã của khách, nhập **số hóa đơn** và **tổng tiền** đúng như trên hóa đơn. *Scan, then type the bill number and total exactly as printed.*
+4. "Anh/chị vui lòng mở Zalo, mục **Xác nhận hóa đơn**, nhập số tiền mình đã trả để nhận điểm ngay ạ." *Ask the customer to confirm the total they paid in the app; the stamp arrives at once when both totals agree.*
+5. Không đọc tổng tiền thay khách và không nhập giúp trên điện thoại của khách. *Never read the total out for them or type it on their phone: the customer's answer must be their own.*
+
+**Khách tự quét · Customer self-claim** (if the owner turned it on)
+
+- Mở **Mã quầy** để khách quét. Khi yêu cầu hiện ra, đọc tổng tiền trên hóa đơn và nhập; nếu không có hóa đơn này, bấm **Từ chối** và ghi lý do. *Show the counter QR; answer each claim with the total on the bill, or reject it with a reason.*
+
+**Đổi ưu đãi · Redeeming**
+
+1. Khách mở voucher; quét mã ở **Kiểm tra ưu đãi**. *Scan the voucher code.*
+2. Khi mã hợp lệ, bấm **Xác nhận đã dùng**, rồi áp dụng **chiết khấu có tên hiển thị** trên máy POS. *Confirm, then apply the named manual discount on the POS.*
+3. Người vừa ghi hóa đơn cho khách hôm nay không tự xác nhận ưu đãi của khách đó: nhờ đồng nghiệp. *The person who recorded that customer's bill today asks a colleague to confirm the reward.*
+
+**Sai sót · Mistakes**
+
+- Ghi nhầm: báo quản lý để **Hoàn tác** trong ca (kèm lý do). *Wrong bill: a manager undoes it within the shift.*
+- Khách báo "Không đúng": điểm bị thu hồi tự động và quản lý được báo. *A dispute reverses the stamp and alerts the manager.*
+- Ứng dụng báo đã đạt hạn mức: dừng ghi, báo quản lý. *A cap message means stop and call the manager.*
