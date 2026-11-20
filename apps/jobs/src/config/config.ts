@@ -18,6 +18,13 @@ export interface SupabaseApiSetting {
 	secretKey: string;
 }
 
+export interface SupabasePublisherSetting {
+	url: string;
+	publishableKey: string;
+	email: string;
+	password: string;
+}
+
 export function isCi(environment: Environment): boolean {
 	return Boolean(environment.CI || environment.GITHUB_ACTIONS);
 }
@@ -94,4 +101,27 @@ export function accountEntry(
 
 export function iposAppKey(environment: Environment): string | undefined {
 	return environment[IPOS_APP_KEY_VARIABLE] || undefined;
+}
+
+export function supabasePublisherSetting(
+	environment: Environment,
+): SupabasePublisherSetting {
+	const url = environment.SUPABASE_URL?.trim() ?? "";
+	const publishableKey = environment.SUPABASE_PUBLISHABLE_KEY?.trim() ?? "";
+	const email = environment.FNB_PUBLISHER_EMAIL?.trim() ?? "";
+	const password = environment.FNB_PUBLISHER_PASSWORD ?? "";
+	if (!url || !urlSchema.safeParse(url).success) {
+		throw new ConfigError("set SUPABASE_URL to the project API URL");
+	}
+	const missing = [
+		...(publishableKey === "" ? ["SUPABASE_PUBLISHABLE_KEY"] : []),
+		...(email === "" ? ["FNB_PUBLISHER_EMAIL"] : []),
+		...(password === "" ? ["FNB_PUBLISHER_PASSWORD"] : []),
+	];
+	if (missing.length > 0) {
+		throw new ConfigError(
+			`publishing signs in as the publisher member: set ${missing.join(", ")} in .env (no database URL or secret key is used)`,
+		);
+	}
+	return { url, publishableKey, email, password };
 }

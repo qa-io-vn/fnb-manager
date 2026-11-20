@@ -5,9 +5,11 @@ import {
 	lintPlan,
 	type PlanIssue,
 	type PlanLintResult,
+	type PlanVia,
 	parsePack,
 	planRecord,
 } from "@fnb/datapack";
+import { supabasePublisherSetting } from "../config/config.js";
 import {
 	type CommandContext,
 	flag,
@@ -20,12 +22,15 @@ import {
 	resolveUserPath,
 	shownPath,
 } from "../datapack/files.js";
+import { openPublisher, rejectionCodes } from "../datapack/publisher.js";
 import { planIssueMessage } from "./publish-plan-messages.js";
 import { type CommandSpec, HELP_OPTION } from "./spec.js";
 
 export const EXIT_USAGE = 2;
 export const EXIT_PLAN_INVALID = 3;
 export const EXIT_PACK_INVALID = 4;
+export const EXIT_FAILED = 1;
+export const PLAN_ID_SHOWN = 8;
 
 const BYTE_ORDER_MARK = "﻿";
 
@@ -33,6 +38,8 @@ export interface PublishPlanOptions {
 	readonly plan: string;
 	readonly pack: string;
 	readonly json: boolean;
+	readonly check: boolean;
+	readonly via: Extract<PlanVia, "skill" | "routine">;
 }
 
 interface ReadFile {
@@ -58,15 +65,20 @@ function fileOption(values: OptionValues, name: string): string {
 }
 
 export function publishPlanOptions(values: OptionValues): PublishPlanOptions {
-	if (!flag(values, "check")) {
-		throw new UsageError(
-			"only --check is available: signing in and publishing a plan come with phase 11b",
-		);
+	const check = flag(values, "check");
+	const via = stringOption(values, "via") ?? "skill";
+	if (via !== "skill" && via !== "routine") {
+		throw new UsageError("--via must be skill or routine");
+	}
+	if (check && stringOption(values, "via") !== undefined) {
+		throw new UsageError("--via is for publishing, not for --check");
 	}
 	return {
 		plan: fileOption(values, "plan"),
 		pack: fileOption(values, "pack"),
 		json: flag(values, "json"),
+		check,
+		via,
 	};
 }
 
@@ -215,7 +227,112 @@ async function checkPlan(
 			context.output.line(issueLine(context, issue));
 		}
 	}
-	return lint.ok ? 0 : EXIT_PLAN_INVALID;
+	if (!lint.ok) return EXIT_PLAN_INVALID;
+	if (options.check) return 0;
+	return publishChecked(context, options, pack, lint);
+}
+
+async function publishChecked(
+	context: CommandContext,
+	options: PublishPlanOptions,
+	pack: DataPack,
+	lint: PlanLintResult,
+): Promise<number> {
+	if (pack.sample || lint.plan === null) {
+		context.output.error(
+			"publish-plan: sample_pack_not_publishable: a plan written from a sample pack is never published",
+		);
+		return EXIT_PACK_INVALID;
+	}
+	let input: ReturnType<typeof planRecord>;
+	try {
+		input = planRecord(lint.plan, pack, lint, options.via);
+	} catch (error) {
+		if (error instanceof DataPackError) {
+			context.output.error(`publish-plan: ${error.code}`);
+			return EXIT_PLAN_INVALID;
+		}
+		throw error;
+	}
+	const setting = supabasePublisherSetting(context.env);
+	const session = openPublisher(setting);
+	let signedIn = false;
+	try {
+		if (!(await session.signIn(setting.email, setting.password))) {
+			context.output.error(
+				"publish-plan: the publisher login was refused; check FNB_PUBLISHER_EMAIL and FNB_PUBLISHER_PASSWORD",
+			);
+			return EXIT_FAILED;
+		}
+		signedIn = true;
+		const members = await session.visibleMembers();
+		if (members === null || members > 0) {
+			context.output.error(
+				"publish-plan: this login can read tenant members, so it is a data member and not the publisher; create a separate publisher login (ADR-013) and put it in FNB_PUBLISHER_EMAIL and FNB_PUBLISHER_PASSWORD",
+			);
+			return EXIT_FAILED;
+		}
+		const answer = await session.publish(input);
+		if (answer.error !== null) {
+			if (answer.error.code === "22023") {
+				const codes = rejectionCodes(answer.error.details);
+				context.output.line(
+					`publish-plan: the database refused the plan: ${codes.join(", ")}`,
+				);
+				for (const code of codes) context.output.line(`rejected: ${code}`);
+				return EXIT_PLAN_INVALID;
+			}
+			if (answer.error.code === "42501") {
+				context.output.error(
+					"publish-plan: scope denied: the publisher may not publish for every store of this plan",
+				);
+				return EXIT_FAILED;
+			}
+			context.output.error(
+				`publish-plan: publishing failed${answer.error.code === null ? "" : ` (${answer.error.code})`}`,
+			);
+			return EXIT_FAILED;
+		}
+		if (answer.planId === null) {
+			context.output.error("publish-plan: publishing returned no plan id");
+			return EXIT_FAILED;
+		}
+		const summary = {
+			plan: answer.planId.slice(0, PLAN_ID_SHOWN),
+			already_published: answer.alreadyPublished,
+			via: options.via,
+			stores: input.p_store_ids.length,
+			horizon: input.p_horizon,
+			initiatives: lint.summary.initiatives,
+			citations: lint.summary.validCitations,
+			kpis: Object.keys(input.p_kpis).length,
+		};
+		if (options.json) {
+			context.output.line(JSON.stringify(summary));
+		} else {
+			context.output.line(
+				answer.alreadyPublished
+					? "publish-plan: this plan was already published; the stored plan is kept"
+					: "publish-plan: published",
+			);
+			printFields(context, summary);
+		}
+		return 0;
+	} catch (error) {
+		if (error instanceof Error && error.name === "ConfigError") throw error;
+		context.output.error(
+			"publish-plan: publishing failed (network or server error)",
+		);
+		return EXIT_FAILED;
+	} finally {
+		if (signedIn) {
+			try {
+				await session.signOut();
+			} catch {
+				context.output.error("publish-plan: signing out failed");
+			}
+		}
+	}
 }
 
 export async function runPublishPlan(
@@ -234,15 +351,16 @@ export async function runPublishPlan(
 export const publishPlanCommand: CommandSpec = {
 	path: ["publish-plan"],
 	summary:
-		"Check a strategy plan against the data pack it was written from, offline (publishing comes with phase 11b)",
+		"Check a strategy plan against the data pack it was written from, and publish it as the publisher member",
 	usage:
-		"fnb publish-plan --check --plan <plan.md> --pack <pack.json> [--json]",
+		"fnb publish-plan [--check] --plan <plan.md> --pack <pack.json> [--via skill|routine] [--json]",
 	options: {
 		...HELP_OPTION,
 		check: { type: "boolean" },
 		plan: { type: "string" },
 		pack: { type: "string" },
 		json: { type: "boolean" },
+		via: { type: "string" },
 	},
 	details: [
 		"--check reads the two files only: it needs no credential, opens no connection and accepts sample packs.",
@@ -251,8 +369,9 @@ export const publishPlanCommand: CommandSpec = {
 		"Prints ok, the pack id, whether the pack is a sample and whether the plan could be published, the counts of errors, warnings, initiatives, citations and KPIs, then one line per issue: level, code (its parameter after the first colon), line in the normalised plan and a fixed message. --json prints one object.",
 		"Relative paths start from the folder where the command was typed (INIT_CWD under pnpm); a byte order mark is ignored.",
 		"In CI (CI or GITHUB_ACTIONS set) the output names no path or value: base names only, the pack id as an 8-character prefix and no issue detail.",
-		"Without --check, signing in and publishing come with phase 11b.",
-		"Exit codes: 0 no lint error (warnings allowed); 2 usage or a file it cannot read; 3 the plan has lint errors; 4 the pack is invalid.",
+		"Without --check the plan is linted first (exit 3 on errors, before any sign-in); a sample pack stops with exit 4 (sample_pack_not_publishable). It then signs in with SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, FNB_PUBLISHER_EMAIL and FNB_PUBLISHER_PASSWORD only (never a database URL or the secret key), with session persistence and token refresh off, refuses a login that can read tenant members (a data member, exit 1), and calls publish_strategy_plan with --via skill (default) or routine.",
+		"The database answer: refused codes exit 3 and are listed; scope denied exits 1; a network failure exits 1; a plan already published exits 0 and says so. It signs out and prints the plan id prefix, the number of stores, the horizon and the counts of initiatives, citations and KPIs.",
+		"Exit codes: 0 no lint error with --check, or published; 1 sign-in, guard, scope or network failure; 2 usage or a file it cannot read; 3 the plan has lint errors or the database refused it; 4 the pack is invalid or a sample.",
 	],
 	run: (context, values) => runPublishPlan(context, values),
 };

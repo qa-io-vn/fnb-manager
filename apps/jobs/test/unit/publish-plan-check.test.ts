@@ -97,7 +97,7 @@ describe("fnb publish-plan --check: options and help", () => {
 		const help = await run(["publish-plan", "--help"]);
 		expect(help.code).toBe(0);
 		expect(help.stdout).toContain(
-			"fnb publish-plan --check --plan <plan.md> --pack <pack.json> [--json]",
+			"fnb publish-plan [--check] --plan <plan.md> --pack <pack.json> [--via skill|routine] [--json]",
 		);
 		expect(help.stdout).toContain("needs no credential, opens no connection");
 		expect(help.stdout).toContain("3 the plan has lint errors");
@@ -106,8 +106,17 @@ describe("fnb publish-plan --check: options and help", () => {
 
 	it.each([
 		[
-			["publish-plan", "--plan", "a.md", "--pack", "b.json"],
-			"only --check is available",
+			[
+				"publish-plan",
+				"--check",
+				"--plan",
+				"a.md",
+				"--pack",
+				"b.json",
+				"--via",
+				"skill",
+			],
+			"--via is for publishing, not for --check",
 		],
 		[["publish-plan", "--check", "--pack", "b.json"], "--plan is required"],
 		[["publish-plan", "--check", "--plan", "a.md"], "--pack is required"],
