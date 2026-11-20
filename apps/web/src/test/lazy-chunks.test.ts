@@ -25,6 +25,7 @@ const manifestKeys = [
 	"src/pages/exports/exports-page.tsx",
 	"src/datapack/browser-pack.ts",
 	"src/pages/plans/paste-page.tsx",
+	"src/plans/demo-seed.ts",
 	"src/pages/operations/checklist-compliance-page.tsx",
 	"src/operations/supabase-operations-source.ts",
 	"src/pages/loyalty/members-page.tsx",

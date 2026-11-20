@@ -12,6 +12,7 @@ export const lazySources = [
 	/src\/pages\/exports\/exports-page\.tsx$/,
 	/src\/datapack\/browser-pack\.ts$/,
 	/src\/pages\/plans\/[a-z-]+-page\.tsx$/,
+	/src\/plans\/demo-seed\.ts$/,
 	/node_modules\/fflate\/esm\/browser\.js$/,
 	/src\/pages\/operations\/[a-z-]+-page\.tsx$/,
 	/src\/operations\/supabase-operations-source\.ts$/,
