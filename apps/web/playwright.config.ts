@@ -33,7 +33,7 @@ export default defineConfig({
 	retries: 0,
 	timeout: 60_000,
 	expect: { timeout: 15_000 },
-	reporter: [["list"]],
+	reporter: process.env.CI ? [["list"], ["github"]] : [["list"]],
 	use: {
 		...devices["Desktop Chrome"],
 		trace: "retain-on-failure",
