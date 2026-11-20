@@ -1109,9 +1109,9 @@ const MANUAL_TABS: readonly ManualTab[] = [
 	},
 ];
 
-const SLOT_PAGES = [
-	{ name: "Cảnh báo", slug: "canh-bao" },
-	{ name: "Bản tin", slug: "ban-tin" },
+const PHASE_12_PAGES = [
+	{ name: "Cảnh báo", slug: "canh-bao", testId: "canh-bao-page" },
+	{ name: "Bản tin", slug: "ban-tin", testId: "ban-tin-page" },
 ] as const;
 
 async function optionValues(select: Locator): Promise<string[]> {
@@ -1350,11 +1350,13 @@ test.describe("the settings pages for each login", () => {
 			page,
 		}) => {
 			await signedIn(page, role);
-			for (const slot of SLOT_PAGES) {
-				await openSettings(page, slot.slug);
+			for (const built of PHASE_12_PAGES) {
+				await openSettings(page, built.slug);
 				const content = settingsContent(page);
-				await expect(content.getByTestId("settings-placeholder")).toBeVisible();
-				await expectOnlyControls(content, [], `${role} on ${slot.name}`);
+				await expect(content.getByTestId(built.testId)).toBeVisible();
+				await expect(content.getByTestId("settings-placeholder")).toHaveCount(
+					0,
+				);
 				if (role === "staff" || role === "viewer") {
 					await expectAccessibleAtBothWidths(page);
 				}

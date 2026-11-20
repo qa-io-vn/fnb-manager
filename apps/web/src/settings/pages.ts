@@ -104,18 +104,16 @@ export const SETTINGS_PAGES: readonly SettingsPageEntry[] = [
 		slug: "canh-bao",
 		titleKey: "settings.alerts.title",
 		phase: "12",
-		status: "slot",
-		load: null,
-		slotKey: "settings.alerts.slot",
+		status: "built",
+		load: () => import("../pages/settings/canh-bao-page"),
 	},
 	{
 		id: "digests",
 		slug: "ban-tin",
 		titleKey: "settings.digests.title",
 		phase: "12",
-		status: "slot",
-		load: null,
-		slotKey: "settings.digests.slot",
+		status: "built",
+		load: () => import("../pages/settings/ban-tin-page"),
 	},
 ];
 

@@ -184,30 +184,6 @@ test("a day off added on Ngày lễ leaves Ngày's same-weekday baseline on the 
 	expectNoConsoleErrors(page);
 });
 
-test("the Cảnh báo and Bản tin slots render their placeholder naming phase 12 inside the settings layout and pass axe at 360 and 1280 px", async ({
-	page,
-}) => {
-	for (const [slug, title, summary] of [
-		["canh-bao", "Cảnh báo", "Zalo Bot hoặc e-mail"],
-		["ban-tin", "Bản tin", "bản tin hằng ngày"],
-	] as const) {
-		await openSettings(page, slug);
-		await expectCurrentSettingsPage(page, title);
-		const placeholder = page
-			.locator('section[aria-labelledby="settings-page-title"]')
-			.getByTestId("settings-placeholder");
-		await expect(placeholder).toHaveAttribute("data-status", "slot");
-		await expect(placeholder).toContainText(
-			`Trang ${title} có ở giai đoạn 12 của lộ trình.`,
-		);
-		await expect(
-			placeholder.getByTestId("settings-slot-summary"),
-		).toContainText(summary);
-		await checkPage(page);
-	}
-	expectNoConsoleErrors(page);
-});
-
 test("Ngày lễ passes axe at 360 and 1280 px in both colour schemes and reads in English without raw keys", async ({
 	page,
 }) => {

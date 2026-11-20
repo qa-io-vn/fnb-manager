@@ -96,11 +96,11 @@ describe("SettingsLayout", () => {
 	});
 
 	it.each([
-		["canh-bao", "Cảnh báo", "Zalo Bot"],
-		["ban-tin", "Bản tin", "bản tin hằng ngày"],
+		["canh-bao", "Cảnh báo"],
+		["ban-tin", "Bản tin"],
 	])(
-		"renders the %s slot as a placeholder naming phase 12 under the same layout",
-		(slug, title, summary) => {
+		"renders the built %s page (phase 12) under the same layout, without a placeholder",
+		(slug, title) => {
 			renderSettings(`/cai-dat/${slug}`);
 			expect(
 				screen.getByRole("heading", { level: 2, name: title }),
@@ -109,14 +109,8 @@ describe("SettingsLayout", () => {
 				"aria-current",
 				"page",
 			);
-			const placeholder = screen.getByTestId("settings-placeholder");
-			expect(placeholder).toHaveAttribute("data-status", "slot");
-			expect(placeholder).toHaveTextContent(
-				`Trang ${title} có ở giai đoạn 12 của lộ trình.`,
-			);
-			expect(screen.getByTestId("settings-slot-summary")).toHaveTextContent(
-				summary,
-			);
+			expect(screen.queryByTestId("settings-placeholder")).toBeNull();
+			expect(screen.queryByTestId("settings-slot-summary")).toBeNull();
 		},
 	);
 
@@ -181,7 +175,8 @@ describe("SettingsLayout", () => {
 		expect(loadedPageOf(roles)).toBe(loadedPageOf(roles));
 		expect(loadedPageOf(holidays)).toBe(loadedPageOf(holidays));
 		expect(loadedPageOf(roles)).not.toBe(loadedPageOf(thresholds));
-		expect(loadedPageOf(alerts)).toBeNull();
+		expect(loadedPageOf(alerts)).not.toBeNull();
+		expect(loadedPageOf(alerts)).toBe(loadedPageOf(alerts));
 	});
 
 	it("shows the catch-up line on every settings page while days are pending, with no action for a member who may not refresh", () => {

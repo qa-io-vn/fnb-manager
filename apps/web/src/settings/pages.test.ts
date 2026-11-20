@@ -98,23 +98,22 @@ describe("SETTINGS_PAGES", () => {
 		["canh-bao", "alerts", "settings.alerts."],
 		["ban-tin", "digests", "settings.digests."],
 	] as const)(
-		"holds %s as a slot of phase 12 with its keys under %s… in the shared settings file",
+		"builds %s (phase 12) as a lazy page titled from %s… in the shared settings file",
 		(slug, id, prefix) => {
 			const page = settingsPageOf(slug);
 			expect(page).toMatchObject({
 				id,
-				status: "slot",
+				status: "built",
 				phase: "12",
-				load: null,
 				titleKey: `${prefix}title`,
-				slotKey: `${prefix}slot`,
 			});
+			expect(page?.load).toBeTypeOf("function");
+			expect(page?.slotKey).toBeUndefined();
 			expect(inSharedSettingsFile(`${prefix}title`)).toBe(true);
-			expect(inSharedSettingsFile(`${prefix}slot`)).toBe(true);
 		},
 	);
 
-	it("lists the slots last and leaves the pages of later phases unlisted until they are built", () => {
+	it("lists the phase 12 pages last and leaves the pages of later phases unlisted until they are built", () => {
 		expect(SETTINGS_PAGES.slice(-2).map((page) => page.slug)).toEqual([
 			"canh-bao",
 			"ban-tin",
