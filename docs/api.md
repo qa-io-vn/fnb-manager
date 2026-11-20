@@ -2802,7 +2802,7 @@ CI does not run the check yet.
 
 ## 8. OpenAPI (Swagger) description
 
-`docs/api/openapi.json` is PostgREST's own OpenAPI 2.0 (Swagger) description of `/rest/v1` as the role `authenticated` sees it: the functions of section 3 as `/rpc/<name>` and the tables and views of section 4, with their parameters, columns and types (52 functions and 63 tables and views on 2026-11-18, after the seven Zalo tables that `authenticated` can read and `oa_event_counts`). It holds the schema only, never data. It does not describe the Edge Function endpoints (section 5), the auth endpoints (`/auth/v1`) or the row-level security, which this page explains.
+`docs/api/openapi.json` is PostgREST's own OpenAPI 2.0 (Swagger) description of `/rest/v1` as the role `authenticated` sees it: the functions of section 3 as `/rpc/<name>` and the tables and views of section 4, with their parameters, columns and types (147 functions and 96 tables and views on 2026-11-20). It holds the schema only, never data. It does not describe the Edge Function endpoints (section 5), the auth endpoints (`/auth/v1`) or the row-level security, which this page explains.
 
 | What | Command |
 |---|---|

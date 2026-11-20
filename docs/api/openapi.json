@@ -7052,7 +7052,21 @@
 		},
 		"strategy_reports": {
 			"properties": {
+				"archived_at": {
+					"description": "set when an owner or manager archives the plan; archived plans are listed only on request",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"as_of_date": {
+					"format": "date",
+					"type": "string"
+				},
 				"content_markdown": {
+					"format": "text",
+					"type": "string"
+				},
+				"content_sha256": {
+					"description": "sha256 of the normalised plan text as UTF-8; a repeat publish of the same text returns the stored plan",
 					"format": "text",
 					"type": "string"
 				},
@@ -7092,10 +7106,38 @@
 					"format": "text",
 					"type": "string"
 				},
+				"lint": {
+					"description": "the lint summary and warning codes the publishing client recorded; screens re-run the lint against data_pack",
+					"format": "jsonb"
+				},
+				"pack_id": {
+					"format": "text",
+					"type": "string"
+				},
+				"pack_schema_version": {
+					"format": "text",
+					"type": "string"
+				},
+				"plan_format": {
+					"format": "text",
+					"type": "string"
+				},
+				"prompt_version": {
+					"format": "text",
+					"type": "string"
+				},
 				"store_id": {
 					"description": "null means the report covers every store of the tenant",
 					"format": "uuid",
 					"type": "string"
+				},
+				"store_ids": {
+					"description": "the 1 to 10 stores of one tenant the plan covers; store_id equals the one store of a single-store plan and is null otherwise",
+					"format": "uuid[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
 				},
 				"tenant_id": {
 					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
@@ -7120,8 +7162,18 @@
 				"generated_via",
 				"title",
 				"content_markdown",
+				"data_pack",
+				"kpis",
 				"created_at",
-				"updated_at"
+				"updated_at",
+				"store_ids",
+				"plan_format",
+				"prompt_version",
+				"pack_id",
+				"pack_schema_version",
+				"as_of_date",
+				"content_sha256",
+				"lint"
 			],
 			"type": "object"
 		},
@@ -16032,9 +16084,29 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.strategy_reports.archived_at": {
+			"description": "set when an owner or manager archives the plan; archived plans are listed only on request",
+			"in": "query",
+			"name": "archived_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.strategy_reports.as_of_date": {
+			"in": "query",
+			"name": "as_of_date",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.strategy_reports.content_markdown": {
 			"in": "query",
 			"name": "content_markdown",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.strategy_reports.content_sha256": {
+			"description": "sha256 of the normalised plan text as UTF-8; a repeat publish of the same text returns the stored plan",
+			"in": "query",
+			"name": "content_sha256",
 			"required": false,
 			"type": "string"
 		},
@@ -16086,10 +16158,48 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.strategy_reports.lint": {
+			"description": "the lint summary and warning codes the publishing client recorded; screens re-run the lint against data_pack",
+			"in": "query",
+			"name": "lint",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.strategy_reports.pack_id": {
+			"in": "query",
+			"name": "pack_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.strategy_reports.pack_schema_version": {
+			"in": "query",
+			"name": "pack_schema_version",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.strategy_reports.plan_format": {
+			"in": "query",
+			"name": "plan_format",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.strategy_reports.prompt_version": {
+			"in": "query",
+			"name": "prompt_version",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.strategy_reports.store_id": {
 			"description": "null means the report covers every store of the tenant",
 			"in": "query",
 			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.strategy_reports.store_ids": {
+			"description": "the 1 to 10 stores of one tenant the plan covers; store_id equals the one store of a single-store plan and is null otherwise",
+			"in": "query",
+			"name": "store_ids",
 			"required": false,
 			"type": "string"
 		},
@@ -36205,6 +36315,137 @@
 				"tags": ["(rpc) due_checklists"]
 			}
 		},
+		"/rpc/effective_alert_rules": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_tenant_id",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store_id",
+						"required": false,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "every catalogue rule as it applies to the tenant (and to one store when p_store_id is given), read as the caller under row-level security: enabled, severity, roles and cool-down from the store row over the tenant row over the catalogue, parameters merged key by key, source catalogue, tenant or store, override_id of the most specific override and tenant_override_id; a caller who cannot read an override sees the catalogue default instead",
+				"tags": ["(rpc) effective_alert_rules"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "every catalogue rule as it applies to the tenant (and to one store when p_store_id is given), read as the caller under row-level security: enabled, severity, roles and cool-down from the store row over the tenant row over the catalogue, parameters merged key by key, source catalogue, tenant or store, override_id of the most specific override and tenant_override_id; a caller who cannot read an override sees the catalogue default instead",
+							"properties": {
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "every catalogue rule as it applies to the tenant (and to one store when p_store_id is given), read as the caller under row-level security: enabled, severity, roles and cool-down from the store row over the tenant row over the catalogue, parameters merged key by key, source catalogue, tenant or store, override_id of the most specific override and tenant_override_id; a caller who cannot read an override sees the catalogue default instead",
+				"tags": ["(rpc) effective_alert_rules"]
+			}
+		},
+		"/rpc/effective_channel_policies": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_tenant_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "per channel kind and message class the policy in force for the tenant, read as the caller under row-level security: the tenant override when the caller can read it, else the global row, with its source (global or tenant), id and note",
+				"tags": ["(rpc) effective_channel_policies"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "per channel kind and message class the policy in force for the tenant, read as the caller under row-level security: the tenant override when the caller can read it, else the global row, with its source (global or tenant), id and note",
+							"properties": {
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "per channel kind and message class the policy in force for the tenant, read as the caller under row-level security: the tenant override when the caller can read it, else the global row, with its source (global or tenant), id and note",
+				"tags": ["(rpc) effective_channel_policies"]
+			}
+		},
 		"/rpc/export_control_totals": {
 			"get": {
 				"parameters": [
@@ -38755,6 +38996,126 @@
 				"tags": ["(rpc) my_staff_notice"]
 			}
 		},
+		"/rpc/notify_message_status": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_message_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the status of one outbox message as the caller's row-level security lets them read it (null otherwise): status, decision, hold reason, release time, sent time and error code, never the text",
+				"tags": ["(rpc) notify_message_status"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the status of one outbox message as the caller's row-level security lets them read it (null otherwise): status, decision, hold reason, release time, sent time and error code, never the text",
+							"properties": {
+								"p_message_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_message_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the status of one outbox message as the caller's row-level security lets them read it (null otherwise): status, decision, hold reason, release time, sent time and error code, never the text",
+				"tags": ["(rpc) notify_message_status"]
+			}
+		},
+		"/rpc/notify_overview": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_tenant_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "Settings → Cảnh báo at a glance for the signed-in member: the destinations (owners and managers with every store see the tenant's, every other member their own) with kind, provider, label, status, enabled, the address hint, health, scope, muted rules and zone, never the address, secret name or configuration; the member's login e-mail for unlimited owners only; whether the schedule is on, the last tick and dispatch, the NOTIFY_ names the last dispatcher reported (unlimited owners only), held, uncertain and failed messages of 24 hours, pending links and this month's Zalo Bot count against the Basic plan's 3,000; 42501 for a non-member or a publisher",
+				"tags": ["(rpc) notify_overview"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "Settings → Cảnh báo at a glance for the signed-in member: the destinations (owners and managers with every store see the tenant's, every other member their own) with kind, provider, label, status, enabled, the address hint, health, scope, muted rules and zone, never the address, secret name or configuration; the member's login e-mail for unlimited owners only; whether the schedule is on, the last tick and dispatch, the NOTIFY_ names the last dispatcher reported (unlimited owners only), held, uncertain and failed messages of 24 hours, pending links and this month's Zalo Bot count against the Basic plan's 3,000; 42501 for a non-member or a publisher",
+							"properties": {
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "Settings → Cảnh báo at a glance for the signed-in member: the destinations (owners and managers with every store see the tenant's, every other member their own) with kind, provider, label, status, enabled, the address hint, health, scope, muted rules and zone, never the address, secret name or configuration; the member's login e-mail for unlimited owners only; whether the schedule is on, the last tick and dispatch, the NOTIFY_ names the last dispatcher reported (unlimited owners only), held, uncertain and failed messages of 24 hours, pending links and this month's Zalo Bot count against the Basic plan's 3,000; 42501 for a non-member or a publisher",
+				"tags": ["(rpc) notify_overview"]
+			}
+		},
 		"/rpc/oa_event_counts": {
 			"get": {
 				"parameters": [
@@ -40081,6 +40442,100 @@
 				"tags": ["(rpc) publish_legal_document"]
 			}
 		},
+		"/rpc/publish_strategy_plan": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the only way a strategy plan is stored (FR-STR-03, FR-STR-04): validates scope (42501 plan_scope_denied), the stores (22023 plan_rejected, detail plan_stores_invalid), the text, the KPIs and the pack (22023 plan_rejected, the codes in detail) and the rate of 20 plans in 24 hours per tenant (plan_rate_limited); stores the plan with its full pack and created_by = the caller; idempotent on the content hash (the stored id with already_published true)",
+							"properties": {
+								"p_as_of_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"p_content_markdown": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_data_pack": {
+									"format": "jsonb"
+								},
+								"p_generated_via": {
+									"format": "strategy_source",
+									"type": "string"
+								},
+								"p_horizon": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_kpis": {
+									"format": "jsonb"
+								},
+								"p_language": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_lint": {
+									"format": "jsonb"
+								},
+								"p_pack_id": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_prompt_version": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"p_title": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": [
+								"p_store_ids",
+								"p_title",
+								"p_content_markdown",
+								"p_kpis",
+								"p_horizon",
+								"p_language",
+								"p_as_of_date",
+								"p_pack_id",
+								"p_prompt_version",
+								"p_data_pack",
+								"p_lint",
+								"p_generated_via"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the only way a strategy plan is stored (FR-STR-03, FR-STR-04): validates scope (42501 plan_scope_denied), the stores (22023 plan_rejected, detail plan_stores_invalid), the text, the KPIs and the pack (22023 plan_rejected, the codes in detail) and the rate of 20 plans in 24 hours per tenant (plan_rate_limited); stores the plan with its full pack and created_by = the caller; idempotent on the content hash (the stored id with already_published true)",
+				"tags": ["(rpc) publish_strategy_plan"]
+			}
+		},
 		"/rpc/range_totals": {
 			"get": {
 				"parameters": [
@@ -40386,6 +40841,43 @@
 				"tags": ["(rpc) refresh_my_analytics"]
 			}
 		},
+		"/rpc/remove_destination": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the destination's member, or an owner with every store, removes it: its queued and held messages are cancelled as destination_removed by the delete trigger and the row is deleted; the member's notifications consent stays; returns the number of messages cancelled; 42501 for anyone else",
+							"properties": {
+								"p_channel_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_channel_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the destination's member, or an owner with every store, removes it: its queued and held messages are cancelled as destination_removed by the delete trigger and the row is deleted; the member's notifications consent stays; returns the number of messages cancelled; 42501 for anyone else",
+				"tags": ["(rpc) remove_destination"]
+			}
+		},
 		"/rpc/reopen_cash_count": {
 			"post": {
 				"parameters": [
@@ -40543,6 +41035,43 @@
 					}
 				},
 				"tags": ["(rpc) report_settings_of"]
+			}
+		},
+		"/rpc/resend_message": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "owners and managers with every store resend an uncertain or failed digest, correction or alert: a new queued row with resend_of set and the dedupe key <base>:resend:<n> from app.next_resend_number, the original kept unchanged as evidence, and the dispatcher woken; 42501 for any other caller or a message they cannot see, 22023 for another state or kind, a removed destination or a purged digest text",
+							"properties": {
+								"p_message_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_message_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "owners and managers with every store resend an uncertain or failed digest, correction or alert: a new queued row with resend_of set and the dedupe key <base>:resend:<n> from app.next_resend_number, the original kept unchanged as evidence, and the dispatcher woken; 42501 for any other caller or a message they cannot see, 22023 for another state or kind, a removed destination or a purged digest text",
+				"tags": ["(rpc) resend_message"]
 			}
 		},
 		"/rpc/resolve_incident": {
@@ -41009,6 +41538,43 @@
 					}
 				},
 				"tags": ["(rpc) seasonal_naive_forecast"]
+			}
+		},
+		"/rpc/send_test_message": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "queues a test message to an active, enabled destination for its member or an owner or manager with every store, then wakes the dispatcher; a test ignores the window and the caps but never the consent or the destination's state; at most one a minute and 5 an hour per destination (22023 with hint rate_limited); 22023 for a webhook or an inactive destination, 42501 for anyone else; returns the message id",
+							"properties": {
+								"p_channel_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_channel_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "queues a test message to an active, enabled destination for its member or an owner or manager with every store, then wakes the dispatcher; a test ignores the window and the caps but never the consent or the destination's state; at most one a minute and 5 an hour per destination (22023 with hint rate_limited); 22023 for a webhook or an inactive destination, 42501 for anyone else; returns the message id",
+				"tags": ["(rpc) send_test_message"]
 			}
 		},
 		"/rpc/set_announcement_pin": {
@@ -41896,6 +42462,51 @@
 				"tags": ["(rpc) start_bot_link"]
 			}
 		},
+		"/rpc/start_channel_link": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the signed-in member links their own destination from Settings → Cảnh báo, after the page showed the notice ops-notifications-v1: for zalo_bot and telegram it reuses their pending or self-stopped destination or creates one, issues a code valid 15 minutes that is returned once and kept only as a hash, and wakes the dispatcher; the destination turns active, and the consent is recorded, only at the member's own ĐỒNG Ý in the chat; for email it activates the member's login address at once and records the notifications consent with method web_session; returns channel_id, status, link_code, expires_at and bot_name, never an address; 22023 for webhook or another kind, a long label or past 5 links an hour (hint rate_limited), 23505 when that chat is already linked, 42501 for a non-member, a publisher or a link the owner removed",
+							"properties": {
+								"p_kind": {
+									"format": "channel_kind",
+									"type": "string"
+								},
+								"p_label": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_tenant_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant_id", "p_kind"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the signed-in member links their own destination from Settings → Cảnh báo, after the page showed the notice ops-notifications-v1: for zalo_bot and telegram it reuses their pending or self-stopped destination or creates one, issues a code valid 15 minutes that is returned once and kept only as a hash, and wakes the dispatcher; the destination turns active, and the consent is recorded, only at the member's own ĐỒNG Ý in the chat; for email it activates the member's login address at once and records the notifications consent with method web_session; returns channel_id, status, link_code, expires_at and bot_name, never an address; 22023 for webhook or another kind, a long label or past 5 links an hour (hint rate_limited), 23505 when that chat is already linked, 42501 for a non-member, a publisher or a link the owner removed",
+				"tags": ["(rpc) start_channel_link"]
+			}
+		},
 		"/rpc/start_checklist_run": {
 			"post": {
 				"parameters": [
@@ -42288,6 +42899,73 @@
 				},
 				"summary": "RPC for the staff app's home card: app.today_store_totals",
 				"tags": ["(rpc) today_store_totals"]
+			}
+		},
+		"/rpc/update_destination": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the destination's member, or an owner with every store for any destination, changes its enabled flag, label (1 to 60 characters), store narrowing (only within the member's own stores; p_clear_store_ids removes it), muted catalogue rules and reader zone (IANA); a null argument keeps the value; returns the changed row without address, secret or configuration; 22023 for bad input, 42501 for anyone else",
+							"properties": {
+								"p_channel_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_clear_store_ids": {
+									"format": "boolean",
+									"type": "boolean"
+								},
+								"p_enabled": {
+									"format": "boolean",
+									"type": "boolean"
+								},
+								"p_label": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_muted_rules": {
+									"format": "text[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"p_timezone": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_channel_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the destination's member, or an owner with every store for any destination, changes its enabled flag, label (1 to 60 characters), store narrowing (only within the member's own stores; p_clear_store_ids removes it), muted catalogue rules and reader zone (IANA); a null argument keeps the value; returns the changed row without address, secret or configuration; 22023 for bad input, 42501 for anyone else",
+				"tags": ["(rpc) update_destination"]
 			}
 		},
 		"/rpc/update_handover": {
@@ -44212,6 +44890,33 @@
 						"$ref": "#/parameters/rowFilter.strategy_reports.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.plan_format"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.prompt_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.pack_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.pack_schema_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.as_of_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.content_sha256"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.lint"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.archived_at"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -44262,6 +44967,33 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.strategy_reports.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.plan_format"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.prompt_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.pack_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.pack_schema_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.as_of_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.content_sha256"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.lint"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.archived_at"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -44341,6 +45073,33 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.strategy_reports.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.store_ids"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.plan_format"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.prompt_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.pack_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.pack_schema_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.as_of_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.content_sha256"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.lint"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.strategy_reports.archived_at"
 					},
 					{
 						"$ref": "#/parameters/body.strategy_reports"

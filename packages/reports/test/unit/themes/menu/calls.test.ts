@@ -81,7 +81,10 @@ describe("the Thực đơn calls", () => {
 			menuCalls.attachPreviousCovered,
 		]);
 		expect(
-			followUps.every((call) => call.args.store_ids?.[0] === STORE_A),
+			followUps.every(
+				(call) =>
+					"store_ids" in call.args && call.args.store_ids[0] === STORE_A,
+			),
 		).toBe(true);
 	});
 });

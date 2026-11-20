@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-export const AGREED_REPORTS_EXPORTS = [
+const AGREED_REPORTS_EXPORTS = [
 	"AnalyticsArgs",
 	"AnalyticsCallError",
 	"AnalyticsFunctionName",
@@ -38,7 +38,7 @@ function typescriptFiles(directory: string): string[] {
 	});
 }
 
-export function reportsImportsOf(source: string): string[] {
+function reportsImportsOf(source: string): string[] {
 	return [...source.matchAll(IMPORT)].flatMap((match) =>
 		(match[1] ?? "")
 			.split(",")

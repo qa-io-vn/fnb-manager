@@ -57,8 +57,9 @@ test("the sub-navigation opens each page on a phone and as a side column on a co
 	await expect(page.getByTestId("settings-placeholder")).toHaveCount(0);
 	await settingsNav(page).getByRole("link", { name: "Cảnh báo" }).click();
 	await expectCurrentSettingsPage(page, "Cảnh báo");
-	await expect(page.getByTestId("settings-placeholder")).toContainText("12");
-	await expect(page.getByTestId("settings-slot-summary")).toBeVisible();
+	await expect(page.getByTestId("canh-bao-page")).toBeVisible();
+	await expect(page.getByTestId("settings-placeholder")).toHaveCount(0);
+	await expect(page.getByTestId("settings-slot-summary")).toHaveCount(0);
 });
 
 test("the links the reports give to Settings still land on their page", async ({
