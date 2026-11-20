@@ -307,7 +307,9 @@ end;
 $$;
 
 create temp table t as
-select date_trunc('hour', now()) - interval '1 day' + interval '10 hours' as t0, app.store_business_date((select store_a1 from fx), date_trunc('hour', now()) - interval '1 day' + interval '10 hours') as day0;
+-- t0 is 10:00 Vietnam time on the previous calendar day, so t0 and every offset the tests add (up to 26 hours) stay clear of the
+-- local midnight whatever time of day the suite runs; the midnight itself is tested below with fixed instants
+select ((now() at time zone 'Asia/Ho_Chi_Minh')::date - 1 + time '10:00') at time zone 'Asia/Ho_Chi_Minh' as t0, app.store_business_date((select store_a1 from fx), ((now() at time zone 'Asia/Ho_Chi_Minh')::date - 1 + time '10:00') at time zone 'Asia/Ho_Chi_Minh') as day0;
 
 -- A signed form answer received now but sent at p_sent: the replay of an old delivery.
 create function pg_temp.late_form(p_user text, p_phone text, p_sent timestamptz)
@@ -325,7 +327,7 @@ begin
 end;
 $$;
 
-select plan(26);
+select plan(30);
 
 -- Receipt claims: at most receipt_claims_per_phone_per_day (3) submissions a business day, refused ones counted.
 select is(
@@ -363,6 +365,28 @@ select is(
    from generate_series(1, 2) n),
   'pending,rejected',
   'so after two refused claims one more is taken and the next is refused');
+
+-- boundary values at the business-day midnight (Vietnam time, day start 00:00): three claims in the last three minutes of a
+-- day fill its cap, a fourth 30 seconds before midnight is refused, one at the stroke of midnight starts a new count
+create temp table edge as
+select ((((select day0 from t) + 10) + 1)::timestamp) at time zone 'Asia/Ho_Chi_Minh' as midnight, (select day0 from t) + 10 as day_before;
+select is(
+  (select string_agg(coalesce(pg_temp.claim('customer_2', 'R-125-E' || n, (select day_before from edge), (select midnight from edge) - make_interval(mins => 4 - n)) ->> 'state', 'null'), ',' order by n)
+   from generate_series(1, 3) n),
+  'pending,pending,pending',
+  'boundary: three claims before midnight are taken');
+select is(
+  pg_temp.claim('customer_2', 'R-125-E4', (select day_before from edge), (select midnight from edge) - interval '30 seconds') ->> 'reason',
+  'daily_cap',
+  'boundary: the fourth, 30 seconds before midnight, is refused');
+select is(
+  pg_temp.claim('customer_2', 'R-125-E5', (select day_before from edge) + 1, (select midnight from edge)) ->> 'state',
+  'pending',
+  'boundary: at midnight sharp the new business day starts a new count');
+select is(
+  pg_temp.claim('customer_2', 'R-125-E6', (select day_before from edge), (select midnight from edge) + interval '1 minute') ->> 'reason',
+  null,
+  'boundary: a receipt of the day that has just ended is still inside the claim window and counts toward the new day, not the old one');
 
 -- Zalo Bot link codes: at most 5 starts an hour per member.
 select is(
