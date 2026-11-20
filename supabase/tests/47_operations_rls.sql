@@ -557,7 +557,7 @@ select is(
         'app.set_staff_contact_instructions', 'app.set_staff_revenue_visibility', 'app.today_store_totals', 'app.update_staff',
         'app.withdraw_staff_ops_consent', 'public.customer_coupons', 'public.customer_home', 'public.customer_member_code', 'public.customer_redeem', 'public.customer_request_deletion',
         'public.customer_stop_marketing', 'public.customer_submit_claim', 'public.customer_vouchers', 'public.customer_wallet',
-        'public.dsr_delete', 'public.loyalty_member_lookup', 'public.loyalty_members_page', 'public.my_follow_oa', 'public.my_notifications',
+        'public.dsr_correct', 'public.dsr_delete', 'public.dsr_deletion_preview', 'public.dsr_due_soon', 'public.dsr_export', 'public.dsr_lookup', 'public.loyalty_member_lookup', 'public.loyalty_members_page', 'public.my_follow_oa', 'public.my_notifications',
         'public.oa_event_counts', 'public.phone_masked', 'public.publish_legal_document', 'public.refresh_my_analytics',
         'public.retire_legal_document', 'public.set_loyalty_adjust_limits', 'public.set_my_muted_rules', 'public.staff_decide_loyalty_request', 'public.staff_loyalty_queue',
         'public.staff_member_lookup', 'public.staff_my_loyalty_requests', 'public.staff_record_checkin', 'public.staff_request',
