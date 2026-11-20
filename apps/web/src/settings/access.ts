@@ -17,7 +17,8 @@ export type SettingsArea =
 	| "checklists"
 	| "loyalty"
 	| "rewards"
-	| "rewardApproval";
+	| "rewardApproval"
+	| "loyaltyConfirmation";
 
 export type ReadOnlyReason =
 	| "notMember"
@@ -86,6 +87,18 @@ function openingHoursAccess(
 	return membership.role === "owner" ? ALLOWED : denied("ownerOnly");
 }
 
+/** set_loyalty_store_settings: an owner of the whole tenant or of that store. */
+function storeOwnerAccess(
+	membership: Membership,
+	storeId: string | null,
+): SettingsAccess {
+	if (membership.role !== "owner") return denied("ownerOnly");
+	if (membership.storeIds === null) return ALLOWED;
+	return storeId !== null && membership.storeIds.includes(storeId)
+		? ALLOWED
+		: denied("scope");
+}
+
 const AREA_ACCESS: Readonly<
 	Record<
 		SettingsArea,
@@ -109,6 +122,7 @@ const AREA_ACCESS: Readonly<
 	loyalty: rolesAccess,
 	rewards: rolesAccess,
 	rewardApproval: unlimitedOwnerAccess,
+	loyaltyConfirmation: storeOwnerAccess,
 };
 
 export function settingsAccess(

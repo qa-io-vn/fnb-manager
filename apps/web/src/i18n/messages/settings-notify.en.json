@@ -238,5 +238,6 @@
 	"settings.notify.test.stillQueued": "The test is still waiting after a minute.",
 	"settings.notify.test.uncertain": "It is not certain whether the test arrived.",
 	"settings.notify.test.waiting": "Sending the test…",
-	"settings.notify.yes": "Yes"
+	"settings.notify.yes": "Yes",
+	"settings.notify.rule.loyalty_staff_anomaly": "Counter confirmation anomaly"
 }

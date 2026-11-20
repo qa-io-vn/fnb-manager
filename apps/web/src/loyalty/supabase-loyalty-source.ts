@@ -22,12 +22,16 @@ import {
 } from "../settings/supabase-common";
 import { PARAMETER_COLUMNS, refusedProgrammeField } from "./programme-columns";
 import {
+	BILL_READER_MODES,
+	type BillAnomalyRow,
+	CONFIRMATION_MODES,
 	type CustomerSource,
 	type InvoiceReference,
 	type LedgerEntryRow,
 	type LoyaltyProgrammeChange,
 	type LoyaltyProgrammeRecord,
 	type LoyaltySource,
+	type LoyaltyStoreSettings,
 	LoyaltyWriteError,
 	MEMBERSHIP_STATUSES,
 	type MemberRow,
@@ -36,8 +40,13 @@ import {
 	type QueueItemRow,
 	RFM_SEGMENTS,
 	type ShiftAnomaly,
+	SILENCE_OUTCOMES,
 	type StaffPhoneRow,
 } from "./source";
+import {
+	STORE_SETTING_COLUMNS,
+	storeSettingsPayload,
+} from "./store-settings-columns";
 
 export const ID_CHUNK = 100;
 export const READ_PAGE = 1_000;
@@ -91,6 +100,129 @@ const staffPhoneRow = z.object({
 	label: z.string().nullable(),
 	created_at: z.string(),
 });
+
+export const STORE_SETTINGS_FUNCTION = "set_loyalty_store_settings";
+export const BILL_ANOMALY_FUNCTION = "bill_anomaly_report";
+
+export const STORE_SETTINGS_SELECT = [
+	"store_id",
+	...Object.values(STORE_SETTING_COLUMNS),
+	"updated_at",
+].join(",");
+
+const wholeCount = numeric.pipe(z.number().int().nonnegative());
+
+/** A row of loyalty_store_settings or the answer of set_loyalty_store_settings. */
+export const storeSettingsRow = z.object({
+	store_id: z.string().min(1),
+	confirmation: z.enum(CONFIRMATION_MODES),
+	max_bill_amount: numeric.pipe(z.number().positive()),
+	bill_evidence_required_level: z.union([
+		z.literal(0),
+		z.literal(1),
+		z.literal(2),
+	]),
+	bill_manager_approval_above: numeric.pipe(z.number().positive()),
+	bill_amount_tolerance: numeric.pipe(z.number().nonnegative()),
+	bill_unconfirmed_hours: wholeCount,
+	bill_silence_outcome: z.enum(SILENCE_OUTCOMES),
+	bill_staff_shift_cap: wholeCount,
+	staff_amount_per_day: numeric.pipe(z.number().positive()),
+	store_earns_per_day: wholeCount,
+	staff_redemptions_per_day: wholeCount,
+	reverse_window_minutes: wholeCount,
+	bill_audit_sample_pct: numeric.pipe(z.number().min(0).max(100)),
+	self_claim: z.boolean(),
+	counter_code_ttl_seconds: wholeCount,
+	auto_approve_max_amount: numeric.pipe(z.number().nonnegative()),
+	auto_approve_per_day: wholeCount,
+	bill_photo_retention_days: wholeCount,
+	bill_reader_mode: z.enum(BILL_READER_MODES),
+	shadow_reconcile: z.boolean(),
+	updated_at: z.string(),
+});
+
+export function storeSettingsOf(
+	row: z.infer<typeof storeSettingsRow>,
+): LoyaltyStoreSettings {
+	return {
+		storeId: row.store_id,
+		confirmation: row.confirmation,
+		maxBillAmount: row.max_bill_amount,
+		billEvidenceRequiredLevel: row.bill_evidence_required_level,
+		billManagerApprovalAbove: row.bill_manager_approval_above,
+		billAmountTolerance: row.bill_amount_tolerance,
+		billUnconfirmedHours: row.bill_unconfirmed_hours,
+		billSilenceOutcome: row.bill_silence_outcome,
+		billStaffShiftCap: row.bill_staff_shift_cap,
+		staffAmountPerDay: row.staff_amount_per_day,
+		storeEarnsPerDay: row.store_earns_per_day,
+		staffRedemptionsPerDay: row.staff_redemptions_per_day,
+		reverseWindowMinutes: row.reverse_window_minutes,
+		billAuditSamplePct: row.bill_audit_sample_pct,
+		selfClaim: row.self_claim,
+		counterCodeTtlSeconds: row.counter_code_ttl_seconds,
+		autoApproveMaxAmount: row.auto_approve_max_amount,
+		autoApprovePerDay: row.auto_approve_per_day,
+		billPhotoRetentionDays: row.bill_photo_retention_days,
+		billReaderMode: row.bill_reader_mode,
+		shadowReconcile: row.shadow_reconcile,
+		updatedAt: row.updated_at,
+	};
+}
+
+/** A row of bill_anomaly_report. */
+export const billAnomalyRow = z.object({
+	store_id: z.string().min(1),
+	business_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+	staff_user_id: z.string().nullable(),
+	staff_name: z.string().nullable(),
+	bills: wholeCount,
+	bills_total: numeric,
+	level0: wholeCount,
+	level2: wholeCount,
+	confirmed: wholeCount,
+	queued: wholeCount,
+	disagreements: wholeCount,
+	disputes: wholeCount,
+	timed_out: wholeCount,
+	reversals: wholeCount,
+	audits_failed: wholeCount,
+	redemptions_confirmed: wholeCount,
+	top_member_share: nullableNumeric,
+	amount_outliers: wholeCount,
+	max_bills_in_hour: nullableNumeric,
+	peer_median_bills: nullableNumeric,
+	flags: z.array(z.string()),
+});
+
+export function billAnomalyOf(
+	row: z.infer<typeof billAnomalyRow>,
+): BillAnomalyRow {
+	return {
+		storeId: row.store_id,
+		businessDate: row.business_date,
+		staffUserId: row.staff_user_id,
+		staffName: row.staff_name,
+		bills: row.bills,
+		billsTotal: row.bills_total,
+		level0: row.level0,
+		level2: row.level2,
+		confirmed: row.confirmed,
+		queued: row.queued,
+		disagreements: row.disagreements,
+		disputes: row.disputes,
+		timedOut: row.timed_out,
+		reversals: row.reversals,
+		auditsFailed: row.audits_failed,
+		redemptionsConfirmed: row.redemptions_confirmed,
+		topMemberShare: row.top_member_share,
+		amountOutliers: row.amount_outliers,
+		maxBillsInHour: row.max_bills_in_hour,
+		peerMedianBills: row.peer_median_bills,
+		flags: row.flags,
+	};
+}
 
 export const MEMBERS_PAGE_FUNCTION = "loyalty_members_page";
 export const MEMBER_LOOKUP_FUNCTION = "loyalty_member_lookup";
@@ -516,6 +648,49 @@ export function createSupabaseLoyaltySource(
 					.select("id"),
 			);
 			if (removed.length === 0) throw new SettingsWriteError("forbidden");
+		},
+		async storeSettings(tenantId, storeIds) {
+			const rows: LoyaltyStoreSettings[] = [];
+			for (const part of chunks([...new Set(storeIds)], ID_CHUNK)) {
+				const found = await fetchOnce(
+					storeSettingsRow,
+					client
+						.from("loyalty_store_settings")
+						.select(STORE_SETTINGS_SELECT)
+						.eq("tenant_id", tenantId)
+						.in("store_id", part),
+				);
+				rows.push(...found.map(storeSettingsOf));
+			}
+			return rows;
+		},
+		async saveStoreSettings(_tenantId, storeId, change) {
+			let result: { data: unknown; error: PostgrestFailure | null };
+			try {
+				result = await client.rpc(STORE_SETTINGS_FUNCTION, {
+					p_store_id: storeId,
+					p_settings: storeSettingsPayload(change),
+				});
+			} catch {
+				throw new SettingsWriteError("network");
+			}
+			if (result.error !== null) throw writeErrorOf(result.error);
+			return storeSettingsOf(storeSettingsRow.parse(result.data));
+		},
+		async billAnomalies(storeIds, from, to) {
+			const rows: BillAnomalyRow[] = [];
+			for (const part of chunks([...new Set(storeIds)], REPORT_STORE_CHUNK)) {
+				const found = await fetchOnce(
+					billAnomalyRow,
+					client.rpc(BILL_ANOMALY_FUNCTION, {
+						p_store_ids: part,
+						p_from: from,
+						p_to: to,
+					}),
+				);
+				rows.push(...found.map(billAnomalyOf));
+			}
+			return rows;
 		},
 	};
 }

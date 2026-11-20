@@ -7,6 +7,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { csvOfRows } from "../components/report-card/data-table";
 import { I18nProvider, translate } from "../i18n";
+import { AnomaliesPage } from "../pages/loyalty/anomalies-page";
 import { MemberPage } from "../pages/loyalty/member-page";
 import { MembersPage } from "../pages/loyalty/members-page";
 import { QueuePage } from "../pages/loyalty/queue-page";
@@ -15,6 +16,7 @@ import { createDemoSettingsSource } from "../settings/demo-settings-source";
 import type { Membership, SettingsSource } from "../settings/source";
 import { vndFormatters } from "../test/render";
 import { loyaltyReadAccess } from "./access";
+import { createDemoLoyaltySource } from "./demo-loyalty-source";
 import {
 	anomalyRows,
 	anomalySummary,
@@ -32,6 +34,7 @@ import type {
 	CustomerSource,
 	InvoiceReference,
 	LedgerEntryRow,
+	LoyaltySource,
 	MemberRow,
 	QueueItemRow,
 	ShiftAnomaly,
@@ -560,13 +563,14 @@ function renderPage(
 	{
 		membership = { role: "owner", storeIds: null } as Membership,
 		customers = fakeCustomers() as FakeCustomers | null,
+		loyalty = null as LoyaltySource | null,
 	} = {},
 ) {
 	const source: SettingsSource = {
 		...createDemoSettingsSource(new DemoSettingsStore()),
 		membership: async () => membership,
 	};
-	current.state = { status: "ready", source, customers };
+	current.state = { status: "ready", source, customers, loyalty };
 	const client = new QueryClient({
 		defaultOptions: { queries: { retry: false } },
 	});
@@ -710,6 +714,50 @@ describe("the members page", () => {
 		expect(screen.queryByTestId("loyalty-lookup")).toBeNull();
 		expect(screen.getByTestId("loyalty-tabs")).toBeVisible();
 	});
+});
+
+describe("the anomalies page", () => {
+	it("shows the demo's per-staff counter confirmation report below the explanation, without the shift table", async () => {
+		renderPage(
+			<AnomaliesPage />,
+			"/khach-hang/bat-thuong",
+			"/khach-hang/bat-thuong",
+			{ customers: null, loyalty: createDemoLoyaltySource() },
+		);
+		expect(await screen.findByTestId("loyalty-demo")).toHaveTextContent(
+			"Mục này cần dữ liệu thật",
+		);
+		expect((await screen.findAllByTestId("bill-anomaly-row")).length).toBe(5);
+		expect(screen.queryByTestId("loyalty-anomalies")).toBeNull();
+	});
+
+	// Decision table, read side: owners and managers see the per-staff report,
+	// viewers see the shift table only.
+	it.each([
+		["owner", true],
+		["manager", true],
+		["viewer", false],
+	] as const)(
+		"with live data the %s sees the per-staff report: %s",
+		async (role, sees) => {
+			const loyalty = createDemoLoyaltySource();
+			renderPage(
+				<AnomaliesPage />,
+				"/khach-hang/bat-thuong",
+				"/khach-hang/bat-thuong",
+				{ membership: { role, storeIds: null }, loyalty },
+			);
+			expect(await screen.findByTestId("loyalty-anomalies")).toBeVisible();
+			if (sees) {
+				expect((await screen.findAllByTestId("bill-anomaly-row")).length).toBe(
+					5,
+				);
+			} else {
+				expect(screen.getByTestId("bill-anomalies-read-only")).toBeVisible();
+				expect(screen.queryByTestId("bill-anomaly-row")).toBeNull();
+			}
+		},
+	);
 });
 
 describe("the member ledger page", () => {

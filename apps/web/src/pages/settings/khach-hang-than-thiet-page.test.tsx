@@ -15,6 +15,8 @@ import type {
 import { createDemoSettingsSource } from "../../settings/demo-settings-source";
 import type { Membership, SettingsSource } from "../../settings/source";
 import KhachHangThanThietPage, {
+	LOYALTY_TABS,
+	loyaltyTabOf,
 	preferredProgramme,
 	withSavedProgramme,
 } from "./khach-hang-than-thiet-page";
@@ -112,10 +114,19 @@ function fakeLoyalty(
 				1,
 			);
 		}),
+		storeSettings: vi.fn(async () => []),
+		saveStoreSettings: vi.fn(async () => {
+			throw new Error("not used here");
+		}),
+		billAnomalies: vi.fn(async () => []),
 	};
 }
 
-function renderPage(membership: Membership, loyalty: LoyaltySource) {
+function renderPage(
+	membership: Membership,
+	loyalty: LoyaltySource,
+	entry = "/",
+) {
 	const source: SettingsSource = {
 		...createDemoSettingsSource(new DemoSettingsStore()),
 		kind: loyalty.kind,
@@ -126,7 +137,7 @@ function renderPage(membership: Membership, loyalty: LoyaltySource) {
 		defaultOptions: { queries: { retry: false } },
 	});
 	render(
-		<MemoryRouter>
+		<MemoryRouter initialEntries={[entry]}>
 			<I18nProvider language="vi" onLanguageChange={() => undefined}>
 				<QueryClientProvider client={client}>
 					<KhachHangThanThietPage />
@@ -161,6 +172,28 @@ describe("Khách hàng thân thiết", () => {
 			"a",
 			"d",
 		]);
+	});
+
+	it("adds the Xác nhận tại quầy tab after Chương trình and Ưu đãi, and falls back to the first tab for an unknown slug", async () => {
+		expect(LOYALTY_TABS.map((tab) => tab.slug)).toEqual([
+			"chuong-trinh",
+			"uu-dai",
+			"xac-nhan",
+		]);
+		expect(loyaltyTabOf("xac-nhan").slug).toBe("xac-nhan");
+		expect(loyaltyTabOf("khong-co").slug).toBe("chuong-trinh");
+		renderPage(OWNER, createDemoLoyaltySource(), "/?tab=xac-nhan");
+		const tabs = screen.getByTestId("loyalty-tabs");
+		expect(
+			within(tabs)
+				.getAllByRole("link")
+				.map((link) => link.textContent),
+		).toEqual(["Chương trình", "Ưu đãi", "Xác nhận tại quầy"]);
+		expect(
+			within(tabs).getByRole("link", { name: "Xác nhận tại quầy" }),
+		).toHaveAttribute("aria-current", "page");
+		expect(screen.getByTestId("loyalty-confirmation")).toBeVisible();
+		expect(screen.queryByTestId("loyalty-programme")).toBeNull();
 	});
 
 	it("shows the demo's sample programme read only, with masked sample staff phones", async () => {

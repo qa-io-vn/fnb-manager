@@ -17,7 +17,11 @@ const PAGES = [
 	{ slug: "bat-thuong", tab: "Bất thường theo ca" },
 ] as const;
 
-async function expectExplanation(page: Page, tab: string): Promise<void> {
+async function expectExplanation(
+	page: Page,
+	tab: string,
+	staffReport = false,
+): Promise<void> {
 	await expect(
 		page.getByRole("heading", { level: 1, name: `Khách hàng · ${tab}` }),
 	).toBeVisible();
@@ -25,6 +29,14 @@ async function expectExplanation(page: Page, tab: string): Promise<void> {
 		page.getByTestId("loyalty-tabs").locator('[aria-current="page"]'),
 	).toHaveText(tab);
 	await expect(page.getByTestId("loyalty-demo")).toHaveText(EXPLANATION);
+	if (staffReport) {
+		// The demo has sample counter-confirmation settings, so the per-staff
+		// report of a store in staff mode shows; the shift table needs live data.
+		await expect(page.getByTestId("loyalty-anomalies")).toHaveCount(0);
+		await expect(page.getByTestId("bill-anomalies")).toBeVisible();
+		await expect(page.getByTestId("range-picker")).toBeVisible();
+		return;
+	}
 	await expect(page.locator("main table")).toHaveCount(0);
 	await expect(page.locator("main input")).toHaveCount(0);
 	await expect(page.locator("main button")).toHaveCount(0);
@@ -50,7 +62,7 @@ test("the customer section explains on each tab that it needs live data, with no
 			.getByRole("link", { name: target.tab })
 			.click();
 		await expect(page).toHaveURL(new RegExp(`#/khach-hang/${target.slug}$`));
-		await expectExplanation(page, target.tab);
+		await expectExplanation(page, target.tab, target.slug === "bat-thuong");
 		await checkPage(page);
 	}
 	await page.getByRole("button", { name: "EN", exact: true }).click();

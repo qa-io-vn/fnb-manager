@@ -299,6 +299,15 @@ describe("settingsAccess", () => {
 			viewer: "role role role",
 			publisher: "role role role",
 		},
+		loyaltyConfirmation: {
+			owner: "write write write",
+			"store-limited owner": "scope write scope",
+			manager: "ownerOnly ownerOnly ownerOnly",
+			"store-limited manager": "ownerOnly ownerOnly ownerOnly",
+			staff: "ownerOnly ownerOnly ownerOnly",
+			viewer: "ownerOnly ownerOnly ownerOnly",
+			publisher: "ownerOnly ownerOnly ownerOnly",
+		},
 		rewardApproval: {
 			owner: "write write write",
 			"store-limited owner": "ownerOnly ownerOnly ownerOnly",

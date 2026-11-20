@@ -29,6 +29,15 @@ describe("notify words", () => {
 		}
 	});
 
+	it("names the counter confirmation anomaly rule of the staff mode", () => {
+		expect(RULE_LABEL_KEYS.loyalty_staff_anomaly).toBe(
+			"settings.notify.rule.loyalty_staff_anomaly",
+		);
+		expect(messages.vi["settings.notify.rule.loyalty_staff_anomaly"]).toBe(
+			"Bất thường xác nhận tại quầy",
+		);
+	});
+
 	it("maps known and unknown codes to words without leaking raw keys", () => {
 		expect(kindKey("zalo_bot")).toBe("settings.notify.kind.zalo_bot");
 		expect(kindKey("sms")).toBe("settings.notify.kind.other");

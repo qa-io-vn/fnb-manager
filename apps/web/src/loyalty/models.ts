@@ -47,6 +47,7 @@ export const PATH_KEYS: Readonly<Record<MatchedPath, MessageKey>> = {
 	B: "loyalty.path.B",
 	C: "loyalty.path.C",
 	D: "loyalty.path.D",
+	E: "loyalty.path.E",
 };
 
 export const REFUSAL_KEYS: Readonly<Record<LoyaltyRefusalReason, MessageKey>> =

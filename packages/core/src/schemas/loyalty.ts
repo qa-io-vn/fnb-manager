@@ -273,7 +273,7 @@ export const LOYALTY_ENTRY_KINDS = [
 export const loyaltyEntryKindSchema = z.enum(LOYALTY_ENTRY_KINDS);
 export type LoyaltyEntryKind = z.infer<typeof loyaltyEntryKindSchema>;
 
-export const MATCHED_PATHS = ["A", "B", "C", "D"] as const;
+export const MATCHED_PATHS = ["A", "B", "C", "D", "E"] as const;
 export const matchedPathSchema = z.enum(MATCHED_PATHS);
 export type MatchedPath = z.infer<typeof matchedPathSchema>;
 

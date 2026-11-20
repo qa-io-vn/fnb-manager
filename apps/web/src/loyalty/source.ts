@@ -69,6 +69,100 @@ export interface StaffPhoneChange {
 	readonly label: string | null;
 }
 
+export const CONFIRMATION_MODES = ["pos_sync", "staff"] as const;
+
+/** What confirms a loyalty earn or redemption at a store (loyalty_store_settings.confirmation). */
+export type ConfirmationMode = (typeof CONFIRMATION_MODES)[number];
+
+export const SILENCE_OUTCOMES = ["reverse", "confirm"] as const;
+
+export type SilenceOutcome = (typeof SILENCE_OUTCOMES)[number];
+
+export const BILL_READER_MODES = ["off", "mock"] as const;
+
+export type BillReaderMode = (typeof BILL_READER_MODES)[number];
+
+export const EVIDENCE_LEVELS = [0, 1, 2] as const;
+
+export type EvidenceLevel = (typeof EVIDENCE_LEVELS)[number];
+
+/** The owner's knobs of one store's loyalty confirmation, in the units the database keeps. */
+export interface LoyaltyStoreKnobs {
+	readonly confirmation: ConfirmationMode;
+	readonly maxBillAmount: number;
+	readonly billEvidenceRequiredLevel: EvidenceLevel;
+	readonly billManagerApprovalAbove: number;
+	readonly billAmountTolerance: number;
+	readonly billUnconfirmedHours: number;
+	readonly billSilenceOutcome: SilenceOutcome;
+	readonly billStaffShiftCap: number;
+	readonly staffAmountPerDay: number;
+	readonly storeEarnsPerDay: number;
+	readonly staffRedemptionsPerDay: number;
+	readonly reverseWindowMinutes: number;
+	readonly billAuditSamplePct: number;
+	readonly selfClaim: boolean;
+	readonly counterCodeTtlSeconds: number;
+	readonly autoApproveMaxAmount: number;
+	readonly autoApprovePerDay: number;
+	readonly billPhotoRetentionDays: number;
+	readonly billReaderMode: BillReaderMode;
+	readonly shadowReconcile: boolean;
+}
+
+export type LoyaltyStoreKnob = keyof LoyaltyStoreKnobs;
+
+/** One row of loyalty_store_settings (never the tenant or the author). */
+export interface LoyaltyStoreSettings extends LoyaltyStoreKnobs {
+	readonly storeId: string;
+	readonly updatedAt: string;
+}
+
+/** The knobs to change; set_loyalty_store_settings takes a partial object. */
+export type LoyaltyStoreSettingsChange = Partial<LoyaltyStoreKnobs>;
+
+export const BILL_ANOMALY_FLAGS = [
+	"peer_outlier",
+	"disagreements",
+	"disputes",
+	"timeouts",
+	"one_member",
+	"amount_outliers",
+	"audit_failed",
+	"burst",
+] as const;
+
+export type BillAnomalyFlag = (typeof BILL_ANOMALY_FLAGS)[number];
+
+/**
+ * One row of bill_anomaly_report: a store's business day and one staff
+ * member (null: counter claims approved automatically). Staff names only,
+ * never a phone. Flags the browser does not know yet are kept as text.
+ */
+export interface BillAnomalyRow {
+	readonly storeId: string;
+	readonly businessDate: IsoDate;
+	readonly staffUserId: string | null;
+	readonly staffName: string | null;
+	readonly bills: number;
+	readonly billsTotal: number;
+	readonly level0: number;
+	readonly level2: number;
+	readonly confirmed: number;
+	readonly queued: number;
+	readonly disagreements: number;
+	readonly disputes: number;
+	readonly timedOut: number;
+	readonly reversals: number;
+	readonly auditsFailed: number;
+	readonly redemptionsConfirmed: number;
+	readonly topMemberShare: number | null;
+	readonly amountOutliers: number;
+	readonly maxBillsInHour: number | null;
+	readonly peerMedianBills: number | null;
+	readonly flags: readonly string[];
+}
+
 export interface LoyaltySource {
 	readonly kind: "supabase" | "demo";
 	programmes(tenantId: string): Promise<LoyaltyProgrammeRecord[]>;
@@ -82,6 +176,23 @@ export interface LoyaltySource {
 		change: StaffPhoneChange,
 	): Promise<StaffPhoneRow>;
 	removeStaffPhone(tenantId: string, id: string): Promise<void>;
+	/** The confirmation settings of the given stores the caller may read (RLS leaves the others out). */
+	storeSettings(
+		tenantId: string,
+		storeIds: readonly string[],
+	): Promise<LoyaltyStoreSettings[]>;
+	/** An owner of the store changes some knobs; returns the whole row. */
+	saveStoreSettings(
+		tenantId: string,
+		storeId: string,
+		change: LoyaltyStoreSettingsChange,
+	): Promise<LoyaltyStoreSettings>;
+	/** bill_anomaly_report for owners and managers; other stores are left out silently. */
+	billAnomalies(
+		storeIds: readonly string[],
+		from: IsoDate,
+		to: IsoDate,
+	): Promise<BillAnomalyRow[]>;
 }
 
 export const MEMBERSHIP_STATUSES = ["active", "suspended", "closed"] as const;

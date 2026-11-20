@@ -98,10 +98,13 @@ export function CustomersLayout({
 	page,
 	subtitle,
 	children,
+	withoutCustomerData,
 }: {
 	readonly page: CustomerPage;
 	readonly subtitle?: string;
 	readonly children: (context: CustomerContext) => ReactNode;
+	/** What a page still shows below the demo explanation, from data the demo has. */
+	readonly withoutCustomerData?: (access: LoyaltyAccess) => ReactNode;
 }) {
 	const t = useT();
 	const source = useCustomerSource();
@@ -119,7 +122,16 @@ export function CustomersLayout({
 	].join(" · ");
 	let body: ReactNode;
 	if (source.status === "unavailable") {
-		body = <Notice testId="loyalty-demo">{t("loyalty.demo")}</Notice>;
+		body = (
+			<>
+				<Notice testId="loyalty-demo">{t("loyalty.demo")}</Notice>
+				{withoutCustomerData !== undefined &&
+				membership.status === "success" &&
+				access.canRead
+					? withoutCustomerData(access)
+					: null}
+			</>
+		);
 	} else if (source.status === "failed") {
 		body = <Failed onRetry={retrySource} />;
 	} else if (membership.status === "error") {

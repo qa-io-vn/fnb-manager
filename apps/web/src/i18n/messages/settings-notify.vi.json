@@ -238,5 +238,6 @@
 	"settings.notify.test.stillQueued": "Tin thử vẫn đang chờ sau 1 phút.",
 	"settings.notify.test.uncertain": "Chưa rõ tin thử đã đến hay chưa.",
 	"settings.notify.test.waiting": "Đang gửi tin thử…",
-	"settings.notify.yes": "Có"
+	"settings.notify.yes": "Có",
+	"settings.notify.rule.loyalty_staff_anomaly": "Bất thường xác nhận tại quầy"
 }

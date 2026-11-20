@@ -20,7 +20,11 @@ test("the Ưu đãi tab of Khách hàng thân thiết shows the demo's sample ca
 	await openSettings(page, "khach-hang-than-thiet");
 	await expectCurrentSettingsPage(page, "Khách hàng thân thiết");
 	const tabs = page.getByTestId("loyalty-tabs");
-	await expect(tabs.getByRole("link")).toHaveText(["Chương trình", "Ưu đãi"]);
+	await expect(tabs.getByRole("link")).toHaveText([
+		"Chương trình",
+		"Ưu đãi",
+		"Xác nhận tại quầy",
+	]);
 	await expect(
 		tabs.getByRole("link", { name: "Chương trình" }),
 	).toHaveAttribute("aria-current", "page");
@@ -87,6 +91,7 @@ test("the Ưu đãi tab of Khách hàng thân thiết shows the demo's sample ca
 	await expect(page.getByTestId("loyalty-tabs").getByRole("link")).toHaveText([
 		"Programme",
 		"Rewards",
+		"Counter confirmation",
 	]);
 	const text = (await page.locator("main").textContent()) ?? "";
 	expect(RAW_KEY.test(text)).toBe(false);

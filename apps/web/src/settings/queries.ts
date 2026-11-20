@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
+import type { IsoDate } from "../lib/business-dates";
 import type { LoyaltySource } from "../loyalty/source";
 import type { OperationsSource } from "../operations/source";
 import { useReadyTenantScope } from "../state/tenant-scope";
@@ -32,6 +33,8 @@ export type SettingsRead =
 	| "checklistTemplates"
 	| "loyaltyProgrammes"
 	| "loyaltyStaffPhones"
+	| "loyaltyStoreSettings"
+	| "loyaltyBillAnomalies"
 	| "rewards"
 	| "rewardRails"
 	| "rewardDiscountDays";
@@ -237,6 +240,38 @@ export function useLoyaltyStaffPhones(enabled: boolean) {
 			loyaltyOf(loyalty).staffPhones(tenantId),
 		() => false,
 		enabled,
+	);
+}
+
+function storesPart(storeIds: readonly string[]): string {
+	return [...new Set(storeIds)].sort().join(",");
+}
+
+export function useLoyaltyStoreSettings(
+	storeIds: readonly string[],
+	enabled = true,
+) {
+	return useSettingsRead(
+		["loyaltyStoreSettings", storesPart(storeIds)],
+		(_source, tenantId, _manual, _staff, _operations, loyalty) =>
+			loyaltyOf(loyalty).storeSettings(tenantId, storeIds),
+		() => false,
+		enabled && storeIds.length > 0,
+	);
+}
+
+export function useBillAnomalies(
+	storeIds: readonly string[],
+	from: IsoDate,
+	to: IsoDate,
+	enabled = true,
+) {
+	return useSettingsRead(
+		["loyaltyBillAnomalies", storesPart(storeIds), from, to],
+		(_source, _tenantId, _manual, _staff, _operations, loyalty) =>
+			loyaltyOf(loyalty).billAnomalies(storeIds, from, to),
+		() => false,
+		enabled && storeIds.length > 0,
 	);
 }
 

@@ -20,6 +20,7 @@ import { useFormatters } from "../../state/formatters";
 import { useReadyTenantScope } from "../../state/tenant-scope";
 import { RangePicker } from "../../themes/range-picker";
 import { CustomersLayout, Notice } from "./customers-layout";
+import { StaffAnomalies } from "./staff-anomalies";
 
 function AnomalyTable({ location }: { readonly location: AnomalyLocation }) {
 	const t = useT();
@@ -99,7 +100,13 @@ function AnomalyTable({ location }: { readonly location: AnomalyLocation }) {
 	);
 }
 
-function AnomalyBody() {
+function AnomalyBody({
+	canReadStaff,
+	withShifts,
+}: {
+	readonly canReadStaff: boolean;
+	readonly withShifts: boolean;
+}) {
 	const t = useT();
 	const { tenant } = useReadyTenantScope();
 	const formatters = useFormatters(tenant);
@@ -128,7 +135,10 @@ function AnomalyBody() {
 					<p>{t(themeKeys.page.noStores)}</p>
 				</StatusMessage>
 			) : (
-				<AnomalyTable location={location} />
+				<>
+					{withShifts ? <AnomalyTable location={location} /> : null}
+					<StaffAnomalies location={location} canRead={canReadStaff} />
+				</>
 			)}
 		</div>
 	);
@@ -136,6 +146,15 @@ function AnomalyBody() {
 
 export function AnomaliesPage() {
 	return (
-		<CustomersLayout page="bat-thuong">{() => <AnomalyBody />}</CustomersLayout>
+		<CustomersLayout
+			page="bat-thuong"
+			withoutCustomerData={(access) => (
+				<AnomalyBody canReadStaff={access.canResolve} withShifts={false} />
+			)}
+		>
+			{({ access }) => (
+				<AnomalyBody canReadStaff={access.canResolve} withShifts />
+			)}
+		</CustomersLayout>
 	);
 }

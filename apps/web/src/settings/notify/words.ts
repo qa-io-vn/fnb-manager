@@ -43,6 +43,7 @@ export const RULE_LABEL_KEYS: Readonly<Record<string, MessageKey>> = {
 	oa_inactive: "settings.notify.rule.oa_inactive",
 	mini_app_visits_low: "settings.notify.rule.mini_app_visits_low",
 	code_guessing_lockout: "settings.notify.rule.code_guessing_lockout",
+	loyalty_staff_anomaly: "settings.notify.rule.loyalty_staff_anomaly",
 };
 
 export const CATEGORY_ORDER = [

@@ -14,6 +14,7 @@ import type {
 } from "../../loyalty/source";
 import { seesLoyaltyStaffPhones } from "../../settings/access";
 import { SelectField } from "../../settings/forms/select-field";
+import { ConfirmationTab } from "../../settings/loyalty/confirmation-tab";
 import { STATUS_KEYS } from "../../settings/loyalty/programme-fields";
 import {
 	ProgrammeForm,
@@ -241,6 +242,7 @@ function MembersLink() {
 export const LOYALTY_TABS = [
 	{ slug: "chuong-trinh", titleKey: "settings.loyalty.tab.programme" },
 	{ slug: "uu-dai", titleKey: "settings.loyalty.tab.rewards" },
+	{ slug: "xac-nhan", titleKey: "settings.loyalty.tab.confirmation" },
 ] as const satisfies readonly {
 	slug: string;
 	titleKey: MessageKey;
@@ -289,6 +291,8 @@ export default function KhachHangThanThietPage() {
 			<LoyaltyTabs current={tab} />
 			{tab.slug === "uu-dai" ? (
 				<RewardsTab key={`rewards-${tenant.id}`} />
+			) : tab.slug === "xac-nhan" ? (
+				<ConfirmationTab key={`confirmation-${tenant.id}`} />
 			) : (
 				<>
 					<ProgrammeSection key={`programme-${tenant.id}`} />
