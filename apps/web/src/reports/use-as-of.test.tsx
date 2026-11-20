@@ -21,11 +21,14 @@ describe("useAsOf", () => {
 		["2026-11-19T17:00:00Z", "2026-11-19"],
 		["2026-11-19T17:30:00Z", "2026-11-19"],
 		["2026-11-20T05:30:00Z", "2026-11-19"],
-	])("gives the day before the store's own today at %s as %s", (now, expected) => {
-		at(now);
-		const { result } = renderHook(() => useAsOf([VIETNAM]));
-		expect(result.current).toBe(expected);
-	});
+	])(
+		"gives the day before the store's own today at %s as %s",
+		(now, expected) => {
+			at(now);
+			const { result } = renderHook(() => useAsOf([VIETNAM]));
+			expect(result.current).toBe(expected);
+		},
+	);
 
 	it("gives the store's day in the first render with the store, never the day of the empty list", () => {
 		at("2026-11-19T17:30:00Z");
