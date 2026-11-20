@@ -94,7 +94,7 @@ async function fnb(argv: string[], login: Login) {
 			FNB_PUBLISHER_PASSWORD: login.password,
 			DATABASE_URL:
 				"postgresql://postgres:synthetic-never-used@127.0.0.1:1/postgres",
-			SUPABASE_SECRET_KEY: "sb_secret_synthetic_never_used",
+			SUPABASE_SECRET_KEY: "synthetic-secret-never-used",
 		},
 		{ streams: io.streams, loadEnvFile: false, rootDir: ROOT },
 	);

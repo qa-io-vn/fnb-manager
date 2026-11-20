@@ -498,6 +498,13 @@ function regressionSteps() {
 			args: ["scripts/check-public-safe.mjs"],
 		},
 		{
+			id: "public-safety-rules",
+			title: "Public-safety scan rules (forbidden-terms list)",
+			level: "static",
+			command: "node",
+			args: ["--test", "scripts/check-public-safe.test.mjs"],
+		},
+		{
 			id: "e2e-zalo-staff",
 			title: "Staff Mini App Playwright (both themes, budget)",
 			level: "e2e",
@@ -617,6 +624,26 @@ function regressionSteps() {
 			gate: gates.switch("NOTIFY_INTEGRATION"),
 			timeout: 20 * MINUTE,
 			...pnpm("--filter", "@fnb/notify", "test:integration"),
+		},
+		{
+			id: "it-datapack",
+			title:
+				"Integration: plan publishing and validator parity (DATAPACK_INTEGRATION)",
+			level: "integration",
+			gate: all(gates.switch("DATAPACK_INTEGRATION"), () =>
+				process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY
+					? null
+					: "SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY of the local stack are not set",
+			),
+			timeout: 20 * MINUTE,
+			...pnpm(
+				"--filter",
+				"@fnb/jobs",
+				"exec",
+				"vitest",
+				"run",
+				"test/integration/datapack.test.ts",
+			),
 		},
 		{
 			id: "it-zalo",

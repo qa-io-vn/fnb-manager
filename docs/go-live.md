@@ -107,6 +107,15 @@ These steps need the owner's Zalo accounts (#8); until then the Zalo functions r
 7. Once the first real OA events match their signatures (in the SQL editor, `select day, signature, events from app.oa_event_days order by day desc;` shows `raw` or `compact` and no `mismatch` or `missing`; an owner reads the same counts through `oa_event_counts`), switch each OA from `observe` to `enforce` as [operations.md](operations.md), "Zalo disabled the webhook, or signatures do not match", describes.
 8. Every Mini App sign-in verifies a token with Supabase Auth from the function's own address, which Auth limits to 30 verifications per 5 minutes per IP address by default (ADR-037). When more members than that may sign in within 5 minutes, raise the limit for token verifications under Authentication → Rate Limits.
 
+## 9. Kế hoạch chiến lược (phase 11b)
+
+1. Create the publisher login (#199): `fnb tenant add-member --tenant <slug> --email <publisher e-mail> --role publisher` with `FNB_MEMBER_PASSWORD` in `.env`, then put `FNB_PUBLISHER_EMAIL` and `FNB_PUBLISHER_PASSWORD` in `.env` (never your own login).
+2. Open one export of a past month in Excel and check it (#196), and review the wording of the new Kế hoạch sentences (#200).
+3. Keep your personal strategy command in your own assistant's configuration, outside this repository, started from the repository root ([strategy.md](strategy.md), section 13).
+4. Run the strategy twice on real data and publish both plans with `fnb publish-plan` (#201); check that they appear in Kế hoạch with live KPI values and compare them.
+5. Decide whether to schedule the monthly run (gate G5, #202).
+6. Hygiene: packs and plans stay under `docs/private/`; run `node scripts/check-public-safe.mjs` with `docs/private/identifiers.txt` and `docs/private/forbidden-terms.txt` present before any commit.
+
 ## What the owner cannot delegate
 
 Creating the Supabase project and the GitHub secrets, setting the Edge Function secrets and enabling the incremental schedule, registering the access-token hook and switching an OA webhook to `enforce` (section 8), choosing the backup destination, changing the POS passwords after onboarding people who no longer need them, and the legal registrations listed in `docs/roadmap.md` section 5.

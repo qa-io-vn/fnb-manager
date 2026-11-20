@@ -576,6 +576,73 @@ The pack tab's end-to-end specs are `apps/web/e2e/demo/datapack.spec.ts` (the de
 
 Every fixture is synthetic: the lint pack's stores have made-up UUIDs, the mini pack uses the seed's synthetic ids, the sample pack uses `MOCK-S<n>`, and the items and figures are invented.
 
+## 10. Publishing a plan and what the database refuses (phase 11b)
+
+A plan is stored only through `publish_strategy_plan` ([api.md](api.md#publicpublish_strategy_plan), [schema.md](schema.md#strategy-plans-phase-11)). Two callers reach it, both with `planRecord(plan, pack, lint, via)` as arguments, and both lint first:
+
+- **The paste box** (`#/ke-hoach/dan`): "Lưu kế hoạch" turns active only when the lint finds no error, for an owner or a manager; it publishes as `pasted` and opens the saved plan, or the stored one with "Kế hoạch này đã được lưu" when the same text was saved before. A plan written from a sample pack is never sent; in the demo it is kept in `sessionStorage` instead.
+- **`fnb publish-plan`** without `--check`: lints (exit 3 on errors), refuses a sample pack (exit 4, `sample_pack_not_publishable`) before any sign-in, then signs in as the publisher member with `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `FNB_PUBLISHER_EMAIL` and `FNB_PUBLISHER_PASSWORD` only, session persistence and token refresh off. A login that can read even one `tenant_members` row is a data member and is stopped (exit 1). It publishes with `--via skill` (default) or `--via routine`, signs out and prints the plan id prefix, the store count, the horizon and the counts of initiatives, citations and KPIs.
+
+| Database answer | Paste box | Command line |
+|---|---|---|
+| saved | opens the plan, "Đã lưu kế hoạch." | exit 0, `published` |
+| the same text again | opens the stored plan, "Kế hoạch này đã được lưu." | exit 0, `already published` |
+| `22023 plan_rejected`, codes in `details` | "Cơ sở dữ liệu từ chối kế hoạch. Mã: …" | exit 3, one `rejected:` line per code |
+| `plan_rate_limited` (over 20 plans of the tenant in 24 hours) | "Đã lưu quá 20 kế hoạch trong 24 giờ." | exit 3 |
+| `42501 plan_scope_denied` | "Bạn không có quyền lưu kế hoạch cho mọi cửa hàng…" | exit 1, `scope denied` |
+| network or server failure | "Không lưu được kế hoạch." | exit 1 |
+
+The database checks the structure again with its own validators: the text must already be normalised, start with its front matter, hold the ten sections once each and in order and five to seven initiatives; each KPI must be one of the 18 trackable ids, a complete entry over the plan's stores with a target different from its baseline; the front matter must agree with the arguments, and the pack with the plan (its id, not a sample, the stores, the as-of day, the horizon, the prompt version and each KPI's baseline equal to its `w28` cell). A plan missing section 7 is refused with `section_missing:7` and a KPI renamed `net_sales` with `kpi_unknown:net_sales` in the command line, in the paste box and in the database; no row is written. For the codes both sides check (`front_matter_missing`, `section_missing`, `initiatives_count`, `kpis_count`, `kpi_unknown`, with `kpi_untracked` reported as `kpi_unknown`), the lint and the SQL validators give the same codes (integration scenario 4). A stored plan never changes apart from its title and `archived_at`.
+
+## 11. KPI follow-up and the statuses
+
+Each KPI of a plan is measured with `metric_windows` over the plan's KPI stores: range 1 is the 28 days ending on today's as-of day `N` (the earliest last complete business day over the plan's stores), range 2 the 28 days ending on the plan's as-of day `A`, which re-measures the stored baseline. One call is made per store set. When the re-measured baseline differs from the stored one (by more than a relative 10⁻⁹), Kế hoạch shows both with "≠": the data of those days changed after the plan, for example after a re-sync.
+
+`kpiStatus({ baseline, target, current, elapsedDays, horizonDays, band })` (`packages/datapack/src/plan/status.ts`) gives the status by these rules, applied in order; `progress` is `(current − baseline) / (target − baseline)`, so it works for both directions:
+
+| # | Rule | Status | Vietnamese |
+|---:|---|---|---|
+| 1 | no current value | `no_data` | Chưa có số liệu |
+| 2 | fewer than 14 days since the plan's as-of day | `too_early` | Còn quá sớm |
+| 3 | progress at least 1 (the target reached in its direction) | `achieved` | Đã đạt |
+| 4 | the horizon has run its full length (elapsed days at least the horizon's days) | `missed` | Không đạt |
+| 5 | progress below 0 | `off_course` | Đi ngược hướng |
+| 6 | progress at least min(elapsed / horizon, 1) − 0.25 | `on_track` | Đúng tiến độ |
+| 7 | otherwise | `behind` | Chậm tiến độ |
+
+`withinBand` is true when the current value lies inside the KPI's normal range (`lo` to `hi` of the pack); Kế hoạch then adds "trong dao động thường", and the flag never changes the status. The list's summary "x/y KPI đúng tiến độ" counts `on_track` and `achieved`. `comparePlans(left, right, live)` (`compare.ts`) puts two plans side by side: a header per plan, every KPI of either plan keyed by metric id and its sorted store ids (a KPI whose scope changed is one dropped and one added), each side's baseline, target, due date and status against the same live value, and the initiative titles compared after NFC, lower case and collapsed spaces, labelled kept, new or removed. The decision table is `test/plan/status.test.ts`, the comparison `test/plan/compare.test.ts`.
+
+## 12. Kế hoạch in the web app
+
+- `#/ke-hoach` lists the plans newest first by `created_at` then `id`, 50 at a time with keyset paging, reading the list columns only (never the text or the pack), grouped by store set with "Bản n", the dates, the horizon, the source badge ("Máy tính", "Lịch", "Dán"), the KPI count and the citation count; only the newest unarchived plan of each set measures its KPIs. Archived plans appear after "Hiện kế hoạch đã lưu trữ".
+- `#/ke-hoach/:id` shows the header with the store labels from the pack, the prompt version and the pack id prefix, the badge "Mã gói khớp" or "Mã gói không khớp" (the stored pack re-canonicalised against its `pack_id`; consistency only), the KPI table (cards at 360 px) and the plan text. The text is rendered by `react-markdown` 10.1.0 with `remark-gfm` 4.0.1 on this route only, with raw HTML skipped and only `h2 h3 h4 p ul ol li strong em table thead tbody tr th td blockquote code pre hr br cite` allowed, anything else unwrapped to its text; each `[[table:row:column]]` becomes a chip holding the cell's value from the stored pack, outlined in red when it points nowhere, and every display re-runs the lint against the stored pack. Owners and managers whose scope covers the plan's stores rename, archive and delete it.
+- `#/ke-hoach/so-sanh?a=<id>&b=<id>` compares two plans; the picker offers the plans of the same store set and defaults to the previous one.
+- The demo lists an automatically generated sample plan over all demo stores and 90 days, measured through the demo `metric_windows` port, and keeps pasted plans in `sessionStorage`; no request leaves the origin.
+
+## 13. Three ways to run the strategy, and the monthly run
+
+All three share one pack and one prompt (section 3.10), and every plan is checked by the same lint before it is stored.
+
+1. **A chat on any device.** Build the pack on "Gói dữ liệu cho AI", copy the bundle into a chat with any assistant, paste the answer into "Dán kế hoạch", fix what the lint lists and save.
+2. **A personal command on the owner's computer.** A command in the owner's own assistant, kept in the owner's personal configuration and never in this repository, started from the repository root so that the command line and the assistant resolve paths alike: it builds the pack with `fnb datapack` into `docs/private/strategy/`, gives the bundle to the assistant, repeats `fnb publish-plan --check` until the plan is clean, then runs `fnb publish-plan` as the publisher (`--via skill`, badge "Máy tính").
+3. **A monthly scheduled run** (`--via routine`, badge "Lịch"). Until `fnb strategy-run` (#198) exists, a wrapper script kept outside the repository does the same steps with the same rules: build the pack, run the assistant's non-interactive mode on the bundle in a throw-away folder under the system temporary directory, with assistant tools off and an environment stripped to `PATH`, `HOME`, `USER`, `LANG` and `TZ` (never a database URL, an API key, POS credentials or the publisher's password), check the answer, and publish only a clean plan. Routine plans go live unread, which is why they carry their own badge.
+
+**Scheduling.** On macOS, a per-user `launchd` job (`~/Library/LaunchAgents`, loaded with `launchctl bootstrap gui/$(id -u) <plist>`) with `StartCalendarInterval` day 1, 07:30; a run missed while the Mac sleeps happens once on wake. Elsewhere, a cron line such as `30 7 1 * *`. Either way the job starts the wrapper from the repository root.
+
+**Where files may go.** Packs, plans and logs hold the shop's real figures: they are written below the root's `docs/private/` (ignored by git, checked with `git check-ignore`) or outside the repository, never anywhere else (section 8).
+
+**Troubleshooting.**
+
+| Symptom | Cause and fix |
+|---|---|
+| `publish-plan` exits 1, "publisher login was refused" | wrong `FNB_PUBLISHER_EMAIL` or `FNB_PUBLISHER_PASSWORD`, or the login was never created (#199) |
+| exits 1, "data member" | the variables hold an owner, manager, staff or viewer login; create a separate publisher login |
+| exits 3 with `rejected:` codes | the database refused the plan; fix the codes (section 10) and publish again |
+| exits 4, `sample_pack_not_publishable` | the plan was written from the demo's sample pack; build a pack from real data |
+| Kế hoạch shows "≠" beside a baseline | the days behind the baseline changed after the plan (a re-sync); the plan stays as written |
+
+The scheduled route's dry run on the real tenant, the owner's two runs and the decision on the monthly routine are owner steps (#199, #201, #202).
+
 ## Read more
 
 - [architecture.md, 6.5](architecture.md#65-data-pack-and-plan-publishing-phase-11): the data pack and plan publishing flow.

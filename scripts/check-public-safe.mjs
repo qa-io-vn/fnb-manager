@@ -89,6 +89,26 @@ const privateIdentifiers = existsSync(privateIdentifierFile)
 			.filter((line) => line.length >= 4)
 	: [];
 
+const forbiddenTermsFile = join(repoRoot, "docs/private/forbidden-terms.txt");
+const forbiddenTerms = existsSync(forbiddenTermsFile)
+	? readFileSync(forbiddenTermsFile, "utf8")
+			.split("\n")
+			.map((line) => line.trim().normalize("NFC"))
+			.filter((line) => line.length >= 2)
+			.map(
+				(term) =>
+					new RegExp(
+						`(?<![\\p{L}\\p{N}_])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}_])`,
+						"iu",
+					),
+			)
+	: [];
+
+function forbiddenTermIn(text) {
+	const normalized = text.normalize("NFC");
+	return forbiddenTerms.some((pattern) => pattern.test(normalized));
+}
+
 function trackedFiles() {
 	try {
 		const output = execFileSync(
@@ -119,8 +139,20 @@ function isScannable(file) {
 }
 
 const findings = [];
-for (const file of trackedFiles()) {
-	if (isIgnored(file) || !isScannable(file)) continue;
+for (const [position, file] of trackedFiles().entries()) {
+	if (isIgnored(file)) continue;
+	const shown = forbiddenTermIn(file)
+		? `(git ls-files entry ${position + 1}, path withheld)`
+		: relative(repoRoot, join(repoRoot, file));
+	if (shown !== relative(repoRoot, join(repoRoot, file))) {
+		findings.push({
+			shown,
+			line: 0,
+			rule: "forbidden term in path",
+			sample: null,
+		});
+	}
+	if (!isScannable(file)) continue;
 	const content = readFileSync(join(repoRoot, file), "utf8");
 	const lines = content.split("\n");
 	lines.forEach((line, index) => {
@@ -128,13 +160,21 @@ for (const file of trackedFiles()) {
 			for (const match of line.matchAll(rule.pattern)) {
 				if (!rule.isAllowed(match[0], file)) {
 					findings.push({
-						file,
+						shown,
 						line: index + 1,
 						rule: rule.name,
 						sample: match[0].slice(0, 12),
 					});
 				}
 			}
+		}
+		if (forbiddenTermIn(line)) {
+			findings.push({
+				shown,
+				line: index + 1,
+				rule: "forbidden term",
+				sample: null,
+			});
 		}
 		for (const identifier of privateIdentifiers) {
 			if (line.toLowerCase().includes(identifier.toLowerCase())) {
@@ -156,7 +196,7 @@ if (findings.length === 0) {
 
 for (const finding of findings) {
 	console.log(
-		`${relative(repoRoot, join(repoRoot, finding.file))}:${finding.line} ${finding.rule} (${finding.sample}…)`,
+		`${finding.shown}:${finding.line} ${finding.rule}${finding.sample === null ? "" : ` (${finding.sample}…)`}`,
 	);
 }
 console.log(`public-safe scan: ${findings.length} finding(s)`);

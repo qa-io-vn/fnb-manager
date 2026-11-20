@@ -208,6 +208,7 @@ Each entry gives the signature exactly as Postgres prints it (`pg_get_function_a
 | [`refresh_my_analytics`](#publicrefresh_my_analytics) | settings and writes | definer, volatile | `bigint` | the web catch-up runner through the settings source (`refreshChunk`, the newest 92 pending days at a time) | verified locally (phase 8) |
 | [`publish_legal_document`](#publicpublish_legal_document) | settings and writes | definer, volatile | `uuid` | the Pháp lý settings page (#164) | built (phase 10b) |
 | [`retire_legal_document`](#publicretire_legal_document) | settings and writes | definer, volatile | `uuid` | the Pháp lý settings page (#164) | built (phase 10b) |
+| [`publish_strategy_plan`](#publicpublish_strategy_plan) | settings and writes | definer, volatile | 1 row | the paste box of Kế hoạch; `fnb publish-plan` as the publisher member | verified locally (phase 11b) |
 | [`analytics_catch_up_status`](#publicanalytics_catch_up_status) | settings and writes | invoker, stable | 0 or 1 row | the web catch-up banner and runner through the settings source (`catchUpStatus`), on every theme and settings page | verified locally (phase 10a) |
 | [`report_settings_of`](#publicreport_settings_of) | themes | invoker, stable | rows per store | web themes Giờ & ngày, Thực đơn, Thanh toán, Khuyến mãi and Ca & két tiền | verified locally (phase 10a) |
 | [`range_totals`](#publicrange_totals) | themes | invoker, stable | rows per range and store | web themes Doanh thu, Thanh toán and Khuyến mãi | verified locally (phase 10a) |
@@ -707,6 +708,24 @@ returns uuid
 - **Called by:** the Pháp lý settings page (#164), through "Ngừng áp dụng" after a confirmation; a `22023` answer there says the version was already published or withdrawn elsewhere.
 - **Status:** built (phase 10b; pgTAP `38_settings_writes.sql`).
 - **Notes:** retires the published version with the database's clock and returns its id; the kind and language then have no published version until another is published.
+
+#### `public.publish_strategy_plan`
+
+```sql
+public.publish_strategy_plan(
+  p_store_ids uuid[], p_title text, p_content_markdown text, p_kpis jsonb,
+  p_horizon text, p_language text, p_as_of_date date, p_pack_id text,
+  p_prompt_version text, p_data_pack jsonb, p_lint jsonb,
+  p_generated_via public.strategy_source
+)
+returns table (plan_id uuid, already_published boolean)
+```
+
+- **Who may call:** an owner, a manager or the publisher whose scope covers every store of the plan. Without a session, or without that scope, `42501` with the message `plan_scope_denied`.
+- **Called by:** the paste box of Kế hoạch (`#/ke-hoach/dan`, source `pasted`, through `apps/web/src/plans/source.ts`) and `fnb publish-plan` signed in as the publisher member (`skill` or `routine`); the arguments are `planRecord(plan, pack, lint, via)` of `@fnb/datapack`.
+- **Status:** verified locally (phase 11b; pgTAP `195_strategy_plans.sql`; `apps/jobs/test/integration/datapack.test.ts` scenarios 2 and 4; `apps/web/e2e/live/plans.spec.ts`).
+- **Errors:** `22023` with the message `plan_rejected` and the codes, comma-separated, in `details`: `plan_stores_invalid` (an unknown store, stores of two tenants, more than ten or a repeat), `content_not_normalized`, `front_matter_missing`, `section_missing:<n>`, `section_extra:<n>`, `section_order`, `initiatives_count:<k>`, `kpis_count:<k>`, `kpi_unknown:<id>`, `kpi_entry_invalid:<id>`, `kpi_target_equals_baseline:<id>`, `kpi_scope_outside_plan:<id>`, `front_matter_mismatch:<field>`, `plan_pack_mismatch:<field>`, `lint_invalid`, `title_invalid`, `content_too_large` and `plan_rate_limited` (more than 20 plans of the tenant in 24 hours). No row is written on an error.
+- **Notes:** the only way a plan is stored (`authenticated` holds no `INSERT` on `strategy_reports`). It stores the full pack beside the plan, `created_by` is the caller, and the text's sha256 makes it idempotent: the same text again returns the stored id with `already_published` true, even at the rate limit. Plans are then immutable apart from `title` and `archived_at` (`schema.md`, "Strategy plans (phase 11)").
 
 #### Writes through tables
 
@@ -2452,7 +2471,7 @@ Every table in `public` has RLS enabled, and `anon` holds no privilege on any ta
 | `item_category_overrides` | an item moved to another POS item type of its account, for reports only | data roles of the tenant | [yes](#writes-through-tables) | none |
 | `report_settings` | the tenant's report thresholds (menu window, cash tolerances, peak and quiet hours, promotion pre-period) | data roles of the tenant | [yes](#writes-through-tables) | none (the functions read it) |
 | `holidays` | public holidays and Tết days (61 global rows for 2024 to 2028) and the tenant's own days off | global rows: every signed-in user; tenant rows: every member of the tenant | [yes](#writes-through-tables) | web app (Hôm nay's baseline) |
-| `strategy_reports` | strategy plans with their data pack and KPI ids | every member, all five roles; tenant-wide rows and stores in scope | [yes](#writes-through-tables) | none (Kế hoạch designed for 11b) |
+| `strategy_reports` | immutable strategy plans with their data pack and KPIs | data roles whose scope covers every store of the plan; the publisher reads none | rename, archive and delete by an owner or manager with the plan's full scope; insert only through [`publish_strategy_plan`](#publicpublish_strategy_plan) | web app (Kế hoạch: list, detail, comparison) |
 
 ### Consent and legal
 

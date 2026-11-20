@@ -337,7 +337,7 @@ Loyalty rows are written only by `app` functions run by the service role and the
 
 ### 5.5 The publisher identity (ADR-013)
 
-The plan-publishing path signs in as a dedicated member with role `publisher`, never with the owner's login or the secret key. The database lets it read its tenant, its stores, plans, holidays, the calendar and the global notification catalogues, and insert plans for stores in its scope with `created_by` set to itself; it reads no sale and no aggregate. ADR-013 says the publisher "reads aggregates"; the database and its tests say it does not, and a correction of the ADR text has been requested. The consequence for phase 11: the data pack must be built by an owner or manager session or by the CLI's own connection, not by the publisher.
+The plan-publishing path signs in as a dedicated member with role `publisher`, never with the owner's login, a database URL or the secret key (`fnb publish-plan` reads only `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `FNB_PUBLISHER_EMAIL` and `FNB_PUBLISHER_PASSWORD`, and stops a login that can read `tenant_members`). Since phase 11b (#169) the database lets it read its tenant, its stores, holidays, the calendar and the global notification catalogues, and publish through `publish_strategy_plan` for stores in its scope, with `created_by` set to itself; it holds no `INSERT` on `strategy_reports` and reads no plan, no pack, no sale and no aggregate (pgTAP `08_publisher_role.sql`, `195_strategy_plans.sql`; integration scenario 2). Packs are built by a data member in the browser or by `fnb datapack` acting as one. A leaked publisher credential can publish a plan that passes every database check, at most 20 a day per tenant, and read nothing.
 
 ## 6. Secrets management (ADR-006)
 

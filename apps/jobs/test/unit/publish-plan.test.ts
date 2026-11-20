@@ -29,7 +29,7 @@ const PUBLISHER_ENV: Environment = {
 	FNB_PUBLISHER_EMAIL: "publisher-synthetic@example.com",
 	FNB_PUBLISHER_PASSWORD: "synthetic-publisher-password",
 	DATABASE_URL: "postgresql://postgres:never-used-db-pw@127.0.0.1:1/postgres",
-	SUPABASE_SECRET_KEY: "sb_secret_never_used_value",
+	SUPABASE_SECRET_KEY: "synthetic-secret-never-used-value",
 	FNB_MEMBER_PASSWORD: "never-used-member-password",
 };
 

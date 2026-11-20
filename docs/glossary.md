@@ -655,3 +655,15 @@ The six states every requirement and component carries ([requirements.md, sectio
 ### Track Z
 
 The owner's paperwork beside the build: the legal form, the Zalo accounts and their verification, e-invoicing, the POS CRM questions, the privacy notice and the legal read ([roadmap.md](roadmap.md), section 5). Its lead times cannot be shortened by building faster, and Tracks B and C start only when it allows. Tracks A to D are the build tracks: A platform and analytics (phases 1 to 12), B Zalo for managers and staff (13 to 15), C Zalo customer loyalty (16 to 19), D portability, hardening and launch (20).
+
+## Phase 11 terms
+
+**Pack id.** The sha256 of a data pack's canonical text without `pack_id` and `generated_at`; equal ids mean equal packs ([strategy.md](strategy.md), section 2.5). Kế hoạch shows "Mã gói khớp" when the stored pack still hashes to its id.
+
+**Citation.** `[[table:row:column]]` in a plan: a reference to one cell of the pack, checked against the number written before it and shown in Kế hoạch as a chip with the cell's value.
+
+**Trackable KPI.** One of the 18 metric ids that `metric_value` computes, that are current and that KPI follow-up can measure over 28-day windows (`app.trackable_metric_ids()`, `trackableMetricIds()`).
+
+**Normal range.** A KPI's band `lo` to `hi` from the pack's recent 28-day windows; a current value inside it is "trong dao động thường".
+
+**Publisher.** The `publisher` member of ADR-013: publishes plans through `publish_strategy_plan` and reads no plan, pack or sale.

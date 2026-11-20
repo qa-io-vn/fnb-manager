@@ -590,22 +590,41 @@ Net-sales targets per store and period. Unique on (`store_id`, `period_kind`, `p
 
 ### `strategy_reports`
 
-Plans produced from the aggregate data pack.
+Strategy plans: immutable documents written only by `publish_strategy_plan` (migration `strategy_plans`, phase 11b, #169). See "Strategy plans (phase 11)" below for the validators, the trigger and the policies.
 
 | Column | Type | Null | Meaning |
 | --- | --- | --- | --- |
 | `id` | uuid | no | Primary key |
 | `tenant_id` | uuid | no | Tenant |
-| `store_id` | uuid | yes | Null means the plan covers every store of the tenant |
-| `horizon` | text | no | Planning horizon such as `30d`, `90d`, `12m` |
-| `language` | text | no | BCP 47 tag of the content, default `vi` |
+| `store_id` | uuid | yes | The one store of a single-store plan; null for a plan of two to ten stores |
+| `store_ids` | uuid[] | no | The 1 to 10 stores of one tenant the plan covers (GIN index) |
+| `horizon` | text | no | `30d`, `90d`, `180d` or `12m` |
+| `language` | text | no | `vi` or `en` |
 | `generated_via` | strategy_source | no | `skill`, `routine` or `pasted` |
-| `title` | text | no | Title |
-| `content_markdown` | text | no | Plan body |
-| `data_pack` | jsonb | yes | Aggregates the plan was generated from |
-| `kpis` | jsonb | yes | KPI ids with baseline and target values |
-| `created_by` | uuid | yes | Author, default `auth.uid()`, frozen on update |
+| `title` | text | no | 1 to 120 characters; with `archived_at`, the only column an owner or manager may change |
+| `content_markdown` | text | no | The normalised plan text, at most 200,000 bytes |
+| `data_pack` | jsonb | no | The full pack the plan was written from, at most 2,000,000 bytes |
+| `kpis` | jsonb | no | Per metric id: scope, store ids, baseline, target, `lo`, `hi`, initiatives, `due_on` and `window_days` 28 |
+| `plan_format` | text | no | `fnb-plan/1` |
+| `prompt_version`, `pack_schema_version` | text | no | Semantic versions |
+| `pack_id` | text | no | 64 hex characters, the id of the stored pack |
+| `as_of_date` | date | no | The as-of day of the pack |
+| `content_sha256` | text | no | sha256 of the text; unique per tenant, so a repeat publish returns the stored plan |
+| `lint` | jsonb | no | The lint summary and warning codes the client recorded |
+| `archived_at` | timestamptz | yes | Set when archived; archived plans are listed only on request |
+| `created_by` | uuid | yes | The caller of `publish_strategy_plan`; set to null only when that login is deleted |
 | `created_at`, `updated_at` | timestamptz | no | Audit timestamps |
+
+## Strategy plans (phase 11)
+
+- **Guard.** The migration stops when `strategy_reports` already holds rows.
+- **Check constraint** `strategy_reports_plan_check`: the format, 1 to 10 stores without nulls, `store_id` equal to the one store or null, horizon, language, title length, content and pack size, the hash, pack id and version shapes, and `kpis`, `lint` and `data_pack` as JSON objects.
+- **Content trigger** `strategy_reports_keep_content` on `app.keep_plan_content()`: an update may change `title` and `archived_at` and may set `created_by` to null (the cascade when the publishing login is deleted); anything else raises `42501 plan_immutable`. The phase 2 attribution trigger is removed from this table only; `app.keep_created_by()` keeps serving the other tables.
+- **Helpers.** `app.trackable_metric_ids()` (the 18 ids KPI follow-up can track, held equal to `trackableMetricIds()` by `packages/datapack/test/consistency/sql-constants.test.ts`), `app.plan_section_titles(language)`, `app.plan_fold(text)` (lower case with the Vietnamese capitals folded and spaces collapsed, whatever the collation), `app.plan_front_matter(content)`, `app.plan_body(content)`, `app.can_manage_stores(tenant_id, store_ids)` and `app.can_publish_stores(tenant_id, store_ids)`.
+- **Validators**, each returning ordered codes and returning early where a later check cannot run: `app.plan_structure_errors(content, language)` (`content_not_normalized`, `front_matter_missing`, `section_missing:<n>`, `section_extra:<n>`, `section_order`, `initiatives_count:<k>`), `app.plan_kpi_errors(kpis, store_ids)` (`kpis_count:<k>`, `kpi_unknown:<id>` for any id outside the 18, `kpi_entry_invalid:<id>`, `kpi_target_equals_baseline:<id>`, `kpi_scope_outside_plan:<id>`) and `app.plan_pack_errors(...)` (`front_matter_mismatch:format|pack|title|horizon|language|kpis`, `plan_pack_mismatch:pack|pack_id|sample|schema_version|prompt_version|as_of|horizon|stores|kpi|kpi:<id>`).
+- **`public.publish_strategy_plan(...)`** (`security definer`, empty `search_path`): `42501 plan_scope_denied` without a session or without publish scope on every store; `22023 plan_rejected` with the codes in `detail` (comma-separated) for `plan_stores_invalid` (unknown stores, two tenants, more than ten, repeats), the validators' codes, `lint_invalid`, `title_invalid`, `content_too_large`, and `plan_rate_limited` above 20 plans of the tenant in 24 hours. Idempotent on the content hash, checked before the rate limit: the stored id with `already_published` true.
+- **Policies.** Reading needs a data role and every store of the plan in the caller's data scope (`store_ids <@ current_user_data_store_ids()`), so the publisher reads no plan and a one-store manager reads no two-store plan. Renaming, archiving and deleting need an owner or manager whose scope covers all the stores of the plan (`can_manage_stores`). `authenticated` has no `INSERT`. Only `authenticated` executes the RPC and the two scope helpers; the validators and constants are revoked from every API role.
+- **Tests.** `supabase/tests/195_strategy_plans.sql` (84 assertions: columns, constraint, indexes, trigger, privileges, every rejection code, publishing per role, the repeat, immutability, deleting the publishing login, reading per role, the rate limit); `05` and `08` now expect a direct insert to be refused.
 
 ## Settings and mappings (phase 10)
 
@@ -2043,7 +2062,7 @@ Every table in `public` has RLS enabled. `anon` holds no privilege on any table.
 | `manager` | Store or tenant manager | Same as owner, including the zero-request rule for a store-limited membership | Same as owner |
 | `staff` | Cashier or shift lead | Everything of the tenant within store scope, including `consent_records`, except that the 16 revenue tables follow `tenants.staff_revenue_visibility` (all their stores' rows at `all`, the default; none at `store_totals` or `none`, where `today_store_totals()` gives the totals at `store_totals`); of `staff_roster` only their own row; no `data_subject_requests`; of `outbound_messages` only the messages to their own destinations (none in phase 12) | Nothing directly; their own `staff_ops` consent and phone through the functions of phase 14a, and their own rows of the operations tables of phase 14b (the template above) |
 | `viewer` | Read-only stakeholder | Same as staff | Nothing |
-| `publisher` | Service identity used by the plan-publishing skill or routine | `tenants`, `stores`, `strategy_reports`, `holidays`, `dim_calendar` only; no aggregate table, refresh log or live view | Insert into `strategy_reports` |
+| `publisher` | Service identity used by the plan-publishing command or routine | `tenants`, `stores`, `holidays`, `dim_calendar` only; no plan, pack, aggregate table, refresh log or live view | Publishes through `publish_strategy_plan` only; no direct insert |
 
 For the notification tables: every authenticated role reads `alert_rule_catalog` and the global `channel_policies`; owners and managers read `alert_rules` (a store-limited manager the tenant rows and those of their stores), the tenant's policy overrides, every destination of the tenant when their scope is unlimited and otherwise their own, the episodes and messages of their stores, and the digests whose stores are all in their scope; staff, viewers and publishers read nothing else; `anon` reads nothing.
 
@@ -2113,7 +2132,7 @@ Policies call the array-returning helpers as `(select app.helper())` so Postgres
 | `tenants` (profile columns) | — | Update only, of `legal_form` and `default_language` (column grant): `has_store_scope(id, null, owner)`; `staff_revenue_visibility` only through `set_staff_revenue_visibility()`, by the same owners |
 | `payment_kind_overrides` | `can_manage_store_scope(tenant_id, null)` and `created_by = auth.uid()` | Same |
 | `legal_documents` | `has_store_scope(tenant_id, null, owner)` and `created_by = auth.uid()`, as a draft without dates | Update of `title`, `body_markdown` and `version` only (column grant), same rule, frozen once published; delete of drafts only; publication and retirement through the two functions |
-| `strategy_reports` | `can_publish_store_scope(tenant_id, store_id)` and `created_by = auth.uid()` | `can_manage_store_scope(tenant_id, store_id)` |
+| `strategy_reports` | none: plans are written only by `publish_strategy_plan` | `can_manage_stores(tenant_id, store_ids)`; the content trigger allows only `title` and `archived_at` |
 | `consent_records` | `has_tenant_role(tenant_id, owner or manager)`: any owner or manager of the tenant, store-limited or not, because consent is captured at the till | Update only, same rule; the `keep_consent_grant` trigger lets the update set `revoked_at` once and nothing else; no delete |
 | `data_subject_requests` | `can_manage_store_scope(tenant_id, null)`: owner or manager with an unlimited store scope | Update only, same rule; no delete |
 | `outbound_messages` | Service role only | Service role only; owners and managers read, every member reads the messages to their own destinations |

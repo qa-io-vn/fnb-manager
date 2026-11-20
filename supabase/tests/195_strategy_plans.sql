@@ -7,15 +7,15 @@ select
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid as owner_id,
   '22222222-2222-4222-8222-000000000001'::uuid as tea_id,
   '22222222-2222-4222-8222-000000000002'::uuid as coffee_id,
-  'b1b1b1b1-0000-4000-8000-000000000001'::uuid as manager_all_id,
-  'b1b1b1b1-0000-4000-8000-000000000002'::uuid as manager_tea_id,
-  'b1b1b1b1-0000-4000-8000-000000000003'::uuid as staff_id,
-  'b1b1b1b1-0000-4000-8000-000000000004'::uuid as viewer_id,
-  'b1b1b1b1-0000-4000-8000-000000000005'::uuid as publisher_id,
-  'b1b1b1b1-0000-4000-8000-000000000006'::uuid as other_owner_id,
-  'b1b1b1b1-0000-4000-8000-0000000000a1'::uuid as other_tenant_id,
-  'b1b1b1b1-0000-4000-8000-0000000000a2'::uuid as other_pos_account_id,
-  'b1b1b1b1-0000-4000-8000-0000000000a3'::uuid as other_store_id;
+  'eeeeeeee-0000-4000-8000-000000000001'::uuid as manager_all_id,
+  'eeeeeeee-0000-4000-8000-000000000002'::uuid as manager_tea_id,
+  'eeeeeeee-0000-4000-8000-000000000003'::uuid as staff_id,
+  'eeeeeeee-0000-4000-8000-000000000004'::uuid as viewer_id,
+  'eeeeeeee-0000-4000-8000-000000000005'::uuid as publisher_id,
+  'eeeeeeee-0000-4000-8000-000000000006'::uuid as other_owner_id,
+  'eeeeeeee-0000-4000-8000-0000000000a1'::uuid as other_tenant_id,
+  'eeeeeeee-0000-4000-8000-0000000000a2'::uuid as other_pos_account_id,
+  'eeeeeeee-0000-4000-8000-0000000000a3'::uuid as other_store_id;
 
 insert into auth.users (id, instance_id, aud, role, email)
 select u.id, '00000000-0000-0000-0000-000000000000'::uuid, 'authenticated'::varchar, 'authenticated'::varchar, u.email::varchar

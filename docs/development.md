@@ -374,7 +374,7 @@ CI adds the Postgres parity run and the web end-to-end suite on a freshly reset 
 - Fixtures are synthetic (ADR-009); recorded vendor responses are never committed. Use `example.com` addresses and synthetic UUIDs whose first eight characters repeat one hex digit (`11111111-…`), which the scanners accept.
 - Account keys in `POS_ACCOUNTS_JSON` are neutral (`account-1`); output in CI numbers accounts and stores.
 - Shop-specific material lives in `docs/private/` (gitignored) and never moves into a tracked file.
-- Run `node scripts/check-public-safe.mjs` before every hand-over. It checks generic patterns and, when the file exists, every entry of `docs/private/identifiers.txt`. CI runs it and gitleaks on every push and pull request.
+- Run `node scripts/check-public-safe.mjs` before every hand-over. It checks generic patterns and, when the files exist, every entry of `docs/private/identifiers.txt` and every line of `docs/private/forbidden-terms.txt` (two characters or longer) as a whole word, case-insensitive after NFC, in the contents and the paths of tracked and unignored files; a hit names the file, line and rule only and never prints the term (a path holding a term is withheld and named by its position in `git ls-files`). CI has neither file, and no hashed copy of either list is kept anywhere. `node --test scripts/check-public-safe.test.mjs` tests the rule. CI runs it and gitleaks on every push and pull request.
 
 ## 5. Database workflow
 
