@@ -1377,6 +1377,270 @@
 			],
 			"type": "object"
 		},
+		"bill_audits": {
+			"description": "the random audit of confirmed bills (bill_audit_sample_pct): open in the manager queue until a manager marks it passed or failed; a failed audit reverses the earn and counts against the staff member",
+			"properties": {
+				"bill_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"closed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"closed_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"note": {
+					"format": "text",
+					"type": "string"
+				},
+				"opened_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"state": {
+					"default": "open",
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"bill_id",
+				"state",
+				"opened_at"
+			],
+			"type": "object"
+		},
+		"bill_captures": {
+			"description": "path E: a paper bill recorded at a store in staff mode, by a staff member after scanning the member's dynamic QR (staff_scan) or by the customer with the counter QR (counter_claim), with its dedupe key, the first reading's total, the evidence level reached and its state (awaiting_customer, awaiting_staff, queued, confirmed, reversed, rejected, expired); the ledger earn names it through loyalty_ledger.bill_id; photo, hash, reading, printed time, lines and flags are filled by the camera reader of later phases",
+			"properties": {
+				"auto_approved": {
+					"default": false,
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"bill_key": {
+					"description": "store + business date + this key is the dedupe key of a bill (app.bill_key: leading zeros dropped)",
+					"format": "text",
+					"type": "string"
+				},
+				"bill_no": {
+					"format": "text",
+					"type": "string"
+				},
+				"business_date": {
+					"format": "date",
+					"type": "string"
+				},
+				"captured_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"confirm_by": {
+					"description": "when a bill still waiting for its second reading is settled by bill_silence_outcome (staff_scan) or expires (counter_claim)",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"confirmed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"counter_code_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"decided_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"decided_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"decision_reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"evidence_level": {
+					"default": 0,
+					"description": "0 one typed total; 1 one reading (camera reader, later); 2 two agreeing readings; 3 two agreeing readings and clean bill checks (later)",
+					"format": "int32",
+					"type": "integer"
+				},
+				"flags": {
+					"format": "text[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"invoice_id": {
+					"description": "the shadow match: a synced invoice that also shows this bill, set by app.loyalty_shadow_reconcile when the store has a POS sync; nothing needs it",
+					"format": "uuid",
+					"type": "string"
+				},
+				"lines": {
+					"format": "jsonb"
+				},
+				"membership_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"photo_hash": {
+					"format": "text",
+					"type": "string"
+				},
+				"photo_path": {
+					"format": "text",
+					"type": "string"
+				},
+				"printed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"queue_reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"reading": {
+					"format": "jsonb"
+				},
+				"reversal_reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"reversed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"shadow_checked_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"shadow_state": {
+					"format": "text",
+					"type": "string"
+				},
+				"source": {
+					"format": "text",
+					"type": "string"
+				},
+				"state": {
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"total": {
+					"description": "the total of the first reading: the staff member's for staff_scan, the customer's for counter_claim; the other readings are bill_confirmations rows",
+					"format": "numeric",
+					"type": "number"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"membership_id",
+				"source",
+				"business_date",
+				"bill_no",
+				"bill_key",
+				"total",
+				"flags",
+				"evidence_level",
+				"state",
+				"confirm_by",
+				"auto_approved",
+				"created_at"
+			],
+			"type": "object"
+		},
+		"bill_confirmations": {
+			"description": "one reading of a bill per source: the staff member's typed total, the customer's blind total, or (later) the photo reader's reading; agrees says whether it matched the first reading within bill_amount_tolerance",
+			"properties": {
+				"agrees": {
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"bill_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"entered_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"entered_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"entered_total": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"reading": {
+					"format": "jsonb"
+				},
+				"source": {
+					"format": "text",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": ["id", "tenant_id", "bill_id", "source", "entered_at"],
+			"type": "object"
+		},
 		"brands": {
 			"description": "one row per brand of a tenant: the neutral key used in secret names, flags and logs (brand-1), the display name and the stores the brand covers; every Zalo row hangs off it",
 			"properties": {
@@ -4339,10 +4603,72 @@
 			],
 			"type": "object"
 		},
+		"loyalty_audit_events": {
+			"description": "the audit trail of the staff confirmation mode: every settings change, bill (recorded, refused, answered by the customer, disputed, queued, confirmed, reversed, rejected, expired, conflicting), random audit, counter QR issue, staff redemption confirmation or void and shadow flag, with the acting user (null for the customer or a job), the subject row and the amount; details never hold a phone, a code or a name; append-only for API roles, a data-subject erasure only blanks membership_id",
+			"properties": {
+				"action": {
+					"format": "text",
+					"type": "string"
+				},
+				"actor": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"amount": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"details": {
+					"format": "jsonb"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"membership_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"occurred_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"subject_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"action",
+				"details",
+				"occurred_at"
+			],
+			"type": "object"
+		},
 		"loyalty_ledger": {
 			"description": "the append-only loyalty ledger: every stamp and point movement of a membership as a row (earn, confirm, clawback, redeem, adjust, expire) with its value at issue; inserts only, a correction is a new row that references the original through source_entry_id; only app.erase_loyalty_membership (the data-subject deletion) removes rows",
 			"properties": {
 				"approved_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"bill_id": {
+					"description": "on an earn of path E and its confirm and clawback rows: the bill_captures row that proves it instead of an invoice",
 					"format": "uuid",
 					"type": "string"
 				},
@@ -4376,7 +4702,7 @@
 					"type": "string"
 				},
 				"matched_path": {
-					"description": "how the invoice of an earn was tied to the membership: A the phone or member on the invoice, B a check-in code, C a receipt claim, D a voucher recipient",
+					"description": "how the purchase of an earn was proven: A the phone or member on the invoice, B a check-in code, C a receipt claim, D a voucher recipient (all by a synced invoice), E a paper bill recorded at a store in staff mode (bill_captures, the evidence ladder)",
 					"format": "text",
 					"type": "string"
 				},
@@ -4950,6 +5276,176 @@
 				}
 			},
 			"required": ["id", "tenant_id", "phone", "created_at", "updated_at"],
+			"type": "object"
+		},
+		"loyalty_store_settings": {
+			"description": "per store: what confirms a loyalty earn or redemption (pos_sync: a synced POS invoice, the default; staff: the bill evidence ladder in the staff and customer Mini Apps, no POS needed) and the limits of the staff mode; one row per store, created with the store; written only through set_loyalty_store_settings by an owner",
+			"properties": {
+				"auto_approve_max_amount": {
+					"default": 0,
+					"description": "a counter claim up to this total is confirmed at once at level 0 (0: never), within auto_approve_per_day: an owner-accepted risk, bounded and audited",
+					"format": "numeric",
+					"type": "number"
+				},
+				"auto_approve_per_day": {
+					"default": 0,
+					"description": "how many counter claims the store may approve automatically in a business day",
+					"format": "int32",
+					"type": "integer"
+				},
+				"bill_amount_tolerance": {
+					"default": 1000,
+					"description": "two readings of a total agree when they differ by at most this amount",
+					"format": "numeric",
+					"type": "number"
+				},
+				"bill_audit_sample_pct": {
+					"default": 2,
+					"description": "the share of confirmed bills put in the manager queue for a random audit",
+					"format": "numeric",
+					"type": "number"
+				},
+				"bill_evidence_required_level": {
+					"default": 2,
+					"description": "the evidence level a bill needs before its earn is confirmed: 0 the staff member's typed total alone, 1 one reading (camera reader, later), 2 two agreeing readings (the staff total and the customer's blind total)",
+					"format": "int32",
+					"type": "integer"
+				},
+				"bill_manager_approval_above": {
+					"default": 1000000,
+					"description": "a staff-recorded bill above this total waits in the manager queue whatever its evidence",
+					"format": "numeric",
+					"type": "number"
+				},
+				"bill_photo_retention_days": {
+					"default": 90,
+					"description": "how long a bill photo is kept (phase 4 of the bill verification plan; stored now so the knob exists)",
+					"format": "int32",
+					"type": "integer"
+				},
+				"bill_reader_mode": {
+					"default": "off",
+					"description": "the bill photo reader: off, or mock for tests (phase 4; live and sample come with phase 6)",
+					"format": "text",
+					"type": "string"
+				},
+				"bill_silence_outcome": {
+					"default": "reverse",
+					"description": "what happens to a bill the customer never answered: reverse (a clawback and an alert, the default) or confirm at its own level",
+					"format": "text",
+					"type": "string"
+				},
+				"bill_staff_shift_cap": {
+					"default": 25,
+					"description": "how many unreviewed (evidence level 0 or 1) bills one staff member may record at the store in a business day; an alert fires at 70 %",
+					"format": "int32",
+					"type": "integer"
+				},
+				"bill_unconfirmed_hours": {
+					"default": 24,
+					"description": "how long a bill below the required level waits for the customer's answer before bill_silence_outcome applies",
+					"format": "int32",
+					"type": "integer"
+				},
+				"confirmation": {
+					"default": "pos_sync",
+					"description": "pos_sync: earns of paths B and C and discount-rail redemptions wait for a synced invoice; staff: bills recorded in the staff Mini App earn (path E) and staff confirm rewards at once; the POS-matched paths A to D do not earn at this store and a sync only feeds the shadow check",
+					"format": "text",
+					"type": "string"
+				},
+				"counter_code_ttl_seconds": {
+					"default": 90,
+					"description": "how long one counter QR is valid; the staff Mini App replaces it before half of that time has passed",
+					"format": "int32",
+					"type": "integer"
+				},
+				"max_bill_amount": {
+					"default": 2000000,
+					"description": "the largest bill total a staff mode earn may carry; larger is refused",
+					"format": "numeric",
+					"type": "number"
+				},
+				"reverse_window_minutes": {
+					"default": 480,
+					"description": "how long after a confirmation a manager may still reverse the earn or void the redemption (the shift); later corrections go through an adjustment",
+					"format": "int32",
+					"type": "integer"
+				},
+				"self_claim": {
+					"default": false,
+					"description": "whether customers may claim with the counter QR shown in the staff Mini App",
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"shadow_reconcile": {
+					"default": true,
+					"description": "in staff mode, whether bills are matched in the background with synced invoices when the store also has a POS sync; a mismatch is only flagged",
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"staff_amount_per_day": {
+					"default": 30000000,
+					"description": "the total of the bills one staff member may record at the store in a business day",
+					"format": "numeric",
+					"type": "number"
+				},
+				"staff_redemptions_per_day": {
+					"default": 50,
+					"description": "how many rewards one staff member may confirm at the store in a business day",
+					"format": "int32",
+					"type": "integer"
+				},
+				"store_earns_per_day": {
+					"default": 400,
+					"description": "how many bills the store may record in a business day, auto-approved counter claims included",
+					"format": "int32",
+					"type": "integer"
+				},
+				"store_id": {
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"store_id",
+				"tenant_id",
+				"confirmation",
+				"max_bill_amount",
+				"bill_evidence_required_level",
+				"bill_manager_approval_above",
+				"bill_amount_tolerance",
+				"bill_unconfirmed_hours",
+				"bill_silence_outcome",
+				"bill_staff_shift_cap",
+				"staff_amount_per_day",
+				"store_earns_per_day",
+				"staff_redemptions_per_day",
+				"reverse_window_minutes",
+				"bill_audit_sample_pct",
+				"self_claim",
+				"counter_code_ttl_seconds",
+				"auto_approve_max_amount",
+				"auto_approve_per_day",
+				"bill_photo_retention_days",
+				"bill_reader_mode",
+				"shadow_reconcile",
+				"updated_at"
+			],
 			"type": "object"
 		},
 		"memberships": {
@@ -6282,6 +6778,11 @@
 					"format": "timestamp with time zone",
 					"type": "string"
 				},
+				"confirmed_by": {
+					"description": "the staff member who confirmed the redemption at a store in staff mode; then confirmed_invoice_id is only the shadow match, if any",
+					"format": "uuid",
+					"type": "string"
+				},
 				"confirmed_invoice_id": {
 					"format": "uuid",
 					"type": "string"
@@ -6367,6 +6868,15 @@
 					"type": "string"
 				},
 				"verified_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"void_reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"voided_by": {
+					"description": "the manager who voided a staff-confirmed redemption within the reverse window (state cancelled, stamps and points given back)",
 					"format": "uuid",
 					"type": "string"
 				}
@@ -8097,6 +8607,33 @@
 				"$ref": "#/definitions/approval_requests"
 			}
 		},
+		"body.bill_audits": {
+			"description": "bill_audits",
+			"in": "body",
+			"name": "bill_audits",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/bill_audits"
+			}
+		},
+		"body.bill_captures": {
+			"description": "bill_captures",
+			"in": "body",
+			"name": "bill_captures",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/bill_captures"
+			}
+		},
+		"body.bill_confirmations": {
+			"description": "bill_confirmations",
+			"in": "body",
+			"name": "bill_confirmations",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/bill_confirmations"
+			}
+		},
 		"body.brands": {
 			"description": "brands",
 			"in": "body",
@@ -8412,6 +8949,15 @@
 				"$ref": "#/definitions/legal_documents"
 			}
 		},
+		"body.loyalty_audit_events": {
+			"description": "loyalty_audit_events",
+			"in": "body",
+			"name": "loyalty_audit_events",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/loyalty_audit_events"
+			}
+		},
 		"body.loyalty_ledger": {
 			"description": "loyalty_ledger",
 			"in": "body",
@@ -8464,6 +9010,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/loyalty_staff_phones"
+			}
+		},
+		"body.loyalty_store_settings": {
+			"description": "loyalty_store_settings",
+			"in": "body",
+			"name": "loyalty_store_settings",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/loyalty_store_settings"
 			}
 		},
 		"body.memberships": {
@@ -10197,6 +10752,311 @@
 		"rowFilter.approval_requests.updated_at": {
 			"in": "query",
 			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_audits.bill_id": {
+			"in": "query",
+			"name": "bill_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_audits.closed_at": {
+			"in": "query",
+			"name": "closed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_audits.closed_by": {
+			"in": "query",
+			"name": "closed_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_audits.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_audits.note": {
+			"in": "query",
+			"name": "note",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_audits.opened_at": {
+			"in": "query",
+			"name": "opened_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_audits.state": {
+			"in": "query",
+			"name": "state",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_audits.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_audits.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.auto_approved": {
+			"in": "query",
+			"name": "auto_approved",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.bill_key": {
+			"description": "store + business date + this key is the dedupe key of a bill (app.bill_key: leading zeros dropped)",
+			"in": "query",
+			"name": "bill_key",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.bill_no": {
+			"in": "query",
+			"name": "bill_no",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.business_date": {
+			"in": "query",
+			"name": "business_date",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.captured_by": {
+			"in": "query",
+			"name": "captured_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.confirm_by": {
+			"description": "when a bill still waiting for its second reading is settled by bill_silence_outcome (staff_scan) or expires (counter_claim)",
+			"in": "query",
+			"name": "confirm_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.confirmed_at": {
+			"in": "query",
+			"name": "confirmed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.counter_code_id": {
+			"in": "query",
+			"name": "counter_code_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.decided_at": {
+			"in": "query",
+			"name": "decided_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.decided_by": {
+			"in": "query",
+			"name": "decided_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.decision_reason": {
+			"in": "query",
+			"name": "decision_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.evidence_level": {
+			"description": "0 one typed total; 1 one reading (camera reader, later); 2 two agreeing readings; 3 two agreeing readings and clean bill checks (later)",
+			"in": "query",
+			"name": "evidence_level",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.flags": {
+			"in": "query",
+			"name": "flags",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.invoice_id": {
+			"description": "the shadow match: a synced invoice that also shows this bill, set by app.loyalty_shadow_reconcile when the store has a POS sync; nothing needs it",
+			"in": "query",
+			"name": "invoice_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.lines": {
+			"in": "query",
+			"name": "lines",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.membership_id": {
+			"in": "query",
+			"name": "membership_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.photo_hash": {
+			"in": "query",
+			"name": "photo_hash",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.photo_path": {
+			"in": "query",
+			"name": "photo_path",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.printed_at": {
+			"in": "query",
+			"name": "printed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.queue_reason": {
+			"in": "query",
+			"name": "queue_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.reading": {
+			"in": "query",
+			"name": "reading",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.reversal_reason": {
+			"in": "query",
+			"name": "reversal_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.reversed_at": {
+			"in": "query",
+			"name": "reversed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.shadow_checked_at": {
+			"in": "query",
+			"name": "shadow_checked_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.shadow_state": {
+			"in": "query",
+			"name": "shadow_state",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.source": {
+			"in": "query",
+			"name": "source",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.state": {
+			"in": "query",
+			"name": "state",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_captures.total": {
+			"description": "the total of the first reading: the staff member's for staff_scan, the customer's for counter_claim; the other readings are bill_confirmations rows",
+			"in": "query",
+			"name": "total",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_confirmations.agrees": {
+			"in": "query",
+			"name": "agrees",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_confirmations.bill_id": {
+			"in": "query",
+			"name": "bill_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_confirmations.entered_at": {
+			"in": "query",
+			"name": "entered_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_confirmations.entered_by": {
+			"in": "query",
+			"name": "entered_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_confirmations.entered_total": {
+			"in": "query",
+			"name": "entered_total",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_confirmations.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_confirmations.reading": {
+			"in": "query",
+			"name": "reading",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_confirmations.source": {
+			"in": "query",
+			"name": "source",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_confirmations.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
 			"required": false,
 			"type": "string"
 		},
@@ -13271,9 +14131,76 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.loyalty_audit_events.action": {
+			"in": "query",
+			"name": "action",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_audit_events.actor": {
+			"in": "query",
+			"name": "actor",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_audit_events.amount": {
+			"in": "query",
+			"name": "amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_audit_events.details": {
+			"in": "query",
+			"name": "details",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_audit_events.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_audit_events.membership_id": {
+			"in": "query",
+			"name": "membership_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_audit_events.occurred_at": {
+			"in": "query",
+			"name": "occurred_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_audit_events.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_audit_events.subject_id": {
+			"in": "query",
+			"name": "subject_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_audit_events.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.loyalty_ledger.approved_by": {
 			"in": "query",
 			"name": "approved_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_ledger.bill_id": {
+			"description": "on an earn of path E and its confirm and clawback rows: the bill_captures row that proves it instead of an invoice",
+			"in": "query",
+			"name": "bill_id",
 			"required": false,
 			"type": "string"
 		},
@@ -13315,7 +14242,7 @@
 			"type": "string"
 		},
 		"rowFilter.loyalty_ledger.matched_path": {
-			"description": "how the invoice of an earn was tied to the membership: A the phone or member on the invoice, B a check-in code, C a receipt claim, D a voucher recipient",
+			"description": "how the purchase of an earn was proven: A the phone or member on the invoice, B a check-in code, C a receipt claim, D a voucher recipient (all by a synced invoice), E a paper bill recorded at a store in staff mode (bill_captures, the evidence ladder)",
 			"in": "query",
 			"name": "matched_path",
 			"required": false,
@@ -13895,6 +14822,170 @@
 		"rowFilter.loyalty_staff_phones.updated_at": {
 			"in": "query",
 			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.auto_approve_max_amount": {
+			"description": "a counter claim up to this total is confirmed at once at level 0 (0: never), within auto_approve_per_day: an owner-accepted risk, bounded and audited",
+			"in": "query",
+			"name": "auto_approve_max_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.auto_approve_per_day": {
+			"description": "how many counter claims the store may approve automatically in a business day",
+			"in": "query",
+			"name": "auto_approve_per_day",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.bill_amount_tolerance": {
+			"description": "two readings of a total agree when they differ by at most this amount",
+			"in": "query",
+			"name": "bill_amount_tolerance",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.bill_audit_sample_pct": {
+			"description": "the share of confirmed bills put in the manager queue for a random audit",
+			"in": "query",
+			"name": "bill_audit_sample_pct",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.bill_evidence_required_level": {
+			"description": "the evidence level a bill needs before its earn is confirmed: 0 the staff member's typed total alone, 1 one reading (camera reader, later), 2 two agreeing readings (the staff total and the customer's blind total)",
+			"in": "query",
+			"name": "bill_evidence_required_level",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.bill_manager_approval_above": {
+			"description": "a staff-recorded bill above this total waits in the manager queue whatever its evidence",
+			"in": "query",
+			"name": "bill_manager_approval_above",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.bill_photo_retention_days": {
+			"description": "how long a bill photo is kept (phase 4 of the bill verification plan; stored now so the knob exists)",
+			"in": "query",
+			"name": "bill_photo_retention_days",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.bill_reader_mode": {
+			"description": "the bill photo reader: off, or mock for tests (phase 4; live and sample come with phase 6)",
+			"in": "query",
+			"name": "bill_reader_mode",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.bill_silence_outcome": {
+			"description": "what happens to a bill the customer never answered: reverse (a clawback and an alert, the default) or confirm at its own level",
+			"in": "query",
+			"name": "bill_silence_outcome",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.bill_staff_shift_cap": {
+			"description": "how many unreviewed (evidence level 0 or 1) bills one staff member may record at the store in a business day; an alert fires at 70 %",
+			"in": "query",
+			"name": "bill_staff_shift_cap",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.bill_unconfirmed_hours": {
+			"description": "how long a bill below the required level waits for the customer's answer before bill_silence_outcome applies",
+			"in": "query",
+			"name": "bill_unconfirmed_hours",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.confirmation": {
+			"description": "pos_sync: earns of paths B and C and discount-rail redemptions wait for a synced invoice; staff: bills recorded in the staff Mini App earn (path E) and staff confirm rewards at once; the POS-matched paths A to D do not earn at this store and a sync only feeds the shadow check",
+			"in": "query",
+			"name": "confirmation",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.counter_code_ttl_seconds": {
+			"description": "how long one counter QR is valid; the staff Mini App replaces it before half of that time has passed",
+			"in": "query",
+			"name": "counter_code_ttl_seconds",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.max_bill_amount": {
+			"description": "the largest bill total a staff mode earn may carry; larger is refused",
+			"in": "query",
+			"name": "max_bill_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.reverse_window_minutes": {
+			"description": "how long after a confirmation a manager may still reverse the earn or void the redemption (the shift); later corrections go through an adjustment",
+			"in": "query",
+			"name": "reverse_window_minutes",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.self_claim": {
+			"description": "whether customers may claim with the counter QR shown in the staff Mini App",
+			"in": "query",
+			"name": "self_claim",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.shadow_reconcile": {
+			"description": "in staff mode, whether bills are matched in the background with synced invoices when the store also has a POS sync; a mismatch is only flagged",
+			"in": "query",
+			"name": "shadow_reconcile",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.staff_amount_per_day": {
+			"description": "the total of the bills one staff member may record at the store in a business day",
+			"in": "query",
+			"name": "staff_amount_per_day",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.staff_redemptions_per_day": {
+			"description": "how many rewards one staff member may confirm at the store in a business day",
+			"in": "query",
+			"name": "staff_redemptions_per_day",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.store_earns_per_day": {
+			"description": "how many bills the store may record in a business day, auto-approved counter claims included",
+			"in": "query",
+			"name": "store_earns_per_day",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.loyalty_store_settings.updated_by": {
+			"in": "query",
+			"name": "updated_by",
 			"required": false,
 			"type": "string"
 		},
@@ -15270,6 +16361,13 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.redemptions.confirmed_by": {
+			"description": "the staff member who confirmed the redemption at a store in staff mode; then confirmed_invoice_id is only the shadow match, if any",
+			"in": "query",
+			"name": "confirmed_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.redemptions.confirmed_invoice_id": {
 			"in": "query",
 			"name": "confirmed_invoice_id",
@@ -15386,6 +16484,19 @@
 		"rowFilter.redemptions.verified_by": {
 			"in": "query",
 			"name": "verified_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.void_reason": {
+			"in": "query",
+			"name": "void_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.redemptions.voided_by": {
+			"description": "the manager who voided a staff-confirmed redemption within the reverse window (state cancelled, stamps and points given back)",
+			"in": "query",
+			"name": "voided_by",
 			"required": false,
 			"type": "string"
 		},
@@ -20687,6 +21798,738 @@
 				},
 				"summary": "staff requests to the managers of a store (FR-STF-20): a kind, plain-text details and the requester (created_by); pending until an owner or manager of the store other than the requester approves or refuses it through decide_request, with a reason on refusal; a decided request never changes; details and reason never enter a message, an alert or a log",
 				"tags": ["approval_requests"]
+			}
+		},
+		"/bill_audits": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.bill_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.opened_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.closed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.closed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.note"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the random audit of confirmed bills (bill_audit_sample_pct): open in the manager queue until a manager marks it passed or failed; a failed audit reverses the earn and counts against the staff member",
+				"tags": ["bill_audits"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.bill_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.opened_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.closed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.closed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.note"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/bill_audits"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the random audit of confirmed bills (bill_audit_sample_pct): open in the manager queue until a manager marks it passed or failed; a failed audit reverses the earn and counts against the staff member",
+				"tags": ["bill_audits"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.bill_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.opened_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.closed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.closed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_audits.note"
+					},
+					{
+						"$ref": "#/parameters/body.bill_audits"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the random audit of confirmed bills (bill_audit_sample_pct): open in the manager queue until a manager marks it passed or failed; a failed audit reverses the earn and counts against the staff member",
+				"tags": ["bill_audits"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.bill_audits"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the random audit of confirmed bills (bill_audit_sample_pct): open in the manager queue until a manager marks it passed or failed; a failed audit reverses the earn and counts against the staff member",
+				"tags": ["bill_audits"]
+			}
+		},
+		"/bill_captures": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.captured_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.counter_code_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.bill_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.bill_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.total"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.printed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.lines"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.flags"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.photo_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.photo_hash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.reading"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.evidence_level"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.queue_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.confirm_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.auto_approved"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.decided_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.decided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.decision_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.confirmed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.reversed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.reversal_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.shadow_state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.shadow_checked_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.created_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "path E: a paper bill recorded at a store in staff mode, by a staff member after scanning the member's dynamic QR (staff_scan) or by the customer with the counter QR (counter_claim), with its dedupe key, the first reading's total, the evidence level reached and its state (awaiting_customer, awaiting_staff, queued, confirmed, reversed, rejected, expired); the ledger earn names it through loyalty_ledger.bill_id; photo, hash, reading, printed time, lines and flags are filled by the camera reader of later phases",
+				"tags": ["bill_captures"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.captured_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.counter_code_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.bill_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.bill_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.total"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.printed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.lines"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.flags"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.photo_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.photo_hash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.reading"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.evidence_level"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.queue_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.confirm_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.auto_approved"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.decided_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.decided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.decision_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.confirmed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.reversed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.reversal_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.shadow_state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.shadow_checked_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.created_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/bill_captures"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "path E: a paper bill recorded at a store in staff mode, by a staff member after scanning the member's dynamic QR (staff_scan) or by the customer with the counter QR (counter_claim), with its dedupe key, the first reading's total, the evidence level reached and its state (awaiting_customer, awaiting_staff, queued, confirmed, reversed, rejected, expired); the ledger earn names it through loyalty_ledger.bill_id; photo, hash, reading, printed time, lines and flags are filled by the camera reader of later phases",
+				"tags": ["bill_captures"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.captured_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.counter_code_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.bill_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.bill_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.total"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.printed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.lines"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.flags"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.photo_path"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.photo_hash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.reading"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.evidence_level"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.queue_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.confirm_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.auto_approved"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.decided_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.decided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.decision_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.confirmed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.reversed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.reversal_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.invoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.shadow_state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.shadow_checked_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_captures.created_at"
+					},
+					{
+						"$ref": "#/parameters/body.bill_captures"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "path E: a paper bill recorded at a store in staff mode, by a staff member after scanning the member's dynamic QR (staff_scan) or by the customer with the counter QR (counter_claim), with its dedupe key, the first reading's total, the evidence level reached and its state (awaiting_customer, awaiting_staff, queued, confirmed, reversed, rejected, expired); the ledger earn names it through loyalty_ledger.bill_id; photo, hash, reading, printed time, lines and flags are filled by the camera reader of later phases",
+				"tags": ["bill_captures"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.bill_captures"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "path E: a paper bill recorded at a store in staff mode, by a staff member after scanning the member's dynamic QR (staff_scan) or by the customer with the counter QR (counter_claim), with its dedupe key, the first reading's total, the evidence level reached and its state (awaiting_customer, awaiting_staff, queued, confirmed, reversed, rejected, expired); the ledger earn names it through loyalty_ledger.bill_id; photo, hash, reading, printed time, lines and flags are filled by the camera reader of later phases",
+				"tags": ["bill_captures"]
+			}
+		},
+		"/bill_confirmations": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.bill_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.entered_total"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.reading"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.agrees"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.entered_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.entered_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "one reading of a bill per source: the staff member's typed total, the customer's blind total, or (later) the photo reader's reading; agrees says whether it matched the first reading within bill_amount_tolerance",
+				"tags": ["bill_confirmations"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.bill_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.entered_total"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.reading"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.agrees"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.entered_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.entered_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/bill_confirmations"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "one reading of a bill per source: the staff member's typed total, the customer's blind total, or (later) the photo reader's reading; agrees says whether it matched the first reading within bill_amount_tolerance",
+				"tags": ["bill_confirmations"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.bill_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.entered_total"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.reading"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.agrees"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.entered_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.entered_at"
+					},
+					{
+						"$ref": "#/parameters/body.bill_confirmations"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "one reading of a bill per source: the staff member's typed total, the customer's blind total, or (later) the photo reader's reading; agrees says whether it matched the first reading within bill_amount_tolerance",
+				"tags": ["bill_confirmations"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.bill_confirmations"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "one reading of a bill per source: the staff member's typed total, the customer's blind total, or (later) the photo reader's reading; agrees says whether it matched the first reading within bill_amount_tolerance",
+				"tags": ["bill_confirmations"]
 			}
 		},
 		"/brands": {
@@ -28429,6 +30272,190 @@
 				"tags": ["legal_documents"]
 			}
 		},
+		"/loyalty_audit_events": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.actor"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.action"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.subject_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.details"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the audit trail of the staff confirmation mode: every settings change, bill (recorded, refused, answered by the customer, disputed, queued, confirmed, reversed, rejected, expired, conflicting), random audit, counter QR issue, staff redemption confirmation or void and shadow flag, with the acting user (null for the customer or a job), the subject row and the amount; details never hold a phone, a code or a name; append-only for API roles, a data-subject erasure only blanks membership_id",
+				"tags": ["loyalty_audit_events"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.actor"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.action"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.subject_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.details"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/loyalty_audit_events"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the audit trail of the staff confirmation mode: every settings change, bill (recorded, refused, answered by the customer, disputed, queued, confirmed, reversed, rejected, expired, conflicting), random audit, counter QR issue, staff redemption confirmation or void and shadow flag, with the acting user (null for the customer or a job), the subject row and the amount; details never hold a phone, a code or a name; append-only for API roles, a data-subject erasure only blanks membership_id",
+				"tags": ["loyalty_audit_events"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.actor"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.action"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.subject_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.membership_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.details"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_audit_events.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/body.loyalty_audit_events"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the audit trail of the staff confirmation mode: every settings change, bill (recorded, refused, answered by the customer, disputed, queued, confirmed, reversed, rejected, expired, conflicting), random audit, counter QR issue, staff redemption confirmation or void and shadow flag, with the acting user (null for the customer or a job), the subject row and the amount; details never hold a phone, a code or a name; append-only for API roles, a data-subject erasure only blanks membership_id",
+				"tags": ["loyalty_audit_events"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.loyalty_audit_events"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the audit trail of the staff confirmation mode: every settings change, bill (recorded, refused, answered by the customer, disputed, queued, confirmed, reversed, rejected, expired, conflicting), random audit, counter QR issue, staff redemption confirmation or void and shadow flag, with the acting user (null for the customer or a job), the subject row and the amount; details never hold a phone, a code or a name; append-only for API roles, a data-subject erasure only blanks membership_id",
+				"tags": ["loyalty_audit_events"]
+			}
+		},
 		"/loyalty_ledger": {
 			"delete": {
 				"parameters": [
@@ -28488,6 +30515,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.loyalty_ledger.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.bill_id"
 					},
 					{
 						"$ref": "#/parameters/preferReturn"
@@ -28559,6 +30589,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.loyalty_ledger.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.bill_id"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -28657,6 +30690,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.loyalty_ledger.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_ledger.bill_id"
 					},
 					{
 						"$ref": "#/parameters/body.loyalty_ledger"
@@ -29918,6 +31954,316 @@
 				},
 				"summary": "the staff-phone exclusion list of a tenant: an invoice or a claim of one of these phones never earns; phones in E.164 form; read and written by owners and managers only, never shown to staff",
 				"tags": ["loyalty_staff_phones"]
+			}
+		},
+		"/loyalty_store_settings": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.confirmation"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.max_bill_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_evidence_required_level"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_manager_approval_above"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_amount_tolerance"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_unconfirmed_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_silence_outcome"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_staff_shift_cap"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.staff_amount_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.store_earns_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.staff_redemptions_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.reverse_window_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_audit_sample_pct"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.self_claim"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.counter_code_ttl_seconds"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.auto_approve_max_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.auto_approve_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_photo_retention_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_reader_mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.shadow_reconcile"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "per store: what confirms a loyalty earn or redemption (pos_sync: a synced POS invoice, the default; staff: the bill evidence ladder in the staff and customer Mini Apps, no POS needed) and the limits of the staff mode; one row per store, created with the store; written only through set_loyalty_store_settings by an owner",
+				"tags": ["loyalty_store_settings"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.confirmation"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.max_bill_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_evidence_required_level"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_manager_approval_above"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_amount_tolerance"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_unconfirmed_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_silence_outcome"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_staff_shift_cap"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.staff_amount_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.store_earns_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.staff_redemptions_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.reverse_window_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_audit_sample_pct"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.self_claim"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.counter_code_ttl_seconds"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.auto_approve_max_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.auto_approve_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_photo_retention_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_reader_mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.shadow_reconcile"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/loyalty_store_settings"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "per store: what confirms a loyalty earn or redemption (pos_sync: a synced POS invoice, the default; staff: the bill evidence ladder in the staff and customer Mini Apps, no POS needed) and the limits of the staff mode; one row per store, created with the store; written only through set_loyalty_store_settings by an owner",
+				"tags": ["loyalty_store_settings"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.confirmation"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.max_bill_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_evidence_required_level"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_manager_approval_above"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_amount_tolerance"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_unconfirmed_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_silence_outcome"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_staff_shift_cap"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.staff_amount_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.store_earns_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.staff_redemptions_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.reverse_window_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_audit_sample_pct"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.self_claim"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.counter_code_ttl_seconds"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.auto_approve_max_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.auto_approve_per_day"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_photo_retention_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.bill_reader_mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.shadow_reconcile"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.loyalty_store_settings.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.loyalty_store_settings"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "per store: what confirms a loyalty earn or redemption (pos_sync: a synced POS invoice, the default; staff: the bill evidence ladder in the staff and customer Mini Apps, no POS needed) and the limits of the staff mode; one row per store, created with the store; written only through set_loyalty_store_settings by an owner",
+				"tags": ["loyalty_store_settings"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.loyalty_store_settings"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "per store: what confirms a loyalty earn or redemption (pos_sync: a synced POS invoice, the default; staff: the bill evidence ladder in the staff and customer Mini Apps, no POS needed) and the limits of the staff mode; one row per store, created with the store; written only through set_loyalty_store_settings by an owner",
+				"tags": ["loyalty_store_settings"]
 			}
 		},
 		"/memberships": {
@@ -33366,6 +35712,15 @@
 						"$ref": "#/parameters/rowFilter.redemptions.release_entry_id"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.redemptions.confirmed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.voided_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.void_reason"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -33441,6 +35796,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.redemptions.release_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.confirmed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.voided_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.void_reason"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -33545,6 +35909,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.redemptions.release_entry_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.confirmed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.voided_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.redemptions.void_reason"
 					},
 					{
 						"$ref": "#/parameters/body.redemptions"
@@ -34641,6 +37014,91 @@
 				"tags": ["(rpc) basket_pairs"]
 			}
 		},
+		"/rpc/bill_anomaly_report": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "p_store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_from",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_to",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC (plan phase 3): per store, business day and staff member (null: auto-approved counter claims) of the stores the caller owns or manages, at most 92 days: bills recorded and their total, by evidence level and state, disagreements, disputes, timeouts, reversals, failed audits, rewards they confirmed, the share of their bills that went to one member, amount outliers (above the store's median plus 5 MAD over the range, MAD at least 1,000), the most bills in one clock hour and the median of their peers that day, with flags peer_outlier, disagreements, disputes, timeouts, one_member, amount_outliers, audit_failed and burst; staff names only, never a phone; other stores are left out silently",
+				"tags": ["(rpc) bill_anomaly_report"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC (plan phase 3): per store, business day and staff member (null: auto-approved counter claims) of the stores the caller owns or manages, at most 92 days: bills recorded and their total, by evidence level and state, disagreements, disputes, timeouts, reversals, failed audits, rewards they confirmed, the share of their bills that went to one member, amount outliers (above the store's median plus 5 MAD over the range, MAD at least 1,000), the most bills in one clock hour and the median of their peers that day, with flags peer_outlier, disagreements, disputes, timeouts, one_member, amount_outliers, audit_failed and burst; staff names only, never a phone; other stores are left out silently",
+							"properties": {
+								"p_from": {
+									"format": "date",
+									"type": "string"
+								},
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"p_to": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_ids", "p_from", "p_to"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC (plan phase 3): per store, business day and staff member (null: auto-approved counter claims) of the stores the caller owns or manages, at most 92 days: bills recorded and their total, by evidence level and state, disagreements, disputes, timeouts, reversals, failed audits, rewards they confirmed, the share of their bills that went to one member, amount outliers (above the store's median plus 5 MAD over the range, MAD at least 1,000), the most bills in one clock hour and the median of their peers that day, with flags peer_outlier, disagreements, disputes, timeouts, one_member, amount_outliers, audit_failed and burst; staff names only, never a phone; other stores are left out silently",
+				"tags": ["(rpc) bill_anomaly_report"]
+			}
+		},
 		"/rpc/cash_count_review": {
 			"get": {
 				"parameters": [
@@ -35062,6 +37520,47 @@
 				"tags": ["(rpc) coupon_discount_days"]
 			}
 		},
+		"/rpc/customer_confirm_bill": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.customer_confirm_bill at now()",
+							"properties": {
+								"p_bill_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_total": {
+									"format": "numeric",
+									"type": "number"
+								}
+							},
+							"required": ["p_bill_id", "p_total"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.customer_confirm_bill at now()",
+				"tags": ["(rpc) customer_confirm_bill"]
+			}
+		},
 		"/rpc/customer_coupons": {
 			"get": {
 				"parameters": [
@@ -35119,6 +37618,43 @@
 				},
 				"summary": "RPC for the customer Mini App: app.customer_coupons at the current time",
 				"tags": ["(rpc) customer_coupons"]
+			}
+		},
+		"/rpc/customer_dispute_bill": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.customer_dispute_bill at now()",
+							"properties": {
+								"p_bill_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_bill_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.customer_dispute_bill at now()",
+				"tags": ["(rpc) customer_dispute_bill"]
 			}
 		},
 		"/rpc/customer_home": {
@@ -35287,6 +37823,50 @@
 				"tags": ["(rpc) customer_metrics"]
 			}
 		},
+		"/rpc/customer_pending_bills": {
+			"get": {
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.customer_pending_bills at now()",
+				"tags": ["(rpc) customer_pending_bills"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.customer_pending_bills at now()",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.customer_pending_bills at now()",
+				"tags": ["(rpc) customer_pending_bills"]
+			}
+		},
 		"/rpc/customer_redeem": {
 			"post": {
 				"parameters": [
@@ -35435,6 +38015,51 @@
 				},
 				"summary": "RPC for the customer Mini App: app.customer_submit_claim at the current time",
 				"tags": ["(rpc) customer_submit_claim"]
+			}
+		},
+		"/rpc/customer_submit_counter_claim": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.customer_submit_counter_claim at now()",
+							"properties": {
+								"p_bill_no": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_qr": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_total": {
+									"format": "numeric",
+									"type": "number"
+								}
+							},
+							"required": ["p_qr", "p_bill_no", "p_total"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.customer_submit_counter_claim at now()",
+				"tags": ["(rpc) customer_submit_counter_claim"]
 			}
 		},
 		"/rpc/customer_vouchers": {
@@ -41704,6 +44329,46 @@
 				"tags": ["(rpc) set_loyalty_adjust_limits"]
 			}
 		},
+		"/rpc/set_loyalty_store_settings": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.set_loyalty_store_settings at now()",
+							"properties": {
+								"p_settings": {
+									"format": "jsonb"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_id", "p_settings"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.set_loyalty_store_settings at now()",
+				"tags": ["(rpc) set_loyalty_store_settings"]
+			}
+		},
 		"/rpc/set_my_muted_rules": {
 			"post": {
 				"parameters": [
@@ -42068,6 +44733,335 @@
 				"tags": ["(rpc) shift_review"]
 			}
 		},
+		"/rpc/staff_answer_counter_claim": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.staff_answer_counter_claim at now()",
+							"properties": {
+								"p_bill_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_reject_reason": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_total": {
+									"format": "numeric",
+									"type": "number"
+								}
+							},
+							"required": ["p_bill_id", "p_total"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_answer_counter_claim at now()",
+				"tags": ["(rpc) staff_answer_counter_claim"]
+			}
+		},
+		"/rpc/staff_bill_queue": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_bill_queue at now()",
+				"tags": ["(rpc) staff_bill_queue"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.staff_bill_queue at now()",
+							"properties": {
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_bill_queue at now()",
+				"tags": ["(rpc) staff_bill_queue"]
+			}
+		},
+		"/rpc/staff_close_bill_audit": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.staff_close_bill_audit at now()",
+							"properties": {
+								"p_audit_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_note": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_result": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_audit_id", "p_result"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_close_bill_audit at now()",
+				"tags": ["(rpc) staff_close_bill_audit"]
+			}
+		},
+		"/rpc/staff_confirm_redemption": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.staff_confirm_redemption at now()",
+							"properties": {
+								"p_redemption_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_redemption_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_confirm_redemption at now()",
+				"tags": ["(rpc) staff_confirm_redemption"]
+			}
+		},
+		"/rpc/staff_counter_claims": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_counter_claims at now()",
+				"tags": ["(rpc) staff_counter_claims"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.staff_counter_claims at now()",
+							"properties": {
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_counter_claims at now()",
+				"tags": ["(rpc) staff_counter_claims"]
+			}
+		},
+		"/rpc/staff_counter_code": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.staff_counter_code at now()",
+							"properties": {
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_counter_code at now()",
+				"tags": ["(rpc) staff_counter_code"]
+			}
+		},
+		"/rpc/staff_decide_bill": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.staff_decide_bill at now()",
+							"properties": {
+								"p_bill_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_decision": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_reason": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_bill_id", "p_decision", "p_reason"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_decide_bill at now()",
+				"tags": ["(rpc) staff_decide_bill"]
+			}
+		},
 		"/rpc/staff_decide_loyalty_request": {
 			"post": {
 				"parameters": [
@@ -42269,6 +45263,66 @@
 				"tags": ["(rpc) staff_my_loyalty_requests"]
 			}
 		},
+		"/rpc/staff_recent_bills": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_recent_bills at now()",
+				"tags": ["(rpc) staff_recent_bills"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.staff_recent_bills at now()",
+							"properties": {
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_recent_bills at now()",
+				"tags": ["(rpc) staff_recent_bills"]
+			}
+		},
 		"/rpc/staff_record_checkin": {
 			"post": {
 				"parameters": [
@@ -42380,6 +45434,96 @@
 				"tags": ["(rpc) staff_request"]
 			}
 		},
+		"/rpc/staff_reverse_bill": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.staff_reverse_bill at now()",
+							"properties": {
+								"p_bill_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_reason": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_bill_id", "p_reason"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_reverse_bill at now()",
+				"tags": ["(rpc) staff_reverse_bill"]
+			}
+		},
+		"/rpc/staff_submit_bill": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.staff_submit_bill at now()",
+							"properties": {
+								"p_bill_no": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_code": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_total": {
+									"format": "numeric",
+									"type": "number"
+								}
+							},
+							"required": ["p_store_id", "p_code", "p_bill_no", "p_total"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_submit_bill at now()",
+				"tags": ["(rpc) staff_submit_bill"]
+			}
+		},
 		"/rpc/staff_verify_redemption": {
 			"post": {
 				"parameters": [
@@ -42419,6 +45563,47 @@
 				},
 				"summary": "RPC for the staff app: app.staff_verify_redemption at the current time",
 				"tags": ["(rpc) staff_verify_redemption"]
+			}
+		},
+		"/rpc/staff_void_redemption": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.staff_void_redemption at now()",
+							"properties": {
+								"p_reason": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_redemption_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_redemption_id", "p_reason"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.staff_void_redemption at now()",
+				"tags": ["(rpc) staff_void_redemption"]
 			}
 		},
 		"/rpc/start_bot_link": {

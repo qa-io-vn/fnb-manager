@@ -2415,6 +2415,203 @@ returns TABLE(segment text, customers integer, share numeric)
 
 Tests: pgTAP `163_customer_metrics.sql`.
 
+### 3.26 Staff-confirmed loyalty without the POS (staff mode)
+
+Migrations `loyalty_staff_confirmation`, `bill_captures` and `bill_anomalies` give each store a loyalty confirmation source: `pos_sync` (the default: the synced invoice confirms) or staff mode, where the bill is read from paper without the POS, as `deep-dives/bill-verification-plan.md` plans. The functions below are `security definer` RPCs executable by `authenticated` only (`bill_anomaly_report` is a report). Each is a thin wrapper that runs its `app.*` core at `now()`; the core checks the caller's session kind and store scope itself.
+- Refusals are answered, not raised, with a reason key; `42501` is the refusal of a caller outside the store or the role, and `22023` the one of malformed input.
+- A customer function never shows the total a staff member typed, and a staff function never shows the customer's total (blind readings: agreeing readings give evidence level 2). Phones are masked.
+- Every call is audited in `loyalty_audit`; an unusual pattern of a staff member raises `loyalty_staff_anomaly` (counts only).
+- The deadline job `app.bill_expire_pending` runs every 10 minutes (service role only).
+
+#### `public.set_loyalty_store_settings`
+
+```sql
+public.set_loyalty_store_settings(p_store_id uuid, p_settings jsonb)
+returns jsonb
+```
+
+- **Status:** built (staff mode, migration `loyalty_staff_confirmation`).
+- **Who may call:** an owner of the store: of the whole tenant or of that store (`42501` for everyone else).
+- **Notes:** changes the store's `loyalty_store_settings` with a JSON object holding only the keys to change: the confirmation source, the bill evidence and approval knobs, the caps, `self_claim`, the counter QR life, auto-approval, the audit share and `shadow_reconcile`. An unknown key, a null value or an out-of-range value is `22023`. A change is audited with the names of the changed keys. Returns the row without the tenant and the author.
+
+#### `public.staff_submit_bill`
+
+```sql
+public.staff_submit_bill(p_store_id uuid, p_code text, p_bill_no text, p_total numeric)
+returns jsonb
+```
+
+- **Status:** built (staff mode, plan phase 1 of `deep-dives/bill-verification-plan.md`).
+- **Who may call:** an owner, manager or staff member whose scope holds the store (`42501` outside it, for a customer session, a viewer and the publisher).
+- **Notes:** scans the member's dynamic QR (six digits or `fnb-member:1:<store code>:<code>`) and types the bill number and total. After `app.bill_precheck` the bill is recorded (evidence level 0, the staff reading) and its earn (path E) is written pending; the evidence ladder then decides: `confirmed` at once when `bill_evidence_required_level` is 0, `queued` above `bill_manager_approval_above`, otherwise `awaiting_customer` until the customer's blind total or `bill_unconfirmed_hours`. The answer carries the state, the bill id, the level, the stamps and points, the deadlines and the masked member summary, or `state` `refused` with a `refusal`: `not_staff_mode`, `locked` (code-guessing limit), `wrong_store`, `code_unknown`, `code_expired`, `code_used` or a precheck refusal (dedupe, conflict alert, caps). The member code is single use. A malformed code, number or total is `22023`. Audited.
+
+#### `public.staff_recent_bills`
+
+```sql
+public.staff_recent_bills(p_store_id uuid)
+returns jsonb
+```
+
+- **Status:** built (staff mode).
+- **Who may call:** an owner, manager or staff member whose scope holds the store (`42501` outside it, for a customer session, a viewer and the publisher).
+- **Notes:** the bills of the last 24 hours at the store, newest first, at most 100: every bill for an owner or manager, only their own for a staff member. The phone is masked; each bill carries its state, its evidence level and whether the caller may still reverse it. The answer also says the store's mode and whether self claims are on.
+
+#### `public.staff_bill_queue`
+
+```sql
+public.staff_bill_queue(p_store_id uuid)
+returns jsonb
+```
+
+- **Status:** built (staff mode).
+- **Who may call:** an owner or manager whose scope holds the store (`42501` otherwise).
+- **Notes:** the manager queue: the queued bills (`over_approval`, `disagreement`) with both readings and who recorded them, and the open random audits.
+
+#### `public.staff_decide_bill`
+
+```sql
+public.staff_decide_bill(p_bill_id uuid, p_decision text, p_reason text)
+returns jsonb
+```
+
+- **Status:** built (staff mode).
+- **Who may call:** an owner or manager whose scope holds the store of the bill (`42501` for staff, a viewer, the publisher, a customer session and any other store).
+- **Notes:** approves (the bill is confirmed and its earn credited) or rejects (the earn is clawed back, or a bill without one is rejected) a queued bill, with a reason. A manager may not approve a bill they recorded (`own_bill`); an owner may. Refusal `not_queued`. Another decision or no reason is `22023`. Audited.
+
+#### `public.staff_reverse_bill`
+
+```sql
+public.staff_reverse_bill(p_bill_id uuid, p_reason text)
+returns jsonb
+```
+
+- **Status:** built (staff mode).
+- **Who may call:** an owner or manager whose scope holds the store of the bill (`42501` for staff, a viewer, the publisher, a customer session and any other store).
+- **Notes:** reverses a confirmed or waiting bill within `reverse_window_minutes` of its confirmation (or recording), with a reason: a clawback row, its active stamps clawed back, an alert. Refusals `not_reversible` and `window_passed` (later corrections use an adjustment). No reason is `22023`.
+
+#### `public.staff_close_bill_audit`
+
+```sql
+public.staff_close_bill_audit(p_audit_id uuid, p_result text, p_note text DEFAULT NULL::text)
+returns jsonb
+```
+
+- **Status:** built (staff mode).
+- **Who may call:** an owner or manager whose scope holds the store of the audit (`42501` for anyone else).
+- **Notes:** closes a random bill audit as `passed` or `failed`, with an optional note. A failed audit reverses the bill (`audit_failed`, no time window), raises an alert and counts against the staff member who recorded it. A manager may not pass an audit of their own bill (`own_bill`). Refusal `closed`.
+
+#### `public.staff_counter_code`
+
+```sql
+public.staff_counter_code(p_store_id uuid)
+returns jsonb
+```
+
+- **Status:** built (staff mode, self claims).
+- **Who may call:** an owner, manager or staff member whose scope holds the store (`42501` outside it, for a customer session, a viewer and the publisher).
+- **Notes:** the live counter QR of a store in staff mode with self claims (`fnb-counter:1:<store code>:<12-character token>`), reused while more than half of `counter_code_ttl_seconds` is left, otherwise a new one. Refusals `not_available` outside that mode and `no_store_code` without a customer store code.
+
+#### `public.staff_counter_claims`
+
+```sql
+public.staff_counter_claims(p_store_id uuid)
+returns jsonb
+```
+
+- **Status:** built (staff mode, self claims).
+- **Who may call:** an owner, manager or staff member whose scope holds the store (`42501` outside it, for a customer session, a viewer and the publisher).
+- **Notes:** the counter claims of the store waiting for a staff member, oldest first: masked phone, display name and bill number, never the customer's total (the staff member types the total from the bill, blind).
+
+#### `public.staff_answer_counter_claim`
+
+```sql
+public.staff_answer_counter_claim(p_bill_id uuid, p_total numeric, p_reject_reason text DEFAULT NULL::text)
+returns jsonb
+```
+
+- **Status:** built (staff mode, self claims).
+- **Who may call:** an owner, manager or staff member whose scope holds the store (`42501` outside it, for a customer session, a viewer and the publisher).
+- **Notes:** answers a waiting counter claim with exactly one of the total read from the bill (blind) or a rejection reason (`22023` for anything else). Agreeing totals give level 2 and confirm the bill (an earn of path E credited to that staff member) unless it needs a manager; disagreeing ones queue it. The staff member's amount cap applies. Refusals `already_answered`, `expired` and the precheck refusals. Audited.
+
+#### `public.customer_submit_counter_claim`
+
+```sql
+public.customer_submit_counter_claim(p_qr text, p_bill_no text, p_total numeric)
+returns jsonb
+```
+
+- **Status:** built (staff mode, self claims).
+- **Who may call:** a joined customer session (`42501` otherwise).
+- **Notes:** claims a bill with the counter QR of a store in staff mode with self claims, the bill number and the total the customer paid. Refusals `locked`, `code_unknown`, `wrong_store` (a QR of a store outside the customer's app), `not_available`, `code_expired` (issued later than now, or more than 120 seconds past its expiry: no remote claims), `code_used` (one claim per member and QR), `daily_limit` (`receipt_claims_per_phone_per_day`) or a refusal of `app.bill_precheck`. Otherwise the bill waits 6 hours for a staff member's blind total (`awaiting_staff`), or is confirmed at once at level 0 when the total is within `auto_approve_max_amount` and the store's `auto_approve_per_day` is not used up. A malformed QR, number or total is `22023`. Audited.
+
+#### `public.customer_pending_bills`
+
+```sql
+public.customer_pending_bills()
+returns jsonb
+```
+
+- **Status:** built (staff mode, plan phase 2).
+- **Who may call:** a joined customer session (`42501` otherwise).
+- **Notes:** the bills of the customer's membership waiting for their blind total: store name, bill number, when it was recorded and the deadline. It never returns the total the staff member typed.
+
+#### `public.customer_confirm_bill`
+
+```sql
+public.customer_confirm_bill(p_bill_id uuid, p_total numeric)
+returns jsonb
+```
+
+- **Status:** built (staff mode, plan phase 2).
+- **Who may call:** a joined customer session (`42501` otherwise).
+- **Notes:** the customer types the total they paid for one of their waiting bills, without seeing the staff total; one answer per bill. A total within `bill_amount_tolerance` gives level 2 (confirmed at once unless the bill needs a manager); a different one queues the bill (`disagreement`). Refusals `unknown_bill` (not a bill of this member: no existence oracle), `already_answered` and `too_late`. A total out of range is `22023`. Audited.
+
+#### `public.customer_dispute_bill`
+
+```sql
+public.customer_dispute_bill(p_bill_id uuid)
+returns jsonb
+```
+
+- **Status:** built (staff mode).
+- **Who may call:** a joined customer session (`42501` otherwise).
+- **Notes:** "Không đúng" on a bill waiting for the customer: the bill is reversed (`disputed`), the earn clawed back, and `loyalty_staff_anomaly` raised for the staff member who recorded it. Refusals `unknown_bill` and `already_answered`.
+
+#### `public.staff_confirm_redemption`
+
+```sql
+public.staff_confirm_redemption(p_redemption_id uuid)
+returns jsonb
+```
+
+- **Status:** built (staff mode).
+- **Who may call:** an owner, manager or staff member whose scope holds the store (`42501` outside it, for a customer session, a viewer and the publisher).
+- **Notes:** after [`staff_verify_redemption`](#publicstaff_verify_redemption), confirms the held reward at once (held to confirmed, `confirmed_by`, a confirm row with reason `staff_confirmed` and no invoice, a pool code marked used); the cashier then applies the named manual discount on any POS. Refusals `not_staff_mode`, `used`, `released`, `expired`, `not_verified`, `same_staff` (the confirming staff member recorded a bill for this member today: earn by one, redeem by another) and `staff_daily_cap` (`staff_redemptions_per_day`, which raises `loyalty_staff_anomaly`). Audited.
+
+#### `public.staff_void_redemption`
+
+```sql
+public.staff_void_redemption(p_redemption_id uuid, p_reason text)
+returns jsonb
+```
+
+- **Status:** built (staff mode).
+- **Who may call:** an owner or manager of the store of the redemption (`42501` for everyone else).
+- **Notes:** voids a staff-confirmed reward within `reverse_window_minutes`, with a reason (confirmed to cancelled): an `adjust` row with reason `redemption_released` gives the stamps and points back, the stamps it closed are active again, and a pool code is quarantined. Refusals `already_voided`, `not_staff_confirmed` and `window_passed`. No reason is `22023`. Audited.
+
+#### `public.bill_anomaly_report`
+
+```sql
+public.bill_anomaly_report(p_store_ids uuid[], p_from date, p_to date)
+returns TABLE(store_id uuid, business_date date, staff_user_id uuid, staff_name text, bills integer, bills_total numeric, level0 integer, level2 integer, confirmed integer, queued integer, disagreements integer, disputes integer, timed_out integer, reversals integer, audits_failed integer, redemptions_confirmed integer, top_member_share numeric, amount_outliers integer, max_bills_in_hour integer, peer_median_bills numeric, flags text[])
+```
+
+- **Status:** built (staff mode, plan phase 3).
+- **Who may call:** an owner or manager; a report function that lists only the stores the caller owns or manages, other stores silently left out.
+- **Notes:** per store, business day and staff member (null: auto-approved counter claims), at most 92 days: the bills recorded and their total, by evidence level and state (`level0`, `level2`, `confirmed`, `queued`), `disagreements`, `disputes`, `timed_out`, `reversals`, `audits_failed`, `redemptions_confirmed`, `top_member_share` (the share of the staff member's bills that went to one member), `amount_outliers` (above the store's median plus 5 MAD over the range, MAD at least 1,000), `max_bills_in_hour` against `peer_median_bills` that day, and `flags`: `peer_outlier`, `disagreements`, `disputes`, `timeouts`, `one_member`, `amount_outliers`, `audit_failed`, `burst`. Staff names only, never a phone.
+
+Tests: pgTAP `120_security_function_matrix.sql`, `121_security_table_matrix.sql` and `222_bill_state_transitions.sql`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -2802,7 +2999,7 @@ CI does not run the check yet.
 
 ## 8. OpenAPI (Swagger) description
 
-`docs/api/openapi.json` is PostgREST's own OpenAPI 2.0 (Swagger) description of `/rest/v1` as the role `authenticated` sees it: the functions of section 3 as `/rpc/<name>` and the tables and views of section 4, with their parameters, columns and types (147 functions and 96 tables and views on 2026-11-20). It holds the schema only, never data. It does not describe the Edge Function endpoints (section 5), the auth endpoints (`/auth/v1`) or the row-level security, which this page explains.
+`docs/api/openapi.json` is PostgREST's own OpenAPI 2.0 (Swagger) description of `/rest/v1` as the role `authenticated` sees it: the functions of section 3 as `/rpc/<name>` and the tables and views of section 4, with their parameters, columns and types (164 functions and 101 tables and views on 2026-11-20). It holds the schema only, never data. It does not describe the Edge Function endpoints (section 5), the auth endpoints (`/auth/v1`) or the row-level security, which this page explains.
 
 | What | Command |
 |---|---|

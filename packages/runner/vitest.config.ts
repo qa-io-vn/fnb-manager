@@ -18,6 +18,11 @@ export default defineConfig({
 				replacement: source("../sync/src/postgres/index.ts"),
 			},
 			{ find: /^@fnb\/sync$/, replacement: source("../sync/src/index.ts") },
+			{
+				find: /^@fnb\/notify\/outbox$/,
+				replacement: source("../notify/src/outbox/index.ts"),
+			},
+			{ find: /^@fnb\/notify$/, replacement: source("../notify/src/index.ts") },
 		],
 	},
 	test: {
