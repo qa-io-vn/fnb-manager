@@ -1,5 +1,5 @@
 import { asOfDate, type IsoDate, type StoreClock } from "@fnb/reports";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 function clockKey(stores: readonly StoreClock[]): string {
 	return stores
@@ -25,14 +25,19 @@ export function useAsOf(stores: readonly StoreClock[]): IsoDate {
 			),
 		[key],
 	);
-	const [asOf, setAsOf] = useState(compute);
+	// The day is worked out in the same render as the stores it depends on. Setting it in an effect gave the first
+	// render with the stores the day of the empty list (UTC), and a second fetch when the stores' own day differed.
+	const [refreshes, setRefreshes] = useState(0);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: refreshes only forces a new reading of the clock
+	const asOf = useMemo(compute, [compute, refreshes]);
 	useEffect(() => {
-		setAsOf(compute());
 		const refresh = () => {
-			if (document.visibilityState === "visible") setAsOf(compute());
+			if (document.visibilityState === "visible") {
+				setRefreshes((count) => count + 1);
+			}
 		};
 		document.addEventListener("visibilitychange", refresh);
 		return () => document.removeEventListener("visibilitychange", refresh);
-	}, [compute]);
+	}, []);
 	return asOf;
 }
