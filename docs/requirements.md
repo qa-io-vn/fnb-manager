@@ -65,7 +65,7 @@ The terms used here (business date, store-day, control totals, verified day, dat
 |---|---|
 | [roadmap.md](roadmap.md) | Programme v1.1: tracks, 20 phases with deliverables, acceptance and owner actions, Track Z, gates, portability, costs, risks, open questions |
 | [status.md](status.md) | What is built and verified, and how to continue on another machine |
-| [decisions.md](decisions.md) | ADR-001 to ADR-029 and ADR-034 to ADR-036 (ADR-030 to ADR-033 are reserved for phase 12) |
+| [decisions.md](decisions.md) | ADR-001 to ADR-037 (ADR-030 to ADR-033 record phase 12) |
 | [schema.md](schema.md) | Field dictionary of the database, RLS model, business date, storage rule, pgTAP files |
 | [sync.md](sync.md) | Sync engine, incremental runner, Edge Function, schedule, CLI reference and runbook |
 | [web-app.md](web-app.md) | Web app contract: routes, layout, report card, data access, testing |
@@ -441,7 +441,7 @@ Phase 11b and the paste box of 11a. The plan format `fnb-plan/1` and the lint th
 
 ### 3.11 NOT — Alerts, digests and channels
 
-Phase 12 is built in three steps: 12a (schema, outbox, policy decision in SQL, Zalo Bot channel, linking, `notify tick`, `status`, `link`, `test`) is verified locally; 12b (digest, alert episodes and rules, Brevo e-mail, `digest`, `notify unlink`, `notify job-failed`, the Actions steps) is in build; 12c (Supabase dispatch, failure listener, Telegram, Resend, webhook, documentation) is planned. ADR-030 to ADR-033 are reserved for its decisions. Phases 13, 15 and 19 add Zalo and customer channels.
+Phase 12 is built in three steps: 12a (schema, outbox, policy decision in SQL, Zalo Bot channel, linking, `notify tick`, `status`, `link`, `test`) is verified locally; 12b (digest, alert episodes and rules, Brevo e-mail, `digest`, `notify unlink`, `notify job-failed`, the Actions steps) is in build; 12c (Supabase dispatch, failure listener, Telegram, Resend, webhook, documentation) is planned. ADR-030 to ADR-033 record its decisions. Phases 13, 15 and 19 add Zalo and customer channels.
 
 | ID | Requirement | Source | Acceptance criterion | Priority | Status | Verified by |
 |---|---|---|---|---|---|---|

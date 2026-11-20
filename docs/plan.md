@@ -14,7 +14,7 @@ The roadmap stays the programme definition. Where this plan and the roadmap disa
 |---|---|
 | What is built, in which phases, with which acceptance criteria and gates | [roadmap.md](roadmap.md), version 1.1 of 2026-11-07, issued for approval |
 | What the system must do, with stable IDs `FR-<AREA>-<nn>` and `NFR-<CAT>-<nn>` | [requirements.md](requirements.md) |
-| Why it is built this way | [decisions.md](decisions.md): ADR-001 to ADR-029; ADR-030 to ADR-033 are reserved for phase 12 |
+| Why it is built this way | [decisions.md](decisions.md): ADR-001 to ADR-037; ADR-030 to ADR-033 record phase 12 |
 | How the system is built, and how it is protected | [architecture.md](architecture.md), [security.md](security.md) |
 | How to set up a machine and run every check | [development.md](development.md) |
 | How each phase is built, step by step | the build specs in `docs/private/` (gitignored because they quote real figures): phase 9 was built from its spec and phase 12 is being built from its spec; a phase 10 spec and a phase 11 spec, both dated 2026-11-12, exist privately and await review |
@@ -367,7 +367,7 @@ Likelihood and impact: H high, M medium, L low.
 
 | What changes | Where it is recorded | Who decides |
 |---|---|---|
-| Architecture or a rule across packages | a new ADR in [decisions.md](decisions.md): date, status, decision, reasons, consequences. An ADR is amended with a dated note, never rewritten silently. ADR-030 to ADR-033 are reserved for phase 12 and are written in step 12c. | owner accepts; designer or builder writes |
+| Architecture or a rule across packages | a new ADR in [decisions.md](decisions.md): date, status, decision, reasons, consequences. An ADR is amended with a dated note, never rewritten silently. ADR-030 to ADR-033 record phase 12 (written 2026-11-20). | owner accepts; designer or builder writes |
 | Scope, size, order, acceptance or a gate | a new roadmap version with an entry in its change log (roadmap section 12); until the owner approves it, the current version stands | owner |
 | How a phase is built | its build spec (private), final before building. Contradictions between designs are settled in the spec with reasons; changes during the build are written back into the spec, and their public consequences into ADRs and documents. | designer; owner for the review items |
 | Requirements | [requirements.md](requirements.md): IDs are never reused or renumbered; a status changes only with evidence | owner approves; verifier updates statuses |
