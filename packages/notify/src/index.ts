@@ -14,6 +14,13 @@ export {
 	pollingAdapterFor,
 } from "./channels/registry.js";
 export {
+	classifyResendSend,
+	createResendAdapter,
+	RESEND_LIMITS,
+	RESEND_SEND_PATH,
+	resendPayload,
+} from "./channels/resend.js";
+export {
 	BASE_URL_OVERRIDE_VARIABLES,
 	baseUrlOverrideWarnings,
 	credentialKindOf,
@@ -30,6 +37,14 @@ export {
 	providersUseLoopback,
 	resolveSecret,
 } from "./channels/secrets.js";
+export {
+	classifyTelegramSend,
+	createTelegramAdapter,
+	TELEGRAM_DEEP_LINK_BASE,
+	TELEGRAM_LIMITS,
+	telegramDeepLink,
+	telegramUpdatesFrom,
+} from "./channels/telegram.js";
 export {
 	failureOutcome,
 	type TimedFetchResult,
@@ -60,6 +75,19 @@ export {
 	type SendOutcome,
 	USER_AGENT,
 } from "./channels/types.js";
+export {
+	classifyWebhookSend,
+	createWebhookAdapter,
+	WEBHOOK_LIMITS,
+	WEBHOOK_MAX_BODY_BYTES,
+	type WebhookEvent,
+	type WebhookPayloadFacts,
+	webhookAddressHint,
+	webhookEvent,
+	webhookPayload,
+	webhookSignature,
+	webhookUrlProblem,
+} from "./channels/webhook.js";
 export {
 	classifyZaloSend,
 	createZaloBotAdapter,
@@ -175,6 +203,7 @@ export {
 export {
 	buildDueDigests,
 	CLAIM_LEASE_SECONDS,
+	destinationAddress,
 	destinationConfig,
 	dispatchDue,
 	EMAIL_SENDER_VARIABLES,

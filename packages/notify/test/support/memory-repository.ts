@@ -20,7 +20,12 @@ export interface MemoryMessage {
 	channelKind: ChannelKind;
 	provider: ProviderId;
 	secretName: string;
-	address: string;
+	address: string | null;
+	config: Record<string, unknown>;
+	params: Record<string, unknown>;
+	severity: "info" | "warning" | "critical" | null;
+	ruleKey: string | null;
+	storeName: string | null;
 	title: string | null;
 	body: string | null;
 	attempts: number;
@@ -71,6 +76,11 @@ export class MemoryRepository implements NotifyRepository {
 			provider: "zalo_bot",
 			secretName: "NOTIFY_ZALO_BOT_TOKEN",
 			address: "synthetic-chat-1",
+			config: {},
+			params: {},
+			severity: null,
+			ruleKey: null,
+			storeName: null,
 			title: null,
 			body: null,
 			attempts: 0,
@@ -119,10 +129,10 @@ export class MemoryRepository implements NotifyRepository {
 			tenantId: message.tenantId,
 			kind: message.kind,
 			templateRef: `${message.kind}.v1`,
-			params: {},
+			params: message.params,
 			title: message.title,
 			body: message.body,
-			severity: null,
+			severity: message.severity,
 			attempts: message.attempts,
 			businessDate: null,
 			channelId: message.channelId,
@@ -130,14 +140,14 @@ export class MemoryRepository implements NotifyRepository {
 			provider: message.provider,
 			secretName: message.secretName,
 			address: message.address,
-			config: {},
+			config: message.config,
 			channelLabel: "Zalo Bot",
 			readerTimezone: "Asia/Ho_Chi_Minh",
 			tenantName: "Quán thử nghiệm",
 			currencyCode: "VND",
-			storeName: null,
+			storeName: message.storeName,
 			accountName: null,
-			ruleKey: null,
+			ruleKey: message.ruleKey,
 		};
 	}
 

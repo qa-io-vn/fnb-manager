@@ -35,6 +35,7 @@ export const BASE_URL_OVERRIDE_VARIABLES: Readonly<
 	telegram: "NOTIFY_TELEGRAM_BASE_URL",
 	brevo: "NOTIFY_BREVO_BASE_URL",
 	resend: "NOTIFY_RESEND_BASE_URL",
+	hmac_webhook: "NOTIFY_WEBHOOK_BASE_URL",
 };
 
 const LOOPBACK_BASE_URL = /^http:\/\/(127\.0\.0\.1|localhost):[0-9]{2,5}$/;

@@ -4,6 +4,7 @@ import {
 	CLI_CYCLE_LIMITS,
 	createAdapterRegistry,
 	createCycleBudget,
+	createTelegramAdapter,
 	createZaloBotAdapter,
 	findLinkCode,
 	isAcceptance,
@@ -278,5 +279,114 @@ describe("pollBot", () => {
 			fake.requests.filter((request) => request.url.endsWith("/getUpdates")),
 		).toHaveLength(1);
 		expect(fake.requests[0]?.body).toEqual({ timeout: "5" });
+	});
+});
+
+const TELEGRAM_SECRET = "NOTIFY_TELEGRAM_BOT_TOKEN";
+
+function update(
+	updateId: number,
+	chatId: number,
+	text: string,
+	type = "private",
+) {
+	return {
+		update_id: updateId,
+		message: { message_id: updateId, chat: { id: chatId, type }, text },
+	};
+}
+
+function pollTelegram(
+	repository: MemoryRepository,
+	fake: ReturnType<typeof fakeFetch>,
+) {
+	return pollBot({
+		repository,
+		adapter: createTelegramAdapter(),
+		kind: "telegram",
+		secretName: TELEGRAM_SECRET,
+		secret: "synthetic-telegram-token",
+		baseUrl: "http://127.0.0.1:9",
+		worker: "cli:1",
+		clock: () => new Date("2026-11-09T02:00:00.000Z"),
+		fetch: fake.fetch,
+		waitSeconds: 1,
+		release: true,
+	});
+}
+
+describe("pollBot with Telegram", () => {
+	it("links from the deep link's /start code, confirms updates by offset and ignores groups", async () => {
+		const repository = new MemoryRepository();
+		repository.links.push({
+			secretName: TELEGRAM_SECRET,
+			kind: "telegram",
+			code: "FNB-7K3QX9MD",
+			chatId: null,
+			accepted: false,
+			tenantId: "tenant-1",
+		});
+		const fake = fakeFetch();
+		fake.answer(
+			{
+				status: 200,
+				body: {
+					ok: true,
+					result: [
+						update(501, -100200, "/start FNB-7K3QX9MD", "group"),
+						update(502, 700000001, "/start FNB-7K3QX9MD"),
+					],
+				},
+			},
+			{
+				status: 200,
+				body: { ok: true, result: [update(503, 700000001, "Đồng ý")] },
+			},
+		);
+		const first = await pollTelegram(repository, fake);
+		expect(first).toEqual({
+			outcome: "polled",
+			code: null,
+			matched: 1,
+			accepted: 0,
+			discarded: 1,
+		});
+		expect(repository.links[0]?.chatId).toBe("700000001");
+		expect(repository.cursors.get(TELEGRAM_SECRET)).toBe(502);
+		const second = await pollTelegram(repository, fake);
+		expect(second).toMatchObject({ matched: 0, accepted: 1, discarded: 0 });
+		expect(repository.cursors.get(TELEGRAM_SECRET)).toBe(503);
+		expect(fake.requests[0]?.body).not.toHaveProperty("offset");
+		expect(fake.requests[1]?.body).toMatchObject({ offset: 503 });
+		expect(repository.links[0]?.accepted).toBe(true);
+		expect(repository.leases.size).toBe(0);
+	});
+
+	it("ends the round on a 409 from another poller without touching any message or the cursor", async () => {
+		const repository = new MemoryRepository();
+		repository.cursors.set(TELEGRAM_SECRET, 40);
+		const message = repository.addMessage({ kind: "test" });
+		const fake = fakeFetch();
+		fake.answer({
+			status: 409,
+			body: {
+				ok: false,
+				error_code: 409,
+				description: "Conflict: terminated by other getUpdates request",
+			},
+		});
+		const round = await pollTelegram(repository, fake);
+		expect(round).toEqual({
+			outcome: "error",
+			code: "poll_conflict",
+			matched: 0,
+			accepted: 0,
+			discarded: 0,
+		});
+		expect(repository.cursors.get(TELEGRAM_SECRET)).toBe(40);
+		expect(message.status).toBe("queued");
+		expect(message.finishes).toHaveLength(0);
+		expect(repository.leases.size).toBe(0);
+		expect(fake.requests[0]?.body).toMatchObject({ offset: 41 });
 	});
 });

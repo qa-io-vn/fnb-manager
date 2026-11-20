@@ -364,6 +364,99 @@ export async function completeDigestAndEnqueue(
 	}) as Promise<StoredDigest>;
 }
 
+export function resendDedupePrefix(
+	digestId: string,
+	channelId: string,
+	revision: number,
+): string {
+	return `digest:${digestId}:${channelId}:r${revision}:resend:`;
+}
+
+export function nextResendNumber(
+	prefix: string,
+	existingKeys: readonly string[],
+): number {
+	const used = existingKeys.flatMap((key) => {
+		if (!key.startsWith(prefix)) {
+			return [];
+		}
+		const suffix = key.slice(prefix.length);
+		return /^[1-9][0-9]{0,8}$/.test(suffix) ? [Number(suffix)] : [];
+	});
+	return used.length === 0 ? 1 : Math.max(...used) + 1;
+}
+
+export interface DigestResendInput {
+	readonly due: Pick<DueDigest, "tenantId" | "scopeKey" | "businessDate">;
+	readonly digestId: string;
+	readonly revision: number;
+	readonly messages: readonly DigestMessageInput[];
+	readonly templateRef: string;
+	readonly expiresAt: Date;
+	readonly at: Date;
+}
+
+export interface QueuedResend {
+	readonly channelId: string;
+	readonly messageId: string;
+	readonly number: number;
+}
+
+export async function enqueueDigestResends(
+	sql: Sql,
+	input: DigestResendInput,
+): Promise<QueuedResend[]> {
+	return sql.begin(async (transaction) => {
+		await transaction`select pg_advisory_xact_lock(hashtextextended(${digestLockKey(input.due)}, 0))`;
+		const queued: QueuedResend[] = [];
+		for (const message of input.messages) {
+			const prefix = resendDedupePrefix(
+				input.digestId,
+				message.channelId,
+				input.revision,
+			);
+			const existing = await transaction<{ dedupe_key: string }[]>`
+				select dedupe_key
+				from public.outbound_messages
+				where tenant_id = ${input.due.tenantId}::uuid
+					and dedupe_key is not null
+					and starts_with(dedupe_key, ${prefix}::text)
+			`;
+			const number = nextResendNumber(
+				prefix,
+				existing.map((row) => row.dedupe_key),
+			);
+			const [row] = await transaction<{ id: string | null }[]>`
+				select app.enqueue_message(
+					${input.due.tenantId}::uuid,
+					${message.channelId}::uuid,
+					'digest'::text,
+					${input.templateRef}::text,
+					${`${prefix}${number}`}::text,
+					'{}'::jsonb,
+					${message.title}::text,
+					${message.body}::text,
+					'info'::public.alert_severity,
+					null::uuid,
+					${input.due.businessDate}::date,
+					${input.digestId}::uuid,
+					null::uuid,
+					${input.expiresAt}::timestamptz,
+					${input.at}::timestamptz
+				)::text as id
+			`;
+			if (row?.id) {
+				queued.push({
+					channelId: message.channelId,
+					messageId: row.id,
+					number,
+				});
+			}
+		}
+		return queued;
+	}) as Promise<QueuedResend[]>;
+}
+
 export async function failDigest(
 	sql: Sql,
 	due: DueDigest,

@@ -1,10 +1,16 @@
 import {
+	type NotificationSummary,
+	notificationSummary,
+} from "@fnb/notify/postgres";
+import type { Sql } from "postgres";
+import {
 	accountStatuses,
 	type OpenSyncAlert,
 	openSyncAlerts,
 	storeStatuses,
 } from "../admin/status-queries.js";
 import { STATUS_WINDOW_DAYS, statusWindow } from "../admin/status-window.js";
+import { findTenant } from "../admin/tenants.js";
 import { accountEntries } from "../config/config.js";
 import {
 	type CommandContext,
@@ -48,6 +54,42 @@ export function alertText(alerts: readonly OpenSyncAlert[]): string {
 		.join(", ");
 }
 
+export const NOTIFICATION_STATUS_DAYS = 14;
+
+export function notificationsLine(
+	summary: NotificationSummary,
+	now: Date,
+	days = NOTIFICATION_STATUS_DAYS,
+): string {
+	if (!summary.available) {
+		return "notifications: not set up in this database (apply the migrations)";
+	}
+	const tick =
+		summary.lastTickAt === null
+			? "no notify tick yet"
+			: `last notify tick ${ageText(summary.lastTickAt, now)} ago`;
+	return `notifications ${days} d: sent ${summary.sent}, held ${summary.held}, uncertain ${summary.uncertain}, failed ${summary.failed}; ${tick}`;
+}
+
+async function printNotifications(
+	context: CommandContext,
+	sql: Sql,
+	slug: string | undefined,
+	now: Date,
+): Promise<void> {
+	const tenant = slug === undefined ? null : await findTenant(sql, slug);
+	if (slug !== undefined && tenant === null) {
+		return;
+	}
+	const summary = await notificationSummary(
+		sql,
+		now,
+		NOTIFICATION_STATUS_DAYS,
+		tenant?.id ?? null,
+	);
+	context.output.line(notificationsLine(summary, now));
+}
+
 async function status(
 	context: CommandContext,
 	values: OptionValues,
@@ -57,12 +99,14 @@ async function status(
 	const { sql } = context.services.db();
 	const now = context.now();
 	const window = statusWindow(now);
+	const slug = stringOption(values, "tenant");
 	const accounts = numberAccounts(
 		accountEntries(context.env),
-		await accountStatuses(sql, stringOption(values, "tenant"), window),
+		await accountStatuses(sql, slug, window),
 	);
 	if (accounts.length === 0) {
 		output.line("no POS accounts onboarded");
+		await printNotifications(context, sql, slug, now);
 		return 0;
 	}
 	const labels = new Map(
@@ -127,6 +171,8 @@ async function status(
 			alerts === null ? "n/a" : alertText(alertsOf(store.store_id)),
 		]),
 	);
+	output.line();
+	await printNotifications(context, sql, slug, now);
 	return 0;
 }
 
@@ -143,6 +189,7 @@ export const statusCommand: CommandSpec = {
 		"The open alert column lists what the incremental scheduler raised for the store and has not cleared: stale <n> min while the store is over the 90-minute dead-man threshold, dispatch failed x<n> while its scheduled calls expire unclaimed (with the last HTTP answer when there was one).",
 		`Every ${STATUS_WINDOW_DAYS}d column covers the same window, the ${STATUS_WINDOW_DAYS} days ending now: flagged and failed count the runs started in it; unmatched and checked count the sync_checks rows of the store-days that closed in it, the ${STATUS_WINDOW_DAYS} business dates ending yesterday in each store's timezone and day start (the dates the nightly run covers). Today is still open and never counted, so a store whose every day was reconciled shows ${STATUS_WINDOW_DAYS}; a day without a row was never reconciled (the connector had no control totals or the day was not synced).`,
 		"In CI an account listed in POS_ACCOUNTS_JSON is called by its position there (account 1 is the first entry); an onboarded account missing from it is called other 1, other 2, … in tenant and key order, and its stores carry that label.",
+		"The last line counts the notifications of the last 14 days by state and gives the age of the last notify tick: 'notifications 14 d: sent N, held N, uncertain N, failed N; last notify tick N min ago'. fnb notify status has the detail.",
 	],
 	run: status,
 };

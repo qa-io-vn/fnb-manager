@@ -137,6 +137,8 @@ export const EN_MESSAGES: Readonly<Record<MessageKey, string>> = {
 		"GitHub had turned some scheduled jobs off because the repository was inactive; they have just been turned on again.",
 	"alert.channel_failed":
 		"Alert: the {label} channel cannot send ({reason}). Check the token or link again in Settings → Alerts.",
+	"alert.dsr_due_soon":
+		"Warning: {overdue} personal-data requests are past their deadline and {due_soon} fall due within the next {days} days. Open Customers → Data requests to handle them.",
 	"alert.digest_failed":
 		"Alert: the daily digest of {date} could not be built after {attempts} attempts.",
 	"alert.cash_count_variance":

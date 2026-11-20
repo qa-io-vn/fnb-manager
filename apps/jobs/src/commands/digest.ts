@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import {
 	compareDigestWithNgay,
 	type DueDigest,
@@ -14,11 +13,13 @@ import {
 	buildScopeDigest,
 	type DigestOutcome,
 	digestChannels,
-	enqueueMessage,
+	enqueueDigestResends,
 	existingDigest,
 	manualStoreFacts,
 	perCallMemberClient,
+	type RevisionOutcome,
 	renderForChannels,
+	reviseDueDigests,
 	scopeKeyOf,
 	tenantDigestScopes,
 	unlimitedOwner,
@@ -173,26 +174,94 @@ async function resendDigest(
 		await digestChannels(sql, due.channelIds),
 		await appBaseUrl(sql),
 	);
-	for (const entry of rendered) {
-		await enqueueMessage(sql, {
-			tenantId: due.tenantId,
+	const queued = await enqueueDigestResends(sql, {
+		due,
+		digestId: stored.id,
+		revision: stored.revision,
+		messages: rendered.map((entry) => ({
 			channelId: entry.channelId,
-			kind: "digest",
-			templateRef: TEMPLATE_REFS.digest,
-			dedupeKey: `digest:${stored.id}:${entry.channelId}:r${stored.revision}:resend:${randomUUID()}`,
 			title: entry.title,
 			body: entry.text,
-			severity: "info",
-			businessDate: due.businessDate,
-			digestId: stored.id,
-			expiresAt: new Date(at.getTime() + DIGEST_LIFETIME_MS),
-			at,
-		});
-	}
-	context.output.line(
-		`digest: ${due.businessDate} resent, ${rendered.length} message(s) queued`,
+		})),
+		templateRef: TEMPLATE_REFS.digest,
+		expiresAt: new Date(at.getTime() + DIGEST_LIFETIME_MS),
+		at,
+	});
+	const copies = [...new Set(queued.map((entry) => entry.number))].sort(
+		(left, right) => left - right,
 	);
-	return rendered.length;
+	context.output.line(
+		`digest: ${due.businessDate} resent, ${queued.length} message(s) queued${copies.length > 0 ? ` (resend ${copies.join(", ")})` : ""}`,
+	);
+	return queued.length;
+}
+
+export function revisionLine(outcome: RevisionOutcome, index: number): string {
+	const label = `revise: digest ${index + 1} ${outcome.candidate.businessDate}`;
+	switch (outcome.status) {
+		case "failed":
+			return `${label} failed (${outcome.errorCode ?? "error"})`;
+		case "unchanged":
+			return `${label} unchanged`;
+		case "replaced":
+			return `${label} replaced, no correction sent`;
+		case "corrected":
+			return `${label} corrected, ${outcome.messages} message(s) queued`;
+		case "dry_run": {
+			const delta = outcome.delta;
+			const figures =
+				delta === null
+					? 0
+					: (delta.net === null ? 0 : 1) +
+						(delta.invoices === null ? 0 : 1) +
+						delta.stores.length;
+			const lines = delta?.newFindings.length ?? 0;
+			return `${label} dry run, ${outcome.changed ? "changed" : "unchanged"}, ${figures} changed figure line(s), ${lines} new attention line(s)`;
+		}
+	}
+}
+
+async function reviseDigests(
+	context: CommandContext,
+	sql: Sql,
+	options: {
+		readonly at: Date;
+		readonly tenantId: string | null;
+		readonly dryRun: boolean;
+		readonly simulated: boolean;
+	},
+): Promise<number> {
+	let outcomes: RevisionOutcome[];
+	try {
+		outcomes = await reviseDueDigests(sql, {
+			at: options.at,
+			dryRun: options.dryRun,
+			tenantId: options.tenantId,
+			repositoryOptions: {
+				environment: context.env,
+				simulatedClock: options.simulated,
+			},
+		});
+	} catch (error) {
+		const code =
+			typeof error === "object" && error !== null && "code" in error
+				? String((error as { code: unknown }).code)
+				: "";
+		context.output.error(
+			`revise: the revision scan failed (${/^[0-9A-Z]{5}$/.test(code) ? code : error instanceof Error ? error.name : "error"})`,
+		);
+		return 1;
+	}
+	if (outcomes.length === 0) {
+		context.output.line("revise: nothing to revise");
+		return 0;
+	}
+	for (const [index, outcome] of outcomes.entries()) {
+		const line = revisionLine(outcome, index);
+		context.output.line(line);
+		context.output.summary(`- ${line}`);
+	}
+	return outcomes.some((outcome) => outcome.status === "failed") ? 1 : 0;
 }
 
 async function buildForDate(
@@ -414,13 +483,14 @@ async function digest(
 	const dryRun = flag(values, "dry-run") || checkNgayFlag;
 	const showText = flag(values, "show-text");
 	const resend = flag(values, "resend");
+	const revise = flag(values, "revise");
 	const at = instantOption(values, "at");
 	if (due && businessDate !== undefined) {
 		throw new UsageError("use either --due or --date, not both");
 	}
-	if (flag(values, "revise")) {
+	if (revise && businessDate !== undefined) {
 		throw new UsageError(
-			"--revise (corrections after the nightly reconciliation) arrives with the next build step",
+			"--revise runs with the due digests (--due, the default), not with --date",
 		);
 	}
 	if (showText && isCi(context.env)) {
@@ -471,7 +541,17 @@ async function digest(
 			simulatedClock: at !== undefined,
 		},
 	});
-	return printOutcomes(context, outcomes, showText, !dryRun);
+	const built = printOutcomes(context, outcomes, showText, !dryRun);
+	if (!revise) {
+		return built;
+	}
+	const revised = await reviseDigests(context, sql, {
+		at: now,
+		tenantId: tenant?.id ?? null,
+		dryRun,
+		simulated: at !== undefined,
+	});
+	return Math.max(built, revised);
 }
 
 export const digestCommand: CommandSpec = {
@@ -479,7 +559,7 @@ export const digestCommand: CommandSpec = {
 	summary:
 		"Build the daily digests that are due (or one date) and queue their messages",
 	usage:
-		"fnb digest [--tenant <slug>] [--due | --date YYYY-MM-DD] [--dry-run] [--check-ngay] [--show-text] [--resend] [--at <ISO instant>]",
+		"fnb digest [--tenant <slug>] [--due | --date YYYY-MM-DD] [--revise] [--dry-run] [--check-ngay] [--show-text] [--resend] [--at <ISO instant>]",
 	options: {
 		...HELP_OPTION,
 		tenant: { type: "string" },
@@ -496,7 +576,8 @@ export const digestCommand: CommandSpec = {
 		"--due (the default without --date) builds every digest app.due_digests returns: each scope's stores have settled the business day (no open shift, a successful sync at least 30 minutes after the close and the last shift close), or the 06:30 deadline passed. It queues one message per destination and sends nothing; fnb notify tick sends.",
 		"A failed build under --due is recorded for a retry on the back-off (digest_failed alerts the owner at the fifth failure) and exits 0; it exits 1 only when a failure could not be recorded. --date exits 1 on any failed build.",
 		"The digest is the Ngày report built as the recipient member in one read-only snapshot, so its numbers equal Ngày; the attention lines read the same rows.",
-		"--date builds that business date for every digest scope of the tenant unless it is already built; --resend then queues a second copy.",
+		"--date builds that business date for every digest scope of the tenant unless it is already built; --resend then queues another copy with the dedupe suffix :resend:<n> (1, 2, … per digest and destination, numbered under the digest's lock).",
+		"--revise (with the due run; sync.yml runs digest --due --revise after the nightly) rebuilds each digest app.digests_to_revise returns (the last two business dates, built before the latest successful nightly) in a fresh snapshot: an unchanged fingerprint only marks it revised; a changed digest whose messages are all still queued or held is replaced silently; a digest already sent gets at most one correction listing only the changed figures and the new attention lines (none when nothing shown changed). Output: 'revise: digest 1 2026-11-07 unchanged | replaced, no correction sent | corrected, 2 message(s) queued'. With --dry-run it computes and writes nothing.",
 		"--dry-run builds and renders in memory and writes nothing: 'scope 1 (2 stores): verified, 3 findings, 812 units'.",
 		"--check-ngay (needs --tenant and --date) builds, for all stores and for each store as the tenant's owner, the digest in a dry run and a separate Ngày, and prints one JSON line of booleans per scope: equal, pos_invoices, pos_net, metric_value.",
 		"--show-text prints the rendered Zalo text (refused in CI). --at simulates the clock and then needs --tenant; it writes only for a fixture tenant (notify-it-…).",

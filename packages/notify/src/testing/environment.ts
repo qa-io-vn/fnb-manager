@@ -1,5 +1,8 @@
 export const SYNTHETIC_BOT_TOKEN = "synthetic-bot-token";
 export const SYNTHETIC_EMAIL_KEY = "synthetic-email-key";
+export const SYNTHETIC_TELEGRAM_TOKEN = "synthetic-telegram-token";
+export const SYNTHETIC_WEBHOOK_SECRET = "synthetic-webhook-secret";
+export const SYNTHETIC_TELEGRAM_BOT = "synthetic_fnb_bot";
 export const SYNTHETIC_SENDER = "notify-it-sender@example.com";
 
 export const INTEGRATION_SECRET_NAMES = {
@@ -18,6 +21,7 @@ export const SYNTHETIC_ENVIRONMENT_KEYS = [
 	"NOTIFY_TELEGRAM_BASE_URL",
 	"NOTIFY_BREVO_BASE_URL",
 	"NOTIFY_RESEND_BASE_URL",
+	"NOTIFY_WEBHOOK_BASE_URL",
 	"NOTIFY_EMAIL_FROM",
 	"NOTIFY_EMAIL_FROM_NAME",
 	...Object.values(INTEGRATION_SECRET_NAMES),
@@ -57,6 +61,8 @@ export function syntheticEnvironment(
 		...options.mockEnvironment,
 		[INTEGRATION_SECRET_NAMES.zalo_bot]: SYNTHETIC_BOT_TOKEN,
 		[INTEGRATION_SECRET_NAMES.email]: SYNTHETIC_EMAIL_KEY,
+		[INTEGRATION_SECRET_NAMES.telegram]: SYNTHETIC_TELEGRAM_TOKEN,
+		[INTEGRATION_SECRET_NAMES.webhook]: SYNTHETIC_WEBHOOK_SECRET,
 		NOTIFY_EMAIL_FROM: SYNTHETIC_SENDER,
 		...(options.extra ?? {}),
 	};

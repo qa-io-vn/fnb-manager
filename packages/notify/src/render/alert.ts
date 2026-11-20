@@ -474,6 +474,12 @@ function openingText(facts: AlertFacts): string {
 				attempts: countText(numberParam(params, "attempts") ?? 5),
 			});
 		}
+		case "dsr_due_soon":
+			return message("alert.dsr_due_soon", {
+				overdue: countText(numberParam(params, "overdue") ?? 0),
+				due_soon: countText(numberParam(params, "due_soon") ?? 0),
+				days: countText(numberParam(params, "days") ?? 3),
+			});
 		case "cash_count_variance":
 			return cashCountText(facts);
 		case "zalo_token_failed":

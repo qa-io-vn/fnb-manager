@@ -122,6 +122,13 @@ describe("alert render", () => {
 			],
 			[
 				{
+					ruleKey: "dsr_due_soon",
+					params: { overdue: 1, due_soon: 2, days: 3 },
+				},
+				"Cảnh báo: 1 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời và 2 yêu cầu đến hạn trong 3 ngày tới. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+			],
+			[
+				{
 					ruleKey: "digest_failed",
 					params: { business_date: "2026-11-07", attempts: 5 },
 				},
@@ -397,5 +404,39 @@ describe("Zalo alert render", () => {
 				expect(rendered.text.split("\n")[0]).not.toMatch(/₫|\d{1,3}(\.\d{3})+/);
 			}
 		}
+	});
+});
+
+describe("dsr_due_soon alert", () => {
+	it("shows counts only, never a subject's contact or name, even when the facts carry more", () => {
+		const rendered = renderAlert(
+			facts({
+				ruleKey: "dsr_due_soon",
+				storeName: null,
+				accountName: null,
+				params: {
+					overdue: 0,
+					due_soon: 1,
+					days: 3,
+					phone: "0901234567",
+					email: "subject@example.com",
+					name: "Khách thử",
+				},
+			}),
+		);
+		const text = body(rendered);
+		expect(text).toBe(
+			"Cảnh báo: 0 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời và 1 yêu cầu đến hạn trong 3 ngày tới. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+		);
+		expect(rendered.text).not.toMatch(
+			/0901234567|subject@example\.com|Khách thử/,
+		);
+		expect(rendered.text).not.toMatch(LEFTOVER);
+	});
+
+	it("falls back to the 3-day default and zero counts when the facts lack them", () => {
+		expect(body(renderAlert(facts({ ruleKey: "dsr_due_soon" })))).toBe(
+			"Cảnh báo: 0 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời và 0 yêu cầu đến hạn trong 3 ngày tới. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+		);
 	});
 });

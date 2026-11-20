@@ -258,6 +258,140 @@ export function openingHoursCheck(coverage: {
 	};
 }
 
+export const NOTIFY_TICK_RED_MINUTES = 60;
+export const ZALO_BOT_MONTHLY_QUOTA = 3000;
+export const ZALO_BOT_QUOTA_YELLOW = 0.8;
+
+function minutesAgo(from: Date | null, now: Date): number | null {
+	return from === null
+		? null
+		: Math.max(0, Math.round((now.getTime() - from.getTime()) / 60_000));
+}
+
+function agoText(minutes: number | null): string {
+	return minutes === null ? "never" : `${minutes} min ago`;
+}
+
+export function notifyScheduleChecks(
+	schedule: { readonly enabled: boolean; readonly lastTickAt: Date | null },
+	now: Date,
+): DoctorCheck[] {
+	const tickMinutes = minutesAgo(schedule.lastTickAt, now);
+	const scheduleCheck: DoctorCheck = schedule.enabled
+		? {
+				name: "notify schedule",
+				health: "green",
+				detail:
+					"enabled: pg_cron ticks every 5 minutes and wakes the notify function when work is due",
+			}
+		: {
+				name: "notify schedule",
+				health: "yellow",
+				detail:
+					"disabled: digests and alerts go out through Actions only (sync.yml after the nightly, notify.yml at 06:07, 07:07 and 08:07); docs/go-live.md step 8 enables it",
+			};
+	const late = tickMinutes === null || tickMinutes > NOTIFY_TICK_RED_MINUTES;
+	const tickCheck: DoctorCheck = {
+		name: "notify tick",
+		health: schedule.enabled && late ? "red" : "green",
+		detail: schedule.enabled
+			? `last tick ${agoText(tickMinutes)} (red beyond ${NOTIFY_TICK_RED_MINUTES} min while the schedule is enabled)`
+			: `last tick ${agoText(tickMinutes)}; none is expected while the schedule is disabled`,
+	};
+	return [scheduleCheck, tickCheck];
+}
+
+export function notifySecretsCheck(input: {
+	readonly here: readonly string[];
+	readonly dispatchers: readonly {
+		readonly runtime: string;
+		readonly names: readonly string[];
+		readonly at: Date | null;
+	}[];
+	readonly destinationSecrets: readonly string[];
+	readonly missing: readonly { readonly key: string; readonly count: number }[];
+	readonly now: Date;
+}): DoctorCheck {
+	const name = "notify secrets";
+	const reported = new Set(input.dispatchers.flatMap((entry) => entry.names));
+	const held = new Set([...input.here, ...reported]);
+	const uncovered = input.destinationSecrets.filter(
+		(secret) => !held.has(secret),
+	);
+	const dispatchers =
+		input.dispatchers.length === 0
+			? "no dispatcher has reported yet"
+			: input.dispatchers
+					.map(
+						(entry) =>
+							`${entry.runtime} ${entry.names.length === 0 ? "none" : entry.names.join(", ")} (${agoText(minutesAgo(entry.at, input.now))})`,
+					)
+					.join("; ");
+	const base = `here: ${input.here.length === 0 ? "none" : input.here.join(", ")}; last dispatchers: ${dispatchers}`;
+	if (input.missing.length > 0) {
+		return {
+			name,
+			health: "red",
+			detail: `${input.missing.map((entry) => `${entry.count} message(s) cancelled because no dispatcher holds ${entry.key}`).join("; ")} in the last 7 days; ${base}`,
+		};
+	}
+	if (uncovered.length > 0) {
+		return {
+			name,
+			health: "yellow",
+			detail: `no dispatcher has reported ${uncovered.join(", ")}, which a destination uses; ${base}`,
+		};
+	}
+	return { name, health: "green", detail: base };
+}
+
+export function notifyDestinationsCheck(
+	total: number,
+	failing: number,
+): DoctorCheck {
+	const name = "notify destinations";
+	if (failing > 0) {
+		return {
+			name,
+			health: "red",
+			detail: `${failing} of ${total} destination(s) failing (marked failing or 3 or more failures in a row); fnb notify status shows the codes`,
+		};
+	}
+	if (total === 0) {
+		return {
+			name,
+			health: "yellow",
+			detail:
+				"no active destination yet; link one with fnb notify link (docs/go-live.md step 8)",
+		};
+	}
+	return {
+		name,
+		health: "green",
+		detail: `${total} active destination(s), none failing`,
+	};
+}
+
+export function zaloBotQuotaCheck(
+	counts: readonly { readonly key: string; readonly count: number }[],
+): DoctorCheck {
+	const name = "Zalo Bot quota";
+	if (counts.length === 0) {
+		return {
+			name,
+			health: "green",
+			detail: `no Zalo Bot message this month (Basic plan: ${ZALO_BOT_MONTHLY_QUOTA} a month)`,
+		};
+	}
+	const threshold = ZALO_BOT_MONTHLY_QUOTA * ZALO_BOT_QUOTA_YELLOW;
+	const high = counts.some((entry) => entry.count >= threshold);
+	return {
+		name,
+		health: high ? "yellow" : "green",
+		detail: `${counts.map((entry) => `${entry.key} ${entry.count} of ${ZALO_BOT_MONTHLY_QUOTA}`).join(", ")} this month (yellow from ${threshold})`,
+	};
+}
+
 export function isLocalDatabase(url: string): boolean {
 	try {
 		const host = new URL(url).hostname;

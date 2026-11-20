@@ -8,8 +8,10 @@ import { loyaltyCodeCommands } from "./loyalty-codes.js";
 import { loyaltySaleCommand } from "./loyalty-sale.js";
 import { maskCommand } from "./mask.js";
 import { notifyCommands } from "./notify.js";
+import { notifyFallbackEntryCommand } from "./notify-fallback.js";
 import { notifyJobFailedCommand } from "./notify-job.js";
 import { notifyLinkCommand, notifyUnlinkCommand } from "./notify-link.js";
+import { notifyOpsCommands } from "./notify-ops.js";
 import { onboardCommand } from "./onboard.js";
 import { photosPruneCommand } from "./photos.js";
 import { publishPlanCommand } from "./publish-plan.js";
@@ -33,6 +35,8 @@ export const COMMANDS: readonly CommandSpec[] = [
 	notifyLinkCommand,
 	notifyUnlinkCommand,
 	notifyJobFailedCommand,
+	notifyFallbackEntryCommand,
+	...notifyOpsCommands,
 	datapackCommand,
 	publishPlanCommand,
 	...zaloCommands,

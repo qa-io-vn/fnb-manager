@@ -15,7 +15,10 @@ async function run(argv: string[], env: Record<string, string> = {}) {
 
 const LOOPBACK = {
 	NOTIFY_ZALO_BOT_BASE_URL: "http://127.0.0.1:8787",
+	NOTIFY_TELEGRAM_BASE_URL: "http://127.0.0.1:8787",
 	NOTIFY_BREVO_BASE_URL: "http://127.0.0.1:8787",
+	NOTIFY_RESEND_BASE_URL: "http://127.0.0.1:8787",
+	NOTIFY_WEBHOOK_BASE_URL: "http://127.0.0.1:8787",
 };
 
 describe("fnb notify", () => {
@@ -152,7 +155,7 @@ describe("fnb notify", () => {
 		).toBe(2);
 	});
 
-	it("refuses linking in CI and kinds whose adapter is not built yet", async () => {
+	it("refuses linking in CI, a webhook URL that could leak a secret, and a member on a webhook", async () => {
 		const ci = await run(
 			[
 				"notify",
@@ -182,9 +185,45 @@ describe("fnb notify", () => {
 			"--member",
 			"owner@example.com",
 		]);
-		expect(resend.code).toBe(2);
-		expect(resend.stderr).toContain("not built yet");
-		const webhook = await run([
+		expect(resend.code).toBe(1);
+		expect(resend.stderr).toContain("NOTIFY_EMAIL_API_KEY is not set here");
+		expect(resend.stderr).not.toContain("not built");
+		for (const leaky of [
+			"https://user:pw@example.com/x",
+			"https://hooks.example.com/x?token=1",
+			"https://hooks.example.com/x#frag",
+			"https://hooks.example.com/hooks/abcdefghij0123456789",
+			"http://hooks.example.com/fnb/alerts",
+		]) {
+			const webhook = await run([
+				"notify",
+				"link",
+				"--tenant",
+				"t",
+				"--kind",
+				"webhook",
+				"--url",
+				leaky,
+			]);
+			expect(webhook.code).toBe(2);
+			expect(webhook.stderr).toContain("--url:");
+			expect(webhook.stderr).not.toContain("pw@");
+		}
+		const member = await run([
+			"notify",
+			"link",
+			"--tenant",
+			"t",
+			"--kind",
+			"webhook",
+			"--url",
+			"https://hooks.example.com/fnb/alerts",
+			"--member",
+			"owner@example.com",
+		]);
+		expect(member.code).toBe(2);
+		expect(member.stderr).toContain("belongs to no member");
+		const accepted = await run([
 			"notify",
 			"link",
 			"--tenant",
@@ -194,8 +233,8 @@ describe("fnb notify", () => {
 			"--url",
 			"https://hooks.example.com/fnb/alerts",
 		]);
-		expect(webhook.code).toBe(2);
-		expect(webhook.stderr).toContain("not built yet");
+		expect(accepted.code).toBe(1);
+		expect(accepted.stderr).toContain("set DATABASE_URL");
 		const unknown = await run([
 			"notify",
 			"link",

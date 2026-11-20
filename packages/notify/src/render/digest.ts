@@ -651,6 +651,24 @@ const STEPS: readonly {
 	},
 ];
 
+export function renderFindingLines(
+	model: DigestModel,
+	findings: readonly DigestFinding[],
+	options: Pick<DigestRenderOptions, "currencyCode" | "timeZone">,
+): string[] {
+	const context: RenderContext = {
+		model: { ...model, findings: [...findings] },
+		options: { ...options, channel: "zalo_bot", appBaseUrl: null },
+		format: createNotifyFormatters(options),
+		storeNames: new Map(
+			model.stores.map((store) => [store.storeId, store.name]),
+		),
+	};
+	return orderedFindings(context).map((finding) =>
+		findingLine(context, finding),
+	);
+}
+
 export function digestSubject(
 	model: DigestModel,
 	options: Pick<DigestRenderOptions, "currencyCode" | "timeZone">,

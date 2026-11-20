@@ -1,49 +1,20 @@
 import { createBrevoAdapter } from "./brevo.js";
+import { createResendAdapter } from "./resend.js";
 import { credentialKindOf } from "./secrets.js";
-import type {
-	ChannelAdapter,
-	ChannelKind,
-	ProviderId,
-	ProviderLimits,
-} from "./types.js";
+import { createTelegramAdapter } from "./telegram.js";
+import type { ChannelAdapter, ChannelKind, ProviderId } from "./types.js";
+import { createWebhookAdapter } from "./webhook.js";
 import { createZaloBotAdapter } from "./zalo-bot.js";
-
-const UNBUILT_LIMITS: ProviderLimits = {
-	maxTextUnits: 1900,
-	maxSubjectChars: null,
-	supportsHtml: false,
-	idempotent: false,
-	minSpacingMs: 1100,
-};
-
-function unbuiltAdapter(
-	provider: ProviderId,
-	kind: ChannelKind,
-): ChannelAdapter {
-	return {
-		provider,
-		kind,
-		available: false,
-		limits: UNBUILT_LIMITS,
-		async send() {
-			return {
-				kind: "failed",
-				code: "provider_unavailable",
-				scope: "message",
-			};
-		},
-	};
-}
 
 export type AdapterRegistry = Readonly<Record<ProviderId, ChannelAdapter>>;
 
 export function createAdapterRegistry(): AdapterRegistry {
 	return {
 		zalo_bot: createZaloBotAdapter(),
-		telegram: unbuiltAdapter("telegram", "telegram"),
+		telegram: createTelegramAdapter(),
 		brevo: createBrevoAdapter(),
-		resend: unbuiltAdapter("resend", "email"),
-		hmac_webhook: unbuiltAdapter("hmac_webhook", "webhook"),
+		resend: createResendAdapter(),
+		hmac_webhook: createWebhookAdapter(),
 	};
 }
 

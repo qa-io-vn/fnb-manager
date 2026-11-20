@@ -194,6 +194,7 @@ describe("templates", () => {
 			"alert.job_failed": ["conclusion", "time", "workflow"],
 			"alert.job_failed.workflows_active": [],
 			"alert.channel_failed": ["label", "reason"],
+			"alert.dsr_due_soon": ["days", "due_soon", "overdue"],
 			"alert.digest_failed": ["attempts", "date"],
 			"alert.cash_count_variance": [
 				"date",

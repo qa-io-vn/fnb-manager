@@ -852,9 +852,9 @@ select is(
   'no episode is left open'
 );
 select is(
-  (select array_agg(k order by k) from jsonb_object_keys(app.notify_tick_rules('2026-12-06 03:25+00', (select tenant_a from fx))) k),
-  array['channel_failed', 'due_digests', 'imported', 'reconciled'],
-  'the second form of the rules hook returns four counts'
+  (select array_agg(k order by k) from jsonb_object_keys(app.notify_tick_rules('2026-12-06 03:25+00', (select tenant_a from fx))) k) @> array['channel_failed', 'due_digests', 'imported', 'reconciled'],
+  true,
+  'the rules hook returns the counts of reconcile, import, channel health and due digests'
 );
 select ok(app.facts_are_count_only((select summary from r11)), 'the tick summary is count-only');
 

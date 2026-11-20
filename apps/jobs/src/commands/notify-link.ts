@@ -20,9 +20,13 @@ import {
 	renderNotice,
 	resolveSecret,
 	TEMPLATE_REFS,
+	telegramDeepLink,
 	USER_AGENT,
+	webhookAddressHint,
+	webhookUrlProblem,
 } from "@fnb/notify";
 import {
+	createWebhookDestination,
 	destinationState,
 	enqueueMessage,
 	findMemberByEmail,
@@ -74,6 +78,7 @@ const KIND_ONLY_OPTIONS: Readonly<Record<string, LinkKind>> = {
 	"from-name": "email",
 	url: "webhook",
 };
+const MEMBERLESS_KINDS: ReadonlySet<LinkKind> = new Set(["webhook"]);
 
 function linkKind(values: OptionValues): LinkKind {
 	const kind = requiredString(values, "kind");
@@ -89,6 +94,48 @@ function checkKindOptions(values: OptionValues, kind: LinkKind): void {
 			throw new UsageError(`--${option} applies to --kind ${owner}`);
 		}
 	}
+	if (MEMBERLESS_KINDS.has(kind)) {
+		for (const option of ["member", "wait", "print-fallback-entry"]) {
+			if (values[option] !== undefined) {
+				throw new UsageError(
+					`--${option} does not apply to --kind ${kind}: a webhook belongs to no member`,
+				);
+			}
+		}
+	}
+}
+
+function secretNameOption(values: OptionValues, kind: LinkKind): string {
+	const secretName =
+		stringOption(values, "secret") ?? DEFAULT_SECRET_NAMES[kind];
+	if (!isSecretNameValid(kind, secretName)) {
+		throw new UsageError(
+			`--secret must be ${DEFAULT_SECRET_NAMES[kind]} or ${DEFAULT_SECRET_NAMES[kind]}_<SUFFIX> for --kind ${kind}`,
+		);
+	}
+	return secretName;
+}
+
+function labelOption(values: OptionValues, kind: LinkKind): string {
+	const label = (stringOption(values, "label") ?? DEFAULT_LABELS[kind]).trim();
+	if (label.length < 1 || label.length > LABEL_MAX_CHARACTERS) {
+		throw new UsageError(
+			`--label must be 1 to ${LABEL_MAX_CHARACTERS} characters`,
+		);
+	}
+	return label;
+}
+
+function timezoneOption(values: OptionValues): string | null {
+	const timezone = stringOption(values, "timezone") ?? null;
+	if (timezone !== null) {
+		try {
+			assertTimezone(timezone);
+		} catch {
+			throw new UsageError(`--timezone "${timezone}" is not an IANA time zone`);
+		}
+	}
+	return timezone;
 }
 
 interface LinkSetup {
@@ -106,27 +153,9 @@ function linkSetup(
 	values: OptionValues,
 	kind: LinkKind,
 ): LinkSetup {
-	const secretName =
-		stringOption(values, "secret") ?? DEFAULT_SECRET_NAMES[kind];
-	if (!isSecretNameValid(kind, secretName)) {
-		throw new UsageError(
-			`--secret must be ${DEFAULT_SECRET_NAMES[kind]} or ${DEFAULT_SECRET_NAMES[kind]}_<SUFFIX> for --kind ${kind}`,
-		);
-	}
-	const label = (stringOption(values, "label") ?? DEFAULT_LABELS[kind]).trim();
-	if (label.length < 1 || label.length > LABEL_MAX_CHARACTERS) {
-		throw new UsageError(
-			`--label must be 1 to ${LABEL_MAX_CHARACTERS} characters`,
-		);
-	}
-	const timezone = stringOption(values, "timezone") ?? null;
-	if (timezone !== null) {
-		try {
-			assertTimezone(timezone);
-		} catch {
-			throw new UsageError(`--timezone "${timezone}" is not an IANA time zone`);
-		}
-	}
+	const secretName = secretNameOption(values, kind);
+	const label = labelOption(values, kind);
+	const timezone = timezoneOption(values);
 	const email = requiredString(values, "member").trim();
 	if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
 		throw new UsageError("--member must be the member's login e-mail");
@@ -168,9 +197,7 @@ async function linkBot(
 			candidate.pollUpdates !== undefined,
 	);
 	if (!adapter?.checkCredentials) {
-		throw new UsageError(
-			`--kind ${kind}: the ${kind} adapter is not built yet; zalo_bot is available`,
-		);
+		throw new UsageError(`--kind ${kind}: no bot adapter can link it`);
 	}
 	const { sql } = context.services.db();
 	const tenant = await requireTenant(
@@ -258,6 +285,11 @@ async function linkBot(
 	context.output.line(renderHandover({ ...noticeFacts, code, botName }));
 	context.output.line("");
 	context.output.line(message("link.instruction", { code, bot: botName }));
+	if (setup.kind === "telegram" && credentials.botName !== null) {
+		context.output.line(
+			`Hoặc mở ${telegramDeepLink(credentials.botName, code)} và bấm Bắt đầu (Start): Telegram gửi mã giúp bạn.`,
+		);
+	}
 	context.output.line(message("link.retry"));
 	if (setup.wait === 0) {
 		await kickNotify(sql, "kick");
@@ -349,7 +381,7 @@ async function linkBot(
 }
 
 const EMAIL_PROVIDERS = ["brevo", "resend"] as const;
-const BUILT_EMAIL_PROVIDERS: readonly string[] = ["brevo"];
+type EmailProvider = (typeof EMAIL_PROVIDERS)[number];
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const EMAIL_CODE_ATTEMPTS = 5;
 const LINK_CODE_LIFETIME_MS = 15 * 60_000;
@@ -422,17 +454,13 @@ async function linkEmail(
 	context: CommandContext,
 	values: OptionValues,
 ): Promise<number> {
-	const provider = stringOption(values, "provider") ?? "brevo";
-	if (!(EMAIL_PROVIDERS as readonly string[]).includes(provider)) {
+	const chosen = stringOption(values, "provider") ?? "brevo";
+	if (!(EMAIL_PROVIDERS as readonly string[]).includes(chosen)) {
 		throw new UsageError(
 			`--provider must be one of ${EMAIL_PROVIDERS.join(", ")}`,
 		);
 	}
-	if (!BUILT_EMAIL_PROVIDERS.includes(provider)) {
-		throw new UsageError(
-			`--provider ${provider}: the ${provider} adapter is not built yet; brevo is available`,
-		);
-	}
+	const provider = chosen as EmailProvider;
 	const setup = linkSetup(context, values, "email");
 	const config = emailSenderConfig(values, context.env);
 	const { sql } = context.services.db();
@@ -454,7 +482,7 @@ async function linkEmail(
 	const noticeFacts = {
 		tenantName: tenant.name,
 		channelKind: "email" as const,
-		provider: "brevo" as const,
+		provider,
 	};
 	context.output.line(`Thông báo cho người nhận (${NOTICE_VERSION}):`);
 	context.output.line(renderNotice(noticeFacts));
@@ -463,7 +491,7 @@ async function linkEmail(
 		tenantId: tenant.id,
 		userId: member.userId,
 		kind: "email",
-		provider: "brevo",
+		provider,
 		label: setup.label,
 		secretName: setup.secretName,
 		timezone: setup.timezone,
@@ -583,6 +611,59 @@ async function narrowedStores(
 	return externalIds.map((id) => found.get(id) ?? "");
 }
 
+async function linkWebhook(
+	context: CommandContext,
+	values: OptionValues,
+): Promise<number> {
+	const url = requiredString(values, "url").trim();
+	const problem = webhookUrlProblem(url);
+	if (problem !== null) {
+		throw new UsageError(`--url: ${problem}`);
+	}
+	const secretName = secretNameOption(values, "webhook");
+	const label = labelOption(values, "webhook");
+	const timezone = timezoneOption(values);
+	const { sql } = context.services.db();
+	const tenant = await requireTenant(
+		sql,
+		requiredString(values, "tenant"),
+		context.output.ci,
+	);
+	const storeIds = await narrowedStores(context, values, tenant.id);
+	const channelId = await createWebhookDestination(sql, {
+		tenantId: tenant.id,
+		label,
+		secretName,
+		url,
+		addressHint: webhookAddressHint(url),
+		timezone,
+		at: context.now(),
+	});
+	if (storeIds !== null) {
+		await sql`
+			update public.notification_channels
+			set store_ids = array(select jsonb_array_elements_text(${JSON.stringify(storeIds)}::text::jsonb)::uuid)
+			where id = ${channelId}::uuid
+		`;
+	}
+	const numbered = (await listDestinations(sql, tenant.id)).find(
+		(destination) => destination.id === channelId,
+	);
+	const destinationText = destinationLabel({
+		number: numbered?.number ?? 0,
+		kind: "webhook",
+	});
+	context.output.line(
+		`${destinationText}: active; alerts, reminders, resolutions and tests are posted signed with ${secretName} (never digests)`,
+	);
+	if (resolveSecret("webhook", secretName, context.env) === null) {
+		context.output.error(
+			`${secretName} is not set here; set the same value wherever messages are dispatched (Edge Function secrets, GitHub secrets, .env) and on the receiving system`,
+		);
+	}
+	return 0;
+}
+
 async function link(
 	context: CommandContext,
 	values: OptionValues,
@@ -600,9 +681,7 @@ async function link(
 	const kind = linkKind(values);
 	checkKindOptions(values, kind);
 	if (kind === "webhook") {
-		throw new UsageError(
-			`--kind ${kind}: the ${kind} adapter is not built yet; zalo_bot and email are available`,
-		);
+		return linkWebhook(context, values);
 	}
 	if (kind === "email") {
 		return linkEmail(context, values);
@@ -737,7 +816,7 @@ export const notifyUnlinkCommand: CommandSpec = {
 export const notifyLinkCommand: CommandSpec = {
 	path: ["notify", "link"],
 	summary:
-		"Link a member's Zalo Bot chat or login e-mail (Telegram and webhook follow) for digests and alerts",
+		"Link a member's Zalo Bot or Telegram chat or login e-mail, or the owner's signed webhook, for digests and alerts",
 	usage:
 		"fnb notify link --tenant <slug> --kind zalo_bot|telegram|email|webhook [--member <login e-mail>] [--label <text>] [--secret <NOTIFY_NAME>] [--provider brevo|resend] [--from-email <address> --from-name <text>] [--url https://…] [--timezone <IANA>] [--store <external id>]… [--wait <seconds, default 600>] [--print-fallback-entry]",
 	options: {
@@ -760,10 +839,13 @@ export const notifyLinkCommand: CommandSpec = {
 		"Prints the notice (ops-notifications-v1) and a hand-over block for the member, checks the bot token with getMe, creates or reuses the member's pending destination and a one-time code FNB-XXXXXXXX valid 15 minutes.",
 		"The member sends the code to the bot from their own chat, reads the notice the bot sends back and replies ĐỒNG Ý; only then does the destination turn active and their notifications consent get recorded.",
 		"While --wait lasts (default 600 s) the command polls the bot every 2 s under the bot's polling lease; afterwards the notify function or the next fnb notify tick keeps polling.",
-		"--secret is the only way to use a token other than NOTIFY_ZALO_BOT_TOKEN (a suffix such as NOTIFY_ZALO_BOT_TOKEN_2). --store narrows the member's digest to some stores; --timezone sets the reader's zone for quiet hours.",
+		"--kind telegram links the same way through a Telegram bot (token NOTIFY_TELEGRAM_BOT_TOKEN): the member opens the printed https://t.me/<bot>?start=<code> link and presses Start, or sends the code, then replies ĐỒNG Ý. Bots cannot write first, so the member always starts the chat.",
+		"--secret is the only way to use a token other than the default (a suffix such as NOTIFY_ZALO_BOT_TOKEN_2). --store narrows the member's digest to some stores; --timezone sets the reader's zone for quiet hours.",
 		"Running it again for a linked member re-links: the destination is pending until the member accepts again.",
-		"--kind email (provider brevo) e-mails the notice and a 6-digit code to the member's login address and asks for the code here; the member reads the notice and, if they agree, hands the code over, which records their consent. Five wrong codes remove the pending destination. The sender is --from-email/--from-name or NOTIFY_EMAIL_FROM and NOTIFY_EMAIL_FROM_NAME.",
-		"Refused in CI. Telegram, Resend and webhook destinations arrive with their adapters in a later step.",
+		"--kind email (--provider brevo, the default, or resend) e-mails the notice and a 6-digit code to the member's login address and asks for the code here; the member reads the notice and, if they agree, hands the code over, which records their consent. Five wrong codes remove the pending destination. The sender is --from-email/--from-name or NOTIFY_EMAIL_FROM and NOTIFY_EMAIL_FROM_NAME; Resend needs a verified domain and sends each message with an idempotency key, so a retry never delivers twice.",
+		"--kind webhook --url https://… [--secret NOTIFY_WEBHOOK_SECRET] adds the owner's own endpoint at once, with no member and no consent: immediate alerts, reminders, resolutions and tests are posted as count-only JSON signed with HMAC-SHA256 (x-fnb-signature), never digests. The URL may not carry a user name, a query, a fragment or a secret-looking path segment.",
+		"--print-fallback-entry prints the JSON entry of the linked bot chat or e-mail for the NOTIFY_FALLBACK_TARGETS secret once.",
+		"Refused in CI.",
 	],
 	run: link,
 };

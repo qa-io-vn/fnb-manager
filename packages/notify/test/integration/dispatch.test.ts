@@ -8,6 +8,7 @@ import {
 	localIsoDate,
 	type NotifyRepository,
 	pollBot,
+	TEMPLATE_REFS,
 } from "../../src/index.js";
 import {
 	createPostgresNotifyRepository,
@@ -20,7 +21,10 @@ import {
 	createFixtureTenant,
 	type FixtureTenant,
 	type MockProviders,
+	RESEND_FAULT_METHOD,
+	SYNTHETIC_TELEGRAM_TOKEN,
 	startMockProviders,
+	WEBHOOK_FAULT_METHOD,
 } from "../../src/testing/index.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -435,5 +439,188 @@ describe.skipIf(!ENABLED)("notify dispatch on the local stack", () => {
 		).toBe(true);
 		await repository.releasePollLease(fixture.secretName, "it-second");
 		expect(mock.maxConcurrentPolls()).toBe(1);
+	}, 60_000);
+	it("link (Telegram): the deep-link code, the member's own ĐỒNG Ý, one consent and one test message", async () => {
+		const member = await fixture.addMember("manager", null);
+		const chat = String(710_000_000 + Math.floor(Math.random() * 1_000_000));
+		const channelId = await fixture.linkTelegram(member, { chatId: chat });
+		const state = await destinationState(sql, channelId);
+		expect(state?.status).toBe("active");
+		expect(state?.address).toBe(chat);
+		const consents = await sql<{ evidence: Record<string, unknown> }[]>`
+			select evidence
+			from public.consent_records
+			where tenant_id = ${fixture.tenantId}::uuid
+				and subject_type = 'staff'
+				and subject_id = ${member.userId}::uuid
+				and purpose = 'notifications'
+				and revoked_at is null
+		`;
+		expect(consents).toHaveLength(1);
+		expect(consents[0]?.evidence.notice_channel).toBe("bot_chat");
+		expect(JSON.stringify(consents[0]?.evidence)).not.toContain(chat);
+		const now = new Date();
+		const testId = await enqueueMessage(sql, {
+			tenantId: fixture.tenantId,
+			channelId,
+			kind: "test",
+			templateRef: TEMPLATE_REFS.test,
+			dedupeKey: `test:${channelId}:${randomUUID()}`,
+			expiresAt: new Date(now.getTime() + 60 * MINUTE),
+			at: now,
+		});
+		await fixture.cycle({ at: now });
+		expect((await messageRow(sql, testId))?.status).toBe("sent");
+		const toChat = mock
+			.telegramMessages(SYNTHETIC_TELEGRAM_TOKEN)
+			.filter((message) => message.chatId === chat);
+		expect(toChat).toHaveLength(3);
+		expect(toChat[0]?.text).toContain("Trả lời ĐỒNG Ý");
+		expect(toChat[1]?.text).toContain("Đã liên kết.");
+		expect(toChat[2]?.text).toContain("Telegram");
+		expect(toChat.every((message) => message.previewsDisabled)).toBe(true);
+		const offsets = mock.telegramOffsets(SYNTHETIC_TELEGRAM_TOKEN);
+		expect(offsets.filter((offset) => offset !== null).length).toBeGreaterThan(
+			0,
+		);
+	}, 60_000);
+
+	it("webhook: a signed alert verified by the receiver, a retry dropped as a duplicate by its key, never a digest", async () => {
+		const webhook = await fixture.addWebhook({ path: "/fnb/alerts" });
+		const day = shiftIsoDate(tomorrow, 4);
+		let now = localInstant(day, 10, 0);
+		mock.setClock(() => now);
+		try {
+			const id = await enqueueMessage(sql, {
+				tenantId: fixture.tenantId,
+				channelId: webhook,
+				kind: "alert",
+				templateRef: "alert.sync_stale.v1",
+				dedupeKey: `alert:it-${randomUUID()}:${webhook}:open`,
+				params: {
+					rule_key: "sync_stale",
+					severity: "critical",
+					minutes_without_sync: 95,
+					threshold_minutes: 90,
+				},
+				severity: "critical",
+				expiresAt: new Date(now.getTime() + 24 * 60 * MINUTE),
+				at: now,
+			});
+			const deliveries = mock.webhookDeliveries().length;
+			mock.failNext(WEBHOOK_FAULT_METHOD, { kind: "status", status: 503 });
+			const first = await fixture.cycle({ at: now });
+			expect(first.get("retried")).toBe(1);
+			expect((await messageRow(sql, id))?.status).toBe("queued");
+			mock.failNext(WEBHOOK_FAULT_METHOD, { kind: "accept_then_drop" });
+			now = new Date(now.getTime() + 3 * MINUTE);
+			const second = await fixture.cycle({ at: now });
+			expect(second.get("retried")).toBe(1);
+			expect(mock.webhookDeliveries()).toHaveLength(deliveries + 1);
+			now = new Date(now.getTime() + 10 * MINUTE);
+			const third = await fixture.cycle({ at: now });
+			expect(third.get("sent")).toBe(1);
+			expect((await messageRow(sql, id))?.status).toBe("sent");
+			expect(mock.webhookDeliveries()).toHaveLength(deliveries + 1);
+			expect(mock.webhookDuplicates()).toBeGreaterThanOrEqual(1);
+			const delivery = mock.webhookDeliveries().at(-1);
+			expect(delivery).toMatchObject({
+				path: "/fnb/alerts",
+				event: "alert.opened",
+				idempotencyKey: id,
+				verified: true,
+			});
+			expect(delivery?.body).toMatchObject({
+				version: 1,
+				type: "alert.opened",
+				rule: "sync_stale",
+				severity: "critical",
+				facts: { minutes_without_sync: 95, threshold_minutes: 90 },
+			});
+			const [stored] = await sql<{ body: string | null }[]>`
+				select body from public.outbound_messages where id = ${id}::uuid
+			`;
+			expect(JSON.parse(stored?.body ?? "{}")).toEqual(delivery?.body);
+
+			const digestId = await enqueueMessage(sql, {
+				tenantId: fixture.tenantId,
+				channelId: webhook,
+				kind: "digest",
+				templateRef: TEMPLATE_REFS.digest,
+				dedupeKey: `digest:it-${randomUUID()}:${webhook}:r0`,
+				title: "Bản tin thử nghiệm",
+				body: "Bản tin thử nghiệm",
+				severity: "info",
+				expiresAt: new Date(now.getTime() + 24 * 60 * MINUTE),
+				at: now,
+			}).catch(() => null);
+			if (digestId !== null) {
+				await fixture.cycle({ at: new Date(now.getTime() + MINUTE) });
+				expect(["failed", "cancelled"]).toContain(
+					(await messageRow(sql, digestId))?.status,
+				);
+			}
+			await fixture.cycle({
+				at: new Date(now.getTime() + 2 * MINUTE),
+				buildDigests: true,
+			});
+			const [digests] = await sql<{ count: string }[]>`
+				select count(*)::text as count
+				from public.outbound_messages
+				where channel_id = ${webhook}::uuid
+					and kind in ('digest', 'digest_correction')
+					and status in ('sending', 'sent', 'delivered', 'uncertain')
+			`;
+			expect(Number(digests?.count)).toBe(0);
+			expect(
+				mock
+					.webhookDeliveries()
+					.filter((entry) => String(entry.body.type).startsWith("digest")),
+			).toHaveLength(0);
+		} finally {
+			mock.setClock(() => new Date());
+		}
+	}, 60_000);
+
+	it("crash between send and record (Resend half): the retry carries the same key and the provider delivers once", async () => {
+		const member = await fixture.addMember("manager", null);
+		const channelId = await fixture.linkEmail(member, { provider: "resend" });
+		const day = shiftIsoDate(tomorrow, 5);
+		const at = localInstant(day, 10, 0);
+		const id = await enqueueAlert(
+			sql,
+			fixture,
+			channelId,
+			at,
+			"Cảnh báo thử nghiệm qua Resend.",
+		);
+		const resendRequests = mock.requestCount(RESEND_FAULT_METHOD);
+		const base = fixture.repository();
+		const crashing: NotifyRepository = {
+			...base,
+			finishSend: async () => {
+				throw new Error("synthetic crash after the provider accepted");
+			},
+		};
+		const report = await fixture.cycle({ at, repository: crashing });
+		expect(report.get("finish_errors")).toBe(1);
+		const sending = await messageRow(sql, id);
+		expect(sending?.status).toBe("sending");
+		expect(sending?.send_started_at).not.toBeNull();
+		await sql`select app.recover_message_leases(${new Date(at.getTime() + 3 * MINUTE)}::timestamptz, ${fixture.tenantId}::uuid)`;
+		expect((await messageRow(sql, id))?.status).toBe("queued");
+		const retried = await fixture.cycle({
+			at: new Date(at.getTime() + 4 * MINUTE),
+		});
+		expect(retried.get("sent")).toBe(1);
+		expect((await messageRow(sql, id))?.status).toBe("sent");
+		expect(mock.requestCount(RESEND_FAULT_METHOD)).toBe(resendRequests + 2);
+		const delivered = mock
+			.emails()
+			.filter(
+				(email) => email.provider === "resend" && email.idempotencyKey === id,
+			);
+		expect(delivered).toHaveLength(1);
+		expect(delivered[0]?.to).toBe(member.email);
 	}, 60_000);
 });

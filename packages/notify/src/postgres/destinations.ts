@@ -117,6 +117,43 @@ export async function prepareBotDestination(
 	return { channelId: row.id, previousStatus: row.previous_status };
 }
 
+export interface WebhookDestinationInput {
+	readonly tenantId: string;
+	readonly label: string;
+	readonly secretName: string;
+	readonly url: string;
+	readonly addressHint: string;
+	readonly timezone: string | null;
+	readonly at: Date;
+}
+
+export async function createWebhookDestination(
+	sql: Sql,
+	input: WebhookDestinationInput,
+): Promise<string> {
+	const [row] = await sql<{ id: string }[]>`
+		insert into public.notification_channels (tenant_id, kind, provider, label, user_id, secret_name, timezone, status, config, address_hint, linked_at)
+		values (
+			${input.tenantId}::uuid,
+			'webhook'::public.channel_kind,
+			'hmac_webhook',
+			${input.label},
+			null,
+			${input.secretName},
+			${input.timezone},
+			'active',
+			jsonb_build_object('url', ${input.url}::text),
+			${input.addressHint}::text,
+			${input.at}::timestamptz
+		)
+		returning id::text as id
+	`;
+	if (!row) {
+		throw new Error("the webhook destination insert returned no row");
+	}
+	return row.id;
+}
+
 export async function issueLinkCode(
 	sql: Sql,
 	channelId: string,

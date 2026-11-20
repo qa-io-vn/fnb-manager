@@ -54,6 +54,17 @@ export function perCallMemberClient(sql: Sql, memberUserId: string): RpcClient {
 	};
 }
 
+export async function asMemberWriting<T>(
+	sql: Sql,
+	memberUserId: string,
+	run: (transaction: TransactionSql) => Promise<T>,
+): Promise<T> {
+	return sql.begin(async (transaction) => {
+		await actAsMember(transaction, memberUserId);
+		return run(transaction);
+	}) as Promise<T>;
+}
+
 export async function asMember<T>(
 	sql: Sql,
 	memberUserId: string,

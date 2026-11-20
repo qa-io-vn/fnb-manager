@@ -132,6 +132,8 @@ export const VI_MESSAGES = {
 		"Một số tác vụ theo lịch đã bị GitHub tắt vì kho mã lâu không hoạt động và vừa được bật lại.",
 	"alert.channel_failed":
 		"Cảnh báo: kênh {label} không gửi được tin ({reason}). Kiểm tra token hoặc liên kết lại trong Cài đặt → Cảnh báo.",
+	"alert.dsr_due_soon":
+		"Cảnh báo: {overdue} yêu cầu về dữ liệu cá nhân đã quá hạn trả lời và {due_soon} yêu cầu đến hạn trong {days} ngày tới. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
 	"alert.digest_failed":
 		"Cảnh báo: chưa tạo được bản tin ngày {date} sau {attempts} lần thử.",
 	"alert.cash_count_variance":

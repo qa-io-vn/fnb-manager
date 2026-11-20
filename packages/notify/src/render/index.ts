@@ -51,6 +51,7 @@ export {
 	workflowKeyOf,
 	workflowLabel,
 } from "./alert.js";
+export { type RenderedCorrection, renderCorrection } from "./correction.js";
 export {
 	DIGEST_UNIT_LIMITS,
 	type DigestChannel,
@@ -59,6 +60,7 @@ export {
 	FULL_BASELINE_SAMPLE,
 	type RenderedDigest,
 	renderDigest,
+	renderFindingLines,
 	type TruncationStep,
 } from "./digest.js";
 export {

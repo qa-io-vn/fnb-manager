@@ -281,9 +281,88 @@ describe("runNotifyCycle", () => {
 		const h = harness();
 		h.repository.addMessage({ kind: "test" });
 		await run(h, {
-			environment: { NOTIFY_TELEGRAM_BOT_TOKEN: "synthetic-telegram-token" },
+			environment: {
+				NOTIFY_TELEGRAM_BOT_TOKEN: "synthetic-telegram-token",
+			},
+			adapters: {
+				...createAdapterRegistry(),
+				telegram: { ...createAdapterRegistry().telegram, available: false },
+			},
 		});
 		expect(h.repository.claims).toHaveLength(0);
+		await run(h, { environment: { NOTIFY_EMAIL_FROM: "a@example.com" } });
+		expect(h.repository.claims).toHaveLength(0);
+	});
+
+	it("posts a webhook alert to config.url and stores the exact signed JSON for every retry", async () => {
+		const h = harness({ status: 503 }, { status: 200 });
+		const message = h.repository.addMessage({
+			kind: "alert",
+			channelKind: "webhook",
+			provider: "hmac_webhook",
+			secretName: "NOTIFY_WEBHOOK_SECRET",
+			address: null,
+			config: { url: "https://hooks.example.com/fnb/alerts" },
+			params: {
+				rule_key: "sync_stale",
+				opened_at: 1794147000,
+				minutes_without_sync: 95,
+				threshold_minutes: 90,
+			},
+			severity: "critical",
+			ruleKey: "sync_stale",
+			storeName: "Cửa hàng 1",
+		});
+		const environment = { NOTIFY_WEBHOOK_SECRET: "synthetic-webhook-secret" };
+		const first = await run(h, { environment });
+		expect(first.get("retried")).toBe(1);
+		const stored = message.body;
+		expect(JSON.parse(stored ?? "{}")).toEqual({
+			version: 1,
+			type: "alert.opened",
+			rule: "sync_stale",
+			severity: "critical",
+			occurred_at: "2026-11-08T14:10:00Z",
+			store: "Cửa hàng 1",
+			facts: { minutes_without_sync: 95, threshold_minutes: 90 },
+		});
+		message.notBefore = null;
+		const second = await run(h, {
+			environment,
+			at: new Date("2026-11-09T02:20:00.000Z"),
+		});
+		expect(second.get("sent")).toBe(1);
+		expect(message.body).toBe(stored);
+		expect(h.fake.requests).toHaveLength(2);
+		for (const request of h.fake.requests) {
+			expect(request.url).toBe("https://hooks.example.com/fnb/alerts");
+			expect(JSON.stringify(request.body)).toBe(stored);
+			expect(request.headers["idempotency-key"]).toBe(message.id);
+			expect(request.headers["x-fnb-signature"]).toMatch(/^v1=[0-9a-f]{64}$/);
+		}
+		expect(h.fake.requests[0]?.headers["x-fnb-timestamp"]).not.toBe(
+			h.fake.requests[1]?.headers["x-fnb-timestamp"],
+		);
+		expect(message.finishes[0]?.idempotent).toBe(true);
+		expect(JSON.stringify(h.logs)).not.toContain("hooks.example.com");
+	});
+
+	it("fails a webhook message whose destination has no URL instead of sending it anywhere", async () => {
+		const h = harness();
+		const message = h.repository.addMessage({
+			kind: "test",
+			channelKind: "webhook",
+			provider: "hmac_webhook",
+			secretName: "NOTIFY_WEBHOOK_SECRET",
+			address: null,
+			config: {},
+		});
+		await run(h, {
+			environment: { NOTIFY_WEBHOOK_SECRET: "synthetic-webhook-secret" },
+		});
+		expect(message.status).toBe("failed");
+		expect(message.lastErrorCode).toBe("address_missing");
+		expect(h.fake.requests).toHaveLength(0);
 	});
 
 	it("stops taking new work when the budget is spent", async () => {
