@@ -9,14 +9,22 @@ import {
 	CUSTOMER_TAB_KEYS,
 	type CustomerPage,
 	customerHref,
+	PRIVACY_PAGES,
 } from "../../loyalty/route";
 import type { CustomerSource } from "../../loyalty/source";
+import { privacyAccess } from "../../privacy/access";
 import { useMembership } from "../../settings/queries";
 import { useRetrySettingsSource } from "../../settings/settings-source-context";
 import { PageHeading } from "../../shell/page-heading";
 import { StatusMessage } from "../../shell/scope-status";
 
-function CustomerTabs({ current }: { readonly current: CustomerPage }) {
+function CustomerTabs({
+	current,
+	pages,
+}: {
+	readonly current: CustomerPage;
+	readonly pages: readonly CustomerPage[];
+}) {
 	const t = useT();
 	const active = useRef<HTMLAnchorElement | null>(null);
 	useEffect(() => {
@@ -29,7 +37,7 @@ function CustomerTabs({ current }: { readonly current: CustomerPage }) {
 			data-testid="loyalty-tabs"
 		>
 			<ul className="flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface-raised p-1">
-				{CUSTOMER_PAGES.map((page) => {
+				{pages.map((page) => {
 					const isCurrent = page === current;
 					return (
 						<li key={page} className="shrink-0">
@@ -101,6 +109,10 @@ export function CustomersLayout({
 	const retrySource = useRetrySettingsSource();
 	const member = membership.status === "success" ? membership.data : undefined;
 	const access = loyaltyReadAccess(member);
+	const handlesPrivacy = privacyAccess(member).canHandle;
+	const pages = CUSTOMER_PAGES.filter(
+		(candidate) => handlesPrivacy || !PRIVACY_PAGES.includes(candidate),
+	);
 	const title = [
 		t("loyalty.title"),
 		subtitle ?? t(CUSTOMER_TAB_KEYS[page]),
@@ -124,7 +136,7 @@ export function CustomersLayout({
 	return (
 		<div className="space-y-4" data-testid="loyalty-page" data-page={page}>
 			<PageHeading title={title} className="text-2xl font-semibold" />
-			<CustomerTabs current={page} />
+			<CustomerTabs current={page} pages={pages} />
 			{source.status === "unavailable" ? null : (
 				<p className="text-sm text-ink-muted print:hidden">
 					{t("loyalty.intro")}

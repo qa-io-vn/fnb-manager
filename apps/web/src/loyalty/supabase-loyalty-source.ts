@@ -10,6 +10,7 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { fetchAllByKey, fetchOnce, type QueryResult } from "../data/paginate";
+import { createSupabasePrivacySource } from "../privacy/supabase-privacy-source";
 import { SettingsWriteError } from "../settings/source";
 import {
 	createSupabaseAudits,
@@ -570,6 +571,7 @@ export function createSupabaseCustomerSource(
 		);
 	return {
 		kind: "supabase",
+		privacy: createSupabasePrivacySource(client),
 		async members(storeIds, after, pageSize) {
 			if (storeIds.length === 0) return { rows: [], next: null };
 			const rows = await membersPage(storeIds, after, pageSize + 1, null);

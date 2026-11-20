@@ -7,6 +7,7 @@ import type {
 	NotificationDecision,
 } from "@fnb/core";
 import type { IsoDate } from "@fnb/reports";
+import type { PrivacySource } from "../privacy/source";
 import {
 	type AuditEntry,
 	type SettingsWriteCode,
@@ -215,6 +216,7 @@ export interface ShiftAnomaly {
 }
 
 export interface CustomerSource {
+	readonly privacy: PrivacySource;
 	readonly kind: "supabase";
 	/** The tenant's members, masked, newest first; storeIds are the tenant's stores in the caller's scope. */
 	members(

@@ -29,7 +29,9 @@ export type LoyaltyRead =
 	| "member"
 	| "ledger"
 	| "queue"
-	| "anomalies";
+	| "anomalies"
+	| "requests"
+	| "due";
 
 export function loyaltyQueryKey(
 	tenantId: string,
@@ -66,7 +68,7 @@ export function useCustomerSource(): CustomerSourceState {
 		: { status: "ready", source: customers };
 }
 
-function useCustomerRead<T>(
+export function useCustomerRead<T>(
 	read: LoyaltyRead,
 	parts: readonly (string | number)[],
 	load: (source: CustomerSource, tenantId: string) => Promise<T>,

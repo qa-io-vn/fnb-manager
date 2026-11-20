@@ -10,6 +10,7 @@ import { I18nProvider, translate } from "../i18n";
 import { MemberPage } from "../pages/loyalty/member-page";
 import { MembersPage } from "../pages/loyalty/members-page";
 import { QueuePage } from "../pages/loyalty/queue-page";
+import { createFakePrivacy } from "../privacy/testing";
 import { createDemoSettingsSource } from "../settings/demo-settings-source";
 import type { Membership, SettingsSource } from "../settings/source";
 import { vndFormatters } from "../test/render";
@@ -505,6 +506,7 @@ function fakeCustomers({ owner = true } = {}): FakeCustomers {
 	return {
 		kind: "supabase",
 		calls,
+		privacy: createFakePrivacy(),
 		members: vi.fn(async () => {
 			calls.push("members");
 			return { rows: MEMBERS, next: null };

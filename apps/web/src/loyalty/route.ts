@@ -2,7 +2,19 @@ import type { MessageKey } from "../i18n";
 
 export const CUSTOMER_SECTION = "khach-hang";
 
-export const CUSTOMER_PAGES = ["thanh-vien", "doi-soat", "bat-thuong"] as const;
+export const CUSTOMER_PAGES = [
+	"thanh-vien",
+	"doi-soat",
+	"bat-thuong",
+	"tra-cuu-du-lieu",
+	"yeu-cau-du-lieu",
+] as const;
+
+/** The pages of owners and managers with every store only. */
+export const PRIVACY_PAGES: readonly CustomerPage[] = [
+	"tra-cuu-du-lieu",
+	"yeu-cau-du-lieu",
+];
 
 export type CustomerPage = (typeof CUSTOMER_PAGES)[number];
 
@@ -10,6 +22,8 @@ export const CUSTOMER_TAB_KEYS: Readonly<Record<CustomerPage, MessageKey>> = {
 	"thanh-vien": "loyalty.tab.members",
 	"doi-soat": "loyalty.tab.queue",
 	"bat-thuong": "loyalty.tab.anomalies",
+	"tra-cuu-du-lieu": "loyalty.tab.lookup",
+	"yeu-cau-du-lieu": "loyalty.tab.requests",
 };
 
 export function customerHref(page: CustomerPage, search = ""): string {

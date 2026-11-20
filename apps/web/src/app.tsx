@@ -270,6 +270,22 @@ export const routes: RouteObject[] = [
 									})),
 							},
 							{
+								path: "tra-cuu-du-lieu",
+								lazy: () =>
+									import("./pages/loyalty/privacy-lookup-page").then(
+										(module) => ({
+											Component: module.PrivacyLookupPage,
+										}),
+									),
+							},
+							{
+								path: "yeu-cau-du-lieu",
+								lazy: () =>
+									import("./pages/loyalty/privacy-requests-page").then(
+										(module) => ({ Component: module.PrivacyRequestsPage }),
+									),
+							},
+							{
 								path: "*",
 								element: <Navigate to="/khach-hang/thanh-vien" replace />,
 							},
