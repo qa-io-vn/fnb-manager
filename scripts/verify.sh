@@ -53,6 +53,10 @@ step "Edge Function import map is current" node scripts/function-imports.mjs --c
 step "Deno is installed" require_command deno
 step "Edge Function type-check" deno_check_edge_function
 step "API documentation matches the database functions" pnpm docs:check-api
+step "Documentation links and the index (self-test)" node scripts/check-doc-links.mjs --self-test
+step "Documentation links and the index" node scripts/check-doc-links.mjs
+step "No workflow- or job-level cloud secret" node scripts/check-workflow-secrets.mjs
+step "Cron delay report slot attribution (self-test)" node scripts/cron-delay-report.mjs --self-test
 step "Local stack is running" require_local_stack
 step "pgTAP database tests" pnpm exec supabase test db
 step "OpenAPI description matches the database" pnpm docs:check-openapi

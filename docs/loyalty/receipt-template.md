@@ -6,7 +6,7 @@ This page is generic. The Mini App id and the store codes are configuration: the
 
 ## Placeholders to use · Chỗ điền trong mẫu
 
-The POS custom template fills a placeholder in braces when it prints (recorded from the POS manual and the owner on 2026-11-07; re-check them in the template editor, see [the probe](#the-probe)).
+The POS custom template fills a placeholder in braces when it prints (recorded from the POS manual and the owner on 2026-11-07; re-check them in the template editor, see [the probe](#the-probe--kiểm-tra-trong-trình-sửa-mẫu)).
 
 | Placeholder | Print it? | Where and how |
 | --- | --- | --- |

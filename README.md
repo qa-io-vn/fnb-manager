@@ -31,7 +31,7 @@ The first connector is iPOS Fabi (Vietnam). The first users are two single-store
 | `.github/workflows/` | CI (lint, typecheck, unit tests, the Deno checks and tests of every Edge Function, migrations and pgTAP, web end-to-end, the Mini App builds and their budgets, secret and identifier scan), migrations, nightly sync, notification ticks, Edge Function deployment, Mini App deployment, backups, cron probes, Pages deployment |
 | `docs/` | Roadmap, decisions, schema, secrets contract, connector docs, deep dives (`docs/private/` is gitignored and holds anything shop-specific) |
 
-`docs/status.md` says what is built, what comes next and how to continue on another machine. Start with `docs/roadmap.md`, then `docs/decisions.md` and `docs/schema.md`. `docs/sync.md` covers the sync engine and the `fnb` CLI, `docs/web-app.md` the web app and its demo mode, `docs/settings.md` the settings sources and their errors, `docs/manual-data.md` the item costs, monthly targets and payment fees, `docs/metrics.md` the metric definitions, and `docs/go-live.md` the first cloud deployment step by step.
+[docs/README.md](docs/README.md) is the index of every document, grouped by reader. The documentation set: [status.md](docs/status.md) (what is built and what comes next), [roadmap.md](docs/roadmap.md), [plan.md](docs/plan.md), [requirements.md](docs/requirements.md), [architecture.md](docs/architecture.md), [security.md](docs/security.md), [development.md](docs/development.md), [test-plan.md](docs/test-plan.md), [api.md](docs/api.md), [user-guide.md](docs/user-guide.md), [glossary.md](docs/glossary.md) and [operations.md](docs/operations.md); every workspace package and app has its own README.
 
 ## Local development
 

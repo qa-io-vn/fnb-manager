@@ -9,6 +9,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   secrets:
     name: Secret and identifier scan
@@ -38,6 +41,21 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - name: No workflow or job exposes a cloud secret beyond its steps
+        run: |
+          node scripts/check-workflow-secrets.mjs --self-test
+          node scripts/check-workflow-secrets.mjs
+      - name: The cron delay report attributes runs to their own slots
+        run: node scripts/cron-delay-report.mjs --self-test
+      - name: Every documentation link and anchor resolves, and docs/README.md lists every document
+        run: |
+          node scripts/check-doc-links.mjs --self-test
+          node scripts/check-doc-links.mjs
+      - name: Web build of the demo with the bundle and size checks
+        env:
+          VITE_SUPABASE_URL: ""
+          VITE_SUPABASE_PUBLISHABLE_KEY: ""
+        run: pnpm --filter @fnb/web build
       - name: Check the Edge Function import map is current
         run: node scripts/function-imports.mjs --check
       - uses: denoland/setup-deno@v2
@@ -73,6 +91,8 @@ jobs:
       - run: pnpm exec supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta
       - run: pnpm exec supabase db reset
       - run: pnpm exec supabase test db
+      - name: The API documentation matches the database functions
+        run: pnpm docs:check-api
       - name: The OpenAPI description matches the database
         run: pnpm docs:check-openapi
       - name: Show how the OpenAPI description differs
@@ -84,14 +104,44 @@ jobs:
       - run: pnpm --filter @fnb/demo-analytics test:parity:postgres
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      - name: Sync and command-line integration suites on the fresh stack
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          pnpm --filter @fnb/sync exec vitest run test/integration
+          pnpm --filter @fnb/jobs exec vitest run test/integration
       - if: always()
         run: pnpm exec supabase stop --no-backup
 
   e2e:
-    name: Web end-to-end tests
+    name: Web end-to-end tests (${{ matrix.part }})
     runs-on: ubuntu-latest
-    # The specs run one at a time on a shared database and took 20 to 28 minutes in November 2026; G-59 tracks splitting them.
-    timeout-minutes: 45
+    # G-59: one job took 29 minutes; the live specs (own local stack) and the demo and pages specs run as parallel shards.
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - part: live 1 of 2
+            id: live-1
+            projects: --project=live
+            shard: 1/2
+            stack: true
+          - part: live 2 of 2
+            id: live-2
+            projects: --project=live
+            shard: 2/2
+            stack: true
+          - part: demo and pages 1 of 2
+            id: demo-1
+            projects: --project=demo --project=pages
+            shard: 1/2
+            stack: false
+          - part: demo and pages 2 of 2
+            id: demo-2
+            projects: --project=demo --project=pages
+            shard: 2/2
+            stack: false
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -101,25 +151,31 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @fnb/web exec playwright install --with-deps chromium
-      - run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta
-      - run: pnpm exec supabase db reset
+      - if: matrix.stack
+        run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta
+      - if: matrix.stack
+        run: pnpm exec supabase db reset
       - name: Point the web app at the local stack
+        if: matrix.stack
         run: |
           eval "$(pnpm exec supabase status -o env)"
           test -n "$API_URL" && test -n "$PUBLISHABLE_KEY"
-          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$PUBLISHABLE_KEY" > apps/web/.env.local
-      - run: pnpm --filter @fnb/web test:e2e
+          printf 'VITE_SUPABASE_URL=%s
+VITE_SUPABASE_PUBLISHABLE_KEY=%s
+' "$API_URL" "$PUBLISHABLE_KEY" > apps/web/.env.local
+      - name: Playwright ${{ matrix.projects }} shard ${{ matrix.shard }}
+        run: pnpm --filter @fnb/web exec playwright test ${{ matrix.projects }} --shard=${{ matrix.shard }}
         env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          DATABASE_URL: ${{ matrix.stack && 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' || '' }}
       - name: Keep the Playwright traces of a failed run
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results
+          name: playwright-results-${{ matrix.id }}
           path: apps/web/node_modules/.cache/playwright-results-0/
           include-hidden-files: true
           retention-days: 7
-      - if: always()
+      - if: always() && matrix.stack
         run: pnpm exec supabase stop --no-backup
 
   mini-apps:

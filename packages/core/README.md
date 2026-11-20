@@ -24,7 +24,7 @@ The only runtime dependency is `zod`. The package exports its TypeScript source 
 
 ## Who uses it
 
-Every workspace package except `@fnb/metrics`, both apps (`apps/web`, `apps/jobs`), and the Edge Function `sync-incremental` through `@fnb/runner` and `@fnb/sync`. Because the Edge Function imports it, run `node scripts/function-imports.mjs` after adding or moving a file here ([development.md](../../docs/development.md#add-or-move-a-file-the-edge-function-imports)).
+Every workspace package except `@fnb/metrics`, both apps (`apps/web`, `apps/jobs`), and the Edge Function `sync-incremental` through `@fnb/runner` and `@fnb/sync`. Because the Edge Function imports it, run `node scripts/function-imports.mjs` after adding or moving a file here ([development.md](../../docs/development.md#add-or-move-a-file-an-edge-function-imports)).
 
 ## Tests
 

@@ -400,16 +400,16 @@ The documentation set written on 2026-11-12 found differences between documents 
 | R-F11 | `docs/schema.md` | Four `app` functions are not described | Describe them from their catalogue comments | backend | open |
 | R-F12 | `fnb notify job-failed --help`, a table comment | Refer to step 12c parts that do not exist yet | Describe them as planned, unless step 12c lands as planned | backend | open |
 | R-F13 | `docs/go-live.md` | No step for the notification secrets, linking and the test message | Add step 8 with step 12c | backend (step 12c) | open |
-| R-F14 | `docs/deep-dives/github-pages-and-actions.md` | Starts with a level-2 heading | Make it a level-1 heading | final pass | open |
+| R-F14 | `docs/deep-dives/github-pages-and-actions.md` | Starts with a level-2 heading | Make it a level-1 heading | final pass | closed 2026-11-20: the page starts with a level-1 heading |
 | R-AS01 | `docs/schema.md` | Says the jobs run as `service_role`; they connect as `postgres`. Also leaves `sale_payloads` out of the tables without a grant | Reword the four lines | backend | open |
-| R-AS02 | `.github/workflows/migrate.yml`, `backup.yml` | The cloud secrets sit on the whole job, so `pnpm install` runs with them | Move them to the steps that use them | backend | open |
-| R-AS03 | `.github/workflows/ci.yml` | No `permissions` block | Declare `contents: read` | backend | open |
+| R-AS02 | `.github/workflows/migrate.yml`, `backup.yml` | The cloud secrets sit on the whole job, so `pnpm install` runs with them | Move them to the steps that use them | backend | closed 2026-11-20: the secrets sit on the link, push and dump steps; `scripts/check-workflow-secrets.mjs` fails CI on a workflow- or job-level secret |
+| R-AS03 | `.github/workflows/ci.yml` | No `permissions` block | Declare `contents: read` | backend | closed 2026-11-20: `permissions: contents: read` |
 | R-AS04 | `.github/workflows/` | Actions are pinned to major tags and no tool proposes dependency updates | Add automated updates or pin actions to commit SHAs (owner decides) | owner, backend | open |
 | R-AS05 | `docs/decisions.md` (ADR-023), `docs/roadmap.md` (phase 5) | Promise a guard against `db reset --linked`; none exists | Build the guard or amend the texts (FR-OPS-06) | owner, backend | open |
 | R-AS06 | `apps/jobs/src/services.ts` | The CLI accepts an explicit plaintext `sslmode` for a remote host | Apply `enforcedSsl` as the Edge Function does (NFR-SEC-05) | backend | open |
 | R-AS07 | `docs/status.md` | Says printed charts keep their on-screen size; they redraw at the printed width | Drop the clause | verifier | open |
 | R-AS08 | `docs/schema.md` | The publisher's read list leaves out the global notification catalogues | Add them (FR-TEN-06) | backend | open |
-| R-AS09 | `.github/workflows/ci.yml` | CI never runs the web build with its bundle and size checks | Add the build step | web, backend | open |
+| R-AS09 | `.github/workflows/ci.yml` | CI never runs the web build with its bundle and size checks | Add the build step | web, backend | closed 2026-11-20: the `code` job builds the demo with the bundle and size checks |
 | R-AS10 | `docs/go-live.md` | No step sets the Auth password policy or decides on MFA | Add an authentication-settings step | owner, backend | open |
 | R-AS11 | `apps/web/index.html` | The app sets no Content Security Policy | Evaluate a `meta` policy with a Playwright check | web | open |
 | R-DG01 | `docs/connectors.md` | Points at a deleted file; the connector registry now lives in `@fnb/runner` | Point at `packages/runner/src/connectors.ts` and `accounts.ts` | backend | open |
@@ -418,18 +418,18 @@ The documentation set written on 2026-11-12 found differences between documents 
 | R-DG04 | the fact sheet and the test plan | `pnpm test -- --maxWorkers=2` does not limit the workers | Give the working command | documentation set | closed: [development.md](development.md) and [test-plan.md](test-plan.md) give it |
 | R-P01 | `.github/workflows/workflows-active.yml` | Its only run on GitHub so far (2026-11-09) failed: `gh` had no repository | Set `GH_REPO` or pass `--repo`, then dispatch it once (FR-OPS-09) | backend | open |
 | R-P02 | `.github/workflows/ci.yml`, `docs/status.md` | On GitHub the secret-scan job of `0f8fa1d` failed in its setup step; the fix in the working tree is untried | Confirm it with the next push and note it in status.md | backend, verifier | open |
-| R-P03 | `scripts/cron-delay-report.mjs` | Counts late runs against the wrong slot and ignores missed slots | Report runs per slot and delays from the scheduled time (FR-OPS-10) | backend | open |
+| R-P03 | `scripts/cron-delay-report.mjs` | Counts late runs against the wrong slot and ignores missed slots | Report runs per slot and delays from the scheduled time (FR-OPS-10) | backend | closed 2026-11-20: each run is attributed to its own slot, skipped slots are counted, `--self-test` in CI |
 | R-P04 | `docs/roadmap.md` (phase 1 status), `docs/decisions.md` (ADR-020) | Still collecting cron data; ADR-020 expects delays of 20 to 40 minutes | Record the measured delays of hours ([operations.md, section 2.3](operations.md#23-how-late-github-starts-scheduled-runs)) | owner | open |
 | R-P05 | `docs/status.md` | Does not say that nothing after `0f8fa1d` is committed | Add it to the owner actions | verifier | open |
 | R-P06 | `docs/go-live.md`, `docs/sync.md` | Say the nightly Sync runs at 03:23 | Add that GitHub has started it hours later | backend | open |
 | R-P07 | `docs/sync.md` | No command removes a member or changes a member's store scope | Add a command or document the SQL | backend | open |
 | R-P08 | `docs/secrets.md`, `docs/roadmap.md` (phase 20b) | Point at a runbook that now exists as operations.md | Point at [operations.md, section 4.8](operations.md#48-rotating-supabase-keys-and-provider-tokens) | backend, owner | open |
-| R-P09 | `README.md` | The documents paragraph does not name the documentation set | Replaced by R-FX02 | – | superseded |
+| R-P09 | `README.md` | The documents paragraph does not name the documentation set | Replaced by R-FX02 | – | superseded; closed with R-FX02 on 2026-11-20 |
 | R-P10 | `docs/status.md` | Says the backend stream owns every package | Name the packages the web stream owns | verifier | open |
 | R-P11 | `docs/roadmap.md` (principle 13) | The step cap names no unit | Name the unit once the owner decides (D3) | owner | open |
-| R-AP01 | `.github/workflows/ci.yml` | Nothing in CI compares [api.md](api.md) with the database | Run `pnpm docs:check-api` in the `database` job | backend | open |
+| R-AP01 | `.github/workflows/ci.yml` | Nothing in CI compares [api.md](api.md) with the database | Run `pnpm docs:check-api` in the `database` job | backend | closed 2026-11-20: the `database` job runs `pnpm docs:check-api` |
 | R-AP02 | `docs/schema.md` | Says the heatmap averages divide by every date of the weekday; they divide by the dates with sales | Reword the `hour_weekday_heatmap` row | backend | open |
-| R-AP03 | `README.md` | The reading list misses api.md and glossary.md | Replaced by R-FX02 | – | superseded |
+| R-AP03 | `README.md` | The reading list misses api.md and glossary.md | Replaced by R-FX02 | – | superseded; closed with R-FX02 on 2026-11-20 |
 | R-AP04 | `docs/sync.md` | Lists only some answers of `sync-incremental` | Point at [api.md, section 5](api.md#5-edge-function-endpoints) | backend | open |
 | R-AP05 | a future migration | `period_compare` and `refresh_my_analytics` raise `P0001` instead of `22023` for bad arguments | Use `22023` in the next migration that touches them | backend | open |
 | R-AP06 | the fact sheet | Counted 27 migrations; there are 28 | Use 28 | documentation set | closed: the documents of the set say 28 |
@@ -443,9 +443,9 @@ The documentation set written on 2026-11-12 found differences between documents 
 | R-T01 | `supabase/tests/03_rls_enabled.sql`, a migration for `app.data_roles` | No pgTAP audit of every function's `search_path` and no assertion that no materialised view exists; `app.data_roles` pins no `search_path` | Add the assertions and run the database advisors in the verification or CI; the requirements part was applied on 2026-11-12 | backend | open |
 | R-T02 | `docs/requirements.md` | NFR-SEC-05 overstated the CLI | Status built until the CLI refuses plaintext | documentation set | closed 2026-11-12 |
 | R-T03 | `docs/status.md` | Calls step 12b verified while it is still in its integration and verification | Say so until its green verdict | verifier | open |
-| R-T04 | `.github/workflows/ci.yml` | The sync and CLI integration suites never run in CI | Run them on CI's fresh stack | backend | open |
+| R-T04 | `.github/workflows/ci.yml` | The sync and CLI integration suites never run in CI | Run them on CI's fresh stack | backend | closed 2026-11-20: the `database` job runs the `@fnb/sync` and `@fnb/jobs` integration suites with `DATABASE_URL` |
 | R-FX01 | a future migration | `period_compare`, `item_velocity`, `month_pace` and `forecast_accuracy` have no store-count or range check in SQL; only the client contract caps store ids at 50 | Call `app.require_store_ids`, and a range limit where one fits, in the four functions (FR-ANA-12) | backend | open |
-| R-FX02 | `README.md` | Nothing leads a reader to the documentation set | One documentation table naming the ten documents of the set and the package READMEs | final pass | open |
+| R-FX02 | `README.md` | Nothing leads a reader to the documentation set | One documentation table naming the ten documents of the set and the package READMEs | final pass | closed 2026-11-20: [docs/README.md](README.md) indexes every document; the root README points at it and names the set |
 | R-FX03 | `docs/roadmap.md` (phase 3 owner actions, Track Z table) | Gives a detail of a live POS password | Say "change the tea shop's POS password" | owner | open |
 | R-FX04 | `docs/decisions.md` (ADR-025), `docs/roadmap.md` (Track Z, risks) | Say what kind of issue the private vendor observations were | Keep only the rules and that the observations are recorded privately | owner | open |
 | R-FX05 | `docs/web-app.md` | Gives the legal settings screen as "legal texts and consent" in 10b; the consent view comes in 17a | Say "legal texts" | web | open |

@@ -1,4 +1,4 @@
-## GitHub Pages and GitHub Actions: hosting and compute layer
+# GitHub Pages and GitHub Actions: hosting and compute layer
 
 Research date: 2026-11-07. Verified facts cite official documentation; inferences are marked.
 
