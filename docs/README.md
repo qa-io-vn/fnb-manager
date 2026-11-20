@@ -115,4 +115,5 @@ Each workspace package and app has its README: what it holds, what it exports an
 | [go-live.md](go-live.md) | The first cloud deployment |
 | [secrets.md](secrets.md) | Where each secret lives, how it is set and how it is rotated |
 | [sync.md](sync.md) | The nightly and incremental sync, its exit codes and the notifier |
+| [notifications.md](notifications.md) | The daily digest and the operational alerts: destinations, policies, rules, dispatch paths and what to do when one fails |
 | [status.md](status.md) | The state of every phase and the owner actions still open |
