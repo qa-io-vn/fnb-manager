@@ -341,6 +341,7 @@ select is(
       'loyalty_queue', (b ->> 'loyalty_queue')::int,
       'loyalty_refusals', (b ->> 'loyalty_refusals')::int,
       'loyalty_requests', (b ->> 'loyalty_requests')::int,
+      'bill_captures', 0,
       'coupon_codes_quarantined', 1,
       'redemption_invoices_settled', 1,
       'consent_records', (b ->> 'consent_records')::int,

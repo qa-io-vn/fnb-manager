@@ -372,7 +372,7 @@ select is(
   'the stores of the app''s brand only, by name, with their link keys'
 );
 select is(
-  (select jsonb_agg(s.value - 'code' - 'name' - 'receipt_numbers_reset' order by s.ordinality) from jsonb_array_elements(public.customer_home() -> 'stores') with ordinality s),
+  (select jsonb_agg(s.value - 'code' - 'name' - 'receipt_numbers_reset' - 'confirmation' - 'counter_claims' order by s.ordinality) from jsonb_array_elements(public.customer_home() -> 'stores') with ordinality s),
   '[{"address": null, "opening_hours": null}, {"address": "Số 1 Đường Thử", "opening_hours": {"mon": [["07:00", "22:00"]]}}]'::jsonb,
   'with the address and opening hours, null when unknown'
 );

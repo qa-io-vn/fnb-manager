@@ -318,7 +318,13 @@ insert into tables_in_scope (tbl, readers, scoped, own, writers) values
   ('oa_users', 'nobody', false, null, '{}'),
   ('zalo_tokens', 'nobody', false, null, '{}'),
   ('notification_channels', 'channels', false, null, '{}'),
-  ('outbound_messages', 'outbound', false, null, '{}');
+  ('outbound_messages', 'outbound', false, null, '{}'),
+  ('loyalty_store_settings', 'omv', true, null, '{}'),
+  ('loyalty_audit_events', 'om', true, null, '{}'),
+  ('loyalty_counter_codes', 'nobody', false, null, '{}'),
+  ('bill_captures', 'omv', true, null, '{}'),
+  ('bill_confirmations', 'om', false, null, '{}'),
+  ('bill_audits', 'om', true, null, '{}');
 
 create function pg_temp.signature_sql(p_table text, p_filter text default 'true')
 returns text
@@ -432,7 +438,7 @@ create temp table tables_found as
 select c.relname::text as tbl
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public' and c.relkind in ('r', 'p', 'v')
-  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs)';
+  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_)';
 
 select plan((select count(*)::integer from read_cells) + (select count(*)::integer from write_cells) + 4);
 
