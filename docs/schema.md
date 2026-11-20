@@ -1848,6 +1848,10 @@ Every function sets an empty `search_path`. The `public` RPCs of the customer an
 | `app.set_loyalty_adjust_limits(tenant, stamps, points)` | an owner with every store sets the two tenant limits |
 | `app.loyalty_text_key(prefix, reason)` | a refusal's message key in camel case, as `redemption.refused.codeExpired`, used by the redemption functions |
 
+## Rate limits on code and phone guessing (#317)
+
+Migration `code_guessing_limits`. `app.code_attempt_policies` holds one row per limited endpoint: whether every call (`calls`) or only a miss (`misses`) counts, the caller's maximum, the store's maximum (the tenant's for the web phone lookup), the window and the lockout. Defaults: `staff_verify_redemption` 5 / 20 unknown codes, `staff_member_lookup` and `loyalty_member_lookup` 10 / 30 phones without a member, `customer_redeem` 10 / 100 calls, each within 15 minutes with a 15-minute lockout. `app.code_attempts` counts per endpoint, tenant and subject (`caller` user id, `store` or `tenant`) in a fixed window with `locked_until`; no code, phone or answer is kept. `app.code_attempt_gate` takes a transaction advisory lock per endpoint and store (or tenant), so parallel guesses are counted one after the other, and returns the end of a live lock; `app.code_attempt_record` counts an attempt, locks the subject that reaches its maximum and raises the instant alert `code_guessing_lockout` (owners and managers, count-only facts, one-hour cool-down). Neither table nor function is reachable by `anon` or `authenticated`; the service role reads both tables and may update the policies.
+
 ## Rewards and redemptions (phase 18b)
 
 Migrations `coupon_catalogue` (#269), `redemption_flow` (#271) and `redemption_reconciliation` (#273) complete the reward catalogue, add the redemption lifecycle on the ledger and reconcile redemptions with the synced invoices. The RPCs are in [api.md](api.md) section 3.22.

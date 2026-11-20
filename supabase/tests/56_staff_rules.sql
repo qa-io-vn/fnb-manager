@@ -146,7 +146,7 @@ grant select on fx to authenticated, anon, service_role;
 select is(
   (select array_agg(c.rule_key || ':' || c.category || ':' || c.delivery || ':' || c.default_severity::text || ':' || array_to_string(c.default_roles, '+') || ':' || c.default_cooldown::text
      || ':' || coalesce(c.remind_every::text, '-') || ':' || c.notify_on_resolve || ':' || c.store_scoped || ':' || c.default_enabled order by c.sort_order)
-   from public.alert_rule_catalog c where c.sort_order >= 200),
+   from public.alert_rule_catalog c where c.sort_order between 200 and 260),
   array[
     'staff_sync_stale:sync:immediate:warning:manager+staff:06:00:00:-:false:true:true',
     'abnormal_voids:business:immediate:warning:owner+manager:00:00:00:-:false:true:true',
@@ -159,7 +159,7 @@ select is(
   'the seven phase 15 rules with their default roles, cool-downs, reminders and scope'
 );
 select ok(
-  (select bool_and(app.alert_rule_params_valid(c.rule_key, c.default_params)) from public.alert_rule_catalog c where c.sort_order >= 200),
+  (select bool_and(app.alert_rule_params_valid(c.rule_key, c.default_params)) from public.alert_rule_catalog c where c.sort_order between 200 and 260),
   'every new default passes its own parameter schema'
 );
 select ok(not app.alert_rule_params_valid('abnormal_voids', '{"z_threshold": 0.5}'::jsonb) and not app.alert_rule_params_valid('oa_inactive', '{"warn_after_days": 180}'::jsonb)

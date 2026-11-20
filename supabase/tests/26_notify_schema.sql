@@ -202,10 +202,10 @@ select ok(not app.alert_rule_params_valid('daily_digest', '{"corrections": "yes"
 select ok(not app.alert_rule_params_valid('sync_stale', '{"threshold": 120}'::jsonb), 'an unknown parameter is refused');
 select ok(not app.alert_rule_params_valid('not_a_rule', '{}'::jsonb), 'an unknown rule is refused');
 
-select is((select count(*)::integer from public.alert_rule_catalog), 29, 'the catalogue holds the 29 rules');
+select is((select count(*)::integer from public.alert_rule_catalog), 30, 'the catalogue holds the 30 rules');
 select is(
   (select array_agg(rule_key order by sort_order) from public.alert_rule_catalog),
-  array['daily_digest', 'revenue_below_baseline', 'ticket_drop', 'drawer_variance', 'unverified_day', 'zero_sales_day', 'zero_sales_open', 'sync_failed', 'auth_failed', 'sync_stale', 'sync_dispatch_failed', 'nightly_missing', 'job_failed', 'channel_failed', 'digest_failed', 'zalo_webhook_unverified', 'zalo_token_failed', 'oa_package_expiring', 'cash_count_variance', 'redemption_mismatch', 'zbs_report_rate', 'dsr_due_soon', 'staff_sync_stale', 'abnormal_voids', 'voucher_spike', 'checklist_unfinished', 'staff_daily_digest', 'oa_inactive', 'mini_app_visits_low'],
+  array['daily_digest', 'revenue_below_baseline', 'ticket_drop', 'drawer_variance', 'unverified_day', 'zero_sales_day', 'zero_sales_open', 'sync_failed', 'auth_failed', 'sync_stale', 'sync_dispatch_failed', 'nightly_missing', 'job_failed', 'channel_failed', 'digest_failed', 'zalo_webhook_unverified', 'zalo_token_failed', 'oa_package_expiring', 'cash_count_variance', 'redemption_mismatch', 'zbs_report_rate', 'dsr_due_soon', 'staff_sync_stale', 'abnormal_voids', 'voucher_spike', 'checklist_unfinished', 'staff_daily_digest', 'oa_inactive', 'mini_app_visits_low', 'code_guessing_lockout'],
   'the catalogue rules in their order'
 );
 select ok((select bool_and(app.alert_rule_params_valid(rule_key, default_params)) from public.alert_rule_catalog), 'every catalogue default passes its own parameter schema');

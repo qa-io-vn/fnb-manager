@@ -37464,29 +37464,6 @@
 			}
 		},
 		"/rpc/loyalty_member_lookup": {
-			"get": {
-				"parameters": [
-					{
-						"format": "text",
-						"in": "query",
-						"name": "p_phone",
-						"required": true,
-						"type": "string"
-					}
-				],
-				"produces": [
-					"application/json",
-					"application/vnd.pgrst.object+json;nulls=stripped",
-					"application/vnd.pgrst.object+json"
-				],
-				"responses": {
-					"200": {
-						"description": "OK"
-					}
-				},
-				"summary": "the phone lookup of the web section Khách hàng (#253) for owners, managers and viewers (42501 for everyone else): the memberships, in the tenants where the caller reads loyalty, of the customer whose phone reads as p_phone in E.164 form whatever form the till stored, newest first, at most 100; nothing for a phone that does not read or that no member has. phone_full is the E.164 phone for an owner of the membership's tenant and null for everyone else; phone_masked is always the masked form. The balance is scoped as in loyalty_members_page (the caller's loyalty stores and the rows without a store). Through PostgREST it answers POST only (the phone travels in the request body); a GET, which would carry the phone in the URL, is refused with PT405 (HTTP 405) before anything is read",
-				"tags": ["(rpc) loyalty_member_lookup"]
-			},
 			"post": {
 				"parameters": [
 					{
@@ -37494,7 +37471,7 @@
 						"name": "args",
 						"required": true,
 						"schema": {
-							"description": "the phone lookup of the web section Khách hàng (#253) for owners, managers and viewers (42501 for everyone else): the memberships, in the tenants where the caller reads loyalty, of the customer whose phone reads as p_phone in E.164 form whatever form the till stored, newest first, at most 100; nothing for a phone that does not read or that no member has. phone_full is the E.164 phone for an owner of the membership's tenant and null for everyone else; phone_masked is always the masked form. The balance is scoped as in loyalty_members_page (the caller's loyalty stores and the rows without a store). Through PostgREST it answers POST only (the phone travels in the request body); a GET, which would carry the phone in the URL, is refused with PT405 (HTTP 405) before anything is read",
+							"description": "the phone lookup of the web section Khách hàng (#253) for owners, managers and viewers (42501 for everyone else): the memberships, in the tenants where the caller reads loyalty, of the customer whose phone reads as p_phone in E.164 form whatever form the till stored, newest first, at most 100; nothing for a phone that does not read or that no member has. phone_full is the E.164 phone for an owner of the membership's tenant and null for everyone else; phone_masked is always the masked form. The balance is scoped as in loyalty_members_page (the caller's loyalty stores and the rows without a store). Through PostgREST it answers POST only (the phone travels in the request body); a GET, which would carry the phone in the URL, is refused with PT405 (HTTP 405) before anything is read. A readable phone that finds no member counts against the caller and the tenant (#317); once either is locked the lookup is refused with PT429 (HTTP 429) before anything is read",
 							"properties": {
 								"p_phone": {
 									"format": "text",
@@ -37519,7 +37496,7 @@
 						"description": "OK"
 					}
 				},
-				"summary": "the phone lookup of the web section Khách hàng (#253) for owners, managers and viewers (42501 for everyone else): the memberships, in the tenants where the caller reads loyalty, of the customer whose phone reads as p_phone in E.164 form whatever form the till stored, newest first, at most 100; nothing for a phone that does not read or that no member has. phone_full is the E.164 phone for an owner of the membership's tenant and null for everyone else; phone_masked is always the masked form. The balance is scoped as in loyalty_members_page (the caller's loyalty stores and the rows without a store). Through PostgREST it answers POST only (the phone travels in the request body); a GET, which would carry the phone in the URL, is refused with PT405 (HTTP 405) before anything is read",
+				"summary": "the phone lookup of the web section Khách hàng (#253) for owners, managers and viewers (42501 for everyone else): the memberships, in the tenants where the caller reads loyalty, of the customer whose phone reads as p_phone in E.164 form whatever form the till stored, newest first, at most 100; nothing for a phone that does not read or that no member has. phone_full is the E.164 phone for an owner of the membership's tenant and null for everyone else; phone_masked is always the masked form. The balance is scoped as in loyalty_members_page (the caller's loyalty stores and the rows without a store). Through PostgREST it answers POST only (the phone travels in the request body); a GET, which would carry the phone in the URL, is refused with PT405 (HTTP 405) before anything is read. A readable phone that finds no member counts against the caller and the tenant (#317); once either is locked the lookup is refused with PT429 (HTTP 429) before anything is read",
 				"tags": ["(rpc) loyalty_member_lookup"]
 			}
 		},
@@ -41638,43 +41615,6 @@
 			}
 		},
 		"/rpc/staff_member_lookup": {
-			"get": {
-				"parameters": [
-					{
-						"format": "uuid",
-						"in": "query",
-						"name": "p_store_id",
-						"required": true,
-						"type": "string"
-					},
-					{
-						"format": "text",
-						"in": "query",
-						"name": "p_phone",
-						"required": false,
-						"type": "string"
-					},
-					{
-						"format": "uuid",
-						"in": "query",
-						"name": "p_membership_id",
-						"required": false,
-						"type": "string"
-					}
-				],
-				"produces": [
-					"application/json",
-					"application/vnd.pgrst.object+json;nulls=stripped",
-					"application/vnd.pgrst.object+json"
-				],
-				"responses": {
-					"200": {
-						"description": "OK"
-					}
-				},
-				"summary": "RPC for the staff app: app.staff_member_lookup at the current time",
-				"tags": ["(rpc) staff_member_lookup"]
-			},
 			"post": {
 				"parameters": [
 					{

@@ -43,7 +43,8 @@ const SMOKE_PGTAP = (number) =>
 	number === 80 ||
 	(number >= 90 && number <= 98) ||
 	(number >= 130 && number <= 139) ||
-	(number >= 161 && number <= 163);
+	(number >= 161 && number <= 163) ||
+	number === 170;
 
 // The staff Mini App's smoke run covers its loyalty specs only; the full pack runs them all.
 const SMOKE_STAFF_SPECS = [

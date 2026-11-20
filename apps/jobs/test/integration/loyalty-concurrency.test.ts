@@ -412,5 +412,49 @@ describe.skipIf(!DATABASE_URL)(
 			const p95 = sorted[Math.floor(sorted.length * 0.95) - 1] ?? Number.NaN;
 			expect(p95).toBeLessThan(300);
 		});
+
+		it("five parallel receipt claims of one member: exactly the daily cap is accepted, the rest refused daily_cap (G-47b)", async () => {
+			const member = await newMember(0, 0);
+			const [programme] = await control<{ cap: number }[]>`
+				select receipt_claims_per_phone_per_day as cap from public.loyalty_programmes where id = ${programmeId}::uuid
+			`;
+			const cap = programme?.cap ?? 0;
+			expect(cap).toBeGreaterThan(0);
+			expect(cap).toBeLessThan(5);
+			const answers = await race(5, async (tx, index) => {
+				const [row] = await tx<{ status: string; reason: string | null }[]>`
+					select c.status::text as status, c.reason
+					from app.loyalty_submit_claim(
+						${member}::uuid, ${storeFallback}::uuid, app.store_business_date(${storeFallback}::uuid, clock_timestamp()),
+						${`RACE-${index}`}, 50000, clock_timestamp()) c
+				`;
+				return row ?? { status: "none", reason: null };
+			});
+			expect(
+				answers.filter((answer) => answer.status !== "rejected"),
+			).toHaveLength(cap);
+			expect(
+				answers.filter((answer) => answer.reason === "daily_cap"),
+			).toHaveLength(5 - cap);
+			const [row] = await control<{ open: number }[]>`
+				select count(*)::int as open from public.receipt_claims
+				where membership_id = ${member}::uuid and status <> 'rejected'
+			`;
+			expect(row?.open).toBe(cap);
+		});
+
+		it("ten parallel unknown codes from one staff member: five are answered, the rest are locked (#317)", async () => {
+			const answers = await race(10, (tx, index) =>
+				verify(tx, staffIds[1] ?? "", storeFallback, `GUESS${index}`),
+			);
+			expect(answers.filter((answer) => answer === "unknown")).toHaveLength(5);
+			expect(answers.filter((answer) => answer === "locked")).toHaveLength(5);
+			const [row] = await control<{ attempts: number; locked: boolean }[]>`
+				select attempts, locked_until is not null as locked from app.code_attempts
+				where tenant_id = ${tenantId}::uuid and endpoint = 'staff_verify_redemption'
+				  and subject_kind = 'caller' and subject_id = ${staffIds[1] ?? ""}::uuid
+			`;
+			expect(row).toEqual({ attempts: 5, locked: true });
+		});
 	},
 );
