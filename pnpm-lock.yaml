@@ -278,6 +278,9 @@ importers:
       tailwindcss:
         specifier: ^4.3.5
         version: 4.3.5
+      uqr:
+        specifier: 0.1.3
+        version: 0.1.3
       zmp-sdk:
         specifier: 2.53.3
         version: 2.53.3

@@ -18,6 +18,35 @@ import {
 	shiftStore,
 } from "../shift/source";
 import {
+	answerClaimArgs,
+	type BillsClient,
+	closeAuditArgs,
+	decideArgs,
+	readAuditAnswer,
+	readBillQueue,
+	readClaimAnswer,
+	readConfirmRedemption,
+	readCounterClaims,
+	readCounterCode,
+	readDecideAnswer,
+	readRecentBills,
+	readReverseAnswer,
+	readStoreBillMode,
+	readSubmitAnswer,
+	readVoidRedemption,
+	redemptionArgs,
+	reverseArgs,
+	STAFF_BILL_FUNCTIONS,
+	storeArgs,
+	submitArgs,
+	voidArgs,
+} from "./bills-contract";
+import {
+	createDemoBillsClient,
+	DEMO_STAFF_STORE_ID,
+	type DemoBillsClient,
+} from "./bills-demo";
+import {
 	actionCall,
 	answerRows,
 	checkinArgs,
@@ -44,11 +73,14 @@ import {
 import {
 	type DemoNetwork,
 	demoNetworkFrom,
+	withDemoBillsNetwork,
 	withDemoNetwork,
 } from "./demo-network";
 
 export interface LoyaltySource {
 	readonly client: LoyaltyClient;
+	/** the staff-mode bill functions (migration bill_captures) */
+	readonly bills: BillsClient;
 	readonly sampleBadge: boolean;
 	context(query: ShiftQuery, now: Date): Promise<ShiftContext>;
 }
@@ -105,6 +137,64 @@ export function createRestLoyaltyClient(rest: RestClient): LoyaltyClient {
 	};
 }
 
+export function createRestBillsClient(rest: RestClient): BillsClient {
+	const fn = STAFF_BILL_FUNCTIONS;
+	return {
+		async submit(input) {
+			return readSubmitAnswer(await rest.rpc(fn.submit, submitArgs(input)));
+		},
+		async recent(storeId) {
+			return readRecentBills(await rest.rpc(fn.recent, storeArgs(storeId)));
+		},
+		async mode(storeId) {
+			return readStoreBillMode(await rest.rpc(fn.recent, storeArgs(storeId)));
+		},
+		async reverse(billId, reason) {
+			return readReverseAnswer(
+				await rest.rpc(fn.reverse, reverseArgs(billId, reason)),
+			);
+		},
+		async counterCode(storeId) {
+			return readCounterCode(
+				await rest.rpc(fn.counterCode, storeArgs(storeId)),
+			);
+		},
+		async counterClaims(storeId) {
+			return readCounterClaims(
+				await rest.rpc(fn.counterClaims, storeArgs(storeId)),
+			);
+		},
+		async answerClaim(reply) {
+			return readClaimAnswer(
+				await rest.rpc(fn.answerClaim, answerClaimArgs(reply)),
+			);
+		},
+		async queue(storeId) {
+			return readBillQueue(await rest.rpc(fn.queue, storeArgs(storeId)));
+		},
+		async decide(billId, decision, reason) {
+			return readDecideAnswer(
+				await rest.rpc(fn.decide, decideArgs(billId, decision, reason)),
+			);
+		},
+		async closeAudit(auditId, result, note) {
+			return readAuditAnswer(
+				await rest.rpc(fn.closeAudit, closeAuditArgs(auditId, result, note)),
+			);
+		},
+		async confirmRedemption(redemptionId) {
+			return readConfirmRedemption(
+				await rest.rpc(fn.confirmRedemption, redemptionArgs(redemptionId)),
+			);
+		},
+		async voidRedemption(redemptionId, reason) {
+			return readVoidRedemption(
+				await rest.rpc(fn.voidRedemption, voidArgs(redemptionId, reason)),
+			);
+		},
+	};
+}
+
 export function sampleLoyaltyContext(
 	query: ShiftQuery,
 	now: Date,
@@ -144,18 +234,39 @@ export function createDemoLoyaltySource(
 	clock?: () => Date,
 	sampleBadge = false,
 	network: DemoNetwork = { fault: "none", delayMs: 0, answerDelayMs: 0 },
-): LoyaltySource & { readonly client: DemoLoyaltyClient } {
+	requiredLevel?: 0 | 2,
+): LoyaltySource & {
+	readonly client: DemoLoyaltyClient;
+	readonly bills: DemoBillsClient;
+} {
+	const storeMode = settings.storeMode ?? "pos_sync";
+	const delayMs = network.fault === "none" ? settings.delayMs : 0;
 	const client = withDemoNetwork(
 		createDemoLoyaltyClient({
-			settings:
-				network.fault === "none" ? settings : { ...settings, delayMs: 0 },
+			settings: { ...settings, delayMs },
 			role: session.member.role,
+			storeModeOf: (storeId) =>
+				storeMode === "staff" && storeId === DEMO_STAFF_STORE_ID
+					? "staff"
+					: "pos_sync",
+			...(clock === undefined ? {} : { clock }),
+		}),
+		network,
+	);
+	const bills = withDemoBillsNetwork(
+		createDemoBillsClient({
+			storeMode,
+			role: session.member.role,
+			delayMs,
+			redemptionOf: (id) => client.redemptionOf(id),
+			...(requiredLevel === undefined ? {} : { requiredLevel }),
 			...(clock === undefined ? {} : { clock }),
 		}),
 		network,
 	);
 	return {
 		client,
+		bills,
 		sampleBadge,
 		async context(query, now) {
 			const loaded = await context(query, now);
@@ -208,7 +319,12 @@ export function loyaltySourceFor(
 			loadShiftContext(rest, query, now);
 		created =
 			loyaltyModeFrom(search, import.meta.env.VITE_ZALO_RUNTIME) === "live"
-				? { client: createRestLoyaltyClient(rest), sampleBadge: false, context }
+				? {
+						client: createRestLoyaltyClient(rest),
+						bills: createRestBillsClient(rest),
+						sampleBadge: false,
+						context,
+					}
 				: createDemoLoyaltySource(
 						settings,
 						session,

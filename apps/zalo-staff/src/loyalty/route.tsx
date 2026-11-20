@@ -16,6 +16,7 @@ import {
 	useState,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { BillTexts } from "../bills/texts";
 import { failureKey, useFormatters, useRecover } from "../shift/env";
 import type { Failure } from "../shift/model";
 import {
@@ -175,6 +176,7 @@ function ReadyLoyalty({
 				? null
 				: {
 						client: source.client,
+						bills: source.bills,
 						context,
 						store,
 						role: context.role,
@@ -322,13 +324,15 @@ export function LoyaltyRoute({
 	const { state } = useSession();
 	if (state.status !== "signed-in") return <SessionScreen />;
 	return (
-		<SignedInLoyalty
-			key={`${testId}:${state.session.accessToken}`}
-			session={state.session}
-			sourceFor={sourceFor}
-			titleKey={titleKey}
-			testId={testId}
-			Screen={screen}
-		/>
+		<BillTexts>
+			<SignedInLoyalty
+				key={`${testId}:${state.session.accessToken}`}
+				session={state.session}
+				sourceFor={sourceFor}
+				titleKey={titleKey}
+				testId={testId}
+				Screen={screen}
+			/>
+		</BillTexts>
 	);
 }

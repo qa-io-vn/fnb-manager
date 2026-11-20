@@ -186,5 +186,14 @@
 	"requests.state.approved": "Approved",
 	"requests.state.refused": "Refused",
 	"requests.decisionReason": "Reason: {reason}",
-	"requests.sentAt": "Sent at {time} on {date}"
+	"requests.sentAt": "Sent at {time} on {date}",
+	"loyalty.sectionBodyStaff": "This store records bills by hand: scan the member code, then type the number and total from the paper bill.",
+	"loyalty.bills": "Record a bill",
+	"loyalty.counter": "Counter code",
+	"loyalty.billQueue": "Review bills",
+	"loyalty.openBillQueue": "Open bill review",
+	"loyalty.billQueueCount": "{count} to review",
+	"loyalty.billQueueEmpty": "Nothing to review",
+	"checkin.refusal.staff_mode": "This store records bills by hand instead of the POS. Use Record a bill to give the customer stamps and points.",
+	"checkin.toBills": "Open Record a bill"
 }

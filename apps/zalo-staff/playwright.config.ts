@@ -31,13 +31,13 @@ export default defineConfig({
 		{
 			name: "phone-light",
 			testMatch:
-				/(session|home|onboarding|checklists|shift-close|incidents|check-in|redemption|loyalty-queue|announcements|requests|notification-settings|network|lazy-screens)\.spec\.ts/,
+				/(session|home|onboarding|checklists|shift-close|incidents|check-in|redemption|loyalty-queue|staff-bills|announcements|requests|notification-settings|network|lazy-screens)\.spec\.ts/,
 			use: { ...phone, colorScheme: "light" },
 		},
 		{
 			name: "phone-dark",
 			testMatch:
-				/(session|home|onboarding|checklists|shift-close|incidents|check-in|redemption|loyalty-queue|announcements|requests|notification-settings|network|lazy-screens)\.spec\.ts/,
+				/(session|home|onboarding|checklists|shift-close|incidents|check-in|redemption|loyalty-queue|staff-bills|announcements|requests|notification-settings|network|lazy-screens)\.spec\.ts/,
 			use: { ...phone, colorScheme: "dark" },
 		},
 		{

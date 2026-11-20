@@ -1,5 +1,6 @@
 import { ResultModal, useI18n } from "@fnb/zalo-mini/react";
 import { type FormEvent, useId, useRef, useState } from "react";
+import { useStoreBillMode } from "../bills/parts";
 import type { RedemptionAnswer } from "../loyalty/contract";
 import {
 	ALREADY_VERIFIED,
@@ -21,7 +22,8 @@ import {
 } from "../loyalty/parts";
 import { LoyaltyFrame, type LoyaltyScreenProps } from "../loyalty/route";
 import { BusyLabel, Card, fieldClass, Hint } from "../shift/parts";
-import { primaryButton } from "../ui";
+import { primaryButton, secondaryButton } from "../ui";
+import { StaffConfirm, type StaffPhase } from "./staff-confirm";
 
 type Accepted = Extract<RedemptionAnswer, { outcome: "accepted" }>;
 type Refused = Extract<RedemptionAnswer, { outcome: "refused" }>;
@@ -59,13 +61,17 @@ function Instruction({ answer }: { readonly answer: Accepted }) {
 
 function AcceptedView({
 	answer,
+	staffMode,
 	onAgain,
 }: {
 	readonly answer: Accepted;
+	readonly staffMode: boolean;
 	readonly onAgain: () => void;
 }) {
 	const { t } = useI18n();
 	const { formatters } = useLoyaltyEnv();
+	const [staff, setStaff] = useState<StaffPhase>({ phase: "verified" });
+	const waiting = staffMode && staff.phase === "verified";
 	return (
 		<div className="flex flex-col gap-4" data-testid="redeem-result">
 			<Card testId="redeem-accepted" state="pending">
@@ -79,7 +85,12 @@ function AcceptedView({
 							{answer.rewardName}
 						</p>
 					</div>
-					<VisitChip state="pending" testId="redeem-state" />
+					{staff.phase === "voided" ? null : (
+						<VisitChip
+							state={staff.phase === "confirmed" ? "confirmed" : "pending"}
+							testId="redeem-state"
+						/>
+					)}
 				</div>
 				{answer.firstVerification || answer.verifiedAt === null ? null : (
 					<p
@@ -99,7 +110,11 @@ function AcceptedView({
 						})}
 					</p>
 				)}
-				<Hint>{t(`redeem.pendingBody.${answer.instruction.kind}`)}</Hint>
+				<Hint>
+					{staffMode
+						? t("redeem.staff.pendingBody")
+						: t(`redeem.pendingBody.${answer.instruction.kind}`)}
+				</Hint>
 				{answer.holdUntil === null ? null : (
 					<p className="text-sm text-ink-muted">
 						{t("redeem.holdUntil", {
@@ -113,10 +128,13 @@ function AcceptedView({
 					</p>
 				)}
 			</Card>
+			{staffMode ? (
+				<StaffConfirm answer={answer} phase={staff} onPhase={setStaff} />
+			) : null}
 			<button
 				type="button"
-				className={primaryButton}
-				data-action="primary"
+				className={waiting ? secondaryButton : primaryButton}
+				{...(waiting ? {} : { "data-action": "primary" })}
 				onClick={onAgain}
 			>
 				{t("redeem.again")}
@@ -171,6 +189,9 @@ export function RedemptionScreen(_: LoyaltyScreenProps) {
 	const { client, store } = useLoyaltyEnv();
 	const action = useLoyaltyAction();
 	const scanner = useScanner("redemption");
+	const billMode = useStoreBillMode();
+	const staffMode =
+		billMode.status === "ready" && billMode.mode.mode === "staff";
 	const inputId = useId();
 	const problemId = useId();
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -243,7 +264,7 @@ export function RedemptionScreen(_: LoyaltyScreenProps) {
 			backDisabled={busy}
 		>
 			{answer?.outcome === "accepted" ? (
-				<AcceptedView answer={answer} onAgain={again} />
+				<AcceptedView answer={answer} staffMode={staffMode} onAgain={again} />
 			) : (
 				<>
 					<p className="text-base text-ink">{t("redeem.intro")}</p>

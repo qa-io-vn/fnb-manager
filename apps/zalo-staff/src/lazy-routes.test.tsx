@@ -13,6 +13,9 @@ const EXPECTED_SCREENS: Readonly<Record<string, string>> = {
 	[LOYALTY_PATHS.lookup]: "member-lookup",
 	[LOYALTY_PATHS.queue]: "loyalty-queue",
 	[LOYALTY_PATHS.requests]: "my-requests",
+	[LOYALTY_PATHS.bills]: "bills",
+	[LOYALTY_PATHS.counter]: "counter",
+	[LOYALTY_PATHS.billQueue]: "bill-queue",
 	...Object.fromEntries(
 		TEAM_SCREENS.map((entry) => [entry.path, entry.testId] as const),
 	),

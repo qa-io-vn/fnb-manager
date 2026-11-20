@@ -13,6 +13,7 @@ import type { HomeFormatters } from "../home/format";
 import type { ActionResult } from "../shift/env";
 import type { Failure } from "../shift/model";
 import type { ShiftContext, ShiftStore } from "../shift/source";
+import type { BillsClient } from "./bills-contract";
 import type { LoyaltyClient } from "./contract";
 
 export const LOYALTY_PATHS = {
@@ -21,6 +22,9 @@ export const LOYALTY_PATHS = {
 	lookup: "/tra-cuu-thanh-vien",
 	queue: "/hang-cho-thanh-vien",
 	requests: "/yeu-cau-cua-toi",
+	bills: "/ghi-hoa-don",
+	counter: "/ma-quay",
+	billQueue: "/duyet-hoa-don",
 } as const;
 
 export type LoyaltyPath = (typeof LOYALTY_PATHS)[keyof typeof LOYALTY_PATHS];
@@ -46,6 +50,7 @@ export function readLoyaltyOpen(state: unknown): LoyaltyOpen {
 
 export interface LoyaltyEnv {
 	readonly client: LoyaltyClient;
+	readonly bills: BillsClient;
 	readonly context: ShiftContext;
 	readonly store: ShiftStore;
 	readonly role: MemberRole;

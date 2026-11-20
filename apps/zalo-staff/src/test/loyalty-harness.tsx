@@ -11,8 +11,17 @@ import { useNavigate } from "react-router-dom";
 import { getAccessToken, nativeStorage } from "zmp-sdk";
 import { LoyaltyQueueScreen } from "../approvals/loyalty-queue";
 import { MyRequestsScreen } from "../approvals/my-requests";
+import { BillQueueScreen } from "../bills/bill-queue";
+import { BillsScreen } from "../bills/bill-screen";
+import { CounterScreen } from "../bills/counter-screen";
 import { CheckInScreen } from "../check-in/check-in-screen";
 import { catalogs } from "../i18n/catalog";
+import type { BillsClient } from "../loyalty/bills-contract";
+import {
+	createDemoBillsClient,
+	type DemoBillsClient,
+	type DemoStoreMode,
+} from "../loyalty/bills-demo";
 import type { LoyaltyClient } from "../loyalty/contract";
 import { DEMO_PHONES, type DemoLoyaltyClient } from "../loyalty/demo";
 import { LOYALTY_PATHS, type LoyaltyPath } from "../loyalty/env";
@@ -60,11 +69,18 @@ export interface LoyaltyOptions {
 	readonly membershipId?: string;
 	readonly storeId?: string;
 	readonly withHome?: boolean;
+	/** the bill functions; by default the demo, in the mode below */
+	readonly bills?: BillsClient;
+	/** "staff" puts Cửa hàng Mẫu 1 in staff mode with self claims; POS-synced by default */
+	readonly storeMode?: DemoStoreMode;
+	readonly requiredLevel?: 0 | 2;
+	readonly clock?: () => Date;
 }
 
 export interface LoyaltyHarness {
 	source(): LoyaltySource & { readonly client: LoyaltyClient };
 	demo(): DemoLoyaltyClient;
+	bills(): DemoBillsClient;
 }
 
 const SCREENS = {
@@ -92,6 +108,21 @@ const SCREENS = {
 		titleKey: "requests.title",
 		testId: "my-requests",
 		screen: MyRequestsScreen,
+	},
+	[LOYALTY_PATHS.bills]: {
+		titleKey: "bills.title",
+		testId: "bills",
+		screen: BillsScreen,
+	},
+	[LOYALTY_PATHS.counter]: {
+		titleKey: "counter.title",
+		testId: "counter",
+		screen: CounterScreen,
+	},
+	[LOYALTY_PATHS.billQueue]: {
+		titleKey: "billQueue.title",
+		testId: "bill-queue",
+		screen: BillQueueScreen,
 	},
 } as const;
 
@@ -133,14 +164,36 @@ export function renderLoyalty(options: LoyaltyOptions): LoyaltyHarness {
 		null;
 	const sourceFor = (_: unknown, session: StoredSession) => {
 		if (created !== null) return created;
-		created =
-			options.client === undefined
-				? createDemoLoyaltySource({ delayMs: 0 }, session)
-				: {
-						client: options.client,
-						sampleBadge: false,
-						context: async (query, now) => sampleLoyaltyContext(query, now),
-					};
+		const storeMode = options.storeMode ?? "pos_sync";
+		if (options.client === undefined) {
+			const demo = createDemoLoyaltySource(
+				{ delayMs: 0, storeMode },
+				session,
+				undefined,
+				options.clock,
+				false,
+				undefined,
+				options.requiredLevel,
+			);
+			created =
+				options.bills === undefined ? demo : { ...demo, bills: options.bills };
+			return created;
+		}
+		created = {
+			client: options.client,
+			bills:
+				options.bills ??
+				createDemoBillsClient({
+					storeMode,
+					role: session.member.role,
+					...(options.requiredLevel === undefined
+						? {}
+						: { requiredLevel: options.requiredLevel }),
+					...(options.clock === undefined ? {} : { clock: options.clock }),
+				}),
+			sampleBadge: false,
+			context: async (query, now) => sampleLoyaltyContext(query, now),
+		};
 		return created;
 	};
 	const launch = {
@@ -203,6 +256,11 @@ export function renderLoyalty(options: LoyaltyOptions): LoyaltyHarness {
 			if (created === null)
 				throw new Error("the loyalty source is not made yet");
 			return created.client as DemoLoyaltyClient;
+		},
+		bills() {
+			if (created === null)
+				throw new Error("the loyalty source is not made yet");
+			return created.bills as DemoBillsClient;
 		},
 	};
 }

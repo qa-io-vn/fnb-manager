@@ -37,6 +37,7 @@ export const CHECKIN_REFUSALS = [
 	"excluded_source",
 	"already_earned",
 	"invoice_not_completed",
+	"staff_mode",
 ] as const;
 export type CheckinRefusal = (typeof CHECKIN_REFUSALS)[number];
 
@@ -329,17 +330,17 @@ export interface LoyaltyClient {
 	myRequests(): Promise<MyRequest[]>;
 }
 
-type Row = Readonly<Record<string, unknown>>;
+export type Row = Readonly<Record<string, unknown>>;
 
-function isRecord(value: unknown): value is Row {
+export function isRecord(value: unknown): value is Row {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function invalid(what: string): never {
+export function invalid(what: string): never {
 	throw new Error(`the loyalty answer has no valid ${what}`);
 }
 
-function single(value: unknown, what: string): Row {
+export function single(value: unknown, what: string): Row {
 	if (Array.isArray(value) && value.length === 1) return single(value[0], what);
 	return isRecord(value) ? value : invalid(what);
 }
@@ -348,18 +349,18 @@ export function answerRows(value: unknown, what: string): readonly unknown[] {
 	return Array.isArray(value) ? value : invalid(what);
 }
 
-function text(value: unknown, what: string): string {
+export function text(value: unknown, what: string): string {
 	return typeof value === "string" && value.trim() !== ""
 		? value
 		: invalid(what);
 }
 
-function textOrNull(value: unknown, what: string): string | null {
+export function textOrNull(value: unknown, what: string): string | null {
 	if (value === null || value === undefined) return null;
 	return typeof value === "string" ? value.trim() || null : invalid(what);
 }
 
-function number(value: unknown, what: string): number {
+export function number(value: unknown, what: string): number {
 	const parsed =
 		typeof value === "string" && value.trim() !== "" ? Number(value) : value;
 	return typeof parsed === "number" && Number.isFinite(parsed)
@@ -367,16 +368,16 @@ function number(value: unknown, what: string): number {
 		: invalid(what);
 }
 
-function numberOrNull(value: unknown, what: string): number | null {
+export function numberOrNull(value: unknown, what: string): number | null {
 	return value === null || value === undefined ? null : number(value, what);
 }
 
-function whole(value: unknown, what: string): number {
+export function whole(value: unknown, what: string): number {
 	const parsed = number(value, what);
 	return Number.isInteger(parsed) ? parsed : invalid(what);
 }
 
-function count(value: unknown, what: string): number {
+export function count(value: unknown, what: string): number {
 	const parsed = whole(value, what);
 	return parsed >= 0 ? parsed : invalid(what);
 }
@@ -385,21 +386,21 @@ function countOr(value: unknown, fallback: number, what: string): number {
 	return value === null || value === undefined ? fallback : count(value, what);
 }
 
-function wholeOrNull(value: unknown, what: string): number | null {
+export function wholeOrNull(value: unknown, what: string): number | null {
 	return value === null || value === undefined ? null : whole(value, what);
 }
 
-function countOrNull(value: unknown, what: string): number | null {
+export function countOrNull(value: unknown, what: string): number | null {
 	return value === null || value === undefined ? null : count(value, what);
 }
 
-function instant(value: unknown, what: string): IsoInstant {
+export function instant(value: unknown, what: string): IsoInstant {
 	return typeof value === "string" && !Number.isNaN(Date.parse(value))
 		? value
 		: invalid(what);
 }
 
-function instantOrNull(value: unknown, what: string): IsoInstant | null {
+export function instantOrNull(value: unknown, what: string): IsoInstant | null {
 	return value === null || value === undefined ? null : instant(value, what);
 }
 
@@ -410,7 +411,7 @@ function dayOrNull(value: unknown, what: string): IsoDate | null {
 		: invalid(what);
 }
 
-function oneOf<T extends string>(
+export function oneOf<T extends string>(
 	allowed: readonly T[],
 	value: unknown,
 	what: string,
@@ -418,7 +419,7 @@ function oneOf<T extends string>(
 	return allowed.find((candidate) => candidate === value) ?? invalid(what);
 }
 
-function known<T extends string>(
+export function known<T extends string>(
 	allowed: readonly T[],
 	value: unknown,
 ): T | null {
@@ -439,11 +440,11 @@ export function maskedText(value: string): string {
 	return `•••• ••• ${digits.slice(-3)}`;
 }
 
-function masked(value: unknown, what: string): string {
+export function masked(value: unknown, what: string): string {
 	return maskedText(text(value, what));
 }
 
-function maskedOrNull(value: unknown, what: string): string | null {
+export function maskedOrNull(value: unknown, what: string): string | null {
 	const found = textOrNull(value, what);
 	return found === null ? null : maskedText(found);
 }
@@ -510,7 +511,7 @@ export function actionCall(action: QueueAction): {
 	};
 }
 
-function readMemberSummary(row: Row): MemberSummary {
+export function readMemberSummary(row: Row): MemberSummary {
 	const member = nested(row, "member");
 	return {
 		membershipId: textOrNull(member.membership_id, "membership"),

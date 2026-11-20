@@ -2,6 +2,11 @@ import { type MemberRole, REFUSAL, RestError } from "@fnb/zalo-mini";
 import { SAMPLE_STORES } from "../home/sample";
 import { canManage } from "../shift/model";
 import {
+	type DemoRedemption,
+	type DemoStoreMode,
+	demoStoreModeFrom,
+} from "./bills-demo";
+import {
 	type AdjustLimits,
 	ALREADY_VERIFIED,
 	type CheckinAnswer,
@@ -52,15 +57,19 @@ const MINUTE = 60_000;
 
 export interface LoyaltyDemoSettings {
 	readonly delayMs: number;
+	/** "staff" puts the first sample store in staff mode with self claims (`?storeMode=staff`); absent or "pos_sync" keeps every store POS-synced */
+	readonly storeMode?: DemoStoreMode;
 }
 
 export function loyaltyDemoSettingsFrom(search: string): LoyaltyDemoSettings {
 	const delay = Number(new URLSearchParams(search).get("dataDelay") ?? "0");
+	const storeMode = demoStoreModeFrom(search);
 	return {
 		delayMs:
 			Number.isInteger(delay) && delay > 0
 				? Math.min(delay, MAX_DEMO_DELAY_MS)
 				: 0,
+		...(storeMode === "staff" ? { storeMode } : {}),
 	};
 }
 
@@ -159,6 +168,7 @@ interface StoreWorld {
 	readonly visits: DemoVisit[];
 	readonly usedCodes: Set<string>;
 	readonly verified: Map<string, string>;
+	readonly redemptionIds: Map<string, string>;
 	queue: QueueItem[];
 }
 
@@ -166,10 +176,14 @@ export interface DemoLoyaltyOptions {
 	readonly settings: LoyaltyDemoSettings;
 	readonly role: MemberRole;
 	readonly clock?: () => Date;
+	/** the confirmation source per store: a staff-mode store refuses the till check-in (staff_mode) */
+	readonly storeModeOf?: (storeId: string) => DemoStoreMode;
 }
 
 export interface DemoLoyaltyClient extends LoyaltyClient {
 	nameStores(stores: readonly { id: string; name: string }[]): void;
+	/** a reward verified at the till, for the staff-mode confirmation */
+	redemptionOf(redemptionId: string): DemoRedemption | undefined;
 }
 
 export function createDemoLoyaltyClient(
@@ -183,6 +197,7 @@ export function createDemoLoyaltyClient(
 		SAMPLE_STORES.map((store) => [store.id, store.name]),
 	);
 	const requests: MyRequest[] = [];
+	const redemptions = new Map<string, DemoRedemption>();
 	let sequence = 100;
 	const next = (kind: string) => {
 		sequence += 1;
@@ -238,6 +253,7 @@ export function createDemoLoyaltyClient(
 			visits: [],
 			usedCodes: new Set(),
 			verified: new Map(),
+			redemptionIds: new Map(),
 			queue: [],
 		};
 		if (first !== undefined)
@@ -411,13 +427,24 @@ export function createDemoLoyaltyClient(
 	}
 
 	function accepted(
+		storeId: string,
+		code: string,
 		reward: DemoReward,
 		verifiedAt: Date,
 		first: boolean,
 	): RedemptionAnswer {
+		const storeWorld = world(storeId);
+		const redemptionId = storeWorld.redemptionIds.get(code) ?? next("b");
+		storeWorld.redemptionIds.set(code, redemptionId);
+		redemptions.set(redemptionId, {
+			storeId,
+			phone: reward.phone,
+			discountName:
+				reward.instruction.kind === "pos_discount" ? DEMO_DISCOUNT_NAME : null,
+		});
 		return {
 			outcome: "accepted",
-			redemptionId: next("b"),
+			redemptionId,
 			rewardName: reward.rewardName,
 			rewardKind: "free_item",
 			rewardPercent: null,
@@ -481,8 +508,13 @@ export function createDemoLoyaltyClient(
 		nameStores(stores) {
 			for (const store of stores) names.set(store.id, store.name);
 		},
+		redemptionOf(redemptionId) {
+			return redemptions.get(redemptionId);
+		},
 		async recordCheckin(input) {
 			await pause();
+			if (options.storeModeOf?.(input.storeId) === "staff")
+				return { outcome: "refused", refusal: "staff_mode", textKey: null };
 			const storeWorld = world(input.storeId);
 			if (input.entry.kind === "phone") {
 				const phone = nationalPhone(input.entry.phone);
@@ -535,7 +567,7 @@ export function createDemoLoyaltyClient(
 			const earlier = REWARDS[code];
 			// the same staff member checking again (a lost answer, a second tap) gets the same answer as the database gives
 			if (verifiedAt !== undefined && earlier !== undefined)
-				return accepted(earlier, new Date(verifiedAt), false);
+				return accepted(storeId, code, earlier, new Date(verifiedAt), false);
 			switch (code) {
 				case DEMO_CODES.verifiedByOther:
 					return refused("used", {
@@ -559,7 +591,7 @@ export function createDemoLoyaltyClient(
 			if (reward === undefined) return refused("unknown");
 			const now = clock();
 			storeWorld.verified.set(code, now.toISOString());
-			return accepted(reward, now, true);
+			return accepted(storeId, code, reward, now, true);
 		},
 		async lookupMember(storeId, query): Promise<LookupAnswer> {
 			await pause();

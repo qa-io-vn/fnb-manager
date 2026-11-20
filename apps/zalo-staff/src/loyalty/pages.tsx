@@ -1,6 +1,9 @@
 import type { ComponentType } from "react";
 import { LoyaltyQueueScreen } from "../approvals/loyalty-queue";
 import { MyRequestsScreen } from "../approvals/my-requests";
+import { BillQueueScreen } from "../bills/bill-queue";
+import { BillsScreen } from "../bills/bill-screen";
+import { CounterScreen } from "../bills/counter-screen";
 import { CheckInScreen } from "../check-in/check-in-screen";
 import { MemberLookupScreen } from "../member-lookup/member-lookup-screen";
 import { RedemptionScreen } from "../redemption/redemption-screen";
@@ -39,11 +42,27 @@ const PAGES: Readonly<Record<LoyaltyPath, LoyaltyPageEntry>> = {
 		testId: "my-requests",
 		screen: MyRequestsScreen,
 	},
+	[LOYALTY_PATHS.bills]: {
+		titleKey: "bills.title",
+		testId: "bills",
+		screen: BillsScreen,
+	},
+	[LOYALTY_PATHS.counter]: {
+		titleKey: "counter.title",
+		testId: "counter",
+		screen: CounterScreen,
+	},
+	[LOYALTY_PATHS.billQueue]: {
+		titleKey: "billQueue.title",
+		testId: "bill-queue",
+		screen: BillQueueScreen,
+	},
 };
 
 /**
  * The till screens as one lazily loaded chunk: only a member who opens the
- * check-in, redemption, lookup or queue pays for them and their sources.
+ * check-in, redemption, lookup, queue or staff-mode bill screens pays for
+ * them and their sources (the counter QR encoder among them).
  */
 export default function LoyaltyPage({ path }: { readonly path: LoyaltyPath }) {
 	const entry = PAGES[path];

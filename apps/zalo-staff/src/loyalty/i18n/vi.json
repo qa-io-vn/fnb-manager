@@ -186,5 +186,14 @@
 	"requests.state.approved": "Đã duyệt",
 	"requests.state.refused": "Bị từ chối",
 	"requests.decisionReason": "Lý do: {reason}",
-	"requests.sentAt": "Gửi lúc {time} ngày {date}"
+	"requests.sentAt": "Gửi lúc {time} ngày {date}",
+	"loyalty.sectionBodyStaff": "Cửa hàng ghi hóa đơn tay: quét mã thành viên của khách rồi nhập số và tổng tiền trên hóa đơn giấy.",
+	"loyalty.bills": "Ghi hóa đơn",
+	"loyalty.counter": "Mã quầy",
+	"loyalty.billQueue": "Duyệt hóa đơn",
+	"loyalty.openBillQueue": "Mở duyệt hóa đơn",
+	"loyalty.billQueueCount": "{count} việc cần duyệt",
+	"loyalty.billQueueEmpty": "Không có hóa đơn cần duyệt",
+	"checkin.refusal.staff_mode": "Cửa hàng này ghi hóa đơn tay thay cho máy POS. Hãy dùng Ghi hóa đơn để cộng dấu và điểm cho khách.",
+	"checkin.toBills": "Mở Ghi hóa đơn"
 }

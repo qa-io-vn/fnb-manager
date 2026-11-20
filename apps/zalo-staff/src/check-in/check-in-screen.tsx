@@ -123,7 +123,7 @@ function CheckinResult({
 
 export function CheckInScreen(_: LoyaltyScreenProps) {
 	const { t } = useI18n();
-	const { client, store } = useLoyaltyEnv();
+	const { client, store, open } = useLoyaltyEnv();
 	const action = useLoyaltyAction();
 	const scanner = useScanner("member");
 	const inputId = useId();
@@ -268,6 +268,16 @@ export function CheckInScreen(_: LoyaltyScreenProps) {
 								{message}
 							</p>
 						)}
+						{refusal?.refusal === "staff_mode" ? (
+							<button
+								type="button"
+								className={secondaryButton}
+								data-testid="checkin-to-bills"
+								onClick={() => open(LOYALTY_PATHS.bills)}
+							>
+								{t("checkin.toBills")}
+							</button>
+						) : null}
 						{action.failure === null ? null : (
 							<FailureAlert
 								failure={action.failure}

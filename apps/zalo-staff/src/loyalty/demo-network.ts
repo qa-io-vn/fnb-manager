@@ -1,4 +1,5 @@
 import { RestError } from "@fnb/zalo-mini";
+import type { BillsClient } from "./bills-contract";
 import type { LoyaltyClient } from "./contract";
 
 // A stand-in network for the browser demo. Off by default: the demo answers at once and never fails, so every existing
@@ -21,8 +22,11 @@ const FAULTS: readonly DemoNetworkFault[] = [
 	"lost-once",
 	"error-once",
 ];
-const CHANGES = new Set<string>(["recordCheckin", "verifyRedemption"]);
-const CALLS = [
+const CHANGES: ReadonlySet<string> = new Set<string>([
+	"recordCheckin",
+	"verifyRedemption",
+]);
+const CALLS: readonly string[] = [
 	"recordCheckin",
 	"verifyRedemption",
 	"lookupMember",
@@ -30,7 +34,24 @@ const CALLS = [
 	"queue",
 	"act",
 	"myRequests",
-] as const;
+];
+const BILL_CHANGES: ReadonlySet<string> = new Set<string>([
+	"submit",
+	"reverse",
+	"answerClaim",
+	"decide",
+	"closeAudit",
+	"confirmRedemption",
+	"voidRedemption",
+]);
+const BILL_CALLS: readonly string[] = [
+	...BILL_CHANGES,
+	"recent",
+	"mode",
+	"counterCode",
+	"counterClaims",
+	"queue",
+];
 
 function milliseconds(value: string | null): number {
 	const parsed = Number(value ?? "0");
@@ -63,15 +84,36 @@ export function withDemoNetwork<C extends LoyaltyClient>(
 	client: C,
 	network: DemoNetwork,
 ): C {
+	return wrapCalls(client, network, CALLS, CHANGES);
+}
+
+export function withDemoBillsNetwork<C extends BillsClient>(
+	client: C,
+	network: DemoNetwork,
+): C {
+	return wrapCalls(client, network, BILL_CALLS, BILL_CHANGES);
+}
+
+function wrapCalls<C extends object>(
+	client: C,
+	network: DemoNetwork,
+	calls: readonly string[],
+	changing: ReadonlySet<string>,
+): C {
 	if (network.fault === "none") return client;
 	let spent = false;
 	const wrapped: Record<string, unknown> = { ...(client as object) };
-	for (const name of CALLS) {
-		const call = client[name] as (...args: unknown[]) => Promise<unknown>;
+	const methods = client as unknown as Record<
+		string,
+		(...args: unknown[]) => Promise<unknown>
+	>;
+	for (const name of calls) {
+		const call = methods[name];
+		if (call === undefined) continue;
 		wrapped[name] = async (...args: unknown[]) => {
 			await wait(network.delayMs);
 			if (offline()) throw new RestError(0);
-			const changes = CHANGES.has(name);
+			const changes = changing.has(name);
 			if (network.fault === "error-once" && changes && !spent) {
 				spent = true;
 				throw new RestError(500, "XX000");
