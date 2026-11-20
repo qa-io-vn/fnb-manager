@@ -36,7 +36,9 @@ test("Bản tin lists 14 digests newest first with their delivery, the correctio
 	await checkPage(page);
 	const first = dates[0] ?? "";
 	await cards.first().getByTestId("digest-open-day").click();
-	await expect(page).toHaveURL((url) => url.hash.startsWith(`#/bao-cao/ngay?date=${first}`));
+	await expect(page).toHaveURL((url) =>
+		url.hash.startsWith(`#/bao-cao/ngay?date=${first}`),
+	);
 	await page.goBack();
 	await page.getByRole("button", { name: "EN", exact: true }).click();
 	await expect(page.locator("body")).not.toContainText("settings.digest.");
