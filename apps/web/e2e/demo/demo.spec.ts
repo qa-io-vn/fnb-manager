@@ -186,11 +186,13 @@ test("Hôm nay passes axe and fits a 360 px phone", async ({ page }) => {
 	await checkPage(page);
 });
 
-test("the placeholder page #/ke-hoach passes axe and fits a 360 px phone", async ({
+test("Kế hoạch #/ke-hoach passes axe and fits a 360 px phone", async ({
 	page,
 }) => {
 	await page.goto("/#/ke-hoach");
-	await expect(page.getByTestId("placeholder-phase")).toBeVisible();
+	await expect(page.getByTestId("plan-card").first()).toBeVisible({
+		timeout: 60_000,
+	});
 	await checkPage(page);
 });
 

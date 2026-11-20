@@ -168,6 +168,7 @@ describe("the public interface of @fnb/datapack", () => {
 				"planIssueParameter",
 				"planLintCodeOf",
 				"planRecord",
+				"resolveCell",
 				"sha256Hex",
 				"strategyPrompt",
 				"trackableMetricIds",

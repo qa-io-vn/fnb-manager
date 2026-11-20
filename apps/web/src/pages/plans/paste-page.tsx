@@ -1,10 +1,14 @@
-import { useId, useRef, useState } from "react";
+import { type PlanPublishInput, planRecord } from "@fnb/datapack";
+import { useQueryClient } from "@tanstack/react-query";
+import { type ReactNode, useId, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { cn } from "../../components/ui/cn";
 import { TextLink } from "../../components/ui/text-link";
 import { PACK_ID_SHOWN } from "../../datapack/pack-files";
 import { type Translate, useLanguage, useT } from "../../i18n";
 import type { Formatters } from "../../lib/format";
+import { PlanMarkdown } from "../../plans/cite-plugin";
 import {
 	type CheckedPlan,
 	checkPlan,
@@ -18,7 +22,10 @@ import {
 	planPackId,
 	readPackText,
 } from "../../plans/paste-check";
+import { PlanSourceError } from "../../plans/source";
+import { canPublishPlans, usePlansContext } from "../../plans/use-plans";
 import { controlClass } from "../../settings/forms/field";
+import { useMembership } from "../../settings/queries";
 import { PageHeading } from "../../shell/page-heading";
 import { useFormatters } from "../../state/formatters";
 import { useReadyTenantScope } from "../../state/tenant-scope";
@@ -48,7 +55,9 @@ type CopyState = "idle" | "copied" | "manual";
 export interface PlanPasteBoxProps {
 	readonly formatters: Formatters;
 	readonly now?: () => Date;
-	readonly onSave?: (checked: CheckedPlan) => void;
+	readonly onSave?: ((checked: CheckedPlan) => void) | undefined;
+	readonly saving?: boolean;
+	readonly preview?: (checked: CheckedPlan) => ReactNode;
 }
 
 function shortId(packId: string): string {
@@ -354,6 +363,8 @@ export function PlanPasteBox({
 	formatters,
 	now = () => new Date(),
 	onSave,
+	saving = false,
+	preview,
 }: PlanPasteBoxProps) {
 	const t = useT();
 	const id = useId();
@@ -512,9 +523,14 @@ export function PlanPasteBox({
 					formatters={formatters}
 				/>
 			)}
+			{phase.kind === "checked" &&
+			phase.checked.lint.ok &&
+			preview !== undefined
+				? preview(phase.checked)
+				: null}
 			<div className="space-y-1">
 				<Button
-					disabled={!canSave}
+					disabled={!canSave || saving}
 					aria-describedby={saveNote === null ? undefined : `${id}-save`}
 					onClick={() => {
 						if (canSave && checked !== null) onSave?.(checked);
@@ -540,8 +556,133 @@ export function PlanPasteBox({
 	);
 }
 
+export type SaveState =
+	| { readonly kind: "idle" }
+	| { readonly kind: "saving" }
+	| { readonly kind: "sample" }
+	| { readonly kind: "denied" }
+	| { readonly kind: "rejected"; readonly codes: string }
+	| { readonly kind: "limited" }
+	| { readonly kind: "failed" };
+
+export function saveStateOf(error: unknown): SaveState {
+	if (error instanceof PlanSourceError) {
+		if (error.code === "42501") return { kind: "denied" };
+		if (error.code === "22023") {
+			const codes = error.details ?? "";
+			return codes.includes("plan_rate_limited")
+				? { kind: "limited" }
+				: { kind: "rejected", codes };
+		}
+	}
+	return { kind: "failed" };
+}
+
+export function publishInput(
+	checked: CheckedPlan,
+	demo: boolean,
+): PlanPublishInput | null {
+	const plan = checked.lint.plan;
+	if (plan === null || !checked.lint.ok) return null;
+	const pack = checked.pack.pack;
+	if (pack.sample && !demo) return null;
+	const record = planRecord(
+		plan,
+		pack.sample ? { ...pack, sample: false } : pack,
+		checked.lint,
+		"pasted",
+	);
+	return { ...record, p_data_pack: pack };
+}
+
+function SaveMessage({ state, t }: { state: SaveState; t: Translate }) {
+	if (state.kind === "idle") return null;
+	const text =
+		state.kind === "saving"
+			? t("plans.paste.saving")
+			: state.kind === "sample"
+				? t("plans.paste.samplePack")
+				: state.kind === "denied"
+					? t("plans.paste.scopeDenied")
+					: state.kind === "rejected"
+						? t("plans.paste.rejected", { codes: state.codes })
+						: state.kind === "limited"
+							? t("plans.paste.rateLimited")
+							: t("plans.paste.saveFailed");
+	return (
+		<p
+			role={state.kind === "saving" ? "status" : "alert"}
+			data-testid="plan-save-result"
+			data-state={state.kind}
+		>
+			{text}
+		</p>
+	);
+}
+
 export function PastePage() {
+	const t = useT();
 	const scope = useReadyTenantScope();
 	const formatters = useFormatters(scope.tenant);
-	return <PlanPasteBox formatters={formatters} />;
+	const membership = useMembership();
+	const context = usePlansContext();
+	const navigate = useNavigate();
+	const client = useQueryClient();
+	const [state, setState] = useState<SaveState>({ kind: "idle" });
+	const member =
+		membership.status === "success" ? (membership.data ?? null) : null;
+	const demo = context?.plans.kind === "demo";
+	const save = async (checked: CheckedPlan) => {
+		if (context === null) return;
+		const input = publishInput(checked, demo);
+		if (input === null) {
+			setState({ kind: "sample" });
+			return;
+		}
+		setState({ kind: "saving" });
+		try {
+			const outcome = await context.plans.publish(input);
+			await client.invalidateQueries({ queryKey: ["plans"] });
+			navigate(`/ke-hoach/${outcome.planId}`, {
+				state: { alreadySaved: outcome.alreadyPublished, saved: true },
+			});
+		} catch (error) {
+			setState(saveStateOf(error));
+		}
+	};
+	return (
+		<div className="space-y-3">
+			<PlanPasteBox
+				formatters={formatters}
+				onSave={
+					canPublishPlans(member) && context !== null
+						? (checked) => void save(checked)
+						: undefined
+				}
+				saving={state.kind === "saving"}
+				preview={(checked) => (
+					<section
+						className="space-y-2 rounded-xl border border-line p-4"
+						aria-label={t("plans.paste.preview")}
+						data-testid="plan-preview"
+					>
+						<h2 className="text-lg font-semibold">
+							{t("plans.paste.preview")}
+						</h2>
+						<PlanMarkdown
+							content={checked.lint.normalized}
+							pack={checked.pack.pack}
+							formatters={formatters}
+						/>
+					</section>
+				)}
+			/>
+			<SaveMessage state={state} t={t} />
+			{demo ? (
+				<p className="text-sm text-ink-muted" data-testid="plan-demo-note">
+					{t("plans.paste.demoNote")}
+				</p>
+			) : null}
+		</div>
+	);
 }

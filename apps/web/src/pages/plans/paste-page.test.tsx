@@ -395,7 +395,7 @@ describe("the issues", () => {
 });
 
 describe("the summary and Lưu kế hoạch", () => {
-	it("counts sections, initiatives, correct citations and KPIs of a valid plan, and keeps Lưu disabled in 11a", async () => {
+	it("counts sections, initiatives, correct citations and KPIs of a valid plan, and keeps Lưu disabled for a member who may not save", async () => {
 		rememberPack(GOLDEN.pack_id, GOLDEN_TEXT, NOW);
 		renderBox();
 		await checkPasted(samplePlan(GOLDEN));
@@ -407,7 +407,7 @@ describe("the summary and Lưu kế hoạch", () => {
 		expect(screen.queryByTestId("plan-issues")).toBeNull();
 		expect(screen.getByRole("button", { name: "Lưu kế hoạch" })).toBeDisabled();
 		expect(screen.getByTestId("plan-save-note")).toHaveTextContent(
-			"Lưu kế hoạch sẽ có ở giai đoạn 11b của lộ trình.",
+			"Chỉ chủ hoặc quản lý mới lưu được kế hoạch.",
 		);
 	});
 

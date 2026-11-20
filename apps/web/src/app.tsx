@@ -22,7 +22,6 @@ import { AnalyticsSourceProvider } from "./data/analytics-source-context";
 import { RowSourceProvider } from "./data/row-source-context";
 import { I18nProvider, type Language } from "./i18n";
 import { configuredClientLoader } from "./lib/supabase";
-import { PlansPage } from "./pages/plans/plans-page";
 import { TodayPage } from "./pages/today/today-page";
 import { ReportRouteLoading } from "./reports/route-loading";
 import { NewVersionPrompt } from "./shell/new-version-prompt";
@@ -170,7 +169,13 @@ export const routes: RouteObject[] = [
 						path: "ke-hoach",
 						hydrateFallbackElement: <ReportRouteLoading />,
 						children: [
-							{ index: true, element: <PlansPage /> },
+							{
+								index: true,
+								lazy: () =>
+									import("./pages/plans/plans-list-page").then((module) => ({
+										Component: module.PlansListPage,
+									})),
+							},
 							{
 								path: "dan",
 								lazy: () =>
@@ -178,7 +183,20 @@ export const routes: RouteObject[] = [
 										Component: module.PastePage,
 									})),
 							},
-							{ path: "*", element: <Navigate to="/ke-hoach" replace /> },
+							{
+								path: "so-sanh",
+								lazy: () =>
+									import("./pages/plans/plan-compare-page").then((module) => ({
+										Component: module.PlanComparePage,
+									})),
+							},
+							{
+								path: ":planId",
+								lazy: () =>
+									import("./pages/plans/plan-detail-page").then((module) => ({
+										Component: module.PlanDetailPage,
+									})),
+							},
 						],
 					},
 					{

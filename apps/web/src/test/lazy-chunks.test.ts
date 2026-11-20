@@ -93,7 +93,8 @@ describe("the size check's lazy chunks", () => {
 	it("loads the plan paste box and its lint only when the page is opened", () => {
 		expect(isLazySource("src/pages/plans/paste-page.tsx")).toBe(true);
 		expect(isLazySource("src/plans/paste-check.ts")).toBe(false);
-		expect(isLazySource("src/pages/plans/plans-page.tsx")).toBe(false);
+		expect(isLazySource("src/plans/source.ts")).toBe(false);
+		expect(isLazySource("src/pages/plans/plan-detail-page.tsx")).toBe(true);
 		expect(isEagerSource("src/pages/plans/paste-page.tsx")).toBe(false);
 	});
 });

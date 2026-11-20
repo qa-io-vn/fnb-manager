@@ -76,6 +76,7 @@ export {
 	type PackGrain,
 	type PackUnit,
 } from "./pack/units.js";
+export { type ResolvedCell, resolveCell } from "./plan/citations.js";
 export {
 	PLAN_LINT_CODE_IDS,
 	PLAN_LINT_CODES,

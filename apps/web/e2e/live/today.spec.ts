@@ -139,7 +139,7 @@ test("the language toggle switches the visible strings", async ({ page }) => {
 	).toBeVisible();
 });
 
-test("the placeholder page #/ke-hoach says what is coming and in which phase", async ({
+test("Kế hoạch #/ke-hoach lists plans or explains how to make one on the seeded stack", async ({
 	page,
 }) => {
 	await signIn(page);
@@ -147,7 +147,9 @@ test("the placeholder page #/ke-hoach says what is coming and in which phase", a
 	await expect(
 		page.getByRole("heading", { level: 1, name: "Kế hoạch" }),
 	).toBeVisible();
-	await expect(page.getByTestId("placeholder-phase")).toContainText("11b");
+	await expect(
+		page.getByTestId("plans-list").or(page.getByTestId("plans-empty")),
+	).toBeVisible();
 	await expect(page.getByTestId("period-picker")).toBeVisible();
 	await checkPage(page);
 });
