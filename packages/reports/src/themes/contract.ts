@@ -492,6 +492,24 @@ export const METRIC_WINDOW_LIMITS = {
 } as const;
 export const HOLIDAY_CALENDAR_MAX_DAYS = 400;
 
+export const COUPON_RAILS = [
+	"crm_code_pool",
+	"crm_callback",
+	"pos_payment_discount",
+] as const;
+
+export const loyaltyRailFlagsArgs = z.object({
+	p_store_ids: storeIdsArgument,
+});
+
+export const loyaltyRailFlagsRow = z.object({
+	store_id: storeIdValue,
+	rail: z.enum(COUPON_RAILS),
+	active_from: timestampValue,
+	e_invoice_status: z.enum(E_INVOICE_STATUSES),
+	flagged: z.boolean(),
+});
+
 export const storeProfilesArgs = z.object({ store_ids: storeIdsArgument });
 
 export const storeProfilesRow = z.object({
@@ -658,6 +676,10 @@ export const themeFunctions = {
 	member_share_by_shift: {
 		args: memberShareByShiftArgs,
 		row: memberShareByShiftRow,
+	},
+	loyalty_rail_flags: {
+		args: loyaltyRailFlagsArgs,
+		row: loyaltyRailFlagsRow,
 	},
 } as const;
 

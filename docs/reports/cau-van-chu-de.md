@@ -1,6 +1,6 @@
 # Câu văn chủ đề và cài đặt — bảng duyệt câu chữ
 
-Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (961 entries, 310 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
+Owner review of the wording of the four thematic reports of phase 10a (Doanh thu & xu hướng, Giờ & ngày trong tuần, Thực đơn, Thanh toán & tiền mặt), of Khuyến mãi & giảm giá, Ca & két tiền, So sánh cửa hàng and Chất lượng dữ liệu of phase 10b and of the 10a Settings pages (the shared layout and form controls, Ngưỡng báo cáo with its 10b promotion field, Phân loại and the catch-up banner), with the two 10b tabs of Phân loại (Nhóm của món and Loại thanh toán) and the placeholders of the phase 12 pages Cảnh báo and Bản tin. It lists every Vietnamese template these pages use (963 entries, 311 of them with placeholders), with its English meaning and the placeholders it fills in. It holds templates only: no store, item or person names and no figures. The periodic reports Ngày, Tuần, Tháng and Năm have their own sheet, [cau-van-bao-cao.md](cau-van-bao-cao.md), which also holds the shared `report.*` keys the thematic cards reuse (comparison chips, markers, value formats, payment kinds, roles and the Settings links of `report.action.*`).
 
 The source of truth is the message files in `apps/web/src/i18n/messages/`: `themes`, `theme-revenue`, `theme-hours`, `theme-menu`, `theme-payments`, `theme-promotions`, `theme-shifts`, `theme-stores`, `theme-quality`, `settings`, `settings-thresholds` and `settings-mapping` (`.vi.json` and `.en.json`). This sheet is a copy of them for reading; when a file changes, the file wins, and a unit test (`apps/web/src/i18n/wording-sheets.test.ts`) fails until the sheet lists every key of those files with its exact Vietnamese and English text. Metric names and explanations live in `metrics.vi.json` and are reviewed with the metric registry.
 
@@ -45,7 +45,7 @@ Every placeholder of this sheet, how many templates use it and the first key in 
 | `{checked}` | 5 | `theme.promotions.catalogue.luckyDraw` |
 | `{confirmed}` | 2 | `theme.promotions.redemptions.main` |
 | `{cost}` | 4 | `theme.promotions.lift.caption` |
-| `{count}` | 42 | `theme.menu.preferences.otherOnly` |
+| `{count}` | 43 | `theme.menu.preferences.otherOnly` |
 | `{coverage}` | 2 | `theme.quality.costs.coverage` |
 | `{covered}` | 2 | `theme.menu.movers.captionLikeForLike` |
 | `{customers}` | 1 | `theme.quality.customers.coverage` |
@@ -1214,7 +1214,7 @@ The card of the phone-capture week (#237): the share of invoices with a member a
 | `theme.stores.table.week` | Tuần thứ | Week | — |
 | `theme.stores.table.weekFrom` | Tuần từ | Week from | — |
 
-## Chất lượng dữ liệu · Data quality (`theme-quality.vi.json`, 129 mục)
+## Chất lượng dữ liệu · Data quality (`theme-quality.vi.json`, 131 mục)
 
 ### Tiêu đề · title (`theme.quality.title`)
 
@@ -1232,6 +1232,7 @@ The card of the phone-capture week (#237): the share of invoices with a member a
 | `theme.quality.compliance.main` | {count} trên {total} cửa hàng còn việc cần làm về hóa đơn điện tử, đánh số hóa đơn hoặc hồ sơ cửa hàng. | {count} of {total} stores have something to do about e-invoices, receipt numbering or the store profile. | `{count}` `{total}` |
 | `theme.quality.compliance.memberNotice` | Sửa trong POS: bật tính năng thành viên ở cửa hàng đang tắt, rồi ghi lại trạng thái và các mục còn thiếu trong hồ sơ cửa hàng. | Fix in the POS: switch the member feature on where it is off, then record its status and anything else missing in the store profile. | — |
 | `theme.quality.compliance.none` | Mọi cửa hàng đã ghi đủ hóa đơn điện tử, đánh số hóa đơn và hồ sơ. | Every store has its e-invoices, receipt numbering and profile recorded. | — |
+| `theme.quality.compliance.railEInvoice` | {count} cửa hàng đang chạy ưu đãi thành viên nhưng chưa đăng ký hóa đơn điện tử, nên ưu đãi chưa hiện trên hóa đơn điện tử. | {count} stores run member rewards without cash-register e-invoices, so rewards do not appear on an e-invoice yet. | `{count}` |
 | `theme.quality.compliance.storeNotice` | Ghi những mục còn thiếu trong hồ sơ cửa hàng. | Record what is missing in the store profile. | — |
 | `theme.quality.compliance.storesTable` | Hồ sơ cửa hàng | Store profile | — |
 | `theme.quality.compliance.title` | Hóa đơn điện tử, đánh số hóa đơn và hồ sơ cửa hàng | E-invoices, receipt numbering and store profile | — |
@@ -1345,6 +1346,7 @@ The card of the phone-capture week (#237): the share of invoices with a member a
 | `theme.quality.finding.hours` | Chưa có giờ mở cửa | No opening hours | — |
 | `theme.quality.finding.memberDisabled` | Tính năng thành viên trên POS đang tắt | Member feature on the POS is off | — |
 | `theme.quality.finding.openedOn` | Chưa có ngày khai trương | No opening date | — |
+| `theme.quality.finding.railEInvoice` | Đang chạy ưu đãi thành viên khi chưa có hóa đơn điện tử | Member rewards run without e-invoices | — |
 | `theme.quality.finding.receipts.mismatch` | Cách đánh số hóa đơn đã ghi khác với dữ liệu | Recorded receipt numbering differs from the data | — |
 | `theme.quality.finding.receipts.unknown` | Chưa ghi cách đánh số hóa đơn | Receipt numbering not recorded | — |
 | `theme.quality.finding.seats` | Chưa có số ghế | No seat count | — |

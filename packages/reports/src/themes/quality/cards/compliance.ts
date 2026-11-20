@@ -13,6 +13,7 @@ import {
 	type QualitySummaryRow,
 	qualityCsvName,
 	qualityNeeds,
+	railFlaggedStoreIds,
 	storeSummaries,
 } from "../support.js";
 
@@ -22,6 +23,7 @@ export type ComplianceFinding =
 	| "eInvoice"
 	| "receipts"
 	| "memberDisabled"
+	| "railEInvoice"
 	| "hours"
 	| "seats"
 	| "openedOn";
@@ -95,9 +97,19 @@ function receiptsFinding(row: QualitySummaryRow): StoreFinding | null {
 		: null;
 }
 
-export function storeFindings(row: QualitySummaryRow): StoreFinding[] {
+export function storeFindings(
+	row: QualitySummaryRow,
+	railFlagged = false,
+): StoreFinding[] {
 	const findings: (StoreFinding | null)[] = [
 		eInvoiceFinding(row),
+		railFlagged
+			? {
+					finding: "railEInvoice",
+					findingKey: qualityKeys.finding.railEInvoice,
+					fixKey: qualityKeys.fix.pos.eInvoice,
+				}
+			: null,
 		receiptsFinding(row),
 		row.member_capture_status === "disabled"
 			? {
@@ -131,7 +143,11 @@ export function storeFindings(row: QualitySummaryRow): StoreFinding[] {
 	return findings.filter((entry): entry is StoreFinding => entry !== null);
 }
 
-type Store = { readonly name: string; readonly row: QualitySummaryRow };
+type Store = {
+	readonly name: string;
+	readonly row: QualitySummaryRow;
+	readonly railFlagged: boolean;
+};
 
 function findingsTable(stores: readonly Store[]): TableModel {
 	return tableModel({
@@ -141,8 +157,8 @@ function findingsTable(stores: readonly Store[]): TableModel {
 			column("finding", qualityKeys.table.finding, "message"),
 			column("fix", qualityKeys.table.fix, "message"),
 		],
-		rows: stores.flatMap(({ name, row }) =>
-			storeFindings(row).map((entry) => ({
+		rows: stores.flatMap(({ name, row, railFlagged }) =>
+			storeFindings(row, railFlagged).map((entry) => ({
 				id: `${row.store_id ?? ""}|${entry.finding}`,
 				cells: { store: name, finding: entry.findingKey, fix: entry.fixKey },
 			})),
@@ -190,7 +206,9 @@ function noticeOf(stores: readonly Store[]): NoticeModel | null {
 			action: "settings_e_invoice",
 		};
 	}
-	const findings = stores.flatMap(({ row }) => storeFindings(row));
+	const findings = stores.flatMap(({ row, railFlagged }) =>
+		storeFindings(row, railFlagged),
+	);
 	if (findings.some((entry) => entry.finding === "memberDisabled")) {
 		return {
 			tone: "info",
@@ -210,9 +228,19 @@ function noticeOf(stores: readonly Store[]): NoticeModel | null {
 
 export function buildComplianceCard(input: ThemeCardInput): CardModel {
 	const { context } = input;
-	const stores = storeSummaries(context, input.results);
-	const flagged = stores.filter(({ row }) => storeFindings(row).length > 0);
+	const railFlags = railFlaggedStoreIds(input.results);
+	const stores: Store[] = storeSummaries(context, input.results).map(
+		(store) => ({
+			...store,
+			railFlagged:
+				store.row.store_id !== null && railFlags.has(store.row.store_id),
+		}),
+	);
+	const flagged = stores.filter(
+		({ row, railFlagged }) => storeFindings(row, railFlagged).length > 0,
+	);
 	const eInvoice = stores.filter(({ row }) => isEInvoiceFinding(row));
+	const railEInvoice = stores.filter(({ railFlagged }) => railFlagged);
 	const narrative: SentencePart[] = [
 		flagged.length === 0
 			? part(qualityKeys.compliance.none)
@@ -225,6 +253,13 @@ export function buildComplianceCard(input: ThemeCardInput): CardModel {
 		narrative.push(
 			part(qualityKeys.compliance.eInvoice, {
 				count: numberValue("count", eInvoice.length),
+			}),
+		);
+	}
+	if (railEInvoice.length > 0) {
+		narrative.push(
+			part(qualityKeys.compliance.railEInvoice, {
+				count: numberValue("count", railEInvoice.length),
 			}),
 		);
 	}

@@ -1,5 +1,6 @@
 export const ARGUMENT_SQL_TYPES: Readonly<Record<string, string>> = {
 	store_ids: "uuid[]",
+	p_store_ids: "uuid[]",
 	grain: "text",
 	anchor: "date",
 	from_date: "date",

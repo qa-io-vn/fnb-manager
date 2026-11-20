@@ -24,6 +24,7 @@ export const qualityCalls = {
 	summary: "summary",
 	payments: "payments",
 	margins: "margins",
+	railFlags: "railFlags",
 } as const;
 
 export const qualityNeeds = {
@@ -33,7 +34,11 @@ export const qualityNeeds = {
 	modifiers: [qualityCalls.coverage, qualityCalls.summary],
 	payments: [qualityCalls.coverage, qualityCalls.payments],
 	customers: [qualityCalls.coverage, qualityCalls.summary],
-	compliance: [qualityCalls.coverage, qualityCalls.summary],
+	compliance: [
+		qualityCalls.coverage,
+		qualityCalls.summary,
+		qualityCalls.railFlags,
+	],
 } as const;
 
 export type QualityItemRow = ThemeRow<"data_quality_items">;
@@ -41,6 +46,7 @@ export type QualitySummaryRow = ThemeRow<"data_quality_summary">;
 export type QualityPaymentRow = ThemeRow<"data_quality_payments">;
 export type DaySeriesRow = AnalyticsRow<"period_series">;
 export type QualityMarginRow = ThemeRow<"item_margins">;
+export type QualityRailFlagRow = ThemeRow<"loyalty_rail_flags">;
 
 export function isUncategorisedItem(row: QualityItemRow): boolean {
 	return (
@@ -87,11 +93,24 @@ export function qualityPrimaryCalls(
 		reportCall(qualityCalls.summary, "data_quality_summary", storeRange),
 		reportCall(qualityCalls.payments, "data_quality_payments", storeRange),
 		reportCall(qualityCalls.margins, "item_margins", storeRange),
+		reportCall(qualityCalls.railFlags, "loyalty_rail_flags", {
+			p_store_ids: storeIds,
+		}),
 	];
 }
 
 export function qualityFollowUpCalls(): readonly ReportCallSpec[] {
 	return [];
+}
+
+export function railFlaggedStoreIds(
+	results: ThemeCallResults,
+): ReadonlySet<string> {
+	return new Set(
+		(results.rows(qualityCalls.railFlags, "loyalty_rail_flags") ?? [])
+			.filter((row) => row.flagged)
+			.flatMap((row) => (row.store_id === null ? [] : [row.store_id])),
+	);
 }
 
 export function itemRows(results: ThemeCallResults): readonly QualityItemRow[] {

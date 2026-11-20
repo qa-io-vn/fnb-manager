@@ -75,7 +75,7 @@ function card(
 }
 
 describe("the Chất lượng dữ liệu days call", () => {
-	it("plans its six calls and asks for every store's days, daily while the rows fit", () => {
+	it("plans its seven calls and asks for every store's days, daily while the rows fit", () => {
 		const context = themeContext("28d", [STORE_A, STORE_B]);
 		const days = qualityTheme
 			.primaryCalls(context)
@@ -97,6 +97,7 @@ describe("the Chất lượng dữ liệu days call", () => {
 			["summary", "data_quality_summary"],
 			["payments", "data_quality_payments"],
 			["margins", "item_margins"],
+			["railFlags", "loyalty_rail_flags"],
 		]);
 	});
 

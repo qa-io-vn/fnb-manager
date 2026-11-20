@@ -128,11 +128,13 @@ const minimalArgs: { [N in ThemeFunctionName]: ThemeArgs<N> } = {
 		from_date: "2026-10-28",
 		to_date: AS_OF,
 	},
+	loyalty_rail_flags: { p_store_ids: STORES },
 };
 
 const NO_ROWS_IN_THE_DEMO: ReadonlySet<ThemeFunctionName> = new Set([
 	"plan_kpi_review",
 	"redemption_summary",
+	"loyalty_rail_flags",
 ]);
 
 describe("createDemoReportSource", () => {

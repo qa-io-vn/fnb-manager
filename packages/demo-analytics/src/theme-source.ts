@@ -41,6 +41,7 @@ import {
 	ITEM_MARGINS_MAX_DAYS,
 	itemMargins,
 } from "./functions/item-margins.js";
+import { loyaltyRailFlags } from "./functions/loyalty-rail-flags.js";
 import {
 	MEMBER_SHARE_DAYS_AROUND,
 	memberShareByShift,
@@ -135,6 +136,7 @@ export const themeHandlers: ThemeHandlers = {
 	holiday_calendar: holidayCalendar,
 	plan_kpi_review: planKpiReview,
 	redemption_summary: redemptionSummary,
+	loyalty_rail_flags: loyaltyRailFlags,
 	member_share_by_shift: memberShareByShift,
 };
 
@@ -313,6 +315,7 @@ export const themeReads: ThemeReads = {
 	holiday_calendar: () => [],
 	plan_kpi_review: () => [],
 	redemption_summary: () => [],
+	loyalty_rail_flags: () => [],
 	member_share_by_shift: (args) =>
 		limitedSpan(
 			args.store_ids,

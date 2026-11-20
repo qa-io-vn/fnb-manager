@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+	COUPON_RAILS,
+	loyaltyRailFlagsRow,
+	type ThemeRow,
+} from "../../../../src/themes/contract.js";
+import {
 	buildComplianceCard,
 	isEInvoiceFinding,
 	receiptReading,
@@ -7,7 +12,11 @@ import {
 	storeFindings,
 } from "../../../../src/themes/quality/cards/compliance.js";
 import { qualityKeys } from "../../../../src/themes/quality/keys.js";
-import { qualityCalls } from "../../../../src/themes/quality/support.js";
+import {
+	qualityCalls,
+	qualityNeeds,
+	qualityPrimaryCalls,
+} from "../../../../src/themes/quality/support.js";
 import { STORE_A, STORE_B } from "../../fixtures.js";
 import { themeContext } from "../fixtures.js";
 import { cardInput, type SummaryRow, summaryRow } from "./support.js";
@@ -255,5 +264,106 @@ describe("the Chất lượng dữ liệu compliance card", () => {
 			qualityKeys.compliance.storesTable,
 		]);
 		expect(model.notice).toBeNull();
+	});
+});
+
+describe("the loyalty rail e-invoice flag (FR-CMP-10, #242)", () => {
+	type RailRow = ThemeRow<"loyalty_rail_flags">;
+	function railRow(storeId: string, overrides: Partial<RailRow> = {}): RailRow {
+		return {
+			store_id: storeId,
+			rail: "pos_payment_discount",
+			active_from: "2026-11-01T00:00:00+07:00",
+			e_invoice_status: "not_configured",
+			flagged: true,
+			...overrides,
+		};
+	}
+	function railCard(
+		rows: readonly SummaryRow[],
+		rails: readonly RailRow[] | undefined,
+	) {
+		return buildComplianceCard(
+			cardInput(themeContext("28d", [STORE_A, STORE_B]), {
+				[qualityCalls.summary]: rows,
+				...(rails === undefined ? {} : { [qualityCalls.railFlags]: rails }),
+			}),
+		);
+	}
+	const railFinding = {
+		finding: "railEInvoice",
+		findingKey: qualityKeys.finding.railEInvoice,
+		fixKey: qualityKeys.fix.pos.eInvoice,
+	};
+
+	it("the card needs the rail flags and the page asks for them with the selected stores", () => {
+		expect(qualityNeeds.compliance).toContain(qualityCalls.railFlags);
+		const call = qualityPrimaryCalls(
+			themeContext("28d", [STORE_A, STORE_B]),
+		).find((entry) => entry.key === qualityCalls.railFlags);
+		expect(call?.name).toBe("loyalty_rail_flags");
+		expect(call?.args).toEqual({ p_store_ids: [STORE_A, STORE_B] });
+	});
+
+	it("a flagged store gets the rail finding next to its e-invoice finding, with the POS fix", () => {
+		expect(storeFindings(summaryRow(STORE_A), false)).toEqual([]);
+		expect(storeFindings(summaryRow(STORE_A), true)).toEqual([railFinding]);
+		const model = railCard(
+			[
+				summaryRow(STORE_A, { e_invoice_status: "not_configured" }),
+				summaryRow(STORE_B),
+			],
+			[
+				railRow(STORE_A),
+				railRow(STORE_B, { flagged: false, e_invoice_status: "configured" }),
+			],
+		);
+		const findings = model.tables[0];
+		expect(findings?.rows.map((row) => row.cells.finding)).toEqual([
+			qualityKeys.finding.eInvoice.not_configured,
+			qualityKeys.finding.railEInvoice,
+		]);
+		expect(model.narrative.map((entry) => entry.key)).toContain(
+			qualityKeys.compliance.railEInvoice,
+		);
+		expect(model.headline.value).toBe(1);
+	});
+
+	it("an unflagged rail, a store without a rail and a failed or empty call add nothing", () => {
+		const rows = [summaryRow(STORE_A), summaryRow(STORE_B)];
+		for (const rails of [
+			undefined,
+			[],
+			[railRow(STORE_A, { flagged: false, e_invoice_status: "configured" })],
+			[railRow("99999999-9999-4999-8999-999999999999")],
+		]) {
+			const model = railCard(rows, rails);
+			expect(model.headline.value, JSON.stringify(rails)).toBe(0);
+			expect(model.narrative.map((entry) => entry.key)).not.toContain(
+				qualityKeys.compliance.railEInvoice,
+			);
+		}
+	});
+
+	it("the row schema refuses an unknown rail or status and accepts each rail", () => {
+		for (const rail of COUPON_RAILS) {
+			expect(
+				loyaltyRailFlagsRow.safeParse(railRow(STORE_A, { rail })).success,
+			).toBe(true);
+		}
+		expect(
+			loyaltyRailFlagsRow.safeParse({ ...railRow(STORE_A), rail: "cash" })
+				.success,
+		).toBe(false);
+		expect(
+			loyaltyRailFlagsRow.safeParse({
+				...railRow(STORE_A),
+				e_invoice_status: "maybe",
+			}).success,
+		).toBe(false);
+		expect(
+			loyaltyRailFlagsRow.safeParse({ ...railRow(STORE_A), flagged: "yes" })
+				.success,
+		).toBe(false);
 	});
 });
