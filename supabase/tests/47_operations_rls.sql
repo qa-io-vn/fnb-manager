@@ -545,7 +545,7 @@ select is(
     where n.nspname in ('public', 'app') and p.prosecdef and has_function_privilege('authenticated', p.oid, 'execute')
   ),
   array['app.accept_staff_notice', 'app.acknowledge_handover', 'app.acknowledge_incident', 'app.add_staff', 'app.can_manage_staff',
-        'app.can_manage_store_scope', 'app.can_publish_store_scope', 'app.can_read_store',
+        'app.can_manage_store_scope', 'app.can_manage_stores', 'app.can_publish_store_scope', 'app.can_publish_stores', 'app.can_read_store',
         'app.current_customer_id', 'app.current_customer_membership_ids', 'app.current_customer_tenant_id',
         'app.current_user_channel_ids', 'app.current_user_data_store_ids', 'app.current_user_data_tenant_ids',
         'app.current_user_loyalty_manager_store_ids', 'app.current_user_loyalty_store_ids', 'app.current_user_loyalty_tenant_ids', 'app.current_user_ops_store_ids',
@@ -558,11 +558,11 @@ select is(
         'app.withdraw_staff_ops_consent', 'public.customer_coupons', 'public.customer_home', 'public.customer_member_code', 'public.customer_redeem', 'public.customer_request_deletion',
         'public.customer_stop_marketing', 'public.customer_submit_claim', 'public.customer_vouchers', 'public.customer_wallet',
         'public.dsr_correct', 'public.dsr_delete', 'public.dsr_deletion_preview', 'public.dsr_due_soon', 'public.dsr_export', 'public.dsr_lookup', 'public.loyalty_member_lookup', 'public.loyalty_members_page', 'public.my_follow_oa', 'public.my_notifications',
-        'public.oa_event_counts', 'public.phone_masked', 'public.publish_legal_document', 'public.refresh_my_analytics',
+        'public.oa_event_counts', 'public.phone_masked', 'public.publish_legal_document', 'public.publish_strategy_plan', 'public.refresh_my_analytics',
         'public.retire_legal_document', 'public.set_loyalty_adjust_limits', 'public.set_my_muted_rules', 'public.staff_decide_loyalty_request', 'public.staff_loyalty_queue',
         'public.staff_member_lookup', 'public.staff_my_loyalty_requests', 'public.staff_record_checkin', 'public.staff_request',
         'public.staff_verify_redemption', 'public.start_bot_link', 'public.stop_my_notifications'],
-  'the only security definer functions a member may call are the membership helpers, the roster, pairing, staff notice and phone functions, settings and legal functions, today_store_totals, the phase 14b checklist editor, acknowledgement, reopening, photo retention and photo policy functions, the phase 15 announcement and request writers, the member''s own notification settings, the loyalty and customer-session membership helpers, the loyalty queue resolution, the customer and staff loyalty RPCs, the masked member reads of Khách hàng and the owner''s data-subject deletion, so no other function reads revenue past RLS'
+  'the only security definer functions a member may call are the membership helpers, the roster, pairing, staff notice and phone functions, settings and legal functions, today_store_totals, the phase 14b checklist editor, acknowledgement, reopening, photo retention and photo policy functions, the phase 15 announcement and request writers, the member''s own notification settings, the loyalty and customer-session membership helpers, the loyalty queue resolution, the customer and staff loyalty RPCs, the masked member reads of Khách hàng, the owner''s data-subject deletion and the strategy plan publisher with its two scope helpers, so no other function reads revenue past RLS'
 );
 select col_type_is('public', 'tenants', 'staff_revenue_visibility', 'text', 'tenants.staff_revenue_visibility is text');
 select col_default_is('public', 'tenants', 'staff_revenue_visibility', 'all', 'staff see their stores'' revenue until the owner restricts it');

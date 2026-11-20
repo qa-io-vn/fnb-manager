@@ -13,7 +13,6 @@ import {
 	DATA_PACK_FORMAT,
 	DATA_PACK_SCHEMA_VERSION,
 	type DataPack,
-	DataPackError,
 	dataPackSchema,
 	estimateTokens,
 	formatDecimal,
@@ -44,8 +43,6 @@ import {
 	validatePack,
 } from "../../src/index.js";
 import * as testing from "../../src/testing/index.js";
-
-const NOT_IMPLEMENTED = /^not_implemented: /;
 
 const STORE_A = "11111111-1111-4111-8111-111111111111";
 const STORE_B = "22222222-2222-4222-8222-222222222222";
@@ -118,6 +115,9 @@ describe("the public interface of @fnb/datapack", () => {
 				"INITIATIVE_FIELD_IDS",
 				"INITIATIVE_HEADING",
 				"KPI_EXCLUDED_METRIC_IDS",
+				"KPI_ON_TRACK_SLACK",
+				"KPI_TOO_EARLY_DAYS",
+				"PACK_ID_PREFIX_LENGTH",
 				"KPI_STATUSES",
 				"KPI_WINDOW_DAYS",
 				"MAX_INITIATIVES",
@@ -155,6 +155,7 @@ describe("the public interface of @fnb/datapack", () => {
 				"dataPackSchema",
 				"estimateTokens",
 				"formatDecimal",
+				"initiativeTitleKey",
 				"kpiStatus",
 				"lintPlan",
 				"normalizePlanText",
@@ -163,6 +164,7 @@ describe("the public interface of @fnb/datapack", () => {
 				"parsePack",
 				"parsePlan",
 				"planFrontMatterSchema",
+				"planKpiKey",
 				"planIssueParameter",
 				"planLintCodeOf",
 				"planRecord",
@@ -379,26 +381,30 @@ describe("the public interface of @fnb/datapack", () => {
 		expect(lintPlan(testing.samplePlan(pack), pack).ok).toBe(true);
 	});
 
-	it("throws not_implemented from every stub", () => {
-		const synchronous: (() => unknown)[] = [
-			() =>
-				kpiStatus({
-					baseline: 1,
-					target: 2,
-					current: null,
-					elapsedDays: 0,
-					horizonDays: 90,
-					band: null,
-				}),
-		];
-		for (const call of synchronous) {
-			expect(call).toThrow(NOT_IMPLEMENTED);
-			expect(call).toThrow(DataPackError);
-		}
-		const side = undefined as unknown as Parameters<typeof comparePlans>[0];
-		expect(() =>
-			comparePlans(side, side, { asOf: "2026-11-11", current: new Map() }),
-		).toThrow(NOT_IMPLEMENTED);
+	it("leaves no stub behind kpiStatus and comparePlans", () => {
+		expect(
+			kpiStatus({
+				baseline: 1,
+				target: 2,
+				current: null,
+				elapsedDays: 0,
+				horizonDays: 90,
+				band: null,
+			}).status,
+		).toBe("no_data");
+		const side = {
+			id: "p",
+			createdAt: "2026-11-12T00:00:00Z",
+			asOf: "2026-11-11",
+			horizon: "90d",
+			promptVersion: "1.0.0",
+			packId: "a".repeat(64),
+			kpis: {},
+			initiativeTitles: [],
+		} as const;
+		expect(
+			comparePlans(side, side, { asOf: "2026-11-11", current: new Map() }).kpis,
+		).toEqual([]);
 	});
 });
 

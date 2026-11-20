@@ -154,3 +154,7 @@ export function normalizePlan(text: string): NormalizedPlanText {
 export function normalizePlanText(text: string): string {
 	return normalizePlan(text).text;
 }
+
+export function initiativeTitleKey(title: string): string {
+	return title.normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
+}

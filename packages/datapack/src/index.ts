@@ -86,13 +86,16 @@ export {
 } from "./plan/codes.js";
 export {
 	comparePlans,
+	initiativeTitleKey,
 	type KpiLiveValues,
+	PACK_ID_PREFIX_LENGTH,
 	type PlanComparison,
 	type PlanComparisonHeader,
 	type PlanForComparison,
 	type PlanInitiativeComparison,
 	type PlanKpiComparison,
 	type PlanKpiSide,
+	planKpiKey,
 } from "./plan/compare.js";
 export {
 	type PlanFrontMatter,
@@ -139,7 +142,9 @@ export {
 	type PlanSectionId,
 } from "./plan/sections.js";
 export {
+	KPI_ON_TRACK_SLACK,
 	KPI_STATUSES,
+	KPI_TOO_EARLY_DAYS,
 	type KpiStatus,
 	type KpiStatusInput,
 	type KpiStatusResult,

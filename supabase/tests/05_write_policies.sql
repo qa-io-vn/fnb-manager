@@ -106,10 +106,12 @@ select throws_ok(
   'a target with a fraction of a đồng is refused'
 );
 
-select lives_ok(
+select throws_ok(
   $$ insert into public.strategy_reports (tenant_id, store_id, horizon, language, generated_via, title, content_markdown)
      values ('11111111-1111-4111-8111-111111111111', null, '90d', 'en', 'pasted', 'Demo plan', '# Demo plan') $$,
-  'owner inserts a strategy report for the own tenant'
+  '42501',
+  null,
+  'owner cannot insert a strategy report directly; the owner publishes through publish_strategy_plan (195_strategy_plans.sql)'
 );
 
 set local request.jwt.claims to '{"sub": "dddddddd-dddd-4ddd-8ddd-dddddddddddd", "role": "authenticated"}';

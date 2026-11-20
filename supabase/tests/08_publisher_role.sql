@@ -28,16 +28,20 @@ grant select on fixture to authenticated;
 set local role authenticated;
 set local request.jwt.claims to '{"sub": "ffffffff-ffff-4fff-8fff-ffffffffffff", "role": "authenticated"}';
 
-select lives_ok(
+select throws_ok(
   $$ insert into public.strategy_reports (tenant_id, store_id, horizon, language, generated_via, title, content_markdown)
      values ('11111111-1111-4111-8111-111111111111', null, '90d', 'vi', 'skill', 'Published plan', '# Published plan') $$,
-  'publisher inserts a tenant-wide plan for the own tenant'
+  '42501',
+  null,
+  'publisher cannot insert a plan directly; plans go through publish_strategy_plan (195_strategy_plans.sql)'
 );
 
-select lives_ok(
+select throws_ok(
   $$ insert into public.strategy_reports (tenant_id, store_id, horizon, language, generated_via, title, content_markdown)
      values ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-000000000001', '30d', 'vi', 'routine', 'Store plan', '# Store plan') $$,
-  'publisher inserts a store plan for a store of the own tenant'
+  '42501',
+  null,
+  'publisher cannot insert a store plan directly'
 );
 
 select throws_ok(
@@ -56,7 +60,7 @@ select throws_ok(
   'publisher cannot attribute a plan to another user'
 );
 
-select is((select count(*) from public.strategy_reports where title = 'Published plan'), 1::bigint, 'publisher reads the plan just published');
+select is((select count(*) from public.strategy_reports), 0::bigint, 'publisher reads no plan');
 select is((select count(*) from public.tenants), 1::bigint, 'publisher reads the own tenant');
 select is((select count(*) from public.stores), 2::bigint, 'publisher reads the stores of the own tenant');
 
