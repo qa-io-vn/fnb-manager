@@ -1,8 +1,37 @@
 # Build status and next steps
 
-Updated 2026-11-19. This page hands the work over between sessions and machines: what is built and verified, what comes next and in which order, and how to pick it up on another machine. Phase definitions, deliverables and acceptance criteria live in `docs/roadmap.md` and are not repeated here.
+Updated 2026-11-20. This page hands the work over between sessions and machines: what is built and verified, what comes next and in which order, and how to pick it up on another machine. Phase definitions, deliverables and acceptance criteria live in `docs/roadmap.md` and are not repeated here.
 
 Every phase so far went through the same loop: build, an independent review, fixes, then an independent verification that reruns everything CI runs plus checks against real data loaded on the local stack. Nothing below is called done unless that verification passed.
+
+## On `main` on 20 November 2026: phase 11b and the phase 11 acceptance runs
+
+Built and verified by its builder on this machine (`711692f`, `6d562c9`, `3aacf87`, `eb9d749`, `b45001a`); an independent review is still to come.
+
+- **Plans in the database** (#169): migration `strategy_plans` (applied locally) makes `strategy_reports` immutable plans written only by `publish_strategy_plan`, with SQL validators, a content hash, a rate limit of 20 a day and a publisher that reads no plan; pgTAP `195_strategy_plans.sql` (84 assertions) and the edited 05, 08 and 47 pass.
+- **KPI rules** (#171): `kpiStatus` and `comparePlans` in `@fnb/datapack` with a decision-table test.
+- **Publishing from the command line** (#170): `fnb publish-plan` signs in as the publisher member only and refuses a data login; the gated integration file (`DATAPACK_INTEGRATION=1`) passes scenarios 2 (publishing, visibility, rejections, the guard) and 4 (lint and SQL validators agree) on the local stack.
+- **Kế hoạch** (#172 to #176): the list with KPI follow-up, the plan detail with live KPI values, citation chips and safe Markdown, saving from the paste box, the comparison, and the demo's sample plan; unit tests, the demo spec and the live spec `e2e/live/plans.spec.ts` pass locally.
+- **Docs and the scan** (#177): strategy.md sections 10 to 13 (publishing, follow-up, Kế hoạch, the three routes and the monthly run), schema.md, api.md, web-app.md, security.md 5.5, user-guide.md, go-live.md step 9, ADR-040 to ADR-042 and an ADR-013 amendment; the local scan refuses the lines of `docs/private/forbidden-terms.txt` without printing them.
+- **Not built** (Could, cut candidates of #24): #197 `previous_plans` and #198 `fnb strategy-run` (G-80, G-81).
+
+**Verification, 20 November 2026** (baseline `b45001a`; real-tenant counts of `strategy_reports`, `sync_runs` and `analytics_refreshes` taken before and after every real-data step and unchanged; no fixture tenant or login left):
+
+| Line | Result |
+|---|---|
+| Unit, every package (`pnpm -r --no-bail --workspace-concurrency=1 --if-present run test --maxWorkers=2`) | every package green except three: the known design-tokens Biome shim and reports reference-sheet path failures, and `@fnb/runner`'s `sync-incremental-handler.test.ts`, which cannot import `@fnb/notify/outbox` while the notification stream's change is in progress (not phase 11); `@fnb/datapack` 596, `@fnb/web` 2,146, `@fnb/jobs` 276 with the gated suites skipped, `@fnb/demo-analytics` 464 with the PGlite parity |
+| pgTAP, every file (`supabase test db`) | pass, 123 files and 10,424 assertions |
+| Integration, `DATAPACK_INTEGRATION=1` `apps/jobs/test/integration/datapack.test.ts` | pass, 2 of 2 scenarios |
+| Web build with `check-bundle`, the CSP check and `check-size` | pass, initial JavaScript 386.7 kB of 400 |
+| Playwright demo and pages projects (`E2E_PORT_OFFSET=110`) | 202 of 204: `settings-layout.spec.ts` still expects the Cảnh báo placeholder that the notification stream replaced with its page, and the Pages Năm timing (13.0 s of 8 s) ran beside the unit run; neither is phase 11 code, and every plans and datapack spec passed |
+| Playwright live project | pass, 157 of 157, including `plans.spec.ts` |
+| `pnpm docs:check-api` | pass, 147 of 147 functions documented |
+| `node scripts/check-public-safe.mjs` with `docs/private/identifiers.txt` | pass, no findings |
+| 11a-2 acceptance on the real tenant (#145) | pass: browser and command-line packs for the same request identical apart from `generated_at` with equal `pack_id`, `valid` and aggregates only; the CI-mode pack built, checked, ignored by git, no `apps/jobs/docs` folder, output naming no tenant; all 18 trackable ids in the `kpi` table; one store, whose history is shorter than `ly28`, so `short_history/S1` is the gap (`partial_scope_window` applies to groups of stores); estimate within 30,000 with no trimming (counts kept privately); both rejection fixtures exit 3 |
+| Kế hoạch on the real tenant | pass: a temporary owner login built the pack in the browser, saved the lint-clean sample plan, saw three live KPI values with no "≠", a matching pack id, every chip resolved and the list's KPI summary, with no console error; the plan and the login were removed |
+| Path audit of phase 11a (#195), commits `763ed81` to `8c1b490` | pass: 234 paths, all under phase 11's packages, apps, migrations, tests and documents; none under `packages/notify`, `packages/sync`, `packages/runner` or `supabase/functions` |
+
+Known Windows-only failures, unchanged: the design-tokens Biome `.cmd` shim, the reports reference-sheet path test and the CRLF wording sheets. Still open for phase 11b: the owner's publisher login (#199), tuning run 1 and the owner's runs with the owner's own assistant (#178, #201; G-82), the monthly-routine decision and gate G5 (#202), the wording review (#200), and the CI wiring of the gated datapack file (G-83).
 
 ## On `main` since `c782fc8`, 18 and 19 November 2026
 
