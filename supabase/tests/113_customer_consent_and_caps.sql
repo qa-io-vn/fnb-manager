@@ -1,5 +1,5 @@
 begin;
-select plan(26);
+select plan(30);
 
 create temp table fx as
 select
@@ -151,6 +151,9 @@ select is(pg_temp.rows_of((select member_c from fx), 'birthday'), 'held:mini_app
 insert into public.loyalty_ledger (tenant_id, programme_id, membership_id, store_id, entry_kind, stamp_delta, point_delta, invoice_id, business_date, matched_path)
 select tenant_t, programme_t, member_d, store_1, 'earn', 1, 6, invoice_1, current_date, 'A' from fx;
 select is(pg_temp.rows_of((select member_d from fx), 'points_confirmed'), 'queued:mini_app:', 'a confirmed earn queues the points confirmation');
+-- the earn trigger stamps the row with the real clock; pin its life to the fixture's noon so the 24-hour expiry never depends on the time of day the suite runs
+update public.outbound_messages set expires_at = (select noon from fx) + interval '23 hours'
+where kind = 'points_confirmed' and subject_id = (select customer_d from fx);
 update public.consent_records set revoked_at = (select noon from fx) - interval '1 minute' where subject_id = (select customer_d from fx) and purpose = 'loyalty';
 select is(pg_temp.drain((select noon from fx) + interval '1 hour'), 0, 'nothing goes out after the loyalty consent is withdrawn');
 select is(pg_temp.rows_of((select member_d from fx), 'points_confirmed'), 'cancelled:mini_app:no_consent', 'the waiting confirmation is cancelled');
@@ -159,6 +162,23 @@ select is(
   null,
   'and nothing new is queued'
 );
+
+-- boundary values of the 24-hour expiry: the row expires at exactly the drain instant (cancelled), one second later it is still sent
+insert into public.invoices (id, tenant_id, store_id, pos_account_id, external_id, business_date, sold_at, gross_amount, net_amount, paid_amount, receipt_no)
+select v.id, tenant_t, store_1, account_t, v.ext, current_date, now() - interval '1 hour', 60000, 60000, 60000, v.ext
+from fx cross join (values ('88888888-8888-4888-8888-000000011302'::uuid, 'cc-inv-2'), ('88888888-8888-4888-8888-000000011303'::uuid, 'cc-inv-3')) as v (id, ext);
+insert into public.loyalty_ledger (tenant_id, programme_id, membership_id, store_id, entry_kind, stamp_delta, point_delta, invoice_id, business_date, matched_path)
+select tenant_t, programme_t, member_e, store_1, 'earn', 1, 6, '88888888-8888-4888-8888-000000011302'::uuid, current_date, 'A' from fx;
+insert into public.loyalty_ledger (tenant_id, programme_id, membership_id, store_id, entry_kind, stamp_delta, point_delta, invoice_id, business_date, matched_path)
+select tenant_t, programme_t, member_b, store_1, 'earn', 1, 6, '88888888-8888-4888-8888-000000011303'::uuid, current_date, 'A' from fx;
+select is(pg_temp.rows_of((select member_e from fx), 'points_confirmed'), 'queued:mini_app:', 'boundary: the second confirmation is queued');
+update public.outbound_messages set expires_at = (select noon from fx) + interval '1 hour'
+where kind = 'points_confirmed' and subject_id = (select customer_e from fx);
+update public.outbound_messages set expires_at = (select noon from fx) + interval '1 hour 1 second'
+where kind = 'points_confirmed' and subject_id = (select customer_b from fx);
+select is(pg_temp.drain((select noon from fx) + interval '1 hour'), 0, 'boundary: nothing is claimed for Zalo, the in-app delivery of the unexpired row is shown by its status below');
+select is(pg_temp.rows_of((select member_e from fx), 'points_confirmed'), 'cancelled:mini_app:expired', 'boundary: expiry at exactly the drain instant cancels');
+select is(pg_temp.rows_of((select member_b from fx), 'points_confirmed'), 'sent:mini_app:outside_window', 'boundary: one second before expiry it is delivered in the app');
 
 select app.link_customer_oa_user((select oa_t from fx), 'syn-cc-user-c', (select customer_c from fx));
 insert into public.data_subject_requests (id, tenant_id, subject_type, subject_id, contact, request_type, received_at)

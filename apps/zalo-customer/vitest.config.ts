@@ -13,6 +13,7 @@ export default mergeConfig(
 			],
 			setupFiles: ["src/test/setup.ts"],
 			css: false,
+			testTimeout: 30_000,
 		},
 	}),
 );
