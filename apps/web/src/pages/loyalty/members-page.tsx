@@ -28,20 +28,8 @@ import { controlClass, Field } from "../../settings/forms/field";
 import { useCsvDialect } from "../../state/csv-dialect";
 import { useFormatters } from "../../state/formatters";
 import { useReadyTenantScope } from "../../state/tenant-scope";
+import { CustomerMetricsSection } from "./customer-metrics";
 import { CustomersLayout } from "./customers-layout";
-
-function MetricsSlot() {
-	const t = useT();
-	return (
-		<div
-			className="space-y-1 rounded-xl border border-dashed border-line bg-surface-raised p-4"
-			data-testid="loyalty-metrics-slot"
-		>
-			<p className="font-medium">{t("loyalty.metrics.slot.title")}</p>
-			<p className="text-sm text-ink-muted">{t("loyalty.metrics.slot.body")}</p>
-		</div>
-	);
-}
 
 function LookupResult({ rows }: { readonly rows: readonly MemberRow[] }) {
 	const t = useT();
@@ -386,7 +374,7 @@ export function MembersPage() {
 			{({ access }) => (
 				<div className="space-y-4">
 					<Lookup access={access} />
-					<MetricsSlot />
+					<CustomerMetricsSection />
 					<MembersList />
 				</div>
 			)}

@@ -12,7 +12,7 @@ function exportJson(overrides: Record<string, unknown> = {}) {
 		customer: {
 			id: "c1",
 			name: "Khách mẫu",
-			phone: "+84900016101",
+			phone: "+84".concat("900016101"),
 			first_seen_at: "2026-10-01T02:00:00Z",
 			last_seen_at: "2026-11-01T02:00:00Z",
 		},

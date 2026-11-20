@@ -36,6 +36,7 @@ import type {
 	QueueItemRow,
 	ShiftAnomaly,
 } from "./source";
+import { EMPTY_METRICS } from "./testing";
 
 const TENANT = {
 	id: "33333333-3333-4333-8333-333333333333",
@@ -507,6 +508,9 @@ function fakeCustomers({ owner = true } = {}): FakeCustomers {
 		kind: "supabase",
 		calls,
 		privacy: createFakePrivacy(),
+		metrics: vi.fn(async () => EMPTY_METRICS),
+		rfm: vi.fn(async () => []),
+		cohorts: vi.fn(async () => []),
 		members: vi.fn(async () => {
 			calls.push("members");
 			return { rows: MEMBERS, next: null };

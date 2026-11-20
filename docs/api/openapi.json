@@ -34780,6 +34780,107 @@
 				"tags": ["(rpc) checklist_run_detail"]
 			}
 		},
+		"/rpc/cohort_retention": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "p_store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_first_month",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "p_months",
+						"required": true,
+						"type": "integer"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_as_of",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "cohort retention of the customers first seen in each of 1 to 12 months from the month of p_first_month: per cohort month and month offset (0 to 12, never past the month of p_as_of) the cohort size, the customers of the cohort who bought in cohort month + offset at the requested stores and their share (null for an empty cohort); only identified customers with a non-voided invoice at the requested stores belong to a cohort; for owners, managers and viewers (42501 otherwise), counts only",
+				"tags": ["(rpc) cohort_retention"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "cohort retention of the customers first seen in each of 1 to 12 months from the month of p_first_month: per cohort month and month offset (0 to 12, never past the month of p_as_of) the cohort size, the customers of the cohort who bought in cohort month + offset at the requested stores and their share (null for an empty cohort); only identified customers with a non-voided invoice at the requested stores belong to a cohort; for owners, managers and viewers (42501 otherwise), counts only",
+							"properties": {
+								"p_as_of": {
+									"format": "date",
+									"type": "string"
+								},
+								"p_first_month": {
+									"format": "date",
+									"type": "string"
+								},
+								"p_months": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": [
+								"p_store_ids",
+								"p_first_month",
+								"p_months",
+								"p_as_of"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "cohort retention of the customers first seen in each of 1 to 12 months from the month of p_first_month: per cohort month and month offset (0 to 12, never past the month of p_as_of) the cohort size, the customers of the cohort who bought in cohort month + offset at the requested stores and their share (null for an empty cohort); only identified customers with a non-voided invoice at the requested stores belong to a cohort; for owners, managers and viewers (42501 otherwise), counts only",
+				"tags": ["(rpc) cohort_retention"]
+			}
+		},
 		"/rpc/coupon_discount_days": {
 			"get": {
 				"parameters": [
@@ -34989,6 +35090,91 @@
 				},
 				"summary": "RPC for the customer Mini App: app.customer_member_code at the current time",
 				"tags": ["(rpc) customer_member_code"]
+			}
+		},
+		"/rpc/customer_metrics": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "p_store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_from",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_to",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the customer and loyalty metrics of docs/metrics.md over 1 to 50 stores and 1 to 366 business dates, as one row of aggregates read as the caller (42501 unless an owner, manager or viewer; 22023 for a bad store list or range): invoices and customer_capture_rate beside every customer figure; customers, repeat_customers and repeat_rate over customer-days of non-voided invoices with a customer_id; visit frequency (customer-days per active customer) over the 30 and 90 days ending on p_to; the loyalty liability (spendable outstanding points x point value x (1 - expected breakage)), the breakage rate (expired points over points of cohorts already past their expiry) and the reward cost rate (confirmed redeem value of the range over net revenue of member invoices) over the ledger rows of the requested stores and rows without a store; and the member frequency uplift against the identified non-members of the same stores, with the comparison group named in uplift_comparison and both sizes given, null below 10 customers in a group. A figure whose input is not measured is null, never 0. No phone, name or customer id leaves the function. customer_ltv needs costs and is not computed here",
+				"tags": ["(rpc) customer_metrics"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the customer and loyalty metrics of docs/metrics.md over 1 to 50 stores and 1 to 366 business dates, as one row of aggregates read as the caller (42501 unless an owner, manager or viewer; 22023 for a bad store list or range): invoices and customer_capture_rate beside every customer figure; customers, repeat_customers and repeat_rate over customer-days of non-voided invoices with a customer_id; visit frequency (customer-days per active customer) over the 30 and 90 days ending on p_to; the loyalty liability (spendable outstanding points x point value x (1 - expected breakage)), the breakage rate (expired points over points of cohorts already past their expiry) and the reward cost rate (confirmed redeem value of the range over net revenue of member invoices) over the ledger rows of the requested stores and rows without a store; and the member frequency uplift against the identified non-members of the same stores, with the comparison group named in uplift_comparison and both sizes given, null below 10 customers in a group. A figure whose input is not measured is null, never 0. No phone, name or customer id leaves the function. customer_ltv needs costs and is not computed here",
+							"properties": {
+								"p_from": {
+									"format": "date",
+									"type": "string"
+								},
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"p_to": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_ids", "p_from", "p_to"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the customer and loyalty metrics of docs/metrics.md over 1 to 50 stores and 1 to 366 business dates, as one row of aggregates read as the caller (42501 unless an owner, manager or viewer; 22023 for a bad store list or range): invoices and customer_capture_rate beside every customer figure; customers, repeat_customers and repeat_rate over customer-days of non-voided invoices with a customer_id; visit frequency (customer-days per active customer) over the 30 and 90 days ending on p_to; the loyalty liability (spendable outstanding points x point value x (1 - expected breakage)), the breakage rate (expired points over points of cohorts already past their expiry) and the reward cost rate (confirmed redeem value of the range over net revenue of member invoices) over the ledger rows of the requested stores and rows without a store; and the member frequency uplift against the identified non-members of the same stores, with the comparison group named in uplift_comparison and both sizes given, null below 10 customers in a group. A figure whose input is not measured is null, never 0. No phone, name or customer id leaves the function. customer_ltv needs costs and is not computed here",
+				"tags": ["(rpc) customer_metrics"]
 			}
 		},
 		"/rpc/customer_redeem": {
@@ -35650,6 +35836,51 @@
 				"tags": ["(rpc) decide_request"]
 			}
 		},
+		"/rpc/dsr_correct": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for owners and managers with every store (42501 for every other caller): corrects the customer's name in our copy on a correction request of their tenant (22023 for another request type, a completed or rejected request, any field but name, or a name that is empty, over 120 characters or holds control characters) and moves a received request to in_progress; the answer holds no value, and POS data is corrected in the POS first",
+							"properties": {
+								"p_field": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_request_id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_value": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_request_id", "p_field", "p_value"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners and managers with every store (42501 for every other caller): corrects the customer's name in our copy on a correction request of their tenant (22023 for another request type, a completed or rejected request, any field but name, or a name that is empty, over 120 characters or holds control characters) and moves a received request to in_progress; the answer holds no value, and POS data is corrected in the POS first",
+				"tags": ["(rpc) dsr_correct"]
+			}
+		},
 		"/rpc/dsr_delete": {
 			"post": {
 				"parameters": [
@@ -35685,6 +35916,222 @@
 				},
 				"summary": "RPC for owners with an unlimited scope (42501 for every other caller, including managers): app.dsr_erase_customer of a deletion request of their tenant at the current time, returning the logged counts and deadlines",
 				"tags": ["(rpc) dsr_delete"]
+			}
+		},
+		"/rpc/dsr_deletion_preview": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_request_id",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners and managers with every store (42501 for every other caller): the counts per table that dsr_delete would remove or redact for the customer of a data-subject request of their tenant (memberships, ledger rows, stamps, redemptions, claims, consent records, messages, linked invoices), so the confirmation lists them first; changes nothing; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
+				"tags": ["(rpc) dsr_deletion_preview"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for owners and managers with every store (42501 for every other caller): the counts per table that dsr_delete would remove or redact for the customer of a data-subject request of their tenant (memberships, ledger rows, stamps, redemptions, claims, consent records, messages, linked invoices), so the confirmation lists them first; changes nothing; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
+							"properties": {
+								"p_request_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_request_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners and managers with every store (42501 for every other caller): the counts per table that dsr_delete would remove or redact for the customer of a data-subject request of their tenant (memberships, ledger rows, stamps, redemptions, claims, consent records, messages, linked invoices), so the confirmation lists them first; changes nothing; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
+				"tags": ["(rpc) dsr_deletion_preview"]
+			}
+		},
+		"/rpc/dsr_due_soon": {
+			"get": {
+				"parameters": [
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "p_days",
+						"required": false,
+						"type": "integer"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the open data-subject requests (received or in progress) of the caller's tenants whose first response (until responded_at is set) or completion deadline is overdue or within p_days days (0 to 30, 3 by default), soonest first, with a state per deadline (done, overdue, due_soon, on_track); for owners and managers with every store (42501 for every other caller); no contact and no subject in the rows",
+				"tags": ["(rpc) dsr_due_soon"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the open data-subject requests (received or in progress) of the caller's tenants whose first response (until responded_at is set) or completion deadline is overdue or within p_days days (0 to 30, 3 by default), soonest first, with a state per deadline (done, overdue, due_soon, on_track); for owners and managers with every store (42501 for every other caller); no contact and no subject in the rows",
+							"properties": {
+								"p_days": {
+									"format": "int32",
+									"type": "integer"
+								}
+							},
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the open data-subject requests (received or in progress) of the caller's tenants whose first response (until responded_at is set) or completion deadline is overdue or within p_days days (0 to 30, 3 by default), soonest first, with a state per deadline (done, overdue, due_soon, on_track); for owners and managers with every store (42501 for every other caller); no contact and no subject in the rows",
+				"tags": ["(rpc) dsr_due_soon"]
+			}
+		},
+		"/rpc/dsr_export": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for owners and managers with every store (42501 for every other caller, a customer session included): every row of the customer of a data-subject request of their tenant as one JSON (the customer, the customer fields of invoices, memberships, ledger, stamps, claims, redemptions, consent records and message log rows, with the counts) and nothing of another customer or tenant; the full phone only for an owner, masked for a manager; moves a received request to in_progress; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
+							"properties": {
+								"p_request_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_request_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners and managers with every store (42501 for every other caller, a customer session included): every row of the customer of a data-subject request of their tenant as one JSON (the customer, the customer fields of invoices, memberships, ledger, stamps, claims, redemptions, consent records and message log rows, with the counts) and nothing of another customer or tenant; the full phone only for an owner, masked for a manager; moves a received request to in_progress; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
+				"tags": ["(rpc) dsr_export"]
+			}
+		},
+		"/rpc/dsr_lookup": {
+			"get": {
+				"parameters": [
+					{
+						"format": "text",
+						"in": "query",
+						"name": "p_phone",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the data-subject lookup (FR-CMP-04) for owners and managers with every store (42501 for every other caller, a customer session included), POST only (PT405 for a GET, the phone never in a URL): per customer of the caller's tenants with that phone, the masked phone, the memberships, the ledger entry count and stamp and point totals, the consent rows per purpose, the message count and the open requests; never the full phone",
+				"tags": ["(rpc) dsr_lookup"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the data-subject lookup (FR-CMP-04) for owners and managers with every store (42501 for every other caller, a customer session included), POST only (PT405 for a GET, the phone never in a URL): per customer of the caller's tenants with that phone, the masked phone, the memberships, the ledger entry count and stamp and point totals, the consent rows per purpose, the message count and the open requests; never the full phone",
+							"properties": {
+								"p_phone": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_phone"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the data-subject lookup (FR-CMP-04) for owners and managers with every store (42501 for every other caller, a customer session included), POST only (PT405 for a GET, the phone never in a URL): per customer of the caller's tenants with that phone, the masked phone, the memberships, the ledger entry count and stamp and point totals, the consent rows per purpose, the message count and the open requests; never the full phone",
+				"tags": ["(rpc) dsr_lookup"]
 			}
 		},
 		"/rpc/due_checklists": {
@@ -40236,6 +40683,80 @@
 					}
 				},
 				"tags": ["(rpc) retire_legal_document"]
+			}
+		},
+		"/rpc/rfm_quintiles": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid[]",
+						"in": "query",
+						"name": "p_store_ids",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_as_of",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the RFM segments of the identified customers of the requested stores over the 365 days ending on p_as_of: recency (reversed), frequency (customer-days) and the quintile score of each, grouped into champions, loyal, new, promising, at_risk, hibernating and lost, as the number of customers and their share per segment (a segment with no customer has no row); counts only, no customer id, for owners, managers and viewers (42501 otherwise)",
+				"tags": ["(rpc) rfm_quintiles"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "the RFM segments of the identified customers of the requested stores over the 365 days ending on p_as_of: recency (reversed), frequency (customer-days) and the quintile score of each, grouped into champions, loyal, new, promising, at_risk, hibernating and lost, as the number of customers and their share per segment (a segment with no customer has no row); counts only, no customer id, for owners, managers and viewers (42501 otherwise)",
+							"properties": {
+								"p_as_of": {
+									"format": "date",
+									"type": "string"
+								},
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": ["p_store_ids", "p_as_of"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "the RFM segments of the identified customers of the requested stores over the 365 days ending on p_as_of: recency (reversed), frequency (customer-days) and the quintile score of each, grouped into champions, loyal, new, promising, at_risk, hibernating and lost, as the number of customers and their share per segment (a segment with no customer has no row); counts only, no customer id, for owners, managers and viewers (42501 otherwise)",
+				"tags": ["(rpc) rfm_quintiles"]
 			}
 		},
 		"/rpc/same_weekday_baseline": {

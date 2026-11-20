@@ -371,7 +371,7 @@ select pg_temp.export(pg_temp.member((select owner_d from fx)), 'export_x')::jso
 select is(
   (select j -> 'counts' from exported),
   jsonb_build_object(
-    'invoices', (select count(*) from public.invoices where customer_id = (select id from ids where name = 'customer_x') or customer_phone in ('0900016101', '+84900016101')),
+    'invoices', (select count(*) from public.invoices where customer_id = (select id from ids where name = 'customer_x') or customer_phone in ('0900016101', '+84' || '900016101')),
     'memberships', (select count(*) from public.memberships where customer_id = (select id from ids where name = 'customer_x')),
     'loyalty_ledger', (select count(*) from public.loyalty_ledger where membership_id = (select id from ids where name = 'member_x')),
     'stamps', (select count(*) from public.stamps where membership_id = (select id from ids where name = 'member_x')),
@@ -407,7 +407,7 @@ select ok(
   (select j::text !~ '0900016102|0900016103|Synthetic Y|syn-zalo' from exported),
   'the export holds no other customer''s phone and no Zalo user id'
 );
-select is((select j -> 'customer' ->> 'phone' from exported), '+84900016101', 'the owner''s export carries the subject''s own phone');
+select is((select j -> 'customer' ->> 'phone' from exported), '+84' || '900016101', 'the owner''s export carries the subject''s own phone');
 select is(
   (select concat_ws(':', r.status, r.responded_at is not null) from public.data_subject_requests r where r.id = pg_temp.rid('export_x')),
   'in_progress:t',

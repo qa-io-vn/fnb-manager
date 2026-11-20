@@ -31,6 +31,9 @@ export type LoyaltyRead =
 	| "queue"
 	| "anomalies"
 	| "requests"
+	| "metrics"
+	| "rfm"
+	| "cohorts"
 	| "due";
 
 export function loyaltyQueryKey(
@@ -157,6 +160,48 @@ export function useAnomalies(
 		[storesPart(storeIds), from, to],
 		(source) => source.anomalies(storeIds, from, to),
 		enabled,
+	);
+}
+
+export function useCustomerMetrics(
+	storeIds: readonly string[],
+	from: IsoDate,
+	to: IsoDate,
+	enabled = true,
+) {
+	return useCustomerRead(
+		"metrics",
+		[storesPart(storeIds), from, to],
+		(source) => source.metrics(storeIds, from, to),
+		enabled && storeIds.length > 0,
+	);
+}
+
+export function useRfmSegments(
+	storeIds: readonly string[],
+	asOf: IsoDate,
+	enabled = true,
+) {
+	return useCustomerRead(
+		"rfm",
+		[storesPart(storeIds), asOf],
+		(source) => source.rfm(storeIds, asOf),
+		enabled && storeIds.length > 0,
+	);
+}
+
+export function useCohortRetention(
+	storeIds: readonly string[],
+	firstMonth: IsoDate,
+	months: number,
+	asOf: IsoDate,
+	enabled = true,
+) {
+	return useCustomerRead(
+		"cohorts",
+		[storesPart(storeIds), firstMonth, months, asOf],
+		(source) => source.cohorts(storeIds, firstMonth, months, asOf),
+		enabled && storeIds.length > 0,
 	);
 }
 

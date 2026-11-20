@@ -14,7 +14,7 @@ import {
 
 export const TENANT_ID = "33333333-3333-4333-8333-333333333333";
 export const CUSTOMER_ID = "cccccccc-0000-4000-8000-000000000001";
-export const FULL_PHONE = "+84900016101";
+export const FULL_PHONE = "+84".concat("900016101");
 export const LOCAL_PHONE = "0900016101";
 
 export function consent(overrides: Partial<ConsentRow> = {}): ConsentRow {

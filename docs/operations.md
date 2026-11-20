@@ -609,8 +609,8 @@ returning id, first_response_due_at, completion_due_at;
 
 2. **Find the data.** Members: the login e-mail (Supabase Auth), `tenant_members`, `notification_channels`, `outbound_messages`, `consent_records`; staff on the roster also `staff_roster` (name, role, stores, status, and the phone if they linked one) and `zalo_identities` (the per-app Zalo user id and display name). Customers, as the POS sends them: `customers` (phone, name), `invoices.customer_phone` and `customer_name`, and the raw payloads in `sale_payloads`. Cashiers: `shifts.cashier_name`. Backups hold copies for as long as they are kept.
 3. **Act.**
-   - Access or export: collect the rows privately and hand them over through a private channel, never through the repository.
-   - Correction: members in Auth and `tenant_members`; POS data in the POS itself, then run those days again (4.6).
+   - Access or export: on Khách hàng → Yêu cầu về dữ liệu, record the request linked to the customer (look the customer up on Tra cứu dữ liệu, which keeps the phone masked) and press Tải dữ liệu (JSON), or run `select public.dsr_export('<request id>')`; hand the file over through a private channel, never through the repository or a group chat. The file holds every row of that customer and nothing of anyone else.
+   - Correction: members in Auth and `tenant_members`; a customer's name in our copy with Sửa tên on the request (`public.dsr_correct`); POS data in the POS itself, then run those days again (4.6).
    - Deletion of a member: 4.14. Of a customer: remove the data in the POS first, because a re-sync of those days brings back what the POS still holds. Then an owner with every store runs the deletion on the request (the customer's own "Rời chương trình" in the Mini App records one with the customer named; a request recorded by hand needs `subject_id` set to the `customers.id` first):
 
 ```sql

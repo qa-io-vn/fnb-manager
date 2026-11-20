@@ -215,7 +215,71 @@ export interface ShiftAnomaly {
 	readonly checkinsWithoutInvoice: number;
 }
 
+export interface CustomerMetrics {
+	readonly invoices: number;
+	readonly identifiedInvoices: number;
+	readonly captureRate: number | null;
+	readonly customers: number;
+	readonly repeatCustomers: number;
+	readonly repeatRate: number | null;
+	readonly activeCustomers30d: number;
+	readonly visitFrequency30d: number | null;
+	readonly activeCustomers90d: number;
+	readonly visitFrequency90d: number | null;
+	readonly outstandingPoints: number | null;
+	readonly liability: number | null;
+	readonly breakageRate: number | null;
+	readonly memberRevenue: number;
+	readonly rewardsRedeemedValue: number | null;
+	readonly rewardCostRate: number | null;
+	readonly memberCustomers: number;
+	readonly comparisonCustomers: number;
+	readonly memberVisitFrequency: number | null;
+	readonly comparisonVisitFrequency: number | null;
+	readonly uplift: number | null;
+	readonly upliftComparison: string;
+}
+
+export const RFM_SEGMENTS = [
+	"champions",
+	"loyal",
+	"new",
+	"promising",
+	"at_risk",
+	"hibernating",
+	"lost",
+] as const;
+
+export type RfmSegment = (typeof RFM_SEGMENTS)[number];
+
+export interface RfmSegmentRow {
+	readonly segment: RfmSegment;
+	readonly customers: number;
+	readonly share: number;
+}
+
+export interface CohortRetentionRow {
+	readonly cohortMonth: IsoDate;
+	readonly monthOffset: number;
+	readonly cohortSize: number;
+	readonly retained: number;
+	readonly retention: number | null;
+}
+
 export interface CustomerSource {
+	/** Aggregates only: no phone, name or customer id comes back. */
+	metrics(
+		storeIds: readonly string[],
+		from: IsoDate,
+		to: IsoDate,
+	): Promise<CustomerMetrics>;
+	rfm(storeIds: readonly string[], asOf: IsoDate): Promise<RfmSegmentRow[]>;
+	cohorts(
+		storeIds: readonly string[],
+		firstMonth: IsoDate,
+		months: number,
+		asOf: IsoDate,
+	): Promise<CohortRetentionRow[]>;
 	readonly privacy: PrivacySource;
 	readonly kind: "supabase";
 	/** The tenant's members, masked, newest first; storeIds are the tenant's stores in the caller's scope. */

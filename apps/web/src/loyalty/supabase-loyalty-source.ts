@@ -34,6 +34,7 @@ import {
 	QUEUE_REASONS,
 	QUEUE_STATES,
 	type QueueItemRow,
+	RFM_SEGMENTS,
 	type ShiftAnomaly,
 	type StaffPhoneRow,
 } from "./source";
@@ -94,6 +95,48 @@ const staffPhoneRow = z.object({
 export const MEMBERS_PAGE_FUNCTION = "loyalty_members_page";
 export const MEMBER_LOOKUP_FUNCTION = "loyalty_member_lookup";
 export const SHIFT_ANOMALIES_FUNCTION = "loyalty_shift_anomalies";
+export const CUSTOMER_METRICS_FUNCTION = "customer_metrics";
+export const COHORT_RETENTION_FUNCTION = "cohort_retention";
+export const RFM_FUNCTION = "rfm_quintiles";
+
+const customerMetricsRow = z.object({
+	invoices: numeric,
+	identified_invoices: numeric,
+	customer_capture_rate: nullableNumeric,
+	customers: numeric,
+	repeat_customers: numeric,
+	repeat_rate: nullableNumeric,
+	active_customers_30d: numeric,
+	visit_frequency_30d: nullableNumeric,
+	active_customers_90d: numeric,
+	visit_frequency_90d: nullableNumeric,
+	outstanding_points: nullableNumeric,
+	loyalty_liability: nullableNumeric,
+	breakage_rate: nullableNumeric,
+	member_revenue: numeric,
+	rewards_redeemed_value: nullableNumeric,
+	reward_cost_rate: nullableNumeric,
+	member_customers: numeric,
+	comparison_customers: numeric,
+	member_visit_frequency: nullableNumeric,
+	comparison_visit_frequency: nullableNumeric,
+	member_frequency_uplift: nullableNumeric,
+	uplift_comparison: z.string(),
+});
+
+const rfmRow = z.object({
+	segment: z.enum(RFM_SEGMENTS),
+	customers: numeric,
+	share: numeric,
+});
+
+const cohortRow = z.object({
+	cohort_month: z.string(),
+	month_offset: numeric,
+	cohort_size: numeric,
+	retained: numeric,
+	retention: nullableNumeric,
+});
 
 const memberColumns = {
 	membership_id: z.string(),
@@ -654,6 +697,70 @@ export function createSupabaseCustomerSource(
 				entryId: outcome.entry_id,
 				refusal: outcome.refusal,
 			};
+		},
+		async metrics(storeIds, from, to) {
+			const [row] = await fetchOnce(
+				customerMetricsRow,
+				client.rpc(CUSTOMER_METRICS_FUNCTION, {
+					p_store_ids: [...storeIds],
+					p_from: from,
+					p_to: to,
+				}),
+			);
+			if (row === undefined) throw new Error("no customer metrics row");
+			return {
+				invoices: row.invoices,
+				identifiedInvoices: row.identified_invoices,
+				captureRate: row.customer_capture_rate,
+				customers: row.customers,
+				repeatCustomers: row.repeat_customers,
+				repeatRate: row.repeat_rate,
+				activeCustomers30d: row.active_customers_30d,
+				visitFrequency30d: row.visit_frequency_30d,
+				activeCustomers90d: row.active_customers_90d,
+				visitFrequency90d: row.visit_frequency_90d,
+				outstandingPoints: row.outstanding_points,
+				liability: row.loyalty_liability,
+				breakageRate: row.breakage_rate,
+				memberRevenue: row.member_revenue,
+				rewardsRedeemedValue: row.rewards_redeemed_value,
+				rewardCostRate: row.reward_cost_rate,
+				memberCustomers: row.member_customers,
+				comparisonCustomers: row.comparison_customers,
+				memberVisitFrequency: row.member_visit_frequency,
+				comparisonVisitFrequency: row.comparison_visit_frequency,
+				uplift: row.member_frequency_uplift,
+				upliftComparison: row.uplift_comparison,
+			};
+		},
+		async rfm(storeIds, asOf) {
+			const rows = await fetchOnce(
+				rfmRow,
+				client.rpc(RFM_FUNCTION, { p_store_ids: [...storeIds], p_as_of: asOf }),
+			);
+			return rows.map((row) => ({
+				segment: row.segment,
+				customers: row.customers,
+				share: row.share,
+			}));
+		},
+		async cohorts(storeIds, firstMonth, months, asOf) {
+			const rows = await fetchOnce(
+				cohortRow,
+				client.rpc(COHORT_RETENTION_FUNCTION, {
+					p_store_ids: [...storeIds],
+					p_first_month: firstMonth,
+					p_months: months,
+					p_as_of: asOf,
+				}),
+			);
+			return rows.map((row) => ({
+				cohortMonth: row.cohort_month,
+				monthOffset: row.month_offset,
+				cohortSize: row.cohort_size,
+				retained: row.retained,
+				retention: row.retention,
+			}));
 		},
 		async anomalies(storeIds, from, to) {
 			const rows: ShiftAnomaly[] = [];

@@ -90,6 +90,15 @@ export const ownFunctions: Readonly<Partial<Record<string, string>>> = {
 	discount_days: "item_discount_days",
 	modifier_line_share: "data_quality_summary",
 	consent_coverage: "data_quality_summary",
+	repeat_rate: "customer_metrics",
+	visit_frequency_30d: "customer_metrics",
+	visit_frequency_90d: "customer_metrics",
+	cohort_retention: "cohort_retention",
+	rfm_quintiles: "rfm_quintiles",
+	loyalty_liability: "customer_metrics",
+	breakage_rate: "customer_metrics",
+	reward_cost_rate: "customer_metrics",
+	member_frequency_uplift: "customer_metrics",
 };
 
 export const supersededBy: Readonly<Partial<Record<string, string>>> = {

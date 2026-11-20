@@ -2168,7 +2168,7 @@ returns text
 
 ### 3.24 Data-subject requests (phase 17a)
 
-Migration `data_subject_deletion` (#252, the database part) carries out a customer's deletion request; the look-up, export and correction functions and the web pages (#254) are still to come. Rules and the log are in [schema.md](schema.md#data-subject-deletion).
+Migration `data_subject_deletion` (#252) carries out a customer's deletion request; migrations `data_subject_tooling` and `data_subject_deletion_preview` add the look-up, export, correction, deletion preview and the due-soon queue, which the pages of Khách hàng → Tra cứu dữ liệu and Yêu cầu về dữ liệu (#254) call. Their callers are owners and managers with every store; no customer session reaches them. Rules and the log are in [schema.md](schema.md#data-subject-deletion).
 
 #### `public.dsr_delete`
 
@@ -2182,6 +2182,111 @@ returns jsonb
 - **Notes:** takes a `deletion` request of subject `customer` that names the customer, as [`customer_request_deletion`](#publiccustomer_request_deletion) records it (`22023` for any other type, a staff subject, a request without a subject and a rejected request). In one transaction it removes the customer's memberships with their ledger rows, stamps, claims, check-ins, redemptions (a held pool code is quarantined), queue items, refusals and loyalty requests, the consent records, the Mini App logins with their Auth users and the `customers` row, and redacts the customer's message rows; it is the only way past the append-only rules of `loyalty_ledger` and `consent_records`. It completes the request and answers `{"request_id", "action": "deletion", "status": "completed", "already_done", "acted_at", "counts", "first_response_due_at", "completion_due_at", "responded_on_time", "completed_on_time"}`, where `counts` gives the rows per table; the same object is logged in `data_subject_request_actions`. A second call answers the logged action with `already_done` true and deletes nothing. Invoices keep the customer fields the POS sent until the POS is corrected and the days are synced again.
 
 Tests: pgTAP `91_data_subject_deletion.sql`.
+
+#### `public.dsr_lookup`
+
+```sql
+public.dsr_lookup(p_phone text)
+returns TABLE(customer_id uuid, tenant_id uuid, name text, phone_masked text, first_seen_at timestamp with time zone, memberships integer, ledger_entries integer, stamp_total integer, point_total integer, consents jsonb, messages integer, open_requests integer)
+```
+
+- **Status:** built (#252); the lookup of Khách hàng → Tra cứu dữ liệu calls it.
+- **Who may call:** owners and managers with every store; a store-limited manager, staff, viewers, the publisher and every customer session get `42501`. Through PostgREST only by POST, so the phone travels in the request body: a GET is refused with `PT405`. `anon` and `service_role` may not execute it.
+- **Notes:** the customers of the caller's tenants whose phone reads as `p_phone` in any written form, newest first, at most 20, nothing for a text that is not a phone. Each row is a summary: the masked phone (never the full one, even for an owner), the memberships, the ledger entry count and the stamp and point totals, the consent rows per purpose (`id`, `purpose`, `channel`, `policy_version`, `granted_at`, `revoked_at`, `active`), the message count and the open requests. `customer_id` is what a request is attached to.
+
+Tests: pgTAP `161_data_subject_tooling.sql`, `120_security_function_matrix.sql`; Playwright `e2e/live/privacy-requests.spec.ts`.
+
+#### `public.dsr_export`
+
+```sql
+public.dsr_export(p_request_id uuid)
+returns jsonb
+```
+
+- **Status:** built (#252); the export action of Yêu cầu về dữ liệu calls it and hands the JSON over as a private download.
+- **Who may call:** owners and managers with every store of the request's tenant; everyone else, and an unknown or foreign request id, gets `42501` (so ids cannot be probed). `22023` for a request about staff, naming no customer, rejected, or whose customer is gone.
+- **Notes:** every row of the request's customer and of nothing else: `request`, `customer`, `invoices` (the customer fields only), `memberships`, `loyalty_ledger`, `stamps`, `receipt_claims`, `redemptions`, `consent_records`, `messages` (the log row, not the text) and `counts` equal to the array lengths. The full phone is in the file for an owner and masked for a manager, in the customer and the invoices. A received request moves to `in_progress`, which stamps the first response.
+
+Tests: pgTAP `161_data_subject_tooling.sql`; vitest `privacy/export-shape.test.ts`.
+
+#### `public.dsr_correct`
+
+```sql
+public.dsr_correct(p_request_id uuid, p_field text, p_value text)
+returns jsonb
+```
+
+- **Status:** built (#252).
+- **Who may call:** owners and managers with every store of the request's tenant; `42501` for everyone else.
+- **Notes:** corrects the customer's `name` in our copy on a `correction` request and answers `{request_id, field, changed, status}` without the value. `22023` for another request type, a completed or rejected request, any field but `name` (the phone and the sales data are corrected in the POS first and the days synced again), and a name that is empty, over 120 characters or holds control characters. A received request moves to `in_progress`.
+
+Tests: pgTAP `161_data_subject_tooling.sql`.
+
+#### `public.dsr_deletion_preview`
+
+```sql
+public.dsr_deletion_preview(p_request_id uuid)
+returns jsonb
+```
+
+- **Status:** built (#252); the confirmation of the delete action lists these counts.
+- **Who may call:** owners and managers with every store of the request's tenant (a manager sees the counts but cannot delete); `42501` for everyone else; `22023` as for `dsr_export`.
+- **Notes:** the counts `dsr_delete` would remove or redact (`memberships`, `loyalty_ledger`, `stamps`, `redemptions`, `receipt_claims`, `consent_records`, `outbound_messages`, `invoices_unlinked`). It changes nothing, not even the request's status.
+
+Tests: pgTAP `162_data_subject_deletion_preview.sql`.
+
+#### `public.dsr_due_soon`
+
+```sql
+public.dsr_due_soon(p_days integer DEFAULT 3)
+returns TABLE(request_id uuid, tenant_id uuid, request_type dsr_type, status dsr_status, received_at timestamp with time zone, first_response_due_at timestamp with time zone, completion_due_at timestamp with time zone, responded_at timestamp with time zone, first_response_state text, completion_state text)
+```
+
+- **Status:** built (#252); the banner of Yêu cầu về dữ liệu calls it.
+- **Who may call:** owners and managers with every store; `42501` for everyone else; `22023` for `p_days` outside 0 to 30 or null.
+- **Notes:** the open (`received` or `in_progress`) requests of the caller's tenants whose first response (until `responded_at` is set) or completion deadline is overdue or within `p_days` days, soonest first. Each deadline has a state: `done` (a first response already given), `overdue`, `due_soon` or `on_track`. No contact and no subject in the rows. The alert rule `dsr_due_soon` (owners and managers, `days` 1 to 10, default 3, one tenant-level episode with the overdue and due-soon counts, cool-down 24 hours) is evaluated by `app.evaluate_dsr_due_soon(tenant, at)`, which the runner does not call yet (docs/test-gaps.md).
+
+Tests: pgTAP `161_data_subject_tooling.sql`; vitest `privacy/request-deadline.test.ts`.
+
+### 3.25 Customer metrics (phase 17a)
+
+Migration `customer_metrics` (#251). The three functions are reports (`security invoker`) that return aggregates only: no phone, name or customer id. They are for owners, managers and viewers (`42501` for staff, the publisher and customer sessions), take 1 to 50 stores (`22023` otherwise) and read the stores in the caller's loyalty scope. Metric definitions are in [metrics.md](metrics.md#customers-and-loyalty).
+
+#### `public.customer_metrics`
+
+```sql
+public.customer_metrics(p_store_ids uuid[], p_from date, p_to date)
+returns TABLE(invoices integer, identified_invoices integer, customer_capture_rate numeric, customers integer, repeat_customers integer, repeat_rate numeric, active_customers_30d integer, visit_frequency_30d numeric, active_customers_90d integer, visit_frequency_90d numeric, outstanding_points integer, loyalty_liability numeric, breakage_rate numeric, member_revenue numeric, rewards_redeemed_value numeric, reward_cost_rate numeric, member_customers integer, comparison_customers integer, member_visit_frequency numeric, comparison_visit_frequency numeric, member_frequency_uplift numeric, uplift_comparison text)
+```
+
+- **Status:** built (#251); the cards of Khách hàng → Thành viên call it for the last 30 days.
+- **Notes:** one row over 1 to 366 business dates (`22023` otherwise). `customer_capture_rate` (non-voided invoices with a phone or a customer id over all non-voided invoices) comes with every customer figure. A visit is a customer-day, so two invoices on one day are one visit. `repeat_rate` is the customers with at least two visit days over the customers with one; `visit_frequency_30d` and `_90d` are visit days per active customer over the 30 and 90 days ending on `p_to`. `loyalty_liability` is the spendable outstanding points (pending earns without their confirm row left out) times the programme's point value times one minus its expected breakage; `breakage_rate` the expired points over the points of cohorts already past their expiry; `reward_cost_rate` the confirmed redeem value of the range over the net revenue of member invoices. These three read the ledger rows of the requested stores and the rows without a store. `member_frequency_uplift` is the visit frequency of members (joined before the range) over that of identified non-members of the same stores, minus one, with `member_customers`, `comparison_customers` and the comparison group named in `uplift_comparison` (`identified_non_members`: not matched on tenure and not a hold-out); null below 10 customers in a group. A figure whose input is not measured is null, never 0. `customer_ltv` needs costs and is not computed here.
+
+Tests: pgTAP `163_customer_metrics.sql` (hand calculations), `120_security_function_matrix.sql`; Playwright `e2e/live/customer-metrics.spec.ts`.
+
+#### `public.cohort_retention`
+
+```sql
+public.cohort_retention(p_store_ids uuid[], p_first_month date, p_months integer, p_as_of date)
+returns TABLE(cohort_month date, month_offset integer, cohort_size integer, retained integer, retention numeric)
+```
+
+- **Status:** built (#251).
+- **Notes:** 1 to 12 cohort months from the month of `p_first_month` (`22023` otherwise). A cohort is the identified customers first seen in that month who have a non-voided invoice at the requested stores. Per cohort and month offset 0 to 12, never past the month of `p_as_of`: the cohort size, the customers who bought in cohort month plus offset and their share, null for an empty cohort.
+
+Tests: pgTAP `163_customer_metrics.sql`.
+
+#### `public.rfm_quintiles`
+
+```sql
+public.rfm_quintiles(p_store_ids uuid[], p_as_of date)
+returns TABLE(segment text, customers integer, share numeric)
+```
+
+- **Status:** built (#251).
+- **Notes:** the identified customers of the 365 days ending on `p_as_of`, scored by quintile on recency (reversed), frequency (visit days) and ranked with the customer id as tie-break, grouped into `champions` (R and F at least 4), `loyal` (at least 3), `new` (R at least 4, F 1), `promising` (R at least 3), `at_risk` (F at least 3), `hibernating` (F 2) and `lost`; the number of customers and their share per segment, none for an empty segment.
+
+Tests: pgTAP `163_customer_metrics.sql`.
 
 ## 4. Tables and views
 
