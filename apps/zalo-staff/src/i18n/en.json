@@ -94,5 +94,6 @@
 	"phone.continue": "Continue",
 	"phone.working": "Linking…",
 	"phone.later": "Not now",
-	"phone.failed": "Could not link the phone number. Please try again later."
+	"phone.failed": "Could not link the phone number. Please try again later.",
+	"lazy.failed": "This screen did not load. Check the connection and try again."
 }

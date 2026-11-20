@@ -113,6 +113,11 @@ test("offline, the app says so on every screen and drops the notice when the con
 	context,
 }) => {
 	await openHome(page, "?member=1");
+	// the other screens load their own scripts after the first screen; wait until they are all here
+	await expect(page.locator("html")).toHaveAttribute(
+		"data-screens-preloaded",
+		"true",
+	);
 	await context.setOffline(true);
 	await expect(page.getByTestId("offline")).toContainText(
 		"Bạn đang ngoại tuyến.",

@@ -1,26 +1,58 @@
 import type { MemberProfile } from "@fnb/zalo-mini";
 import type { MiniAppRoute, MiniAppTab } from "@fnb/zalo-mini/react";
-import { LoyaltyQueueScreen } from "./approvals/loyalty-queue";
-import { MyRequestsScreen } from "./approvals/my-requests";
-import { CheckInScreen } from "./check-in/check-in-screen";
 import { HomeScreen } from "./home/home-screen";
 import { HomeIcon, NoticeIcon, ProfileIcon, ShiftIcon } from "./icons";
-import { LOYALTY_PATHS } from "./loyalty/env";
-import { LoyaltyHomeCard } from "./loyalty/home-card";
+import { lazyCard, lazyScreen } from "./lazy";
+import { LOYALTY_PATHS, type LoyaltyPath } from "./loyalty/env";
 import { HomeLoyaltyContext } from "./loyalty/home-slot";
-import { LoyaltyRoute } from "./loyalty/route";
-import { MemberLookupScreen } from "./member-lookup/member-lookup-screen";
-import { ProfileScreen } from "./profile/profile-screen";
-import { RedemptionScreen } from "./redemption/redemption-screen";
-import { ShiftTaskCards } from "./shift/home-cards";
 import { HomeTasksContext } from "./shift/home-slot";
-import { ShiftScreen } from "./shift/shift-screen";
-import { TEAM_PATHS } from "./team/env";
-import { TEAM_HOME_PARTS } from "./team/home-cards";
-import { HomeTeamContext } from "./team/home-slot";
-import { teamRoutes } from "./team/screens";
+import { TEAM_PATHS, type TeamPath } from "./team/env";
+import { HomeTeamContext, type HomeTeamParts } from "./team/home-slot";
+
+const ShiftScreen = lazyScreen(
+	() => import("./shift/shift-screen"),
+	(m) => m.ShiftScreen,
+);
+const ProfileScreen = lazyScreen(
+	() => import("./profile/profile-screen"),
+	(m) => m.ProfileScreen,
+);
+const LoyaltyPage = lazyScreen(
+	() => import("./loyalty/pages"),
+	(m) => m.default,
+);
+const TeamPage = lazyScreen(
+	() => import("./team/pages"),
+	(m) => m.default,
+);
+const ShiftTaskCards = lazyCard(
+	() => import("./shift/home-cards"),
+	(m) => m.ShiftTaskCards,
+);
+const LoyaltyHomeCard = lazyCard(
+	() => import("./loyalty/home-card"),
+	(m) => m.LoyaltyHomeCard,
+);
+const TEAM_HOME_PARTS: HomeTeamParts = {
+	notices: lazyCard(
+		() => import("./team/home-cards"),
+		(m) => m.TEAM_HOME_PARTS.notices,
+	),
+	requests: lazyCard(
+		() => import("./team/home-cards"),
+		(m) => m.TEAM_HOME_PARTS.requests,
+	),
+};
 
 export { EntryGate } from "./onboarding/entry-gate";
+
+function teamPaths(): TeamPath[] {
+	return Object.values(TEAM_PATHS);
+}
+
+function loyaltyPaths(): LoyaltyPath[] {
+	return Object.values(LOYALTY_PATHS);
+}
 
 export const routes: readonly MiniAppRoute[] = [
 	{
@@ -37,57 +69,11 @@ export const routes: readonly MiniAppRoute[] = [
 	},
 	{ path: "/ca-lam", element: <ShiftScreen /> },
 	{ path: "/ca-nhan", element: <ProfileScreen /> },
-	...teamRoutes(),
-	{
-		path: LOYALTY_PATHS.checkIn,
-		element: (
-			<LoyaltyRoute
-				titleKey="checkin.title"
-				testId="check-in"
-				screen={CheckInScreen}
-			/>
-		),
-	},
-	{
-		path: LOYALTY_PATHS.redeem,
-		element: (
-			<LoyaltyRoute
-				titleKey="redeem.title"
-				testId="redemption"
-				screen={RedemptionScreen}
-			/>
-		),
-	},
-	{
-		path: LOYALTY_PATHS.lookup,
-		element: (
-			<LoyaltyRoute
-				titleKey="lookup.title"
-				testId="member-lookup"
-				screen={MemberLookupScreen}
-			/>
-		),
-	},
-	{
-		path: LOYALTY_PATHS.queue,
-		element: (
-			<LoyaltyRoute
-				titleKey="queue.title"
-				testId="loyalty-queue"
-				screen={LoyaltyQueueScreen}
-			/>
-		),
-	},
-	{
-		path: LOYALTY_PATHS.requests,
-		element: (
-			<LoyaltyRoute
-				titleKey="requests.title"
-				testId="my-requests"
-				screen={MyRequestsScreen}
-			/>
-		),
-	},
+	...teamPaths().map((path) => ({ path, element: <TeamPage path={path} /> })),
+	...loyaltyPaths().map((path) => ({
+		path,
+		element: <LoyaltyPage path={path} />,
+	})),
 ];
 
 export const tabs: readonly MiniAppTab[] = [

@@ -11,6 +11,11 @@ import { parseArgs } from "node:util";
 
 export const MAX_VERSION_BYTES = 10_000_000;
 export const MAX_FILE_BYTES = 3_000_000;
+// The script a Mini App must fetch before its first screen: the entry chunks
+// and everything they import statically (app-config.json lists them). Screens
+// opened later load their own chunks, so they do not count here. The paint
+// budget in the browser e2e measures the same thing as time on a phone.
+export const MAX_FIRST_LOAD_JS_BYTES = 500_000;
 export const FORBIDDEN_PACKAGES = ["echarts", "zrender"];
 
 export function listFiles(directory) {
@@ -52,6 +57,40 @@ export function checkSizes(files, limits = {}) {
 		}
 	}
 	return { totalBytes, largest: files[0] ?? null, problems };
+}
+
+export function firstLoadScripts(directory) {
+	const configPath = join(directory, "app-config.json");
+	if (!existsSync(configPath)) return null;
+	const config = JSON.parse(readFileSync(configPath, "utf8"));
+	return [...(config.listSyncJS ?? []), ...(config.listAsyncJS ?? [])];
+}
+
+export function checkFirstLoad(directory, limit = MAX_FIRST_LOAD_JS_BYTES) {
+	const scripts = firstLoadScripts(directory);
+	if (scripts === null) return { bytes: 0, problems: [] };
+	const problems = [];
+	let bytes = 0;
+	for (const script of scripts) {
+		const path = join(directory, script);
+		if (!existsSync(path)) {
+			problems.push(
+				`${script} is listed as a first-load script but is not in the build`,
+			);
+			continue;
+		}
+		bytes += statSync(path).size;
+	}
+	if (bytes > limit) {
+		problems.push(
+			`the first screen loads ${kilobytes(bytes)} of script, over the ${kilobytes(limit)} budget; load screens that are not the home screen on demand`,
+		);
+	}
+	return { bytes, problems };
+}
+
+function kilobytes(bytes) {
+	return `${Math.round(bytes / 1000)} kB`;
 }
 
 function megabytes(bytes) {
@@ -138,6 +177,15 @@ function run(argv) {
 			`budget: ${dist}: ${files.length} files, ${megabytes(result.totalBytes)} of ${megabytes(MAX_VERSION_BYTES)}; largest ${result.largest?.path ?? "none"} ${megabytes(result.largest?.bytes ?? 0)} of ${megabytes(MAX_FILE_BYTES)}`,
 		);
 		problems.push(...result.problems.map((problem) => `${dist}: ${problem}`));
+		const firstLoad = checkFirstLoad(directory);
+		if (firstLoad.bytes > 0) {
+			console.log(
+				`budget: ${dist}: first load ${kilobytes(firstLoad.bytes)} of ${kilobytes(MAX_FIRST_LOAD_JS_BYTES)} of script`,
+			);
+		}
+		problems.push(
+			...firstLoad.problems.map((problem) => `${dist}: ${problem}`),
+		);
 	}
 	for (const problem of problems) console.error(`budget: ${problem}`);
 	return problems.length === 0 ? 0 : 1;

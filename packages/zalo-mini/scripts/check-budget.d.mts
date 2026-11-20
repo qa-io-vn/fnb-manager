@@ -16,6 +16,7 @@ export interface SizeCheck {
 
 export declare const MAX_VERSION_BYTES: number;
 export declare const MAX_FILE_BYTES: number;
+export declare const MAX_FIRST_LOAD_JS_BYTES: number;
 export declare const FORBIDDEN_PACKAGES: readonly string[];
 export declare function listFiles(directory: string): BuiltFile[];
 export declare function checkSizes(
@@ -26,3 +27,8 @@ export declare function findForbiddenPackages(
 	appDirectory: string,
 	forbidden?: readonly string[],
 ): string[];
+export declare function firstLoadScripts(directory: string): string[] | null;
+export declare function checkFirstLoad(
+	directory: string,
+	limit?: number,
+): { readonly bytes: number; readonly problems: string[] };

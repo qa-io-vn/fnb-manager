@@ -94,5 +94,6 @@
 	"phone.continue": "Tiếp tục",
 	"phone.working": "Đang liên kết…",
 	"phone.later": "Để sau",
-	"phone.failed": "Chưa liên kết được số điện thoại. Hãy thử lại sau."
+	"phone.failed": "Chưa liên kết được số điện thoại. Hãy thử lại sau.",
+	"lazy.failed": "Chưa tải được màn hình này. Kiểm tra kết nối rồi thử lại."
 }

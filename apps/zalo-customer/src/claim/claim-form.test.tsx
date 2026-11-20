@@ -124,7 +124,7 @@ describe("claiming a receipt", () => {
 		expect(within(form).getByTestId("claim-date")).toHaveValue(
 			isoDateIn(Date.now()),
 		);
-		expect(within(form).getByTestId("claims-left")).toHaveTextContent(
+		expect(await within(form).findByTestId("claims-left")).toHaveTextContent(
 			"Hôm nay bạn còn 3 lần gửi hóa đơn.",
 		);
 		expect(

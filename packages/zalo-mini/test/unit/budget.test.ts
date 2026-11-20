@@ -4,11 +4,13 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import {
+	checkFirstLoad,
 	checkSizes,
 	FORBIDDEN_PACKAGES,
 	findForbiddenPackages,
 	listFiles,
 	MAX_FILE_BYTES,
+	MAX_FIRST_LOAD_JS_BYTES,
 	MAX_VERSION_BYTES,
 } from "../../scripts/check-budget.mjs";
 import {
@@ -106,6 +108,76 @@ describe("size budgets", () => {
 
 	it("fail an empty build", () => {
 		expect(checkSizes([]).problems).toEqual(["the build folder is empty"]);
+	});
+});
+
+describe("first-load script budget", () => {
+	function build(name: string, sizes: Record<string, number>, listed: object) {
+		const dist = join(workspace, name, "dist");
+		mkdirSync(dist, { recursive: true });
+		for (const [file, bytes] of Object.entries(sizes)) {
+			writeSized(join(dist, "assets", file), bytes);
+		}
+		writeFileSync(join(dist, "app-config.json"), JSON.stringify(listed));
+		return dist;
+	}
+
+	it("is 500 kB of script for the entry chunks and what they import", () => {
+		expect(MAX_FIRST_LOAD_JS_BYTES).toBe(500_000);
+	});
+
+	it("counts the entry and its static imports, not the screens loaded on demand", () => {
+		const dist = build(
+			"first-load-ok",
+			{ "entry.js": 150_000, "vendor.js": 320_000, "screen.js": 900_000 },
+			{ listSyncJS: ["assets/entry.js"], listAsyncJS: ["assets/vendor.js"] },
+		);
+		expect(checkFirstLoad(dist)).toEqual({ bytes: 470_000, problems: [] });
+	});
+
+	it("fails a single bundle that holds every screen", () => {
+		const dist = build(
+			"first-load-heavy",
+			{ "index.js": 664_000 },
+			{ listSyncJS: ["assets/index.js"], listAsyncJS: [] },
+		);
+		expect(checkFirstLoad(dist).problems).toEqual([
+			"the first screen loads 664 kB of script, over the 500 kB budget; load screens that are not the home screen on demand",
+		]);
+	});
+
+	it("fails a listed script that is missing from the build", () => {
+		const dist = build(
+			"first-load-gone",
+			{},
+			{
+				listSyncJS: ["assets/gone.js"],
+				listAsyncJS: [],
+			},
+		);
+		expect(checkFirstLoad(dist).problems).toEqual([
+			"assets/gone.js is listed as a first-load script but is not in the build",
+		]);
+	});
+
+	it("skips a folder without app-config.json", () => {
+		expect(checkFirstLoad(join(workspace, "no-config"))).toEqual({
+			bytes: 0,
+			problems: [],
+		});
+	});
+
+	it("makes the command exit 1 and name the budget", () => {
+		const app = fixtureApp("cli-first-load");
+		const dist = join(app, "dist");
+		writeSized(join(dist, "assets", "index.js"), 600_000);
+		writeFileSync(
+			join(dist, "app-config.json"),
+			JSON.stringify({ listSyncJS: ["assets/index.js"], listAsyncJS: [] }),
+		);
+		const result = runCli(["--app", app, "--dist", "dist"]);
+		expect(result.status).toBe(1);
+		expect(result.output).toContain("the first screen loads 600 kB of script");
 	});
 });
 

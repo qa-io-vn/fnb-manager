@@ -1,21 +1,48 @@
 import type { MiniAppRoute, MiniAppTab } from "@fnb/zalo-mini/react";
 import { lazy, type ReactNode, Suspense } from "react";
-import { ClaimScreen } from "./claim/claim-form";
 import { CustomerDataProvider } from "./data/customer-data";
 import { OfflineNotice } from "./data/offline";
 import { StoreLinkProvider } from "./data/store-link";
 import { HomeScreen } from "./home/home-screen";
-import { StoreScreen } from "./home/store-screen";
 import { AccountIcon, CardIcon, HomeIcon } from "./icons";
-import { JoinFlow } from "./join/join-flow";
-import { SettingsScreen } from "./settings/settings-screen";
-import { MemberCodeScreen } from "./wallet/member-code-screen";
-import {
-	RewardsScreen,
-	VoucherScreen,
-	VouchersScreen,
-} from "./wallet/vouchers";
-import { WalletScreen } from "./wallet/wallet-screen";
+import { lazyScreen } from "./lazy";
+
+const ClaimScreen = lazyScreen(
+	() => import("./claim/claim-form"),
+	(m) => m.ClaimScreen,
+);
+const StoreScreen = lazyScreen(
+	() => import("./home/store-screen"),
+	(m) => m.StoreScreen,
+);
+const JoinFlow = lazyScreen(
+	() => import("./join/join-flow"),
+	(m) => m.JoinFlow,
+);
+const SettingsScreen = lazyScreen(
+	() => import("./settings/settings-screen"),
+	(m) => m.SettingsScreen,
+);
+const MemberCodeScreen = lazyScreen(
+	() => import("./wallet/member-code-screen"),
+	(m) => m.MemberCodeScreen,
+);
+const RewardsScreen = lazyScreen(
+	() => import("./wallet/vouchers"),
+	(m) => m.RewardsScreen,
+);
+const VoucherScreen = lazyScreen(
+	() => import("./wallet/vouchers"),
+	(m) => m.VoucherScreen,
+);
+const VouchersScreen = lazyScreen(
+	() => import("./wallet/vouchers"),
+	(m) => m.VouchersScreen,
+);
+const WalletScreen = lazyScreen(
+	() => import("./wallet/wallet-screen"),
+	(m) => m.WalletScreen,
+);
 
 export { demoSessionClient } from "./data/source";
 
