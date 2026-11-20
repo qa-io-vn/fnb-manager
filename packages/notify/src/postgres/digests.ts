@@ -415,17 +415,13 @@ export async function enqueueDigestResends(
 				message.channelId,
 				input.revision,
 			);
-			const existing = await transaction<{ dedupe_key: string }[]>`
-				select dedupe_key
-				from public.outbound_messages
-				where tenant_id = ${input.due.tenantId}::uuid
-					and dedupe_key is not null
-					and starts_with(dedupe_key, ${prefix}::text)
+			const [numbered] = await transaction<{ n: number }[]>`
+				select app.next_resend_number(
+					${input.due.tenantId}::uuid,
+					${prefix.slice(0, -":resend:".length)}::text
+				)::integer as n
 			`;
-			const number = nextResendNumber(
-				prefix,
-				existing.map((row) => row.dedupe_key),
-			);
+			const number = Number(numbered?.n ?? 1);
 			const [row] = await transaction<{ id: string | null }[]>`
 				select app.enqueue_message(
 					${input.due.tenantId}::uuid,

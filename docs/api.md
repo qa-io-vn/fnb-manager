@@ -744,7 +744,7 @@ Status: the tables, policies and triggers are verified locally (pgTAP `05_write_
 
 Phase 12 put the dispatcher, digest and linking functions in `app`, where only `postgres` may run them; `authenticated` executes only the check helpers that policies and constraints call (`alert_rule_params_valid`, `channel_kind_available`, `notify_secret_name_valid`, `facts_are_count_only`, `current_user_channel_ids`). Owners link and remove destinations with `fnb notify link` (from the owner's machine; refused in CI) and `fnb notify unlink`; `fnb digest` queues the digests and `fnb notify tick` sends.
 
-Migration `member_notification_settings` (#229) adds five functions with which a member manages their own notifications from the staff app's "Nhận thông báo" screen (Cá nhân). Each is `security definer` with an empty `search_path`, has one signature, is executable by `authenticated` only (not `anon`, not `service_role`), checks the caller with `auth.uid()` and touches the caller's own rows only: no owner or manager links, mutes or stops another member's notifications through them. None returns an address, a chat id, a secret name or a configuration value. The linking rule of phase 12 holds: the app shows the notice `ops-notifications-v1` before it asks for a code, a code becomes a pending destination, and the destination turns active, with the member's `notifications` consent recorded (`method = 'bot_reply'`), only when the member answers the Bot's notice with "ĐỒNG Ý" in the Bot chat (`bot-webhook`, section 5); until then only the link messages reach the member. The functions for Settings → Cảnh báo on the web (#61: the overview, links by e-mail, the test button) are still to come. Callers: the staff app's live client (`apps/zalo-staff/src/team/client.ts`). Tests: pgTAP `100_member_notifications_read.sql` to `104_follow_oa_and_access.sql` and `47_operations_rls.sql`.
+Migration `member_notification_settings` (#229) adds five functions with which a member manages their own notifications from the staff app's "Nhận thông báo" screen (Cá nhân). Each is `security definer` with an empty `search_path`, has one signature, is executable by `authenticated` only (not `anon`, not `service_role`), checks the caller with `auth.uid()` and touches the caller's own rows only: no owner or manager links, mutes or stops another member's notifications through them. None returns an address, a chat id, a secret name or a configuration value. The linking rule of phase 12 holds: the app shows the notice `ops-notifications-v1` before it asks for a code, a code becomes a pending destination, and the destination turns active, with the member's `notifications` consent recorded (`method = 'bot_reply'`), only when the member answers the Bot's notice with "ĐỒNG Ý" in the Bot chat (`bot-webhook`, section 5); until then only the link messages reach the member. The functions for Settings → Cảnh báo on the web follow below. Callers: the staff app's live client (`apps/zalo-staff/src/team/client.ts`). Tests: pgTAP `100_member_notifications_read.sql` to `104_follow_oa_and_access.sql` and `47_operations_rls.sql`.
 
 #### `public.my_notifications`
 
@@ -800,6 +800,107 @@ returns text
 - **Status:** built (phase 15, #229).
 - **Who may call:** any member of the tenant; anyone else gets `42501`.
 - **Notes:** the OA id the staff app passes to the SDK's `followOA`, after its one-line purpose: the OA of the brand whose Zalo App the caller last signed in through (`zalo_identities.updated_at`), else the one OA of the brands meeting the caller's store scope, else null (no OA, or several and no sign-in to choose). Nothing else of `oas` is exposed; the table stays readable by owners and managers only.
+
+Migrations `notification_resend`, `notification_web_api` and `notification_rule_views` (#61, #62, #63) add the functions behind Settings → Cảnh báo and Bản tin on the web. Each has one signature, an empty `search_path`, is executable by `authenticated` only and returns no address, chat id, destination secret name or configuration value. Tests: pgTAP `182_notify_web_api.sql`. Callers: `apps/web/src/settings/notify/supabase-notify-source.ts`.
+
+#### `public.notify_overview`
+
+```sql
+public.notify_overview(p_tenant_id uuid)
+returns jsonb
+```
+
+- **Status:** built (#61).
+- **Who may call:** any member of the tenant except a publisher; anyone else, or a caller without a session, gets `42501`; a null tenant gives `22023`.
+- **Notes:** returns `{"role", "store_limited", "schedule_enabled", "last_tick_at", "last_dispatch_at", "dispatcher_secrets", "destinations", "held_24h", "uncertain_24h", "failed_24h", "pending_links", "zalo_bot_month", "zalo_bot_quota"}`. Owners and managers with every store get the tenant's destinations, every other member their own. Each destination is `{"id", "kind", "provider", "label", "status", "enabled", "disabled_reason", "address_hint", "mine", "has_member", "member_role", "member_email", "store_ids", "muted_rules", "timezone", "linked_at", "last_ok_at", "last_error_code", "last_error_at", "consecutive_failures", "secret_reported"}`; `member_email` (the member's login) and `dispatcher_secrets` (the `NOTIFY_` names the last dispatcher reported, names only) are filled for owners with every store only. The counts cover the destinations the caller sees; `zalo_bot_quota` is the Basic plan's 3,000 a month.
+
+#### `public.start_channel_link`
+
+```sql
+public.start_channel_link(p_tenant_id uuid, p_kind channel_kind, p_label text DEFAULT NULL::text)
+returns jsonb
+```
+
+- **Status:** built (#61).
+- **Who may call:** a member other than a publisher, for themselves (`42501` otherwise, or for a destination the owner removed). `22023` for `webhook` or another kind, a label over 60 characters, or more than 5 links an hour (hint `rate_limited`); `23505` when that chat is already linked.
+- **Notes:** returns `{"channel_id", "status", "link_code", "expires_at", "bot_name"}`. For `zalo_bot` and `telegram` it behaves as `start_bot_link`: a pending destination and a code returned once, kept as a hash, valid 15 minutes; the destination turns active and the consent is recorded only at the member's own "ĐỒNG Ý". For `email` it activates the member's login address at once (`address_hint` only) and records the `notifications` consent with `method = 'web_session'`; `link_code` is then null. It wakes the dispatcher.
+
+#### `public.update_destination`
+
+```sql
+public.update_destination(p_channel_id uuid, p_enabled boolean DEFAULT NULL::boolean, p_label text DEFAULT NULL::text, p_store_ids uuid[] DEFAULT NULL::uuid[], p_clear_store_ids boolean DEFAULT false, p_muted_rules text[] DEFAULT NULL::text[], p_timezone text DEFAULT NULL::text)
+returns jsonb
+```
+
+- **Status:** built (#61).
+- **Who may call:** the destination's member (not a publisher), or an owner with every store for any destination of the tenant; anyone else gets `42501`.
+- **Notes:** a null argument keeps the value. `22023` for a label that is empty or over 60 characters, store ids that are not 1 to 50 stores of the tenant or leave the member's own scope, store ids together with `p_clear_store_ids`, a muted key outside `alert_rule_catalog`, or a zone that is not an IANA name. Returns `{"id", "label", "enabled", "status", "store_ids", "muted_rules", "timezone"}`.
+
+#### `public.remove_destination`
+
+```sql
+public.remove_destination(p_channel_id uuid)
+returns integer
+```
+
+- **Status:** built (#61).
+- **Who may call:** as `update_destination`.
+- **Notes:** deletes the destination; its `queued` and `held` messages become `cancelled` with `decision = 'destination_removed'`; the member's `notifications` consent stays. Returns the number cancelled.
+
+#### `public.send_test_message`
+
+```sql
+public.send_test_message(p_channel_id uuid)
+returns uuid
+```
+
+- **Status:** built (#61).
+- **Who may call:** the destination's member, or an owner or manager with every store; anyone else gets `42501`.
+- **Notes:** queues one `test` message (ignores the window and the caps, never the consent or the destination's state) and wakes the dispatcher; returns its id. `22023` for a webhook, a destination that is not active or failing and enabled, or past one test a minute or 5 an hour per destination (hint `rate_limited`).
+
+#### `public.notify_message_status`
+
+```sql
+public.notify_message_status(p_message_id uuid)
+returns jsonb
+```
+
+- **Status:** built (#110).
+- **Who may call:** any signed-in user; `security invoker`, so the row is returned only when the caller's RLS on `outbound_messages` lets them read it (null otherwise).
+- **Notes:** `{"id", "status", "decision", "hold_reason", "not_before", "sent_at", "last_error_code"}`, never the text. The test button polls it.
+
+#### `public.resend_message`
+
+```sql
+public.resend_message(p_message_id uuid)
+returns uuid
+```
+
+- **Status:** built (#63).
+- **Who may call:** owners and managers with every store of the message's tenant; anyone else, or a message they cannot see, gets `42501`.
+- **Notes:** only an `uncertain` or `failed` digest, correction or alert (`22023` otherwise, also when the destination was removed or a digest's text was purged). Inserts a new queued row with `resend_of` set and the dedupe key `<key>:resend:<n>`, numbered by `app.next_resend_number` under an advisory lock (the numbering `fnb digest --resend` uses too); the original row stays as evidence. Wakes the dispatcher.
+
+#### `public.effective_alert_rules`
+
+```sql
+public.effective_alert_rules(p_tenant_id uuid, p_store_id uuid DEFAULT NULL::uuid)
+returns TABLE(rule_key text, category text, delivery text, enabled boolean, severity alert_severity, roles tenant_role[], params jsonb, cooldown interval, source text, override_id uuid, tenant_override_id uuid, store_scoped boolean, sort_order integer)
+```
+
+- **Status:** built (#62).
+- **Who may call:** `authenticated`; `security invoker` and `language sql` over `alert_rule_catalog` and `alert_rules`, so RLS decides which overrides count: owners and managers read the tenant's rows and their stores' rows, other roles see the catalogue defaults.
+- **Notes:** one row per catalogue rule, in catalogue order; columns from the store row over the tenant row over the catalogue, `params` merged key by key; `source` is `catalogue`, `tenant` or `store`. Equals `app.effective_alert_rule` for an owner.
+
+#### `public.effective_channel_policies`
+
+```sql
+public.effective_channel_policies(p_tenant_id uuid)
+returns TABLE(channel_kind channel_kind, message_class message_class, allowed boolean, window_start time without time zone, window_end time without time zone, max_per_day smallint, cap_window text, max_per_month smallint, critical_bypass boolean, label text, label_position text, requires_consent boolean, api_send_allowed boolean, source text, policy_id uuid, note text)
+```
+
+- **Status:** built (#62).
+- **Who may call:** `authenticated`; `security invoker` over `channel_policies`: global rows for everyone, tenant overrides for its owners and managers.
+- **Notes:** per channel kind and message class the tenant override when readable, else the global row, with `source` (`global` or `tenant`), its id and its note. Equals `app.effective_channel_policy` for an owner.
 
 ### 3.6 Consent and legal
 
@@ -1948,6 +2049,8 @@ returns jsonb
 
 #### `public.staff_member_lookup`
 
+- **Rate limit (#317):** a phone that finds no member counts against the caller (10) and the store (30) within 15 minutes; once either is locked a phone lookup answers `{"found": false, "locked": true, "retry_at"}` for 15 minutes without reading. A lookup by `p_membership_id` is neither counted nor locked. The function is now volatile (POST only through PostgREST).
+
 ```sql
 public.staff_member_lookup(p_store_id uuid, p_phone text DEFAULT NULL::text, p_membership_id uuid DEFAULT NULL::uuid)
 returns jsonb
@@ -2057,6 +2160,8 @@ returns TABLE(coupon_id uuid, reward_key text, name text, description text, rewa
 
 #### `public.customer_redeem`
 
+- **Rate limit (#317):** every call counts against the customer and the store (10 and 100 within 15 minutes); beyond that the answer is `{"redemption_id": null, "state": null, "refusal": "rate_limited", "retry_at", "stamps", "points", "store_code", "store_name"}` for 15 minutes and nothing is held.
+
 ```sql
 public.customer_redeem(p_coupon uuid, p_store text)
 returns jsonb
@@ -2093,6 +2198,7 @@ returns jsonb
   - `used`: confirmed by an invoice (`used_at` the confirmation), or already verified by someone else, or by the same person longer ago than the check-in window (15 minutes by default; `reason` `already_verified`, `used_at` the verification), so a code is not applied twice on the fallback rail.
   - `expired`: the hold ended (`expired_at`).
   - `released`: the hold was given back, or cancelled.
+  - `locked` (#317): the caller sent 5 unknown codes, or the store 20, within 15 minutes; for 15 minutes the code is not looked up and the answer adds `retry_at`. Only `unknown` counts (`app.code_attempt_policies`); a lock raises the alert `code_guessing_lockout` to owners and managers.
 
 #### `public.coupon_discount_days`
 
@@ -2134,6 +2240,8 @@ returns TABLE(membership_id uuid, tenant_id uuid, programme_id uuid, phone_maske
 - **Notes:** the memberships of the tenants of `p_store_ids` (the web passes the tenant's stores in scope; `null` means every store in the caller's loyalty scope, so every tenant where it reads loyalty), newest first by `joined_at` then membership id. Stores outside the caller's scope are ignored, so a store of another tenant gives no row. Membership is tenant-wide: a store-limited manager lists every member of the tenant, and its balances are scoped as above. Keyset paging: pass the `page_key` of the last row as `p_after` for the next page; `p_limit` is 1 to 1,000 (the web asks for 101 to know whether a next page exists). `p_search` narrows to one membership id, or to the members whose phone ends in 1 to 3 digits, the digits the masked phone already shows. A limit outside 1 to 1,000, a `p_after` that is not a `page_key`, or any other search text gives `22023`. No column holds a full phone.
 
 #### `public.loyalty_member_lookup`
+
+- **Rate limit (#317):** a readable phone that finds no member counts against the caller (10) and the tenant (30) within 15 minutes; once either is locked the call is refused with `PT429` (HTTP 429) for 15 minutes before anything is read.
 
 ```sql
 public.loyalty_member_lookup(p_phone text)
