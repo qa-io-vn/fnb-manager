@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { isLocalStackConfigured } from "../support/local-stack";
+import { expect, test } from "../support/policy-test";
 import {
 	createSettingsFixture,
 	FIXTURE_SLUG_PREFIX,

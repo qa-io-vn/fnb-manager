@@ -1,9 +1,9 @@
 import { isExcludedDay, VIETNAM_HOLIDAYS } from "@fnb/core";
-import { expect, type Locator, type Page, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { writeCodeOf } from "../../src/settings/source";
 import { createSupabaseSettingsSource } from "../../src/settings/supabase-settings-source";
 import { isLocalStackConfigured } from "../support/local-stack";
+import { expect, type Locator, type Page, test } from "../support/policy-test";
 import {
 	type ExpectedConsoleError,
 	expectNoConsoleErrors,

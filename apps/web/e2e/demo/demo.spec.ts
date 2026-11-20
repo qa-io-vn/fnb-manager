@@ -1,4 +1,3 @@
-import { expect, test } from "@playwright/test";
 import {
 	checkPage,
 	expectHorizontallyInside,
@@ -9,6 +8,7 @@ import {
 	parseExactMoney,
 	waitForCharts,
 } from "../support/checks";
+import { expect, test } from "../support/policy-test";
 import {
 	expectNoConsoleErrors,
 	reportUrl,

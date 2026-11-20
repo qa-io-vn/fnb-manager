@@ -1,5 +1,5 @@
-import { expect, type Locator, type Page, test } from "@playwright/test";
 import { checkPage, parseExactMoney, waitForCharts } from "../support/checks";
+import { expect, type Locator, type Page, test } from "../support/policy-test";
 import {
 	cardIds,
 	cards,

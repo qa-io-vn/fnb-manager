@@ -5,7 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build": "vite build && node scripts/check-bundle.mjs && node scripts/check-size.mjs",
+		"build": "vite build && node scripts/check-bundle.mjs && node scripts/check-csp.mjs && node scripts/check-size.mjs",
+		"check:csp": "node scripts/check-csp.mjs",
 		"preview": "vite preview",
 		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
 		"test": "vitest run",

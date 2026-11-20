@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { expect, type Locator, type Page, test } from "@playwright/test";
 import { checkPage } from "../support/checks";
+import { expect, type Locator, type Page, test } from "../support/policy-test";
 import {
 	expectNoConsoleErrors,
 	REPORT_CLOCK,

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../support/policy-test";
 
 const middayInHoChiMinhCity = new Date("2026-11-04T05:30:00.000Z");
 

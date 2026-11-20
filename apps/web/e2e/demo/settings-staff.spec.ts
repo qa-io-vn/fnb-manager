@@ -1,6 +1,6 @@
-import { expect, type Locator, type Page, test } from "@playwright/test";
 import { checkPage, expectNoSeriousAxeViolations } from "../support/checks";
 import { clipboardText } from "../support/clipboard";
+import { expect, type Locator, type Page, test } from "../support/policy-test";
 import {
 	expectNoConsoleErrors,
 	REPORT_CLOCK,

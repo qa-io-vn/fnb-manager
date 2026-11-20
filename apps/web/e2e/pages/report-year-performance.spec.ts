@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "../support/policy-test";
 import { cardIds, expectEveryCardSettled } from "../support/reports";
 
 const PERFORMANCE_BUDGET_MS = 8_000;

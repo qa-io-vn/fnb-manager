@@ -1222,7 +1222,8 @@ The staff app's local configuration, `playwright.local.config.ts`, lists 7 tests
 | Documentation links and index | `scripts/check-doc-links.mjs` (with `--self-test`): every relative link and `#anchor` of every tracked Markdown file resolves, none points into `docs/private/` or an ignored path, and [README.md](README.md) lists every document | CI `code` job; `pnpm verify` |
 | Secrets only on steps | `scripts/check-workflow-secrets.mjs` (with `--self-test`): no `secrets.` in a workflow- or job-level `env:` and no `secrets: inherit` | CI `code` job; `pnpm verify` |
 | Cron slot attribution | `scripts/cron-delay-report.mjs --self-test` | CI `code` job; `pnpm verify` |
-| Web build | `pnpm --filter @fnb/web build` of the demo (the two bundle checks above) | CI `code` job; `pnpm verify`; `deploy-web.yml` |
+| Content Security Policy | `apps/web/scripts/check-csp.mjs` after every `vite build`; the `securitypolicyviolation` listener of `e2e/support/policy-test.ts` in every live, demo and pages spec; `web:lib/content-security-policy` and `web:lib/zod-jitless` | every web build; CI `code` and `e2e` jobs |
+| Web build | `pnpm --filter @fnb/web build` of the demo (the bundle, policy and size checks) | CI `code` job; `pnpm verify`; `deploy-web.yml` |
 
 ### 8.6 Latest results
 
@@ -2310,7 +2311,7 @@ A difference between a document and the code, or a missing check in a file anoth
 | R-AS05 | `docs/decisions.md` (ADR-023), `docs/roadmap.md` (phase 5) | The guard against `db reset --linked` does not exist: build it or amend the text |
 | R-AS06 | `apps/jobs/src/services.ts` | Make the CLI refuse a plaintext `sslmode` on a remote host, as the Edge Function does |
 | R-AS09 | `.github/workflows/ci.yml` | Run `pnpm --filter @fnb/web build`, with its bundle and size checks, in CI |
-| R-AS11 | `apps/web/index.html` | Evaluate a `meta` Content Security Policy, with a Playwright check |
+| R-AS11 | `apps/web/index.html` | Evaluate a `meta` Content Security Policy, with a Playwright check (closed 2026-11-20) |
 | R-F03 | `docs/roadmap.md`, `docs/decisions.md` | The promised drift checks, preflight log lint, column-name lint and single probe workflow: build them or amend the text |
 | R-F13 | `docs/go-live.md` | Add the step for the notification secrets, linking and the test message |
 | R-P01 | `.github/workflows/workflows-active.yml` | Tell `gh` which repository to use, then confirm the workflow is green |

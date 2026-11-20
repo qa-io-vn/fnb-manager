@@ -1,9 +1,9 @@
-import { expect, type Locator, type Page, test } from "@playwright/test";
 import {
 	checkPage,
 	expectNoSeriousAxeViolations,
 	waitForCharts,
 } from "../support/checks";
+import { expect, type Locator, type Page, test } from "../support/policy-test";
 import {
 	expectNoConsoleErrors,
 	expectNoExternalRequests,

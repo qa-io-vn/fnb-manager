@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import { expect, type Locator, type Page, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { staffPageAccess } from "../../src/settings/access";
 import type { Membership } from "../../src/settings/source";
@@ -19,6 +18,7 @@ import {
 	TEMPLATE_TITLES,
 	TEXTS,
 } from "../support/operations-fixture";
+import { expect, type Locator, type Page, test } from "../support/policy-test";
 import {
 	type RealTenantsSnapshot,
 	snapshotRealTenants,

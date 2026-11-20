@@ -12,7 +12,6 @@ import {
 	parsePack,
 } from "@fnb/datapack";
 import { createRpcReportSource } from "@fnb/reports";
-import { type Download, expect, type Page, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkPage } from "../support/checks";
 import { clipboardText } from "../support/clipboard";
@@ -20,6 +19,7 @@ import {
 	anonymousClient,
 	isLocalStackConfigured,
 } from "../support/local-stack";
+import { type Download, expect, type Page, test } from "../support/policy-test";
 import { expectNoConsoleErrors, watchConsoleErrors } from "../support/reports";
 import {
 	createSettingsFixture,

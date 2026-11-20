@@ -1,4 +1,3 @@
-import { expect, type Locator, type Page, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { todayIn } from "../../src/lib/business-dates";
 import { createFormatters } from "../../src/lib/format";
@@ -10,6 +9,7 @@ import {
 	isLocalStackConfigured,
 	shiftDate,
 } from "../support/local-stack";
+import { expect, type Locator, type Page, test } from "../support/policy-test";
 import {
 	expectNoConsoleErrors,
 	reportUrl,

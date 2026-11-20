@@ -1,4 +1,3 @@
-import { expect, type Page, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
 	seesLoyaltyStaffPhones,
@@ -11,6 +10,7 @@ import {
 	isLocalStackConfigured,
 } from "../support/local-stack";
 import { COUNTRY, syntheticPhone } from "../support/loyalty-fixture";
+import { expect, type Page, test } from "../support/policy-test";
 import {
 	type RealTenantsSnapshot,
 	snapshotRealTenants,

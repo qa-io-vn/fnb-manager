@@ -1,4 +1,3 @@
-import { expect, test } from "@playwright/test";
 import { checkPage } from "../support/checks";
 import {
 	anonymousClient,
@@ -6,6 +5,7 @@ import {
 	localStack,
 	seededLogin,
 } from "../support/local-stack";
+import { expect, test } from "../support/policy-test";
 
 test.skip(
 	!isLocalStackConfigured,

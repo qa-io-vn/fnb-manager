@@ -1,10 +1,10 @@
-import { expect, test } from "@playwright/test";
 import {
 	checkPage,
 	expectLastColumnReachable,
 	PHONE_WIDTH,
 	waitForCharts,
 } from "../support/checks";
+import { expect, test } from "../support/policy-test";
 import {
 	choosePreset,
 	chooseSemicolonCsv,

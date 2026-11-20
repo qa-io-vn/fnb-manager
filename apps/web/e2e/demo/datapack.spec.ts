@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { chatBundle, type DataPack, parsePack } from "@fnb/datapack";
-import { type Download, expect, type Page, test } from "@playwright/test";
 import { checkPage } from "../support/checks";
 import { clipboardText } from "../support/clipboard";
+import { type Download, expect, type Page, test } from "../support/policy-test";
 import {
 	expectNoConsoleErrors,
 	expectNoExternalRequests,

@@ -1,4 +1,3 @@
-import { expect, type Page, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loyaltyReadAccess } from "../../src/loyalty/access";
 import type { Membership } from "../../src/settings/source";
@@ -15,6 +14,7 @@ import {
 	LOYALTY_PHONES,
 	type LoyaltyFixture,
 } from "../support/loyalty-fixture";
+import { expect, type Page, test } from "../support/policy-test";
 import {
 	type RealTenantsSnapshot,
 	snapshotRealTenants,

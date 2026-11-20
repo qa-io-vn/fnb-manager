@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin, type Rolldown } from "vite";
+import { contentSecurityPolicy } from "./src/lib/content-security-policy.ts";
 
 const basePath = process.env.VITE_BASE_PATH || "/";
 const buildId = `${new Date().toISOString()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -87,6 +89,45 @@ function demoRowSourcePreload(): Plugin {
 	};
 }
 
+const inlineScript = /<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
+
+function contentSecurityPolicyMeta(): Plugin {
+	let supabaseUrl: string | undefined;
+	let demo = true;
+	let serving = false;
+	return {
+		name: "fnb-content-security-policy",
+		configResolved(config) {
+			demo = isDemoBuild(config.env);
+			supabaseUrl = demo ? undefined : config.env.VITE_SUPABASE_URL;
+			serving = config.command === "serve";
+		},
+		transformIndexHtml: {
+			order: "post",
+			handler(html) {
+				const hashes = serving
+					? [...html.matchAll(inlineScript)].map((match) =>
+							createHash("sha256")
+								.update(match[1] ?? "")
+								.digest("base64"),
+						)
+					: [];
+				const policy = contentSecurityPolicy({
+					supabaseUrl,
+					...(serving ? { dev: { inlineScriptHashes: hashes } } : {}),
+				});
+				return [
+					{
+						tag: "meta",
+						attrs: { "http-equiv": "Content-Security-Policy", content: policy },
+						injectTo: "head-prepend" as const,
+					},
+				];
+			},
+		},
+	};
+}
+
 export default defineConfig({
 	base: basePath,
 	define: {
@@ -97,6 +138,7 @@ export default defineConfig({
 		tailwindcss(),
 		versionFile(buildId),
 		demoRowSourcePreload(),
+		contentSecurityPolicyMeta(),
 	],
 	build: {
 		target: "es2022",

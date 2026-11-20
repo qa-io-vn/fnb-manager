@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { checkPage, parseExactMoney, waitForCharts } from "../support/checks";
+import { expect, test } from "../support/policy-test";
 import {
 	cardIds,
 	cards,

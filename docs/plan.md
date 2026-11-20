@@ -411,7 +411,7 @@ The documentation set written on 2026-11-12 found differences between documents 
 | R-AS08 | `docs/schema.md` | The publisher's read list leaves out the global notification catalogues | Add them (FR-TEN-06) | backend | open |
 | R-AS09 | `.github/workflows/ci.yml` | CI never runs the web build with its bundle and size checks | Add the build step | web, backend | closed 2026-11-20: the `code` job builds the demo with the bundle and size checks |
 | R-AS10 | `docs/go-live.md` | No step sets the Auth password policy or decides on MFA | Add an authentication-settings step | owner, backend | open |
-| R-AS11 | `apps/web/index.html` | The app sets no Content Security Policy | Evaluate a `meta` policy with a Playwright check | web | open |
+| R-AS11 | `apps/web/index.html` | The app sets no Content Security Policy | Evaluate a `meta` policy with a Playwright check | web | closed 2026-11-20: the policy is a `meta` tag in every build, checked by `check-csp.mjs` and by a violation listener in every Playwright spec; `frame-ancestors` and HSTS need a header (security.md) |
 | R-DG01 | `docs/connectors.md` | Points at a deleted file; the connector registry now lives in `@fnb/runner` | Point at `packages/runner/src/connectors.ts` and `accounts.ts` | backend | open |
 | R-DG02 | `docs/web-app.md` | Tells readers to run `pnpm db:reset`, which wipes the real tenant on the build machine | Say that the first `pnpm db:start` seeds a new machine and that a stack with real data is never reset | web | open |
 | R-DG03 | `README.md` | Implies that `DATABASE_URL` in `.env` runs the integration tests; they read the shell environment only | Say so | backend | open |

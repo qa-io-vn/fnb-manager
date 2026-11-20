@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { checkPage } from "../support/checks";
+import { expect, test } from "../support/policy-test";
 import { expectNoConsoleErrors, watchConsoleErrors } from "../support/reports";
 import {
 	expectCurrentSettingsPage,

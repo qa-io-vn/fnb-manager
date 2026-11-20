@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import { expect, type Page, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unzipSync } from "fflate";
 import { checkPage } from "../support/checks";
@@ -8,6 +7,7 @@ import {
 	isLocalStackConfigured,
 	liveLogin,
 } from "../support/local-stack";
+import { expect, type Page, test } from "../support/policy-test";
 import { expectNoConsoleErrors, watchConsoleErrors } from "../support/reports";
 import {
 	createSettingsFixture,

@@ -1,5 +1,5 @@
-import { expect, type Locator, type Page, test } from "@playwright/test";
 import { isLocalStackConfigured } from "../support/local-stack";
+import { expect, type Locator, type Page, test } from "../support/policy-test";
 import { expectNoConsoleErrors, watchConsoleErrors } from "../support/reports";
 import { saveSettings, settingsNav } from "../support/settings";
 import {

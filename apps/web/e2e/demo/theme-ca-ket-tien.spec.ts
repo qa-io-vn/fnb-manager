@@ -1,9 +1,9 @@
-import { expect, test } from "@playwright/test";
 import {
 	checkPage,
 	expectNoSeriousAxeViolations,
 	waitForCharts,
 } from "../support/checks";
+import { expect, test } from "../support/policy-test";
 import {
 	expectNoConsoleErrors,
 	expectNoExternalRequests,

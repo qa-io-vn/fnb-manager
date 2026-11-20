@@ -1,4 +1,3 @@
-import { expect, type Page, test } from "@playwright/test";
 import { checkPage, parseExactMoney } from "../support/checks";
 import {
 	clockAfterSeed,
@@ -9,6 +8,7 @@ import {
 	signedInClient,
 	visibleStores,
 } from "../support/local-stack";
+import { expect, type Page, test } from "../support/policy-test";
 import {
 	cards,
 	currentKey,

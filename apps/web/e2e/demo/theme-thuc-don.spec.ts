@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { checkPage, waitForCharts } from "../support/checks";
+import { expect, test } from "../support/policy-test";
 import { expectNoExternalRequests } from "../support/reports";
 import {
 	choosePreset,
