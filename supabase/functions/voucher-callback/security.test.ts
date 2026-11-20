@@ -12,6 +12,7 @@ import {
 	DESCRIPTIONS,
 	FUNCTION_NAME,
 	MAX_CALLBACK_BYTES,
+	PROXY_HOPS_VARIABLE,
 	sha256Hex,
 	type VoucherCallbackStore,
 } from "./handler.ts";
@@ -402,5 +403,164 @@ Deno.test("security: hostile text in the payload never reaches a log line, and l
 		]) {
 			assert(!line.includes(secret), `a log line leaks a value: ${line}`);
 		}
+	}
+});
+
+Deno.test("security: a forged forwarded address never passes the allow-list; only the connection or the configured trusted proxy hop counts", async () => {
+	const allowed = "192.0.2.10";
+	const store = new Store();
+	store.pathSha256 = await sha256Hex(SEGMENT);
+	const cases: readonly {
+		readonly label: string;
+		readonly hops?: string;
+		readonly headers: readonly (readonly [string, string])[];
+		readonly connection: string | null;
+		readonly source: string | null;
+	}[] = [
+		{
+			label: "no proxy configured: a forged header is ignored",
+			headers: [["x-forwarded-for", allowed]],
+			connection: "198.51.100.7",
+			source: "198.51.100.7",
+		},
+		{
+			label: "no proxy configured: the connection's own address passes",
+			headers: [],
+			connection: allowed,
+			source: allowed,
+		},
+		{
+			label: "no proxy configured: other client-set headers are ignored",
+			headers: [
+				["x-real-ip", allowed],
+				["cf-connecting-ip", allowed],
+				["forwarded", `for=${allowed}`],
+				["true-client-ip", allowed],
+			],
+			connection: "198.51.100.7",
+			source: "198.51.100.7",
+		},
+		{
+			label: "hops 0 with no connection address: nothing is trusted",
+			hops: "0",
+			headers: [["x-forwarded-for", allowed]],
+			connection: null,
+			source: null,
+		},
+		{
+			label: "one hop: a forged first entry is ignored",
+			hops: "1",
+			headers: [["x-forwarded-for", `${allowed}, 198.51.100.7`]],
+			connection: "10.0.0.1",
+			source: "198.51.100.7",
+		},
+		{
+			label: "one hop: the entry the proxy appended passes",
+			hops: "1",
+			headers: [["x-forwarded-for", `198.51.100.7, ${allowed}`]],
+			connection: "10.0.0.1",
+			source: allowed,
+		},
+		{
+			label:
+				"one hop: a forged header sent twice is still left of the proxy's entry",
+			hops: "1",
+			headers: [
+				["x-forwarded-for", allowed],
+				["x-forwarded-for", "198.51.100.7"],
+			],
+			connection: "10.0.0.1",
+			source: "198.51.100.7",
+		},
+		{
+			label: "two hops: the second entry from the right",
+			hops: "2",
+			headers: [["x-forwarded-for", `${allowed}, 198.51.100.7, 10.0.0.2`]],
+			connection: "10.0.0.1",
+			source: "198.51.100.7",
+		},
+		{
+			label: "two hops but one entry: nothing is trusted",
+			hops: "2",
+			headers: [["x-forwarded-for", allowed]],
+			connection: allowed,
+			source: null,
+		},
+		{
+			label: "five hops, the maximum",
+			hops: "5",
+			headers: [
+				[
+					"x-forwarded-for",
+					`${allowed}, 10.0.0.2, 10.0.0.3, 10.0.0.4, 10.0.0.5`,
+				],
+			],
+			connection: "10.0.0.1",
+			source: allowed,
+		},
+		...["6", "-1", "1.5", "01", "one", "1 2"].map((hops) => ({
+			label: `a misconfigured hop count ${JSON.stringify(hops)} trusts nothing`,
+			hops,
+			headers: [["x-forwarded-for", allowed] as const],
+			connection: allowed,
+			source: null,
+		})),
+		{
+			label: "one hop: a garbage trusted entry is no address",
+			hops: "1",
+			headers: [["x-forwarded-for", `198.51.100.7, ${allowed}; drop`]],
+			connection: allowed,
+			source: null,
+		},
+	];
+	for (const item of cases) {
+		store.questions.length = 0;
+		const environment: FunctionEnvironment = {
+			...ENVIRONMENT,
+			...(item.hops === undefined ? {} : { [PROXY_HOPS_VARIABLE]: item.hops }),
+		};
+		const handler = createVoucherCallbackHandler({
+			store: () => ({
+				answer: (question) => {
+					store.questions.push(question);
+					return Promise.resolve(
+						question.sourceIp === allowed
+							? {
+									outcome: "accepted",
+									discountAmount: 6000,
+									rewardName: "Giảm 10%",
+								}
+							: {
+									outcome: "refused_address",
+									discountAmount: 0,
+									rewardName: null,
+								},
+					);
+				},
+			}),
+			clock: () => NOW,
+			connectionAddress: () => item.connection,
+		});
+		const headers = new Headers();
+		for (const [name, value] of item.headers) {
+			headers.append(name, value);
+		}
+		const response = await serveFunction(
+			new Request(`${BASE}/${SEGMENT}`, {
+				method: "POST",
+				body: JSON.stringify(payload()),
+				headers,
+			}),
+			environment,
+			handler,
+			{ name: FUNCTION_NAME, origins: [], log: () => undefined },
+		);
+		const body = await response.json();
+		assertEquals(store.questions[0]?.sourceIp ?? null, item.source, item.label);
+		assertEquals(
+			[response.status, body.Discount_Amount],
+			item.source === allowed ? [200, 6000] : [403, 0],
+			`${item.label}: answer`,
+		);
 	}
 });

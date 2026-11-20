@@ -96,6 +96,7 @@ export interface VoucherCallbackDependencies {
 		context: RequestContext,
 	): VoucherCallbackStore;
 	clock(): Date;
+	connectionAddress?(request: Request): string | null;
 	readonly budgetMs?: number;
 }
 
@@ -119,13 +120,46 @@ export function pathSegment(url: string): string | null {
 	return SEGMENT_PATTERN.test(segment) ? segment : null;
 }
 
-export function sourceAddress(request: Request): string | null {
-	const forwarded = request.headers.get("x-forwarded-for");
-	const first = forwarded?.split(",")[0]?.trim() ?? "";
-	if (IPV4_PATTERN.test(first)) {
-		return first;
+export const PROXY_HOPS_VARIABLE = "VOUCHER_CALLBACK_PROXY_HOPS";
+export const MAX_PROXY_HOPS = 5;
+const HOPS_PATTERN = /^[0-5]$/;
+
+function validAddress(value: string | null | undefined): string | null {
+	const text = value?.trim() ?? "";
+	if (IPV4_PATTERN.test(text)) {
+		return text;
 	}
-	return first.includes(":") && IPV6_PATTERN.test(first) ? first : null;
+	return text.includes(":") && IPV6_PATTERN.test(text) ? text : null;
+}
+
+export function proxyHops(environment: FunctionEnvironment): number | null {
+	const raw = environment[PROXY_HOPS_VARIABLE]?.trim() ?? "";
+	if (raw === "") {
+		return 0;
+	}
+	return HOPS_PATTERN.test(raw) ? Number(raw) : null;
+}
+
+export function sourceAddress(
+	request: Request,
+	environment: FunctionEnvironment,
+	connectionAddress: string | null,
+): string | null {
+	const hops = proxyHops(environment);
+	if (hops === null) {
+		return null;
+	}
+	if (hops === 0) {
+		return validAddress(connectionAddress);
+	}
+	const entries = (request.headers.get("x-forwarded-for") ?? "")
+		.split(",")
+		.map((entry) => entry.trim())
+		.filter((entry) => entry !== "");
+	if (entries.length < hops) {
+		return null;
+	}
+	return validAddress(entries[entries.length - hops]);
 }
 
 function reply(
@@ -237,7 +271,11 @@ export function createVoucherCallbackHandler(
 		const decision = await withinBudget(
 			store.answer({
 				pathSha256: await sha256Hex(segment),
-				sourceIp: sourceAddress(request),
+				sourceIp: sourceAddress(
+					request,
+					context.environment,
+					dependencies.connectionAddress?.(request) ?? null,
+				),
 				storeRef: question.storeRef,
 				programmeRef: question.programmeRef,
 				code: question.code,

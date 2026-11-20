@@ -6,7 +6,11 @@ import {
 } from "../oa-webhook/database.ts";
 import { denoPostgresSocket } from "../sync-incremental/postgres-socket.ts";
 import { PostgresVoucherCallbackStore } from "./database.ts";
-import { createVoucherCallbackHandler, FUNCTION_NAME } from "./handler.ts";
+import {
+	createVoucherCallbackHandler,
+	FUNCTION_NAME,
+	PROXY_HOPS_VARIABLE,
+} from "./handler.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
 	if (!condition) {
@@ -79,21 +83,34 @@ Deno.test({
 		});
 		const environment: FunctionEnvironment = { SUPABASE_DB_URL: DATABASE_URL };
 		const lines: string[] = [];
-		const handler = createVoucherCallbackHandler({
-			store: (env, context) =>
-				new PostgresVoucherCallbackStore(
-					webhookDatabase(env, context, "fnb-voucher-callback-it"),
-				),
-			clock: () => new Date(),
-		});
-		const post = async (segment: string, body: unknown) => {
+		const post = async (
+			segment: string,
+			body: unknown,
+			options: {
+				forwardedFor?: string;
+				connection?: string;
+				hops?: string;
+			} = {},
+		) => {
+			const handler = createVoucherCallbackHandler({
+				store: (env, context) =>
+					new PostgresVoucherCallbackStore(
+						webhookDatabase(env, context, "fnb-voucher-callback-it"),
+					),
+				clock: () => new Date(),
+				connectionAddress: () => options.connection ?? "203.0.113.9",
+			});
 			const response = await serveFunction(
 				new Request(`${FUNCTION_URL}/${segment}`, {
 					method: "POST",
 					body: typeof body === "string" ? body : JSON.stringify(body),
-					headers: { "x-forwarded-for": "203.0.113.9" },
+					headers: {
+						"x-forwarded-for": options.forwardedFor ?? "203.0.113.9",
+					},
 				}),
-				environment,
+				options.hops === undefined
+					? environment
+					: { ...environment, [PROXY_HOPS_VARIABLE]: options.hops },
 				handler,
 				{ name: FUNCTION_NAME, origins: [], log: (line) => lines.push(line) },
 			);
@@ -209,6 +226,48 @@ Deno.test({
 				[before[0]?.n, after[0]?.n],
 				[3, 3],
 				"a wrong path and a malformed body write no log row",
+			);
+			await sql`
+				update public.coupon_rails set callback_ip_allowlist = '{192.0.2.0/24}'
+				where tenant_id = ${fx.tenant}::uuid and active_until is null
+			`;
+			const forged = await post(
+				path.segment,
+				payload(held.code, "IT-SALE-4", 80000),
+				{ forwardedFor: "192.0.2.10", connection: "203.0.113.9" },
+			);
+			assertEquals(
+				[forged.status, forged.body.Discount_Amount],
+				[403, 0],
+				"a forged forwarded address is refused",
+			);
+			const forgedBehindProxy = await post(
+				path.segment,
+				payload(held.code, "IT-SALE-4", 80000),
+				{
+					forwardedFor: "192.0.2.10, 203.0.113.9",
+					connection: "10.0.0.1",
+					hops: "1",
+				},
+			);
+			assertEquals(
+				[forgedBehindProxy.status, forgedBehindProxy.body.Discount_Amount],
+				[403, 0],
+				"a forged first entry behind a trusted proxy is refused",
+			);
+			const refusedRows = await sql<{ n: number }[]>`
+				select count(*)::integer as n from app.voucher_callback_log where tenant_id = ${fx.tenant}::uuid
+			`;
+			assertEquals(refusedRows[0]?.n, 3, "a refused address writes no log row");
+			const trusted = await post(
+				path.segment,
+				payload(held.code, "IT-SALE-1", 80000),
+				{ forwardedFor: "203.0.113.9", connection: "192.0.2.10" },
+			);
+			assertEquals(
+				[trusted.status, trusted.body.Discount_Amount],
+				[200, 8000],
+				"the trusted connection address inside the list gets the first answer",
 			);
 			for (const line of lines) {
 				assert(

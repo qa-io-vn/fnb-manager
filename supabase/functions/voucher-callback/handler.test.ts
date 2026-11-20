@@ -6,7 +6,10 @@ import {
 	createVoucherCallbackHandler,
 	DESCRIPTIONS,
 	FUNCTION_NAME,
+	MAX_PROXY_HOPS,
+	PROXY_HOPS_VARIABLE,
 	pathSegment,
+	proxyHops,
 	sha256Hex,
 	sourceAddress,
 	type VoucherCallbackStore,
@@ -132,6 +135,8 @@ interface Harness {
 			url?: string;
 			method?: string;
 			forwardedFor?: string;
+			connectionAddress?: string | null;
+			environment?: FunctionEnvironment;
 		},
 	): Promise<Response>;
 }
@@ -140,15 +145,20 @@ async function harness(budgetMs = 200): Promise<Harness> {
 	const store = new FakeStore();
 	store.pathSha256 = await sha256Hex(SEGMENT);
 	const lines: string[] = [];
-	const handler = createVoucherCallbackHandler({
-		store: () => store,
-		clock: () => NOW,
-		budgetMs,
-	});
 	return {
 		store,
 		lines,
 		post: (body, options = {}) => {
+			const connection =
+				options.connectionAddress === undefined
+					? "198.51.100.20"
+					: options.connectionAddress;
+			const handler = createVoucherCallbackHandler({
+				store: () => store,
+				clock: () => NOW,
+				connectionAddress: () => connection,
+				budgetMs,
+			});
 			const segment = options.segment === undefined ? SEGMENT : options.segment;
 			const url =
 				options.url ?? (segment === null ? BASE_URL : `${BASE_URL}/${segment}`);
@@ -163,7 +173,7 @@ async function harness(budgetMs = 200): Promise<Harness> {
 						"x-forwarded-for": options.forwardedFor ?? "203.0.113.5, 10.0.0.1",
 					},
 				}),
-				ENVIRONMENT,
+				options.environment ?? ENVIRONMENT,
 				handler,
 				{
 					name: FUNCTION_NAME,
@@ -218,7 +228,7 @@ Deno.test("a valid code gets the discount and the reward's name", async () => {
 			question.programmeRef,
 			question.sourceIp,
 		],
-		["9501", CODE, SALE, PHONE, null, "203.0.113.5"],
+		["9501", CODE, SALE, PHONE, null, "198.51.100.20"],
 		"canonical values",
 	);
 	assertEquals(
@@ -350,13 +360,16 @@ Deno.test("a refused address gets 403 with a zero answer", async () => {
 			discountAmount: 0,
 			rewardName: null,
 		});
-	const response = await post(assumedPayload(), { forwardedFor: "192.0.2.10" });
+	const response = await post(assumedPayload(), {
+		forwardedFor: "192.0.2.10",
+		connectionAddress: "198.51.100.7",
+	});
 	assertEquals(response.status, 403, "status");
 	assertEquals((await response.json()).Discount_Amount, 0, "zero");
 	assertEquals(
 		store.questions[0]?.sourceIp,
-		"192.0.2.10",
-		"the first forwarded address is the source",
+		"198.51.100.7",
+		"the connection's address is the source, not the forwarded header",
 	);
 });
 
@@ -441,9 +454,34 @@ Deno.test("the path segment, the source address and the stored answer are read s
 	assertEquals(pathSegment(BASE_URL), null, "missing");
 	const request = (value: string) =>
 		new Request(BASE_URL, { headers: { "x-forwarded-for": value } });
-	assertEquals(sourceAddress(request("2001:db8::1")), "2001:db8::1", "IPv6");
-	assertEquals(sourceAddress(request("not-an-address")), null, "garbage");
-	assertEquals(sourceAddress(new Request(BASE_URL)), null, "absent");
+	const oneHop = { [PROXY_HOPS_VARIABLE]: "1" };
+	assertEquals(
+		sourceAddress(request("2001:db8::1"), oneHop, null),
+		"2001:db8::1",
+		"IPv6",
+	);
+	assertEquals(
+		sourceAddress(request("not-an-address"), oneHop, null),
+		null,
+		"garbage",
+	);
+	assertEquals(
+		sourceAddress(new Request(BASE_URL), oneHop, null),
+		null,
+		"absent",
+	);
+	assertEquals(
+		sourceAddress(new Request(BASE_URL), {}, "2001:db8::2"),
+		"2001:db8::2",
+		"connection IPv6",
+	);
+	assertEquals(
+		sourceAddress(new Request(BASE_URL), {}, "localhost"),
+		null,
+		"a connection name that is no address",
+	);
+	assertEquals(MAX_PROXY_HOPS, 5, "at most five trusted proxies");
+	assertEquals(proxyHops({}), 0, "unset trusts the connection");
 	assertEquals(
 		decisionOf({
 			answer: {
