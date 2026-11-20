@@ -76,6 +76,8 @@ describe("demo settings", () => {
 			deletion: null,
 			network: "none",
 			answerDelayMs: 0,
+			staffMode: false,
+			bills: 0,
 		});
 		expect(demoSettingsFrom("?net=lost-once&answerDelay=50000")).toMatchObject({
 			network: "lost-once",

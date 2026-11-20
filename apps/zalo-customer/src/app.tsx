@@ -11,6 +11,10 @@ const ClaimScreen = lazyScreen(
 	() => import("./claim/claim-form"),
 	(m) => m.ClaimScreen,
 );
+const CounterClaimScreen = lazyScreen(
+	() => import("./counter/counter-claim"),
+	(m) => m.CounterClaimScreen,
+);
 const StoreScreen = lazyScreen(
 	() => import("./home/store-screen"),
 	(m) => m.StoreScreen,
@@ -93,6 +97,7 @@ export const routes: readonly MiniAppRoute[] = [
 	{ path: "/tham-gia", element: <JoinFlow /> },
 	{ path: "/ma-thanh-vien", element: <MemberCodeScreen /> },
 	{ path: "/nhan-diem", element: <ClaimScreen /> },
+	{ path: "/quet-ma-quay", element: <CounterClaimScreen /> },
 	{ path: "/doi-qua", element: <RewardsScreen /> },
 	{ path: "/vi-voucher", element: <VouchersScreen /> },
 	{ path: "/voucher/:id", element: <VoucherScreen /> },

@@ -15,6 +15,7 @@ import {
 	Screen,
 	secondaryButton,
 } from "../ui";
+import { BillsPrompt } from "./bills-prompt";
 import { JoinActions } from "./join-actions";
 import { hoursOn, spansText } from "./model";
 import { programmeTexts } from "./programme";
@@ -87,6 +88,7 @@ function ReadyHome({ home }: { readonly home: CustomerHome }) {
 	return (
 		<Screen testId="home">
 			{declined === undefined ? null : <DeclinedNotice reason={declined} />}
+			<BillsPrompt home={home} />
 			<Card labelledBy={titleId} testId="programme">
 				<h1 id={titleId} className="text-xl font-semibold text-ink">
 					{home.programme?.name ?? t("home.noProgrammeTitle")}

@@ -30,18 +30,21 @@ export default defineConfig({
 	projects: [
 		{
 			name: "phone-light",
-			testMatch: /(account|browse|join|wallet|network|lazy-screens)\.spec\.ts/,
+			testMatch:
+				/(account|bills|browse|join|wallet|network|lazy-screens)\.spec\.ts/,
 			use: { ...phone, colorScheme: "light" },
 		},
 		{
 			name: "phone-dark",
-			testMatch: /(account|browse|join|wallet|network|lazy-screens)\.spec\.ts/,
+			testMatch:
+				/(account|bills|browse|join|wallet|network|lazy-screens)\.spec\.ts/,
 			use: { ...phone, colorScheme: "dark" },
 		},
 		{
 			// WebKit as an iPhone, light mode only to keep CI time down (test-gaps G-35)
 			name: "phone-webkit",
-			testMatch: /(account|browse|join|wallet|network|lazy-screens).spec.ts/,
+			testMatch:
+				/(account|bills|browse|join|wallet|network|lazy-screens).spec.ts/,
 			use: { ...devices["iPhone 14"], colorScheme: "light" },
 		},
 		{

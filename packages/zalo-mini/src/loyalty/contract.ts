@@ -14,6 +14,9 @@ export const CUSTOMER_FUNCTIONS = {
 	rewards: "customer_coupons",
 	redeem: "customer_redeem",
 	vouchers: "customer_vouchers",
+	confirmBill: "customer_confirm_bill",
+	disputeBill: "customer_dispute_bill",
+	submitCounterClaim: "customer_submit_counter_claim",
 } as const;
 
 export type CustomerFunction =
@@ -76,6 +79,7 @@ export const MATCHED_PATHS = [
 	"receipt_claim",
 	"voucher",
 	"manual",
+	"bill",
 ] as const;
 export type MatchedPath = (typeof MATCHED_PATHS)[number];
 
@@ -102,6 +106,7 @@ export const CLAIM_REASONS = [
 	"excluded_phone",
 	"excluded_source",
 	"dismissed",
+	"staff_mode",
 ] as const;
 export type KnownClaimReason = (typeof CLAIM_REASONS)[number];
 
@@ -197,12 +202,22 @@ export const RECEIPT_NUMBER_RESETS = [
 ] as const;
 export type ReceiptNumbersReset = (typeof RECEIPT_NUMBER_RESETS)[number];
 
+/**
+ * How a store confirms an earn: pos_sync matches the POS's synced invoices (paths A to C); staff has a staff member
+ * record the paper bill and the customer confirm its total blind (path E, no POS).
+ */
+export const STORE_CONFIRMATIONS = ["pos_sync", "staff"] as const;
+export type StoreConfirmation = (typeof STORE_CONFIRMATIONS)[number];
+
 export interface CustomerStore {
 	readonly code: string;
 	readonly name: string;
 	readonly address: string | null;
 	readonly openingHours: OpeningHours;
 	readonly receiptNumbersReset: ReceiptNumbersReset;
+	readonly confirmation: StoreConfirmation;
+	/** the store shows a rotating counter QR the customer claims with (staff mode with self claims) */
+	readonly counterClaims: boolean;
 }
 
 export interface MenuHighlight {
@@ -286,6 +301,15 @@ export interface ClaimRecord {
 	readonly reason: string | null;
 }
 
+/** A staff-recorded bill waiting for the customer's blind total: it never carries the total the staff member typed. */
+export interface BillToConfirm {
+	readonly id: string;
+	readonly storeName: string;
+	readonly billNo: string;
+	readonly recordedAt: string;
+	readonly confirmBy: string;
+}
+
 export interface Wallet {
 	readonly card: MemberCard;
 	readonly stampCards: readonly StampCard[];
@@ -296,6 +320,7 @@ export interface Wallet {
 	readonly claims: readonly ClaimRecord[];
 	readonly claimsToday: number;
 	readonly claimsPerDay: number;
+	readonly billsToConfirm: readonly BillToConfirm[];
 	readonly deletionRequest: DeletionRequest | null;
 }
 
@@ -441,6 +466,90 @@ export interface Voucher {
 	readonly pointsSpent: number;
 }
 
+export const MAX_EVIDENCE_LEVEL = 3;
+
+export const BILL_CONFIRM_STATES = [
+	"confirmed",
+	"queued",
+	"awaiting_customer",
+	"refused",
+] as const;
+export type BillConfirmState = (typeof BILL_CONFIRM_STATES)[number];
+
+export const BILL_REFUSALS = [
+	"unknown_bill",
+	"already_answered",
+	"too_late",
+] as const;
+export type KnownBillRefusal = (typeof BILL_REFUSALS)[number];
+
+export interface BillConfirmResult {
+	readonly state: BillConfirmState;
+	readonly refusal: string | null;
+	readonly evidenceLevel: number | null;
+}
+
+export const BILL_DISPUTE_STATES = ["reversed", "refused"] as const;
+export type BillDisputeState = (typeof BILL_DISPUTE_STATES)[number];
+
+export interface BillDisputeResult {
+	readonly state: BillDisputeState;
+	readonly refusal: string | null;
+}
+
+export const COUNTER_QR_PREFIX = "fnb-counter:1:";
+/** fnb-counter:1:<store code>:<12 characters of A-H, J-N, P-Z and 2-9>, as customer_submit_counter_claim reads it */
+export const COUNTER_QR_PATTERN =
+	/^fnb-counter:1:[A-Za-z0-9][A-Za-z0-9._-]{0,63}:[A-HJ-NP-Z2-9]{12}$/;
+
+export interface CounterQr {
+	readonly payload: string;
+	readonly storeCode: string;
+}
+
+export const COUNTER_CLAIM_STATES = [
+	"awaiting_staff",
+	"confirmed",
+	"refused",
+] as const;
+export type CounterClaimState = (typeof COUNTER_CLAIM_STATES)[number];
+
+export const COUNTER_CLAIM_REFUSALS = [
+	"locked",
+	"code_unknown",
+	"wrong_store",
+	"not_available",
+	"code_expired",
+	"code_used",
+	"daily_limit",
+	"staff_phone",
+	"over_bill_limit",
+	"bill_used",
+	"bill_conflict",
+	"below_minimum",
+	"membership_inactive",
+	"no_programme",
+	"store_daily_cap",
+] as const;
+export type KnownCounterClaimRefusal = (typeof COUNTER_CLAIM_REFUSALS)[number];
+
+export interface CounterClaimInput {
+	readonly qr: string;
+	readonly billNo: string;
+	readonly total: number;
+}
+
+export interface CounterClaimResult {
+	readonly state: CounterClaimState;
+	readonly refusal: string | null;
+	readonly billId: string | null;
+	readonly evidenceLevel: number | null;
+	readonly stampsEarned: number | null;
+	readonly pointsEarned: number | null;
+	readonly expiresAt: number | null;
+	readonly retryAt: number | null;
+}
+
 export interface LoyaltyClient {
 	home(): Promise<CustomerHome>;
 	rewards(store: string | null): Promise<readonly Reward[]>;
@@ -451,6 +560,9 @@ export interface LoyaltyClient {
 	submitClaim(input: ClaimInput): Promise<ClaimResult>;
 	stopMarketing(): Promise<MarketingStop>;
 	requestDeletion(): Promise<DeletionRequest>;
+	confirmBill(billId: string, total: number): Promise<BillConfirmResult>;
+	disputeBill(billId: string): Promise<BillDisputeResult>;
+	submitCounterClaim(input: CounterClaimInput): Promise<CounterClaimResult>;
 }
 
 type Row = Readonly<Record<string, unknown>>;
@@ -648,6 +760,14 @@ export function readCustomerStore(value: unknown): CustomerStore {
 		address: optionalText(row.address, "store address"),
 		openingHours: readOpeningHours(row.opening_hours),
 		receiptNumbersReset: readReceiptNumbersReset(row.receipt_numbers_reset),
+		confirmation:
+			row.confirmation === null || row.confirmation === undefined
+				? "pos_sync"
+				: oneOf(STORE_CONFIRMATIONS, row.confirmation, "store confirmation"),
+		counterClaims:
+			row.counter_claims === null || row.counter_claims === undefined
+				? false
+				: flag(row.counter_claims, "store counter claims"),
 	};
 }
 
@@ -788,6 +908,25 @@ export function readClaimRecord(value: unknown): ClaimRecord {
 	};
 }
 
+export function readBillToConfirm(value: unknown): BillToConfirm {
+	const row = record(value, "bill to confirm");
+	const id = text(row.id, "bill id");
+	if (!UUID_PATTERN.test(id)) invalid("bill id");
+	const billNo = text(row.bill_no, "bill number");
+	if (!RECEIPT_NO_PATTERN.test(billNo)) invalid("bill number");
+	const recordedAt = instant(row.recorded_at, "bill time");
+	const confirmBy = instant(row.confirm_by, "bill deadline");
+	if (Date.parse(confirmBy) <= Date.parse(recordedAt)) invalid("bill deadline");
+	// Only these fields are kept: a total in the row (the staff member's reading) never reaches the screen.
+	return {
+		id,
+		storeName: text(row.store_name, "bill store"),
+		billNo,
+		recordedAt,
+		confirmBy,
+	};
+}
+
 export function readWallet(value: unknown): Wallet {
 	const row = record(value, "wallet");
 	return {
@@ -802,6 +941,9 @@ export function readWallet(value: unknown): Wallet {
 		claimsPerDay: count(
 			row.claims_per_day ?? MAX_CLAIMS_PER_DAY,
 			"claims per day",
+		),
+		billsToConfirm: list(row.bills_to_confirm ?? [], "bills to confirm").map(
+			readBillToConfirm,
 		),
 		deletionRequest:
 			row.deletion_request === null || row.deletion_request === undefined
@@ -1018,6 +1160,104 @@ export function readVoucher(value: unknown): Voucher {
 
 export function readVouchers(value: unknown): readonly Voucher[] {
 	return list(value, "vouchers").map(readVoucher);
+}
+
+function evidenceLevel(value: unknown, what: string): number | null {
+	const level = optionalCount(value, what);
+	return level !== null && level > MAX_EVIDENCE_LEVEL ? invalid(what) : level;
+}
+
+/** A refusal is required for a refused answer and refused on any other. */
+function refusalFor(
+	refused: boolean,
+	value: unknown,
+	what: string,
+): string | null {
+	const refusal = optionalReason(value, what);
+	if (refused !== (refusal !== null)) invalid(what);
+	return refusal;
+}
+
+export function knownBillRefusal(
+	refusal: string | null,
+): KnownBillRefusal | null {
+	return BILL_REFUSALS.find((name) => name === refusal) ?? null;
+}
+
+export function knownCounterClaimRefusal(
+	refusal: string | null,
+): KnownCounterClaimRefusal | null {
+	return COUNTER_CLAIM_REFUSALS.find((name) => name === refusal) ?? null;
+}
+
+export function readBillConfirmResult(value: unknown): BillConfirmResult {
+	const row = record(value, "bill answer");
+	const state = oneOf(BILL_CONFIRM_STATES, row.state, "bill answer state");
+	return {
+		state,
+		refusal: refusalFor(state === "refused", row.refusal, "bill refusal"),
+		evidenceLevel: evidenceLevel(row.evidence_level, "evidence level"),
+	};
+}
+
+export function readBillDisputeResult(value: unknown): BillDisputeResult {
+	const row = record(value, "bill dispute");
+	const state = oneOf(BILL_DISPUTE_STATES, row.state, "bill dispute state");
+	return {
+		state,
+		refusal: refusalFor(state === "refused", row.refusal, "dispute refusal"),
+	};
+}
+
+/** The counter QR in a scanned text, trimmed as the server reads it, or null when the text is not one. */
+export function readCounterQr(raw: string): CounterQr | null {
+	const payload = raw.trim();
+	if (!COUNTER_QR_PATTERN.test(payload)) return null;
+	return {
+		payload,
+		storeCode: payload.slice(COUNTER_QR_PREFIX.length).split(":")[0] ?? "",
+	};
+}
+
+export function readCounterClaimResult(value: unknown): CounterClaimResult {
+	const row = record(value, "counter claim answer");
+	const state = oneOf(COUNTER_CLAIM_STATES, row.state, "counter claim state");
+	const refused = state === "refused";
+	const billId = optionalText(row.bill_id, "counter claim bill");
+	if (!refused && billId === null) invalid("counter claim bill");
+	return {
+		state,
+		refusal: refusalFor(refused, row.refusal, "counter claim refusal"),
+		billId: refused ? null : billId,
+		evidenceLevel: evidenceLevel(row.evidence_level, "evidence level"),
+		stampsEarned: optionalCount(row.stamps_earned, "stamps earned"),
+		pointsEarned: optionalCount(row.points_earned, "points earned"),
+		expiresAt: optionalInstantMs(row.expires_at, "counter claim deadline"),
+		retryAt: optionalInstantMs(row.retry_at, "retry time"),
+	};
+}
+
+export function confirmBillArgs(
+	billId: string,
+	total: number,
+): Readonly<Record<string, unknown>> {
+	return { p_bill_id: billId, p_total: total };
+}
+
+export function disputeBillArgs(
+	billId: string,
+): Readonly<Record<string, unknown>> {
+	return { p_bill_id: billId };
+}
+
+export function counterClaimArgs(
+	input: CounterClaimInput,
+): Readonly<Record<string, unknown>> {
+	return {
+		p_qr: input.qr.trim(),
+		p_bill_no: input.billNo.trim(),
+		p_total: input.total,
+	};
 }
 
 export function rewardsArgs(

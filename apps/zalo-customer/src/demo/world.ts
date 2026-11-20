@@ -1,17 +1,22 @@
 import { type RestClient, RestError } from "@fnb/zalo-mini";
 import {
+	COUNTER_QR_PATTERN,
 	CUSTOMER_FUNCTIONS,
 	CUSTOMER_SESSION_KIND,
 	ISO_DATE_PATTERN,
+	MAX_CLAIM_AMOUNT,
 	MAX_CLAIMS_PER_DAY,
 	MEMBER_CODE_REFRESH_SECONDS,
 	MEMBER_CODE_VALID_SECONDS,
 	RECEIPT_NO_PATTERN,
 	REFUSAL_INVALID,
 	REFUSAL_NOT_MEMBER,
+	UUID_PATTERN,
 } from "@fnb/zalo-mini/loyalty";
 import { addDays, isoDateIn, weekdayOf } from "../data/dates";
 import {
+	DEMO_BILL_RULES,
+	DEMO_COUNTER_CODES,
 	DEMO_CUSTOMER_ID,
 	DEMO_DISPLAY_NAME,
 	DEMO_LEGAL,
@@ -23,6 +28,8 @@ import {
 	DEMO_PROGRAMME,
 	DEMO_REDEEM_CODES,
 	DEMO_REWARDS,
+	DEMO_STAFF_BILLS,
+	DEMO_STAFF_STORE,
 	DEMO_STAMPS_PER_CARD,
 	DEMO_STORES,
 	DEMO_SYNCED_INVOICES,
@@ -73,6 +80,14 @@ export interface DemoSettings {
 	readonly deletion: DemoDeletionState | null;
 	readonly network: DemoNetwork;
 	readonly answerDelayMs: number;
+	/**
+	 * Store mau-1 runs loyalty in staff mode with counter claims (`?staff=1`, implied by `?bill=`): the receipt claim
+	 * is refused there with staff_mode, and the counter QR DEMO_COUNTER_QR earns. Counter claims up to
+	 * DEMO_BILL_RULES.autoApproveMax are confirmed at once (auto approval); larger ones wait for a staff member.
+	 */
+	readonly staffMode: boolean;
+	/** how many staff-recorded bills wait for the member's blind total (`?bill=1` to 3, members only) */
+	readonly bills: number;
 }
 
 export const DEMO_DEFAULTS: DemoSettings = {
@@ -88,6 +103,8 @@ export const DEMO_DEFAULTS: DemoSettings = {
 	deletion: null,
 	network: "none",
 	answerDelayMs: 0,
+	staffMode: false,
+	bills: 0,
 };
 
 const MAX_DEMO_DELAY_MS = 10_000;
@@ -109,6 +126,11 @@ export function demoSettingsFrom(search: string): DemoSettings {
 	const deletion =
 		DEMO_DELETION_STATES.find((state) => state === params.get("deletion")) ??
 		null;
+	const billCount = Number(params.get("bill") ?? "0");
+	const bills =
+		member && Number.isInteger(billCount) && billCount > 0
+			? Math.min(billCount, DEMO_STAFF_BILLS.length)
+			: 0;
 	return {
 		member,
 		marketing: member && params.get("marketing") === "1",
@@ -131,6 +153,8 @@ export function demoSettingsFrom(search: string): DemoSettings {
 			Number.isInteger(answerDelay) && answerDelay > 0
 				? Math.min(answerDelay, MAX_DEMO_DELAY_MS)
 				: 0,
+		staffMode: params.get("staff") === "1" || bills > 0,
+		bills,
 	};
 }
 
@@ -143,8 +167,38 @@ interface Entry {
 	points: number;
 	store: string | null;
 	receiptNo: string | null;
-	path: "welcome" | "phone" | "member_code" | "receipt_claim" | null;
+	path: "welcome" | "phone" | "member_code" | "receipt_claim" | "bill" | null;
 	reason?: string;
+}
+
+/** A bill of path E: recorded by a staff member (staff_scan) or claimed with the counter QR (counter_claim). */
+interface Bill {
+	readonly id: string;
+	readonly store: string;
+	readonly billNo: string;
+	readonly total: number;
+	readonly source: "staff_scan" | "counter_claim";
+	readonly recordedAt: number;
+	readonly confirmBy: number;
+	readonly counterToken: string | null;
+	state:
+		| "awaiting_customer"
+		| "awaiting_staff"
+		| "confirmed"
+		| "queued"
+		| "reversed";
+	evidenceLevel: number;
+	answered: boolean;
+	entryId: string | null;
+}
+
+function billKey(billNo: string): string {
+	const upper = billNo.trim().toUpperCase();
+	return /^0+$/.test(upper) ? "0" : upper.replace(/^0+/, "");
+}
+
+function billPoints(total: number): number {
+	return Math.floor(total / 1000);
 }
 
 interface DemoVoucher {
@@ -175,6 +229,9 @@ const CHANGING_FUNCTIONS: ReadonlySet<string> = new Set([
 	CUSTOMER_FUNCTIONS.redeem,
 	CUSTOMER_FUNCTIONS.stopMarketing,
 	CUSTOMER_FUNCTIONS.requestDeletion,
+	CUSTOMER_FUNCTIONS.confirmBill,
+	CUSTOMER_FUNCTIONS.disputeBill,
+	CUSTOMER_FUNCTIONS.submitCounterClaim,
 ]);
 
 function browserOffline(): boolean {
@@ -426,6 +483,51 @@ export function createDemoWorld(
 			const returned = addVoucher(coffee, "mau-2", start - 3 * DAY_MS);
 			settle(returned, "released", returned.holdExpiresAt);
 		}
+	}
+
+	const bills: Bill[] = [];
+	let counterFailures = 0;
+	let counterLockedUntil = 0;
+	const staffStore = (store: string): boolean =>
+		(settings.staffMode || settings.bills > 0) && store === DEMO_STAFF_STORE;
+
+	const billEntry = (bill: Bill, state: Entry["state"]): string => {
+		entry({
+			at: bill.recordedAt,
+			kind: "earn",
+			state,
+			stamps: 1,
+			points: billPoints(bill.total),
+			store: bill.store,
+			receiptNo: bill.billNo,
+			path: "bill",
+		});
+		return `demo-entry-${entryCount}`;
+	};
+
+	const settleBill = (bill: Bill, state: "confirmed" | "reversed"): void => {
+		const earn = entries.find((value) => value.id === bill.entryId);
+		if (earn !== undefined) earn.state = state;
+	};
+
+	for (const seeded of DEMO_STAFF_BILLS.slice(0, settings.bills)) {
+		const recordedAt = now() - seeded.minutesAgo * 60_000;
+		const bill: Bill = {
+			id: seeded.id,
+			store: DEMO_STAFF_STORE,
+			billNo: seeded.billNo,
+			total: seeded.staffTotal,
+			source: "staff_scan",
+			recordedAt,
+			confirmBy: recordedAt + DEMO_BILL_RULES.unconfirmedHours * HOUR_MS,
+			counterToken: null,
+			state: "awaiting_customer",
+			evidenceLevel: 0,
+			answered: false,
+			entryId: null,
+		};
+		bill.entryId = billEntry(bill, "pending");
+		bills.push(bill);
 	}
 
 	const pause = (): Promise<void> =>
@@ -767,7 +869,188 @@ export function createDemoWorld(
 				})),
 			claims_today: claimsToday(),
 			claims_per_day: MAX_CLAIMS_PER_DAY,
+			bills_to_confirm: bills
+				.filter(
+					(bill) =>
+						bill.state === "awaiting_customer" &&
+						!bill.answered &&
+						bill.confirmBy > now() &&
+						bill.recordedAt <= now(),
+				)
+				.sort((left, right) => right.recordedAt - left.recordedAt)
+				.map((bill) => ({
+					id: bill.id,
+					store_name: storeName(bill.store),
+					bill_no: bill.billNo,
+					recorded_at: new Date(bill.recordedAt).toISOString(),
+					confirm_by: new Date(bill.confirmBy).toISOString(),
+				})),
 			deletion_request: deletion,
+		};
+	};
+
+	const validTotal = (value: unknown): number => {
+		if (
+			typeof value !== "number" ||
+			!Number.isFinite(value) ||
+			value <= 0 ||
+			value > MAX_CLAIM_AMOUNT
+		)
+			throw new RestError(400, REFUSAL_INVALID);
+		return value;
+	};
+
+	const ownBill = (args: Readonly<Record<string, unknown>>): Bill | null => {
+		const id = textField(args, "p_bill_id");
+		// PostgREST answers a malformed uuid with invalid_text_representation
+		if (id === null || !UUID_PATTERN.test(id))
+			throw new RestError(400, "22P02");
+		return bills.find((bill) => bill.id === id) ?? null;
+	};
+
+	const confirmBill = (
+		args: Readonly<Record<string, unknown>>,
+	): Record<string, unknown> => {
+		const total = validTotal(args.p_total);
+		const bill = ownBill(args);
+		if (bill === null) return { state: "refused", refusal: "unknown_bill" };
+		if (bill.state !== "awaiting_customer" || bill.answered)
+			return { state: "refused", refusal: "already_answered" };
+		if (bill.confirmBy <= now())
+			return { state: "refused", refusal: "too_late" };
+		bill.answered = true;
+		if (Math.abs(bill.total - total) <= DEMO_BILL_RULES.tolerance) {
+			bill.state = "confirmed";
+			bill.evidenceLevel = 2;
+			settleBill(bill, "confirmed");
+		} else {
+			bill.state = "queued";
+		}
+		return {
+			state: bill.state,
+			refusal: null,
+			evidence_level: bill.evidenceLevel,
+		};
+	};
+
+	const disputeBill = (
+		args: Readonly<Record<string, unknown>>,
+	): Record<string, unknown> => {
+		const bill = ownBill(args);
+		if (bill === null) return { state: "refused", refusal: "unknown_bill" };
+		if (bill.state !== "awaiting_customer" || bill.answered)
+			return { state: "refused", refusal: "already_answered" };
+		bill.answered = true;
+		bill.state = "reversed";
+		settleBill(bill, "reversed");
+		return { state: "reversed", refusal: null };
+	};
+
+	const counterClaimRefusal = (
+		store: string,
+		expired: boolean,
+		token: string,
+		billNo: string,
+		total: number,
+	): string | null => {
+		if (!staffStore(store)) return "not_available";
+		if (expired) return "code_expired";
+		if (bills.some((bill) => bill.counterToken === token)) return "code_used";
+		const today = isoDateIn(now());
+		if (
+			bills.filter(
+				(bill) =>
+					bill.source === "counter_claim" &&
+					isoDateIn(bill.recordedAt) === today,
+			).length >= DEMO_BILL_RULES.counterClaimsPerDay
+		)
+			return "daily_limit";
+		if (total > DEMO_BILL_RULES.maxBill) return "over_bill_limit";
+		const known = bills.find(
+			(bill) =>
+				bill.store === store &&
+				isoDateIn(bill.recordedAt) === today &&
+				billKey(bill.billNo) === billKey(billNo) &&
+				bill.state !== "reversed",
+		);
+		if (known !== undefined)
+			return known.total === total ? "bill_used" : "bill_conflict";
+		if (total < DEMO_BILL_RULES.minimum) return "below_minimum";
+		return null;
+	};
+
+	const submitCounterClaim = (
+		args: Readonly<Record<string, unknown>>,
+	): Record<string, unknown> => {
+		const raw = (textField(args, "p_qr") ?? "").trim();
+		const billNo = (textField(args, "p_bill_no") ?? "").trim();
+		if (!COUNTER_QR_PATTERN.test(raw) || !RECEIPT_NO_PATTERN.test(billNo))
+			throw new RestError(400, REFUSAL_INVALID);
+		const total = validTotal(args.p_total);
+		if (counterLockedUntil > now())
+			return {
+				state: "refused",
+				refusal: "locked",
+				bill_id: null,
+				retry_at: new Date(counterLockedUntil).toISOString(),
+			};
+		const [, , store = "", token = ""] = raw.split(":");
+		const code = DEMO_COUNTER_CODES.find(
+			(candidate) => candidate.token === token,
+		);
+		if (code === undefined || code.store !== store) {
+			counterFailures += 1;
+			if (counterFailures >= DEMO_BILL_RULES.lockAfter) {
+				counterFailures = 0;
+				counterLockedUntil = now() + DEMO_BILL_RULES.lockMinutes * 60_000;
+			}
+			return {
+				state: "refused",
+				refusal: code === undefined ? "code_unknown" : "wrong_store",
+				bill_id: null,
+			};
+		}
+		const refusal = counterClaimRefusal(
+			store,
+			code.expired,
+			token,
+			billNo,
+			total,
+		);
+		if (refusal !== null) return { state: "refused", refusal, bill_id: null };
+		const at = now();
+		const automatic = total <= DEMO_BILL_RULES.autoApproveMax;
+		const bill: Bill = {
+			id: `00000000-0000-4000-8000-${String(bills.length + 0xc00).padStart(12, "0")}`,
+			store,
+			billNo,
+			total,
+			source: "counter_claim",
+			recordedAt: at,
+			confirmBy: at + DEMO_BILL_RULES.awaitingStaffHours * HOUR_MS,
+			counterToken: token,
+			state: automatic ? "confirmed" : "awaiting_staff",
+			evidenceLevel: 0,
+			answered: true,
+			entryId: null,
+		};
+		bills.push(bill);
+		if (!automatic)
+			return {
+				state: "awaiting_staff",
+				refusal: null,
+				bill_id: bill.id,
+				evidence_level: 0,
+				expires_at: new Date(bill.confirmBy).toISOString(),
+			};
+		bill.entryId = billEntry(bill, "confirmed");
+		return {
+			state: "confirmed",
+			refusal: null,
+			bill_id: bill.id,
+			evidence_level: 0,
+			stamps_earned: 1,
+			points_earned: billPoints(total),
 		};
 	};
 
@@ -808,6 +1091,13 @@ export function createDemoWorld(
 			!ISO_DATE_PATTERN.test(businessDate)
 		)
 			throw new RestError(400, REFUSAL_INVALID);
+		if (staffStore(store))
+			return {
+				claim_id: null,
+				state: "rejected",
+				reason: "staff_mode",
+				claims_left_today: Math.max(0, MAX_CLAIMS_PER_DAY - claimsToday()),
+			};
 		const before = claimsToday();
 		const earliest = isoDateIn(
 			now() - DEMO_PROGRAMME.receipt_claim_window_hours * 3_600_000,
@@ -888,7 +1178,13 @@ export function createDemoWorld(
 						(document) => document.kind !== "privacy_notice",
 					),
 				},
-		stores: settings.stores ? DEMO_STORES : [],
+		stores: settings.stores
+			? DEMO_STORES.map((store) =>
+					staffStore(store.code)
+						? { ...store, confirmation: "staff", counter_claims: true }
+						: store,
+				)
+			: [],
 		menu: DEMO_MENU,
 	});
 
@@ -923,6 +1219,12 @@ export function createDemoWorld(
 					deletion = demoDeletion(DEMO_DELETION_REQUEST_ID, "received", now());
 				}
 				return deletion;
+			case CUSTOMER_FUNCTIONS.confirmBill:
+				return confirmBill(args);
+			case CUSTOMER_FUNCTIONS.disputeBill:
+				return disputeBill(args);
+			case CUSTOMER_FUNCTIONS.submitCounterClaim:
+				return submitCounterClaim(args);
 			default:
 				throw new RestError(404, "PGRST202");
 		}

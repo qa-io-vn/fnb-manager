@@ -53,6 +53,8 @@ export const DEMO_STORES = [
 		address: "12 Đường Số 1, Phường Mẫu, Thành phố Mẫu",
 		opening_hours: HOURS_EVERY_DAY,
 		receipt_numbers_reset: "yearly",
+		confirmation: "pos_sync",
+		counter_claims: false,
 	},
 	{
 		code: "mau-2",
@@ -60,6 +62,8 @@ export const DEMO_STORES = [
 		address: "34 Đường Số 2, Phường Mẫu, Thành phố Mẫu",
 		opening_hours: HOURS_SPLIT,
 		receipt_numbers_reset: "daily",
+		confirmation: "pos_sync",
+		counter_claims: false,
 	},
 ] as const;
 
@@ -289,4 +293,80 @@ export const DEMO_REDEEM_CODES: readonly string[] = [
 	"P4R8W3HN",
 	"T6Y2C9VB",
 	"H3N7X5QM",
+];
+
+/** The store that runs loyalty in staff mode (no POS) when the address asks for it with ?staff=1 or ?bill=N. */
+export const DEMO_STAFF_STORE = "mau-1";
+const DEMO_COUNTER_TOKEN = "K7M2Q9TXH3N7";
+const DEMO_STALE_COUNTER_TOKEN = "P4R8W3HNT6Y2";
+/** The counter QR the staff app shows at the till of the staff-mode store. */
+export const DEMO_COUNTER_QR = `fnb-counter:1:${DEMO_STAFF_STORE}:${DEMO_COUNTER_TOKEN}`;
+/** A counter QR of the same store that expired before the customer scanned it. */
+export const DEMO_STALE_COUNTER_QR = `fnb-counter:1:${DEMO_STAFF_STORE}:${DEMO_STALE_COUNTER_TOKEN}`;
+
+export interface DemoCounterCode {
+	readonly token: string;
+	readonly store: string;
+	readonly expired: boolean;
+}
+
+export const DEMO_COUNTER_CODES: readonly DemoCounterCode[] = [
+	{ token: DEMO_COUNTER_TOKEN, store: DEMO_STAFF_STORE, expired: false },
+	{ token: DEMO_STALE_COUNTER_TOKEN, store: DEMO_STAFF_STORE, expired: true },
+	// later codes of the same till, as the staff screen rotates them
+	{ token: "H3N7X5QMT6Y2", store: DEMO_STAFF_STORE, expired: false },
+	{ token: "T6Y2C9VBK7M2", store: DEMO_STAFF_STORE, expired: false },
+	{ token: "C9VBH3N7P4R8", store: DEMO_STAFF_STORE, expired: false },
+];
+
+/** The QR payloads of every live counter code of the demo store, the first one being DEMO_COUNTER_QR. */
+export const DEMO_LIVE_COUNTER_QRS: readonly string[] =
+	DEMO_COUNTER_CODES.filter((code) => !code.expired).map(
+		(code) => `fnb-counter:1:${code.store}:${code.token}`,
+	);
+
+/** The staff-mode settings of the demo store (loyalty_store_settings), in đồng where they are amounts. */
+export const DEMO_BILL_RULES = {
+	/** two readings of a total agree when they differ by at most this */
+	tolerance: 1_000,
+	maxBill: 2_000_000,
+	/** below this total a bill earns neither a stamp nor a point */
+	minimum: 20_000,
+	/** a counter claim up to this total is confirmed at once (auto approval); above it waits for a staff member */
+	autoApproveMax: 100_000,
+	unconfirmedHours: 24,
+	awaitingStaffHours: 6,
+	counterClaimsPerDay: 3,
+	/** wrong or unknown counter codes before the claims lock, and for how long */
+	lockAfter: 5,
+	lockMinutes: 15,
+} as const;
+
+export interface DemoStaffBill {
+	readonly id: string;
+	readonly billNo: string;
+	/** the total the staff member typed: the customer never sees it */
+	readonly staffTotal: number;
+	readonly minutesAgo: number;
+}
+
+export const DEMO_STAFF_BILLS: readonly DemoStaffBill[] = [
+	{
+		id: "00000000-0000-4000-8000-00000000b001",
+		billNo: "HD0457",
+		staffTotal: 85_000,
+		minutesAgo: 30,
+	},
+	{
+		id: "00000000-0000-4000-8000-00000000b002",
+		billNo: "HD0461",
+		staffTotal: 120_000,
+		minutesAgo: 10,
+	},
+	{
+		id: "00000000-0000-4000-8000-00000000b003",
+		billNo: "HD0470",
+		staffTotal: 42_000,
+		minutesAgo: 5,
+	},
 ];

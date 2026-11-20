@@ -74,6 +74,44 @@ function Field({
 	);
 }
 
+/** At a store in staff mode the receipt claim is refused (staff_mode): the counter QR is the way to claim there. */
+function StaffStoreNotice() {
+	const { t } = useI18n();
+	const navigate = useNavigate();
+	return (
+		<div
+			className="flex flex-col gap-2 rounded-xl bg-warning-soft px-3 py-2"
+			data-testid="claim-staff-store"
+		>
+			<p className="text-base text-ink">{t("claim.staffStore")}</p>
+			<button
+				type="button"
+				className={secondaryButton}
+				onClick={() => navigate("/quet-ma-quay")}
+			>
+				{t("counter.scan")}
+			</button>
+		</div>
+	);
+}
+
+function CounterEntry() {
+	const { t } = useI18n();
+	const navigate = useNavigate();
+	return (
+		<div className="flex flex-col gap-2" data-testid="claim-counter-entry">
+			<p className="text-sm text-ink-muted">{t("claim.counterHint")}</p>
+			<button
+				type="button"
+				className={secondaryButton}
+				onClick={() => navigate("/quet-ma-quay")}
+			>
+				{t("counter.scan")}
+			</button>
+		</div>
+	);
+}
+
 export function ClaimFormView({
 	stores,
 	initialStore,
@@ -155,6 +193,10 @@ export function ClaimFormView({
 			{problem("store") === null ? null : (
 				<p className="text-sm text-negative">{problem("store")}</p>
 			)}
+			{stores.find((store) => store.code === draft.store)?.confirmation ===
+			"staff" ? (
+				<StaffStoreNotice />
+			) : null}
 			<Field
 				id={receiptId}
 				label={t("claim.receiptNo")}
@@ -339,6 +381,15 @@ export function ClaimResultView({
 			>
 				{t("home.openCard")}
 			</button>
+			{result.reason === "staff_mode" ? (
+				<button
+					type="button"
+					className={secondaryButton}
+					onClick={() => navigate("/quet-ma-quay")}
+				>
+					{t("counter.scan")}
+				</button>
+			) : null}
 			{result.claimsLeftToday > 0 ? (
 				<button type="button" className={secondaryButton} onClick={onAnother}>
 					{t("claim.another")}
@@ -429,6 +480,9 @@ function ClaimView() {
 			) : result === null ? (
 				<>
 					<p className="text-base text-ink">{t("claim.intro")}</p>
+					{stores.some((store) => store.counterClaims) ? (
+						<CounterEntry />
+					) : null}
 					<ClaimFormView
 						key={round}
 						stores={stores}

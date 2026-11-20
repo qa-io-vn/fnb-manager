@@ -9,6 +9,7 @@ import type {
 import { useI18n } from "@fnb/zalo-mini/react";
 import { type ReactNode, useCallback, useId } from "react";
 import { useNavigate } from "react-router-dom";
+import { BillsToConfirmCard } from "../bills/bill-confirm";
 import { claimReasonKey } from "../claim/model";
 import { useCustomerData, useLoad } from "../data/customer-data";
 import { shownDate, shownInstant } from "../data/dates";
@@ -161,7 +162,13 @@ export function MemberCardView({ wallet }: { readonly wallet: Wallet }) {
 	);
 }
 
-function WalletView({ wallet }: { readonly wallet: Wallet }) {
+function WalletView({
+	wallet,
+	onChanged,
+}: {
+	readonly wallet: Wallet;
+	readonly onChanged: () => void;
+}) {
 	const { t } = useI18n();
 	const navigate = useNavigate();
 	const historyId = useId();
@@ -171,6 +178,10 @@ function WalletView({ wallet }: { readonly wallet: Wallet }) {
 		<Screen testId="wallet">
 			<h1 className="text-xl font-semibold text-ink">{t("wallet.title")}</h1>
 			<MemberCardView wallet={wallet} />
+			<BillsToConfirmCard
+				bills={wallet.billsToConfirm}
+				onAnswered={onChanged}
+			/>
 			{wallet.stampCards.map((card) => (
 				<Card key={card.id} testId="stamp-card">
 					<div className="flex items-center gap-4">
@@ -335,7 +346,7 @@ function MemberWallet() {
 	if (state.status === "loading") return <Loading />;
 	if (state.status === "failed")
 		return <Failed failure={state.failure} onRetry={reload} />;
-	return <WalletView wallet={state.data} />;
+	return <WalletView wallet={state.data} onChanged={reload} />;
 }
 
 export function MemberOnly({

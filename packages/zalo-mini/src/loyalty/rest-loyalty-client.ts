@@ -2,9 +2,15 @@ import type { RestClient } from "../data/rest-client";
 import {
 	CUSTOMER_FUNCTIONS,
 	claimArgs,
+	confirmBillArgs,
+	counterClaimArgs,
+	disputeBillArgs,
 	type LoyaltyClient,
 	memberCodeArgs,
+	readBillConfirmResult,
+	readBillDisputeResult,
 	readClaimResult,
+	readCounterClaimResult,
 	readCustomerHome,
 	readDeletionRequest,
 	readMarketingStop,
@@ -56,6 +62,27 @@ export function createRestLoyaltyClient(rest: RestClient): LoyaltyClient {
 		async requestDeletion() {
 			return readDeletionRequest(
 				await rest.rpc(CUSTOMER_FUNCTIONS.requestDeletion),
+			);
+		},
+		async confirmBill(billId, total) {
+			return readBillConfirmResult(
+				await rest.rpc(
+					CUSTOMER_FUNCTIONS.confirmBill,
+					confirmBillArgs(billId, total),
+				),
+			);
+		},
+		async disputeBill(billId) {
+			return readBillDisputeResult(
+				await rest.rpc(CUSTOMER_FUNCTIONS.disputeBill, disputeBillArgs(billId)),
+			);
+		},
+		async submitCounterClaim(input) {
+			return readCounterClaimResult(
+				await rest.rpc(
+					CUSTOMER_FUNCTIONS.submitCounterClaim,
+					counterClaimArgs(input),
+				),
 			);
 		},
 	};
