@@ -158,6 +158,16 @@ jobs:
           NOTIFY_TELEGRAM_BOT_TOKEN: ${{ secrets.NOTIFY_TELEGRAM_BOT_TOKEN }}
           NOTIFY_WEBHOOK_SECRET: ${{ secrets.NOTIFY_WEBHOOK_SECRET }}
         run: node apps/jobs/bin/fnb.mjs notify tick
+      - name: Rebuild bloated indexes (Sundays)
+        if: always() && steps.config.outputs.configured == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ "$(TZ=Asia/Ho_Chi_Minh date +%u)" = "7" ]; then
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -tAc "select app.maintain_storage(true)"
+          else
+            echo "Index rebuild runs on Sundays; skipped today."
+          fi
       - name: Status
         if: always() && steps.config.outputs.configured == 'true'
         env:

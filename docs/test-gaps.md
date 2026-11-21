@@ -225,6 +225,7 @@ G-48 is not used; the numbers stay stable.
 | G-94 | acceptance | functional | Owner decisions: the silence outcome (reverse or confirm), the required level (2 or 0), the caps from the reward value per stamp, auto-approval of counter claims, who audits and how often. | high | owner acceptance check in test-plan.md | owner |
 | G-95 | system | functional | Not built: the weekly redemption cap per member, a customer notification asking to confirm a bill (the app card is the only prompt), Zalo `keepScreen` on Mã quầy (browser wake lock only), the staff demo in staff mode by default (`?storeMode=staff`). | low | later batch with phases 4-8 | apps, SQL |
 | G-96 | integration | security | Phases 4-8 of the bill plan (camera capture, photo hash, private bucket and retention, mock and real reader, bill checks, level 1 and 3) are not built; `bill_reader_mode` is stored but unused. | planned | next batch | bill-verification-plan.md section 5 |
+| G-97 | system | non-functional | Not built: archiving months older than the hot window to encrypted files in free object storage (R2 or B2) with a catalogue and a restore command; first the reports that read raw invoices beyond six months must be listed. Not needed yet: one store is about 25 MB of data a year plus indexes. | planned | when the database passes 300 MB after the index rebuild | operations.md |
 
 ## 4. Closing a gap
 
