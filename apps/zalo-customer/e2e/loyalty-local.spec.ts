@@ -1,9 +1,7 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import {
 	checkCustomerScreen,
-	nativeStorageKeys,
 	openTab,
-	sdkCalls,
 	watchCustomerPage,
 } from "./customer-checks";
 import { LocalLoop, localStackRuns, portOf } from "./local-loop";
@@ -12,117 +10,18 @@ import {
 	openLoyaltyFixture,
 	SIM_BRAND,
 	SIM_TENANT,
-	type SimTenant,
-	type SyntheticCustomer,
 } from "./loyalty-fixture";
+import {
+	browseAndJoin,
+	customerLoopArgs,
+	liveMemberCode,
+} from "./loyalty-flow";
 
 const CUSTOMER_PORT = portOf(5781);
 const STAFF_PORT = portOf(5782);
 const SALE_AMOUNT = 60_000;
 const STACK_SKIP =
 	"set ZALO_LOCAL_DEV=1 with the local stack running to drive pnpm zalo:dev on loyalty-sim";
-
-function customerLoopArgs(customer: SyntheticCustomer): string[] {
-	return [
-		"--app",
-		"customer",
-		"--live",
-		"--tenant",
-		SIM_TENANT,
-		"--brand",
-		SIM_BRAND,
-		"--mock-user",
-		customer.mockUser,
-		"--mock-name",
-		customer.mockName,
-		"--mock-phone",
-		customer.phone,
-		"--port",
-		CUSTOMER_PORT,
-	];
-}
-
-async function browseAndJoin(
-	page: Page,
-	url: string,
-	tenant: SimTenant,
-): Promise<void> {
-	await page.goto(url);
-	await expect(
-		page.getByRole("heading", { name: tenant.programmeName }),
-	).toBeVisible();
-	await expect(page.getByTestId("store-list").getByRole("button")).toHaveCount(
-		tenant.stores.length,
-	);
-	await checkCustomerScreen(page);
-	const firstStore = tenant.stores[0];
-	if (firstStore === undefined) throw new Error("loyalty-sim has no store");
-	await page
-		.getByTestId("store-list")
-		.getByRole("button", { name: new RegExp(firstStore.name) })
-		.click();
-	await expect(
-		page.getByRole("heading", { name: firstStore.name }),
-	).toBeVisible();
-	await checkCustomerScreen(page);
-	await page.getByRole("button", { name: "Quay lại" }).click();
-	await page.getByRole("button", { name: "Chính sách bảo mật" }).click();
-	const privacy = page.getByRole("dialog");
-	await expect(privacy.getByTestId("legal-document")).toBeVisible();
-	await checkCustomerScreen(page);
-	await privacy.getByRole("button", { name: /Đóng/ }).click();
-	expect(await sdkCalls(page)).not.toContain("getPhoneNumber");
-
-	await page.getByRole("button", { name: "Tham gia thành viên" }).click();
-	await expect(
-		page.getByRole("heading", { name: "Tham gia thành viên" }),
-	).toBeVisible();
-	await checkCustomerScreen(page);
-	await page.getByRole("button", { name: "Tiếp tục" }).click();
-	await expect(
-		page.getByRole("heading", { name: "Đồng ý tham gia" }),
-	).toBeVisible();
-	await expect(page.getByRole("checkbox")).not.toBeChecked();
-	await expect(page.getByRole("switch")).not.toBeChecked();
-	await expect(page.getByRole("button", { name: "Tham gia" })).toBeDisabled();
-	await checkCustomerScreen(page);
-	expect(await sdkCalls(page)).not.toContain("getPhoneNumber");
-	await page.getByRole("checkbox").check();
-	await page.getByRole("button", { name: "Tham gia" }).click();
-	await expect(
-		page.getByRole("heading", { name: "Chào mừng bạn!" }),
-	).toBeVisible();
-	await expect(page.getByTestId("welcome-stamps")).toHaveText(
-		`Bạn nhận được ${tenant.welcomeStamps} dấu chào mừng.`,
-	);
-	expect(await sdkCalls(page)).toContain("getPhoneNumber");
-	await checkCustomerScreen(page);
-	await page.getByRole("button", { name: "Bỏ qua" }).click();
-	await expect(page.getByTestId("member-card")).toBeVisible();
-	await expect(page.getByTestId("stamp-count")).toHaveText(
-		`${tenant.welcomeStamps}/${tenant.stampsPerCard} dấu`,
-	);
-	await checkCustomerScreen(page);
-	expect(await nativeStorageKeys(page)).toEqual(["fnb.customer-session"]);
-}
-
-const MIN_CODE_SECONDS = 15;
-
-async function freshMemberCode(page: Page): Promise<string> {
-	const code = page.getByTestId("member-code");
-	const countdown = page.getByTestId("code-countdown");
-	const seconds = Number(
-		/(\d+)/.exec((await countdown.textContent()) ?? "")?.[1] ?? "0",
-	);
-	if (seconds < MIN_CODE_SECONDS) {
-		const old = (await code.textContent()) ?? "";
-		await expect(code).not.toHaveText(old, { timeout: 90_000 });
-		await expect(countdown).toHaveText(/^Mã đổi sau [1-6]\d giây$/);
-	}
-	const value = (await code.textContent()) ?? "";
-	expect(value).toMatch(/^\d{6}$/);
-	return value;
-}
 
 let fixture: LoyaltyFixture | null = null;
 const loops: LocalLoop[] = [];
@@ -154,7 +53,7 @@ test("a customer browses loyalty-sim, joins with the phone consent, claims a rec
 	const customer = await fixture.newCustomer();
 	const loop = new LocalLoop();
 	loops.push(loop);
-	const ready = await loop.start(customerLoopArgs(customer));
+	const ready = await loop.start(customerLoopArgs(customer, CUSTOMER_PORT));
 	expect(ready.role).toBe("customer");
 	const hosts = new Set<string>();
 	page.on("request", (request) => hosts.add(new URL(request.url()).host));
@@ -268,7 +167,7 @@ test("the staff app records the customer's member code at sim-1, a sale rung in 
 	const staffLoop = new LocalLoop();
 	loops.push(customerLoop, staffLoop);
 	const [customerReady, staffReady] = await Promise.all([
-		customerLoop.start(customerLoopArgs(customer)),
+		customerLoop.start(customerLoopArgs(customer, CUSTOMER_PORT)),
 		staffLoop.start([
 			"--tenant",
 			SIM_TENANT,
@@ -320,7 +219,9 @@ test("the staff app records the customer's member code at sim-1, a sale rung in 
 			desk.getByText("Dữ liệu mẫu, chưa ghi vào hệ thống"),
 		).toHaveCount(0);
 		await fixture.quietStore(store.code);
-		await desk.getByTestId("checkin-entry").fill(await freshMemberCode(page));
+		await desk
+			.getByTestId("checkin-entry")
+			.fill(await liveMemberCode(page, fixture, store.code));
 		await desk.getByRole("button", { name: "Ghi nhận" }).click();
 		await expect(desk.getByTestId("checkin-state")).toHaveText(
 			"Đang chờ xác nhận",
@@ -379,7 +280,7 @@ test("a member redeems a reward at sim-1, the staff app verifies the code, the t
 	const staffLoop = new LocalLoop();
 	loops.push(customerLoop, staffLoop);
 	const [customerReady, staffReady] = await Promise.all([
-		customerLoop.start(customerLoopArgs(customer)),
+		customerLoop.start(customerLoopArgs(customer, CUSTOMER_PORT)),
 		staffLoop.start([
 			"--tenant",
 			SIM_TENANT,

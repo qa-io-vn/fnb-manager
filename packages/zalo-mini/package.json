@@ -41,6 +41,10 @@
 			"types": "./src/testing/design-checks.ts",
 			"import": "./src/testing/design-checks.ts"
 		},
+		"./testing/network-scan": {
+			"types": "./src/testing/network-scan.ts",
+			"import": "./src/testing/network-scan.ts"
+		},
 		"./testing/paint-budget": {
 			"types": "./src/testing/paint-budget.ts",
 			"import": "./src/testing/paint-budget.ts"

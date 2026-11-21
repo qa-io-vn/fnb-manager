@@ -60,6 +60,27 @@ export interface SyntheticStaff {
 	readonly userId: string;
 }
 
+export type StoreMode = "pos_sync" | "staff";
+
+export interface SeededMember extends SyntheticCustomer {
+	readonly membershipId: string;
+}
+
+export interface BillRow {
+	readonly id: string;
+	readonly billNo: string;
+	readonly total: number;
+	readonly state: string;
+	readonly evidenceLevel: number;
+	readonly queueReason: string | null;
+	readonly earns: number;
+	readonly confirms: number;
+	readonly clawbacks: number;
+	readonly stamps: number;
+	readonly points: number;
+	readonly customerAnswers: number;
+}
+
 export interface SeededReward {
 	readonly couponId: string;
 	readonly rewardKey: string;
@@ -115,13 +136,31 @@ export interface CleanupCounts {
 	readonly customerLogins: number;
 	readonly staffLogins: number;
 	readonly rewards: number;
+	readonly stores: number;
+	readonly auditEvents: number;
+	readonly alerts: number;
 }
 
 export interface LoyaltyFixture {
 	readonly tenant: SimTenant;
 	readonly sql: Sql;
 	newCustomer(): Promise<SyntheticCustomer>;
-	newStaff(storeCode: string): Promise<SyntheticStaff>;
+	newStaff(
+		storeCode: string,
+		role?: "manager" | "staff",
+		alsoStores?: readonly string[],
+	): Promise<SyntheticStaff>;
+	/** puts a store of loyalty-sim in a confirmation mode (and no random audit); cleanup puts every changed store back */
+	setStoreMode(storeCode: string, mode: StoreMode): Promise<void>;
+	/** a customer and a joined membership made by the loyalty functions, for specs that do not drive the join screens */
+	seedMember(storeCode: string): Promise<SeededMember>;
+	/** a fresh single-use member code of a seeded member at a store, as the customer app would show it */
+	issueCode(member: SeededMember, storeCode: string): Promise<string>;
+	/** the bills (path E) of a customer with what each one wrote to the ledger */
+	bills(customer: SyntheticCustomer): Promise<BillRow[]>;
+	storeId(storeCode: string): string;
+	/** whether a member code is still a live single-use code at a store (a later code of the member replaces it) */
+	codeIsLive(storeCode: string, code: string): Promise<boolean>;
 	seedReward(storeCode: string, costStamps: number): Promise<SeededReward>;
 	quietStore(storeCode: string): Promise<number>;
 	redemptionState(reward: SeededReward): Promise<RedemptionState>;
@@ -195,7 +234,12 @@ async function eraseCustomers(
 	sql: Sql,
 	tenantId: string,
 	where: { readonly phones: readonly string[]; readonly mockUsers: string[] },
-): Promise<Omit<CleanupCounts, "staffLogins" | "rewards">> {
+): Promise<
+	Omit<
+		CleanupCounts,
+		"staffLogins" | "rewards" | "stores" | "auditEvents" | "alerts"
+	>
+> {
 	const found = await sql<{ id: string }>`
 		select c.id::text as id from public.customers c
 		where c.tenant_id = ${tenantId}::uuid
@@ -336,6 +380,11 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 	try {
 		tenant = await loadTenant(sql);
 		await deleteStaleFixtures(sql, tenant.id);
+		// the baseline of loyalty-sim is the POS sync: heal a store a crashed bill spec left in staff mode
+		await sql`
+			update public.loyalty_store_settings set confirmation = 'pos_sync'
+			where tenant_id = ${tenant.id}::uuid and confirmation <> 'pos_sync'
+		`;
 	} catch (error) {
 		await sql.end({ timeout: 5 });
 		throw error;
@@ -357,36 +406,164 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 		return removed;
 	};
 	const used = new Set<string>();
+	const [opened] = await sql<{ at: string }>`select now()::text as at`;
+	const startedAt = opened?.at ?? new Date().toISOString();
+	const removeBillTraces = async (): Promise<{
+		auditEvents: number;
+		alerts: number;
+	}> => {
+		const phones = customers.map((customer) => e164(customer.phone));
+		const staffIds = staff.map((member) => member.userId);
+		const audits = await sql`
+			delete from public.loyalty_audit_events e
+			where e.tenant_id = ${tenant.id}::uuid
+				and (e.actor = any(${staffIds}::uuid[])
+					or e.membership_id in (
+						select m.id from public.memberships m join public.customers c on c.id = m.customer_id
+						where m.tenant_id = ${tenant.id}::uuid and c.phone = any(${phones})
+					))
+			returning e.id
+		`;
+		const alerts = await sql`
+			delete from public.alert_events
+			where tenant_id = ${tenant.id}::uuid and rule_key = 'loyalty_staff_anomaly'
+				and opened_at >= ${startedAt}::timestamptz
+			returning id
+		`;
+		return { auditEvents: audits.length, alerts: alerts.length };
+	};
+	const changedStores = new Map<string, number>();
+	const restoreStores = async (): Promise<number> => {
+		let restored = 0;
+		for (const [storeId, auditPct] of changedStores) {
+			const rows = await sql`
+				update public.loyalty_store_settings
+				set confirmation = 'pos_sync', bill_audit_sample_pct = ${auditPct}
+				where store_id = ${storeId}::uuid
+				returning store_id
+			`;
+			restored += rows.length;
+		}
+		changedStores.clear();
+		return restored;
+	};
+	const storeOf = (storeCode: string): SimStore => {
+		const store = tenant.stores.find((entry) => entry.code === storeCode);
+		if (store === undefined) throw new Error(`no store ${storeCode}`);
+		return store;
+	};
+	const newCustomer = async (): Promise<SyntheticCustomer> => {
+		const taken = await sql<{ phone: string }>`
+			select phone from public.customers where tenant_id = ${tenant.id}::uuid and phone is not null
+		`;
+		for (const row of taken) used.add(row.phone);
+		let phone = "";
+		do {
+			phone = `0900000${randomInt(100, 700)}`;
+		} while (used.has(e164(phone)));
+		used.add(e164(phone));
+		const customer = {
+			mockUser: `${MOCK_USER_PREFIX}c-${randomBytes(4).toString("hex")}`,
+			mockName: "Khách thử nghiệm",
+			phone,
+		};
+		customers.push(customer);
+		return customer;
+	};
 	return {
+		storeId: (storeCode) => storeOf(storeCode).id,
+		async codeIsLive(storeCode, code) {
+			const [row] = await sql<{ live: boolean }>`
+				select (status = 'issued' and expires_at > now()) as live from public.pending_checkins
+				where store_id = ${storeOf(storeCode).id}::uuid and code = ${code}
+				order by created_at desc limit 1
+			`;
+			return row?.live === true;
+		},
 		tenant,
 		sql,
-		async newCustomer() {
-			const taken = await sql<{ phone: string }>`
-				select phone from public.customers where tenant_id = ${tenant.id}::uuid and phone is not null
+		newCustomer,
+		async setStoreMode(storeCode, mode) {
+			const store = storeOf(storeCode);
+			const [before] = await sql<{ pct: string }>`
+				select bill_audit_sample_pct::text as pct from public.loyalty_store_settings
+				where store_id = ${store.id}::uuid
 			`;
-			for (const row of taken) used.add(row.phone);
-			let phone = "";
-			do {
-				phone = `0900000${randomInt(100, 700)}`;
-			} while (used.has(e164(phone)));
-			used.add(e164(phone));
-			const customer = {
-				mockUser: `${MOCK_USER_PREFIX}c-${randomBytes(4).toString("hex")}`,
-				mockName: "Khách thử nghiệm",
-				phone,
-			};
-			customers.push(customer);
-			return customer;
+			if (before === undefined)
+				throw new Error(`${storeCode} has no loyalty settings`);
+			if (!changedStores.has(store.id))
+				changedStores.set(store.id, Number(before.pct));
+			await sql`
+				update public.loyalty_store_settings
+				set confirmation = ${mode}, bill_audit_sample_pct = 0
+				where store_id = ${store.id}::uuid
+			`;
 		},
-		async newStaff(storeCode) {
-			const store = tenant.stores.find((entry) => entry.code === storeCode);
-			if (store === undefined) throw new Error(`no store ${storeCode}`);
+		async seedMember(storeCode) {
+			const store = storeOf(storeCode);
+			const customer = await newCustomer();
+			const [brand] = await sql<{ id: string }>`
+				select id::text as id from public.brands
+				where tenant_id = ${tenant.id}::uuid and brand_key = ${SIM_BRAND}
+			`;
+			if (brand === undefined) throw new Error(`no brand ${SIM_BRAND}`);
+			const [made] = await sql<{ id: string }>`
+				select app.loyalty_customer_for_phone(${tenant.id}::uuid, ${customer.phone}, now())::text as id
+			`;
+			const [joined] = await sql<{ id: string }>`
+				select app.loyalty_join(${tenant.id}::uuid, ${made?.id ?? null}::uuid, 'mini_app', ${store.id}::uuid,
+					${brand.id}::uuid, ${customer.mockUser}, now())::text as id
+			`;
+			if (joined === undefined) throw new Error("the member was not joined");
+			return { ...customer, membershipId: joined.id };
+		},
+		async issueCode(member, storeCode) {
+			const store = storeOf(storeCode);
+			const [issued] = await sql<{ code: string }>`
+				select code from app.loyalty_issue_checkin_code(${member.membershipId}::uuid, ${store.id}::uuid, now())
+			`;
+			if (issued === undefined) throw new Error("no member code was issued");
+			return issued.code;
+		},
+		async bills(customer) {
+			const rows = await sql<Row>`
+				select b.id::text as id, b.bill_no, b.total::float8 as total, b.state, b.evidence_level, b.queue_reason,
+					(select count(*) from public.loyalty_ledger l where l.bill_id = b.id and l.entry_kind = 'earn')::integer as earns,
+					(select count(*) from public.loyalty_ledger l where l.bill_id = b.id and l.entry_kind = 'confirm')::integer as confirms,
+					(select count(*) from public.loyalty_ledger l where l.bill_id = b.id and l.entry_kind = 'clawback')::integer as clawbacks,
+					coalesce((select sum(l.stamp_delta) from public.loyalty_ledger l where l.bill_id = b.id), 0)::integer as stamps,
+					coalesce((select sum(l.point_delta) from public.loyalty_ledger l where l.bill_id = b.id), 0)::integer as points,
+					(select count(*) from public.bill_confirmations c where c.bill_id = b.id and c.source = 'customer')::integer as customer_answers
+				from public.bill_captures b
+				join public.memberships m on m.id = b.membership_id
+				join public.customers c on c.id = m.customer_id
+				where b.tenant_id = ${tenant.id}::uuid and c.phone = ${e164(customer.phone)}
+				order by b.created_at, b.bill_no
+			`;
+			return rows.map((row) => ({
+				id: String(row.id),
+				billNo: String(row.bill_no),
+				total: Number(row.total),
+				state: String(row.state),
+				evidenceLevel: Number(row.evidence_level),
+				queueReason:
+					row.queue_reason === null ? null : String(row.queue_reason),
+				earns: Number(row.earns),
+				confirms: Number(row.confirms),
+				clawbacks: Number(row.clawbacks),
+				stamps: Number(row.stamps),
+				points: Number(row.points),
+				customerAnswers: Number(row.customer_answers),
+			}));
+		},
+		async newStaff(storeCode, role = "manager", alsoStores = []) {
+			const stores = [storeCode, ...alsoStores].map((code) => storeOf(code).id);
 			const suffix = randomBytes(4).toString("hex");
 			const email = `${STAFF_EMAIL_PREFIX}${suffix}${STAFF_EMAIL_DOMAIN}`;
 			const userId = await insertLogin(sql, email);
 			await sql`
 				insert into public.tenant_members (tenant_id, user_id, role, store_ids)
-				values (${tenant.id}::uuid, ${userId}::uuid, 'manager', array[${store.id}::uuid])
+				values (${tenant.id}::uuid, ${userId}::uuid, ${role}::public.tenant_role, ${stores}::uuid[])
 			`;
 			const member = {
 				email,
@@ -579,6 +756,8 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 		},
 		async cleanup() {
 			try {
+				const stores = await restoreStores();
+				const traces = await removeBillTraces();
 				const counts = await eraseCustomers(sql, tenant.id, {
 					phones: customers.map((customer) => e164(customer.phone)),
 					mockUsers: customers.map((customer) => customer.mockUser),
@@ -588,7 +767,7 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 					staff.map((member) => member.userId),
 				);
 				const rewards = await removeRewards();
-				return { ...counts, staffLogins, rewards };
+				return { ...counts, staffLogins, rewards, stores, ...traces };
 			} finally {
 				await sql.end({ timeout: 5 });
 			}
