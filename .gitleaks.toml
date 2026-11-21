@@ -21,3 +21,11 @@ description = "The synthetic JWT {\"alg\":\"HS256\"}.{\"sub\":\"1\"}.signature t
 regexes = [
 	'''^eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiIxIn0\.c2lnbmF0dXJl$''',
 ]
+
+[[allowlists]]
+description = "The synthetic counter QR tokens of the customer Mini App demo world"
+targetRules = ["generic-api-key"]
+paths = [
+	'''apps/zalo-customer/src/demo/fixtures\.ts''',
+	'''apps/zalo-staff/src/loyalty/bills-demo\.ts''',
+]
