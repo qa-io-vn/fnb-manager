@@ -78,6 +78,7 @@
 	"loyalty.refusal.invoice_not_completed": "Hóa đơn chưa hoàn tất",
 	"loyalty.refusal.programme_inactive": "Chương trình không chạy",
 	"loyalty.refusal.membership_inactive": "Thành viên không hoạt động",
+	"loyalty.refusal.staff_mode": "Quán xác nhận qua nhân viên, không qua POS",
 	"loyalty.reason.welcome": "Quà tham gia",
 	"loyalty.reason.invoice_voided": "Hóa đơn bị hủy",
 	"loyalty.reason.invoice_edited": "Hóa đơn bị sửa",

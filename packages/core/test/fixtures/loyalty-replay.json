@@ -727,7 +727,8 @@
 			"already_earned": 0,
 			"invoice_not_completed": 10,
 			"programme_inactive": 0,
-			"membership_inactive": 0
+			"membership_inactive": 0,
+			"staff_mode": 0
 		},
 		"members": {
 			"0900007001": { "stamps": 9, "points": 63, "earns": 10, "clawbacks": 0 },

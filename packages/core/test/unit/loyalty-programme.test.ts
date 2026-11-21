@@ -215,6 +215,7 @@ describe("ledger entries", () => {
 		]);
 		expect(LOYALTY_REFUSAL_REASONS).toContain("daily_cap");
 		expect(LOYALTY_REFUSAL_REASONS).toContain("excluded_phone");
+		expect(LOYALTY_REFUSAL_REASONS).toContain("staff_mode");
 	});
 
 	it("needs an invoice and a path for an earn", () => {

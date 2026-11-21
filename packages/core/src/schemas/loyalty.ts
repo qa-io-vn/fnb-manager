@@ -286,6 +286,7 @@ export const LOYALTY_REFUSAL_REASONS = [
 	"invoice_not_completed",
 	"programme_inactive",
 	"membership_inactive",
+	"staff_mode",
 ] as const;
 export const loyaltyRefusalReasonSchema = z.enum(LOYALTY_REFUSAL_REASONS);
 export type LoyaltyRefusalReason = z.infer<typeof loyaltyRefusalReasonSchema>;

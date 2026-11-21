@@ -102,6 +102,7 @@ function emptyRefusals(): RefusalCounts {
 		invoice_not_completed: 0,
 		programme_inactive: 0,
 		membership_inactive: 0,
+		staff_mode: 0,
 	};
 }
 

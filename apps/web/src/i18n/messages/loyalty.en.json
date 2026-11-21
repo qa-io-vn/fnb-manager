@@ -78,6 +78,7 @@
 	"loyalty.refusal.invoice_not_completed": "Invoice not completed",
 	"loyalty.refusal.programme_inactive": "Programme not running",
 	"loyalty.refusal.membership_inactive": "Membership not active",
+	"loyalty.refusal.staff_mode": "Store confirms through staff, not the POS",
 	"loyalty.reason.welcome": "Welcome gift",
 	"loyalty.reason.invoice_voided": "Invoice voided",
 	"loyalty.reason.invoice_edited": "Invoice edited",

@@ -60,6 +60,7 @@ export const REFUSAL_KEYS: Readonly<Record<LoyaltyRefusalReason, MessageKey>> =
 		invoice_not_completed: "loyalty.refusal.invoice_not_completed",
 		programme_inactive: "loyalty.refusal.programme_inactive",
 		membership_inactive: "loyalty.refusal.membership_inactive",
+		staff_mode: "loyalty.refusal.staff_mode",
 	};
 
 export const QUEUE_REASON_KEYS: Readonly<Record<QueueReason, MessageKey>> = {
@@ -352,6 +353,7 @@ export interface AnomalyRow {
 
 export const SIGNAL_FREE_REFUSALS: readonly LoyaltyRefusalReason[] = [
 	"below_minimum",
+	"staff_mode",
 ];
 
 /** The rows of loyalty_shift_anomalies with every refusal reason and the signals to review. */
