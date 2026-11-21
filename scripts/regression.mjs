@@ -450,6 +450,16 @@ function regressionSteps() {
 			...pnpm("exec", "supabase", "test", "db"),
 		},
 		{
+			id: "concurrency-bill-caps",
+			title:
+				"Concurrency: eight parallel staff bills against a cap of three (scratch tenant, removed afterwards)",
+			level: "database",
+			gate: gates.stack,
+			timeout: 5 * MINUTE,
+			command: "bash",
+			args: ["supabase/snippets/bill-parallel-caps.sh"],
+		},
+		{
 			id: "parity-postgres",
 			title:
 				"Parity on Postgres (the PGlite parity runs in unit-demo-analytics)",
