@@ -2,9 +2,10 @@ import type { Page } from "@playwright/test";
 
 /**
  * A Vietnamese phone number in full: national `0` + 9 digits, `+84` + 9 digits or `84` + 9 digits, not part of a longer
- * run of digits (an epoch in milliseconds or an amount is not a phone).
+ * run of digits (an epoch in milliseconds or an amount is not a phone) and not part of an identifier (ten digits
+ * inside a UUID, such as `...-8e5f-0123456790ab`, are not a phone: one in a few hundred ids did show as a leak).
  */
-const FULL_PHONE = /(?<!\d)(?:0\d{9}|\+?84\d{9})(?!\d)/g;
+const FULL_PHONE = /(?<![\w-])(?:0\d{9}|\+?84\d{9})(?![\w-])/g;
 
 /**
  * Every full phone in a text, each shortened to its last three digits so a failure never prints the number, except the

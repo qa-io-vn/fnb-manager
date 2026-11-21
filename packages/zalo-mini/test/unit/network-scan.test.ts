@@ -27,6 +27,17 @@ describe("findFullPhones", () => {
 		expect(findFullPhones("+8490000123")).toEqual([]);
 	});
 
+	it("leaves a run of digits inside an identifier alone, and still finds a phone in text, a list or a URL query", () => {
+		expect(findFullPhones('{"id":"id-4b7d-8e5f-0123456790ab"}')).toEqual([]);
+		expect(findFullPhones("order-0900001234-x")).toEqual([]);
+		expect(findFullPhones("call 0900001234, then 0900005678.")).toEqual([
+			"…234",
+			"…678",
+		]);
+		expect(findFullPhones("/rest/v1/x?phone=0900001234&a=1")).toEqual(["…234"]);
+		expect(findFullPhones(`["${intl("900001234")}"]`)).toEqual(["…234"]);
+	});
+
 	it("skips the phones a session may see, in any of their forms, and still finds another", () => {
 		const own = "0900001234";
 		expect(findFullPhones(`${own} ${intl("900001234")}`, [own])).toEqual([]);

@@ -20,7 +20,7 @@ export default defineConfig({
 	projects: [
 		{
 			name: "local",
-			testMatch: /(?:loyalty|bills)-local\.spec\.ts/,
+			testMatch: /(?:loyalty|bills|counter|approval)-local\.spec\.ts/,
 			use: {
 				viewport: MINI_APP_VIEWPORT,
 				deviceScaleFactor: 2,

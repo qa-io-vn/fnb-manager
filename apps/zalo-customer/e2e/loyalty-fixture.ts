@@ -2,7 +2,8 @@ import { spawnSync } from "node:child_process";
 import { randomBytes, randomInt, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { localDatabaseUrl, ROOT } from "./local-loop";
+import type { RpcCredentials } from "@fnb/zalo-mini/testing/network-scan";
+import { localApiUrl, localDatabaseUrl, ROOT } from "./local-loop";
 
 const ZALO_PACKAGE = new URL(
 	"../../../packages/zalo/package.json",
@@ -55,6 +56,7 @@ export interface SyntheticCustomer {
 
 export interface SyntheticStaff {
 	readonly email: string;
+	readonly password: string;
 	readonly mockUser: string;
 	readonly mockName: string;
 	readonly userId: string;
@@ -79,6 +81,33 @@ export interface BillRow {
 	readonly stamps: number;
 	readonly points: number;
 	readonly customerAnswers: number;
+	readonly source: string;
+	readonly autoApproved: boolean;
+	readonly decisionReason: string | null;
+	readonly staffAnswers: number;
+}
+
+/** what a store of loyalty-sim may be changed to for a counter-claim spec; cleanup puts every changed value back */
+export interface ClaimSettings {
+	readonly selfClaim?: boolean;
+	readonly counterTtlSeconds?: number;
+	readonly autoApproveMaxAmount?: number;
+	readonly autoApprovePerDay?: number;
+}
+
+/** a counter code made by the fixture with a chosen life, relative to now */
+export interface CounterCodeWindow {
+	/** seconds since the code was issued; negative: issued in the future */
+	readonly issuedAgo: number;
+	/** seconds until the code expires; negative: expired that many seconds ago */
+	readonly expiresIn: number;
+}
+
+export interface SeededCounterCode {
+	readonly id: string;
+	readonly token: string;
+	/** the QR text a customer scans: fnb-counter:1:<store code>:<token> */
+	readonly payload: string;
 }
 
 export interface SeededReward {
@@ -139,6 +168,8 @@ export interface CleanupCounts {
 	readonly stores: number;
 	readonly auditEvents: number;
 	readonly alerts: number;
+	readonly counterCodes: number;
+	readonly attempts: number;
 }
 
 export interface LoyaltyFixture {
@@ -152,6 +183,17 @@ export interface LoyaltyFixture {
 	): Promise<SyntheticStaff>;
 	/** puts a store of loyalty-sim in a confirmation mode (and no random audit); cleanup puts every changed store back */
 	setStoreMode(storeCode: string, mode: StoreMode): Promise<void>;
+	/** changes the counter-claim settings of a store of loyalty-sim; cleanup puts every changed store back to the baseline */
+	configureStore(storeCode: string, settings: ClaimSettings): Promise<void>;
+	/** a counter code row with the given life (the function would issue it at now), for window and partition tests */
+	insertCounterCode(
+		storeCode: string,
+		window: CounterCodeWindow,
+	): Promise<SeededCounterCode>;
+	/** moves the life of a counter code relative to now (a code issued earlier has less of its life left) */
+	moveCounterCode(token: string, window: CounterCodeWindow): Promise<void>;
+	/** the session of a synthetic staff login as the data API sees it (a password sign-in), for role checks by RPC */
+	staffSession(member: SyntheticStaff): Promise<RpcCredentials>;
 	/** a customer and a joined membership made by the loyalty functions, for specs that do not drive the join screens */
 	seedMember(storeCode: string): Promise<SeededMember>;
 	/** a fresh single-use member code of a seeded member at a store, as the customer app would show it */
@@ -237,7 +279,13 @@ async function eraseCustomers(
 ): Promise<
 	Omit<
 		CleanupCounts,
-		"staffLogins" | "rewards" | "stores" | "auditEvents" | "alerts"
+		| "staffLogins"
+		| "rewards"
+		| "stores"
+		| "auditEvents"
+		| "alerts"
+		| "counterCodes"
+		| "attempts"
 	>
 > {
 	const found = await sql<{ id: string }>`
@@ -336,7 +384,10 @@ async function deleteStaleFixtures(sql: Sql, tenantId: string): Promise<void> {
 	);
 }
 
-async function insertLogin(sql: Sql, email: string): Promise<string> {
+async function insertLogin(
+	sql: Sql,
+	email: string,
+): Promise<{ userId: string; password: string }> {
 	const userId = randomUUID();
 	const password = randomBytes(18).toString("base64url");
 	await sql`
@@ -362,7 +413,7 @@ async function insertLogin(sql: Sql, email: string): Promise<string> {
 			now(), now(), now()
 		)
 	`;
-	return userId;
+	return { userId, password };
 }
 
 function saleLine(output: string, label: string): string {
@@ -382,9 +433,14 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 		await deleteStaleFixtures(sql, tenant.id);
 		// the baseline of loyalty-sim is the POS sync: heal a store a crashed bill spec left in staff mode
 		await sql`
-			update public.loyalty_store_settings set confirmation = 'pos_sync'
-			where tenant_id = ${tenant.id}::uuid and confirmation <> 'pos_sync'
+			update public.loyalty_store_settings
+			set confirmation = 'pos_sync', self_claim = false, counter_code_ttl_seconds = 90,
+				auto_approve_max_amount = 0, auto_approve_per_day = 0
+			where tenant_id = ${tenant.id}::uuid
+				and (confirmation <> 'pos_sync' or self_claim or counter_code_ttl_seconds <> 90
+					or auto_approve_max_amount <> 0 or auto_approve_per_day <> 0)
 		`;
+		await sql`delete from public.loyalty_counter_codes where tenant_id = ${tenant.id}::uuid`;
 	} catch (error) {
 		await sql.end({ timeout: 5 });
 		throw error;
@@ -433,6 +489,7 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 		return { auditEvents: audits.length, alerts: alerts.length };
 	};
 	const changedStores = new Map<string, number>();
+	const claimStores = new Set<string>();
 	const restoreStores = async (): Promise<number> => {
 		let restored = 0;
 		for (const [storeId, auditPct] of changedStores) {
@@ -445,7 +502,30 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 			restored += rows.length;
 		}
 		changedStores.clear();
+		for (const storeId of claimStores) {
+			await sql`
+				update public.loyalty_store_settings
+				set self_claim = false, counter_code_ttl_seconds = 90, auto_approve_max_amount = 0, auto_approve_per_day = 0
+				where store_id = ${storeId}::uuid
+			`;
+		}
+		claimStores.clear();
 		return restored;
+	};
+	/** the counter codes of the tenant and the counter-claim attempt counters, which only these specs write */
+	const removeCounterTraces = async (): Promise<{
+		counterCodes: number;
+		attempts: number;
+	}> => {
+		const codes = await sql`
+			delete from public.loyalty_counter_codes where tenant_id = ${tenant.id}::uuid returning id
+		`;
+		const attempts = await sql`
+			delete from app.code_attempts
+			where tenant_id = ${tenant.id}::uuid and endpoint = 'customer_counter_claim'
+			returning endpoint
+		`;
+		return { counterCodes: codes.length, attempts: attempts.length };
 	};
 	const storeOf = (storeCode: string): SimStore => {
 		const store = tenant.stores.find((entry) => entry.code === storeCode);
@@ -483,6 +563,68 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 		tenant,
 		sql,
 		newCustomer,
+		async configureStore(storeCode, settings) {
+			const store = storeOf(storeCode);
+			claimStores.add(store.id);
+			await sql`
+				update public.loyalty_store_settings
+				set self_claim = coalesce(${settings.selfClaim ?? null}::boolean, self_claim),
+					counter_code_ttl_seconds = coalesce(${settings.counterTtlSeconds ?? null}::smallint, counter_code_ttl_seconds),
+					auto_approve_max_amount = coalesce(${settings.autoApproveMaxAmount ?? null}::numeric, auto_approve_max_amount),
+					auto_approve_per_day = coalesce(${settings.autoApprovePerDay ?? null}::smallint, auto_approve_per_day)
+				where store_id = ${store.id}::uuid
+			`;
+		},
+		async insertCounterCode(storeCode, window) {
+			const store = storeOf(storeCode);
+			const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+			let token = "";
+			for (let i = 0; i < 12; i += 1)
+				token += alphabet[randomInt(alphabet.length)];
+			const [row] = await sql<{ id: string }>`
+				insert into public.loyalty_counter_codes (tenant_id, store_id, token, issued_at, expires_at)
+				values (${tenant.id}::uuid, ${store.id}::uuid, ${token},
+					now() - make_interval(secs => ${window.issuedAgo}::float8),
+					now() + make_interval(secs => ${window.expiresIn}::float8))
+				returning id::text as id
+			`;
+			if (row === undefined) throw new Error("no counter code was made");
+			claimStores.add(store.id);
+			return {
+				id: row.id,
+				token,
+				payload: `fnb-counter:1:${storeCode}:${token}`,
+			};
+		},
+		async moveCounterCode(token, window) {
+			await sql`
+				update public.loyalty_counter_codes
+				set issued_at = now() - make_interval(secs => ${window.issuedAgo}::float8),
+					expires_at = now() + make_interval(secs => ${window.expiresIn}::float8)
+				where tenant_id = ${tenant.id}::uuid and token = ${token}
+			`;
+		},
+		async staffSession(member) {
+			const api = localApiUrl();
+			const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? "";
+			if (api === "" || key === "")
+				throw new Error("the local API address and publishable key are needed");
+			const response = await fetch(`${api}/auth/v1/token?grant_type=password`, {
+				method: "POST",
+				headers: { "content-type": "application/json", apikey: key },
+				body: JSON.stringify({
+					email: member.email,
+					password: member.password,
+				}),
+			});
+			const body = (await response.json()) as { access_token?: string };
+			if (!response.ok || body.access_token === undefined)
+				throw new Error(`the staff sign-in answered ${response.status}`);
+			return {
+				url: `${api}/rest/v1/rpc/staff_recent_bills`,
+				headers: { authorization: `Bearer ${body.access_token}`, apikey: key },
+			};
+		},
 		async setStoreMode(storeCode, mode) {
 			const store = storeOf(storeCode);
 			const [before] = await sql<{ pct: string }>`
@@ -533,7 +675,9 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 					(select count(*) from public.loyalty_ledger l where l.bill_id = b.id and l.entry_kind = 'clawback')::integer as clawbacks,
 					coalesce((select sum(l.stamp_delta) from public.loyalty_ledger l where l.bill_id = b.id), 0)::integer as stamps,
 					coalesce((select sum(l.point_delta) from public.loyalty_ledger l where l.bill_id = b.id), 0)::integer as points,
-					(select count(*) from public.bill_confirmations c where c.bill_id = b.id and c.source = 'customer')::integer as customer_answers
+					(select count(*) from public.bill_confirmations c where c.bill_id = b.id and c.source = 'customer')::integer as customer_answers,
+					b.source, b.auto_approved, b.decision_reason,
+					(select count(*) from public.bill_confirmations c where c.bill_id = b.id and c.source = 'staff')::integer as staff_answers
 				from public.bill_captures b
 				join public.memberships m on m.id = b.membership_id
 				join public.customers c on c.id = m.customer_id
@@ -554,19 +698,25 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 				stamps: Number(row.stamps),
 				points: Number(row.points),
 				customerAnswers: Number(row.customer_answers),
+				source: String(row.source),
+				autoApproved: row.auto_approved === true,
+				decisionReason:
+					row.decision_reason === null ? null : String(row.decision_reason),
+				staffAnswers: Number(row.staff_answers),
 			}));
 		},
 		async newStaff(storeCode, role = "manager", alsoStores = []) {
 			const stores = [storeCode, ...alsoStores].map((code) => storeOf(code).id);
 			const suffix = randomBytes(4).toString("hex");
 			const email = `${STAFF_EMAIL_PREFIX}${suffix}${STAFF_EMAIL_DOMAIN}`;
-			const userId = await insertLogin(sql, email);
+			const { userId, password } = await insertLogin(sql, email);
 			await sql`
 				insert into public.tenant_members (tenant_id, user_id, role, store_ids)
 				values (${tenant.id}::uuid, ${userId}::uuid, ${role}::public.tenant_role, ${stores}::uuid[])
 			`;
 			const member = {
 				email,
+				password,
 				userId,
 				mockUser: `${MOCK_USER_PREFIX}s-${suffix}`,
 				mockName: "Quản lý thử nghiệm",
@@ -758,6 +908,7 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 			try {
 				const stores = await restoreStores();
 				const traces = await removeBillTraces();
+				const counter = await removeCounterTraces();
 				const counts = await eraseCustomers(sql, tenant.id, {
 					phones: customers.map((customer) => e164(customer.phone)),
 					mockUsers: customers.map((customer) => customer.mockUser),
@@ -767,7 +918,14 @@ export async function openLoyaltyFixture(): Promise<LoyaltyFixture> {
 					staff.map((member) => member.userId),
 				);
 				const rewards = await removeRewards();
-				return { ...counts, staffLogins, rewards, stores, ...traces };
+				return {
+					...counts,
+					staffLogins,
+					rewards,
+					stores,
+					...traces,
+					...counter,
+				};
 			} finally {
 				await sql.end({ timeout: 5 });
 			}
