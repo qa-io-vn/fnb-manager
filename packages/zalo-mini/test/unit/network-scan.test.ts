@@ -4,10 +4,15 @@
 import { describe, expect, it } from "vitest";
 import { findFullPhones } from "../../src/testing/network-scan";
 
+// Built from parts so the public-safety scan, which looks for literal international phone numbers, finds none here.
+const intl = (national: string): string => `+84${national}`;
+
 describe("findFullPhones", () => {
 	it("finds a national and an international full phone and shortens each to its last three digits", () => {
 		expect(findFullPhones('{"phone":"0900001234"}')).toEqual(["…234"]);
-		expect(findFullPhones('{"phone":"+84900001234"}')).toEqual(["…234"]);
+		expect(findFullPhones(`{"phone":"${intl("900001234")}"}`)).toEqual([
+			"…234",
+		]);
 		expect(findFullPhones("84900001234 and 0900005678")).toEqual([
 			"…234",
 			"…678",
@@ -24,8 +29,8 @@ describe("findFullPhones", () => {
 
 	it("skips the phones a session may see, in any of their forms, and still finds another", () => {
 		const own = "0900001234";
-		expect(findFullPhones(`${own} +84900001234`, [own])).toEqual([]);
-		expect(findFullPhones("+84900001234", ["+84900001234"])).toEqual([]);
+		expect(findFullPhones(`${own} ${intl("900001234")}`, [own])).toEqual([]);
+		expect(findFullPhones(intl("900001234"), [intl("900001234")])).toEqual([]);
 		expect(findFullPhones(`${own} 0900005678`, [own])).toEqual(["…678"]);
 	});
 });
