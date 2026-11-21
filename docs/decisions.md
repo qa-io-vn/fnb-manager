@@ -271,3 +271,13 @@ Context: earns of paths B and C and the discount-rail redemptions were confirmed
 Decision: `loyalty_store_settings.confirmation` per store, `pos_sync` by default (unchanged behaviour) or `staff`. In `staff` mode the paper bill recorded in the staff Mini App earns on path E (`bill_captures`, `loyalty_ledger.bill_id`), pending until the customer's blind total agrees (level 2) unless the owner accepts level 0; disagreements and large bills go to a manager, disputes and silence reverse; staff confirm rewards at once and managers void them within the window. The POS paths do not earn at a staff-mode store; a sync, if any, only feeds a non-blocking shadow check. Caps per staff member and store, dedupe on store + business date + bill number, a random audit, an audit trail and an alert bound what a dishonest pair can take.
 
 Consequences: no POS dependency and instant confirmation for members who answer; a colluding staff member and customer can still forge a bill, bounded by the caps (section 3 of the plan); phases 4-8 (camera, photo hash, reader, bill checks) build on the stored extension points.
+
+## ADR-044 — Staff-mode defaults and a free-only rule for what comes next
+
+Date 2026-11-21 · Status accepted (the owner delegated the choices: "you decide all, keep all free")
+
+Decision: the defaults of ADR-043 stay as built. A bill nobody confirms is reversed (`bill_silence_outcome = reverse`); a bill is confirmed at once only when the staff total and the customer's blind total agree (evidence level 2); counter claims are not auto-approved (`auto_approve_per_day = 0`) until the owner raises it; 2 % of confirmed bills are audited by an owner or manager; a bill forged by a staff member and a customer together is accepted as a loss bounded by the per-staff, per-member and per-store caps, because nothing short of POS data can detect it. Stamp value and the daily loss the owner accepts are left to the owner to set in Cài đặt → Khách hàng thân thiết → Xác nhận tại quầy; the caps ship conservative.
+
+Everything built next must run on free tiers: no paid vision API (the bill reader stays a mock and the camera path stays unbuilt until the owner funds a budget; phases 4–8 wait), receipt photos are not collected yet (when they are, 90 days in the free Supabase bucket or free object storage), the archive of old months goes to Cloudflare R2 or Backblaze B2 free allowances (G-97) and only when the database passes 300 MB after the weekly index rebuild, and hosting stays on the Supabase Free plan with GitHub Pages (a Contabo VPS was compared and not chosen).
+
+Not chosen: confirming a silent bill (it rewards a missing check), staff-total-only confirmation as the default (one person could invent bills), a paid reader now.
