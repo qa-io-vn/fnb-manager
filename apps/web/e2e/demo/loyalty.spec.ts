@@ -61,7 +61,9 @@ test("the customer section explains on each tab that it needs live data, with no
 			.getByTestId("loyalty-tabs")
 			.getByRole("link", { name: target.tab })
 			.click();
-		await expect(page).toHaveURL(new RegExp(`#/khach-hang/${target.slug}$`));
+		await expect(page).toHaveURL(
+			new RegExp(`#/khach-hang/${target.slug}(\\?.*)?$`),
+		);
 		await expectExplanation(page, target.tab, target.slug === "bat-thuong");
 		await checkPage(page);
 	}
