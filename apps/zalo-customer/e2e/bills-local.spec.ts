@@ -535,3 +535,28 @@ test("a customer session is refused every staff bill function, the anonymous rol
 	expect(await f.bills(customer)).toEqual([]);
 	expect(await scan.leaks()).toEqual([]);
 });
+
+test("twelve member-code requests in flight together all get the same code (G-98: serialised per membership and store)", async ({
+	page,
+}) => {
+	const f = need();
+	const customer = await f.newCustomer();
+	const customerReady = await startCustomerLoop(customer);
+	const credentials = watchRpcCredentials(page);
+	await browseAndJoin(page, customerReady.appUrl, f.tenant);
+	const session = credentials();
+
+	// Joining has not opened the member-code screen, so no live code exists yet: every call below races to issue one.
+	const replies = await Promise.all(
+		Array.from({ length: 12 }, () =>
+			callRpc(session, "customer_member_code", { p_store: STORE }),
+		),
+	);
+	for (const reply of replies) expect(reply.status).toBe(200);
+	const codes = replies.map(
+		(reply) => (reply.body as { code?: string }).code ?? "",
+	);
+	expect(codes[0]).toMatch(/^\d{6}$/);
+	expect(new Set(codes).size).toBe(1);
+	expect(await f.codeIsLive(STORE, codes[0] ?? "")).toBe(true);
+});
