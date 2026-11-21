@@ -543,6 +543,18 @@ function regressionSteps() {
 			...pnpm("--filter", "@fnb/zalo-customer", "test:e2e:local"),
 		},
 		{
+			id: "e2e-zalo-staff-local",
+			title: "Staff Mini App against the local stack",
+			level: "e2e",
+			gate: all(gates.stack, () =>
+				process.env.ZALO_LOCAL_DEV === "1"
+					? null
+					: "ZALO_LOCAL_DEV=1 is not set",
+			),
+			timeout: 20 * MINUTE,
+			...pnpm("--filter", "@fnb/zalo-staff", "test:e2e:local"),
+		},
+		{
 			id: "e2e-web-demo",
 			title: "Web Playwright: demo and pages projects",
 			level: "e2e",
