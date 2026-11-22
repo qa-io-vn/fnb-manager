@@ -62,6 +62,18 @@ Ports come from `supabase/config.toml` (`project_id = "FNB_Managment"`) and the 
 | `pnpm zalo:dev` | the staff app on `http://127.0.0.1:5741` (`--port`), or on the PC's Wi-Fi address with `--lan`; with `--app customer` the customer app on `5751`; `zalo-session`, `zalo-phone` and the mock Zalo Graph on free 127.0.0.1 ports | the staff app's local specs start it on `5761` (Chromium), `5766` (WebKit over the LAN) and `5767` (WebKit through the tunnel), the customer app's local spec on `5781` (customer) and `5782` (staff), each plus `E2E_PORT_OFFSET` |
 | Notification mock providers | `127.0.0.1:8787` | `node packages/notify/scripts/mock-providers.mjs` (phase 12, in build) |
 
+### Using the local stack from a phone on the same Wi-Fi
+
+The stack is meant for this PC only: the API, the database and Studio hold a copy of the real data and use the default local passwords and keys. Docker publishes their ports (54321 to 54327) on every network interface, so with Windows Firewall off, or an allow rule for Docker, any device on the same Wi-Fi can read them. Checked on 2026-11-22 on the build machine: the firewall was off on all three profiles, the network was marked Public, five other devices shared the network, and the database, Studio and API answered on the Wi-Fi address.
+
+Before a phone or tablet is used on the local network, run once in an elevated PowerShell:
+
+```
+powershell -ExecutionPolicy Bypass -File scriptswindows-lan-firewall.ps1
+```
+
+It turns the firewall on, blocks 54321 to 54327 from Wi-Fi and wired networks (loopback and WSL are untouched), and allows only the app ports 4173, 5173, 5741 and 5751 from the local subnet. `-Check` reports without changing anything (and needs no administrator rights); `-Undo` removes the two rules. Then start the app with `pnpm zalo:dev --lan` (it listens on the Wi-Fi address only, behind its own guard) and open the printed address on the phone. A phone that cannot connect usually means the router isolates Wi-Fi clients ("AP isolation", "guest network"), or the PC took a new address: give it a fixed address in the router (a DHCP reservation) so the phone's bookmark keeps working. Mark the network Private only if it is yours alone; the rules above work on a Public one.
+
 Local auth has sign-up turned off (`enable_signup = false`) and e-mail confirmations off. Logins are created with `fnb tenant add-member`, or by the seed.
 
 ### Move to another machine
