@@ -28,6 +28,7 @@ import { StorePicker } from "./member-code-screen";
 import { QrCode } from "./qr";
 import {
 	costText,
+	holdAnnouncement,
 	reasonText,
 	refusalText,
 	rewardCost,
@@ -509,6 +510,7 @@ function HeldCode({
 					<p
 						className="text-center text-base text-ink"
 						role="timer"
+						aria-live="off"
 						data-testid="voucher-countdown"
 					>
 						{t("voucher.timeLeft", {
@@ -528,6 +530,32 @@ function HeldCode({
 				</p>
 			) : null}
 		</Card>
+	);
+}
+
+/**
+ * The one place a screen reader hears the hold: polite, in whole minutes, and
+ * kept in the page after the hold ends so that the end is announced once. The
+ * seconds counter above stays silent.
+ */
+function HoldAnnouncement({
+	voucher,
+	now,
+}: {
+	readonly voucher: Voucher;
+	readonly now: number;
+}) {
+	const { t } = useI18n();
+	return (
+		<p
+			className="sr-only"
+			role="status"
+			aria-live="polite"
+			aria-atomic="true"
+			data-testid="voucher-announce"
+		>
+			{holdAnnouncement(voucher, now, t)}
+		</p>
 	);
 }
 
@@ -580,6 +608,7 @@ function VoucherView() {
 							{t("voucher.at", { store: voucher.storeName })}
 						</p>
 					)}
+					<HoldAnnouncement voucher={voucher} now={now} />
 					{voucher.state === "held" && !ended ? (
 						<HeldCode voucher={voucher} now={now} />
 					) : (

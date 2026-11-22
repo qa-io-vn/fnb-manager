@@ -111,6 +111,29 @@ function two(value: number): string {
 	return String(value).padStart(2, "0");
 }
 
+/**
+ * What a screen reader is told about a hold: the whole minutes left, so the
+ * words change at most once a minute, and the end of the hold once. Nothing
+ * is said for a voucher that is not held.
+ */
+export function holdAnnouncement(
+	voucher: {
+		readonly state: VoucherState;
+		readonly holdExpiresAt: number | null;
+	},
+	now: number,
+	t: Translate,
+): string {
+	if (voucher.state === "expired") return t("voucher.announce.ended");
+	if (voucher.state !== "held" || voucher.holdExpiresAt === null) return "";
+	const minutes = Math.ceil(Math.max(0, voucher.holdExpiresAt - now) / 60_000);
+	if (minutes === 0) return t("voucher.announce.ended");
+	const hours = Math.floor(minutes / 60);
+	return hours === 0
+		? t("voucher.announce.minutes", { minutes })
+		: t("voucher.announce.hours", { hours, minutes: minutes % 60 });
+}
+
 export function timeLeft(until: number, now: number): string {
 	const seconds = Math.max(0, Math.ceil((until - now) / 1000));
 	const hours = Math.floor(seconds / 3600);

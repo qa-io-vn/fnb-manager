@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderCustomerApp, setSearch } from "../test/render-app";
 import { codeStatus, secondsUntil } from "./member-code";
@@ -123,5 +123,119 @@ describe("the member code screen", () => {
 		expect(await screen.findByTestId("code-store")).toHaveTextContent(
 			"Cửa hàng Mẫu 2",
 		);
+	});
+});
+
+// G-37 (accessibility, component). Design: equivalence partitioning of the store
+// the code is bound to (a linked store, a store picked later, the English
+// catalogue) and boundary values around the 2-minute life of the code; the
+// negative cases are a name that would leak the code and a live region that
+// would speak every second. axe does not judge any of these names.
+describe("the member QR code for assistive technology", () => {
+	const QR_NAME_VI = "Mã QR thành viên tại ";
+
+	async function openLinkedCode(search: string, language?: "en" | "vi") {
+		const app = renderCustomerApp({
+			settings: { member: true },
+			search,
+			...(language === undefined ? {} : { language }),
+		});
+		await screen.findByRole("heading", { name: "Cửa hàng Mẫu 1" });
+		fireEvent.click(
+			screen.getByRole("button", {
+				name:
+					language === "en"
+						? "Member code for this store"
+						: "Mã thành viên tại cửa hàng này",
+			}),
+		);
+		const code = (await screen.findByTestId("member-code")).textContent ?? "";
+		return { app, code };
+	}
+
+	it("gives the QR image the accessible name 'member QR code at <the linked store>'", async () => {
+		await openLinkedCode("?store=mau-1&src=qr");
+		const image = screen.getByRole("img", {
+			name: `${QR_NAME_VI}Cửa hàng Mẫu 1`,
+		});
+		expect(image).toBe(screen.getByTestId("member-qr"));
+		expect(
+			screen.getAllByRole("img", { name: /Mã QR thành viên/ }),
+		).toHaveLength(1);
+	});
+
+	it("renames the QR image after another store is picked, so the name always says which store the code is for", async () => {
+		renderCustomerApp({ settings: { member: true } });
+		await screen.findByRole("heading", { name: "Thành viên Quán Mẫu Một" });
+		fireEvent.click(screen.getByRole("button", { name: "Xem thẻ thành viên" }));
+		fireEvent.click(
+			await screen.findByRole("button", { name: "Mã thành viên" }),
+		);
+		await screen.findByTestId("code-pick-first");
+		expect(screen.queryByRole("img", { name: /Mã QR thành viên/ })).toBeNull();
+		fireEvent.change(screen.getByTestId("code-store-picker"), {
+			target: { value: "mau-2" },
+		});
+		expect(
+			await screen.findByRole("img", { name: `${QR_NAME_VI}Cửa hàng Mẫu 2` }),
+		).toBeInTheDocument();
+		fireEvent.change(screen.getByTestId("code-store-picker"), {
+			target: { value: "mau-1" },
+		});
+		expect(
+			await screen.findByRole("img", { name: `${QR_NAME_VI}Cửa hàng Mẫu 1` }),
+		).toBeInTheDocument();
+		expect(
+			screen.queryByRole("img", { name: `${QR_NAME_VI}Cửa hàng Mẫu 2` }),
+		).toBeNull();
+	});
+
+	it("words the same name in English when the app runs in English", async () => {
+		await openLinkedCode("?store=mau-1&src=qr", "en");
+		expect(
+			screen.getByRole("img", { name: "Member QR code at Cửa hàng Mẫu 1" }),
+		).toBe(screen.getByTestId("member-qr"));
+		expect(screen.queryByRole("img", { name: /Mã QR/ })).toBeNull();
+	});
+
+	it("never puts the code or the QR payload in the accessible name", async () => {
+		const { code } = await openLinkedCode("?store=mau-1&src=qr");
+		const image = screen.getByTestId("member-qr");
+		const name = image.getAttribute("aria-label") ?? "";
+		expect(name).not.toBe("");
+		expect(name).not.toContain(code);
+		expect(name).not.toContain("fnb-member");
+		expect(name).not.toContain(image.getAttribute("data-payload") ?? "never");
+		expect(image).not.toHaveAttribute("aria-describedby");
+	});
+
+	it("keeps the name on the dimmed QR image when the code expires, and says so in an alert", async () => {
+		const { app } = await openLinkedCode("?store=mau-1");
+		app.world.setOffline(true);
+		await advance(118_000);
+		expect(screen.queryByTestId("code-expired")).not.toBeInTheDocument();
+		expect(
+			screen.getByRole("img", { name: `${QR_NAME_VI}Cửa hàng Mẫu 1` }),
+		).not.toHaveClass("opacity-30");
+		await advance(3_000);
+		expect(screen.getByTestId("code-expired")).toHaveAttribute("role", "alert");
+		expect(
+			screen.getByRole("img", { name: `${QR_NAME_VI}Cửa hàng Mẫu 1` }),
+		).toHaveClass("opacity-30");
+	});
+
+	it("keeps the second-by-second countdown out of every live region", async () => {
+		await openLinkedCode("?store=mau-1&src=qr");
+		const countdown = screen.getByTestId("code-countdown");
+		expect(countdown).toHaveAttribute("aria-live", "off");
+		await advance(1_000);
+		await advance(1_000);
+		expect(countdown.textContent).toMatch(/^Mã đổi sau 5[78] giây$/);
+		expect(document.querySelectorAll('[aria-live="assertive"]')).toHaveLength(
+			0,
+		);
+		expect(
+			within(screen.getByTestId("code-card")).queryAllByRole("alert"),
+		).toHaveLength(0);
 	});
 });

@@ -6,6 +6,7 @@ import { catalogs } from "../i18n/catalog";
 import { renderCustomerApp, setSearch } from "../test/render-app";
 import {
 	costText,
+	holdAnnouncement,
 	reasonText,
 	refusalText,
 	rewardKindText,
@@ -14,12 +15,17 @@ import {
 
 const START = Date.UTC(2026, 10, 19, 3, 0, 0);
 
-function translate(key: string, values: Record<string, string | number> = {}) {
-	const template = catalogs.vi[key] ?? key;
-	return template.replace(/\{(\w+)\}/g, (_, name: string) =>
-		String(values[name] ?? `{${name}}`),
-	);
+function translator(catalog: Readonly<Record<string, string>>) {
+	return (key: string, values: Record<string, string | number> = {}) => {
+		const template = catalog[key] ?? key;
+		return template.replace(/\{(\w+)\}/g, (_, name: string) =>
+			String(values[name] ?? `{${name}}`),
+		);
+	};
 }
+
+const translate = translator(catalogs.vi);
+const translateEnglish = translator(catalogs.en);
 
 const REWARD: Reward = {
 	id: "r-1",
@@ -263,5 +269,163 @@ describe("the voucher wallet", () => {
 		);
 		expect(returned).toBeDefined();
 		expect(returned).not.toHaveTextContent("Cửa hàng ghi nhận");
+	});
+});
+
+// G-37 (accessibility, component). Design: boundary value analysis of the
+// whole-minute words (each minute and hour edge at x - 1, x and x + 1 ms),
+// equivalence partitioning of the voucher states, and a rate property on the
+// live region (one announcement a minute, one at the end). Negative cases: no
+// assertive region, no announcement for a voucher that is not held, and a
+// silent seconds counter. axe does not judge any of these.
+describe("the hold announcement words", () => {
+	const held = (msLeft: number) => ({
+		state: "held" as const,
+		holdExpiresAt: START + msLeft,
+	});
+	const sayVi = (voucher: Parameters<typeof holdAnnouncement>[0]) =>
+		holdAnnouncement(voucher, START, translate);
+
+	it("speaks whole minutes, and hours with minutes from one hour up, changing only at a minute edge", () => {
+		const edges: readonly (readonly [number, string])[] = [
+			[24 * 3_600_000, "Mã còn 24 giờ 0 phút."],
+			[3_600_001, "Mã còn 1 giờ 1 phút."],
+			[3_600_000, "Mã còn 1 giờ 0 phút."],
+			[3_540_001, "Mã còn 1 giờ 0 phút."],
+			[3_540_000, "Mã còn 59 phút."],
+			[60_001, "Mã còn 2 phút."],
+			[60_000, "Mã còn 1 phút."],
+			[59_999, "Mã còn 1 phút."],
+			[1, "Mã còn 1 phút."],
+		];
+		for (const [msLeft, words] of edges) {
+			expect(sayVi(held(msLeft)), `${msLeft} ms left`).toBe(words);
+		}
+		expect(holdAnnouncement(held(61_500), START, translateEnglish)).toBe(
+			"The code has 2 minutes left.",
+		);
+		expect(holdAnnouncement(held(3_660_000), START, translateEnglish)).toBe(
+			"The code has 1 hours 1 minutes left.",
+		);
+	});
+
+	it("says the hold has ended at the end of the hold and after it, in both languages", () => {
+		for (const msLeft of [0, -1, -3_600_000]) {
+			expect(sayVi(held(msLeft)), `${msLeft} ms left`).toBe(
+				"Đã hết thời gian giữ mã.",
+			);
+		}
+		expect(
+			holdAnnouncement(
+				{ state: "expired", holdExpiresAt: START - 5 },
+				START,
+				translateEnglish,
+			),
+		).toBe("The hold on the code has ended.");
+		expect(sayVi({ state: "expired", holdExpiresAt: null })).toBe(
+			"Đã hết thời gian giữ mã.",
+		);
+	});
+
+	it("says nothing for a voucher that is used, returned or cancelled, or a hold without an end", () => {
+		for (const state of ["used", "returned", "cancelled"] as const) {
+			expect(sayVi({ state, holdExpiresAt: START + 60_000 }), state).toBe("");
+		}
+		expect(sayVi({ state: "held", holdExpiresAt: null })).toBe("");
+	});
+});
+
+describe("the voucher countdown for assistive technology", () => {
+	async function holdFirstReward() {
+		renderCustomerApp({
+			settings: { member: true },
+			search: "?store=mau-2&src=qr",
+		});
+		await screen.findByRole("heading", { name: "Cửa hàng Mẫu 2" });
+		await openTab("Thẻ thành viên");
+		fireEvent.click(await screen.findByRole("button", { name: "Đổi quà" }));
+		const [coffee] = await screen.findAllByTestId("reward");
+		if (coffee === undefined) throw new Error("no reward");
+		fireEvent.click(within(coffee).getByRole("button", { name: "Đổi quà" }));
+		fireEvent.click(
+			await screen.findByRole("button", { name: "Xác nhận đổi" }),
+		);
+		await screen.findByTestId("voucher-code");
+	}
+
+	it("announces the hold in one polite, atomic status region and has no assertive region", async () => {
+		await holdFirstReward();
+		const region = screen.getByTestId("voucher-announce");
+		expect(region).toHaveAttribute("aria-live", "polite");
+		expect(region).toHaveAttribute("role", "status");
+		expect(region).toHaveAttribute("aria-atomic", "true");
+		expect(region).toHaveClass("sr-only");
+		expect(region).toHaveTextContent("Mã còn 24 giờ 0 phút.");
+		const screenRoot = screen.getByTestId("voucher-screen");
+		expect(
+			screenRoot.querySelectorAll('[aria-live="polite"], [role="status"]'),
+		).toHaveLength(1);
+		expect(document.querySelectorAll('[aria-live="assertive"]')).toHaveLength(
+			0,
+		);
+		expect(within(screenRoot).queryAllByRole("alert")).toHaveLength(0);
+	});
+
+	it("keeps the seconds counter out of the live regions, so it is never read every second", async () => {
+		await holdFirstReward();
+		const counter = screen.getByTestId("voucher-countdown");
+		expect(counter).toHaveAttribute("role", "timer");
+		expect(counter).toHaveAttribute("aria-live", "off");
+		expect(counter.closest("[aria-live]")).toBe(counter);
+		const region = screen.getByTestId("voucher-announce");
+		expect(region).not.toContainElement(counter);
+		await advance(5_000);
+		expect(counter).toHaveTextContent(/^Còn 23:59:5\d$/);
+		expect(region).toHaveTextContent("Mã còn 24 giờ 0 phút.");
+	});
+
+	it("changes its words once a minute and says the end of the hold once, then stays silent", async () => {
+		await holdFirstReward();
+		expect(screen.getByTestId("voucher-announce")).toHaveTextContent(
+			"Mã còn 24 giờ 0 phút.",
+		);
+		// Jump the clock to 2 minutes 5 seconds before the hold ends, then tick
+		// once a second for 130 seconds: a region that spoke every second would
+		// change about 125 times, this one three times and then the ended text.
+		vi.setSystemTime(Date.now() + 24 * 3_600_000 - 125_500);
+		const spoken: string[] = [];
+		for (let second = 0; second < 130; second += 1) {
+			await advance(1_000);
+			const words = screen.getByTestId("voucher-announce").textContent ?? "";
+			if (spoken[spoken.length - 1] !== words) spoken.push(words);
+		}
+		expect(spoken).toEqual([
+			"Mã còn 3 phút.",
+			"Mã còn 2 phút.",
+			"Mã còn 1 phút.",
+			"Đã hết thời gian giữ mã.",
+		]);
+		expect(screen.queryByTestId("voucher-code")).toBeNull();
+		expect(screen.getByTestId("voucher-announce")).toBeInTheDocument();
+		expect(document.querySelectorAll('[aria-live="assertive"]')).toHaveLength(
+			0,
+		);
+	});
+
+	it("keeps the held code's region quiet for a used voucher that is opened from the wallet", async () => {
+		renderCustomerApp({ settings: { member: true, vouchers: true } });
+		await screen.findByRole("heading", { name: "Thành viên Quán Mẫu Một" });
+		await openTab("Thẻ thành viên");
+		fireEvent.click(await screen.findByRole("button", { name: "Ví voucher" }));
+		const items = await screen.findAllByTestId("voucher-item");
+		expect(items.map((item) => item.getAttribute("data-state"))).toEqual([
+			"returned",
+			"used",
+		]);
+		expect(screen.queryByTestId("voucher-announce")).toBeNull();
+		expect(screen.queryByTestId("voucher-countdown")).toBeNull();
+		expect(document.querySelectorAll('[aria-live="assertive"]')).toHaveLength(
+			0,
+		);
 	});
 });
