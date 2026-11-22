@@ -9,7 +9,8 @@
 	"scripts": {
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"test": "vitest run --passWithNoTests",
-		"fnb": "node ./bin/fnb.mjs"
+		"fnb": "node ./bin/fnb.mjs",
+		"live:loyalty-fields": "node ./bin/loyalty-fields.mjs"
 	},
 	"dependencies": {
 		"@fnb/connector-core": "workspace:^",

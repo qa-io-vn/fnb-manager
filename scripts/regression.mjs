@@ -36,6 +36,15 @@ const SMOKE_UNIT_PACKAGES = [
 	"@fnb/reports",
 ];
 
+// Structural coverage (V8) is reported for these, never gated: no threshold is
+// set anywhere, so the step fails only when a test fails (docs/test-gaps.md G-40).
+const COVERAGE_PACKAGES = [
+	"@fnb/core",
+	"@fnb/zalo-mini",
+	"@fnb/zalo-customer",
+	"@fnb/zalo-staff",
+];
+
 const SMOKE_PGTAP = (number) =>
 	number === 3 ||
 	number === 47 ||
@@ -442,6 +451,32 @@ function regressionSteps() {
 				...pnpm("--filter", entry.name, "run", "test", workers()),
 			})),
 		{
+			id: "coverage",
+			title:
+				"Structural coverage (V8) of @fnb/core, @fnb/zalo-mini and both Mini Apps, reported not gated (G-40)",
+			level: "unit",
+			unitEnvironment: true,
+			timeout: 30 * MINUTE,
+			commands: () =>
+				COVERAGE_PACKAGES.map((name) => ({
+					command: "pnpm",
+					args: ["--filter", name, "run", "test:coverage", workers()],
+				})),
+		},
+		{
+			id: "sql-untested-loyalty",
+			title:
+				"Loyalty SQL functions of app and public that no pgTAP file names, listed not gated (G-40)",
+			level: "static",
+			commands: () => [
+				{
+					command: "node",
+					args: ["--test", "scripts/untested-loyalty-functions.test.mjs"],
+				},
+				{ command: "node", args: ["scripts/untested-loyalty-functions.mjs"] },
+			],
+		},
+		{
 			id: "pgtap-all",
 			title: "pgTAP: every file",
 			level: "database",
@@ -638,6 +673,19 @@ function regressionSteps() {
 				"run",
 				"test/integration/loyalty-pipeline.test.ts",
 			),
+		},
+		{
+			// Reads every tenant of the local stack in one read-only transaction and
+			// prints counts, shares, booleans and the labels store-N and entry-N,
+			// never a phone, a code or a name; no POS call. The URL is DATABASE_URL
+			// from the shell, gated to a loopback host above; the script has no default.
+			id: "loyalty-fields-live",
+			title:
+				"Loyalty fields on the synced data, read-only counts on the local stack (G-11, no POS call)",
+			level: "integration",
+			gate: all(gates.database, gates.stack),
+			timeout: 5 * MINUTE,
+			...pnpm("--filter", "@fnb/jobs", "run", "live:loyalty-fields"),
 		},
 		{
 			id: "it-notify",

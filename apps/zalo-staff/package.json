@@ -10,6 +10,7 @@
 		"preview": "vite preview",
 		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
 		"test": "vitest run",
+		"test:coverage": "vitest run --coverage",
 		"test:e2e": "playwright test",
 		"test:e2e:local": "playwright test -c playwright.local.config.ts --project local",
 		"test:e2e:phone": "playwright test -c playwright.local.config.ts --project iphone",

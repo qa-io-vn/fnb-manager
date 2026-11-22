@@ -62,6 +62,7 @@
 	"scripts": {
 		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
 		"test": "vitest run",
+		"test:coverage": "vitest run --coverage",
 		"app-config": "tsx src/app-config/cli.ts",
 		"listing": "tsx src/listing/cli.ts"
 	},

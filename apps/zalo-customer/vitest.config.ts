@@ -14,6 +14,14 @@ export default mergeConfig(
 			setupFiles: ["src/test/setup.ts"],
 			css: false,
 			testTimeout: 30_000,
+			coverage: {
+				// Reported, not gated (docs/test-gaps.md G-40): no threshold anywhere.
+				provider: "v8",
+				reportOnFailure: true,
+				include: ["src/**/*.ts", "src/**/*.tsx"],
+				reporter: ["text-summary", "json-summary", "html"],
+				reportsDirectory: "coverage",
+			},
 		},
 	}),
 );
