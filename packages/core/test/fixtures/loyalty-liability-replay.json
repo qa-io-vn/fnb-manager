@@ -1,0 +1,3292 @@
+{
+	"window": { "first": "2027-10-17", "days": 30 },
+	"phones": [
+		"0900000800",
+		"0900000801",
+		"0900000802",
+		"0900000803",
+		"0900000804",
+		"0900000805",
+		"0900000806",
+		"0900000807",
+		"0900000808",
+		"0900000809",
+		"0900000810",
+		"0900000811"
+	],
+	"joinedAt": "2026-04-01T02:00:00.000Z",
+	"ops": [
+		{
+			"kind": "earn",
+			"ref": "lq-0001",
+			"member": 0,
+			"soldAt": "2026-04-20T03:00:00.000Z",
+			"amount": 80000,
+			"at": "2026-04-20T03:05:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0002",
+			"member": 1,
+			"soldAt": "2026-04-20T03:10:00.000Z",
+			"amount": 45000,
+			"at": "2026-04-20T03:15:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0003",
+			"member": 2,
+			"soldAt": "2026-04-20T03:20:00.000Z",
+			"amount": 120000,
+			"at": "2026-04-20T03:25:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0004",
+			"member": 1,
+			"soldAt": "2026-10-17T06:53:00.000Z",
+			"amount": 42000,
+			"at": "2026-10-17T06:58:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0005",
+			"member": 0,
+			"soldAt": "2026-10-17T07:38:00.000Z",
+			"amount": 102000,
+			"at": "2026-10-17T07:43:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0006",
+			"member": 10,
+			"soldAt": "2026-10-17T08:18:00.000Z",
+			"amount": 51000,
+			"at": "2026-10-17T08:23:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0007",
+			"member": 10,
+			"soldAt": "2026-10-18T06:11:00.000Z",
+			"amount": 106000,
+			"at": "2026-10-18T06:16:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0008",
+			"member": 5,
+			"soldAt": "2026-10-18T10:18:00.000Z",
+			"amount": 119000,
+			"at": "2026-10-18T10:23:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0009",
+			"member": 9,
+			"soldAt": "2026-10-18T11:51:00.000Z",
+			"amount": 114000,
+			"at": "2026-10-18T11:56:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0010",
+			"member": 0,
+			"soldAt": "2026-10-19T02:33:00.000Z",
+			"amount": 150000,
+			"at": "2026-10-19T02:38:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0011",
+			"member": 3,
+			"soldAt": "2026-10-19T10:15:00.000Z",
+			"amount": 105000,
+			"at": "2026-10-19T10:20:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0012",
+			"member": 7,
+			"soldAt": "2026-10-19T10:49:00.000Z",
+			"amount": 77000,
+			"at": "2026-10-19T10:54:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0013",
+			"member": 6,
+			"soldAt": "2026-10-20T03:05:00.000Z",
+			"amount": 40000,
+			"at": "2026-10-20T03:10:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0014",
+			"member": 8,
+			"soldAt": "2026-10-20T05:46:00.000Z",
+			"amount": 79000,
+			"at": "2026-10-20T05:51:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0015",
+			"member": 10,
+			"soldAt": "2026-10-21T03:52:00.000Z",
+			"amount": 10000,
+			"at": "2026-10-21T03:57:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0016",
+			"member": 6,
+			"soldAt": "2026-10-21T09:11:00.000Z",
+			"amount": 47000,
+			"at": "2026-10-21T09:16:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0017",
+			"member": 2,
+			"soldAt": "2026-10-22T01:39:00.000Z",
+			"amount": 111000,
+			"at": "2026-10-22T01:44:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0018",
+			"member": 10,
+			"soldAt": "2026-10-22T03:11:00.000Z",
+			"amount": 44000,
+			"at": "2026-10-22T03:16:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0019",
+			"member": 9,
+			"soldAt": "2026-10-23T09:40:00.000Z",
+			"amount": 74000,
+			"at": "2026-10-23T09:45:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0020",
+			"member": 8,
+			"soldAt": "2026-10-23T11:14:00.000Z",
+			"amount": 127000,
+			"at": "2026-10-23T11:19:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0021",
+			"member": 0,
+			"soldAt": "2026-10-24T05:30:00.000Z",
+			"amount": 11000,
+			"at": "2026-10-24T05:35:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0022",
+			"member": 9,
+			"soldAt": "2026-10-24T09:25:00.000Z",
+			"amount": 123000,
+			"at": "2026-10-24T09:30:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0023",
+			"member": 1,
+			"soldAt": "2026-10-24T09:29:00.000Z",
+			"amount": 127000,
+			"at": "2026-10-24T09:34:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0024",
+			"member": 1,
+			"soldAt": "2026-10-25T05:09:00.000Z",
+			"amount": 75000,
+			"at": "2026-10-25T05:14:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0025",
+			"member": 2,
+			"soldAt": "2026-10-25T07:40:00.000Z",
+			"amount": 115000,
+			"at": "2026-10-25T07:45:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0026",
+			"member": 0,
+			"soldAt": "2026-10-25T11:22:00.000Z",
+			"amount": 12000,
+			"at": "2026-10-25T11:27:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0027",
+			"member": 9,
+			"soldAt": "2026-10-26T02:33:00.000Z",
+			"amount": 141000,
+			"at": "2026-10-26T02:38:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0028",
+			"member": 1,
+			"soldAt": "2026-10-26T10:46:00.000Z",
+			"amount": 14000,
+			"at": "2026-10-26T10:51:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0029",
+			"member": 4,
+			"soldAt": "2026-10-27T06:05:00.000Z",
+			"amount": 33000,
+			"at": "2026-10-27T06:10:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0030",
+			"member": 7,
+			"soldAt": "2026-10-27T11:03:00.000Z",
+			"amount": 104000,
+			"at": "2026-10-27T11:08:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0031",
+			"member": 9,
+			"soldAt": "2026-10-28T03:43:00.000Z",
+			"amount": 53000,
+			"at": "2026-10-28T03:48:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0032",
+			"member": 6,
+			"soldAt": "2026-10-28T12:52:00.000Z",
+			"amount": 106000,
+			"at": "2026-10-28T12:57:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0033",
+			"member": 3,
+			"soldAt": "2026-10-29T03:24:00.000Z",
+			"amount": 132000,
+			"at": "2026-10-29T03:29:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0034",
+			"member": 8,
+			"soldAt": "2026-10-29T04:39:00.000Z",
+			"amount": 133000,
+			"at": "2026-10-29T04:44:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0035",
+			"member": 2,
+			"soldAt": "2026-10-30T04:54:00.000Z",
+			"amount": 40000,
+			"at": "2026-10-30T04:59:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0036",
+			"member": 4,
+			"soldAt": "2026-10-30T08:02:00.000Z",
+			"amount": 97000,
+			"at": "2026-10-30T08:07:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0037",
+			"member": 6,
+			"soldAt": "2026-10-30T10:19:00.000Z",
+			"amount": 142000,
+			"at": "2026-10-30T10:24:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0038",
+			"member": 7,
+			"soldAt": "2026-10-31T05:02:00.000Z",
+			"amount": 98000,
+			"at": "2026-10-31T05:07:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0039",
+			"member": 5,
+			"soldAt": "2026-10-31T09:57:00.000Z",
+			"amount": 96000,
+			"at": "2026-10-31T10:02:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0040",
+			"member": 3,
+			"soldAt": "2026-10-31T15:30:00.000Z",
+			"amount": 70000,
+			"at": "2026-10-31T15:35:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0041",
+			"member": 4,
+			"soldAt": "2026-10-31T16:45:00.000Z",
+			"amount": 30000,
+			"at": "2026-10-31T16:50:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0042",
+			"member": 3,
+			"soldAt": "2026-11-01T02:11:00.000Z",
+			"amount": 34000,
+			"at": "2026-11-01T02:16:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0043",
+			"member": 0,
+			"soldAt": "2026-11-01T07:39:00.000Z",
+			"amount": 148000,
+			"at": "2026-11-01T07:44:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0044",
+			"member": 9,
+			"soldAt": "2026-11-02T01:02:00.000Z",
+			"amount": 73000,
+			"at": "2026-11-02T01:07:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0045",
+			"member": 2,
+			"soldAt": "2026-11-02T02:06:00.000Z",
+			"amount": 104000,
+			"at": "2026-11-02T02:11:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0046",
+			"member": 8,
+			"soldAt": "2026-11-02T10:10:00.000Z",
+			"amount": 55000,
+			"at": "2026-11-02T10:15:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0047",
+			"member": 1,
+			"soldAt": "2026-11-03T03:55:00.000Z",
+			"amount": 122000,
+			"at": "2026-11-03T04:00:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0048",
+			"member": 2,
+			"soldAt": "2026-11-03T11:09:00.000Z",
+			"amount": 133000,
+			"at": "2026-11-03T11:14:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0049",
+			"member": 10,
+			"soldAt": "2026-11-04T01:52:00.000Z",
+			"amount": 91000,
+			"at": "2026-11-04T01:57:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0050",
+			"member": 5,
+			"soldAt": "2026-11-04T04:58:00.000Z",
+			"amount": 97000,
+			"at": "2026-11-04T05:03:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0051",
+			"member": 7,
+			"soldAt": "2026-11-04T09:22:00.000Z",
+			"amount": 16000,
+			"at": "2026-11-04T09:27:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0052",
+			"member": 4,
+			"soldAt": "2026-11-05T03:15:00.000Z",
+			"amount": 139000,
+			"at": "2026-11-05T03:20:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0053",
+			"member": 3,
+			"soldAt": "2026-11-05T06:51:00.000Z",
+			"amount": 103000,
+			"at": "2026-11-05T06:56:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0054",
+			"member": 7,
+			"soldAt": "2026-11-06T10:59:00.000Z",
+			"amount": 145000,
+			"at": "2026-11-06T11:04:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0055",
+			"member": 10,
+			"soldAt": "2026-11-06T12:05:00.000Z",
+			"amount": 70000,
+			"at": "2026-11-06T12:10:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0056",
+			"member": 10,
+			"soldAt": "2026-11-07T05:47:00.000Z",
+			"amount": 147000,
+			"at": "2026-11-07T05:52:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0057",
+			"member": 3,
+			"soldAt": "2026-11-07T10:52:00.000Z",
+			"amount": 92000,
+			"at": "2026-11-07T10:57:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0058",
+			"member": 2,
+			"soldAt": "2026-11-07T12:42:00.000Z",
+			"amount": 97000,
+			"at": "2026-11-07T12:47:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0059",
+			"member": 1,
+			"soldAt": "2026-11-08T02:04:00.000Z",
+			"amount": 50000,
+			"at": "2026-11-08T02:09:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0060",
+			"member": 3,
+			"soldAt": "2026-11-08T07:47:00.000Z",
+			"amount": 83000,
+			"at": "2026-11-08T07:52:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0061",
+			"member": 7,
+			"soldAt": "2026-11-08T09:16:00.000Z",
+			"amount": 107000,
+			"at": "2026-11-08T09:21:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0062",
+			"member": 1,
+			"soldAt": "2026-11-09T01:31:00.000Z",
+			"amount": 139000,
+			"at": "2026-11-09T01:36:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0063",
+			"member": 10,
+			"soldAt": "2026-11-09T07:39:00.000Z",
+			"amount": 142000,
+			"at": "2026-11-09T07:44:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0064",
+			"member": 9,
+			"soldAt": "2026-11-09T10:07:00.000Z",
+			"amount": 71000,
+			"at": "2026-11-09T10:12:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0065",
+			"member": 10,
+			"soldAt": "2026-11-10T03:33:00.000Z",
+			"amount": 141000,
+			"at": "2026-11-10T03:38:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0066",
+			"member": 9,
+			"soldAt": "2026-11-10T11:03:00.000Z",
+			"amount": 43000,
+			"at": "2026-11-10T11:08:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0067",
+			"member": 3,
+			"soldAt": "2026-11-11T10:36:00.000Z",
+			"amount": 30000,
+			"at": "2026-11-11T10:41:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0068",
+			"member": 5,
+			"soldAt": "2026-11-11T12:07:00.000Z",
+			"amount": 73000,
+			"at": "2026-11-11T12:12:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0069",
+			"member": 9,
+			"soldAt": "2026-11-12T01:56:00.000Z",
+			"amount": 111000,
+			"at": "2026-11-12T02:01:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0070",
+			"member": 1,
+			"soldAt": "2026-11-12T09:34:00.000Z",
+			"amount": 17000,
+			"at": "2026-11-12T09:39:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0071",
+			"member": 6,
+			"soldAt": "2026-11-12T10:39:00.000Z",
+			"amount": 94000,
+			"at": "2026-11-12T10:44:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0072",
+			"member": 0,
+			"soldAt": "2026-11-13T06:15:00.000Z",
+			"amount": 76000,
+			"at": "2026-11-13T06:20:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0073",
+			"member": 1,
+			"soldAt": "2026-11-13T07:35:00.000Z",
+			"amount": 124000,
+			"at": "2026-11-13T07:40:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0074",
+			"member": 5,
+			"soldAt": "2026-11-13T09:32:00.000Z",
+			"amount": 148000,
+			"at": "2026-11-13T09:37:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0075",
+			"member": 0,
+			"soldAt": "2026-11-14T01:44:00.000Z",
+			"amount": 13000,
+			"at": "2026-11-14T01:49:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0076",
+			"member": 9,
+			"soldAt": "2026-11-14T09:49:00.000Z",
+			"amount": 30000,
+			"at": "2026-11-14T09:54:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0077",
+			"member": 10,
+			"soldAt": "2026-11-14T12:49:00.000Z",
+			"amount": 108000,
+			"at": "2026-11-14T12:54:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0078",
+			"member": 8,
+			"soldAt": "2026-11-15T01:00:00.000Z",
+			"amount": 26000,
+			"at": "2026-11-15T01:05:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0079",
+			"member": 3,
+			"soldAt": "2026-11-15T09:56:00.000Z",
+			"amount": 33000,
+			"at": "2026-11-15T10:01:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0080",
+			"member": 9,
+			"soldAt": "2026-11-15T10:17:00.000Z",
+			"amount": 73000,
+			"at": "2026-11-15T10:22:00.000Z",
+			"pending": false
+		},
+		{ "kind": "nightly", "at": "2027-04-20T21:00:00.000Z" },
+		{ "kind": "nightly", "at": "2027-05-15T21:00:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-16T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0081",
+			"member": 6,
+			"soldAt": "2027-10-17T01:51:00.000Z",
+			"amount": 130000,
+			"at": "2027-10-17T01:56:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0082",
+			"member": 3,
+			"soldAt": "2027-10-17T02:03:00.000Z",
+			"amount": 134000,
+			"at": "2027-10-17T02:08:00.000Z",
+			"pending": true
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0083",
+			"member": 5,
+			"soldAt": "2027-10-17T10:24:00.000Z",
+			"amount": 73000,
+			"at": "2027-10-17T10:29:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0084",
+			"member": 4,
+			"soldAt": "2027-10-17T11:34:00.000Z",
+			"amount": 37000,
+			"at": "2027-10-17T11:39:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-10-17T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-17T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0085",
+			"member": 7,
+			"soldAt": "2027-10-18T02:15:00.000Z",
+			"amount": 126000,
+			"at": "2027-10-18T02:20:00.000Z",
+			"pending": false
+		},
+		{ "kind": "confirm", "ref": "lq-0082", "at": "2027-10-18T02:30:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0086",
+			"member": 2,
+			"soldAt": "2027-10-18T04:13:00.000Z",
+			"amount": 130000,
+			"at": "2027-10-18T04:18:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0087",
+			"member": 6,
+			"soldAt": "2027-10-18T06:26:00.000Z",
+			"amount": 120000,
+			"at": "2027-10-18T06:31:00.000Z",
+			"pending": true
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0088",
+			"member": 1,
+			"soldAt": "2027-10-18T08:13:00.000Z",
+			"amount": 116000,
+			"at": "2027-10-18T08:18:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0089",
+			"member": 4,
+			"soldAt": "2027-10-18T10:05:00.000Z",
+			"amount": 54000,
+			"at": "2027-10-18T10:10:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-10-18T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-18T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0090",
+			"member": 1,
+			"soldAt": "2027-10-19T01:10:00.000Z",
+			"amount": 11000,
+			"at": "2027-10-19T01:15:00.000Z",
+			"pending": false
+		},
+		{ "kind": "confirm", "ref": "lq-0087", "at": "2027-10-19T02:30:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0091",
+			"member": 3,
+			"soldAt": "2027-10-19T04:20:00.000Z",
+			"amount": 85000,
+			"at": "2027-10-19T04:25:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0092",
+			"member": 9,
+			"soldAt": "2027-10-19T10:12:00.000Z",
+			"amount": 103000,
+			"at": "2027-10-19T10:17:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "hold",
+			"ref": "hold-02",
+			"member": 1,
+			"coupon": "cake",
+			"at": "2027-10-19T13:30:00.000Z"
+		},
+		{
+			"kind": "confirm_hold",
+			"ref": "hold-02",
+			"invoice": "lq-0090",
+			"at": "2027-10-19T14:30:00.000Z"
+		},
+		{ "kind": "liability", "at": "2027-10-19T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-19T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0093",
+			"member": 1,
+			"soldAt": "2027-10-20T01:17:00.000Z",
+			"amount": 49000,
+			"at": "2027-10-20T01:22:00.000Z",
+			"pending": true
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0094",
+			"member": 9,
+			"soldAt": "2027-10-20T02:48:00.000Z",
+			"amount": 79000,
+			"at": "2027-10-20T02:53:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0095",
+			"member": 0,
+			"soldAt": "2027-10-20T05:02:00.000Z",
+			"amount": 89000,
+			"at": "2027-10-20T05:07:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0096",
+			"member": 2,
+			"soldAt": "2027-10-20T07:33:00.000Z",
+			"amount": 102000,
+			"at": "2027-10-20T07:38:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0097",
+			"member": 8,
+			"soldAt": "2027-10-20T07:48:00.000Z",
+			"amount": 112000,
+			"at": "2027-10-20T07:53:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-10-20T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-20T21:00:00.000Z" },
+		{ "kind": "confirm", "ref": "lq-0093", "at": "2027-10-21T02:30:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0098",
+			"member": 7,
+			"soldAt": "2027-10-21T06:06:00.000Z",
+			"amount": 95000,
+			"at": "2027-10-21T06:11:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "adjust",
+			"member": 3,
+			"stamps": 1,
+			"points": 25,
+			"reason": "goodwill credit",
+			"at": "2027-10-21T08:00:00.000Z"
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0099",
+			"member": 5,
+			"soldAt": "2027-10-21T10:42:00.000Z",
+			"amount": 34000,
+			"at": "2027-10-21T10:47:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0100",
+			"member": 2,
+			"soldAt": "2027-10-21T11:34:00.000Z",
+			"amount": 21000,
+			"at": "2027-10-21T11:39:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-10-21T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-21T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0101",
+			"member": 1,
+			"soldAt": "2027-10-22T03:11:00.000Z",
+			"amount": 114000,
+			"at": "2027-10-22T03:16:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0102",
+			"member": 9,
+			"soldAt": "2027-10-22T09:39:00.000Z",
+			"amount": 96000,
+			"at": "2027-10-22T09:44:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0103",
+			"member": 6,
+			"soldAt": "2027-10-22T10:36:00.000Z",
+			"amount": 135000,
+			"at": "2027-10-22T10:41:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0104",
+			"member": 0,
+			"soldAt": "2027-10-22T11:02:00.000Z",
+			"amount": 90000,
+			"at": "2027-10-22T11:07:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "hold",
+			"ref": "hold-05",
+			"member": 3,
+			"coupon": "drink",
+			"at": "2027-10-22T13:30:00.000Z"
+		},
+		{ "kind": "release", "ref": "hold-05", "at": "2027-10-22T14:30:00.000Z" },
+		{ "kind": "liability", "at": "2027-10-22T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-22T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0105",
+			"member": 6,
+			"soldAt": "2027-10-23T02:17:00.000Z",
+			"amount": 107000,
+			"at": "2027-10-23T02:22:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0106",
+			"member": 0,
+			"soldAt": "2027-10-23T02:42:00.000Z",
+			"amount": 143000,
+			"at": "2027-10-23T02:47:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0107",
+			"member": 1,
+			"soldAt": "2027-10-23T08:56:00.000Z",
+			"amount": 128000,
+			"at": "2027-10-23T09:01:00.000Z",
+			"pending": true
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0108",
+			"member": 10,
+			"soldAt": "2027-10-23T11:09:00.000Z",
+			"amount": 120000,
+			"at": "2027-10-23T11:14:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-10-23T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-23T21:00:00.000Z" },
+		{ "kind": "confirm", "ref": "lq-0107", "at": "2027-10-24T02:30:00.000Z" },
+		{ "kind": "void", "ref": "lq-0106", "at": "2027-10-24T04:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0109",
+			"member": 0,
+			"soldAt": "2027-10-24T04:23:00.000Z",
+			"amount": 113000,
+			"at": "2027-10-24T04:28:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0110",
+			"member": 1,
+			"soldAt": "2027-10-24T06:10:00.000Z",
+			"amount": 95000,
+			"at": "2027-10-24T06:15:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0111",
+			"member": 3,
+			"soldAt": "2027-10-24T07:04:00.000Z",
+			"amount": 54000,
+			"at": "2027-10-24T07:09:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0112",
+			"member": 10,
+			"soldAt": "2027-10-24T07:06:00.000Z",
+			"amount": 110000,
+			"at": "2027-10-24T07:11:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0113",
+			"member": 7,
+			"soldAt": "2027-10-24T08:29:00.000Z",
+			"amount": 134000,
+			"at": "2027-10-24T08:34:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-10-24T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-24T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0114",
+			"member": 8,
+			"soldAt": "2027-10-25T01:36:00.000Z",
+			"amount": 85000,
+			"at": "2027-10-25T01:41:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0115",
+			"member": 7,
+			"soldAt": "2027-10-25T01:57:00.000Z",
+			"amount": 139000,
+			"at": "2027-10-25T02:02:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0116",
+			"member": 1,
+			"soldAt": "2027-10-25T11:59:00.000Z",
+			"amount": 142000,
+			"at": "2027-10-25T12:04:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "hold",
+			"ref": "hold-08",
+			"member": 3,
+			"coupon": "cake",
+			"at": "2027-10-25T13:30:00.000Z"
+		},
+		{ "kind": "liability", "at": "2027-10-25T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-25T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0120",
+			"member": 11,
+			"soldAt": "2027-10-26T02:00:00.000Z",
+			"amount": 150000,
+			"at": "2027-10-26T02:05:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0121",
+			"member": 11,
+			"soldAt": "2027-10-26T03:00:00.000Z",
+			"amount": 150000,
+			"at": "2027-10-26T03:05:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0117",
+			"member": 4,
+			"soldAt": "2027-10-26T03:49:00.000Z",
+			"amount": 111000,
+			"at": "2027-10-26T03:54:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0122",
+			"member": 11,
+			"soldAt": "2027-10-26T04:00:00.000Z",
+			"amount": 150000,
+			"at": "2027-10-26T04:05:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "hold",
+			"ref": "hold-neg",
+			"member": 11,
+			"coupon": "cake",
+			"at": "2027-10-26T07:00:00.000Z"
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0118",
+			"member": 9,
+			"soldAt": "2027-10-26T07:11:00.000Z",
+			"amount": 150000,
+			"at": "2027-10-26T07:16:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "confirm_hold",
+			"ref": "hold-neg",
+			"invoice": "lq-0121",
+			"at": "2027-10-26T08:00:00.000Z"
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0119",
+			"member": 0,
+			"soldAt": "2027-10-26T08:52:00.000Z",
+			"amount": 84000,
+			"at": "2027-10-26T08:57:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-10-26T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-26T21:00:00.000Z" },
+		{ "kind": "void", "ref": "lq-0122", "at": "2027-10-27T04:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0123",
+			"member": 5,
+			"soldAt": "2027-10-27T03:58:00.000Z",
+			"amount": 44000,
+			"at": "2027-10-27T04:03:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0124",
+			"member": 6,
+			"soldAt": "2027-10-27T04:50:00.000Z",
+			"amount": 88000,
+			"at": "2027-10-27T04:55:00.000Z",
+			"pending": true
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0125",
+			"member": 8,
+			"soldAt": "2027-10-27T10:27:00.000Z",
+			"amount": 150000,
+			"at": "2027-10-27T10:32:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-10-27T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-27T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0126",
+			"member": 6,
+			"soldAt": "2027-10-28T01:49:00.000Z",
+			"amount": 37000,
+			"at": "2027-10-28T01:54:00.000Z",
+			"pending": false
+		},
+		{ "kind": "confirm", "ref": "lq-0124", "at": "2027-10-28T02:30:00.000Z" },
+		{ "kind": "void", "ref": "lq-0123", "at": "2027-10-28T04:00:00.000Z" },
+		{ "kind": "void", "ref": "lq-0125", "at": "2027-10-28T04:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0127",
+			"member": 10,
+			"soldAt": "2027-10-28T05:49:00.000Z",
+			"amount": 39000,
+			"at": "2027-10-28T05:54:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0128",
+			"member": 2,
+			"soldAt": "2027-10-28T07:56:00.000Z",
+			"amount": 88000,
+			"at": "2027-10-28T08:01:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0129",
+			"member": 9,
+			"soldAt": "2027-10-28T09:41:00.000Z",
+			"amount": 27000,
+			"at": "2027-10-28T09:46:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0130",
+			"member": 0,
+			"soldAt": "2027-10-28T10:52:00.000Z",
+			"amount": 28000,
+			"at": "2027-10-28T10:57:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "hold",
+			"ref": "hold-11",
+			"member": 0,
+			"coupon": "drink",
+			"at": "2027-10-28T13:30:00.000Z"
+		},
+		{
+			"kind": "confirm_hold",
+			"ref": "hold-11",
+			"invoice": "lq-0130",
+			"at": "2027-10-28T14:30:00.000Z"
+		},
+		{ "kind": "liability", "at": "2027-10-28T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-28T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0131",
+			"member": 3,
+			"soldAt": "2027-10-29T05:50:00.000Z",
+			"amount": 75000,
+			"at": "2027-10-29T05:55:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0132",
+			"member": 6,
+			"soldAt": "2027-10-29T06:06:00.000Z",
+			"amount": 46000,
+			"at": "2027-10-29T06:11:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "adjust",
+			"member": 5,
+			"stamps": 0,
+			"points": -10,
+			"reason": "correction",
+			"at": "2027-10-29T08:30:00.000Z"
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0133",
+			"member": 9,
+			"soldAt": "2027-10-29T11:43:00.000Z",
+			"amount": 74000,
+			"at": "2027-10-29T11:48:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-10-29T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-29T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0134",
+			"member": 6,
+			"soldAt": "2027-10-30T02:16:00.000Z",
+			"amount": 74000,
+			"at": "2027-10-30T02:21:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0135",
+			"member": 10,
+			"soldAt": "2027-10-30T05:47:00.000Z",
+			"amount": 29000,
+			"at": "2027-10-30T05:52:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0136",
+			"member": 1,
+			"soldAt": "2027-10-30T09:17:00.000Z",
+			"amount": 35000,
+			"at": "2027-10-30T09:22:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0137",
+			"member": 2,
+			"soldAt": "2027-10-30T09:58:00.000Z",
+			"amount": 145000,
+			"at": "2027-10-30T10:03:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-10-30T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-30T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0138",
+			"member": 8,
+			"soldAt": "2027-10-31T01:40:00.000Z",
+			"amount": 60000,
+			"at": "2027-10-31T01:45:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0139",
+			"member": 10,
+			"soldAt": "2027-10-31T04:44:00.000Z",
+			"amount": 66000,
+			"at": "2027-10-31T04:49:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0140",
+			"member": 3,
+			"soldAt": "2027-10-31T09:37:00.000Z",
+			"amount": 134000,
+			"at": "2027-10-31T09:42:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0141",
+			"member": 1,
+			"soldAt": "2027-10-31T09:48:00.000Z",
+			"amount": 69000,
+			"at": "2027-10-31T09:53:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0142",
+			"member": 0,
+			"soldAt": "2027-10-31T10:59:00.000Z",
+			"amount": 94000,
+			"at": "2027-10-31T11:04:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "hold",
+			"ref": "hold-14",
+			"member": 3,
+			"coupon": "cake",
+			"at": "2027-10-31T13:30:00.000Z"
+		},
+		{ "kind": "release", "ref": "hold-14", "at": "2027-10-31T14:30:00.000Z" },
+		{ "kind": "liability", "at": "2027-10-31T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-10-31T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0143",
+			"member": 1,
+			"soldAt": "2027-11-01T01:12:00.000Z",
+			"amount": 90000,
+			"at": "2027-11-01T01:17:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0144",
+			"member": 4,
+			"soldAt": "2027-11-01T06:26:00.000Z",
+			"amount": 93000,
+			"at": "2027-11-01T06:31:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0145",
+			"member": 0,
+			"soldAt": "2027-11-01T06:36:00.000Z",
+			"amount": 131000,
+			"at": "2027-11-01T06:41:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0146",
+			"member": 9,
+			"soldAt": "2027-11-01T06:47:00.000Z",
+			"amount": 147000,
+			"at": "2027-11-01T06:52:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-11-01T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-01T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0147",
+			"member": 4,
+			"soldAt": "2027-11-02T02:22:00.000Z",
+			"amount": 145000,
+			"at": "2027-11-02T02:27:00.000Z",
+			"pending": false
+		},
+		{ "kind": "void", "ref": "lq-0145", "at": "2027-11-02T04:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0148",
+			"member": 5,
+			"soldAt": "2027-11-02T06:21:00.000Z",
+			"amount": 93000,
+			"at": "2027-11-02T06:26:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0149",
+			"member": 1,
+			"soldAt": "2027-11-02T07:09:00.000Z",
+			"amount": 81000,
+			"at": "2027-11-02T07:14:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-11-02T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-02T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0150",
+			"member": 0,
+			"soldAt": "2027-11-03T01:48:00.000Z",
+			"amount": 48000,
+			"at": "2027-11-03T01:53:00.000Z",
+			"pending": false
+		},
+		{ "kind": "void", "ref": "lq-0147", "at": "2027-11-03T04:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0151",
+			"member": 4,
+			"soldAt": "2027-11-03T06:17:00.000Z",
+			"amount": 145000,
+			"at": "2027-11-03T06:22:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0152",
+			"member": 7,
+			"soldAt": "2027-11-03T10:04:00.000Z",
+			"amount": 11000,
+			"at": "2027-11-03T10:09:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0153",
+			"member": 9,
+			"soldAt": "2027-11-03T11:13:00.000Z",
+			"amount": 21000,
+			"at": "2027-11-03T11:18:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "hold",
+			"ref": "hold-17",
+			"member": 0,
+			"coupon": "drink",
+			"at": "2027-11-03T13:30:00.000Z"
+		},
+		{ "kind": "liability", "at": "2027-11-03T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-03T21:00:00.000Z" },
+		{ "kind": "void", "ref": "lq-0153", "at": "2027-11-04T04:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0154",
+			"member": 1,
+			"soldAt": "2027-11-04T06:25:00.000Z",
+			"amount": 93000,
+			"at": "2027-11-04T06:30:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0155",
+			"member": 3,
+			"soldAt": "2027-11-04T08:21:00.000Z",
+			"amount": 73000,
+			"at": "2027-11-04T08:26:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0156",
+			"member": 5,
+			"soldAt": "2027-11-04T09:05:00.000Z",
+			"amount": 116000,
+			"at": "2027-11-04T09:10:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-11-04T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-04T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0157",
+			"member": 3,
+			"soldAt": "2027-11-05T06:50:00.000Z",
+			"amount": 15000,
+			"at": "2027-11-05T06:55:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0158",
+			"member": 7,
+			"soldAt": "2027-11-05T09:17:00.000Z",
+			"amount": 108000,
+			"at": "2027-11-05T09:22:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0159",
+			"member": 8,
+			"soldAt": "2027-11-05T09:42:00.000Z",
+			"amount": 107000,
+			"at": "2027-11-05T09:47:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-11-05T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-05T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0160",
+			"member": 9,
+			"soldAt": "2027-11-06T01:22:00.000Z",
+			"amount": 69000,
+			"at": "2027-11-06T01:27:00.000Z",
+			"pending": false
+		},
+		{ "kind": "void", "ref": "lq-0158", "at": "2027-11-06T04:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0161",
+			"member": 0,
+			"soldAt": "2027-11-06T05:47:00.000Z",
+			"amount": 30000,
+			"at": "2027-11-06T05:52:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0162",
+			"member": 2,
+			"soldAt": "2027-11-06T06:11:00.000Z",
+			"amount": 143000,
+			"at": "2027-11-06T06:16:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0163",
+			"member": 4,
+			"soldAt": "2027-11-06T06:25:00.000Z",
+			"amount": 44000,
+			"at": "2027-11-06T06:30:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0164",
+			"member": 1,
+			"soldAt": "2027-11-06T09:01:00.000Z",
+			"amount": 115000,
+			"at": "2027-11-06T09:06:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "hold",
+			"ref": "hold-20",
+			"member": 4,
+			"coupon": "cake",
+			"at": "2027-11-06T13:30:00.000Z"
+		},
+		{
+			"kind": "confirm_hold",
+			"ref": "hold-20",
+			"invoice": "lq-0163",
+			"at": "2027-11-06T14:30:00.000Z"
+		},
+		{ "kind": "liability", "at": "2027-11-06T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-06T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0165",
+			"member": 6,
+			"soldAt": "2027-11-07T03:48:00.000Z",
+			"amount": 93000,
+			"at": "2027-11-07T03:53:00.000Z",
+			"pending": false
+		},
+		{ "kind": "void", "ref": "lq-0162", "at": "2027-11-07T04:00:00.000Z" },
+		{ "kind": "void", "ref": "lq-0164", "at": "2027-11-07T04:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0166",
+			"member": 0,
+			"soldAt": "2027-11-07T08:36:00.000Z",
+			"amount": 134000,
+			"at": "2027-11-07T08:41:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0167",
+			"member": 4,
+			"soldAt": "2027-11-07T09:22:00.000Z",
+			"amount": 35000,
+			"at": "2027-11-07T09:27:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0168",
+			"member": 2,
+			"soldAt": "2027-11-07T11:48:00.000Z",
+			"amount": 70000,
+			"at": "2027-11-07T11:53:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-11-07T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-07T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0169",
+			"member": 8,
+			"soldAt": "2027-11-08T06:17:00.000Z",
+			"amount": 43000,
+			"at": "2027-11-08T06:22:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0170",
+			"member": 9,
+			"soldAt": "2027-11-08T06:46:00.000Z",
+			"amount": 130000,
+			"at": "2027-11-08T06:51:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0171",
+			"member": 0,
+			"soldAt": "2027-11-08T08:23:00.000Z",
+			"amount": 38000,
+			"at": "2027-11-08T08:28:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-11-08T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-08T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0172",
+			"member": 0,
+			"soldAt": "2027-11-09T01:45:00.000Z",
+			"amount": 41000,
+			"at": "2027-11-09T01:50:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0173",
+			"member": 7,
+			"soldAt": "2027-11-09T07:13:00.000Z",
+			"amount": 76000,
+			"at": "2027-11-09T07:18:00.000Z",
+			"pending": true
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0174",
+			"member": 4,
+			"soldAt": "2027-11-09T11:26:00.000Z",
+			"amount": 137000,
+			"at": "2027-11-09T11:31:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "hold",
+			"ref": "hold-23",
+			"member": 8,
+			"coupon": "drink",
+			"at": "2027-11-09T13:30:00.000Z"
+		},
+		{ "kind": "release", "ref": "hold-23", "at": "2027-11-09T14:30:00.000Z" },
+		{ "kind": "liability", "at": "2027-11-09T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-09T21:00:00.000Z" },
+		{ "kind": "confirm", "ref": "lq-0173", "at": "2027-11-10T02:30:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0175",
+			"member": 1,
+			"soldAt": "2027-11-10T02:44:00.000Z",
+			"amount": 35000,
+			"at": "2027-11-10T02:49:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0176",
+			"member": 2,
+			"soldAt": "2027-11-10T02:50:00.000Z",
+			"amount": 50000,
+			"at": "2027-11-10T02:55:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0177",
+			"member": 4,
+			"soldAt": "2027-11-10T03:21:00.000Z",
+			"amount": 78000,
+			"at": "2027-11-10T03:26:00.000Z",
+			"pending": false
+		},
+		{ "kind": "void", "ref": "lq-0172", "at": "2027-11-10T04:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0178",
+			"member": 5,
+			"soldAt": "2027-11-10T08:19:00.000Z",
+			"amount": 17000,
+			"at": "2027-11-10T08:24:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-11-10T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-10T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0179",
+			"member": 6,
+			"soldAt": "2027-11-11T02:47:00.000Z",
+			"amount": 145000,
+			"at": "2027-11-11T02:52:00.000Z",
+			"pending": false
+		},
+		{ "kind": "void", "ref": "lq-0175", "at": "2027-11-11T04:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0180",
+			"member": 1,
+			"soldAt": "2027-11-11T04:04:00.000Z",
+			"amount": 27000,
+			"at": "2027-11-11T04:09:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0181",
+			"member": 4,
+			"soldAt": "2027-11-11T05:00:00.000Z",
+			"amount": 150000,
+			"at": "2027-11-11T05:05:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0182",
+			"member": 7,
+			"soldAt": "2027-11-11T08:04:00.000Z",
+			"amount": 40000,
+			"at": "2027-11-11T08:09:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0183",
+			"member": 0,
+			"soldAt": "2027-11-11T11:29:00.000Z",
+			"amount": 35000,
+			"at": "2027-11-11T11:34:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-11-11T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-11T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0184",
+			"member": 4,
+			"soldAt": "2027-11-12T02:08:00.000Z",
+			"amount": 16000,
+			"at": "2027-11-12T02:13:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0185",
+			"member": 1,
+			"soldAt": "2027-11-12T04:38:00.000Z",
+			"amount": 10000,
+			"at": "2027-11-12T04:43:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0186",
+			"member": 10,
+			"soldAt": "2027-11-12T08:50:00.000Z",
+			"amount": 54000,
+			"at": "2027-11-12T08:55:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "hold",
+			"ref": "hold-26",
+			"member": 10,
+			"coupon": "cake",
+			"at": "2027-11-12T13:30:00.000Z"
+		},
+		{ "kind": "liability", "at": "2027-11-12T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-12T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0187",
+			"member": 6,
+			"soldAt": "2027-11-13T05:06:00.000Z",
+			"amount": 105000,
+			"at": "2027-11-13T05:11:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0188",
+			"member": 0,
+			"soldAt": "2027-11-13T06:55:00.000Z",
+			"amount": 23000,
+			"at": "2027-11-13T07:00:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0189",
+			"member": 1,
+			"soldAt": "2027-11-13T07:02:00.000Z",
+			"amount": 81000,
+			"at": "2027-11-13T07:07:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0190",
+			"member": 9,
+			"soldAt": "2027-11-13T09:11:00.000Z",
+			"amount": 72000,
+			"at": "2027-11-13T09:16:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0191",
+			"member": 5,
+			"soldAt": "2027-11-13T09:20:00.000Z",
+			"amount": 112000,
+			"at": "2027-11-13T09:25:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-11-13T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-13T21:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0192",
+			"member": 4,
+			"soldAt": "2027-11-14T01:48:00.000Z",
+			"amount": 101000,
+			"at": "2027-11-14T01:53:00.000Z",
+			"pending": false
+		},
+		{ "kind": "void", "ref": "lq-0188", "at": "2027-11-14T04:00:00.000Z" },
+		{ "kind": "void", "ref": "lq-0189", "at": "2027-11-14T04:00:00.000Z" },
+		{
+			"kind": "earn",
+			"ref": "lq-0193",
+			"member": 6,
+			"soldAt": "2027-11-14T04:37:00.000Z",
+			"amount": 67000,
+			"at": "2027-11-14T04:42:00.000Z",
+			"pending": false
+		},
+		{
+			"kind": "earn",
+			"ref": "lq-0194",
+			"member": 1,
+			"soldAt": "2027-11-14T08:04:00.000Z",
+			"amount": 81000,
+			"at": "2027-11-14T08:09:00.000Z",
+			"pending": false
+		},
+		{ "kind": "liability", "at": "2027-11-14T16:30:00.000Z" },
+		{ "kind": "nightly", "at": "2027-11-14T21:00:00.000Z" }
+	],
+	"rows": [
+		{
+			"asOfDate": "2027-04-21",
+			"members": 12,
+			"outstandingPoints": 625,
+			"outstandingStamps": 48,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.200",
+			"breakageSource": "configured",
+			"liabilityAmount": "250000.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 24,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 0 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-05-16",
+			"members": 12,
+			"outstandingPoints": 625,
+			"outstandingStamps": 0,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.200",
+			"breakageSource": "configured",
+			"liabilityAmount": "250000.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 0,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 0 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-17",
+			"members": 12,
+			"outstandingPoints": 625,
+			"outstandingStamps": 0,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.200",
+			"breakageSource": "configured",
+			"liabilityAmount": "250000.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 0,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 0 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-18",
+			"members": 12,
+			"outstandingPoints": 629,
+			"outstandingStamps": 2,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.200",
+			"breakageSource": "configured",
+			"liabilityAmount": "251600.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 19,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 19 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 36, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-19",
+			"members": 12,
+			"outstandingPoints": 651,
+			"outstandingStamps": 7,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.200",
+			"breakageSource": "configured",
+			"liabilityAmount": "260400.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 32,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 51 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 89, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-20",
+			"members": 12,
+			"outstandingPoints": 610,
+			"outstandingStamps": 10,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.200",
+			"breakageSource": "configured",
+			"liabilityAmount": "244000.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 32,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 83 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 108, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-21",
+			"members": 12,
+			"outstandingPoints": 635,
+			"outstandingStamps": 14,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.747",
+			"breakageSource": "observed",
+			"liabilityAmount": "80327.50",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 11,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 94 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 148, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-22",
+			"members": 12,
+			"outstandingPoints": 673,
+			"outstandingStamps": 16,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.755",
+			"breakageSource": "observed",
+			"liabilityAmount": "82442.50",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 5,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 99 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 187, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-23",
+			"members": 12,
+			"outstandingPoints": 700,
+			"outstandingStamps": 20,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.775",
+			"breakageSource": "observed",
+			"liabilityAmount": "78750.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 15,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 114 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 229, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-24",
+			"members": 12,
+			"outstandingPoints": 717,
+			"outstandingStamps": 23,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.797",
+			"breakageSource": "observed",
+			"liabilityAmount": "72775.50",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 19,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 133 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 277, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-25",
+			"members": 12,
+			"outstandingPoints": 751,
+			"outstandingStamps": 28,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.810",
+			"breakageSource": "observed",
+			"liabilityAmount": "71345.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 13,
+			"pointsClawedBack": 14,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 146 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 326, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-26",
+			"members": 12,
+			"outstandingPoints": 734,
+			"outstandingStamps": 31,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.695",
+			"breakageSource": "observed",
+			"liabilityAmount": "111935.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 12,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 158 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 361, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-27",
+			"members": 12,
+			"outstandingPoints": 799,
+			"outstandingStamps": 37,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.710",
+			"breakageSource": "observed",
+			"liabilityAmount": "115855.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": -40,
+			"pointsExpired": 14,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "-20000.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 172 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 440, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-28",
+			"members": 12,
+			"outstandingPoints": 800,
+			"outstandingStamps": 37,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.723",
+			"breakageSource": "observed",
+			"liabilityAmount": "110800.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 13,
+			"pointsClawedBack": 15,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 185 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 467, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-29",
+			"members": 12,
+			"outstandingPoints": 792,
+			"outstandingStamps": 36,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.737",
+			"breakageSource": "observed",
+			"liabilityAmount": "104148.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 15,
+			"pointsClawedBack": 19,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 200 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 485, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-30",
+			"members": 12,
+			"outstandingPoints": 774,
+			"outstandingStamps": 38,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.758",
+			"breakageSource": "observed",
+			"liabilityAmount": "93654.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 26,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 226 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 503, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-31",
+			"members": 12,
+			"outstandingPoints": 773,
+			"outstandingStamps": 40,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.776",
+			"breakageSource": "observed",
+			"liabilityAmount": "86576.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 27,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 529, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-01",
+			"members": 12,
+			"outstandingPoints": 794,
+			"outstandingStamps": 45,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.787",
+			"breakageSource": "observed",
+			"liabilityAmount": "84561.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 19,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 19 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-02",
+			"members": 12,
+			"outstandingPoints": 822,
+			"outstandingStamps": 49,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.796",
+			"breakageSource": "observed",
+			"liabilityAmount": "83844.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 17,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 36 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 45, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-03",
+			"members": 12,
+			"outstandingPoints": 818,
+			"outstandingStamps": 51,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.807",
+			"breakageSource": "observed",
+			"liabilityAmount": "78937.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 22,
+			"pointsClawedBack": 13,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 58 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 76, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-04",
+			"members": 12,
+			"outstandingPoints": 812,
+			"outstandingStamps": 49,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.813",
+			"breakageSource": "observed",
+			"liabilityAmount": "75922.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 13,
+			"pointsClawedBack": 14,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 71 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 97, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-05",
+			"members": 12,
+			"outstandingPoints": 819,
+			"outstandingStamps": 54,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.821",
+			"breakageSource": "observed",
+			"liabilityAmount": "73300.50",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 18,
+			"pointsClawedBack": 2,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 89 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 124, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-06",
+			"members": 12,
+			"outstandingPoints": 817,
+			"outstandingStamps": 56,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.829",
+			"breakageSource": "observed",
+			"liabilityAmount": "69853.50",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 23,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 112 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 145, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-07",
+			"members": 12,
+			"outstandingPoints": 784,
+			"outstandingStamps": 58,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.774",
+			"breakageSource": "observed",
+			"liabilityAmount": "88592.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 21,
+			"pointsClawedBack": 10,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 133 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 183, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-08",
+			"members": 12,
+			"outstandingPoints": 759,
+			"outstandingStamps": 59,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.786",
+			"breakageSource": "observed",
+			"liabilityAmount": "81213.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 32,
+			"pointsClawedBack": 25,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 165 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 215, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-09",
+			"members": 12,
+			"outstandingPoints": 761,
+			"outstandingStamps": 60,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.793",
+			"breakageSource": "observed",
+			"liabilityAmount": "78763.50",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 18,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 183 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 235, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-10",
+			"members": 12,
+			"outstandingPoints": 747,
+			"outstandingStamps": 61,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.804",
+			"breakageSource": "observed",
+			"liabilityAmount": "73206.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 31,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 214 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 259, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-11",
+			"members": 12,
+			"outstandingPoints": 748,
+			"outstandingStamps": 64,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.809",
+			"breakageSource": "observed",
+			"liabilityAmount": "71434.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 18,
+			"pointsClawedBack": 4,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 232 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 275, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-12",
+			"members": 12,
+			"outstandingPoints": 773,
+			"outstandingStamps": 66,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.812",
+			"breakageSource": "observed",
+			"liabilityAmount": "72662.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 10,
+			"pointsClawedBack": 3,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 242 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 313, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-13",
+			"members": 12,
+			"outstandingPoints": 719,
+			"outstandingStamps": 67,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.771",
+			"breakageSource": "observed",
+			"liabilityAmount": "82325.50",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 21,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 263 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 320, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-14",
+			"members": 12,
+			"outstandingPoints": 764,
+			"outstandingStamps": 71,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.827",
+			"breakageSource": "observed",
+			"liabilityAmount": "66086.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": -40,
+			"pointsExpired": 33,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "-20000.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 296 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 358, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-15",
+			"members": 12,
+			"outstandingPoints": 764,
+			"outstandingStamps": 73,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.830",
+			"breakageSource": "observed",
+			"liabilityAmount": "64940.00",
+			"pointsIssued": 0,
+			"pointsRedeemed": 0,
+			"pointsExpired": 14,
+			"pointsClawedBack": 10,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 310 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 382, "expired": 0 }
+			]
+		}
+	],
+	"closing": [
+		{
+			"asOfDate": "2027-10-17",
+			"members": 12,
+			"outstandingPoints": 648,
+			"outstandingStamps": 2,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.200",
+			"breakageSource": "configured",
+			"liabilityAmount": "259200.00",
+			"pointsIssued": 36,
+			"pointsRedeemed": 0,
+			"pointsExpired": 0,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 0 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 36, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-18",
+			"members": 12,
+			"outstandingPoints": 683,
+			"outstandingStamps": 7,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.200",
+			"breakageSource": "configured",
+			"liabilityAmount": "273200.00",
+			"pointsIssued": 53,
+			"pointsRedeemed": 0,
+			"pointsExpired": 19,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 19 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 89, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-19",
+			"members": 12,
+			"outstandingPoints": 642,
+			"outstandingStamps": 10,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.200",
+			"breakageSource": "configured",
+			"liabilityAmount": "256800.00",
+			"pointsIssued": 19,
+			"pointsRedeemed": 40,
+			"pointsExpired": 32,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "20000.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 51 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 108, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-20",
+			"members": 12,
+			"outstandingPoints": 646,
+			"outstandingStamps": 14,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.200",
+			"breakageSource": "configured",
+			"liabilityAmount": "258400.00",
+			"pointsIssued": 40,
+			"pointsRedeemed": 0,
+			"pointsExpired": 32,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 83 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 148, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-21",
+			"members": 12,
+			"outstandingPoints": 678,
+			"outstandingStamps": 16,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.747",
+			"breakageSource": "observed",
+			"liabilityAmount": "85767.00",
+			"pointsIssued": 39,
+			"pointsRedeemed": 0,
+			"pointsExpired": 11,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 94 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 187, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-22",
+			"members": 12,
+			"outstandingPoints": 715,
+			"outstandingStamps": 20,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.755",
+			"breakageSource": "observed",
+			"liabilityAmount": "87587.50",
+			"pointsIssued": 42,
+			"pointsRedeemed": 0,
+			"pointsExpired": 5,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 99 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 229, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-23",
+			"members": 12,
+			"outstandingPoints": 736,
+			"outstandingStamps": 23,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.775",
+			"breakageSource": "observed",
+			"liabilityAmount": "82800.00",
+			"pointsIssued": 48,
+			"pointsRedeemed": 0,
+			"pointsExpired": 15,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 114 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 277, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-24",
+			"members": 12,
+			"outstandingPoints": 778,
+			"outstandingStamps": 29,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.797",
+			"breakageSource": "observed",
+			"liabilityAmount": "78967.00",
+			"pointsIssued": 49,
+			"pointsRedeemed": 0,
+			"pointsExpired": 19,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 133 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 326, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-25",
+			"members": 12,
+			"outstandingPoints": 746,
+			"outstandingStamps": 31,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.680",
+			"breakageSource": "observed",
+			"liabilityAmount": "119360.00",
+			"pointsIssued": 35,
+			"pointsRedeemed": 40,
+			"pointsExpired": 13,
+			"pointsClawedBack": 14,
+			"deferredRevenueReleasedAmount": "20000.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 146 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 361, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-26",
+			"members": 12,
+			"outstandingPoints": 773,
+			"outstandingStamps": 37,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.603",
+			"breakageSource": "observed",
+			"liabilityAmount": "153440.50",
+			"pointsIssued": 79,
+			"pointsRedeemed": 40,
+			"pointsExpired": 12,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "20000.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 158 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 440, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-27",
+			"members": 12,
+			"outstandingPoints": 818,
+			"outstandingStamps": 38,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.710",
+			"breakageSource": "observed",
+			"liabilityAmount": "118610.00",
+			"pointsIssued": 27,
+			"pointsRedeemed": -40,
+			"pointsExpired": 14,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "-20000.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 172 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 467, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-28",
+			"members": 12,
+			"outstandingPoints": 826,
+			"outstandingStamps": 37,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.723",
+			"breakageSource": "observed",
+			"liabilityAmount": "114401.00",
+			"pointsIssued": 18,
+			"pointsRedeemed": 0,
+			"pointsExpired": 13,
+			"pointsClawedBack": 15,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 185 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 485, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-29",
+			"members": 12,
+			"outstandingPoints": 800,
+			"outstandingStamps": 38,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.737",
+			"breakageSource": "observed",
+			"liabilityAmount": "105200.00",
+			"pointsIssued": 18,
+			"pointsRedeemed": 0,
+			"pointsExpired": 15,
+			"pointsClawedBack": 19,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 200 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 503, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-30",
+			"members": 12,
+			"outstandingPoints": 800,
+			"outstandingStamps": 40,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.758",
+			"breakageSource": "observed",
+			"liabilityAmount": "96800.00",
+			"pointsIssued": 26,
+			"pointsRedeemed": 0,
+			"pointsExpired": 26,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 226 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 529, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-10-31",
+			"members": 12,
+			"outstandingPoints": 813,
+			"outstandingStamps": 45,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.776",
+			"breakageSource": "observed",
+			"liabilityAmount": "91056.00",
+			"pointsIssued": 40,
+			"pointsRedeemed": 0,
+			"pointsExpired": 27,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 0 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-01",
+			"members": 12,
+			"outstandingPoints": 839,
+			"outstandingStamps": 49,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.787",
+			"breakageSource": "observed",
+			"liabilityAmount": "89353.50",
+			"pointsIssued": 45,
+			"pointsRedeemed": 0,
+			"pointsExpired": 19,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 19 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 45, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-02",
+			"members": 12,
+			"outstandingPoints": 853,
+			"outstandingStamps": 52,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.796",
+			"breakageSource": "observed",
+			"liabilityAmount": "87006.00",
+			"pointsIssued": 31,
+			"pointsRedeemed": 0,
+			"pointsExpired": 17,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 36 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 76, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-03",
+			"members": 12,
+			"outstandingPoints": 839,
+			"outstandingStamps": 50,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.807",
+			"breakageSource": "observed",
+			"liabilityAmount": "80963.50",
+			"pointsIssued": 21,
+			"pointsRedeemed": 0,
+			"pointsExpired": 22,
+			"pointsClawedBack": 13,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 58 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 97, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-04",
+			"members": 12,
+			"outstandingPoints": 839,
+			"outstandingStamps": 52,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.813",
+			"breakageSource": "observed",
+			"liabilityAmount": "78446.50",
+			"pointsIssued": 27,
+			"pointsRedeemed": 0,
+			"pointsExpired": 13,
+			"pointsClawedBack": 14,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 71 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 124, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-05",
+			"members": 12,
+			"outstandingPoints": 840,
+			"outstandingStamps": 56,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.821",
+			"breakageSource": "observed",
+			"liabilityAmount": "75180.00",
+			"pointsIssued": 21,
+			"pointsRedeemed": 0,
+			"pointsExpired": 18,
+			"pointsClawedBack": 2,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 89 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 145, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-06",
+			"members": 12,
+			"outstandingPoints": 815,
+			"outstandingStamps": 59,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.764",
+			"breakageSource": "observed",
+			"liabilityAmount": "96170.00",
+			"pointsIssued": 38,
+			"pointsRedeemed": 40,
+			"pointsExpired": 23,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "20000.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 112 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 183, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-07",
+			"members": 12,
+			"outstandingPoints": 816,
+			"outstandingStamps": 61,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.774",
+			"breakageSource": "observed",
+			"liabilityAmount": "92208.00",
+			"pointsIssued": 32,
+			"pointsRedeemed": 0,
+			"pointsExpired": 21,
+			"pointsClawedBack": 10,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 133 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 215, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-08",
+			"members": 12,
+			"outstandingPoints": 779,
+			"outstandingStamps": 60,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.786",
+			"breakageSource": "observed",
+			"liabilityAmount": "83353.00",
+			"pointsIssued": 20,
+			"pointsRedeemed": 0,
+			"pointsExpired": 32,
+			"pointsClawedBack": 25,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 165 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 235, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-09",
+			"members": 12,
+			"outstandingPoints": 778,
+			"outstandingStamps": 61,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.793",
+			"breakageSource": "observed",
+			"liabilityAmount": "80523.00",
+			"pointsIssued": 24,
+			"pointsRedeemed": 0,
+			"pointsExpired": 18,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 183 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 259, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-10",
+			"members": 12,
+			"outstandingPoints": 770,
+			"outstandingStamps": 64,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.804",
+			"breakageSource": "observed",
+			"liabilityAmount": "75460.00",
+			"pointsIssued": 16,
+			"pointsRedeemed": 0,
+			"pointsExpired": 31,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 214 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 275, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-11",
+			"members": 12,
+			"outstandingPoints": 786,
+			"outstandingStamps": 66,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.809",
+			"breakageSource": "observed",
+			"liabilityAmount": "75063.00",
+			"pointsIssued": 38,
+			"pointsRedeemed": 0,
+			"pointsExpired": 18,
+			"pointsClawedBack": 4,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 232 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 313, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-12",
+			"members": 12,
+			"outstandingPoints": 740,
+			"outstandingStamps": 67,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.764",
+			"breakageSource": "observed",
+			"liabilityAmount": "87320.00",
+			"pointsIssued": 7,
+			"pointsRedeemed": 40,
+			"pointsExpired": 10,
+			"pointsClawedBack": 3,
+			"deferredRevenueReleasedAmount": "20000.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 242 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 320, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-13",
+			"members": 12,
+			"outstandingPoints": 757,
+			"outstandingStamps": 71,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.771",
+			"breakageSource": "observed",
+			"liabilityAmount": "86676.50",
+			"pointsIssued": 38,
+			"pointsRedeemed": 0,
+			"pointsExpired": 21,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "0.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 263 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 358, "expired": 0 }
+			]
+		},
+		{
+			"asOfDate": "2027-11-14",
+			"members": 12,
+			"outstandingPoints": 788,
+			"outstandingStamps": 74,
+			"pointValueAmount": "500.00",
+			"expectedBreakageRate": "0.827",
+			"breakageSource": "observed",
+			"liabilityAmount": "68162.00",
+			"pointsIssued": 24,
+			"pointsRedeemed": -40,
+			"pointsExpired": 33,
+			"pointsClawedBack": 0,
+			"deferredRevenueReleasedAmount": "-20000.00",
+			"breakageByCohort": [
+				{ "month": "2026-04", "issued": 24, "expired": 24 },
+				{ "month": "2026-10", "issued": 301, "expired": 253 },
+				{ "month": "2026-11", "issued": 324, "expired": 296 },
+				{ "month": "2027-10", "issued": 569, "expired": 0 },
+				{ "month": "2027-11", "issued": 382, "expired": 0 }
+			]
+		}
+	],
+	"ledgerCounts": {
+		"earn": 194,
+		"expire": 88,
+		"confirm": 10,
+		"redeem": 10,
+		"adjust": 8,
+		"clawback": 14
+	},
+	"balances": {
+		"0": [4, 73],
+		"1": [10, 108],
+		"2": [6, 59],
+		"3": [7, 82],
+		"4": [8, 55],
+		"5": [4, 42],
+		"6": [10, 109],
+		"7": [5, 59],
+		"8": [4, 41],
+		"9": [9, 97],
+		"10": [4, 39],
+		"11": [2, -10]
+	}
+}

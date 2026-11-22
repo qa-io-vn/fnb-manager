@@ -224,10 +224,80 @@ export interface LiabilityInput {
 	readonly expectedBreakageRate: number;
 }
 
+function scaled(value: number, factor: number, what: string): bigint {
+	const exact = Math.round(value * factor);
+	if (!Number.isFinite(value) || Math.abs(value * factor - exact) > 1e-6) {
+		throw new RangeError(
+			`${what} has more than ${Math.log10(factor)} decimals`,
+		);
+	}
+	return BigInt(exact);
+}
+
+/**
+ * The liability in hundredths (cents) as the database computes it, exactly:
+ * `round(points * point_value_amount * (1 - rate), 2)` over `numeric(14,2)` and
+ * `numeric(4,3)`, half away from zero. Integers only, so no float error can move
+ * a half-cent: 1 point at 0.29 with a 0.5 rate is 0.145, which floats read as
+ * 14.499999999999998 hundredths.
+ */
+export function pointsLiabilityCents(input: LiabilityInput): number {
+	if (!Number.isSafeInteger(input.outstandingPoints)) {
+		throw new RangeError("outstanding points are a whole number");
+	}
+	const thousandthsOfACent =
+		BigInt(input.outstandingPoints) *
+		scaled(input.pointValueAmount, 100, "the point value") *
+		(1000n - scaled(input.expectedBreakageRate, 1000, "the breakage rate"));
+	const magnitude =
+		thousandthsOfACent < 0n ? -thousandthsOfACent : thousandthsOfACent;
+	const cents = (magnitude + 500n) / 1000n;
+	if (cents > BigInt(Number.MAX_SAFE_INTEGER)) {
+		throw new RangeError("the liability does not fit a safe integer of cents");
+	}
+	return Number(thousandthsOfACent < 0n ? -cents : cents);
+}
+
+/** An amount in hundredths as the text `numeric(14,2)` prints, e.g. `7600.00`. */
+export function formatCents(cents: number): string {
+	const magnitude = Math.abs(cents);
+	const whole = Math.trunc(magnitude / 100);
+	const fraction = String(magnitude - whole * 100).padStart(2, "0");
+	return `${cents < 0 ? "-" : ""}${whole}.${fraction}`;
+}
+
+/** A rate in thousandths as the text `numeric(4,3)` prints, e.g. `0.250`. */
+export function formatThousandths(milli: number): string {
+	return `${Math.trunc(milli / 1000)}.${String(milli % 1000).padStart(3, "0")}`;
+}
+
+/**
+ * The observed breakage rate in thousandths: expired points over redeemed and
+ * expired points, rounded half up to three decimals and capped at 1.
+ */
+export function observedBreakageMilli(
+	expiredPoints: number,
+	spentPoints: number,
+): number {
+	if (spentPoints <= 0) {
+		throw new RangeError("an observed rate needs redeemed or expired points");
+	}
+	const milli = Math.floor(
+		(2 * expiredPoints * 1000 + spentPoints) / (2 * spentPoints),
+	);
+	return Math.min(milli, 1000);
+}
+
 export function pointsLiability(input: LiabilityInput): number {
-	const raw =
-		input.outstandingPoints *
-		input.pointValueAmount *
-		(1 - input.expectedBreakageRate);
-	return Math.round(raw * 100) / 100;
+	return pointsLiabilityCents(input) / 100;
+}
+
+/** A configured rate such as 0.2 as thousandths (200), refusing a fourth decimal. */
+export function breakageRateMilli(rate: number): number {
+	return Number(scaled(rate, 1000, "the breakage rate"));
+}
+
+/** An amount such as 500 or 123.45 as hundredths, refusing a third decimal. */
+export function amountCents(amount: number): number {
+	return Number(scaled(amount, 100, "the amount"));
 }
