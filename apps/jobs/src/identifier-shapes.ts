@@ -12,9 +12,11 @@ import type { Redactor } from "@fnb/sync";
 const MASK = "***";
 
 // A phone: 0, 84 or +84 and 9 or 10 more digits, solid or with spaces, dots,
-// dashes or brackets between the digits, and not part of a longer number or word.
+// dashes or brackets between the digits, and not part of a longer number or word
+// (a digit and a dash or dot before it mean a date or a range of dates, such as
+// 2026-10-01..2026-11-19, which is not a phone).
 const PHONE =
-	/(?<![\w+]|\d[.,])(?:\+84|84|0)[\s.()-]{0,2}\d(?:[\s.()-]{0,2}\d){8,9}(?![\s.()-]?\d)/g;
+	/(?<![\w+]|\d[.,-])(?:\+84|84|0)[\s.()-]{0,2}\d(?:[\s.()-]{0,2}\d){8,9}(?![\s.()-]?\d)/g;
 // A numeric id of 15 digits or more, such as a Zalo user id.
 const LONG_NUMBER = /(?<!\d)\d{15,}(?!\d)/g;
 // A run of 43 characters or more of the base64url alphabet that mixes upper case,

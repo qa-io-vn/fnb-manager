@@ -115,6 +115,11 @@ describe("maskIdentifierShapes", () => {
 			"run 11111111-1111-4111-8111-111111111111 for 00000000-0000-4000-8000-000000000a01",
 			"--as-of takes an ISO instant with its offset, such as 2026-12-31T23:59:59+07:00",
 			"codes status: store 1 free-drink: available 12, assigned 0, used 3, quarantined 0, expired 0",
+			// Dates and ranges of dates: the CI run of 27c5d0a masked this one as a phone.
+			"iPOS: snapshot of 2026-10-01..2026-11-19 (no network)",
+			"window 2026-11-08..2026-11-21, 14 days",
+			"business dates 2026-10-01 2026-10-31 2026-11-01 2026-11-19",
+			"from 2026-11-01 to 2026-11-21 at 2026-11-22 03:23:00",
 			"",
 		]) {
 			expect(maskIdentifierShapes(line), line).toBe(line);

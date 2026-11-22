@@ -463,7 +463,8 @@ describe.skipIf(!LOCAL)(
 
 			expect([0, 1]).toContain(run.status);
 			const lines = run.stdout.split("\n").filter((line) => line !== "");
-			expect(lines.length).toBeGreaterThan(2);
+			// A fresh stack (CI) holds no store: the header and the verdict are the whole output.
+			expect(lines.length).toBeGreaterThanOrEqual(2);
 			const objects = lines.map(
 				(line) => JSON.parse(line) as Record<string, unknown>,
 			);
