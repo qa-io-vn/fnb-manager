@@ -339,11 +339,17 @@ const ledgerRow = z.object({
 const QUEUE_SELECT =
 	"id,store_id,membership_id,matched_path,candidate_invoice_ids,reason,state,created_at,resolved_at,resolved_by,chosen_invoice_id,resolution_reason,entry_id,membership:memberships(phone_masked),checkin:pending_checkins(recorded_at,amount),claim:receipt_claims(receipt_no,amount,business_date)";
 
+// The page lists the two-candidate and duplicate-receipt items (paths B and C).
+// Path D items (a verified redemption without an invoice, a discount without a
+// redemption) have no member and other reasons; the page cannot show them yet
+// (G-100), and one of them in the list must not break the page.
+export const QUEUE_PATHS_SHOWN = ["B", "C"] as const;
+
 const queueRow = z.object({
 	id: z.string(),
 	store_id: z.string(),
 	membership_id: z.string(),
-	matched_path: z.enum(["B", "C"]),
+	matched_path: z.enum(QUEUE_PATHS_SHOWN),
 	candidate_invoice_ids: z.array(z.string()),
 	reason: z.enum(QUEUE_REASONS),
 	state: z.enum(QUEUE_STATES),
@@ -833,6 +839,7 @@ export function createSupabaseCustomerSource(
 						.from("loyalty_queue")
 						.select(QUEUE_SELECT)
 						.eq("tenant_id", tenantId)
+						.in("matched_path", QUEUE_PATHS_SHOWN)
 						.eq("state", "open"),
 				),
 				fetchOnce(
@@ -841,6 +848,7 @@ export function createSupabaseCustomerSource(
 						.from("loyalty_queue")
 						.select(QUEUE_SELECT)
 						.eq("tenant_id", tenantId)
+						.in("matched_path", QUEUE_PATHS_SHOWN)
 						.neq("state", "open")
 						.order("resolved_at", { ascending: false })
 						.order("id")
