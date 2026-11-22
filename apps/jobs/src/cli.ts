@@ -17,6 +17,7 @@ import {
 	UsageError,
 } from "./context.js";
 import { commandHelp, generalHelp, groupHelp } from "./help.js";
+import { maskingIdentifiers } from "./identifier-shapes.js";
 import { Output, type OutputStreams, processStreams } from "./output.js";
 import { Services } from "./services.js";
 
@@ -50,7 +51,10 @@ export async function runCli(
 			streams.stdout(`${command}\n`);
 		}
 	}
-	const redact = createRedactor(secrets);
+	const credentialRedactor = createRedactor(secrets);
+	const redact = isCi(env)
+		? maskingIdentifiers(credentialRedactor)
+		: credentialRedactor;
 	const output = new Output({
 		ci: isCi(env),
 		streams,

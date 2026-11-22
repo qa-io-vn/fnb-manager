@@ -1,7 +1,7 @@
 import type { BusinessDateWindow } from "@fnb/connector-core";
 import type { FastLaneRun, LoyaltyCounts } from "@fnb/runner";
 import { createRedactor, type StoreContext } from "@fnb/sync";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
 	NIGHTLY_RECONCILE_DAYS,
 	nightlyFailures,
@@ -9,6 +9,22 @@ import {
 	runFastLane,
 	runLoyaltyNightly,
 } from "../../src/commands/loyalty.js";
+import { fakeSql, TENANT_ROW, tenantRows } from "../support/fake-services.js";
+import {
+	ECHOING_ERRORS,
+	expectNoIdentifiers,
+	identifierFindings,
+	PATH_SEGMENT,
+	PHONES,
+	POOL_CODES,
+	ZALO_USER_ID,
+} from "../support/identifiers.js";
+import { runFakeCli } from "../support/run-fake-cli.js";
+
+vi.mock("../../src/services.js", async () => {
+	const { FakeServices } = await import("../support/fake-services.js");
+	return { Services: FakeServices };
+});
 
 const AT = new Date("2026-11-20T21:00:00.000Z");
 
@@ -165,5 +181,150 @@ describe("fnb loyalty fast-lane", () => {
 			run: 2,
 			outcomes: ["succeeded", "store_unknown"],
 		});
+	});
+});
+
+// G-24 (security, component). Technique: error guessing. A database error is the
+// one place where text the command did not write can reach its output, because a
+// server echoes the value it refused. Each case below makes one step fail with a
+// message that carries one kind of identifier, and every line of stdout, stderr
+// and the job summary is checked against the shapes of a phone, a pool code, a
+// 43-character path segment and a Zalo user id. Equivalence partitions: the
+// success run, a failed reconcile step, a failed nightly step, a failed
+// tenant lookup and an unknown tenant; each with CI set (the rule) and, as a
+// control, without it.
+
+interface FakeRunner {
+	loyaltyTenants: () => Promise<{ tenantId: string; slug: string }[]>;
+	reconcileLoyalty: () => Promise<LoyaltyCounts | null>;
+	loyaltyNightly: () => Promise<LoyaltyCounts>;
+}
+
+function healthyRunner(overrides: Partial<FakeRunner> = {}): FakeRunner {
+	return {
+		loyaltyTenants: async () => [
+			{ tenantId: "tenant-id-1", slug: "fixture-a" },
+		],
+		reconcileLoyalty: async () => ({ a_earned: 1, c_matched: 0 }),
+		loyaltyNightly: async () => ({
+			clawbacks: 2,
+			expired_points: 0,
+			expired_stamps: 3,
+			liability_rows: 1,
+		}),
+		...overrides,
+	};
+}
+
+async function fnbNightly(
+	argv: readonly string[],
+	runner: FakeRunner,
+	options: { ci?: boolean; tenants?: readonly Record<string, unknown>[] } = {},
+) {
+	const sql = fakeSql([tenantRows(options.tenants ?? [TENANT_ROW])]);
+	return runFakeCli(
+		argv,
+		{ sql, runner },
+		{
+			env: options.ci === false ? {} : { CI: "1" },
+			now: () => AT,
+		},
+	);
+}
+
+describe("fnb loyalty nightly prints no identifier (G-24)", () => {
+	it("prints counts only on a healthy run, to stdout and to the job summary, and nothing to stderr", async () => {
+		const result = await fnbNightly(
+			["loyalty", "nightly", "--tenant", "fixture-a"],
+			healthyRunner(),
+		);
+		expect(result.code).toBe(0);
+		expect(result.stdout).toBe(
+			"tenant 1: loyalty: reconciled, a_earned 1\ntenant 1: nightly clawbacks 2, expired_points 0, expired_stamps 3, liability_rows 1\n",
+		);
+		expect(result.stderr).toBe("");
+		expect(result.summary).toContain("- tenant 1: nightly clawbacks 2");
+		expectNoIdentifiers(result);
+	});
+
+	it.each(ECHOING_ERRORS)(
+		"keeps a %s out of the output when the reconcile step fails with it",
+		async (_kind, message) => {
+			const result = await fnbNightly(
+				["loyalty", "nightly", "--tenant", "fixture-a"],
+				healthyRunner({
+					reconcileLoyalty: async () => {
+						throw new Error(message);
+					},
+				}),
+			);
+			expect(result.code).toBe(1);
+			expect(result.stdout).toContain("tenant 1: loyalty: failed (");
+			expectNoIdentifiers(result);
+		},
+	);
+
+	it.each(ECHOING_ERRORS)(
+		"keeps a %s out of the output when the nightly step fails with it",
+		async (_kind, message) => {
+			const result = await fnbNightly(
+				["loyalty", "nightly", "--all-tenants"],
+				healthyRunner({
+					loyaltyNightly: async () => {
+						throw new Error(message);
+					},
+				}),
+			);
+			expect(result.code).toBe(1);
+			expect(result.stdout).toContain("tenant 1: nightly failed (");
+			expectNoIdentifiers(result);
+		},
+	);
+
+	it.each(ECHOING_ERRORS)(
+		"keeps a %s out of the output when the whole run fails with it",
+		async (_kind, message) => {
+			const result = await fnbNightly(
+				["loyalty", "nightly", "--all-tenants"],
+				healthyRunner({
+					loyaltyTenants: async () => {
+						throw new Error(message);
+					},
+				}),
+			);
+			expect(result.code).toBe(1);
+			expect(result.stderr).toContain("fnb loyalty nightly failed");
+			expectNoIdentifiers(result);
+		},
+	);
+
+	it.each([
+		["a phone", PHONES[2] ?? ""],
+		["a Zalo user id", ZALO_USER_ID],
+		["a path segment", PATH_SEGMENT],
+		["a pool code", POOL_CODES[0] ?? ""],
+	])(
+		"does not repeat %s given as the tenant when no tenant has that slug",
+		async (_kind, slug) => {
+			const result = await fnbNightly(
+				["loyalty", "nightly", "--tenant", slug],
+				healthyRunner(),
+				{ tenants: [] },
+			);
+			expect(result.code).toBe(2);
+			expect(result.stderr).toContain("no tenant with that slug");
+			expectNoIdentifiers(result);
+		},
+	);
+
+	it("control: with CI unset the same run names the tenant, and the harness sees it in stdout and in the summary", async () => {
+		const result = await fnbNightly(
+			["loyalty", "nightly", "--tenant", PATH_SEGMENT],
+			healthyRunner(),
+			{ ci: false, tenants: [{ ...TENANT_ROW, slug: PATH_SEGMENT }] },
+		);
+		expect(result.code).toBe(0);
+		expect(identifierFindings("stdout", result.stdout)).not.toEqual([]);
+		expect(identifierFindings("summary", result.summary)).not.toEqual([]);
 	});
 });

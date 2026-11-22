@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { runCli } from "../../src/cli.js";
 import {
 	importLine,
@@ -10,6 +10,22 @@ import {
 	parseCodeCsv,
 } from "../../src/commands/loyalty-codes.js";
 import { capture } from "../support/capture.js";
+import { fakeSql, tenantRows } from "../support/fake-services.js";
+import {
+	ECHOING_ERRORS,
+	expectNoIdentifiers,
+	identifierFindings,
+	PATH_SEGMENT,
+	PHONES,
+	POOL_CODES,
+	ZALO_USER_ID,
+} from "../support/identifiers.js";
+import { runFakeCli } from "../support/run-fake-cli.js";
+
+vi.mock("../../src/services.js", async () => {
+	const { FakeServices } = await import("../support/fake-services.js");
+	return { Services: FakeServices };
+});
 
 const directory = mkdtempSync(join(tmpdir(), "fnb-loyalty-codes-"));
 
@@ -206,4 +222,155 @@ describe("fnb loyalty codes", () => {
 		expect(isInside("/repo", "/repo/docs/x.csv")).toBe(true);
 		expect(isInside("/repo", "/elsewhere/x.csv")).toBe(false);
 	});
+});
+
+// G-24 (security, component). The callback path is the one secret this command
+// draws: 43 characters that open the voucher callback of a tenant. Technique: error
+// guessing and equivalence partitioning of the CI signal (CI, GitHub Actions, none).
+// The fake database answers an issue with a real-looking segment, so a refusal that
+// is lifted would print it; every line of stdout, stderr and the job summary is
+// then checked for the shapes of a phone, a pool code, a 43-character segment and a
+// Zalo user id.
+describe("fnb loyalty callback-path prints no identifier with CI set (G-24)", () => {
+	function database(queries: string[] = []) {
+		const sql = fakeSql([
+			(query) => {
+				queries.push(query);
+				return undefined;
+			},
+			tenantRows(),
+			(query) =>
+				query.includes("issue_voucher_callback_path")
+					? [{ segment: PATH_SEGMENT }]
+					: undefined,
+			(query) =>
+				query.includes("revoke_voucher_callback_path")
+					? [{ revoked: 1 }]
+					: undefined,
+		]);
+		return { sql, queries };
+	}
+
+	const issue = ["loyalty", "callback-path", "issue", "--tenant", "fixture-a"];
+	const revoke = [
+		"loyalty",
+		"callback-path",
+		"revoke",
+		"--tenant",
+		"fixture-a",
+		"--label",
+		"pos-crm",
+	];
+
+	it.each([
+		["CI", { CI: "1" }],
+		["GitHub Actions", { GITHUB_ACTIONS: "true" }],
+	])(
+		"refuses to issue a path under %s before it asks the database anything",
+		async (_signal, env) => {
+			const queries: string[] = [];
+			const { sql } = database(queries);
+			const result = await runFakeCli(issue, { sql }, { env });
+			expect(result.code).toBe(2);
+			expect(result.stderr).toContain("not in CI");
+			expect(result.stdout).toBe("");
+			expect(queries).toEqual([]);
+			expectNoIdentifiers(result);
+		},
+	);
+
+	it("control: without CI the same command prints the segment once, and the harness sees it", async () => {
+		const { sql } = database();
+		const result = await runFakeCli(issue, { sql });
+		expect(result.code).toBe(0);
+		expect(result.stdout).toContain(`/voucher-callback/${PATH_SEGMENT}`);
+		expect(identifierFindings("stdout", result.stdout)).toContain(
+			"stdout line 2: path segment",
+		);
+	});
+
+	it.each([
+		["a segment", PATH_SEGMENT],
+		["a phone", PHONES[0] ?? ""],
+		["a Zalo user id", ZALO_USER_ID],
+	])(
+		"refuses an issue under CI with %s as its label, without asking the database",
+		async (_kind, label) => {
+			const queries: string[] = [];
+			const { sql } = database(queries);
+			const result = await runFakeCli(
+				[...issue, "--label", label],
+				{ sql },
+				{ env: { CI: "1" } },
+			);
+			expect(result.code).toBe(2);
+			expect(queries).toEqual([]);
+			expectNoIdentifiers(result);
+		},
+	);
+
+	it("revokes under CI and prints the count only", async () => {
+		const { sql } = database();
+		const result = await runFakeCli(revoke, { sql }, { env: { CI: "1" } });
+		expect(result.code).toBe(0);
+		expect(result.stdout).toBe("callback path: 1 revoked\n");
+		expect(result.stderr).toBe("");
+		expectNoIdentifiers(result);
+	});
+
+	it("does not repeat a label or a tenant that is a segment, a phone, a code or a Zalo user id", async () => {
+		const hostile = [
+			PATH_SEGMENT,
+			PHONES[2] ?? "",
+			POOL_CODES[0] ?? "",
+			ZALO_USER_ID,
+		];
+		for (const value of hostile) {
+			const label = await runFakeCli(
+				[...revoke.slice(0, -1), value],
+				database(),
+				{ env: { CI: "1" } },
+			);
+			expect(label.code).toBe(0);
+			expect(label.stdout).toBe("callback path: 1 revoked\n");
+			expectNoIdentifiers(label);
+			const unknownTenant = await runFakeCli(
+				[
+					"loyalty",
+					"callback-path",
+					"revoke",
+					"--tenant",
+					value,
+					"--label",
+					"x",
+				],
+				{ sql: fakeSql([tenantRows([])]) },
+				{ env: { CI: "1" } },
+			);
+			expect(unknownTenant.code).toBe(1);
+			expect(unknownTenant.stderr).toContain("no tenant with that slug");
+			expectNoIdentifiers(unknownTenant);
+		}
+	});
+
+	it.each(ECHOING_ERRORS)(
+		"keeps a %s out of the output when the database fails the revoke with it",
+		async (_kind, message) => {
+			const sql = fakeSql([
+				tenantRows(),
+				(query) => {
+					if (query.includes("revoke_voucher_callback_path")) {
+						throw new Error(message);
+					}
+					return undefined;
+				},
+			]);
+			const result = await runFakeCli(revoke, { sql }, { env: { CI: "1" } });
+			expect(result.code).toBe(1);
+			expect(result.stderr).toContain(
+				"fnb loyalty callback-path revoke failed",
+			);
+			expectNoIdentifiers(result);
+		},
+	);
 });

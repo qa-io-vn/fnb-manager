@@ -1,5 +1,8 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { DEFAULT_OA_MENU, zaloButtons } from "@fnb/zalo/oa";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { runCli } from "../../src/cli.js";
 import {
 	type MenuSource,
@@ -7,6 +10,23 @@ import {
 	planMenu,
 } from "../../src/commands/zalo-oa-menu.js";
 import { capture } from "../support/capture.js";
+import { fakeSql, type Row, tenantRows } from "../support/fake-services.js";
+import {
+	ECHOING_ERRORS,
+	expectNoIdentifiers,
+	identifierFindings,
+	intl,
+	PATH_SEGMENT,
+	PHONES,
+	POOL_CODES,
+	ZALO_USER_ID,
+} from "../support/identifiers.js";
+import { runFakeCli } from "../support/run-fake-cli.js";
+
+vi.mock("../../src/services.js", async () => {
+	const { FakeServices } = await import("../support/fake-services.js");
+	return { Services: FakeServices };
+});
 
 const MINI_APP = "synthetic-mini-app-1";
 const APPLIED_AT = new Date("2026-11-18T03:00:00.000Z");
@@ -169,5 +189,225 @@ describe("the commands refuse bad input before touching anything", () => {
 		);
 		expect(code).toBe(2);
 		expect(out.stderr()).toContain("accepted only");
+	});
+});
+
+// G-24 (security, component). The menu rows hold the most text of the three
+// commands: a brand's labels, Mini App id, the menu applied last (labels and
+// deep links) and the files the owner keeps. Technique: error guessing with a
+// fixture that puts a phone, a pool code, a 43-character segment and a Zalo user id
+// into every field the commands read, and equivalence partitioning of the paths
+// (a clean diff, a rejected stored label, a rejected Mini App id, a database
+// error, a file with unknown keys, a file that is accepted). With CI set every
+// line of stdout, stderr and the job summary is checked for the four shapes.
+// Nothing here pushes: apply runs with --dry-run only, so no Zalo call is made.
+describe("fnb zalo oa-menu prints no identifier with CI set (G-24)", () => {
+	const directory = mkdtempSync(join(tmpdir(), "fnb-oa-menu-"));
+	const ci = { CI: "1" };
+
+	afterAll(() => {
+		rmSync(directory, { recursive: true, force: true });
+	});
+
+	function menuRow(overrides: Row = {}): Row {
+		return {
+			brand_key: "brand-1",
+			menu_id: "11111111-1111-4111-8111-111111111111",
+			oa_id: "22222222-2222-4222-8222-222222222222",
+			package_tier: "tang_truong",
+			buttons: DEFAULT_OA_MENU.buttons,
+			applied_buttons: [
+				{
+					title: `Gọi ${PHONES[0]}`,
+					type: "oa.open.url",
+					payload: { url: `https://zalo.me/s/${ZALO_USER_ID}/?src=oa` },
+				},
+				{
+					title: `Mã ${POOL_CODES[0]}`,
+					type: "oa.query.hide",
+					payload: `#${POOL_CODES[1]}`,
+				},
+				{
+					title: "Mở",
+					type: "oa.open.url",
+					payload: { url: `https://example.test/cb/${PATH_SEGMENT}` },
+				},
+			],
+			applied_at: new Date("2026-11-18T03:00:00.000Z"),
+			mini_app_id: ZALO_USER_ID,
+			...overrides,
+		};
+	}
+
+	const sourcesHandler = (rows: readonly Row[]) => (query: string) =>
+		query.includes("oa_menu_source") ? rows : undefined;
+	const dryRun = [
+		"zalo",
+		"oa-menu",
+		"apply",
+		"--tenant",
+		"fixture-a",
+		"--dry-run",
+	];
+
+	function apply(rows: readonly Row[], env: Record<string, string> = ci) {
+		const sql = fakeSql([tenantRows(), sourcesHandler(rows)]);
+		return runFakeCli(dryRun, { sql }, { env });
+	}
+
+	it("prints counts and button kinds only for a diff against a menu whose labels and links carry identifiers", async () => {
+		const result = await apply([
+			menuRow(),
+			menuRow({ brand_key: "brand-2", mini_app_id: PATH_SEGMENT }),
+		]);
+		expect(result.code).toBe(0);
+		expect(result.stdout).toContain("brand 1: 4 button(s), 4 change(s)");
+		expect(result.stdout).toContain("brand 2: 4 button(s), 4 change(s)");
+		expect(result.stdout).toContain("brand 2: dry run, nothing pushed");
+		expect(result.stderr).toBe("");
+		expectNoIdentifiers(result);
+	});
+
+	it("control: without CI the same dry run prints the labels and links, and the harness sees them", async () => {
+		const result = await apply([menuRow({ mini_app_id: PATH_SEGMENT })], {});
+		expect(result.code).toBe(0);
+		expect(result.stdout).toContain("fixture-a brand-1");
+		expect(identifierFindings("stdout", result.stdout)).not.toEqual([]);
+	});
+
+	it("reports a stored label that holds a phone without repeating it", async () => {
+		const result = await apply([
+			menuRow({
+				buttons: [
+					{ action: "join", label: `Gọi ${PHONES[1]}`, target: "query" },
+				],
+			}),
+		]);
+		expect(result.code).toBe(1);
+		expect(result.stderr).toContain("brand 1: button 1: the label is 1 to");
+		expectNoIdentifiers(result);
+	});
+
+	it("reports a Mini App id in the international phone form without repeating it", async () => {
+		const result = await apply([
+			menuRow({ mini_app_id: intl(PHONES[1]?.slice(1) ?? "") }),
+		]);
+		expect(result.code).toBe(1);
+		expect(result.stderr).toContain("a Mini App id is 1 to 64 letters");
+		expectNoIdentifiers(result);
+	});
+
+	it.each(ECHOING_ERRORS)(
+		"keeps a %s out of the output when the database fails the menu lookup with it",
+		async (_kind, message) => {
+			const sql = fakeSql([
+				tenantRows(),
+				(query) => {
+					if (query.includes("oa_menu_source")) {
+						throw new Error(message);
+					}
+					return undefined;
+				},
+			]);
+			const result = await runFakeCli(dryRun, { sql }, { env: ci });
+			expect(result.code).toBe(1);
+			expect(result.stderr).toContain("fnb zalo oa-menu apply failed");
+			expectNoIdentifiers(result);
+		},
+	);
+
+	function menuFile(name: string, content: unknown): string {
+		const file = join(directory, name);
+		writeFileSync(file, JSON.stringify(content));
+		return file;
+	}
+
+	const set = (file: string) => [
+		"zalo",
+		"oa-menu",
+		"set",
+		"--tenant",
+		"fixture-a",
+		"--brand",
+		"brand-1",
+		"--file",
+		file,
+	];
+
+	it("does not repeat the keys of a menu file that is keyed by phones, codes, segments and ids", async () => {
+		const file = menuFile("keyed.json", {
+			[PHONES[0] ?? ""]: 1,
+			[POOL_CODES[0] ?? ""]: 2,
+			[PATH_SEGMENT]: 3,
+			[ZALO_USER_ID]: 4,
+		});
+		const sql = fakeSql([tenantRows()]);
+		const result = await runFakeCli(set(file), { sql }, { env: ci });
+		expect(result.code).toBe(2);
+		expect(result.stderr).toContain("the OA menu file has unknown fields:");
+		expectNoIdentifiers(result);
+	});
+
+	it("control: without CI the same file's keys are echoed to the owner's own terminal", async () => {
+		const file = menuFile("keyed-control.json", { [PHONES[0] ?? ""]: 1 });
+		const result = await runFakeCli(set(file), { sql: fakeSql([]) });
+		expect(result.code).toBe(2);
+		expect(identifierFindings("stderr", result.stderr)).not.toEqual([]);
+	});
+
+	it("does not repeat a label that holds a phone, from a file", async () => {
+		const file = menuFile("phone-label.json", {
+			buttons: [{ action: "join", label: `Gọi ${PHONES[2]}`, target: "query" }],
+			form_image_url: "https://example.test/form.png",
+		});
+		const result = await runFakeCli(
+			set(file),
+			{ sql: fakeSql([tenantRows()]) },
+			{ env: ci },
+		);
+		expect(result.code).toBe(2);
+		expect(result.stderr).toContain("without a link or a phone number");
+		expectNoIdentifiers(result);
+	});
+
+	it.each([
+		["a Zalo user id", ZALO_USER_ID],
+		["a path segment", PATH_SEGMENT],
+	])(
+		"does not repeat a text that holds %s, which has too many digits to be a text",
+		async (_kind, text) => {
+			const file = menuFile("long-digits.json", {
+				welcome_text: `Mời ${text}`,
+				form_image_url: "https://example.test/form.png",
+			});
+			const result = await runFakeCli(
+				set(file),
+				{ sql: fakeSql([tenantRows()]) },
+				{ env: ci },
+			);
+			expect(result.code).toBe(2);
+			expect(result.stderr).toContain("welcome_text is 1 to");
+			expectNoIdentifiers(result);
+		},
+	);
+
+	it("accepts a file whose texts carry a pool code and prints the outcome only", async () => {
+		const file = menuFile("accepted.json", {
+			buttons: [{ action: "points", label: "Điểm", target: "mini_app" }],
+			welcome_text: `Mã ${POOL_CODES[0]}`,
+			joined_text: `Mã ${POOL_CODES[1]}`,
+			form_image_url: `https://example.test/${PATH_SEGMENT}.png`,
+		});
+		const sql = fakeSql([
+			tenantRows(),
+			(query) =>
+				query.includes("set_oa_menu") ? [{ outcome: "created" }] : undefined,
+		]);
+		const result = await runFakeCli(set(file), { sql }, { env: ci });
+		expect(result.code).toBe(0);
+		expect(result.stdout).toBe(
+			"the brand: OA menu created; fnb zalo oa-menu apply --dry-run shows what the next apply pushes\n",
+		);
+		expectNoIdentifiers(result);
 	});
 });
