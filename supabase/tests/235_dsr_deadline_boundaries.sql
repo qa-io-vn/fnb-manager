@@ -10,7 +10,7 @@
 -- anon, signed-in members and the service role cannot run the evaluator or the rules hook; the episode, the queued messages
 -- and the list carry counts only, never a contact, a note, a subject or a request id. Every instant is fixed.
 begin;
-select plan(77);
+select plan(78);
 
 create temp table fx as
 select
@@ -329,15 +329,21 @@ select is(pg_temp.evaluate((select tenant_t from fx), pg_temp.f()), '0:0:1', 'bo
 select is(pg_temp.evaluate((select tenant_t from fx), pg_temp.f() + interval '1 second'), '0:1:0', 'boundary: 1 second past the reply deadline the request is overdue');
 select is(
   (select concat_ws(' | ', id = (select id from first_episode), state, facts::text) from public.alert_events where tenant_id = (select tenant_t from fx) and rule_key = 'dsr_due_soon'),
-  't | open | {"days": 3, "overdue": 1, "due_soon": 0}',
-  'state transition: the one episode escalates from due soon to overdue in place, its counts moved and no second episode'
+  't | open | {"days": 3, "overdue": 1, "due_soon": 0, "days_late": 0}',
+  'state transition: the one episode escalates from due soon to overdue in place, its counts moved (days_late 0 at the deadline) and no second episode'
 );
-select is(pg_temp.messages((select tenant_t from fx)), 2, 'characterisation: the escalation queues no second message, so the owner is told once, at the due-soon reading (see test-gaps G-51 note)');
+select is(pg_temp.messages((select tenant_t from fx)), 4, 'ADR-045 (G-101): the escalation queues the overdue reminder to the same two people, 2 opening messages and 2 reminders');
 select is(
   (select concat_ws(':', (o.params ->> 'overdue'), (o.params ->> 'due_soon'))
-   from public.outbound_messages o where o.alert_event_id = (select id from first_episode) and o.channel_id = (select id from chan where name = 'owner_t')),
+   from public.outbound_messages o where o.alert_event_id = (select id from first_episode) and o.channel_id = (select id from chan where name = 'owner_t') and o.kind = 'alert'),
   '0:1',
-  'characterisation: the queued message keeps the counts of the instant it was queued'
+  'characterisation: the opening message keeps the counts of the instant it was queued'
+);
+select is(
+  (select concat_ws(':', (o.params ->> 'overdue'), (o.params ->> 'due_soon'), (o.params ->> 'days_late'), o.template_ref)
+   from public.outbound_messages o where o.alert_event_id = (select id from first_episode) and o.channel_id = (select id from chan where name = 'owner_t') and o.kind = 'alert_reminder'),
+  '1:0:0:alert.dsr_due_soon.reminder.v1',
+  'ADR-045: the reminder carries the overdue wording, 1 overdue, 0 days late at the deadline'
 );
 
 -- Recording the late response answers the first deadline: nothing is due until the completion deadline comes within 3 days.
@@ -348,20 +354,20 @@ select is(
   'resolved | cleared | t',
   'the episode is resolved as cleared at the reading instant'
 );
-select is(pg_temp.messages((select tenant_t from fx)), 2, 'a rule without a resolution notice queues no recovery message');
+select is(pg_temp.messages((select tenant_t from fx)), 4, 'a rule without a resolution notice queues no recovery message');
 select is(pg_temp.evaluate((select tenant_t from fx), pg_temp.f() + interval '2 days'), '0:0:0', 'a second reading of a clear tenant opens nothing');
 select is(pg_temp.evaluate((select tenant_t from fx), pg_temp.c() - interval '3 days 1 second'), '0:0:0', 'boundary: 1 second before the completion deadline''s 3-day horizon nothing is counted');
 select is(pg_temp.episodes((select tenant_t from fx)), '1:0', 'no new episode yet: one resolved');
 select is(pg_temp.evaluate((select tenant_t from fx), pg_temp.c() - interval '3 days'), '1:0:1', 'boundary: exactly 3 days before the completion deadline the request is due soon and a new episode opens');
 select is(pg_temp.episodes((select tenant_t from fx)), '2:1', 'state transition: the resolved episode stays as history and a new one is open');
-select is(pg_temp.messages((select tenant_t from fx)), 4, 'the reopened episode tells the same two people once more');
+select is(pg_temp.messages((select tenant_t from fx)), 6, 'the reopened episode tells the same two people once more');
 select is(pg_temp.evaluate((select tenant_t from fx), pg_temp.c()), '0:0:1', 'boundary: exactly at the completion deadline the request is due soon, not overdue');
 select is(pg_temp.evaluate((select tenant_t from fx), pg_temp.c() + interval '1 second'), '0:1:0', 'boundary: 1 second past the completion deadline the request is overdue');
-select is(pg_temp.open_facts((select tenant_t from fx)), '{"days": 3, "overdue": 1, "due_soon": 0}', 'the open episode holds the overdue count');
+select is(pg_temp.open_facts((select tenant_t from fx)), '{"days": 3, "overdue": 1, "due_soon": 0, "days_late": 0}', 'the open episode holds the overdue count');
 update public.data_subject_requests set status = 'completed', completed_at = pg_temp.c() + interval '1 day' where id = pg_temp.rid('by_the_book');
 select is(pg_temp.evaluate((select tenant_t from fx), pg_temp.c() + interval '2 days'), '0:0:0', 'state transition: a completed request leaves the count');
 select is(pg_temp.episodes((select tenant_t from fx)), '2:0', 'open to resolved: the second episode is resolved and none is open');
-select is(pg_temp.messages((select tenant_t from fx)), 4, 'completion queues no message');
+select is(pg_temp.messages((select tenant_t from fx)), 8, 'completion queues no message (the 8 are 2 openings and 2 reminders for each of the two episodes)');
 select is(pg_temp.evaluate((select tenant_t from fx), pg_temp.c() + interval '3 days'), '0:0:0', 'a later reading opens nothing');
 select is(pg_temp.evaluate('ffffffff-ffff-4fff-8fff-000000235999'::uuid, pg_temp.c()), '0:0:0', 'negative: a tenant that does not exist opens nothing and does not fail');
 select is(pg_temp.episodes('ffffffff-ffff-4fff-8fff-000000235999'::uuid), '0:0', 'and leaves no episode');

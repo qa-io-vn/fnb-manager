@@ -509,6 +509,13 @@ function reminderText(facts: AlertFacts): string {
 					...clock(facts, opened),
 				});
 	}
+	if (rule === "dsr_due_soon") {
+		// ADR-045: the repeat of this rule is the overdue notice, sent when a request turns overdue and every 24 hours after
+		return message("alert.dsr_due_soon.reminder", {
+			overdue: countText(numberParam(facts.params, "overdue") ?? 0),
+			days_late: countText(numberParam(facts.params, "days_late") ?? 0),
+		});
+	}
 	return openingText(facts);
 }
 

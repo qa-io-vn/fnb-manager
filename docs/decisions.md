@@ -294,6 +294,8 @@ Not chosen: a second recipient (a one-owner tenant has none), hourly reminders (
 
 Build: a migration for the 24-hour `remind_every` and the transition message, the two characterisation tests of `pgtap:235` change to expect it, then the owner notice.
 
+Built 2026-11-23 (migration `20261123100000_dsr_overdue_escalation`), with one refinement found while building: the catalogue's `remind_every` stays null, because the generic reminder of `app.reconcile_alerts` would repeat the due-soon-only notice too, which this decision rules out. The evaluator itself queues the rule's reminder message (template `alert.dsr_due_soon.reminder.v1`, the overdue wording) when a request turns overdue, when no message was ever sent for the episode, and every 24 hours after the last one, and the facts gain `days_late`. (b) `app.notify_tick_rules` now reads every tenant with an open request or an open episode, destination or not. Tests: `pgtap:239_dsr_overdue_escalation` (26), `pgtap:235`, `pgtap:180`, `pgtap:181`, `notify:unit/render/alert` and `notify:unit/rules/dsr-due-soon`. Still to build: the owner's notice in Settings, Alerts, that deadlines are not being sent while no destination works.
+
 ## ADR-046 — Balances never go negative: adjustments are floored, clawbacks are capped at what is left, pending earns neither expire nor count
 
 Date 2026-11-22 · Status accepted (delegated) · closes G-102 and G-43

@@ -439,4 +439,65 @@ describe("dsr_due_soon alert", () => {
 			"Cảnh báo: 0 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời và 0 yêu cầu đến hạn trong 3 ngày tới. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
 		);
 	});
+
+	// ADR-045 (G-101): the repeat of this rule is the overdue notice, with its own wording
+	describe("the overdue reminder", () => {
+		const reminder = (params: Record<string, unknown>) =>
+			renderAlert(
+				facts({
+					ruleKey: "dsr_due_soon",
+					kind: "alert_reminder",
+					storeName: null,
+					accountName: null,
+					params,
+				}),
+			);
+
+		it("says how many requests are overdue and how many days late the oldest is, counts only", () => {
+			const rendered = reminder({
+				overdue: 2,
+				due_soon: 1,
+				days: 3,
+				days_late: 4,
+				phone: "0901234567",
+				email: "subject@example.com",
+				name: "Khách thử",
+			});
+			expect(body(rendered)).toBe(
+				"Nhắc lại: 2 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời, yêu cầu cũ nhất trễ 4 ngày. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+			);
+			expect(rendered.title).toBe("Nhắc lại cảnh báo vận hành");
+			expect(rendered.text).not.toMatch(
+				/0901234567|subject@example\.com|Khách thử/,
+			);
+			expect(rendered.text).not.toMatch(LEFTOVER);
+		});
+
+		it("shows zero days late on the day a request turns overdue", () => {
+			expect(body(reminder({ overdue: 1, days_late: 0 }))).toBe(
+				"Nhắc lại: 1 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời, yêu cầu cũ nhất trễ 0 ngày. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+			);
+		});
+
+		it("falls back to zero counts when the facts lack them", () => {
+			expect(body(reminder({}))).toBe(
+				"Nhắc lại: 0 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời, yêu cầu cũ nhất trễ 0 ngày. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+			);
+		});
+
+		it("is not the opening wording: the opening alert is unchanged by the reminder", () => {
+			expect(
+				body(
+					renderAlert(
+						facts({
+							ruleKey: "dsr_due_soon",
+							params: { overdue: 2, due_soon: 1, days: 3, days_late: 4 },
+						}),
+					),
+				),
+			).toBe(
+				"Cảnh báo: 2 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời và 1 yêu cầu đến hạn trong 3 ngày tới. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+			);
+		});
+	});
 });

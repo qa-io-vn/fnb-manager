@@ -138,9 +138,12 @@ describe("dsr_due_soon alert wording", () => {
 		expect(withNames).not.toContain("Tài khoản thử");
 	});
 
-	it("decision table over the three message kinds: the reminder repeats the opening, a recovery is the generic one", () => {
-		const params = { overdue: 1, due_soon: 1, days: 3 };
-		expect(body(params, { kind: "alert_reminder" })).toBe(body(params));
+	it("decision table over the three message kinds: the reminder is the overdue wording (ADR-045), a recovery is the generic one", () => {
+		const params = { overdue: 1, due_soon: 1, days: 3, days_late: 2 };
+		expect(body(params, { kind: "alert_reminder" })).toBe(
+			"Nhắc lại: 1 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời, yêu cầu cũ nhất trễ 2 ngày. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+		);
+		expect(body(params, { kind: "alert_reminder" })).not.toBe(body(params));
 		const resolved = renderAlert(facts(params, { kind: "alert_resolved" }));
 		expect(resolved.text).not.toMatch(LEFTOVER);
 		expect(resolved.text).not.toContain("quá hạn trả lời");

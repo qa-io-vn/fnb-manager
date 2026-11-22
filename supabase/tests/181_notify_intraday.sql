@@ -163,11 +163,11 @@ select is(app.evaluate_intraday_rules('2026-11-20 03:00+00', (select tenant_quie
 create temp table unfiltered as select app.notify_tick(now(), false) as summary;
 select is(
   (select row(
-    (select count(*) from public.alert_events where tenant_id not in (select tenant_1 from fx union all select tenant_quiet from fx)),
+    (select count(*) from public.alert_events where tenant_id not in (select tenant_1 from fx union all select tenant_quiet from fx) and rule_key <> 'dsr_due_soon'),
     (select count(*) from public.outbound_messages where tenant_id not in (select tenant_1 from fx union all select tenant_quiet from fx))
   )::text),
   (select row(episodes, messages)::text from outside_counts),
-  'an unfiltered tick leaves the episodes and messages of every other tenant unchanged'
+  'an unfiltered tick leaves the episodes and messages of every other tenant unchanged (dsr_due_soon episodes aside: since ADR-045 every tenant with an open data-subject request is read, destination or not, see 239)'
 );
 
 select * from finish();

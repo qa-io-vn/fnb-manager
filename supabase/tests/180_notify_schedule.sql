@@ -11,7 +11,7 @@ select
 
 create temp table outside_counts as
 select
-  (select count(*) from public.alert_events where tenant_id <> (select tenant_1 from fx)) as episodes,
+  (select count(*) from public.alert_events where tenant_id <> (select tenant_1 from fx) and rule_key <> 'dsr_due_soon') as episodes,
   (select count(*) from public.outbound_messages where tenant_id <> (select tenant_1 from fx)) as messages;
 
 insert into auth.users (id, instance_id, aud, role, email)
@@ -159,11 +159,11 @@ select is(
 create temp table unfiltered_tick as select app.notify_tick(now(), false) as summary;
 select is(
   (select row(
-    (select count(*) from public.alert_events where tenant_id <> (select tenant_1 from fx)),
+    (select count(*) from public.alert_events where tenant_id <> (select tenant_1 from fx) and rule_key <> 'dsr_due_soon'),
     (select count(*) from public.outbound_messages where tenant_id <> (select tenant_1 from fx))
   )::text),
   (select row(episodes, messages)::text from outside_counts),
-  'an unfiltered tick leaves the episodes and messages of every other tenant unchanged'
+  'an unfiltered tick leaves the episodes and messages of every other tenant unchanged (dsr_due_soon episodes aside: since ADR-045 every tenant with an open data-subject request is read, destination or not, see 239)'
 );
 
 select * from finish();
