@@ -2,7 +2,7 @@
 // inside a longer digit run, an allowed own phone) and boundary values of the digit count (9, 10, 11 digits after the
 // prefix rules); the report never carries a whole number.
 import { describe, expect, it } from "vitest";
-import { findFullPhones } from "../../src/testing/network-scan";
+import { findFullPhones, findTokens } from "../../src/testing/network-scan";
 
 // Built from parts so the public-safety scan, which looks for literal international phone numbers, finds none here.
 const intl = (national: string): string => `+84${national}`;
@@ -43,5 +43,32 @@ describe("findFullPhones", () => {
 		expect(findFullPhones(`${own} ${intl("900001234")}`, [own])).toEqual([]);
 		expect(findFullPhones(intl("900001234"), [intl("900001234")])).toEqual([]);
 		expect(findFullPhones(`${own} 0900005678`, [own])).toEqual(["…678"]);
+	});
+});
+
+describe("findTokens", () => {
+	it("finds a code that stands alone in a body and reports its position, never the code", () => {
+		const codes = ["102847", "555123"];
+		expect(findTokens('{"code":"102847"}', codes)).toEqual([0]);
+		expect(findTokens("a 555123, b 102847.", codes)).toEqual([0, 1]);
+		expect(findTokens("/rest/v1/x?code=555123&a=1", codes)).toEqual([1]);
+		expect(findTokens('{"state":"refused"}', codes)).toEqual([]);
+	});
+
+	it("leaves a code inside a longer run of digits, a number or an identifier alone (boundary values)", () => {
+		const codes = ["102847"];
+		expect(findTokens("1028470", codes)).toEqual([]);
+		expect(findTokens("9102847", codes)).toEqual([]);
+		expect(findTokens("1763700102847", codes)).toEqual([]);
+		expect(findTokens("id-102847-x", codes)).toEqual([]);
+		expect(findTokens("code102847", codes)).toEqual([]);
+		expect(findTokens("10284", codes)).toEqual([]);
+	});
+
+	it("ignores an empty secret and treats a pattern character in a secret as plain text", () => {
+		expect(findTokens("anything", [""])).toEqual([]);
+		expect(findTokens("fnb-member:1:s.1:123456", ["s.1"])).toEqual([0]);
+		expect(findTokens("fnb-member:1:sx1:123456", ["s.1"])).toEqual([]);
+		expect(findTokens("(a+b)", ["(a+b)"])).toEqual([0]);
 	});
 });

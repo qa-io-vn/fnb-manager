@@ -23,7 +23,7 @@ const FORBIDDEN_SLUGS: readonly string[] = [
 
 type Row = Record<string, unknown>;
 
-interface Sql {
+export interface Sql {
 	<T extends Row = Row>(
 		strings: TemplateStringsArray,
 		...values: readonly unknown[]
@@ -72,7 +72,7 @@ export function localDatabaseUrl(): string {
 	return LOOPBACK_DATABASE.test(url) ? url : "";
 }
 
-async function connect(url: string): Promise<Sql> {
+export async function connect(url: string): Promise<Sql> {
 	const require = createRequire(ZALO_PACKAGE);
 	const loaded = await import(pathToFileURL(require.resolve("postgres")).href);
 	const postgres = (loaded.default ?? loaded) as (
@@ -107,7 +107,7 @@ async function deleteStaleFixtures(sql: Sql): Promise<void> {
 	for (const tenant of stale) await removeTenant(sql, tenant.id);
 }
 
-async function removeTenant(sql: Sql, tenantId: string): Promise<void> {
+export async function removeTenant(sql: Sql, tenantId: string): Promise<void> {
 	const logins = await sql<{ id: string }>`
 		select u.id::text as id from auth.users u
 		where u.id in (

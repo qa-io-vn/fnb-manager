@@ -26,11 +26,28 @@ export function findFullPhones(
 	return (rest.match(FULL_PHONE) ?? []).map((found) => `…${found.slice(-3)}`);
 }
 
+/**
+ * The positions in `tokens` of the secrets (a single-use member code, say) that stand in `text` as a whole token, not
+ * inside a longer run of letters, digits or an identifier. Positions, never the secrets, so a failure prints no code.
+ */
+export function findTokens(text: string, tokens: readonly string[]): number[] {
+	const found: number[] = [];
+	tokens.forEach((token, index) => {
+		if (token === "") return;
+		const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		if (new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`).test(text))
+			found.push(index);
+	});
+	return found;
+}
+
 export interface ResponseScan {
 	/** the responses of the watched origin read so far, as `METHOD path (status)` */
 	responses(): Promise<string[]>;
 	/** `METHOD path: …123` for each full phone found in a response body, once every pending body is read */
 	leaks(): Promise<string[]>;
+	/** `METHOD path: #n` for each of `tokens` (by position) that stands in a response body, once every pending body is read */
+	tokenLeaks(tokens: readonly string[]): Promise<string[]>;
 }
 
 /**
@@ -43,15 +60,15 @@ export function watchResponsePhones(
 	allowed: readonly string[] = [],
 ): ResponseScan {
 	const data = /\/(?:rest|functions|auth|storage)\/v1\//;
-	const reads: Promise<{ line: string; found: string[] }>[] = [];
+	const reads: Promise<{ line: string; body: string }>[] = [];
 	page.on("response", (response) => {
 		const url = new URL(response.url());
 		if (url.origin !== origin || !data.test(url.pathname)) return;
 		const line = `${response.request().method()} ${url.pathname} (${response.status()})`;
 		reads.push(
 			response.text().then(
-				(body) => ({ line, found: findFullPhones(body, allowed) }),
-				() => ({ line, found: [] }),
+				(body) => ({ line, body }),
+				() => ({ line, body: "" }),
 			),
 		);
 	});
@@ -61,7 +78,14 @@ export function watchResponsePhones(
 		},
 		async leaks() {
 			return (await Promise.all(reads)).flatMap((read) =>
-				read.found.map((found) => `${read.line}: ${found}`),
+				findFullPhones(read.body, allowed).map(
+					(found) => `${read.line}: ${found}`,
+				),
+			);
+		},
+		async tokenLeaks(tokens) {
+			return (await Promise.all(reads)).flatMap((read) =>
+				findTokens(read.body, tokens).map((index) => `${read.line}: #${index}`),
 			);
 		},
 	};

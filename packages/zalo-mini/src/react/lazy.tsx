@@ -108,7 +108,10 @@ function useLoaded<P>(loader: Loader<P>): {
 	}, [loader]);
 	useEffect(() => {
 		mounted.current = true;
-		if (loader.cached() === null) start();
+		// the chunk may have arrived (the idle preload) between the first render, which saw none, and this effect
+		const known = loader.cached();
+		if (known === null) start();
+		else setState({ status: "ready", Component: known });
 		return () => {
 			mounted.current = false;
 		};

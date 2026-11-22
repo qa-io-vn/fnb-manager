@@ -17,6 +17,7 @@ import {
 	MAX_LCP_MS,
 	MAX_LOAD_MS,
 	paintBudgetProblems,
+	screenPaintProblems,
 } from "../../src/testing/paint-budget";
 
 const packageRoot = join(import.meta.dirname, "..", "..");
@@ -258,5 +259,18 @@ describe("paint budget", () => {
 			"no largest contentful paint was recorded",
 			"no page load was recorded",
 		]);
+	});
+
+	it("reads the same 2.5 s limit as the time from a tap to the paint of a screen the app opens itself (boundary values)", () => {
+		expect(screenPaintProblems(1)).toEqual([]);
+		expect(screenPaintProblems(2499)).toEqual([]);
+		expect(screenPaintProblems(2500)).toEqual([
+			"the screen took 2500 ms to paint after the tap, budget under 2500 ms",
+		]);
+		expect(screenPaintProblems(2600, { maxLcpMs: 3000 })).toEqual([]);
+		for (const missing of [0, -5, Number.NaN, Number.POSITIVE_INFINITY])
+			expect(screenPaintProblems(missing)).toEqual([
+				"no paint of the screen was recorded",
+			]);
 	});
 });

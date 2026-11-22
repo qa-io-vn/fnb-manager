@@ -4,6 +4,7 @@ import {
 	preloadLazyScreens,
 } from "@fnb/zalo-mini/react";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { catalogs } from "./i18n/catalog";
 import { lazyCard, lazyScreen } from "./lazy";
@@ -51,6 +52,55 @@ describe("lazyScreen", () => {
 		expect(await screen.findByTestId("hello")).toBeInTheDocument();
 		expect(screen.queryByTestId("screen-load-failed")).not.toBeInTheDocument();
 		expect(importer).toHaveBeenCalledTimes(2);
+	});
+});
+
+/** a sibling that releases the chunk while it renders: React runs a render's effects in a later task, so the chunk lands in between */
+function ReleaseChunk({ release }: { readonly release: () => void }) {
+	release();
+	return null;
+}
+
+describe("lazyScreen against the idle preload (state transition, found by the paint budget's Ghi nhận khách run)", () => {
+	it("shows the screen when its chunk arrives between the screen's first render and its first effect, instead of loading for ever", async () => {
+		const chunk: { release: () => void } = { release: () => undefined };
+		const importer = vi.fn(
+			() =>
+				new Promise<{ Hello: typeof Hello }>((resolve) => {
+					chunk.release = () => resolve({ Hello });
+				}),
+		);
+		const Screen = lazyScreen(importer, (m) => m.Hello);
+		// something else (the preload) already asked for the chunk, which is still on its way
+		const warm = shown(<Screen name="warm" />);
+		expect(importer).toHaveBeenCalledTimes(1);
+		warm.unmount();
+		// the chunk lands after the next render saw it missing and before that render's effects run
+		const globals = globalThis as {
+			IS_REACT_ACT_ENVIRONMENT?: boolean | undefined;
+		};
+		const wasActEnvironment = globals.IS_REACT_ACT_ENVIRONMENT;
+		globals.IS_REACT_ACT_ENVIRONMENT = false;
+		const host = document.createElement("div");
+		document.body.append(host);
+		const root = createRoot(host);
+		try {
+			root.render(
+				<I18nProvider language="vi" catalogs={catalogs}>
+					<Screen name="A" />
+					<ReleaseChunk release={() => chunk.release()} />
+				</I18nProvider>,
+			);
+			await vi.waitFor(() =>
+				expect(host.querySelector("[data-testid=hello]")).not.toBeNull(),
+			);
+			expect(host.querySelector("[data-testid=screen-loading]")).toBeNull();
+			expect(importer).toHaveBeenCalledTimes(1);
+		} finally {
+			root.unmount();
+			host.remove();
+			globals.IS_REACT_ACT_ENVIRONMENT = wasActEnvironment;
+		}
 	});
 });
 
