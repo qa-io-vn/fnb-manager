@@ -10,7 +10,12 @@ import { staffRowAccess } from "../access";
 import { AuditLine } from "../forms/audit-line";
 import type { SaveBarStatus } from "../forms/save-bar";
 import { UNAVAILABLE_CLASS } from "../forms/save-bar";
-import { useMembership, useStaffRoster, useStoreProfiles } from "../queries";
+import {
+	useMembership,
+	useStaffApps,
+	useStaffRoster,
+	useStoreProfiles,
+} from "../queries";
 import { ReadOnlyNotice } from "../read-only-notice";
 import { SectionLoadState, useSectionLoad } from "../section-load";
 import { useSettingsSourceState } from "../settings-source-context";
@@ -21,7 +26,8 @@ import {
 	WRITE_ERROR_KEYS,
 } from "../use-settings-mutation";
 import { PairingCodePanel } from "./pairing-code";
-import type { PairingCode, StaffChange, StaffMember } from "./source";
+import type { PairingCode, StaffApp, StaffChange, StaffMember } from "./source";
+import { BrandsFact } from "./staff-brands";
 import { StaffForm } from "./staff-form";
 import {
 	rosterInOrder,
@@ -213,11 +219,13 @@ function ConfirmDeactivate({
 function MemberFacts({
 	member,
 	profiles,
+	apps,
 	formatters,
 	timeZone,
 }: {
 	readonly member: StaffMember;
 	readonly profiles: readonly StoreProfile[];
+	readonly apps: readonly StaffApp[] | undefined;
 	readonly formatters: Formatters;
 	readonly timeZone: string;
 }) {
@@ -242,6 +250,7 @@ function MemberFacts({
 			<dd className="break-words" data-testid="staff-stores">
 				{storesText(t, member.storeIds, profiles)}
 			</dd>
+			<BrandsFact member={member} apps={apps} />
 			<dt className="text-ink-muted">{t("settings.staff.field.status")}</dt>
 			<dd data-testid="staff-status">{status}</dd>
 			<dt className="text-ink-muted">{t("settings.staff.field.pairing")}</dt>
@@ -257,6 +266,7 @@ function MemberFacts({
 interface RowProps {
 	readonly member: StaffMember;
 	readonly profiles: readonly StoreProfile[];
+	readonly apps: readonly StaffApp[] | undefined;
 	readonly formatters: Formatters;
 	readonly timeZone: string;
 	readonly membership: Parameters<typeof staffRowAccess>[0];
@@ -282,6 +292,7 @@ interface RowProps {
 function StaffRow({
 	member,
 	profiles,
+	apps,
 	formatters,
 	timeZone,
 	membership,
@@ -323,6 +334,7 @@ function StaffRow({
 					<MemberFacts
 						member={member}
 						profiles={profiles}
+						apps={apps}
 						formatters={formatters}
 						timeZone={timeZone}
 					/>
@@ -463,6 +475,7 @@ export function StaffRoster() {
 	const sourceState = useSettingsSourceState();
 	const roster = useStaffRoster();
 	const profiles = useStoreProfiles();
+	const staffApps = useStaffApps();
 	const membership = useMembership();
 	const load = useSectionLoad([roster, profiles]);
 	const member = membership.status === "success" ? membership.data : undefined;
@@ -657,6 +670,7 @@ export function StaffRoster() {
 							key={row.id}
 							member={row}
 							profiles={profiles.data}
+							apps={staffApps.data}
 							formatters={formatters}
 							timeZone={tenant.timeZone}
 							membership={member}

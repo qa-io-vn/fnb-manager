@@ -343,3 +343,5 @@ Why: role-based access assigns rights to people on resources, and a client app i
 Not chosen: refusing a multi-brand login at creation (it blocks real managers), scoping the session by the app's brand (it adds a second scope to keep in step with the first).
 
 Build: the per-login brand list and flag on the access page, and a pgTAP case beside `pgtap:104_follow_oa_and_access` that pins the store scope.
+
+Built 2026-11-23: the brands line of each row of the staff roster in Settings, Staff (`apps/web/src/settings/staff/staff-brands.tsx`, rules `brandsOfScope` and `crossesBrands` in `staff-rules.ts`; the brand is named by its staff Mini App; shown for a tenant with two brands or more; a staff login that spans brands carries a warning note, a manager does not) and six cases in `pgtap:104` (a login of two brands is accepted at both stores, a login of one store and a manager of the other brand are refused 42501 at the other brand's store, an outsider is refused everywhere). Tests: `web:unit/settings/staff/staff-brands`.

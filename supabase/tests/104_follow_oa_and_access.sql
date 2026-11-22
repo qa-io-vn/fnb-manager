@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(23);
 
 create temp table fx as
 select
@@ -183,6 +183,30 @@ select ok(
   and not has_table_privilege('authenticated', 'public.notification_channels', 'insert'),
   'members still neither read addresses and secret names nor write destinations directly'
 );
+
+-- G-105, ADR-049: store scope belongs to the login, not to the app. One login may span the stores of two brands (it can
+-- record a customer at either); a login is refused (42501) at a store outside its scope whatever app it signed in through,
+-- and the owner reads the brands of each login on the access page (the web roster). Boundary: the scope is the stores of the
+-- login, so the one store of another brand is the first one refused. A refusal is the 42501 of the scope gate itself, which
+-- comes before any look at the phone or the member code.
+create function pg_temp.checkin_as(p_user uuid, p_store uuid)
+returns text
+language plpgsql
+as $$
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
+  perform public.staff_record_checkin(p_store, '0900000104', null, null);
+  return 'ok';
+exception when others then
+  return sqlstate;
+end;
+$$;
+select isnt(pg_temp.checkin_as((select staff_both from fx), (select store_x1 from fx)), '42501', 'a login scoped to the stores of two brands records a customer at the store of brand 1');
+select isnt(pg_temp.checkin_as((select staff_both from fx), (select store_x2 from fx)), '42501', 'and at the store of brand 2: one login may span brands, the app only chooses which one it lists');
+select isnt(pg_temp.checkin_as((select staff_x1 from fx), (select store_x1 from fx)), '42501', 'a login scoped to one store records a customer there');
+select is(pg_temp.checkin_as((select staff_x1 from fx), (select store_x2 from fx)), '42501', 'the same login is refused at the store of the other brand, whatever app it signed in through');
+select is(pg_temp.checkin_as((select manager_x2 from fx), (select store_x1 from fx)), '42501', 'a manager of brand 2''s store is refused at brand 1''s store');
+select is(pg_temp.checkin_as((select outsider from fx), (select store_x1 from fx)), '42501', 'a login with no membership in the tenant is refused at every store');
 
 select * from finish();
 rollback;

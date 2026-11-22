@@ -4,6 +4,7 @@ import type { Membership, SettingsWriteCode, StoreProfile } from "../source";
 import type { ValidationIssue } from "../validation";
 import {
 	STAFF_ROLES,
+	type StaffApp,
 	type StaffChange,
 	type StaffMember,
 	type StaffRole,
@@ -207,6 +208,45 @@ export function storeNamesOf(
 	);
 	const names = storeIds.flatMap((storeId) => byId.get(storeId) ?? []);
 	return { all: false, names, others: storeIds.length - names.length };
+}
+
+export interface BrandScope {
+	readonly all: boolean;
+	readonly titles: readonly string[];
+}
+
+/**
+ * The brands a login's stores belong to, named by the staff Mini App of each brand (ADR-049). A login without a store
+ * list covers every store, so every brand; a store that is in no brand adds none.
+ */
+export function brandsOfScope(
+	storeIds: readonly string[] | null,
+	apps: readonly StaffApp[],
+): BrandScope {
+	if (storeIds === null) {
+		return { all: true, titles: apps.map((app) => app.title) };
+	}
+	const scope = new Set(storeIds);
+	return {
+		all: false,
+		titles: apps
+			.filter((app) => app.storeIds.some((storeId) => scope.has(storeId)))
+			.map((app) => app.title),
+	};
+}
+
+/**
+ * A staff (cashier) login whose stores belong to more than one brand is flagged, a manager is not: a manager of two
+ * brands is normal in a multi-brand business (ADR-049).
+ */
+export function crossesBrands(
+	member: Pick<StaffMember, "role" | "storeIds">,
+	apps: readonly StaffApp[],
+): boolean {
+	return (
+		member.role === "staff" &&
+		brandsOfScope(member.storeIds, apps).titles.length > 1
+	);
 }
 
 export function staffChangeProblem(
