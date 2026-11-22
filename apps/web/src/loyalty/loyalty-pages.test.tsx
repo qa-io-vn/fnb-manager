@@ -6,6 +6,7 @@ import type { ReactElement } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { csvOfRows } from "../components/report-card/data-table";
+import { sortRows } from "../components/report-card/table-sorting";
 import { I18nProvider, translate } from "../i18n";
 import { AnomaliesPage } from "../pages/loyalty/anomalies-page";
 import { MemberPage } from "../pages/loyalty/member-page";
@@ -481,6 +482,70 @@ describe("the shift anomaly model", () => {
 		});
 		expect(table.rows.map((row) => row.cells.shift)).toContain("Ngoài ca");
 		expect(table.rows.map((row) => row.cells.shift)).toContain("Ca 2");
+	});
+
+	// G-23 (system, decision table): one shift of a busy day with 6 check-ins without an
+	// invoice and 3 manual adjustments, among shifts that are quiet, that only had a
+	// below-minimum refusal (not a signal) or that have a single signal. The card sorts
+	// by signals, highest first, so that shift must lead, named by its number only.
+	describe("a shift with 6 check-ins without an invoice and 3 manual adjustments (G-23)", () => {
+		const busyDay = anomalyRows([
+			anomaly({ shiftNumber: 1, earns: 40 }),
+			anomaly({
+				shiftNumber: 2,
+				earns: 12,
+				adjustments: 3,
+				checkinsWithoutInvoice: 6,
+			}),
+			anomaly({
+				shiftNumber: 3,
+				earns: 25,
+				refusals: { below_minimum: 5 },
+				refusalsTotal: 5,
+			}),
+			anomaly({ shiftNumber: 4, earns: 9, adjustments: 1 }),
+			anomaly({ shiftNumber: null, checkinsWithoutInvoice: 1 }),
+		]);
+		const table = anomalyTable(busyDay, CONTEXT);
+		const collator = new Intl.Collator("vi");
+		const ranked = sortRows(
+			table.rows,
+			table.initialSort ?? null,
+			collator,
+			table.columns,
+		);
+
+		it("counts nine signals for it, and none for a below-minimum refusal alone", () => {
+			const signalsOf = (shift: number | null) =>
+				busyDay.find((row) => row.shiftNumber === shift)?.signals;
+			expect(signalsOf(2)).toBe(9);
+			expect(signalsOf(3)).toBe(0);
+			expect(signalsOf(1)).toBe(0);
+			expect(signalsOf(4)).toBe(1);
+			expect(signalsOf(null)).toBe(1);
+			expect(anomalySummary(busyDay).flagged).toBe(3);
+		});
+
+		it("is the first row of the card, the others following by their signals", () => {
+			expect(ranked[0]?.cells.shift).toBe("Ca 2");
+			expect(ranked[0]?.cells.signals).toBe(9);
+			expect(ranked.map((row) => row.cells.signals)).toEqual([9, 1, 1, 0, 0]);
+		});
+
+		it("is shown as Ca n only, with no cashier, POS label or external id in a row or in the CSV", () => {
+			const csv = csvOfRows(table.columns, ranked, (label) => label);
+			expect(csv.split("\n")[1]).toContain("Ca 2");
+			expect(csv).not.toMatch(/cashier|thu ngân|external|sa-shift/i);
+			for (const row of table.rows) {
+				expect(Object.keys(row.cells)).not.toEqual(
+					expect.arrayContaining(["cashier"]),
+				);
+				// The row id is the store, the date and the shift number: no external id of the POS shift.
+				expect(row.id).toMatch(
+					new RegExp(`^${STORE_1}\\|2026-11-17\\|[1-4]?$`),
+				);
+			}
+		});
 	});
 });
 
