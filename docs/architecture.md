@@ -714,7 +714,7 @@ Credentials live in three places only: the owner's local `.env`, GitHub Actions 
 | `POS_ACCOUNTS_JSON`, `IPOS_APP_KEY` | yes | secrets | Edge Function secrets | the CLI and `sync-incremental` |
 | `DATABASE_URL` (local), `SUPABASE_DB_URL` (cloud session pooler) | yes | secret `SUPABASE_DB_URL` | injected `SUPABASE_DB_URL`; optional `FNB_DB_URL`, `FNB_DB_CA_CERT` | the CLI, also in `deploy-mini-apps.yml`; the Edge Function |
 | `SUPABASE_SECRET_KEY` | yes | documented secret; no workflow reads it | injected | `fnb tenant add-member` only (Auth admin API) |
-| `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID` | yes, for the owner's own CLI steps | secrets | not applicable | `migrate.yml`, `backup.yml`, `deploy-functions.yml` |
+| `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID` | yes, for the owner's own CLI steps | secrets | not applicable | `backup.yml`, `deploy-functions.yml` (`migrate.yml` uses `SUPABASE_DB_URL` since 2026-11-22) |
 | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | yes | variables, public by design | not applicable | the web build and the Zalo builds of the Mini Apps (as `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`) |
 | `BACKUP_AGE_RECIPIENT`, `BACKUP_S3_ENDPOINT`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY` | no | secrets; the `age` private key stays offline with the owner | not applicable | `backup.yml` |
 | `NOTIFY_ZALO_BOT_TOKEN`, `NOTIFY_EMAIL_API_KEY`, `NOTIFY_EMAIL_FROM`, `NOTIFY_EMAIL_FROM_NAME`, `NOTIFY_TELEGRAM_BOT_TOKEN`, `NOTIFY_WEBHOOK_SECRET` | optional | secrets read by `sync.yml` and `notify.yml` | function secrets once the `notify` function exists (12c) | the notification dispatchers; rows store only the name |
