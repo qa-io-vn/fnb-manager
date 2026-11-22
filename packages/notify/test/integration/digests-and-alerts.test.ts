@@ -389,9 +389,10 @@ describe.skipIf(!ENABLED)("digests and alerts on the local stack", () => {
 			});
 		}
 		const opened = chatTexts(mock, ownerChat).slice(baseline);
-		expect(opened.filter((text) => text.startsWith("Cảnh báo:"))).toHaveLength(
-			1,
-		);
+		// the intraday rules of the same tick also tell the owner that no nightly ran (nightly_missing), so count the stale-sync alerts
+		const isStaleAlert = (text: string) =>
+			text.startsWith("Cảnh báo:") && text.includes("chưa đồng bộ thành công");
+		expect(opened.filter(isStaleAlert)).toHaveLength(1);
 		const [episode] = await sql<{ occurrences: number; state: string }[]>`
 			select occurrences, state from public.alert_events
 			where tenant_id = ${fixture.tenantId}::uuid and dedupe_key = ${`sync_stale:store:${storeId}`}
@@ -426,7 +427,7 @@ describe.skipIf(!ENABLED)("digests and alerts on the local stack", () => {
 		});
 		await fixture.cycle({ at: new Date(recovered.getTime() + 6 * MINUTE) });
 		const all = chatTexts(mock, ownerChat).slice(baseline);
-		expect(all.filter((text) => text.startsWith("Cảnh báo:"))).toHaveLength(1);
+		expect(all.filter(isStaleAlert)).toHaveLength(1);
 		expect(all.filter((text) => text.startsWith("Nhắc lại:"))).toHaveLength(1);
 		expect(all.filter((text) => text.startsWith("Đã khôi phục:"))).toHaveLength(
 			1,
@@ -859,5 +860,144 @@ describe.skipIf(!ENABLED)("digests and alerts on the local stack", () => {
 		expect(chatTexts(mock, managerChat).join("\n")).not.toContain(
 			"Đã khôi phục",
 		);
+	}, 300_000);
+
+	// Test design (ISTQB): state transition (no episode, open, still open, resolved), boundary values at the 3-day
+	// horizon of the completion deadline (1 second before, exactly), a decision table over who is told (the owner and a
+	// manager of every store; a manager of one store is not), and security (the message and the episode carry counts only).
+	// Every instant is fixed from the fixture's own date; the request is received 18 days before the scenario's reading.
+	it("data-subject deadline", async () => {
+		const DAY = 24 * HOUR;
+		const receivedAt = localInstant(shiftIsoDate(today, 2), 8);
+		const horizon = new Date(receivedAt.getTime() + 17 * DAY);
+		const eighteenDays = new Date(receivedAt.getTime() + 18 * DAY);
+		const linkAt = localInstant(shiftIsoDate(today, 3), 9);
+		const stamp = today.replaceAll("-", "");
+		const managerChat = `synthetic-chat-dsr-manager-${stamp}`;
+		const limitedChat = `synthetic-chat-dsr-limited-${stamp}`;
+		const contact = `synthetic-contact-dsr-${stamp}`;
+		const note = `synthetic-note-dsr-${stamp}`;
+		const manager = await fixture.addMember("manager", null);
+		await fixture.linkZaloBot(manager, { chatId: managerChat, at: linkAt });
+		await fixture.linkZaloBot(fixture.manager, {
+			chatId: limitedChat,
+			at: linkAt,
+		});
+		const dsrTexts = (chatId: string) =>
+			chatTexts(mock, chatId).filter((text) =>
+				text.includes("yêu cầu về dữ liệu cá nhân"),
+			);
+		const episodes = () =>
+			sql<
+				{
+					id: string;
+					state: string;
+					resolution: string | null;
+					facts: Record<string, unknown>;
+					opened: number;
+				}[]
+			>`
+				select id::text as id, state, resolution, facts, extract(epoch from opened_at)::float8 as opened
+				from public.alert_events
+				where tenant_id = ${fixture.tenantId}::uuid and dedupe_key = 'dsr_due_soon:tenant'
+				order by opened_at
+			`;
+		const tickAt = async (at: Date) => {
+			const report = await fixture.cycle({ at, runSqlTick: true });
+			return Number(report.tick?.dsr_due_soon);
+		};
+		const expectedText =
+			"Cảnh báo: 0 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời và 1 yêu cầu đến hạn trong 3 ngày tới. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.\nTắt hoặc đổi kênh nhận: Cài đặt → Cảnh báo.";
+
+		// negative baseline: no request, no episode, nobody told
+		expect(await tickAt(new Date(horizon.getTime() - MINUTE))).toBe(0);
+		expect(await episodes()).toHaveLength(0);
+
+		// the request was answered the day after it was received, so only its completion deadline (20 days) counts
+		const [request] = await sql<{ id: string; exact: boolean }[]>`
+			insert into public.data_subject_requests (tenant_id, subject_type, contact, request_type, received_at, status, responded_at, notes)
+			values (
+				${fixture.tenantId}::uuid, 'customer', ${contact}, 'access', ${receivedAt}::timestamptz, 'in_progress',
+				${new Date(receivedAt.getTime() + DAY)}::timestamptz, ${note}
+			)
+			returning id::text as id, completion_due_at = ${new Date(receivedAt.getTime() + 20 * DAY)}::timestamptz as exact
+		`;
+		expect(request?.exact).toBe(true);
+
+		// boundary: 1 second before the 3-day horizon nothing opens; exactly on it one episode opens
+		expect(await tickAt(new Date(horizon.getTime() - 1000))).toBe(0);
+		expect(await episodes()).toHaveLength(0);
+		expect(await tickAt(horizon)).toBe(1);
+		const [opened] = await episodes();
+		expect(await episodes()).toHaveLength(1);
+		expect(opened?.state).toBe("open");
+		expect(opened?.opened).toBe(horizon.getTime() / 1000);
+		expect(opened?.facts).toEqual({ overdue: 0, due_soon: 1, days: 3 });
+		expect(dsrTexts(ownerChat)).toEqual([expectedText]);
+		expect(dsrTexts(managerChat)).toEqual([expectedText]);
+		expect(dsrTexts(limitedChat)).toEqual([]);
+
+		// the reading of the scenario, 18 days after receipt: still the one episode, nobody told twice
+		expect(await tickAt(eighteenDays)).toBe(0);
+		expect(await episodes()).toHaveLength(1);
+		expect(dsrTexts(ownerChat)).toEqual([expectedText]);
+		expect(dsrTexts(managerChat)).toEqual([expectedText]);
+
+		// decision table over who is told: the owner's and the every-store manager's destinations, once each, nobody else's
+		const queued = await sql<
+			{ user_id: string; kind: string; count: string; params: unknown }[]
+		>`
+			select c.user_id::text as user_id, c.kind::text as kind, count(*)::text as count, (array_agg(o.params))[1] as params
+			from public.outbound_messages o
+			join public.notification_channels c on c.id = o.channel_id
+			where o.tenant_id = ${fixture.tenantId}::uuid and o.alert_event_id = ${opened?.id ?? ""}::uuid
+			group by c.user_id, c.kind
+		`;
+		expect(new Set(queued.map((row) => row.user_id))).toEqual(
+			new Set([fixture.owner.userId, manager.userId]),
+		);
+		expect(queued.every((row) => row.count === "1")).toBe(true);
+		expect(queued.some((row) => row.kind === "zalo_bot")).toBe(true);
+		const dsrEmails = mock
+			.emails()
+			.filter((email) => email.text.includes("yêu cầu về dữ liệu cá nhân"));
+		expect(dsrEmails).toHaveLength(
+			queued.filter((row) => row.kind === "email").length,
+		);
+
+		// security: counts only, in the episode, the queued messages and every text sent
+		const traces = [
+			JSON.stringify(opened),
+			JSON.stringify(queued),
+			...dsrTexts(ownerChat),
+			...dsrTexts(managerChat),
+			...dsrEmails.map((email) => `${email.subject}\n${email.text}`),
+		].join("\n");
+		for (const secret of [
+			contact,
+			note,
+			request?.id ?? "",
+			fixture.owner.email,
+		]) {
+			expect(traces).not.toContain(secret);
+		}
+		expect(expectedText).not.toMatch(/https?:|\d{1,3}(\.\d{3})+/);
+
+		// completing the request resolves the episode without a recovery message, and a later reading opens nothing
+		await sql`
+			update public.data_subject_requests
+			set status = 'completed', completed_at = ${new Date(eighteenDays.getTime() + HOUR)}::timestamptz
+			where id = ${request?.id ?? ""}::uuid
+		`;
+		expect(await tickAt(new Date(eighteenDays.getTime() + 2 * HOUR))).toBe(0);
+		const [resolved] = await episodes();
+		expect(resolved?.id).toBe(opened?.id);
+		expect(resolved?.state).toBe("resolved");
+		expect(resolved?.resolution).toBe("cleared");
+		expect(await tickAt(new Date(eighteenDays.getTime() + 3 * HOUR))).toBe(0);
+		expect(await episodes()).toHaveLength(1);
+		expect(dsrTexts(ownerChat)).toEqual([expectedText]);
+		expect(dsrTexts(managerChat)).toEqual([expectedText]);
+		expect(dsrTexts(limitedChat)).toEqual([]);
 	}, 300_000);
 });
