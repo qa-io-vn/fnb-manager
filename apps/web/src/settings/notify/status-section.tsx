@@ -7,6 +7,22 @@ export function quotaHigh(overview: NotifyOverview): boolean {
 	return overview.zaloBotMonth >= overview.zaloBotQuota * 0.8;
 }
 
+/**
+ * The owner's notice of ADR-045: with no destination that is enabled and active or failing, no alert is sent, the
+ * data-subject deadline reminders among them, although their episodes stay open. Only an owner who sees every
+ * destination is told; a store-limited login sees a part of them and cannot tell.
+ */
+export function noWorkingDestination(overview: NotifyOverview): boolean {
+	return (
+		overview.role === "owner" &&
+		!overview.storeLimited &&
+		!overview.destinations.some(
+			(row) =>
+				row.enabled && (row.status === "active" || row.status === "failing"),
+		)
+	);
+}
+
 export function StatusSection({
 	overview,
 	failed,
@@ -42,6 +58,11 @@ export function StatusSection({
 							{t("settings.notify.status.scheduleOff")}
 						</Note>
 					)}
+					{noWorkingDestination(overview) ? (
+						<Note tone="warning" testId="notify-no-destination">
+							{t("settings.notify.status.noDestination")}
+						</Note>
+					) : null}
 					<p data-testid="notify-last-tick">
 						{(() => {
 							const age = ageParts(overview.lastTickAt, now);

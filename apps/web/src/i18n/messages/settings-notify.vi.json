@@ -219,6 +219,7 @@
 	"settings.notify.status.disabled": "Đã tắt",
 	"settings.notify.status.failing": "Đang lỗi",
 	"settings.notify.status.lastTick": "Lần kiểm tra gần nhất: {age}.",
+	"settings.notify.status.noDestination": "Chưa có nơi nhận tin nào đang hoạt động, nên cảnh báo, kể cả nhắc hạn trả lời yêu cầu về dữ liệu cá nhân, chưa được gửi đi. Thêm hoặc bật lại một nơi nhận bên dưới.",
 	"settings.notify.status.noTick": "Chưa có lần kiểm tra nào.",
 	"settings.notify.status.pending": "Chờ xác nhận",
 	"settings.notify.status.quota": "Zalo Bot tháng này: {count} / {quota} tin của gói Cơ bản.",

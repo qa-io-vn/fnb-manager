@@ -219,6 +219,7 @@
 	"settings.notify.status.disabled": "Disabled",
 	"settings.notify.status.failing": "Failing",
 	"settings.notify.status.lastTick": "Last check: {age}.",
+	"settings.notify.status.noDestination": "No destination is working, so alerts, including the reminders about deadlines for personal-data requests, are not being sent. Add or switch on a destination below.",
 	"settings.notify.status.noTick": "No check has run yet.",
 	"settings.notify.status.pending": "Waiting for confirmation",
 	"settings.notify.status.quota": "Zalo Bot this month: {count} of the Basic plan's {quota} messages.",
