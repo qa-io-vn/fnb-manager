@@ -234,6 +234,11 @@ function scaled(value: number, factor: number, what: string): bigint {
 	return BigInt(exact);
 }
 
+// BigInt() calls, not literals (0n): the Mini App build targets browsers that do not take bigint literals.
+const ZERO = BigInt(0);
+const THOUSAND = BigInt(1000);
+const HALF_A_THOUSANDTH = BigInt(500);
+
 /**
  * The liability in hundredths (cents) as the database computes it, exactly:
  * `round(points * point_value_amount * (1 - rate), 2)` over `numeric(14,2)` and
@@ -248,14 +253,14 @@ export function pointsLiabilityCents(input: LiabilityInput): number {
 	const thousandthsOfACent =
 		BigInt(input.outstandingPoints) *
 		scaled(input.pointValueAmount, 100, "the point value") *
-		(1000n - scaled(input.expectedBreakageRate, 1000, "the breakage rate"));
+		(THOUSAND - scaled(input.expectedBreakageRate, 1000, "the breakage rate"));
 	const magnitude =
-		thousandthsOfACent < 0n ? -thousandthsOfACent : thousandthsOfACent;
-	const cents = (magnitude + 500n) / 1000n;
+		thousandthsOfACent < ZERO ? -thousandthsOfACent : thousandthsOfACent;
+	const cents = (magnitude + HALF_A_THOUSANDTH) / THOUSAND;
 	if (cents > BigInt(Number.MAX_SAFE_INTEGER)) {
 		throw new RangeError("the liability does not fit a safe integer of cents");
 	}
-	return Number(thousandthsOfACent < 0n ? -cents : cents);
+	return Number(thousandthsOfACent < ZERO ? -cents : cents);
 }
 
 /** An amount in hundredths as the text `numeric(14,2)` prints, e.g. `7600.00`. */
