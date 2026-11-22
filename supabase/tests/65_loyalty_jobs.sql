@@ -1,5 +1,5 @@
 begin;
-select plan(32);
+select plan(33);
 
 update app.incremental_sync_settings set enabled = false, updated_at = '2026-01-01 00:00+00';
 
@@ -162,8 +162,8 @@ select is(
     from public.loyalty_liability_daily
     where programme_id = (select programme_j from fx) and as_of_date = date '2026-11-15'
   ),
-  '9:6:0:0',
-  'the day''s flows count the points issued (the pending earn among them) and the clawback'
+  '25:0:0:0',
+  'the row of the 15th reports the complete day before it (G-104): the three earns of the 14th are 25 points, the 15th''s own rows are not in it'
 );
 select is(
   (select count(*)::int from public.loyalty_liability_daily where programme_id = (select programme_j from fx)),
@@ -204,6 +204,15 @@ select is(
   (app.loyalty_nightly((select tenant_j from fx), timestamptz '2026-11-16 04:00+07') ->> 'expired_stamps')::int,
   1,
   'the nightly step expires stamps past their validity'
+);
+select is(
+  (
+    select concat_ws(':', points_issued, points_clawed_back, points_redeemed, points_expired)
+    from public.loyalty_liability_daily
+    where programme_id = (select programme_j from fx) and as_of_date = date '2026-11-16'
+  ),
+  '9:6:0:0',
+  'the row of the 16th reports the 15th (G-104): the pending earn (9 points issued, none for the manual debit) and the clawback of 6'
 );
 
 select is((select array_agg(slug order by slug) from app.loyalty_tenants() where slug like 'loyalty-%-pgtap'), array['loyalty-breakage-pgtap', 'loyalty-jobs-pgtap'], 'the nightly step lists the tenants with a programme');

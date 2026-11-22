@@ -58,6 +58,7 @@ export {
 } from "./rules/loyalty-ledger.js";
 export {
 	computeLiabilityRow,
+	expiredByIssueMonth,
 	expiryCohortMonth,
 	type LiabilityCohort,
 	type LiabilityInputs,

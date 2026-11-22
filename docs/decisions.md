@@ -328,6 +328,8 @@ Why: revenue recognition is done on a closed period and an obligation is counted
 
 Build: a migration for `app.loyalty_liability` and the breakage function, then the labelled KNOWN LIMITATION assertion of `pgtap:236` changes to the new rule; do it before any page reads these columns.
 
+Built 2026-11-23 (migration `20261123090000_liability_flows_and_cohorts`), with two refinements found while building. (1) An `expire` row is one row per member and carries no link to an earn, so F1 is traced the way the row was written, first in first out, which is the fallback this decision named: at the moment of each expiry run the member's credits past their expiry (net of their clawbacks) are lined up oldest expiry first, the spent points took the front of the line, so the expired points are its last ones, and each credit is charged with its share under its issue month. What cannot be traced keeps the old month (the run month less the expiry period); the cohorts' expired points always add up to the expiry rows of the ledger. (2) F2 covers all five flow columns of a row (`points_issued`, `points_redeemed`, `points_expired`, `points_clawed_back` and `deferred_revenue_released_amount`), not three: a row that mixed yesterday's issued points with today's expired ones would not add up. The stock columns (members, outstanding points and stamps, the liability) stay those of the moment of the run. Tests: `core:unit/loyalty-liability` (57), `pgtap:236`, `pgtap:238`, `pgtap:65`.
+
 ## ADR-049 — Store scope belongs to the login; the app only picks the brand; the owner reads which brands a login spans
 
 Date 2026-11-22 · Status accepted (delegated) · closes G-105

@@ -12,9 +12,11 @@ import { describe, expect, it } from "vitest";
 import {
 	addMonthsUtc,
 	computeLiabilityRow,
+	expiredByIssueMonth,
 	expiryCohortMonth,
 	formatCents,
 	formatThousandths,
+	type LedgerEntry,
 	type LedgerRules,
 	LoyaltyLedger,
 	ledgerBalance,
@@ -296,7 +298,7 @@ describe("computeLiabilityRow: one night's row from a hand-made ledger", () => {
 		if (!earn.ok) throw new Error("earn refused");
 		ledger.clawback(earn.entryId, sold + 4);
 		expect(ledgerBalance(ledger.entries, "d").points).toBe(-40);
-		const row = rowAt(ledger, sold + 5, ["a", "d"]);
+		const row = rowAt(ledger, at("2026-11-11T04:00"), ["a", "d"]);
 		expect(row.outstandingPoints).toBe(12);
 		expect(row.pointsClawedBack).toBe(60);
 	});
@@ -307,7 +309,7 @@ describe("computeLiabilityRow: one night's row from a hand-made ledger", () => {
 		ledger.earn("e", { stamps: 0, points: 100 }, { soldAt: day, at: day + 1 });
 		const hold = ledger.hold("e", { stamps: 0, points: 40 }, day + 2);
 		if (!hold.ok) throw new Error("hold refused");
-		const held = rowAt(ledger, day + 3, ["e"]);
+		const held = rowAt(ledger, at("2026-11-11T04:00"), ["e"]);
 		expect(held).toMatchObject({
 			outstandingPoints: 60,
 			pointsIssued: 100,
@@ -315,7 +317,7 @@ describe("computeLiabilityRow: one night's row from a hand-made ledger", () => {
 			deferredRevenueReleasedAmount: "20000.00",
 		});
 		ledger.release(hold.entryId, day + 4);
-		expect(rowAt(ledger, day + 5, ["e"])).toMatchObject({
+		expect(rowAt(ledger, at("2026-11-11T04:00"), ["e"])).toMatchObject({
 			outstandingPoints: 100,
 			pointsIssued: 100,
 			pointsRedeemed: 0,
@@ -343,21 +345,75 @@ describe("computeLiabilityRow: one night's row from a hand-made ledger", () => {
 		).toBe(2);
 	});
 
-	it("counts the flows from local midnight of the row's date up to the moment", () => {
-		const ledger = ledgerOf("a");
+	// G-104 F2 (ADR-048): the flows of a row are those of the closed previous local day, from
+	// its first millisecond to the first millisecond of the row's own day, whatever the run hour.
+	describe("the flows cover the closed previous local day (boundary value analysis)", () => {
 		const midnight = at("2026-11-10T00:00");
+		const MS_DAY = 86_400_000;
+		const ledger = ledgerOf("a");
+		// 2026-11-08 23:59:59.999 (the day before the flow day)
+		ledger.earn(
+			"a",
+			{ stamps: 0, points: 3 },
+			{ soldAt: midnight - MS_DAY - 1_000, at: midnight - MS_DAY - 1 },
+		);
+		// the first and the last millisecond of the flow day 2026-11-09
 		ledger.earn(
 			"a",
 			{ stamps: 0, points: 5 },
+			{ soldAt: midnight - MS_DAY, at: midnight - MS_DAY },
+		);
+		ledger.earn(
+			"a",
+			{ stamps: 0, points: 7 },
 			{ soldAt: midnight - 1_000, at: midnight - 1 },
 		);
+		// the first millisecond of the row's own day 2026-11-10
 		ledger.earn(
 			"a",
 			{ stamps: 0, points: 9 },
 			{ soldAt: midnight, at: midnight },
 		);
-		expect(rowAt(ledger, midnight + 3_600_000, ["a"]).pointsIssued).toBe(9);
-		expect(rowAt(ledger, midnight - 1, ["a"]).pointsIssued).toBe(5);
+
+		it.each([
+			{ label: "the first millisecond of the row's day", asOf: midnight },
+			{ label: "03:23, the production nightly", asOf: at("2026-11-10T03:23") },
+			{ label: "23:59 the same day, a late run", asOf: at("2026-11-10T23:59") },
+		])("is the same complete day $label: 5 + 7 = 12 points", ({ asOf }) => {
+			expect(rowAt(ledger, asOf, ["a"]).pointsIssued).toBe(12);
+		});
+
+		it("starts the day after at the boundary: the 9 points of 2026-11-10 are the flow of 2026-11-11", () => {
+			expect(rowAt(ledger, at("2026-11-11T00:00"), ["a"]).pointsIssued).toBe(9);
+		});
+
+		it("counts a run at the last millisecond of 2026-11-09 for 2026-11-08 only: the 5 points sold at 2026-11-09 00:00 are not in it", () => {
+			expect(rowAt(ledger, midnight - 1, ["a"]).pointsIssued).toBe(3);
+		});
+
+		it("keeps the stock at the run's moment while the flows are those of the previous day", () => {
+			const row = rowAt(ledger, at("2026-11-10T03:23"), ["a"]);
+			expect(row.outstandingPoints).toBe(24);
+			expect(row.pointsIssued).toBe(12);
+		});
+
+		it("covers the expiry and the clawback of the flow day too, so a row is one consistent day", () => {
+			const day = ledgerOf("q");
+			const sold = at("2026-11-08T10:00");
+			const earn = day.earn(
+				"q",
+				{ stamps: 0, points: 20 },
+				{ soldAt: sold, at: sold + 1 },
+			);
+			if (!earn.ok) throw new Error("earn refused");
+			day.clawback(earn.entryId, at("2026-11-09T11:00"));
+			expect(rowAt(day, at("2026-11-10T03:23"), ["q"]).pointsClawedBack).toBe(
+				20,
+			);
+			expect(rowAt(day, at("2026-11-09T23:00"), ["q"]).pointsClawedBack).toBe(
+				0,
+			);
+		});
 	});
 });
 
@@ -433,7 +489,9 @@ describe("breakage by issue month and the month boundary of the expiry run", () 
 		expect(expiryCohortMonth(at("2027-10-31T23:59"), RULES)).toBe("2026-10");
 	});
 
-	it("KNOWN LIMITATION: a credit sold on the last day of a month after the nightly hour is reported as expired in the next month", () => {
+	// G-104 F1 (ADR-048): an expiry is reported under the month its credit was issued, found by
+	// first in first out, not under the month of the run less the expiry period.
+	it("reports a credit sold on the last day of a month after the nightly hour under its own month, although its expiry runs next month", () => {
 		const ledger = ledgerOf("a", "b");
 		const early = at("2026-10-30T15:00");
 		const late = at("2026-10-31T15:00");
@@ -447,9 +505,208 @@ describe("breakage by issue month and the month boundary of the expiry run", () 
 		ledger.expire(at("2027-11-01T04:00"));
 		const row = rowAt(ledger, at("2027-11-01T05:00"), ["a", "b"]);
 		expect(row.breakageByCohort).toEqual([
-			{ month: "2026-10", issued: 14, expired: 10 },
-			{ month: "2026-11", issued: 0, expired: 4 },
+			{ month: "2026-10", issued: 14, expired: 14 },
 		]);
+	});
+
+	describe("first in first out trace of an expiry (equivalence partitioning of the member's history)", () => {
+		const first = at("2026-10-20T10:00");
+		const second = at("2026-11-20T10:00");
+		const run = at("2027-11-22T04:00");
+		function twoCredits() {
+			const ledger = ledgerOf("a");
+			ledger.earn(
+				"a",
+				{ stamps: 0, points: 10 },
+				{ soldAt: first, at: first + 1 },
+			);
+			ledger.earn(
+				"a",
+				{ stamps: 0, points: 10 },
+				{ soldAt: second, at: second + 1 },
+			);
+			return ledger;
+		}
+		const cohorts = (ledger: LoyaltyLedger) =>
+			rowAt(ledger, run + 3_600_000, ["a"]).breakageByCohort;
+
+		it("charges a spent point to the oldest credit: 4 spent, 16 expired = 6 of October and 10 of November", () => {
+			const ledger = twoCredits();
+			const hold = ledger.hold(
+				"a",
+				{ stamps: 0, points: 4 },
+				at("2027-01-05T10:00"),
+			);
+			if (!hold.ok) throw new Error("hold refused");
+			ledger.confirm(hold.entryId, at("2027-01-05T11:00"));
+			expect(ledger.expire(run).points).toBe(16);
+			expect(cohorts(ledger)).toEqual([
+				{ month: "2026-10", issued: 10, expired: 6 },
+				{ month: "2026-11", issued: 10, expired: 10 },
+			]);
+		});
+
+		it("leaves the oldest cohort whole when more than its points were spent: 14 spent, 6 expired, all of November", () => {
+			const ledger = twoCredits();
+			const hold = ledger.hold(
+				"a",
+				{ stamps: 0, points: 14 },
+				at("2027-01-05T10:00"),
+			);
+			if (!hold.ok) throw new Error("hold refused");
+			ledger.confirm(hold.entryId, at("2027-01-05T11:00"));
+			expect(ledger.expire(run).points).toBe(6);
+			expect(cohorts(ledger)).toEqual([
+				{ month: "2026-10", issued: 10, expired: 0 },
+				{ month: "2026-11", issued: 10, expired: 6 },
+			]);
+		});
+
+		it("leaves nothing to a fully spent history: 20 spent, nothing expired", () => {
+			const ledger = twoCredits();
+			const hold = ledger.hold(
+				"a",
+				{ stamps: 0, points: 20 },
+				at("2027-01-05T10:00"),
+			);
+			if (!hold.ok) throw new Error("hold refused");
+			ledger.confirm(hold.entryId, at("2027-01-05T11:00"));
+			expect(ledger.expire(run).points).toBe(0);
+			expect(cohorts(ledger)).toEqual([
+				{ month: "2026-10", issued: 10, expired: 0 },
+				{ month: "2026-11", issued: 10, expired: 0 },
+			]);
+		});
+
+		it("traces two runs one after the other: the first takes October, the second November", () => {
+			const ledger = twoCredits();
+			ledger.expire(at("2027-10-21T04:00"));
+			ledger.expire(at("2027-11-21T04:00"));
+			expect(
+				rowAt(ledger, at("2027-11-21T05:00"), ["a"]).breakageByCohort,
+			).toEqual([
+				{ month: "2026-10", issued: 10, expired: 10 },
+				{ month: "2026-11", issued: 10, expired: 10 },
+			]);
+		});
+
+		it("skips a credit that was clawed back before the run", () => {
+			const ledger = ledgerOf("a");
+			const octoberEarn = ledger.earn(
+				"a",
+				{ stamps: 0, points: 10 },
+				{ soldAt: first, at: first + 1 },
+			);
+			ledger.earn(
+				"a",
+				{ stamps: 0, points: 10 },
+				{ soldAt: second, at: second + 1 },
+			);
+			if (!octoberEarn.ok) throw new Error("earn refused");
+			ledger.clawback(octoberEarn.entryId, at("2026-12-01T10:00"));
+			expect(ledger.expire(run).points).toBe(10);
+			expect(cohorts(ledger)).toEqual([
+				{ month: "2026-10", issued: 10, expired: 0 },
+				{ month: "2026-11", issued: 10, expired: 10 },
+			]);
+		});
+
+		it("totals the cohorts' expired points to the expired flow of the run", () => {
+			const ledger = twoCredits();
+			const hold = ledger.hold(
+				"a",
+				{ stamps: 0, points: 7 },
+				at("2027-01-05T10:00"),
+			);
+			if (!hold.ok) throw new Error("hold refused");
+			ledger.confirm(hold.entryId, at("2027-01-05T11:00"));
+			const expired = ledger.expire(run).points;
+			const total = cohorts(ledger).reduce((sum, c) => sum + c.expired, 0);
+			expect(total).toBe(expired);
+		});
+	});
+
+	describe("an expiry that cannot be traced to a credit falls back to the run month less the expiry period (negative and boundary cases)", () => {
+		const entry = (
+			over: Partial<LedgerEntry> & Pick<LedgerEntry, "id" | "kind">,
+		): LedgerEntry => ({
+			member: "a",
+			stampDelta: 0,
+			pointDelta: 0,
+			pending: false,
+			sourceId: null,
+			reason: null,
+			expiresAt: null,
+			occurredAt: 0,
+			...over,
+		});
+
+		it("reports an opening balance without an expiry date under the fallback month", () => {
+			const entries = [
+				entry({
+					id: 1,
+					kind: "adjust",
+					pointDelta: 400,
+					reason: "opening",
+					occurredAt: at("2025-01-02T09:00"),
+				}),
+				entry({
+					id: 2,
+					kind: "expire",
+					pointDelta: -30,
+					reason: "expired",
+					occurredAt: at("2026-04-01T00:00"),
+				}),
+			];
+			expect([
+				...expiredByIssueMonth(entries, RULES, at("2026-11-15T23:00")),
+			]).toEqual([["2025-04", 30]]);
+		});
+
+		it("splits a row between the credits it can trace and the fallback when the credits shrank afterwards", () => {
+			const entries = [
+				entry({
+					id: 1,
+					kind: "earn",
+					pointDelta: 4,
+					expiresAt: at("2027-10-30T15:00"),
+					occurredAt: at("2026-10-30T15:00"),
+				}),
+				entry({
+					id: 2,
+					kind: "expire",
+					pointDelta: -10,
+					reason: "expired",
+					occurredAt: at("2027-11-01T04:00"),
+				}),
+			];
+			expect([
+				...expiredByIssueMonth(entries, RULES, at("2027-11-02T00:00")),
+			]).toEqual([
+				["2026-10", 4],
+				["2026-11", 6],
+			]);
+		});
+
+		it("ignores expiry rows without points and rows after the moment", () => {
+			const entries = [
+				entry({
+					id: 1,
+					kind: "expire",
+					stampDelta: -2,
+					occurredAt: at("2027-01-01T04:00"),
+				}),
+				entry({
+					id: 2,
+					kind: "expire",
+					pointDelta: -5,
+					occurredAt: at("2027-11-01T04:00"),
+				}),
+			];
+			expect(
+				expiredByIssueMonth(entries, RULES, at("2027-10-31T23:59")).size,
+			).toBe(0);
+		});
 	});
 
 	it("lists a month once with its issued and expired points, in month order", () => {
@@ -521,8 +778,20 @@ describe("the 30-day liability replay (CI integration against supabase/tests/236
 			0;
 		expect(expiredOf("2027-10-31", "2026-10")).toBeGreaterThan(0);
 		expect(expiredOf("2027-10-31", "2026-11")).toBe(0);
-		expect(expiredOf("2027-11-01", "2026-11")).toBeGreaterThan(0);
-		// the October cohort is still not fully expired: its 31 October sales fall under November
+		// G-104 F1: the run of 2027-11-01 04:00 expires credits sold on 31 October 2026 after 04:00,
+		// so it grows the October cohort and does not touch November's
+		expect(expiredOf("2027-11-01", "2026-10")).toBeGreaterThan(
+			expiredOf("2027-10-31", "2026-10"),
+		);
+		expect(expiredOf("2027-11-01", "2026-11")).toBe(0);
+		// the November cohort starts to expire with the first credit sold on 1 November
+		// whose year is up, a later run of the window
+		const firstNovember = [...byDate.keys()]
+			.sort()
+			.find((date) => expiredOf(date, "2026-11") > 0);
+		expect(firstNovember).toBeDefined();
+		expect((firstNovember as string) > "2027-11-01").toBe(true);
+		// the October cohort is still not fully expired: part of it was spent or is still waiting
 		const october = byDate
 			.get("2027-11-15")
 			?.breakageByCohort.find((cohort) => cohort.month === "2026-10");

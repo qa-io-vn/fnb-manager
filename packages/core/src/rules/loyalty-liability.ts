@@ -1,4 +1,9 @@
-import { formatIsoDate, wallClockIn, zonedInstant } from "./business-date.js";
+import {
+	formatIsoDate,
+	shiftIsoDate,
+	wallClockIn,
+	zonedInstant,
+} from "./business-date.js";
 import {
 	type LedgerEntry,
 	type LedgerRules,
@@ -70,10 +75,10 @@ function monthMinus(month: string, months: number): string {
 }
 
 /**
- * The month an expiry row is reported under: the month of the moment it ran,
- * less the expiry period. It is the issue month only when the run follows the
- * expiry moment within the same month; a credit sold late on the last day of a
- * month and expired by the next night's run is reported under the next month.
+ * The month an expiry row is reported under when it cannot be traced to the
+ * credits it expired: the month of the moment it ran, less the expiry period.
+ * It is the issue month only when the run follows the expiry moment within the
+ * same month, so it is the fallback of `expiredByIssueMonth`, not the rule.
  */
 export function expiryCohortMonth(
 	expiredAt: number,
@@ -86,10 +91,89 @@ export function expiryCohortMonth(
 }
 
 /**
+ * The expired points of a programme by the month their credit was issued
+ * (ADR-048, G-104). An `expire` row is one row per member and carries no link to
+ * an earn, so it is traced the way it was written: first in first out. At the
+ * moment of the run the credits past their expiry (net of their clawbacks) are
+ * lined up oldest expiry first; every spent point took the front of the line, so
+ * the points that expired are the last ones, and each credit is charged with its
+ * share of them. A row that cannot be traced (no credit past its expiry, for
+ * example an opening balance) is reported under `expiryCohortMonth`.
+ */
+export function expiredByIssueMonth(
+	entries: readonly LedgerEntry[],
+	rules: LedgerRules,
+	asOf: number,
+): Map<string, number> {
+	const byMonth = new Map<string, number>();
+	const add = (month: string, points: number) => {
+		if (points > 0) {
+			byMonth.set(month, (byMonth.get(month) ?? 0) + points);
+		}
+	};
+	const upTo = entries.filter((row) => row.occurredAt <= asOf);
+	for (const expiry of upTo) {
+		if (expiry.kind !== "expire" || expiry.pointDelta >= 0) {
+			continue;
+		}
+		const at = expiry.occurredAt;
+		const expired = -expiry.pointDelta;
+		const line = upTo
+			.filter(
+				(credit) =>
+					credit.member === expiry.member &&
+					credit.pointDelta > 0 &&
+					(credit.kind === "earn" || credit.kind === "adjust") &&
+					credit.reason !== REDEMPTION_RELEASED &&
+					credit.expiresAt !== null &&
+					credit.expiresAt <= at &&
+					credit.occurredAt <= at,
+			)
+			.map((credit) => ({
+				credit,
+				net:
+					credit.pointDelta +
+					upTo
+						.filter(
+							(row) =>
+								row.kind === "clawback" &&
+								row.sourceId === credit.id &&
+								row.occurredAt <= at,
+						)
+						.reduce((sum, row) => sum + row.pointDelta, 0),
+			}))
+			.sort(
+				(a, b) =>
+					(a.credit.expiresAt ?? 0) - (b.credit.expiresAt ?? 0) ||
+					a.credit.occurredAt - b.credit.occurredAt ||
+					a.credit.id - b.credit.id,
+			);
+		const total = line.reduce((sum, item) => sum + item.net, 0);
+		const first = Math.max(total - expired, 0);
+		let before = 0;
+		let traced = 0;
+		for (const { credit, net } of line) {
+			const after = before + net;
+			const part = Math.max(
+				Math.min(after, total) - Math.max(before, first),
+				0,
+			);
+			add(localMonth(credit.occurredAt, rules.timezone), part);
+			traced += part;
+			before = after;
+		}
+		add(expiryCohortMonth(at, rules), expired - traced);
+	}
+	return byMonth;
+}
+
+/**
  * The nightly row of `app.loyalty_liability(programme, asOf)`: outstanding
  * confirmed points (the positive balances of the members joined by then) times
- * the point value times one minus the breakage rate, with the flows of the day
- * and the issued and expired points by issue month. The breakage rate is the
+ * the point value times one minus the breakage rate, with the flows of the
+ * closed previous local day (ADR-048, G-104: a run at 03:23 and one at 23:30 of
+ * the same day report the same complete day) and the issued and expired points
+ * by issue month. The breakage rate is the
  * configured one until the programme's first expiry is six months old, then
  * expired over redeemed and expired points of the last 12 months.
  */
@@ -99,6 +183,11 @@ export function computeLiabilityRow(input: LiabilityInputs): LiabilityRow {
 	const wall = wallClockIn(new Date(asOf), rules.timezone);
 	const asOfDate = formatIsoDate(wall.year, wall.month, wall.day);
 	const dayStart = zonedInstant(asOfDate, 0, rules.timezone).getTime();
+	const flowStart = zonedInstant(
+		shiftIsoDate(asOfDate, -1),
+		0,
+		rules.timezone,
+	).getTime();
 
 	const confirmedAt = new Map<number, number>();
 	for (const row of upTo) {
@@ -178,7 +267,7 @@ export function computeLiabilityRow(input: LiabilityInputs): LiabilityRow {
 	let pointsExpired = 0;
 	let pointsClawedBack = 0;
 	for (const row of upTo) {
-		if (row.occurredAt < dayStart) {
+		if (row.occurredAt < flowStart || row.occurredAt >= dayStart) {
 			continue;
 		}
 		if (
@@ -221,10 +310,9 @@ export function computeLiabilityRow(input: LiabilityInputs): LiabilityRow {
 			cohort(localMonth(row.occurredAt, rules.timezone)).issued +=
 				row.pointDelta;
 		}
-		if (row.kind === "expire" && row.pointDelta < 0) {
-			cohort(expiryCohortMonth(row.occurredAt, rules)).expired -=
-				row.pointDelta;
-		}
+	}
+	for (const [month, points] of expiredByIssueMonth(entries, rules, asOf)) {
+		cohort(month).expired += points;
 	}
 
 	const valueCents = amountCents(input.programme.pointValueAmount);
