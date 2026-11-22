@@ -69,10 +69,12 @@ The stack is meant for this PC only: the API, the database and Studio hold a cop
 Before a phone or tablet is used on the local network, run once in an elevated PowerShell:
 
 ```
-powershell -ExecutionPolicy Bypass -File scriptswindows-lan-firewall.ps1
+powershell -ExecutionPolicy Bypass -File "D:\path\to\fnb-manager\scripts\windows-lan-firewall.ps1"
 ```
 
-It turns the firewall on, blocks 54321 to 54327 from Wi-Fi and wired networks (loopback and WSL are untouched), and allows only the app ports 4173, 5173, 5741 and 5751 from the local subnet. `-Check` reports without changing anything (and needs no administrator rights); `-Undo` removes the two rules. Then start the app with `pnpm zalo:dev --lan` (it listens on the Wi-Fi address only, behind its own guard) and open the printed address on the phone. A phone that cannot connect usually means the router isolates Wi-Fi clients ("AP isolation", "guest network"), or the PC took a new address: give it a fixed address in the router (a DHCP reservation) so the phone's bookmark keeps working. Mark the network Private only if it is yours alone; the rules above work on a Public one.
+Give the full path in quotes: an elevated PowerShell opens in `C:\WINDOWS\system32`, where a relative path is not found.
+
+It turns the firewall on, blocks 54321 to 54327 from Wi-Fi and wired networks (loopback and WSL are untouched), and allows only the app ports 4173, 5173, 5741 and 5751 from the local subnet. `-Check` reports without changing anything (and needs no administrator rights); `-Undo` removes the two rules. Then start the app with `pnpm zalo:dev --lan` (it listens on the Wi-Fi address only, behind its own guard) and open the printed address on the phone. A phone that cannot connect usually means the router isolates Wi-Fi clients ("AP isolation", "guest network"), or the PC took a new address: give it a fixed address in the router (a DHCP reservation) so the phone's bookmark keeps working. Without a login to the router (a shared building, or an ISP box whose password you do not have) neither setting can be changed: run `pnpm zalo:dev --tunnel` instead, whose link works from any network and needs nothing from the router, or put the PC and the phone on the phone's own hotspot. Mark the network Private only if it is yours alone; the rules above work on a Public one.
 
 Local auth has sign-up turned off (`enable_signup = false`) and e-mail confirmations off. Logins are created with `fnb tenant add-member`, or by the seed.
 
