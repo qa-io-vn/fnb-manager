@@ -281,3 +281,61 @@ Decision: the defaults of ADR-043 stay as built. A bill nobody confirms is rever
 Everything built next must run on free tiers: no paid vision API (the bill reader stays a mock and the camera path stays unbuilt until the owner funds a budget; phases 4–8 wait), receipt photos are not collected yet (when they are, 90 days in the free Supabase bucket or free object storage), the archive of old months goes to Cloudflare R2 or Backblaze B2 free allowances (G-97) and only when the database passes 300 MB after the weekly index rebuild, and hosting stays on the Supabase Free plan with GitHub Pages (a Contabo VPS was compared and not chosen).
 
 Not chosen: confirming a silent bill (it rewards a missing check), staff-total-only confirmation as the default (one person could invent bills), a paid reader now.
+
+## ADR-045 — A data-subject request that turns overdue is escalated once and then reminded daily; a lost destination never closes the episode
+
+Date 2026-11-22 · Status accepted (the owner delegated the choice: "you analyze standard and decide for me") · closes the decision of G-101
+
+Decision: (a) when an open `dsr_due_soon` episode passes from due soon to overdue, one message with its own wording is queued ("overdue", with the count and the days late of the oldest request, no personal data); while any request stays overdue the rule then repeats every 24 hours (`remind_every` = 24 hours) to the same destinations; a request that is only due soon keeps the single early notice and no repeats. (b) the evaluator keeps reading tenants that have no usable destination, so the episode stays open with current facts and is never closed because a destination was lost: the obligation does not end with the inbox. The owner sees a notice in Cài đặt → Cảnh báo that deadlines are not being sent while no destination works.
+
+Why: warn before the breach, escalate at the breach, remind on a fixed cadence until resolved is the standard service-deadline pattern; a silent overdue request is the worst outcome under the personal-data law, and a daily cadence is frequent enough to act on without teaching the owner to ignore it.
+
+Not chosen: a second recipient (a one-owner tenant has none), hourly reminders (noise), closing the episode when no destination exists (hides a live deadline).
+
+Build: a migration for the 24-hour `remind_every` and the transition message, the two characterisation tests of `pgtap:235` change to expect it, then the owner notice.
+
+## ADR-046 — Balances never go negative: adjustments are floored, clawbacks are capped at what is left, pending earns neither expire nor count
+
+Date 2026-11-22 · Status accepted (delegated) · closes G-102 and G-43
+
+Decision: (1) a manual adjustment that would take a stamp or point balance below zero is refused (22023). (2) A clawback of an earn (a void, a reversal) takes back at most the member's current balance of that kind; the part that cannot be taken is a write-off the programme absorbs, written on the clawback row as "short by n" and counted in the nightly counts. A clawback of an earn that already expired takes back only what is left of it, normally nothing. (3) A pending earn never expires while pending: its expiry clock starts when it is confirmed. (4) The wallet shows the ledger balance, which is now never negative; the `greatest(0, …)` in the wallet stays as a safety net (so the choice of G-43, show 0, is the rule and now agrees with the ledger).
+
+Why: stamp and star schemes in retail and F&B carry no member debt; a balance below zero cannot be explained at the till, and netting a debt against the next earn punishes a customer who disputed a void. The loss is bounded by the voided earn itself.
+
+Not chosen: negative balances (the airline model needs a debt rule and a collections process), netting against the next earn, showing the customer a negative figure.
+
+Build: the floor in `app.loyalty_apply_adjustment`, the cap in the clawback writers, pending earns skipped in `app.loyalty_expire`, pgTAP for each, then the second half of G-15 (generated sequences through the app functions).
+
+## ADR-047 — A credit is valid through the end of its anniversary day and is spendable until that instant, not until the nightly row
+
+Date 2026-11-22 · Status accepted (delegated) · closes the two expiry questions
+
+Decision: a credit's last day is the local date of the sale (tenant time zone) plus the programme's months, clamped to the last day of a shorter month as built (31 August plus six months is 28 February). It is valid through 23:59:59 of that date: `expires_at` is the local midnight that ends it. A credit is shown in the balance and can be spent while the moment is before `expires_at`. The nightly `app.loyalty_expire` only writes the ledger row afterwards, at its next run; between midnight and that run the credit is already unspendable and out of the wallet, whatever rows exist. Credits that have not expired yet are moved to the end of their anniversary day, later by under 24 hours, so no member loses anything. The Mini App states a date ("valid through 19 Nov 2027"), never a time.
+
+Why: loyalty terms and vouchers are dated, not timed, and a time of day that no receipt shows leads to disputes at the till; end of day is the retail convention and what Vietnamese vouchers state. Spendability must follow the instant, not a job's timing, or the window depends on when the cron ran.
+
+Not chosen: the sale's moment (the current build: invisible to the customer, and "the same day" means different hours for different credits), expiry at the nightly run.
+
+Build: `app.loyalty_earn` sets the end-of-day `expires_at`, a data migration moves the unexpired credits, `pgtap:231` changes its three same-day credits (02:00, 09:00 and 23:30) to expire together and gains the midnight-to-run window, and the wallet and the Mini App read the instant.
+
+## ADR-048 — Liability counts confirmed points only, the daily flow covers the closed previous day, breakage cohorts follow the credit
+
+Date 2026-11-22 · Status accepted (delegated) · closes G-103 and G-104
+
+Decision: (G-103) the liability is the confirmed outstanding points times the point value times one minus the breakage rate; a pending earn is not a liability until it is confirmed, so the clawback of a pending earn lowers nothing. (G-104 F1) an expiry is attributed to the month its credit was issued, through the earn row it expires, and only a row without that link falls back to first-in first-out. (G-104 F2) `points_issued`, `points_redeemed` and `deferred_revenue_released_amount` of a run cover the whole previous local business day, from its start to the start of the next, so the 03:23 nightly reports a complete day (the definition of the digest, ADR-031) and a late run still reports that day only.
+
+Why: revenue recognition is done on a closed period and an obligation is counted once, when the credit is earned and confirmed (the IFRS 15 and ASC 606 treatment of loyalty credits); breakage is analysed by vintage, which is the month a credit was issued; half-day aggregates mislead.
+
+Build: a migration for `app.loyalty_liability` and the breakage function, then the labelled KNOWN LIMITATION assertion of `pgtap:236` changes to the new rule; do it before any page reads these columns.
+
+## ADR-049 — Store scope belongs to the login; the app only picks the brand; the owner reads which brands a login spans
+
+Date 2026-11-22 · Status accepted (delegated) · closes G-105
+
+Decision: the design stays as built. An owner or manager assigns stores to a person, and one person may work in stores of several brands of the same tenant (a manager of two brands is normal in a multi-brand business). The staff app lists only the stores of the brand it was opened for, and the database accepts a call only for a store in the login's scope (`wrong_store` otherwise). The access page shows, per login, the brands its stores belong to, and flags a cashier (staff role) login that spans more than one brand: warned, not refused.
+
+Why: role-based access assigns rights to people on resources, and a client app is not a security boundary; no path crosses a tenant, and the owner is the one who sets the scope.
+
+Not chosen: refusing a multi-brand login at creation (it blocks real managers), scoping the session by the app's brand (it adds a second scope to keep in step with the first).
+
+Build: the per-login brand list and flag on the access page, and a pgTAP case beside `pgtap:104_follow_oa_and_access` that pins the store scope.
