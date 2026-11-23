@@ -22,6 +22,9 @@ export const STAMP_MIN_BILL = 30_000;
 export const ADJUSTMENT_REASON = "Bù dấu do máy in lỗi";
 export const QUEUE_AMOUNT = 45_000;
 
+export const RECONCILIATION_ENTRY_NAME = "Giảm thành viên 10%";
+export const RECONCILIATION_BILL_DISCOUNT = "Giảm tay";
+
 export interface LoyaltyFixture {
 	readonly programmeId: string;
 	readonly day: string;
@@ -33,6 +36,13 @@ export interface LoyaltyFixture {
 	readonly memberCount: number;
 	readonly queueItemId: string;
 	readonly queueInvoices: readonly [string, string];
+	/** The path D items (G-100): one of each reason, and the code of the redemption behind two of them. */
+	readonly reconciliation: {
+		readonly itemIds: readonly [string, string, string];
+		readonly redemptionCode: string;
+		readonly entryName: string;
+		readonly billDiscountName: string;
+	};
 	readonly shiftIds: readonly [string, string];
 	readonly earnedOnDay: number;
 }
@@ -225,6 +235,55 @@ export async function createLoyaltyFixture(
 					"the double-candidate check-in did not reach the queue",
 				);
 			}
+			// Path D items as app.reconcile_redemptions writes them (G-100): a verified redemption with no invoice, a bill
+			// discount with no redemption, and a redemption whose invoice carries another amount. The redemption's code must
+			// never reach the page.
+			await tx`select set_config('request.jwt.claims', '', true)`;
+			const [coupon] = await tx<{ id: string }[]>`
+				insert into public.coupons (
+					tenant_id, programme_id, reward_key, name, reward_kind, reward_percent, reward_amount,
+					reward_item_external_ids, excluded_item_external_ids, min_bill_amount, cost_points, status
+				)
+				values (
+					${tenantId}, ${programme.id}, ${`e2e-d-${hex}`}, 'Giảm 10%', 'percent_off', 10, null,
+					null, '{}', 0, 10, 'draft'
+				)
+				returning id
+			`;
+			if (coupon === undefined) throw new Error("no coupon");
+			const redemptionCode = `D${hex.toUpperCase()}`.slice(0, 12);
+			const [redemption] = await tx<{ id: string }[]>`
+				insert into public.redemptions (
+					tenant_id, store_id, membership_id, coupon_id, code, state, held_at, hold_expires_at,
+					verified_at, rail, pos_discount_name
+				)
+				values (
+					${tenantId}, ${storeOne}, ${members.main}, ${coupon.id}, ${redemptionCode}, 'held',
+					now() - interval '4 days', now() - interval '3 days', now() - interval '4 days',
+					'pos_payment_discount', ${RECONCILIATION_ENTRY_NAME}
+				)
+				returning id
+			`;
+			if (redemption === undefined) throw new Error("no redemption");
+			await tx`
+				update public.invoices set bill_discount_name = ${RECONCILIATION_BILL_DISCOUNT} where id = ${queuedOne}
+			`;
+			const reconciliation = await tx<{ id: string; reason: string }[]>`
+				insert into public.loyalty_queue (
+					tenant_id, store_id, membership_id, redemption_id, invoice_id, matched_path, candidate_invoice_ids, reason, created_at
+				)
+				values
+					(${tenantId}, ${storeOne}, ${members.main}, ${redemption.id}, null, 'D', '{}', 'verified_without_invoice', now() - interval '3 days'),
+					(${tenantId}, ${storeOne}, ${members.main}, ${redemption.id}, ${queuedTwo}, 'D', '{}', 'amount_mismatch', now() - interval '2 days'),
+					(${tenantId}, ${storeOne}, null, null, ${queuedOne}, 'D', '{}', 'discount_without_redemption', now() - interval '1 day')
+				returning id, reason
+			`;
+			const itemIdOf = (reason: string): string => {
+				const found = reconciliation.find((row) => row.reason === reason);
+				if (found === undefined)
+					throw new Error(`no path D item for ${reason}`);
+				return found.id;
+			};
 			const [count] = await tx<{ members: number; earned: number }[]>`
 				select
 					(select count(*)::int from public.memberships where tenant_id = ${tenantId}) as members,
@@ -238,6 +297,16 @@ export async function createLoyaltyFixture(
 				memberCount: count?.members ?? 0,
 				queueItemId: item.id,
 				queueInvoices: [queuedOne, queuedTwo],
+				reconciliation: {
+					itemIds: [
+						itemIdOf("verified_without_invoice"),
+						itemIdOf("amount_mismatch"),
+						itemIdOf("discount_without_redemption"),
+					],
+					redemptionCode,
+					entryName: RECONCILIATION_ENTRY_NAME,
+					billDiscountName: RECONCILIATION_BILL_DISCOUNT,
+				},
 				shiftIds: [shiftOne, shiftTwo],
 				earnedOnDay: count?.earned ?? 0,
 			};

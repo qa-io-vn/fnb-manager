@@ -229,13 +229,13 @@ test("through PostgREST, each login reads the fixture's loyalty rows its role al
 	expect(seeded().memberCount).toBe(BULK_MEMBERS + 3);
 	expect(reads).toMatchObject({
 		owner: expect.stringMatching(
-			new RegExp(`^${members} [1-9]\\d* [1-9]\\d* 1$`),
+			new RegExp(`^${members} [1-9]\\d* [1-9]\\d* 4$`),
 		),
 		manager: expect.stringMatching(
-			new RegExp(`^${members} [1-9]\\d* [1-9]\\d* 1$`),
+			new RegExp(`^${members} [1-9]\\d* [1-9]\\d* 4$`),
 		),
 		"store-manager": expect.stringMatching(
-			new RegExp(`^${members} [1-9]\\d* 0 1$`),
+			new RegExp(`^${members} [1-9]\\d* 0 4$`),
 		),
 		staff: "0 0 0 0",
 		viewer: expect.stringMatching(
@@ -338,6 +338,48 @@ test("the owner lists the members masked in pages under the 1,000-row limit, loo
 	const ledgerCsv = await csvTextOf(page, "loyalty-ledger");
 	expect(csvRows(ledgerCsv).length).toBeGreaterThanOrEqual(6);
 	await expectNoFullPhone(page, ledgerCsv);
+	await checkPage(page);
+	expectNoConsoleErrors(page);
+});
+
+test("a store manager reads the three kinds of path D item below the queue, read only, with no code and no phone on the page (G-100)", async ({
+	page,
+}) => {
+	await signedIn(page, "store-manager");
+	await page.goto("/#/khach-hang/doi-soat");
+	const section = page.getByTestId("loyalty-reconciliation");
+	await expect(section).toContainText("Chênh lệch voucher và giảm giá (3)");
+	const items = section.getByTestId("loyalty-reconciliation-item");
+	await expect(items).toHaveCount(3);
+	// oldest first: the verified redemption, the amount that differs, the bill discount with no redemption
+	await expect(items.nth(0)).toHaveAttribute(
+		"data-reason",
+		"verified_without_invoice",
+	);
+	await expect(items.nth(0)).toContainText(
+		"Voucher đã dùng nhưng chưa thấy hóa đơn",
+	);
+	await expect(items.nth(0)).toContainText(
+		`Tên giảm giá trên POS: ${seeded().reconciliation.entryName}`,
+	);
+	await expect(items.nth(0)).toContainText("Chưa có hóa đơn.");
+	await expect(items.nth(1)).toHaveAttribute("data-reason", "amount_mismatch");
+	await expect(items.nth(1)).toContainText("Hóa đơn số Q2");
+	await expect(items.nth(2)).toHaveAttribute(
+		"data-reason",
+		"discount_without_redemption",
+	);
+	await expect(items.nth(2)).toContainText(
+		`Tên giảm giá trên POS: ${seeded().reconciliation.billDiscountName}`,
+	);
+	await expect(items.nth(2)).toContainText("Hóa đơn số Q1");
+	// read only: nothing in the section can be pressed
+	await expect(section.getByRole("button")).toHaveCount(0);
+	// the code of the redemption behind two of the items never reaches the page
+	expect(await page.content()).not.toContain(
+		seeded().reconciliation.redemptionCode,
+	);
+	await expectNoFullPhone(page);
 	await checkPage(page);
 	expectNoConsoleErrors(page);
 });
@@ -480,6 +522,7 @@ test("a viewer reads the members but not the queue, and staff get the reason onl
 		"Chỉ chủ và quản lý cửa hàng xem và xử lý hàng chờ đối soát.",
 	);
 	await expect(page.getByTestId("loyalty-queue-item")).toHaveCount(0);
+	await expect(page.getByTestId("loyalty-reconciliation")).toHaveCount(0);
 	await checkPage(page);
 	expectNoConsoleErrors(page);
 	await page.getByRole("button", { name: "Đăng xuất" }).click();
