@@ -9,6 +9,7 @@ import {
 	createLoyaltyFixture,
 	LOYALTY_PHONES,
 	type LoyaltyFixture,
+	syntheticPhone,
 } from "../support/loyalty-fixture";
 import { expect, type Page, test } from "../support/policy-test";
 import {
@@ -36,7 +37,15 @@ type Login = SettingsRole | "publisher";
 
 const MAIN_LOCAL = `0${LOYALTY_PHONES.main.slice(COUNTRY.length)}`;
 const SECOND_LOCAL = `0${LOYALTY_PHONES.second.slice(COUNTRY.length)}`;
-const ALL_PHONES = Object.values(LOYALTY_PHONES);
+/** The two members of the opt-out and promotion test (G-56); they are created by that test, not by the fixture. */
+const PROMOTION_PHONES = {
+	optedOut: syntheticPhone("1204"),
+	consenting: syntheticPhone("1205"),
+} as const;
+const ALL_PHONES: readonly string[] = [
+	...Object.values(LOYALTY_PHONES),
+	...Object.values(PROMOTION_PHONES),
+];
 
 let fixture: SettingsFixture | undefined;
 let loyalty: LoyaltyFixture | undefined;
@@ -172,6 +181,185 @@ function expectNoPhoneInUrls(exchanges: readonly Exchange[]): void {
 	}
 }
 
+interface PromotionMember {
+	readonly customerId: string;
+	readonly membershipId: string;
+}
+
+interface PromotionWorld {
+	readonly storeId: string;
+	/** The instant the messages are queued and drained at: tomorrow 12:00 in the tenant's zone, inside any sending hours. */
+	readonly noon: string;
+	readonly optedOut: PromotionMember;
+	readonly consenting: PromotionMember;
+}
+
+/**
+ * What the Mini App enrolment would have written, with the messaging switched on: a brand with its Official Account
+ * and approved templates, two members who agreed to loyalty and marketing, and the tenant's message settings.
+ */
+async function seedPromotionWorld(
+	sql: Sql,
+	tenantId: string,
+	storeId: string,
+	hex: string,
+): Promise<PromotionWorld> {
+	const [brand] = await sql<{ id: string }[]>`
+		insert into public.brands (tenant_id, brand_key, display_name, store_ids)
+		values (${tenantId}, 'brand-1', 'Thương hiệu thử', ${[storeId]}::uuid[])
+		returning id
+	`;
+	if (brand === undefined) throw new Error("no brand");
+	const [oa] = await sql<{ id: string }[]>`
+		insert into public.oas (tenant_id, brand_id, external_id, package_tier, verified, secret_name)
+		values (${tenantId}, ${brand.id}, ${`e2e-oa-${hex}`}, 'tang_truong', true, 'ZALO_OA_SECRET_BRAND_1')
+		returning id
+	`;
+	if (oa === undefined) throw new Error("no official account");
+	await sql`
+		insert into public.zbs_templates (tenant_id, oa_id, external_id, tag, purpose, approval_state)
+		values
+			(${tenantId}, ${oa.id}, ${`e2e-voucher-${hex}`}, 'transaction', 'voucher', 'approved'),
+			(${tenantId}, ${oa.id}, ${`e2e-win-back-${hex}`}, 'promotion', 'win_back', 'approved'),
+			(${tenantId}, ${oa.id}, ${`e2e-birthday-${hex}`}, 'customer_care', 'birthday', 'approved')
+	`;
+	await sql`
+		insert into app.customer_message_settings (tenant_id, enabled, zbs_enabled, promotions_enabled)
+		values (${tenantId}, true, true, true)
+	`;
+	const enrol = async (phone: string): Promise<PromotionMember> => {
+		const [customer] = await sql<{ id: string }[]>`
+			select app.loyalty_customer_for_phone(${tenantId}::uuid, ${phone}, now())::text as id
+		`;
+		if (customer === undefined) throw new Error("no customer");
+		const [member] = await sql<{ id: string }[]>`
+			select app.loyalty_join(${tenantId}::uuid, ${customer.id}::uuid, 'mini_app', ${storeId}::uuid, ${brand.id}::uuid, null, now())::text as id
+		`;
+		if (member === undefined) throw new Error("no membership");
+		await sql`
+			insert into public.consent_records (tenant_id, subject_type, subject_id, purpose, policy_version, channel, granted_at)
+			values
+				(${tenantId}, 'customer', ${customer.id}, 'loyalty', 'v1', 'mini_app', now() - interval '10 days'),
+				(${tenantId}, 'customer', ${customer.id}, 'marketing', 'v1', 'mini_app', now() - interval '10 days')
+		`;
+		return { customerId: customer.id, membershipId: member.id };
+	};
+	const optedOut = await enrol(PROMOTION_PHONES.optedOut);
+	const consenting = await enrol(PROMOTION_PHONES.consenting);
+	const [time] = await sql<{ noon: string }[]>`
+		select ((((now() at time zone 'Asia/Ho_Chi_Minh')::date + 1) + time '12:00') at time zone 'Asia/Ho_Chi_Minh')::text as noon
+	`;
+	if (time === undefined) throw new Error("no time");
+	return { storeId, noon: time.noon, optedOut, consenting };
+}
+
+/** The one insert path of customer messages, as the win-back scan and the earn and hold triggers call it; null when it refuses. */
+async function enqueueCustomerMessage(
+	sql: Sql,
+	tenantId: string,
+	world: PromotionWorld,
+	membershipId: string,
+	kind: "win_back" | "birthday" | "coupon_issued",
+	eventKey: string,
+): Promise<string | null> {
+	const params = kind === "win_back" ? { inactive_days: 45 } : {};
+	const [row] = await sql<{ id: string | null }[]>`
+		select app.enqueue_customer_message(
+			${tenantId}::uuid, ${membershipId}::uuid, ${kind}::text, ${eventKey}::text, ${sql.json(params)},
+			${world.storeId}::uuid, null, ${world.noon}::timestamptz
+		)::text as id
+	`;
+	return row?.id ?? null;
+}
+
+/**
+ * The dispatcher's customer step without its provider call: app.claim_next_customer_message decides (and cancels what
+ * it refuses), then the claimed messages are marked begun and sent under a synthetic provider id, as
+ * packages/notify does through app.begin_customer_send and app.finish_customer_send. The recipient column of the
+ * claim is never read, so no phone leaves the database.
+ */
+async function drainCustomerMessages(
+	sql: Sql,
+	tenantId: string,
+	at: string,
+): Promise<{ messageId: string; kind: string; route: string }[]> {
+	const claimed: { messageId: string; kind: string; route: string }[] = [];
+	for (let claim = 0; claim < 10; claim += 1) {
+		const [next] = await sql<
+			{ message_id: string; claimed_at: string; kind: string; route: string }[]
+		>`
+			select c.message_id::text as message_id, c.claimed_at::text as claimed_at, c.kind, c.route
+			from app.claim_next_customer_message(
+				'e2e-privacy', array['consultation', 'template'], interval '2 minutes', ${at}::timestamptz, ${tenantId}::uuid
+			) c
+		`;
+		if (next === undefined) return claimed;
+		const [begun] = await sql<{ ok: boolean }[]>`
+			select app.begin_customer_send(${next.message_id}::uuid, ${next.claimed_at}::timestamptz, ${at}::timestamptz) as ok
+		`;
+		expect(begun?.ok, "the claim is still ours").toBe(true);
+		const [finished] = await sql<{ status: string }[]>`
+			select app.finish_customer_send(
+				${next.message_id}::uuid, ${next.claimed_at}::timestamptz, 'sent', null, ${`mock-${next.message_id}`}, null, ${at}::timestamptz
+			) as status
+		`;
+		expect(finished?.status).toBe("sent");
+		claimed.push({
+			messageId: next.message_id,
+			kind: next.kind,
+			route: next.route,
+		});
+	}
+	throw new Error("the customer outbox still had a message after ten claims");
+}
+
+interface MessageRow {
+	readonly subject_id: string;
+	readonly kind: string;
+	readonly status: string;
+	readonly channel: string;
+	readonly decision: string | null;
+	readonly hold_reason: string | null;
+	readonly last_error_code: string | null;
+	readonly attempts: number;
+	readonly was_sent: boolean;
+	readonly recipient_ref: string;
+	readonly params: Record<string, unknown> | null;
+	readonly consent_purpose: string | null;
+	readonly consent_revoked: boolean | null;
+	readonly whole: string;
+}
+
+function customerMessages(sql: Sql, tenantId: string): Promise<MessageRow[]> {
+	return sql<MessageRow[]>`
+		select
+			o.subject_id::text as subject_id, o.kind, o.status, o.channel, o.decision, o.hold_reason, o.last_error_code,
+			o.attempts::integer as attempts, o.sent_at is not null as was_sent, o.recipient_ref, o.params,
+			c.purpose::text as consent_purpose, (c.revoked_at is not null) as consent_revoked,
+			to_jsonb(o)::text as whole
+		from public.outbound_messages o
+		left join public.consent_records c on c.id = o.consent_record_id
+		where o.tenant_id = ${tenantId} and o.subject_type = 'customer' and o.kind is not null
+		order by o.created_at, o.id
+	`;
+}
+
+function messageOf(
+	rows: readonly MessageRow[],
+	customerId: string,
+	kind: string,
+): MessageRow {
+	const found = rows.find(
+		(row) => row.subject_id === customerId && row.kind === kind,
+	);
+	if (found === undefined) throw new Error(`no ${kind} message was queued`);
+	return found;
+}
+
+function outcomeOf(row: MessageRow): string {
+	return `${row.status}:${row.channel}:${row.decision ?? ""}`;
+}
+
 test("through PostgREST, only an owner or manager with every store reaches the tooling, with the phone in a POST body, never a URL", async () => {
 	const results: Record<string, string> = {};
 	for (const login of [
@@ -274,6 +462,242 @@ test("an owner looks a customer up by phone, sees consent per purpose without an
 	expectNoPhoneInUrls(exchanges);
 	for (const { body } of exchanges) {
 		for (const phone of ALL_PHONES) expect(body).not.toContain(phone);
+	}
+	expectNoConsoleErrors(page);
+});
+
+/*
+ * G-56: the opt-out on the page reaches the send decision.
+ *
+ * Test design (ISTQB):
+ * - State transition testing: a member who agreed to marketing has promotions waiting in the outbox (consented, queued);
+ *   the owner withdraws the consent on the page (opted out); the dispatcher's claim then refuses the waiting promotions
+ *   (cancelled, never sent, never claimed), and a second drain finds nothing (cancelled is final). The invalid
+ *   transition is also tried: after the opt-out no new promotion is queued for the member.
+ * - Decision table testing: opted out of marketing (yes, no) x message kind (win_back and birthday are advertising,
+ *   coupon_issued is transactional) x member. Cells run here: (yes, win_back) and (yes, birthday) are cancelled with
+ *   no_marketing_consent, (yes, coupon_issued) still goes because the loyalty consent stands, and (no, win_back) goes as a
+ *   template, which shows that the refusal is caused by the opt-out and not by a broken fixture. The full 192-cell
+ *   table is pgTAP 160_customer_message_route_decision_table; this test adds the page as the cause.
+ * - Negative and security testing: no full phone number on the page, in a request URL or response, nor anywhere in
+ *   the message rows (reason, parameters, recipient reference), and the cancelled rows carry nothing a send would have set.
+ */
+test("an owner opts a member out of marketing on the page: the waiting win-back is cancelled with no_marketing_consent, nothing new is queued, and a member who did not opt out still gets theirs", async ({
+	page,
+}) => {
+	const tenantId = settings().tenantId;
+	const hex = settings().slug.slice(FIXTURE_SLUG_PREFIX.length);
+	const world = await withSql((sql) =>
+		seedPromotionWorld(sql, tenantId, settings().storeIds[0], hex),
+	);
+	const { optedOut, consenting } = world;
+	const queued = await withSql(async (sql) => ({
+		optedOutWinBack: await enqueueCustomerMessage(
+			sql,
+			tenantId,
+			world,
+			optedOut.membershipId,
+			"win_back",
+			"e2e-opt-out-win-back",
+		),
+		optedOutBirthday: await enqueueCustomerMessage(
+			sql,
+			tenantId,
+			world,
+			optedOut.membershipId,
+			"birthday",
+			"e2e-opt-out-birthday",
+		),
+		optedOutCoupon: await enqueueCustomerMessage(
+			sql,
+			tenantId,
+			world,
+			optedOut.membershipId,
+			"coupon_issued",
+			"e2e-opt-out-coupon",
+		),
+		consentingWinBack: await enqueueCustomerMessage(
+			sql,
+			tenantId,
+			world,
+			consenting.membershipId,
+			"win_back",
+			"e2e-consenting-win-back",
+		),
+	}));
+	for (const [name, id] of Object.entries(queued)) {
+		expect(id, `${name} is queued while both consents stand`).not.toBeNull();
+	}
+	const waiting = await withSql((sql) => customerMessages(sql, tenantId));
+	expect(waiting.map((row) => `${row.kind}:${row.status}`).sort()).toEqual([
+		"birthday:queued",
+		"coupon_issued:queued",
+		"win_back:queued",
+		"win_back:queued",
+	]);
+
+	await signedIn(page, "owner");
+	const answers = recordDataApi(page);
+	await page.goto("/#/khach-hang/tra-cuu-du-lieu");
+	await page
+		.getByTestId("privacy-lookup-input")
+		.fill(`0${PROMOTION_PHONES.optedOut.slice(COUNTRY.length)}`);
+	await page.getByTestId("privacy-lookup-submit").click();
+	await expect(page.getByTestId("privacy-subject-phone")).toHaveText(
+		"•••• ••• 204",
+	);
+	await expect(page.getByTestId("privacy-consent")).toHaveCount(2);
+	await expectNoFullPhone(page);
+	const marketing = page
+		.getByTestId("privacy-consent")
+		.and(page.locator('[data-purpose="marketing"]'));
+	await marketing.getByTestId("privacy-revoke").click();
+	await marketing.getByTestId("privacy-revoke-yes").click();
+	await expect(page.getByTestId("privacy-revoke-done")).toContainText(
+		"Đã rút đồng ý Tin khuyến mại.",
+	);
+	await expectNoFullPhone(page);
+
+	const [consent] = await withSql(
+		(sql) => sql<
+			{
+				opted_out_marketing: boolean;
+				opted_out_loyalty: boolean;
+				consenting_marketing: boolean;
+			}[]
+		>`
+			select
+				app.has_active_consent(${tenantId}::uuid, 'customer', ${optedOut.customerId}::uuid, 'marketing') as opted_out_marketing,
+				app.has_active_consent(${tenantId}::uuid, 'customer', ${optedOut.customerId}::uuid, 'loyalty') as opted_out_loyalty,
+				app.has_active_consent(${tenantId}::uuid, 'customer', ${consenting.customerId}::uuid, 'marketing') as consenting_marketing
+		`,
+	);
+	expect(consent).toEqual({
+		opted_out_marketing: false,
+		opted_out_loyalty: true,
+		consenting_marketing: true,
+	});
+
+	const claimed = await withSql((sql) =>
+		drainCustomerMessages(sql, tenantId, world.noon),
+	);
+	expect(
+		claimed.map((claim) => claim.messageId).sort(),
+		"only the coupon of the opted-out member and the win-back of the other member reach the provider",
+	).toEqual([queued.optedOutCoupon, queued.consentingWinBack].sort());
+	expect(claimed.map((claim) => claim.route)).toEqual(["template", "template"]);
+	const sent = await withSql((sql) => customerMessages(sql, tenantId));
+	expect({
+		"opted out, win_back": outcomeOf(
+			messageOf(sent, optedOut.customerId, "win_back"),
+		),
+		"opted out, birthday": outcomeOf(
+			messageOf(sent, optedOut.customerId, "birthday"),
+		),
+		"opted out, coupon_issued": outcomeOf(
+			messageOf(sent, optedOut.customerId, "coupon_issued"),
+		),
+		"consenting, win_back": outcomeOf(
+			messageOf(sent, consenting.customerId, "win_back"),
+		),
+	}).toEqual({
+		"opted out, win_back": "cancelled:mini_app:no_marketing_consent",
+		"opted out, birthday": "cancelled:mini_app:no_marketing_consent",
+		"opted out, coupon_issued": "sent:zalo_zbs:send",
+		"consenting, win_back": "sent:zalo_zbs:send",
+	});
+	for (const kind of ["win_back", "birthday"]) {
+		const cancelled = messageOf(sent, optedOut.customerId, kind);
+		expect(cancelled, `${kind} was never claimed or sent`).toMatchObject({
+			attempts: 0,
+			was_sent: false,
+			hold_reason: null,
+			last_error_code: null,
+			consent_purpose: "marketing",
+			consent_revoked: true,
+		});
+		expect(cancelled.recipient_ref).toBe(`membership:${optedOut.membershipId}`);
+		expect(Object.keys(cancelled.params ?? {}).sort()).toEqual(
+			kind === "win_back"
+				? ["inactive_days", "membership_id"]
+				: ["membership_id"],
+		);
+	}
+	expect(messageOf(sent, consenting.customerId, "win_back")).toMatchObject({
+		attempts: 1,
+		was_sent: true,
+		consent_purpose: "marketing",
+		consent_revoked: false,
+	});
+	expect(
+		await withSql((sql) => drainCustomerMessages(sql, tenantId, world.noon)),
+		"a cancelled message is final: the second drain has nothing to claim",
+	).toEqual([]);
+
+	const after = await withSql(async (sql) => ({
+		winBack: await enqueueCustomerMessage(
+			sql,
+			tenantId,
+			world,
+			optedOut.membershipId,
+			"win_back",
+			"e2e-opt-out-win-back-again",
+		),
+		birthday: await enqueueCustomerMessage(
+			sql,
+			tenantId,
+			world,
+			optedOut.membershipId,
+			"birthday",
+			"e2e-opt-out-birthday-again",
+		),
+		coupon: await enqueueCustomerMessage(
+			sql,
+			tenantId,
+			world,
+			optedOut.membershipId,
+			"coupon_issued",
+			"e2e-opt-out-coupon-again",
+		),
+		consentingWinBack: await enqueueCustomerMessage(
+			sql,
+			tenantId,
+			world,
+			consenting.membershipId,
+			"win_back",
+			"e2e-consenting-win-back-again",
+		),
+	}));
+	expect(after.winBack, "no win-back is queued after the opt-out").toBeNull();
+	expect(after.birthday, "no birthday message is queued either").toBeNull();
+	expect(
+		after.coupon,
+		"the loyalty consent still queues a coupon",
+	).not.toBeNull();
+	expect(after.consentingWinBack).not.toBeNull();
+	const final = await withSql((sql) => customerMessages(sql, tenantId));
+	expect(
+		final.filter(
+			(row) =>
+				row.subject_id === optedOut.customerId &&
+				(row.kind === "win_back" || row.kind === "birthday"),
+		),
+	).toHaveLength(2);
+
+	const exchanges = await answers();
+	expect(
+		exchanges
+			.filter((exchange) => exchange.url.includes("/rpc/dsr_lookup"))
+			.map((exchange) => exchange.method),
+	).toContain("POST");
+	expectNoPhoneInUrls(exchanges);
+	for (const { body } of exchanges) {
+		for (const phone of ALL_PHONES) expect(body).not.toContain(phone);
+	}
+	const everything = final.map((row) => row.whole).join("\n");
+	for (const phone of ALL_PHONES) {
+		expect(everything).not.toContain(phone);
+		expect(everything).not.toContain(phone.slice(COUNTRY.length));
 	}
 	expectNoConsoleErrors(page);
 });

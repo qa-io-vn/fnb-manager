@@ -4,8 +4,10 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { I18nProvider } from "../../i18n";
+import { vndFormatters } from "../../test/render";
 import type { StaffApp, StaffMember } from "./source";
 import { BrandsFact } from "./staff-brands";
+import { MemberFacts } from "./staff-roster";
 import { brandsOfScope, crossesBrands } from "./staff-rules";
 
 const STORE_1 = "11111111-1111-4111-8111-111111111111";
@@ -195,5 +197,46 @@ describe("the brands line of a roster row", () => {
 		expect(screen.getByTestId("staff-brands-flag")).toHaveTextContent(
 			"This staff login works in 2 brands.",
 		);
+	});
+});
+
+// The roster row's own wiring: the facts of a member carry the brands line when the roster has loaded the staff apps.
+describe("the member facts of a roster row", () => {
+	const member: StaffMember = {
+		id: "member-1",
+		displayName: "Nhân viên thử",
+		role: "staff",
+		storeIds: [STORE_1, STORE_3],
+		status: "active",
+		paired: true,
+		pairedAt: "2026-11-10T03:00:00Z",
+		phoneHint: null,
+		deactivatedAt: null,
+		audit: null,
+	};
+	const facts = (apps: readonly StaffApp[] | undefined) =>
+		render(
+			<I18nProvider language="vi" onLanguageChange={() => undefined}>
+				<MemberFacts
+					member={member}
+					profiles={[]}
+					apps={apps}
+					formatters={vndFormatters()}
+					timeZone="Asia/Ho_Chi_Minh"
+				/>
+			</I18nProvider>,
+		);
+
+	it("shows the brands line and the flag for a cashier who spans two brands", () => {
+		facts(TWO_BRANDS);
+		expect(screen.getByTestId("staff-brands")).toHaveTextContent(
+			"Nhân viên Thương hiệu 1, Nhân viên Thương hiệu 2",
+		);
+		expect(screen.getByTestId("staff-brands-flag")).toBeVisible();
+	});
+
+	it("shows no brands line while the apps are not loaded", () => {
+		facts(undefined);
+		expect(screen.queryByTestId("staff-brands")).toBeNull();
 	});
 });

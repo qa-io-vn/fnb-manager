@@ -473,15 +473,26 @@ describe("dsr_due_soon alert", () => {
 			expect(rendered.text).not.toMatch(LEFTOVER);
 		});
 
-		it("shows zero days late on the day a request turns overdue", () => {
-			expect(body(reminder({ overdue: 1, days_late: 0 }))).toBe(
-				"Nhắc lại: 1 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời, yêu cầu cũ nhất trễ 0 ngày. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+		it("says a request has just passed its deadline, as a warning and not as a reminder, on the day it turns overdue", () => {
+			const rendered = reminder({ overdue: 1, days_late: 0 });
+			expect(body(rendered)).toBe(
+				"Cảnh báo: 1 yêu cầu về dữ liệu cá nhân vừa quá hạn trả lời. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
 			);
+			expect(rendered.title).toBe("Cảnh báo vận hành từ FNB Manager");
+			expect(rendered.text).not.toMatch(/0 ngày|Nhắc lại/);
 		});
 
-		it("falls back to zero counts when the facts lack them", () => {
+		it("is a reminder with its days late from the first whole day on, and keeps the reminder title", () => {
+			const rendered = reminder({ overdue: 1, days_late: 1 });
+			expect(body(rendered)).toBe(
+				"Nhắc lại: 1 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời, yêu cầu cũ nhất trễ 1 ngày. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+			);
+			expect(rendered.title).toBe("Nhắc lại cảnh báo vận hành");
+		});
+
+		it("reads missing facts as zero: a just-overdue warning with no count", () => {
 			expect(body(reminder({}))).toBe(
-				"Nhắc lại: 0 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời, yêu cầu cũ nhất trễ 0 ngày. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+				"Cảnh báo: 0 yêu cầu về dữ liệu cá nhân vừa quá hạn trả lời. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
 			);
 		});
 

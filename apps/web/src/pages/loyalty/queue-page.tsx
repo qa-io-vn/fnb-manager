@@ -257,10 +257,14 @@ function QueueItem({
 function ReconciliationItem({
 	item,
 	stores,
+	level = "h3",
 }: {
 	readonly item: ReconciliationItemRow;
 	readonly stores: readonly StoreName[];
+	/** h3 under the section title; h4 under the "recently closed" subtitle */
+	readonly level?: "h3" | "h4";
 }) {
+	const Heading = level;
 	const t = useT();
 	const { tenant } = useReadyTenantScope();
 	const formatters = useFormatters(tenant);
@@ -272,12 +276,12 @@ function ReconciliationItem({
 			data-testid="loyalty-reconciliation-item"
 			data-reason={item.reason}
 		>
-			<h3 className="font-medium">
+			<Heading className="font-medium">
 				{t("loyalty.reconciliation.item", {
 					store: storeName(t, stores, item.storeId),
 					time: when(item.createdAt),
 				})}
-			</h3>
+			</Heading>
 			<p className="text-sm" data-testid="loyalty-reconciliation-reason">
 				{t(RECONCILIATION_REASON_KEYS[item.reason])}
 			</p>
@@ -329,7 +333,7 @@ function ReconciliationSection({ access }: { readonly access: LoyaltyAccess }) {
 				className="space-y-2"
 				data-testid="loyalty-reconciliation-failed"
 			>
-				<p className="text-sm">{t("report.card.error")}</p>
+				<p className="text-sm">{t("loyalty.reconciliation.failed")}</p>
 				<Button
 					tone="secondary"
 					size="compact"
@@ -340,7 +344,17 @@ function ReconciliationSection({ access }: { readonly access: LoyaltyAccess }) {
 			</div>
 		);
 	}
-	if (items.data === undefined) return null;
+	if (items.data === undefined) {
+		return (
+			<p
+				role="status"
+				className="text-sm text-ink-muted"
+				data-testid="loyalty-reconciliation-loading"
+			>
+				{t("loyalty.reconciliation.loading")}
+			</p>
+		);
+	}
 	const open = openReconciliationItems(items.data);
 	const closed = closedReconciliationItems(items.data);
 	return (
@@ -381,7 +395,12 @@ function ReconciliationSection({ access }: { readonly access: LoyaltyAccess }) {
 						data-testid="loyalty-reconciliation-closed-list"
 					>
 						{closed.map((item) => (
-							<ReconciliationItem key={item.id} item={item} stores={stores} />
+							<ReconciliationItem
+								key={item.id}
+								item={item}
+								stores={stores}
+								level="h4"
+							/>
 						))}
 					</ul>
 				</>

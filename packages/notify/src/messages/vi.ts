@@ -134,6 +134,8 @@ export const VI_MESSAGES = {
 		"Cảnh báo: kênh {label} không gửi được tin ({reason}). Kiểm tra token hoặc liên kết lại trong Cài đặt → Cảnh báo.",
 	"alert.dsr_due_soon":
 		"Cảnh báo: {overdue} yêu cầu về dữ liệu cá nhân đã quá hạn trả lời và {due_soon} yêu cầu đến hạn trong {days} ngày tới. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+	"alert.dsr_due_soon.overdue_now":
+		"Cảnh báo: {overdue} yêu cầu về dữ liệu cá nhân vừa quá hạn trả lời. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
 	"alert.dsr_due_soon.reminder":
 		"Nhắc lại: {overdue} yêu cầu về dữ liệu cá nhân đã quá hạn trả lời, yêu cầu cũ nhất trễ {days_late} ngày. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
 	"alert.digest_failed":

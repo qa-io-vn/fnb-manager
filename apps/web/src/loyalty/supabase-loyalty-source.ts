@@ -38,8 +38,8 @@ import {
 	QUEUE_REASONS,
 	QUEUE_STATES,
 	type QueueItemRow,
-	RECONCILIATION_REASONS,
 	RFM_SEGMENTS,
+	reconciliationReasonOf,
 	type ShiftAnomaly,
 	SILENCE_OUTCOMES,
 	type StaffPhoneRow,
@@ -385,16 +385,19 @@ export const RECONCILIATION_PATH = "D";
 const reconciliationRow = z.object({
 	id: z.string(),
 	store_id: z.string(),
-	reason: z.enum(RECONCILIATION_REASONS),
+	// A string, read through reconciliationReasonOf: a reason a later migration adds shows as "other", never an error
+	reason: z.string(),
 	state: z.enum(QUEUE_STATES),
 	created_at: z.string(),
 	resolved_at: z.string().nullable(),
 	redemption_id: z.string().nullable(),
 	invoice_id: z.string().nullable(),
+	// The invoice a manager chose when a "voucher used, no invoice" item was resolved
+	chosen_invoice_id: z.string().nullable(),
 });
 
 const RECONCILIATION_SELECT =
-	"id,store_id,reason,state,created_at,resolved_at,redemption_id,invoice_id";
+	"id,store_id,reason,state,created_at,resolved_at,redemption_id,invoice_id,chosen_invoice_id";
 
 const reconciliationInvoiceRow = z.object({
 	id: z.string(),
@@ -755,7 +758,10 @@ async function reconciliationDetails(
 	const invoices = new Map<string, z.infer<typeof reconciliationInvoiceRow>>();
 	const invoiceIds = [
 		...new Set(
-			rows.flatMap((row) => (row.invoice_id === null ? [] : [row.invoice_id])),
+			rows.flatMap((row) => {
+				const id = row.invoice_id ?? row.chosen_invoice_id;
+				return id === null ? [] : [id];
+			}),
 		),
 	];
 	for (const part of chunks(invoiceIds, ID_CHUNK)) {
@@ -963,8 +969,9 @@ export function createSupabaseCustomerSource(
 				rows,
 			);
 			return rows.map((row) => {
+				const invoiceId = row.invoice_id ?? row.chosen_invoice_id;
 				const invoice =
-					row.invoice_id === null ? undefined : invoices.get(row.invoice_id);
+					invoiceId === null ? undefined : invoices.get(invoiceId);
 				const redemption =
 					row.redemption_id === null
 						? undefined
@@ -972,7 +979,7 @@ export function createSupabaseCustomerSource(
 				return {
 					id: row.id,
 					storeId: row.store_id,
-					reason: row.reason,
+					reason: reconciliationReasonOf(row.reason),
 					state: row.state,
 					createdAt: row.created_at,
 					resolvedAt: row.resolved_at,

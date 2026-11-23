@@ -78,6 +78,9 @@ export const RECONCILIATION_REASON_KEYS: Readonly<
 	discount_without_redemption:
 		"loyalty.reconciliation.reason.discount_without_redemption",
 	amount_mismatch: "loyalty.reconciliation.reason.amount_mismatch",
+	confirmed_invoice_voided:
+		"loyalty.reconciliation.reason.confirmed_invoice_voided",
+	other: "loyalty.reconciliation.reason.other",
 };
 
 export const QUEUE_STATE_KEYS: Readonly<Record<QueueState, MessageKey>> = {

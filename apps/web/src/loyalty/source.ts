@@ -306,9 +306,19 @@ export const RECONCILIATION_REASONS = [
 	"verified_without_invoice",
 	"discount_without_redemption",
 	"amount_mismatch",
+	"confirmed_invoice_voided",
 ] as const;
 
-export type ReconciliationReason = (typeof RECONCILIATION_REASONS)[number];
+/** A reason the page knows, or "other" for one a later migration adds: the list must never fail on a new reason. */
+export type ReconciliationReason =
+	| (typeof RECONCILIATION_REASONS)[number]
+	| "other";
+
+export function reconciliationReasonOf(value: string): ReconciliationReason {
+	return (RECONCILIATION_REASONS as readonly string[]).includes(value)
+		? (value as ReconciliationReason)
+		: "other";
+}
 
 export interface ReconciliationItemRow {
 	readonly id: string;

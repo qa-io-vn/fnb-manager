@@ -495,6 +495,15 @@ function openingText(facts: AlertFacts): string {
 	}
 }
 
+/** The first overdue notice of a request (no whole day late yet) is an escalation, not a reminder: say so. */
+function isJustOverdue(facts: AlertFacts): boolean {
+	return (
+		facts.kind === "alert_reminder" &&
+		ruleOf(facts) === "dsr_due_soon" &&
+		(numberParam(facts.params, "days_late") ?? 0) === 0
+	);
+}
+
 function reminderText(facts: AlertFacts): string {
 	const rule = ruleOf(facts);
 	if (rule === "sync_stale" || rule === "zalo_token_failed") {
@@ -511,8 +520,12 @@ function reminderText(facts: AlertFacts): string {
 	}
 	if (rule === "dsr_due_soon") {
 		// ADR-045: the repeat of this rule is the overdue notice, sent when a request turns overdue and every 24 hours after
+		const overdue = countText(numberParam(facts.params, "overdue") ?? 0);
+		if (isJustOverdue(facts)) {
+			return message("alert.dsr_due_soon.overdue_now", { overdue });
+		}
 		return message("alert.dsr_due_soon.reminder", {
-			overdue: countText(numberParam(facts.params, "overdue") ?? 0),
+			overdue,
 			days_late: countText(numberParam(facts.params, "days_late") ?? 0),
 		});
 	}
@@ -560,7 +573,9 @@ export function renderAlert(facts: AlertFacts): RenderedAlert {
 				? reminderText(facts)
 				: openingText(facts);
 	return {
-		title: message(TITLE_KEYS[facts.kind]),
+		title: message(
+			isJustOverdue(facts) ? "alert.subject" : TITLE_KEYS[facts.kind],
+		),
 		text: `${body}\n${message("alert.footer")}`.normalize("NFC"),
 	};
 }

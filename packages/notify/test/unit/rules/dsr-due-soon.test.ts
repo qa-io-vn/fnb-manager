@@ -144,6 +144,9 @@ describe("dsr_due_soon alert wording", () => {
 			"Nhắc lại: 1 yêu cầu về dữ liệu cá nhân đã quá hạn trả lời, yêu cầu cũ nhất trễ 2 ngày. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
 		);
 		expect(body(params, { kind: "alert_reminder" })).not.toBe(body(params));
+		expect(body({ ...params, days_late: 0 }, { kind: "alert_reminder" })).toBe(
+			"Cảnh báo: 1 yêu cầu về dữ liệu cá nhân vừa quá hạn trả lời. Mở Khách hàng → Yêu cầu dữ liệu để xử lý.",
+		);
 		const resolved = renderAlert(facts(params, { kind: "alert_resolved" }));
 		expect(resolved.text).not.toMatch(LEFTOVER);
 		expect(resolved.text).not.toContain("quá hạn trả lời");

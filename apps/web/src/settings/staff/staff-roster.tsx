@@ -216,7 +216,7 @@ function ConfirmDeactivate({
 	);
 }
 
-function MemberFacts({
+export function MemberFacts({
 	member,
 	profiles,
 	apps,

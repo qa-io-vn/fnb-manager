@@ -38,7 +38,7 @@ export interface LoyaltyFixture {
 	readonly queueInvoices: readonly [string, string];
 	/** The path D items (G-100): one of each reason, and the code of the redemption behind two of them. */
 	readonly reconciliation: {
-		readonly itemIds: readonly [string, string, string];
+		readonly itemIds: readonly [string, string, string, string];
 		readonly redemptionCode: string;
 		readonly entryName: string;
 		readonly billDiscountName: string;
@@ -273,6 +273,7 @@ export async function createLoyaltyFixture(
 					tenant_id, store_id, membership_id, redemption_id, invoice_id, matched_path, candidate_invoice_ids, reason, created_at
 				)
 				values
+					(${tenantId}, ${storeOne}, ${members.main}, ${redemption.id}, ${queuedTwo}, 'D', '{}', 'confirmed_invoice_voided', now() - interval '4 days'),
 					(${tenantId}, ${storeOne}, ${members.main}, ${redemption.id}, null, 'D', '{}', 'verified_without_invoice', now() - interval '3 days'),
 					(${tenantId}, ${storeOne}, ${members.main}, ${redemption.id}, ${queuedTwo}, 'D', '{}', 'amount_mismatch', now() - interval '2 days'),
 					(${tenantId}, ${storeOne}, null, null, ${queuedOne}, 'D', '{}', 'discount_without_redemption', now() - interval '1 day')
@@ -299,6 +300,7 @@ export async function createLoyaltyFixture(
 				queueInvoices: [queuedOne, queuedTwo],
 				reconciliation: {
 					itemIds: [
+						itemIdOf("confirmed_invoice_voided"),
 						itemIdOf("verified_without_invoice"),
 						itemIdOf("amount_mismatch"),
 						itemIdOf("discount_without_redemption"),

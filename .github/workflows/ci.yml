@@ -109,7 +109,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: |
           pnpm --filter @fnb/sync exec vitest run test/integration
-          pnpm --filter @fnb/jobs exec vitest run test/integration
+          pnpm --filter @fnb/jobs exec vitest run test/integration --no-file-parallelism
       - if: always()
         run: pnpm exec supabase stop --no-backup
 

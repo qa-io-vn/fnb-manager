@@ -1129,7 +1129,8 @@ Listed with `playwright test --list` on 2026-11-19 at `0ca91d3`: 327 tests in 52
 | `live` | `e2e/live/auth.spec.ts` | 6 |
 | `live` | `e2e/live/datapack.spec.ts` | 5 |
 | `live` | `e2e/live/exports.spec.ts` | 5 |
-| `live` | `e2e/live/loyalty-pages.spec.ts` | 7 (G-100: a store manager reads the three kinds of path D item below the queue, oldest first, read only, no redemption code or phone on the page; the PostgREST role test now counts 4 queue rows for owner, manager and store manager and 0 for a viewer; a viewer gets no path D section) |
+| `live` | `e2e/live/loyalty-pages.spec.ts` | 7 (G-100: a store manager reads the four kinds of path D item below the queue, oldest first, read only, no redemption code or phone on the page; the PostgREST role test now counts 5 queue rows for owner, manager and store manager and 0 for a viewer; a viewer gets no path D section) |
+| `live` | `e2e/live/privacy-requests.spec.ts` | 7 (G-56: an owner opts a member out of marketing on the page; the waiting win-back and birthday are cancelled no_marketing_consent, a coupon message and the control member's win-back still go, no full phone in any page, request, response or message row) |
 | `live` | `e2e/live/operations.spec.ts` | 8 |
 | `live` | `e2e/live/reports.spec.ts` | 4 |
 | `live` | `e2e/live/settings-fixture.spec.ts` | 9 |

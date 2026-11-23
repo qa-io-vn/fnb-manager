@@ -229,13 +229,13 @@ test("through PostgREST, each login reads the fixture's loyalty rows its role al
 	expect(seeded().memberCount).toBe(BULK_MEMBERS + 3);
 	expect(reads).toMatchObject({
 		owner: expect.stringMatching(
-			new RegExp(`^${members} [1-9]\\d* [1-9]\\d* 4$`),
+			new RegExp(`^${members} [1-9]\\d* [1-9]\\d* 5$`),
 		),
 		manager: expect.stringMatching(
-			new RegExp(`^${members} [1-9]\\d* [1-9]\\d* 4$`),
+			new RegExp(`^${members} [1-9]\\d* [1-9]\\d* 5$`),
 		),
 		"store-manager": expect.stringMatching(
-			new RegExp(`^${members} [1-9]\\d* 0 4$`),
+			new RegExp(`^${members} [1-9]\\d* 0 5$`),
 		),
 		staff: "0 0 0 0",
 		viewer: expect.stringMatching(
@@ -342,37 +342,42 @@ test("the owner lists the members masked in pages under the 1,000-row limit, loo
 	expectNoConsoleErrors(page);
 });
 
-test("a store manager reads the three kinds of path D item below the queue, read only, with no code and no phone on the page (G-100)", async ({
+test("a store manager reads the four kinds of path D item below the queue, read only, with no code and no phone on the page (G-100)", async ({
 	page,
 }) => {
 	await signedIn(page, "store-manager");
 	await page.goto("/#/khach-hang/doi-soat");
 	const section = page.getByTestId("loyalty-reconciliation");
-	await expect(section).toContainText("Chênh lệch voucher và giảm giá (3)");
+	await expect(section).toContainText("Chênh lệch voucher và giảm giá (4)");
 	const items = section.getByTestId("loyalty-reconciliation-item");
-	await expect(items).toHaveCount(3);
-	// oldest first: the verified redemption, the amount that differs, the bill discount with no redemption
-	await expect(items.nth(0)).toHaveAttribute(
-		"data-reason",
+	await expect(items).toHaveCount(4);
+	// oldest first: an invoice voided after its voucher was confirmed, the verified redemption, the amount that
+	// differs, the bill discount with no redemption
+	const reasons = [
+		"confirmed_invoice_voided",
 		"verified_without_invoice",
-	);
+		"amount_mismatch",
+		"discount_without_redemption",
+	];
+	for (const [index, reason] of reasons.entries()) {
+		await expect(items.nth(index)).toHaveAttribute("data-reason", reason);
+	}
 	await expect(items.nth(0)).toContainText(
+		"Hóa đơn đã dùng voucher bị hủy sau khi xác nhận",
+	);
+	await expect(items.nth(0)).toContainText("Hóa đơn số Q2");
+	await expect(items.nth(1)).toContainText(
 		"Voucher đã dùng nhưng chưa thấy hóa đơn",
 	);
-	await expect(items.nth(0)).toContainText(
+	await expect(items.nth(1)).toContainText(
 		`Tên giảm giá trên POS: ${seeded().reconciliation.entryName}`,
 	);
-	await expect(items.nth(0)).toContainText("Chưa có hóa đơn.");
-	await expect(items.nth(1)).toHaveAttribute("data-reason", "amount_mismatch");
-	await expect(items.nth(1)).toContainText("Hóa đơn số Q2");
-	await expect(items.nth(2)).toHaveAttribute(
-		"data-reason",
-		"discount_without_redemption",
-	);
-	await expect(items.nth(2)).toContainText(
+	await expect(items.nth(1)).toContainText("Chưa có hóa đơn.");
+	await expect(items.nth(2)).toContainText("Hóa đơn số Q2");
+	await expect(items.nth(3)).toContainText(
 		`Tên giảm giá trên POS: ${seeded().reconciliation.billDiscountName}`,
 	);
-	await expect(items.nth(2)).toContainText("Hóa đơn số Q1");
+	await expect(items.nth(3)).toContainText("Hóa đơn số Q1");
 	// read only: nothing in the section can be pressed
 	await expect(section.getByRole("button")).toHaveCount(0);
 	// the code of the redemption behind two of the items never reaches the page

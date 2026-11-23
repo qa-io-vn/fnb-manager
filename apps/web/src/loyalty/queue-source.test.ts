@@ -265,6 +265,48 @@ describe("the path D items (web loader, G-100)", () => {
 		});
 	});
 
+	it("lists the fourth reason, an invoice voided after its voucher was confirmed, and never fails on a reason it does not know", async () => {
+		const voided = D_ROW("00000000-0000-4000-8000-0000000000d6", {
+			reason: "confirmed_invoice_voided",
+			redemption_id: REDEMPTION,
+			invoice_id: INVOICE,
+		});
+		const future = D_ROW("00000000-0000-4000-8000-0000000000d7", {
+			reason: "a_reason_added_by_a_later_migration",
+			redemption_id: REDEMPTION,
+			created_at: "2026-11-21T03:00:00+00:00",
+		});
+		const { client } = clientHolding([voided, future], others);
+		const items =
+			await createSupabaseCustomerSource(client).reconciliation(TENANT);
+		expect(items.map((item) => item.reason).sort()).toEqual([
+			"confirmed_invoice_voided",
+			"other",
+		]);
+		expect(items.find((item) => item.reason === "other")?.entryName).toBe(
+			"Giảm thành viên 10%",
+		);
+	});
+
+	it("reads the receipt of the invoice a manager chose when a voucher used with no invoice was resolved", async () => {
+		const resolved = D_ROW("00000000-0000-4000-8000-0000000000d8", {
+			reason: "verified_without_invoice",
+			redemption_id: REDEMPTION,
+			invoice_id: null,
+			chosen_invoice_id: INVOICE,
+			state: "resolved",
+			resolved_at: "2026-11-21T03:00:00+00:00",
+		});
+		const { client } = clientHolding([resolved], others);
+		const [item] =
+			await createSupabaseCustomerSource(client).reconciliation(TENANT);
+		expect(item).toMatchObject({
+			state: "resolved",
+			receiptNo: "R-778",
+			soldAt: "2026-11-20T02:30:00+00:00",
+		});
+	});
+
 	it("is empty, and reads no invoice or redemption, when only paths B and C exist", async () => {
 		const { client, filters } = clientHolding(
 			[queueRow("00000000-0000-4000-8000-0000000000b9")],

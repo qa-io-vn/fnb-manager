@@ -312,12 +312,13 @@ describe("the path D items of the queue (G-100): models", () => {
 		]);
 	});
 
-	it("names every reason in both languages", () => {
-		for (const reason of RECONCILIATION_REASONS) {
+	it("names every reason, and the fallback for one the page does not know, in both languages", () => {
+		for (const reason of [...RECONCILIATION_REASONS, "other" as const]) {
 			const key = RECONCILIATION_REASON_KEYS[reason];
 			expect(translate("vi", key)).not.toBe(key);
 			expect(translate("en", key)).not.toBe(key);
 		}
+		expect(RECONCILIATION_REASONS).toContain("confirmed_invoice_voided");
 	});
 
 	it("keeps the open and closed lists apart when there is nothing", () => {
@@ -1005,6 +1006,10 @@ describe("the reconciliation queue page", () => {
 			within(section).getByTestId("loyalty-reconciliation-closed-list"),
 		).getAllByTestId("loyalty-reconciliation-item");
 		expect(closed).toHaveLength(1);
+		// the open items sit under the section's h2 as h3, the closed ones under the "recently closed" h3 as h4
+		expect(open[0]?.querySelector("h3")).not.toBeNull();
+		expect(closed[0]?.querySelector("h4")).not.toBeNull();
+		expect(closed[0]?.querySelector("h3")).toBeNull();
 		expect(closed[0]).toHaveTextContent("Đã chọn hóa đơn lúc");
 		// read only: nothing on the page resolves a path D item
 		expect(
@@ -1036,9 +1041,12 @@ describe("the reconciliation queue page", () => {
 			},
 		});
 		expect(await screen.findByTestId("loyalty-queue-item")).toBeVisible();
-		expect(
-			await screen.findByTestId("loyalty-reconciliation-failed"),
-		).toBeVisible();
+		const failed = await screen.findByTestId("loyalty-reconciliation-failed");
+		expect(failed).toBeVisible();
+		// the message names the list that failed, not the generic card error
+		expect(failed).toHaveTextContent(
+			"Không tải được danh sách chênh lệch voucher và giảm giá.",
+		);
 	});
 
 	it("tells a viewer the queue is for owners and managers and reads nothing", async () => {
