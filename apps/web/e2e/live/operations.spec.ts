@@ -583,7 +583,10 @@ test("the owner filters the incident log, sees a report's photo on demand, marks
 	await openOperations(
 		page,
 		"su-co",
-		`from=${minusDays(made.day, 1)}&to=${made.day}`,
+		// The window ends a day after the fixture's business day: the fixture shifts store one's business day to start an
+		// hour before the run, so in the first hour after local midnight store one's day is still yesterday while store
+		// two's incident is dated today, and a window that ended on made.day dropped it (3 entries instead of 4).
+		`from=${minusDays(made.day, 1)}&to=${minusDays(made.day, -1)}`,
 	);
 	const log = await settled(page, "operations-log-card");
 	await expect(log.getByTestId("sentence")).toContainText(

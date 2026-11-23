@@ -135,6 +135,14 @@ describe.skipIf(!ENABLED)("the OA's daily quota under two dispatchers", () => {
 			insert into public.redemptions (tenant_id, store_id, membership_id, coupon_id, code, state, held_at, hold_expires_at)
 			select ${tenant}::uuid, ${store}::uuid, members.id, ${setup.coupon}::uuid, 'SYNQ' || upper(substr(md5(random()::text || members.id::text), 1, 6)), 'held', now(), now() + interval '20 hours' from members
 		`;
+		// The cycles run at tomorrow 10:00 local, up to about 34 hours after the messages are queued (a run just after local
+		// midnight). A message's default life is shorter than that, so it would be cancelled as expired before any claimer
+		// saw it (the race test below took no message at 00:20), and the quota would hold nothing. They live three days, as
+		// they do for a customer whose template hours are closed.
+		await sql`
+			update public.outbound_messages set expires_at = created_at + interval '72 hours'
+			where tenant_id = ${tenant}::uuid and kind = 'coupon_issued'
+		`;
 	}, 120_000);
 
 	afterAll(async () => {
