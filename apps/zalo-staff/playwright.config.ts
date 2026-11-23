@@ -51,6 +51,12 @@ export default defineConfig({
 			testMatch: /budget\.spec\.ts/,
 			use: { ...phone, colorScheme: "light" },
 		},
+		{
+			// A phone that sleeps, wakes without a signal or is tapped twice on a slow CPU (test-gaps G-36)
+			name: "phone-sleep",
+			testMatch: /sleep\.spec\.ts/,
+			use: { ...phone, colorScheme: "light" },
+		},
 	],
 	webServer: {
 		command: `vite build --outDir ${outDir} --emptyOutDir && vite preview --outDir ${outDir} --host 127.0.0.1 --port ${port} --strictPort`,
