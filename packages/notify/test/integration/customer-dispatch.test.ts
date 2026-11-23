@@ -24,6 +24,24 @@ const DATABASE_URL = process.env.DATABASE_URL;
 const ENABLED = process.env.NOTIFY_INTEGRATION === "1" && Boolean(DATABASE_URL);
 const OA_TOKEN = "synthetic-it-oa-access-token";
 const TWO_MINUTES_MS = 120_000;
+// Midday, inside every sending window of the seeded policies. The environment variable is only for proving that the
+// test fails outside the hours (set it to 23); it is not used by the pack.
+const TEST_LOCAL_HOUR = Number(process.env.NOTIFY_IT_LOCAL_HOUR ?? "12");
+
+/**
+ * A fixed-offset zone in which it is `localHour`:xx at `at`. The seeded channel policies send ZBS templates 06:00 to
+ * 22:00 and OA messages 07:00 to 22:00 in the tenant's zone, so a test that ran late in the evening or at night would
+ * find every message held (the Regression pack reached this file at 22:39 in Vietnam and five of six tests failed).
+ * Living in a zone where it is about noon keeps the test independent of the time of day; the hours rule itself is
+ * tested on its own, with a fixed clock, in pgTAP.
+ */
+function zoneWhereItIs(localHour: number, at: Date): string {
+	let offset = localHour - at.getUTCHours();
+	if (offset > 12) offset -= 24;
+	if (offset < -11) offset += 24;
+	if (offset === 0) return "Etc/GMT";
+	return offset > 0 ? `Etc/GMT-${offset}` : `Etc/GMT+${-offset}`;
+}
 
 interface Ids {
 	brand: string;
@@ -109,6 +127,11 @@ describe.skipIf(!ENABLED)("customer messages on the local stack", () => {
 		});
 		const tenant = fixture.tenantId;
 		const store = fixture.storeIds[0] ?? "";
+		await sql`
+			update public.tenants
+			set timezone = ${zoneWhereItIs(TEST_LOCAL_HOUR, new Date())}
+			where id = ${tenant}::uuid
+		`;
 		const [setup] = await sql<
 			{ brand: string; oa: string; programme: string; coupon: string }[]
 		>`
