@@ -43,7 +43,7 @@ A destination (`notification_channels`) belongs to one member (except a webhook)
 
 ## 5. The digest
 
-One digest per tenant, business date and store scope, built from the Ngày report functions as the member who receives it, so it equals Ngày for the same day and stores (ADR-031). A day counts as settled for a store when its last sync after closing plus `settle_grace_minutes` has passed; the digest is built when every store of its scope has settled or at `deadline_local` (06:30). `fnb digest --check-ngay` compares a built digest with Ngày. Corrections after the nightly reconciliation are designed (one correction at most, never for item-only changes) but their SQL half is not built yet (section 11).
+One digest per tenant, business date and store scope, built from the Ngày report functions as the member who receives it, so it equals Ngày for the same day and stores (ADR-031). A day counts as settled for a store when its last sync after closing plus `settle_grace_minutes` has passed; the digest is built when every store of its scope has settled or at `deadline_local` (06:30). `fnb digest --check-ngay` compares a built digest with Ngày. Corrections after the nightly reconciliation: one correction at most, never for item-only changes. `fnb digest --revise` rebuilds a digest whose tenant had a successful nightly, reconciliation or backfill run covering its date after it was built (`app.digests_to_revise`, the last three local days), and `app.revise_digest` replaces the model and, the first time and only when the rebuilt text carries a correction, queues one `digest_correction` per destination and sets `revision` to 1 (G-70, migration `20261123110000_digest_revision`).
 
 ## 6. Dispatch paths and budgets
 
@@ -86,4 +86,4 @@ Cảnh báo (`#/cai-dat/canh-bao`) shows the dispatcher status, the member's des
 
 ## 11. What is not built yet
 
-Tracked in [test-gaps.md](test-gaps.md) (G-70 to G-76): the SQL half of digest corrections (`app.digests_to_revise`, `app.revise_digest`), so `fnb digest --revise` is not usable yet; the workflow files (the failure listener, deploying `notify`, the Deno checks and the notification integration suites in CI); the Deno tests and the eszip measurement of the `notify` function on a machine with Deno; the go-live step that turns the schedule on in the cloud; the dated legal and Zalo Bot notes of the deep dives; the answer of the startup-failure probe (#71).
+Tracked in [test-gaps.md](test-gaps.md) (G-70 to G-76): the workflow files (the failure listener, deploying `notify`, the Deno checks and the notification integration suites in CI); the Deno tests and the eszip measurement of the `notify` function on a machine with Deno; the go-live step that turns the schedule on in the cloud; the dated legal and Zalo Bot notes of the deep dives; the answer of the startup-failure probe (#71).

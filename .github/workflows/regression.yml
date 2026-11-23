@@ -49,8 +49,9 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.7.3
-      - name: Install Chromium for the web and Mini App browser checks
-        run: pnpm --filter @fnb/web exec playwright install --with-deps chromium
+      # WebKit too: both Mini Apps run a phone-webkit project (an iPhone), which failed 69 tests on four nights for want of it
+      - name: Install Chromium and WebKit for the web and Mini App browser checks
+        run: pnpm --filter @fnb/web exec playwright install --with-deps chromium webkit
       - run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta
       - name: Load the migrations and the seed on the fresh CI stack
         run: pnpm exec supabase db reset

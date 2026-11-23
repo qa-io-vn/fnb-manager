@@ -656,6 +656,9 @@ function regressionSteps() {
 				"test/integration/ipos-snapshot-fidelity.test.ts",
 				"--exclude",
 				"test/integration/loyalty-pipeline.test.ts",
+				// One file at a time: loyalty-fields counts the whole database before and after its script, and another
+				// file creating fixture tenants meanwhile failed it on every nightly run
+				"--no-file-parallelism",
 			),
 		},
 		{
