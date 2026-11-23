@@ -5,6 +5,7 @@ import {
 	zonedInstant,
 } from "./business-date.js";
 import {
+	creditPointsExpiry,
 	type LedgerEntry,
 	type LedgerRules,
 	REDEMPTION_RELEASED,
@@ -118,19 +119,25 @@ export function expiredByIssueMonth(
 		}
 		const at = expiry.occurredAt;
 		const expired = -expiry.pointDelta;
-		const line = upTo
-			.filter(
-				(credit) =>
-					credit.member === expiry.member &&
-					credit.pointDelta > 0 &&
-					(credit.kind === "earn" || credit.kind === "adjust") &&
-					credit.reason !== REDEMPTION_RELEASED &&
-					credit.expiresAt !== null &&
-					credit.expiresAt <= at &&
-					credit.occurredAt <= at,
-			)
+		const byRun = upTo.filter((row) => row.occurredAt <= at);
+		// The credits app.loyalty_expiring_points expires: a pending earn only once
+		// confirmed, with the expiry of its confirm row (ADR-046).
+		const line = byRun
+			.filter((credit) => {
+				if (
+					credit.member !== expiry.member ||
+					credit.pointDelta <= 0 ||
+					(credit.kind !== "earn" && credit.kind !== "adjust") ||
+					credit.reason === REDEMPTION_RELEASED
+				) {
+					return false;
+				}
+				const expiresAt = creditPointsExpiry(byRun, credit);
+				return expiresAt !== null && expiresAt <= at;
+			})
 			.map((credit) => ({
 				credit,
+				expiresAt: creditPointsExpiry(byRun, credit) ?? 0,
 				net:
 					credit.pointDelta +
 					upTo
@@ -144,7 +151,7 @@ export function expiredByIssueMonth(
 			}))
 			.sort(
 				(a, b) =>
-					(a.credit.expiresAt ?? 0) - (b.credit.expiresAt ?? 0) ||
+					a.expiresAt - b.expiresAt ||
 					a.credit.occurredAt - b.credit.occurredAt ||
 					a.credit.id - b.credit.id,
 			);

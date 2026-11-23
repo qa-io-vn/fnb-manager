@@ -99,6 +99,88 @@ describe("zonedInstant and business day bounds", () => {
 		);
 	});
 
+	// Each expected instant is what PostgreSQL gives for
+	// (date + time)::timestamp at time zone tz (checked on the local stack,
+	// 2026-11-23): a skipped wall clock is read with the offset before the
+	// change, a wall clock that occurs twice is its later instant.
+	it.each([
+		{
+			label: "gap: Santiago skips midnight",
+			date: "2026-09-06",
+			minutes: 0,
+			tz: "America/Santiago",
+			utc: "2026-09-06T04:00:00.000Z",
+		},
+		{
+			label: "gap: Havana skips midnight",
+			date: "2026-03-08",
+			minutes: 0,
+			tz: "America/Havana",
+			utc: "2026-03-08T05:00:00.000Z",
+		},
+		{
+			label: "overlap: Havana's midnight occurs twice",
+			date: "2026-11-01",
+			minutes: 0,
+			tz: "America/Havana",
+			utc: "2026-11-01T05:00:00.000Z",
+		},
+		{
+			label: "overlap: Santiago's 23:30 occurs twice",
+			date: "2026-04-04",
+			minutes: 23 * 60 + 30,
+			tz: "America/Santiago",
+			utc: "2026-04-05T03:30:00.000Z",
+		},
+		{
+			label: "gap: New York skips 02:30",
+			date: "2026-03-08",
+			minutes: 150,
+			tz: NEW_YORK,
+			utc: "2026-03-08T07:30:00.000Z",
+		},
+		{
+			label: "overlap: New York's 01:30 occurs twice",
+			date: "2026-11-01",
+			minutes: 90,
+			tz: NEW_YORK,
+			utc: "2026-11-01T06:30:00.000Z",
+		},
+		{
+			label: "gap: London skips 01:30",
+			date: "2026-03-29",
+			minutes: 90,
+			tz: "Europe/London",
+			utc: "2026-03-29T01:30:00.000Z",
+		},
+		{
+			label: "overlap: London's 01:30 occurs twice",
+			date: "2026-10-25",
+			minutes: 90,
+			tz: "Europe/London",
+			utc: "2026-10-25T01:30:00.000Z",
+		},
+		{
+			label: "no change: Santiago's midnight after the change back",
+			date: "2027-04-04",
+			minutes: 0,
+			tz: "America/Santiago",
+			utc: "2027-04-04T04:00:00.000Z",
+		},
+		{
+			label: "no change: Ho Chi Minh City's midnight",
+			date: "2026-11-20",
+			minutes: 0,
+			tz: VIETNAM,
+			utc: "2026-11-19T17:00:00.000Z",
+		},
+	])(
+		"reads a wall clock as PostgreSQL does at a change of offset ($label)",
+		({ date, minutes, tz, utc }) => {
+			expect(zonedInstant(date, minutes, tz).toISOString()).toBe(utc);
+		},
+	);
+
 	it("bounds a business day from its day start to the instant before the next", () => {
 		const start = businessDayStart("2026-11-07", VIETNAM, DAY_START_FIVE);
 		const end = businessDayEnd("2026-11-07", VIETNAM, DAY_START_FIVE);

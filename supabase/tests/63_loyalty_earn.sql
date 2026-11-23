@@ -94,10 +94,12 @@ select is(
   'the welcome stamps are an adjust row with reason welcome'
 );
 select is((select count(*)::int from public.stamps where membership_id = (select id from ids where name = 'member_1') and state = 'active'), 2, 'each welcome stamp has its stamps row');
+-- Changed by ADR-047: a stamp joined on 2026-10-01 at 09:00 is valid through 2027-04-01, the end of the day six
+-- months on, so it ends at the local midnight 2027-04-02 00:00 (it was 182 days to the minute, 09:00).
 select is(
-  (select (expires_at - earned_at)::text from public.stamps where membership_id = (select id from ids where name = 'member_1') limit 1),
-  '182 days',
-  'a stamp lives for the programme''s six months'
+  (select to_char(expires_at at time zone 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD HH24:MI') from public.stamps where membership_id = (select id from ids where name = 'member_1') limit 1),
+  '2027-04-02 00:00',
+  'a stamp lives for the programme''s six months, through the end of their last day'
 );
 select is(
   app.loyalty_join((select tenant_x from fx), (select id from ids where name = 'customer_1'), 'mini_app', null, null, null, timestamptz '2026-10-02 09:00+07'),
@@ -128,7 +130,9 @@ insert into ids select 'inv_cap_' || n, pg_temp.invoice('le-001' || n, timestamp
 
 select is(pg_temp.earn((select id from ids where name = 'inv_60k'), 'member_1'), 'entry:1:6:-', 'a 60,000 bill earns one stamp and six points');
 select is(
-  (select concat_ws(':', matched_path, value_amount, business_date, (expires_at = timestamptz '2027-10-05 09:00+07')::text) from public.loyalty_ledger where invoice_id = (select id from ids where name = 'inv_60k')),
+  -- Changed by ADR-047: the points of the sale of 2026-10-05 09:00 are valid through 2027-10-05 and end at
+  -- the local midnight closing it (they ended at 09:00 before).
+  (select concat_ws(':', matched_path, value_amount, business_date, (expires_at = timestamptz '2027-10-06 00:00+07')::text) from public.loyalty_ledger where invoice_id = (select id from ids where name = 'inv_60k')),
   'A:3000.00:2026-10-05:true',
   'the earn records its path, its value at issue and a twelve-month points expiry'
 );
@@ -216,7 +220,10 @@ select is(
   2,
   'two more voids are clawed back'
 );
-select is(pg_temp.balance('member_2'), '-1:0:0:0', 'a clawback after a redemption leaves a negative balance');
+-- Changed by ADR-046 (G-102): this case used to leave -1 stamp. A clawback now takes back at most the
+-- member's spendable balance, so the second void takes the last stamp and the third takes no stamp and
+-- writes the stamp it could not take on its row as "short by 1 stamp" (pgtap 242 covers the rule).
+select is(pg_temp.balance('member_2'), '0:0:0:0', 'a clawback after a redemption takes back what is left and the balance stops at zero (ADR-046)');
 
 select is(
   app.loyalty_expire((select tenant_x from fx), timestamptz '2027-03-01 00:00+07'),

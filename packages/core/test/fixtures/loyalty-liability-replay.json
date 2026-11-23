@@ -2261,7 +2261,7 @@
 			"pointsIssued": 18,
 			"pointsRedeemed": 0,
 			"pointsExpired": 13,
-			"pointsClawedBack": 15,
+			"pointsClawedBack": 5,
 			"deferredRevenueReleasedAmount": "0.00",
 			"breakageByCohort": [
 				{ "month": "2026-04", "issued": 24, "expired": 24 },
@@ -2907,7 +2907,7 @@
 			"pointsIssued": 18,
 			"pointsRedeemed": 0,
 			"pointsExpired": 13,
-			"pointsClawedBack": 15,
+			"pointsClawedBack": 5,
 			"deferredRevenueReleasedAmount": "0.00",
 			"breakageByCohort": [
 				{ "month": "2026-04", "issued": 24, "expired": 24 },
@@ -3287,6 +3287,6 @@
 		"8": [4, 41],
 		"9": [9, 97],
 		"10": [4, 39],
-		"11": [2, -10]
+		"11": [2, 0]
 	}
 }

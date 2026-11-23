@@ -13,7 +13,7 @@ import {
 	REFUSAL_NOT_MEMBER,
 	UUID_PATTERN,
 } from "@fnb/zalo-mini/loyalty";
-import { addDays, isoDateIn, weekdayOf } from "../data/dates";
+import { addDays, creditEnd, isoDateIn, weekdayOf } from "../data/dates";
 import {
 	DEMO_BILL_RULES,
 	DEMO_COUNTER_CODES,
@@ -623,14 +623,40 @@ export function createDemoWorld(
 		claims.filter((claim) => isoDateIn(claim.submittedAt) === isoDateIn(now()))
 			.length;
 
-	const balance = (): { readonly stamps: number; readonly points: number } => ({
-		stamps: entries
-			.filter(counted)
-			.reduce((sum, value) => sum + value.stamps, 0),
-		points: entries
-			.filter(counted)
-			.reduce((sum, value) => sum + value.points, 0),
-	});
+	// ADR-047: a credit is spendable until the midnight that closes its last valid
+	// day, read at this instant like app.loyalty_balance, not at the nightly run.
+	const stampEnd = (value: Entry) =>
+		creditEnd(value.at, DEMO_PROGRAMME.stamp_validity_months);
+	const pointsEnd = (value: Entry) =>
+		creditEnd(value.at, DEMO_PROGRAMME.points_expiry_months);
+	const credit = (value: Entry) =>
+		confirmed(value) && value.kind !== "redeem" && value.kind !== "reversal";
+	const balance = (): { readonly stamps: number; readonly points: number } => {
+		const at = now();
+		const rows = entries.filter(counted);
+		const ended = (
+			part: "stamps" | "points",
+			end: (value: Entry) => { expiresAt: number },
+		) =>
+			rows
+				.filter(
+					(value) =>
+						credit(value) && value[part] > 0 && end(value).expiresAt <= at,
+				)
+				.reduce((sum, value) => sum + value[part], 0);
+		return {
+			stamps: Math.max(
+				rows.reduce((sum, value) => sum + value.stamps, 0) -
+					ended("stamps", stampEnd),
+				0,
+			),
+			points: Math.max(
+				rows.reduce((sum, value) => sum + value.points, 0) -
+					ended("points", pointsEnd),
+				0,
+			),
+		};
+	};
 
 	const rewardAt = (store: string | null) => (reward: DemoReward) =>
 		store === null ||
@@ -798,9 +824,17 @@ export function createDemoWorld(
 		);
 		const tier = tiers[tierIndex] ?? tiers[0];
 		const next = tiers[tierIndex + 1] ?? null;
+		const live = (end: { expiresAt: number }) => end.expiresAt > now();
 		const firstEarn = entries.find(
-			(value) => confirmed(value) && value.points > 0,
+			(value) => confirmed(value) && value.points > 0 && live(pointsEnd(value)),
 		);
+		const firstEarnEnd =
+			firstEarn === undefined ? undefined : pointsEnd(firstEarn);
+		const nextStamp = entries
+			.filter((value) => credit(value) && value.stamps > 0)
+			.map(stampEnd)
+			.filter(live)
+			.sort((left, right) => left.expiresAt - right.expiresAt)[0];
 		return {
 			card: {
 				programme_name: DEMO_PROGRAMME.name,
@@ -818,18 +852,25 @@ export function createDemoWorld(
 					stamps: stamps % DEMO_STAMPS_PER_CARD,
 					stamps_per_card: DEMO_STAMPS_PER_CARD,
 					pending: pendingStamps,
-					expires_on: addDays(memberSince, 180),
+					expires_on: nextStamp?.validThrough ?? null,
+					valid_through: nextStamp?.validThrough ?? null,
+					expires_at:
+						nextStamp === undefined
+							? null
+							: new Date(nextStamp.expiresAt).toISOString(),
 				},
 			],
 			points: {
 				balance: points,
 				pending: pendingPoints,
 				expiring:
-					firstEarn === undefined
+					firstEarn === undefined || firstEarnEnd === undefined
 						? null
 						: {
 								points: firstEarn.points,
-								on: addDays(isoDateIn(firstEarn.at), 365),
+								on: firstEarnEnd.validThrough,
+								valid_through: firstEarnEnd.validThrough,
+								expires_at: new Date(firstEarnEnd.expiresAt).toISOString(),
 							},
 			},
 			tier:

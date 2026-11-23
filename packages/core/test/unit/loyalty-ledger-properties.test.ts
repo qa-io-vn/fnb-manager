@@ -16,18 +16,23 @@
 // property prints the seed, the replay command and fast-check's shrunk
 // counterexample.
 //
-// The model implements the intended rules. docs/test-gaps.md G-15 lists "the one
-// case pgtap 63 allows" (a clawback after a redemption); the model shows two
-// more (a clawback after an expiry; see CONSUMED below) and these functions of
-// the database differ from the model in three edge cases (a stale unconfirmed
-// earn that expires, a negative adjustment with no floor, a clawback of an
-// earn still pending in the liability): see the report that came with this file.
+// The model implements the rules of ADR-046 (balances never go negative: an
+// adjustment is floored at the balance, a clawback takes back at most what is
+// left and writes the rest off, a pending earn never expires and its clock
+// starts at its confirmation), the same rules as the database since migrations
+// 20261123120000 to 20261123140000; the second half of G-15 replays generated
+// sequences through the SQL functions (pgtap 244 and the loyalty-ledger-replay
+// fixture). The rules before ADR-046 are kept as options of the model
+// (uncappedClawbacks, allowNegativeAdjustments) to show that the properties
+// catch them.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
 	accountFromEntries,
 	addMonthsUtc,
+	clawbackReason,
 	type LedgerEntry,
+	type LedgerOptions,
 	type LedgerRules,
 	LoyaltyLedger,
 	REDEMPTION_RELEASED,
@@ -156,6 +161,13 @@ interface StepReport {
 	readonly op: Op;
 	readonly accepted: boolean;
 	readonly refusal: string | null;
+	/** The moment of the step. */
+	readonly at: number;
+	/** What each member could spend at that moment just before the step (ADR-047). */
+	readonly spendableBefore: ReadonlyMap<
+		string,
+		{ stamps: number; points: number }
+	>;
 }
 
 interface RunOutcome {
@@ -170,7 +182,7 @@ interface RunOutcome {
  */
 function execute(
 	trace: readonly Op[],
-	options: { allowNegativeAdjustments?: boolean } = {},
+	options: LedgerOptions = {},
 	check: (
 		ledger: LoyaltyLedger,
 		step: StepReport,
@@ -187,6 +199,15 @@ function execute(
 		clock += op.hours * HOUR;
 		const member = MEMBERS[op.member] ?? MEMBERS[0];
 		const before = [...ledger.entries];
+		const spendableBefore = new Map(
+			MEMBERS.map((name) => {
+				const balance = ledger.spendableAt(name, clock);
+				return [
+					name,
+					{ stamps: balance.stamps, points: balance.points },
+				] as const;
+			}),
+		);
 		let result: { ok: true } | { ok: false; refusal: string } | null = null;
 		const pickFrom = (rows: LedgerEntry[]) =>
 			rows.length === 0 ? undefined : rows[op.pick % rows.length];
@@ -254,6 +275,8 @@ function execute(
 			op,
 			accepted: result.ok,
 			refusal: result.ok ? null : result.refusal,
+			at: clock,
+			spendableBefore,
 		};
 		steps.push(step);
 		check(ledger, step, before);
@@ -356,11 +379,11 @@ function failWith(found: string[], step: StepReport): void {
 	}
 }
 
-describe("property: spendable stamps and points are never negative without a clawback (state transition, boundary value)", () => {
-	it("for any sequence of earn, confirm, hold, confirm hold, release, expire and adjust", () => {
+describe("property: spendable stamps and points are never negative (ADR-046; state transition, boundary value)", () => {
+	it("for any sequence of earn, confirm, hold, confirm hold, release, clawback, expire and adjust", () => {
 		assertProperty(
-			"never negative without clawback",
-			fc.property(traceArbitrary(WITHOUT_CLAWBACK), (trace) => {
+			"never negative",
+			fc.property(traceArbitrary(ALL), (trace) => {
 				execute(trace, {}, (ledger, step) =>
 					failWith(violations(ledger, "never"), step),
 				);
@@ -368,22 +391,22 @@ describe("property: spendable stamps and points are never negative without a cla
 		);
 	});
 
-	it("after a clawback, negative only when a redemption came before it (the one case pgtap 63 allows), if nothing else spends or expires", () => {
+	it("also when adjustments only credit and nothing expires, so a redemption is the one way to spend", () => {
 		assertProperty(
-			"negative only after clawback following redemption",
+			"never negative, credits only",
 			fc.property(traceArbitrary(WITHOUT_EXPIRE, true), (trace) => {
 				execute(trace, {}, (ledger, step) =>
-					failWith(violations(ledger, "afterRedemption"), step),
+					failWith(violations(ledger, "never"), step),
 				);
 			}),
 		);
 	});
 
-	it("with every operation, negative only after a clawback that follows a redemption or an expiry", () => {
+	it("with the clawback of the rules before ADR-046, negative only after a clawback that follows a redemption, an expiry or a manual debit", () => {
 		assertProperty(
-			"negative only after clawback following consumption",
+			"before ADR-046: negative only after clawback following consumption",
 			fc.property(traceArbitrary(ALL), (trace) => {
-				execute(trace, {}, (ledger, step) =>
+				execute(trace, { uncappedClawbacks: true }, (ledger, step) =>
 					failWith(violations(ledger, "afterConsumption"), step),
 				);
 			}),
@@ -391,14 +414,142 @@ describe("property: spendable stamps and points are never negative without a cla
 	});
 });
 
-describe("property: held + spendable + spent = earned - expired (conservation, model-based)", () => {
+describe("property: what a clawback takes plus what it writes off is the earn (ADR-046, decision table as a property)", () => {
+	it("an accepted clawback takes at most the earn, the rest is written on its reason, a pending earn is taken whole", () => {
+		assertProperty(
+			"clawback write-off",
+			fc.property(traceArbitrary(ALL), (trace) => {
+				execute(trace, {}, (ledger, step, before) => {
+					if (step.op.kind !== "clawback" || !step.accepted) {
+						return;
+					}
+					const claw = ledger.entries[ledger.entries.length - 1];
+					const earn = ledger.entry(claw?.sourceId ?? -1);
+					if (claw?.kind !== "clawback" || earn?.kind !== "earn") {
+						throw new Error("a clawback step wrote no clawback of an earn");
+					}
+					const taken = { stamps: -claw.stampDelta, points: -claw.pointDelta };
+					const short = {
+						stamps: earn.stampDelta - taken.stamps,
+						points: earn.pointDelta - taken.points,
+					};
+					expect(Math.min(short.stamps, short.points)).toBeGreaterThanOrEqual(
+						0,
+					);
+					expect(claw.reason).toBe(clawbackReason("invoice_voided", short));
+					const wasPending =
+						earn.pending &&
+						!before.some(
+							(row) => row.kind === "confirm" && row.sourceId === earn.id,
+						);
+					if (wasPending) {
+						expect(short).toEqual({ stamps: 0, points: 0 });
+					}
+				});
+			}),
+		);
+	});
+
+	it("an expiry run never touches an earn still pending: the pending lines are the same before and after", () => {
+		assertProperty(
+			"pending earns never expire",
+			fc.property(traceArbitrary(ALL), (trace) => {
+				const pendingBefore = new Map<string, [number, number]>();
+				execute(trace, {}, (ledger, step) => {
+					for (const member of MEMBERS) {
+						const balance = ledger.balance(member);
+						if (step.op.kind === "expire") {
+							expect([balance.pendingStamps, balance.pendingPoints]).toEqual(
+								pendingBefore.get(member) ?? [0, 0],
+							);
+						}
+						pendingBefore.set(member, [
+							balance.pendingStamps,
+							balance.pendingPoints,
+						]);
+					}
+				});
+			}),
+		);
+	});
+});
+
+describe("property: spendability follows the instant, not the expire rows (ADR-047)", () => {
+	it("what a member may spend at a moment is never negative and never more than the ledger rows hold", () => {
+		assertProperty(
+			"spendable at the instant within the rows",
+			fc.property(traceArbitrary(ALL), (trace) => {
+				execute(trace, {}, (ledger, step) => {
+					for (const member of MEMBERS) {
+						const spendable = ledger.spendableAt(member, step.at);
+						const rows = ledger.balance(member);
+						expect(
+							Math.min(spendable.stamps, spendable.points),
+						).toBeGreaterThanOrEqual(0);
+						expect(spendable.stamps).toBeLessThanOrEqual(rows.stamps);
+						expect(spendable.points).toBeLessThanOrEqual(rows.points);
+					}
+				});
+			}),
+		);
+	});
+
+	it("an expiry run changes nothing a member may spend at its moment: it only writes down what had already ended", () => {
+		assertProperty(
+			"expiry writes down the instant",
+			fc.property(traceArbitrary(ALL), (trace) => {
+				execute(trace, {}, (ledger, step) => {
+					if (step.op.kind !== "expire") {
+						return;
+					}
+					for (const member of MEMBERS) {
+						const now = ledger.spendableAt(member, step.at);
+						expect({ stamps: now.stamps, points: now.points }).toEqual(
+							step.spendableBefore.get(member),
+						);
+					}
+				});
+			}),
+		);
+	});
+
+	it("an accepted hold or manual change moves what the member may spend at its moment by exactly its amounts (no credit that had ended is spent)", () => {
+		assertProperty(
+			"debits take exactly their amounts at the instant",
+			fc.property(traceArbitrary(ALL), (trace) => {
+				execute(trace, {}, (ledger, step, before) => {
+					if (
+						!step.accepted ||
+						(step.op.kind !== "hold" && step.op.kind !== "adjust")
+					) {
+						return;
+					}
+					const written = ledger.entries
+						.slice(before.length)
+						.filter(
+							(row) => row.kind === step.op.kind.replace("hold", "redeem"),
+						);
+					const row = written[written.length - 1];
+					if (row === undefined) {
+						throw new Error("an accepted step wrote no row of its kind");
+					}
+					const prior = step.spendableBefore.get(row.member);
+					const now = ledger.spendableAt(row.member, step.at);
+					expect(now.stamps - (prior?.stamps ?? 0)).toBe(row.stampDelta);
+					expect(now.points - (prior?.points ?? 0)).toBe(row.pointDelta);
+				});
+			}),
+		);
+	});
+});
+
+describe("property: held + spendable + spent = earned - reversed - expired (conservation, model-based)", () => {
 	it("holds after every step, for stamps and for points, and the running account equals the rows", () => {
 		assertProperty(
 			"conservation",
 			fc.property(traceArbitrary(ALL), (trace) => {
 				execute(trace, {}, (ledger, step) =>
-					// the negative rule is the widest one: this property is about conservation
-					failWith(violations(ledger, "afterConsumption"), step),
+					failWith(violations(ledger, "never"), step),
 				);
 			}),
 		);
@@ -539,12 +690,13 @@ function accountsOf(ledger: LoyaltyLedger) {
 }
 
 describe("the properties are not vacuous (the checks have teeth)", () => {
-	it("generates every operation kind, accepted and refused, and balances that go negative", () => {
+	it("generates every operation kind, accepted and refused, clawbacks that write off and pending earns that outlive an expiry run", () => {
 		const accepted = new Map<OpKind, number>();
 		const refused = new Map<OpKind, number>();
-		let negative = 0;
+		let writeOffs = 0;
 		let expiredStamps = 0;
 		let expiredPoints = 0;
+		let pendingThroughExpiry = 0;
 		const samples = fc.sample(traceArbitrary(ALL), {
 			seed: CI_SEED,
 			numRuns: 400,
@@ -555,19 +707,30 @@ describe("the properties are not vacuous (the checks have teeth)", () => {
 				const book = step.accepted ? accepted : refused;
 				book.set(step.op.kind, (book.get(step.op.kind) ?? 0) + 1);
 			}
-			if (
-				MEMBERS.some(
-					(member) =>
-						ledger.balance(member).points < 0 ||
-						ledger.balance(member).stamps < 0,
-				)
-			) {
-				negative += 1;
-			}
 			for (const row of ledger.entries) {
+				if (row.kind === "clawback" && row.reason?.includes("; short by")) {
+					writeOffs += 1;
+				}
 				if (row.kind === "expire") {
 					expiredStamps += 0 - row.stampDelta;
 					expiredPoints += 0 - row.pointDelta;
+					if (
+						ledger.entries.some(
+							(earn) =>
+								earn.kind === "earn" &&
+								earn.pending &&
+								earn.member === row.member &&
+								earn.occurredAt < row.occurredAt &&
+								!ledger.entries.some(
+									(other) =>
+										(other.kind === "confirm" || other.kind === "clawback") &&
+										other.sourceId === earn.id &&
+										other.occurredAt <= row.occurredAt,
+								),
+						)
+					) {
+						pendingThroughExpiry += 1;
+					}
 				}
 			}
 		}
@@ -583,15 +746,16 @@ describe("the properties are not vacuous (the checks have teeth)", () => {
 		] as const) {
 			expect(refused.get(kind) ?? 0, `refused ${kind}`).toBeGreaterThan(0);
 		}
-		expect(negative).toBeGreaterThan(0);
+		expect(writeOffs).toBeGreaterThan(0);
 		expect(expiredStamps).toBeGreaterThan(0);
 		expect(expiredPoints).toBeGreaterThan(0);
+		expect(pendingThroughExpiry).toBeGreaterThan(0);
 	});
 
-	it("finds a negative balance as soon as clawbacks are allowed and the rule is 'never'", () => {
+	it("finds a negative balance with the uncapped clawback of the rules before ADR-046", () => {
 		const result = fc.check(
 			fc.property(traceArbitrary(ALL), (trace) => {
-				execute(trace, {}, (ledger, step) =>
+				execute(trace, { uncappedClawbacks: true }, (ledger, step) =>
 					failWith(violations(ledger, "never"), step),
 				);
 			}),
@@ -600,7 +764,7 @@ describe("the properties are not vacuous (the checks have teeth)", () => {
 		expect(result.failed).toBe(true);
 	});
 
-	it("finds a negative balance when a negative adjustment has no floor, as app.loyalty_apply_adjustment has none", () => {
+	it("finds a negative balance when a negative adjustment has no floor, as app.loyalty_apply_adjustment had none before ADR-046", () => {
 		const result = fc.check(
 			fc.property(traceArbitrary(WITHOUT_CLAWBACK), (trace) => {
 				execute(trace, { allowNegativeAdjustments: true }, (ledger, step) =>
@@ -641,19 +805,19 @@ describe("the properties are not vacuous (the checks have teeth)", () => {
 			return { ledger, earn: earn.entryId, hold: hold.entryId };
 		};
 		type Mutable = { -readonly [K in keyof LedgerEntry]: LedgerEntry[K] };
-		expect(violations(build().ledger, "afterConsumption")).toEqual([]);
+		expect(violations(build().ledger, "never")).toEqual([]);
 
 		const shortRelease = build();
 		const release = shortRelease.ledger.entries.find(
 			(row) => row.reason === REDEMPTION_RELEASED,
 		) as Mutable;
 		release.pointDelta -= 1;
-		expect(violations(shortRelease.ledger, "afterConsumption")).not.toEqual([]);
+		expect(violations(shortRelease.ledger, "never")).not.toEqual([]);
 
 		const freeHold = build();
 		const hold = freeHold.ledger.entry(freeHold.hold) as Mutable;
 		hold.pointDelta = 0;
-		expect(violations(freeHold.ledger, "afterConsumption")).not.toEqual([]);
+		expect(violations(freeHold.ledger, "never")).not.toEqual([]);
 
 		const wrongSign = build();
 		wrongSign.ledger.clawback(wrongSign.earn, START + 5 * HOUR);
@@ -661,7 +825,7 @@ describe("the properties are not vacuous (the checks have teeth)", () => {
 			(row) => row.kind === "clawback",
 		) as Mutable;
 		claw.pointDelta = Math.abs(claw.pointDelta);
-		expect(violations(wrongSign.ledger, "afterConsumption")).not.toEqual([]);
+		expect(violations(wrongSign.ledger, "never")).not.toEqual([]);
 	});
 });
 
@@ -679,7 +843,7 @@ describe("security: no phone appears in any generated output", () => {
 					balances: MEMBERS.map((member) => ledger.balance(member)),
 					steps,
 					trace,
-					violations: violations(ledger, "afterConsumption"),
+					violations: violations(ledger, "never"),
 				});
 				expect(text).not.toMatch(PHONE);
 			}),

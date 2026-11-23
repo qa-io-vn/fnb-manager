@@ -1,5 +1,11 @@
-import { fireEvent, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import {
+	act,
+	fireEvent,
+	screen,
+	waitFor,
+	within,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderCustomerApp, setSearch } from "../test/render-app";
 import { ringSegments } from "./stamps-ring";
 
@@ -59,7 +65,7 @@ describe("the wallet", () => {
 			"30 điểm đang chờ xác nhận",
 		);
 		expect(wallet.getByTestId("points-expiring")).toHaveTextContent(
-			"45 điểm hết hạn ngày",
+			"45 điểm có hạn đến hết ngày",
 		);
 		expect(wallet.getByTestId("tier")).toHaveTextContent(
 			"Hạng Thành viên. Còn 395 điểm để lên hạng Bạc.",
@@ -102,6 +108,45 @@ describe("the wallet", () => {
 		expect(
 			screen.queryByRole("button", { name: "Dừng nhận tin" }),
 		).not.toBeInTheDocument();
+	});
+
+	it("states the last valid day of a credit, a date and never a time (ADR-047)", async () => {
+		renderCustomerApp({ settings: { member: true } });
+		const wallet = within(await openWallet());
+		expect(wallet.getByTestId("stamps-valid-through").textContent).toMatch(
+			/^Dấu có hạn đến hết ngày \d{2}\/\d{2}\/\d{4}$/,
+		);
+		expect(wallet.getByTestId("points-expiring").textContent).toMatch(
+			/^45 điểm có hạn đến hết ngày \d{2}\/\d{2}\/\d{4}$/,
+		);
+	});
+
+	it("follows the instant a credit ends while the wallet is open: the notice goes and the wallet is read again (ADR-047)", async () => {
+		vi.useFakeTimers({
+			shouldAdvanceTime: true,
+			now: Date.parse("2026-11-23T03:00:00Z"),
+		});
+		try {
+			renderCustomerApp({ settings: { member: true } });
+			const wallet = within(await openWallet());
+			expect(wallet.getByTestId("points-expiring")).toBeInTheDocument();
+			const before = Number(wallet.getByTestId("points-balance").textContent);
+			expect(before).toBeGreaterThan(0);
+			// past the end of every credit of the demo member (points last twelve months)
+			vi.setSystemTime(Date.now() + 400 * 86_400_000);
+			await act(() => vi.advanceTimersByTimeAsync(31_000));
+			await waitFor(() =>
+				expect(screen.queryByTestId("points-expiring")).toBeNull(),
+			);
+			await waitFor(() =>
+				expect(
+					Number(screen.getByTestId("points-balance").textContent),
+				).toBeLessThan(before),
+			);
+			expect(screen.queryByTestId("stamps-valid-through")).toBeNull();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("offers joining to a visitor on the account tab", async () => {

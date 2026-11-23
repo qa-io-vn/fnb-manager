@@ -41,6 +41,8 @@ export {
 	type Amounts,
 	accountFromEntries,
 	type Balance,
+	clawbackReason,
+	creditPointsExpiry,
 	EXPIRED_REASON,
 	expiringPoints,
 	type LedgerAccount,
@@ -65,7 +67,13 @@ export {
 	type LiabilityProgramme,
 	type LiabilityRow,
 } from "./rules/loyalty-liability.js";
-export { addMonthsUtc } from "./rules/loyalty-months.js";
+export {
+	addMonthsToIsoDate,
+	addMonthsUtc,
+	creditExpiresAt,
+	localIsoDate,
+	validThrough,
+} from "./rules/loyalty-months.js";
 export {
 	amountCents,
 	breakageRateMilli,

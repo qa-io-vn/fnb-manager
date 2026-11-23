@@ -287,6 +287,16 @@ function wallClockAsUtc(instant: Date, timezone: string): number {
 	);
 }
 
+const SIX_HOURS = 6 * 60 * MILLISECONDS_PER_MINUTE;
+
+/**
+ * The instant of a local wall-clock time in a time zone, read the way
+ * PostgreSQL reads `timestamp at time zone`: a time that occurs once is that
+ * instant; a time that a change of offset skips (a gap) is read with the offset
+ * before the change, and a time that a change makes occur twice (an overlap) is
+ * the later of its two instants. Both are the wall clock less the smaller of the
+ * two offsets around the change (America/Santiago 2026-09-06 00:00 is 04:00Z).
+ */
 export function zonedInstant(
 	date: string,
 	minutesOfDay: number,
@@ -294,14 +304,25 @@ export function zonedInstant(
 ): Date {
 	const { year, month, day } = parseIsoDate(date);
 	const wallClockUtc = Date.UTC(year, month - 1, day, 0, minutesOfDay);
-	const guess = new Date(wallClockUtc);
-	const firstOffset = wallClockAsUtc(guess, timezone) - guess.getTime();
-	const candidate = new Date(wallClockUtc - firstOffset);
-	const secondOffset =
-		wallClockAsUtc(candidate, timezone) - candidate.getTime();
-	return secondOffset === firstOffset
-		? candidate
-		: new Date(wallClockUtc - secondOffset);
+	const offsetAt = (instant: number): number =>
+		wallClockAsUtc(new Date(instant), timezone) - instant;
+	const firstOffset = offsetAt(wallClockUtc);
+	const candidate = wallClockUtc - firstOffset;
+	const offsets = new Set([
+		firstOffset,
+		offsetAt(candidate),
+		offsetAt(candidate - SIX_HOURS),
+		offsetAt(candidate + SIX_HOURS),
+	]);
+	if (offsets.size === 1) {
+		return new Date(candidate);
+	}
+	const valid = [...offsets].filter(
+		(offset) => offsetAt(wallClockUtc - offset) === offset,
+	);
+	return new Date(
+		wallClockUtc - Math.min(...(valid.length > 0 ? valid : offsets)),
+	);
 }
 
 export function businessDayStart(

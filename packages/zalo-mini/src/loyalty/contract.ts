@@ -262,13 +262,26 @@ export interface StampCard {
 	readonly stamps: number;
 	readonly stampsPerCard: number;
 	readonly pending: number;
-	readonly expiresOn: IsoDate | null;
+	/**
+	 * ADR-047: the last day the next stamp to end is valid ("valid through"), a
+	 * date the app shows as it is, never with a time.
+	 */
+	readonly validThrough: IsoDate | null;
+	/** The instant it ends (the midnight closing that day); null from an older server. */
+	readonly expiresAt: number | null;
+}
+
+/** The next points to end: how many, the last day they are valid and the instant they end. */
+export interface ExpiringPoints {
+	readonly points: number;
+	readonly validThrough: IsoDate;
+	readonly expiresAt: number | null;
 }
 
 export interface PointsBalance {
 	readonly balance: number;
 	readonly pending: number;
-	readonly expiring: { readonly points: number; readonly on: IsoDate } | null;
+	readonly expiring: ExpiringPoints | null;
 }
 
 export interface TierStatus {
@@ -842,7 +855,12 @@ function readStampCard(value: unknown): StampCard {
 		stamps: count(row.stamps, "stamps"),
 		stampsPerCard,
 		pending: count(row.pending ?? 0, "pending stamps"),
-		expiresOn: optionalDay(row.expires_on, "stamp expiry"),
+		// valid_through since ADR-047; expires_on carries the same last day
+		validThrough: optionalDay(
+			row.valid_through ?? row.expires_on,
+			"stamp expiry",
+		),
+		expiresAt: optionalInstantMs(row.expires_at, "stamp expiry instant"),
 	};
 }
 
@@ -860,7 +878,14 @@ function readPoints(value: unknown): PointsBalance {
 				? null
 				: {
 						points: count(expiring.points, "expiring points"),
-						on: isoDate(expiring.on, "points expiry"),
+						validThrough: isoDate(
+							expiring.valid_through ?? expiring.on,
+							"points expiry",
+						),
+						expiresAt: optionalInstantMs(
+							expiring.expires_at,
+							"points expiry instant",
+						),
 					},
 	};
 }

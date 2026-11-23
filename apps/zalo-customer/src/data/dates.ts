@@ -28,6 +28,61 @@ export function addDays(date: IsoDate, days: number): IsoDate {
 	return new Date(at).toISOString().slice(0, 10);
 }
 
+/**
+ * A date plus calendar months, clamped to the last day of a shorter month the
+ * way PostgreSQL adds months to a date (31 August plus six months is 28
+ * February).
+ */
+export function addMonths(date: IsoDate, months: number): IsoDate {
+	const [year = 0, month = 1, day = 1] = date.split("-").map(Number);
+	const total = year * 12 + (month - 1) + months;
+	const toYear = Math.floor(total / 12);
+	const toMonth = ((total % 12) + 12) % 12;
+	const lastDay = new Date(Date.UTC(toYear, toMonth + 1, 0)).getUTCDate();
+	return new Date(Date.UTC(toYear, toMonth, Math.min(day, lastDay)))
+		.toISOString()
+		.slice(0, 10);
+}
+
+/** The instant of the local midnight that starts a date in the shop's time zone. */
+export function localMidnight(
+	date: IsoDate,
+	timeZone: string = SHOP_TIME_ZONE,
+): number {
+	const utc = Date.parse(`${date}T00:00:00Z`);
+	const shown = Date.parse(`${isoDateIn(utc, timeZone)}T00:00:00Z`);
+	const parts = new Intl.DateTimeFormat("en-GB", {
+		timeZone,
+		hour: "2-digit",
+		minute: "2-digit",
+		hourCycle: "h23",
+	})
+		.formatToParts(new Date(utc))
+		.reduce<Record<string, number>>((all, part) => {
+			all[part.type] = Number(part.value);
+			return all;
+		}, {});
+	const offset =
+		shown - utc + ((parts.hour ?? 0) * 60 + (parts.minute ?? 0)) * 60_000;
+	return utc - offset;
+}
+
+/**
+ * ADR-047: a credit issued at an instant is valid through the local date of it
+ * plus the programme's months and ends at the local midnight closing that day.
+ */
+export function creditEnd(
+	issuedAt: number,
+	months: number,
+	timeZone: string = SHOP_TIME_ZONE,
+): { readonly validThrough: IsoDate; readonly expiresAt: number } {
+	const validThrough = addMonths(isoDateIn(issuedAt, timeZone), months);
+	return {
+		validThrough,
+		expiresAt: localMidnight(addDays(validThrough, 1), timeZone),
+	};
+}
+
 export function daysBetween(from: IsoDate, to: IsoDate): number {
 	return Math.round(
 		(Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS,

@@ -460,8 +460,10 @@ select is(
 );
 
 create temp table ledger_before as select count(*) as n from public.loyalty_ledger where tenant_id = (select tenant_r from fx);
+-- Changed by ADR-046 (G-102): the nightly counts gained written_off_stamps and written_off_points; this
+-- check is about the hold release, so they are dropped with the other phase 17 counts (here and below).
 select is(
-  app.loyalty_nightly((select tenant_r from fx), now()) - 'clawbacks' - 'expired_points' - 'expired_stamps' - 'expired_memberships' - 'liability_rows',
+  app.loyalty_nightly((select tenant_r from fx), now()) - 'clawbacks' - 'written_off_stamps' - 'written_off_points' - 'expired_points' - 'expired_stamps' - 'expired_memberships' - 'liability_rows',
   '{"released_holds": 2, "quarantined_codes": 1, "late_confirmed_holds": 0}'::jsonb,
   'the nightly step releases both unused holds after 24 hours and quarantines the pool code'
 );
@@ -520,7 +522,7 @@ select is(
   'returned points keep the expiry of the credit they came from'
 );
 select is(
-  app.loyalty_nightly((select tenant_r from fx), now() + interval '25 hours') - 'clawbacks' - 'expired_points' - 'expired_stamps' - 'expired_memberships' - 'liability_rows',
+  app.loyalty_nightly((select tenant_r from fx), now() + interval '25 hours') - 'clawbacks' - 'written_off_stamps' - 'written_off_points' - 'expired_points' - 'expired_stamps' - 'expired_memberships' - 'liability_rows',
   '{"released_holds": 0, "quarantined_codes": 0, "late_confirmed_holds": 1}'::jsonb,
   'a hold whose invoice is already synced is confirmed, not released, when its time is up'
 );

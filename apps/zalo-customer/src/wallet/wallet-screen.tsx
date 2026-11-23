@@ -7,7 +7,7 @@ import type {
 	Wallet,
 } from "@fnb/zalo-mini/loyalty";
 import { useI18n } from "@fnb/zalo-mini/react";
-import { type ReactNode, useCallback, useId } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { BillsToConfirmCard } from "../bills/bill-confirm";
 import { claimReasonKey } from "../claim/model";
@@ -26,6 +26,37 @@ import {
 	secondaryButton,
 } from "../ui";
 import { StampsRing } from "./stamps-ring";
+import { useNow } from "./vouchers";
+
+/**
+ * ADR-047: a credit is spendable until the instant it ends (the midnight that
+ * closes its last valid day), not until the nightly run. While the wallet is
+ * open past that instant the notice of it is stale, so it is hidden and the
+ * wallet is read again once, and the balance then follows the server.
+ */
+export function creditStillValid(
+	expiresAt: number | null,
+	now: number,
+): boolean {
+	return expiresAt === null || now < expiresAt;
+}
+
+function useReloadWhenEnded(
+	instants: readonly (number | null)[],
+	now: number,
+	onChanged: () => void,
+): void {
+	const ended = instants.some(
+		(instant) => instant !== null && !creditStillValid(instant, now),
+	);
+	const reloaded = useRef(false);
+	useEffect(() => {
+		if (ended && !reloaded.current) {
+			reloaded.current = true;
+			onChanged();
+		}
+	}, [ended, onChanged]);
+}
 
 const STATE_TONES: Readonly<
 	Record<LedgerState, "pending" | "positive" | "negative">
@@ -174,6 +205,20 @@ function WalletView({
 	const historyId = useId();
 	const claimsId = useId();
 	const rewardsId = useId();
+	const now = useNow(30_000);
+	useReloadWhenEnded(
+		[
+			...wallet.stampCards.map((card) => card.expiresAt),
+			wallet.points.expiring?.expiresAt ?? null,
+		],
+		now,
+		onChanged,
+	);
+	const expiring =
+		wallet.points.expiring !== null &&
+		creditStillValid(wallet.points.expiring.expiresAt, now)
+			? wallet.points.expiring
+			: null;
 	return (
 		<Screen testId="wallet">
 			<h1 className="text-xl font-semibold text-ink">{t("wallet.title")}</h1>
@@ -206,10 +251,14 @@ function WalletView({
 									{t("wallet.stampsPending", { count: card.pending })}
 								</p>
 							) : null}
-							{card.expiresOn === null ? null : (
-								<p className="text-sm text-ink-muted">
-									{t("wallet.stampsExpire", {
-										date: shownDate(card.expiresOn),
+							{card.validThrough === null ||
+							!creditStillValid(card.expiresAt, now) ? null : (
+								<p
+									className="text-sm text-ink-muted"
+									data-testid="stamps-valid-through"
+								>
+									{t("wallet.stampsValidThrough", {
+										date: shownDate(card.validThrough),
 									})}
 								</p>
 							)}
@@ -232,11 +281,11 @@ function WalletView({
 						{t("wallet.pointsPending", { count: wallet.points.pending })}
 					</p>
 				) : null}
-				{wallet.points.expiring === null ? null : (
+				{expiring === null ? null : (
 					<p className="text-sm text-ink-muted" data-testid="points-expiring">
-						{t("wallet.pointsExpire", {
-							count: wallet.points.expiring.points,
-							date: shownDate(wallet.points.expiring.on),
+						{t("wallet.pointsValidThrough", {
+							count: expiring.points,
+							date: shownDate(expiring.validThrough),
 						})}
 					</p>
 				)}

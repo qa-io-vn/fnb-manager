@@ -1,4 +1,4 @@
-import { addMonthsUtc } from "./loyalty-months.js";
+import { creditExpiresAt } from "./loyalty-months.js";
 
 /**
  * The loyalty ledger as an executable model (docs/schema.md, "Loyalty ledger").
@@ -103,18 +103,65 @@ interface StampLot {
 	readonly member: string;
 	readonly earnEntryId: number;
 	readonly earnedAt: number;
-	readonly expiresAt: number;
+	/** Fixed at issue; a pending earn's lots get theirs again when it is confirmed (ADR-046). */
+	expiresAt: number;
 	state: "active" | "redeemed" | "expired" | "clawed_back";
 	closedBy: number | null;
 }
 
+/**
+ * Switches back to the rules before ADR-046, which let a balance go below zero.
+ * They exist so that the property tests can show that they catch it; the
+ * database implements neither since migrations 20261123120000 and 20261123140000.
+ */
 export interface LedgerOptions {
-	/**
-	 * `app.loyalty_apply_adjustment` writes any negative adjustment, so a balance
-	 * can be taken below zero. The model refuses such an adjustment unless this
-	 * is true (the intended rule: an adjustment never takes more than is there).
-	 */
+	/** An adjustment may take a balance below zero (no floor). */
 	readonly allowNegativeAdjustments?: boolean;
+	/** A clawback writes the opposite deltas of its earn whatever is left. */
+	readonly uncappedClawbacks?: boolean;
+}
+
+/**
+ * The reason a clawback row carries (ADR-046): the reason it was given, and
+ * when the member no longer had all of the earn, "; short by n stamp(s) and n
+ * point(s)", the write-off the programme absorbs. Cut to the 200 characters of
+ * the column, as `app.loyalty_write_clawback` does.
+ */
+export function clawbackReason(reason: string, short: Amounts): string {
+	const parts: string[] = [];
+	if (short.stamps > 0) {
+		parts.push(`${short.stamps} ${short.stamps === 1 ? "stamp" : "stamps"}`);
+	}
+	if (short.points > 0) {
+		parts.push(`${short.points} ${short.points === 1 ? "point" : "points"}`);
+	}
+	if (parts.length === 0) {
+		return reason;
+	}
+	const suffix = `; short by ${parts.join(" and ")}`;
+	return [...reason].slice(0, 200 - suffix.length).join("") + suffix;
+}
+
+/**
+ * When the points of a crediting row expire: the row's own expiry, or for an
+ * earn that was written pending, the expiry its confirm row carries (its clock
+ * starts at the confirmation, ADR-046). Null while the earn is not confirmed: a
+ * pending earn never expires.
+ */
+export function creditPointsExpiry(
+	rows: readonly LedgerEntry[],
+	credit: LedgerEntry,
+): number | null {
+	if (credit.kind === "earn" && credit.pending) {
+		const confirm = rows.find(
+			(row) => row.kind === "confirm" && row.sourceId === credit.id,
+		);
+		if (confirm === undefined) {
+			return null;
+		}
+		return confirm.expiresAt ?? credit.expiresAt;
+	}
+	return credit.expiresAt;
 }
 
 const NEVER = Number.POSITIVE_INFINITY;
@@ -182,7 +229,9 @@ export function ledgerBalance(
 /**
  * The points of a member that expire by `at`, first in first out: the confirmed
  * credits past their expiry (net of their clawbacks) less every point already
- * spent, held, adjusted away or expired; a released hold cancels its debit.
+ * spent, held, adjusted away or expired; a released hold cancels its debit. An
+ * earn not confirmed by `at` never expires, and a confirmed pending earn expires
+ * when its confirm row says (ADR-046).
  */
 export function expiringPoints(
 	entries: readonly LedgerEntry[],
@@ -192,17 +241,17 @@ export function expiringPoints(
 	const rows = entries.filter(
 		(row) => row.member === member && row.occurredAt <= at,
 	);
-	const open = openPendingEarnIds(rows);
 	let expiringCredits = 0;
 	for (const credit of rows) {
 		if (
-			credit.pointDelta > 0 &&
-			(credit.kind === "earn" || credit.kind === "adjust") &&
-			credit.reason !== REDEMPTION_RELEASED &&
-			!open.has(credit.id) &&
-			credit.expiresAt !== null &&
-			credit.expiresAt <= at
+			credit.pointDelta <= 0 ||
+			(credit.kind !== "earn" && credit.kind !== "adjust") ||
+			credit.reason === REDEMPTION_RELEASED
 		) {
+			continue;
+		}
+		const expiresAt = creditPointsExpiry(rows, credit);
+		if (expiresAt !== null && expiresAt <= at) {
 			let net = credit.pointDelta;
 			for (const row of rows) {
 				if (row.kind === "clawback" && row.sourceId === credit.id) {
@@ -254,8 +303,33 @@ export class LoyaltyLedger {
 		}
 	}
 
+	/** The balance the ledger rows give (`app.loyalty_balance(membership, null)` when `at` is omitted). */
 	balance(member: string, at: number = NEVER): Balance {
 		return ledgerBalance(this.rows, member, at);
+	}
+
+	/**
+	 * What the member may spend at a moment: `app.loyalty_balance(membership, at)`,
+	 * which the floor of an adjustment, the cap of a clawback and a hold read.
+	 * ADR-047: the rows up to `at` less the credits whose expiry has passed by
+	 * then, whatever expire rows exist yet: the stamps past their expiry and the
+	 * points `expiringPoints` gives at that moment.
+	 */
+	spendableAt(member: string, at: number): Balance {
+		const rows = ledgerBalance(this.rows, member, at);
+		const deadStamps = this.lots.filter(
+			(lot) =>
+				lot.member === member &&
+				lot.state === "active" &&
+				lot.expiresAt <= at &&
+				(this.entry(lot.earnEntryId)?.occurredAt ?? NEVER) <= at &&
+				!this.lotIsPending(lot),
+		).length;
+		return {
+			...rows,
+			stamps: rows.stamps - deadStamps,
+			points: rows.points - expiringPoints(this.rows, member, at),
+		};
 	}
 
 	/** The running account of a member, kept by transitions. */
@@ -334,7 +408,7 @@ export class LoyaltyLedger {
 			reason: null,
 			expiresAt:
 				amounts.points > 0
-					? addMonthsUtc(options.soldAt, this.rules.pointsExpiryMonths)
+					? this.expiryFrom(options.soldAt, this.rules.pointsExpiryMonths)
 					: null,
 			occurredAt: options.at,
 		});
@@ -343,7 +417,7 @@ export class LoyaltyLedger {
 			entry.id,
 			amounts.stamps,
 			options.soldAt,
-			addMonthsUtc(options.soldAt, this.rules.stampValidityMonths),
+			this.expiryFrom(options.soldAt, this.rules.stampValidityMonths),
 		);
 		if (pending) {
 			add(account.pending, amounts);
@@ -382,6 +456,8 @@ export class LoyaltyLedger {
 			return refuse("not_held");
 		}
 		this.ensureOrder(at);
+		// The expiry clock of a pending earn starts at its confirmation (ADR-046):
+		// the confirm row carries the points' expiry and the earn's stamps get theirs.
 		const confirm = this.write({
 			member: target.member,
 			kind: "confirm",
@@ -390,9 +466,19 @@ export class LoyaltyLedger {
 			pending: false,
 			sourceId: entryId,
 			reason: null,
-			expiresAt: null,
+			expiresAt:
+				target.kind === "earn" && target.pointDelta > 0
+					? this.expiryFrom(at, this.rules.pointsExpiryMonths)
+					: null,
 			occurredAt: at,
 		});
+		if (target.kind === "earn") {
+			for (const lot of this.lots) {
+				if (lot.earnEntryId === entryId && lot.state === "active") {
+					lot.expiresAt = this.expiryFrom(at, this.rules.stampValidityMonths);
+				}
+			}
+		}
 		const account = this.members.get(target.member);
 		if (account !== undefined) {
 			if (target.kind === "earn") {
@@ -431,7 +517,7 @@ export class LoyaltyLedger {
 			return refuse("no_cost");
 		}
 		this.ensureOrder(at);
-		const balance = this.balance(member, at);
+		const balance = this.spendableAt(member, at);
 		const usable = this.spendableLots(member, at);
 		if (
 			cost.stamps > 0 &&
@@ -442,6 +528,8 @@ export class LoyaltyLedger {
 		if (cost.points > 0 && balance.points < cost.points) {
 			return refuse("insufficient_points");
 		}
+		// ADR-047: the credits that ended before this moment get their expire row first.
+		this.expireMember(member, at);
 		const entry = this.write({
 			member,
 			kind: "redeem",
@@ -499,7 +587,14 @@ export class LoyaltyLedger {
 		return { ok: true, entryId: release.id };
 	}
 
-	/** `app.loyalty_clawback` of one earn: the opposite deltas, whatever was spent. */
+	/**
+	 * `app.loyalty_clawback` of one earn (`app.loyalty_write_clawback`, ADR-046):
+	 * an earn still pending is taken back whole; a confirmed one up to the
+	 * member's spendable balance of each kind, and nothing of a kind that already
+	 * expired. The part not taken is written on the row's reason as "short by n".
+	 * The stamps taken close the earn's own active stamps first, then the
+	 * member's oldest spendable ones.
+	 */
 	clawback(
 		earnId: number,
 		at: number,
@@ -518,34 +613,78 @@ export class LoyaltyLedger {
 		}
 		this.ensureOrder(at);
 		const wasPending = this.isOpenPending(earn);
+		const full = { stamps: earn.stampDelta, points: earn.pointDelta };
+		const capped = !wasPending && !this.options.uncappedClawbacks;
+		const taken = capped ? this.clawbackTake(earn, at) : full;
 		const claw = this.write({
 			member: earn.member,
 			kind: "clawback",
-			stampDelta: 0 - earn.stampDelta,
-			pointDelta: 0 - earn.pointDelta,
+			stampDelta: 0 - taken.stamps,
+			pointDelta: 0 - taken.points,
 			pending: false,
 			sourceId: earnId,
-			reason,
+			reason: clawbackReason(reason, {
+				stamps: full.stamps - taken.stamps,
+				points: full.points - taken.points,
+			}),
 			expiresAt: null,
 			occurredAt: at,
 		});
-		for (const lot of this.lots) {
-			if (lot.earnEntryId === earnId && lot.state === "active") {
+		if (capped) {
+			const candidates = this.lots
+				.filter(
+					(lot) =>
+						lot.member === earn.member &&
+						lot.state === "active" &&
+						(lot.earnEntryId === earnId ||
+							(lot.expiresAt > at && !this.lotIsPending(lot))),
+				)
+				.sort(
+					(a, b) =>
+						Number(b.earnEntryId === earnId) -
+							Number(a.earnEntryId === earnId) ||
+						a.expiresAt - b.expiresAt ||
+						a.id - b.id,
+				)
+				.slice(0, taken.stamps);
+			for (const lot of candidates) {
 				lot.state = "clawed_back";
 				lot.closedBy = claw.id;
+			}
+		} else {
+			for (const lot of this.lots) {
+				if (lot.earnEntryId === earnId && lot.state === "active") {
+					lot.state = "clawed_back";
+					lot.closedBy = claw.id;
+				}
 			}
 		}
 		const account = this.members.get(earn.member);
 		if (account !== undefined) {
-			const amounts = { stamps: earn.stampDelta, points: earn.pointDelta };
 			if (wasPending) {
-				sub(account.pending, amounts);
+				sub(account.pending, full);
 			} else {
-				add(account.reversed, amounts);
-				sub(account.spendable, amounts);
+				add(account.reversed, taken);
+				sub(account.spendable, taken);
 			}
 		}
 		return { ok: true, entryId: claw.id };
+	}
+
+	/** What a clawback of a confirmed earn takes back at `at` (ADR-046). */
+	private clawbackTake(earn: LedgerEntry, at: number): Amounts {
+		const balance = this.spendableAt(earn.member, at);
+		let stamps = Math.min(earn.stampDelta, Math.max(balance.stamps, 0));
+		let points = Math.min(earn.pointDelta, Math.max(balance.points, 0));
+		const own = this.lots.filter((lot) => lot.earnEntryId === earn.id);
+		if (own.length > 0 && own.every((lot) => lot.expiresAt <= at)) {
+			stamps = 0;
+		}
+		const pointsExpiry = creditPointsExpiry(this.rows, earn);
+		if (pointsExpiry !== null && pointsExpiry <= at) {
+			points = 0;
+		}
+		return { stamps, points };
 	}
 
 	/** `app.loyalty_apply_adjustment`: a signed manual change with its reason. */
@@ -563,21 +702,20 @@ export class LoyaltyLedger {
 			return refuse("nothing_to_adjust");
 		}
 		this.ensureOrder(at);
+		// ADR-046: a negative part larger than the spendable balance of its kind is
+		// refused (22023 in app.loyalty_apply_adjustment); a positive part never is.
 		if (!this.options.allowNegativeAdjustments) {
-			const balance = this.balance(member, at);
-			const eligible = this.lots.filter(
-				(lot) =>
-					lot.member === member &&
-					lot.state === "active" &&
-					!this.lotIsPending(lot),
-			).length;
+			const balance = this.spendableAt(member, at);
 			if (
-				balance.stamps + amounts.stamps < 0 ||
-				balance.points + amounts.points < 0 ||
-				(amounts.stamps < 0 && eligible < -amounts.stamps)
+				(amounts.stamps < 0 && balance.stamps + amounts.stamps < 0) ||
+				(amounts.points < 0 && balance.points + amounts.points < 0)
 			) {
 				return refuse("would_go_negative");
 			}
+		}
+		if (amounts.stamps < 0 || amounts.points < 0) {
+			// ADR-047: an accepted debit first writes the member's due expiry.
+			this.expireMember(member, at);
 		}
 		const entry = this.write({
 			member,
@@ -589,7 +727,7 @@ export class LoyaltyLedger {
 			reason,
 			expiresAt:
 				amounts.points > 0
-					? addMonthsUtc(at, this.rules.pointsExpiryMonths)
+					? this.expiryFrom(at, this.rules.pointsExpiryMonths)
 					: null,
 			occurredAt: at,
 		});
@@ -599,7 +737,7 @@ export class LoyaltyLedger {
 				entry.id,
 				amounts.stamps,
 				at,
-				addMonthsUtc(at, this.rules.stampValidityMonths),
+				this.expiryFrom(at, this.rules.stampValidityMonths),
 			);
 		} else if (amounts.stamps < 0) {
 			const oldest = this.lots
@@ -607,6 +745,7 @@ export class LoyaltyLedger {
 					(lot) =>
 						lot.member === member &&
 						lot.state === "active" &&
+						lot.expiresAt > at &&
 						!this.lotIsPending(lot),
 				)
 				.sort((a, b) => a.expiresAt - b.expiresAt || a.id - b.id)
@@ -634,43 +773,60 @@ export class LoyaltyLedger {
 	expire(at: number): { memberships: number; stamps: number; points: number } {
 		this.ensureOrder(at);
 		const total = { memberships: 0, stamps: 0, points: 0 };
-		for (const [member, account] of [...this.members.entries()].sort(
-			([left], [right]) => (left < right ? -1 : left > right ? 1 : 0),
+		for (const member of [...this.members.keys()].sort((left, right) =>
+			left < right ? -1 : left > right ? 1 : 0,
 		)) {
-			const due = this.lots.filter(
-				(lot) =>
-					lot.member === member &&
-					lot.state === "active" &&
-					lot.expiresAt <= at &&
-					!this.lotIsPending(lot),
-			);
-			const points = expiringPoints(this.rows, member, at);
-			if (due.length === 0 && points === 0) {
-				continue;
+			const amounts = this.expireMember(member, at);
+			if (amounts !== null) {
+				total.memberships += 1;
+				total.stamps += amounts.stamps;
+				total.points += amounts.points;
 			}
-			const entry = this.write({
-				member,
-				kind: "expire",
-				stampDelta: 0 - due.length,
-				pointDelta: 0 - points,
-				pending: false,
-				sourceId: null,
-				reason: EXPIRED_REASON,
-				expiresAt: null,
-				occurredAt: at,
-			});
-			for (const lot of due) {
-				lot.state = "expired";
-				lot.closedBy = entry.id;
-			}
-			const amounts = { stamps: due.length, points };
-			add(account.expired, amounts);
-			sub(account.spendable, amounts);
-			total.memberships += 1;
-			total.stamps += due.length;
-			total.points += points;
 		}
 		return total;
+	}
+
+	/**
+	 * `app.loyalty_expire_membership`: the expire row of one member at a moment,
+	 * or nothing when nothing is due. `app.loyalty_expire` runs it for every
+	 * member; an accepted hold or debit runs it first for its member (ADR-047),
+	 * so first in first out never counts a debit against a credit that had ended.
+	 */
+	private expireMember(member: string, at: number): Amounts | null {
+		const account = this.members.get(member);
+		if (account === undefined) {
+			return null;
+		}
+		const due = this.lots.filter(
+			(lot) =>
+				lot.member === member &&
+				lot.state === "active" &&
+				lot.expiresAt <= at &&
+				!this.lotIsPending(lot),
+		);
+		const points = expiringPoints(this.rows, member, at);
+		if (due.length === 0 && points === 0) {
+			return null;
+		}
+		const entry = this.write({
+			member,
+			kind: "expire",
+			stampDelta: 0 - due.length,
+			pointDelta: 0 - points,
+			pending: false,
+			sourceId: null,
+			reason: EXPIRED_REASON,
+			expiresAt: null,
+			occurredAt: at,
+		});
+		for (const lot of due) {
+			lot.state = "expired";
+			lot.closedBy = entry.id;
+		}
+		const amounts = { stamps: due.length, points };
+		add(account.expired, amounts);
+		sub(account.spendable, amounts);
+		return amounts;
 	}
 
 	/** The stamps a redemption may use at a moment, oldest expiry first. */
@@ -694,6 +850,11 @@ export class LoyaltyLedger {
 		return this.lots.filter(
 			(lot) => lot.member === member && lot.state === "active",
 		).length;
+	}
+
+	/** The expiry of a credit issued (or confirmed) at `from`, `months` later. */
+	private expiryFrom(from: number, months: number): number {
+		return creditExpiresAt(from, months, this.rules.timezone);
 	}
 
 	private lotIsPending(lot: StampLot): boolean {

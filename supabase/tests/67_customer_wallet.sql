@@ -132,9 +132,13 @@ select is(
   '{"programme_name": "Synthetic programme", "display_name": "Khách cwuser1", "phone_masked": "•••• ••• 701", "member_since": "2026-11-09", "purchases": 0}'::jsonb,
   'the member card holds the programme name, the customer''s identity and the purchases (FR-CMP-19)'
 );
+-- Changed by ADR-047: the welcome stamp of 2026-11-09 is valid through 2027-05-09 and ends at the local
+-- midnight that closes that day; the card gives that last day as valid_through (and, unchanged, as
+-- expires_on) and the instant as expires_at (2027-05-10 00:00 local = 2027-05-09 17:00 UTC).
 select is(
   pg_temp.wallet((select login_1 from fx), (select t0 from fx)) -> 'stamp_cards',
-  jsonb_build_array(jsonb_build_object('id', (select id from ids where name = 'member_1'), 'name', 'Synthetic programme', 'stamps', 1, 'stamps_per_card', 4, 'pending', 0, 'expires_on', '2027-05-09')),
+  jsonb_build_array(jsonb_build_object('id', (select id from ids where name = 'member_1'), 'name', 'Synthetic programme', 'stamps', 1, 'stamps_per_card', 4, 'pending', 0, 'expires_on', '2027-05-09',
+    'valid_through', '2027-05-09', 'expires_at', '2027-05-09T17:00:00+00:00')),
   'one stamp card with the welcome stamp and its expiry'
 );
 select is(
@@ -236,7 +240,9 @@ select is(
     pg_temp.wallet((select login_1 from fx), (select t0 + interval '4 minutes' from fx)) -> 'card' ->> 'purchases',
     pg_temp.wallet((select login_1 from fx), (select t0 + interval '4 minutes' from fx)) -> 'stamp_cards' -> 0 ->> 'stamps',
     pg_temp.wallet((select login_1 from fx), (select t0 + interval '4 minutes' from fx)) -> 'points'),
-  '1|2|{"balance": 6, "pending": 0, "expiring": {"on": "2027-11-10", "points": 6}}',
+  -- Changed by ADR-047: the six points of the sale of 2026-11-10 are valid through 2027-11-10 (valid_through,
+  -- and as before on) and end at the local midnight closing it (expires_at).
+  '1|2|{"balance": 6, "pending": 0, "expiring": {"on": "2027-11-10", "points": 6, "expires_at": "2027-11-10T17:00:00+00:00", "valid_through": "2027-11-10"}}',
   'the wallet totals follow the ledger: one purchase, two stamps, six points expiring a year after the sale'
 );
 select is(
@@ -264,7 +270,8 @@ select is(
 );
 select is(
   pg_temp.wallet((select login_1 from fx), (select t0 + interval '11 minutes' from fx)) -> 'points' -> 'expiring',
-  '{"on": "2027-11-10", "points": 11}'::jsonb,
+  -- Changed by ADR-047: the two credits of 2026-11-10 now end at the same instant, the end of 2027-11-10.
+  '{"on": "2027-11-10", "points": 11, "valid_through": "2027-11-10", "expires_at": "2027-11-10T17:00:00+00:00"}'::jsonb,
   'the points expiring on the next expiry day are counted together'
 );
 

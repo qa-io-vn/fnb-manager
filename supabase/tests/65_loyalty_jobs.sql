@@ -124,9 +124,11 @@ select is(
   'three invoices earn'
 );
 update public.invoices set status = 'voided' where id = (select id from ids where name = 'inv_3');
+-- Changed by ADR-046 (G-102): the nightly counts gained written_off_stamps and written_off_points, what
+-- its clawbacks could not take back; here the member still holds the whole earn, so both are 0.
 select is(
   app.loyalty_nightly((select tenant_j from fx), timestamptz '2026-11-15 04:00+07'),
-  '{"clawbacks": 1, "liability_rows": 1, "expired_points": 0, "expired_stamps": 0, "expired_memberships": 0, "released_holds": 0, "quarantined_codes": 0, "late_confirmed_holds": 0}'::jsonb,
+  '{"clawbacks": 1, "written_off_stamps": 0, "written_off_points": 0, "liability_rows": 1, "expired_points": 0, "expired_stamps": 0, "expired_memberships": 0, "released_holds": 0, "quarantined_codes": 0, "late_confirmed_holds": 0}'::jsonb,
   'the nightly step reverses the earn of the invoice voided by the re-pull'
 );
 select is(

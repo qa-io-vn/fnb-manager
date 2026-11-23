@@ -10,7 +10,8 @@
 //     one, exactly six months after the first expiry (a run on 2027-04-21 04:00);
 //   * confirmed and unconfirmed earns, clawbacks, holds that are confirmed,
 //     released by hand or released by the nightly 24-hour rule, a manual credit
-//     and a manual debit, and one member whose balance is negative.
+//     and a manual debit, and one member whose voided earn was already spent
+//     (the clawback takes the 5 points left and writes off 10, ADR-046).
 // Two nightly runs before the window (2027-04-21 and 2027-05-16) expire the
 // April 2026 cohort's points and the stamps of the autumn cohorts.
 import { zonedInstant } from "../../src/rules/business-date.js";
@@ -471,8 +472,9 @@ export function buildLiabilityReplay(seed = 20261122): LiabilityReplayFixture {
 			});
 		}
 		if (k === 9) {
-			// The negative member: three 150,000 earns, a cake held and confirmed,
-			// then the last earn is voided and clawed back (45 - 40 - 15 = -10).
+			// The write-off member: three 150,000 earns, a cake held and confirmed,
+			// then the last earn is voided: its clawback takes the 5 points left
+			// and writes off 10 (ADR-046; before it the member went to -10).
 			sale(11, date, "09:00", 150_000);
 			const second = sale(11, date, "10:00", 150_000);
 			const third = sale(11, date, "11:00", 150_000);

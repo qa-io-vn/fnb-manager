@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
 	accountFromEntries,
 	addMonthsUtc,
+	creditExpiresAt,
 	expiringPoints,
 	type LedgerRules,
 	LoyaltyLedger,
@@ -151,7 +152,8 @@ describe("boundary value analysis: what a hold may take", () => {
 		const ledger = ledgerWithMember();
 		const sold = at("2026-10-01T10:00");
 		ledger.earn("m1", { stamps: 2, points: 0 }, { soldAt: sold, at: sold + 1 });
-		const expiry = addMonthsUtc(sold, 6);
+		// Changed by ADR-047: the stamp ends at the midnight closing its anniversary day.
+		const expiry = creditExpiresAt(sold, 6, RULES.timezone);
 		expect(ledger.hold("m1", { stamps: 2, points: 0 }, expiry).ok).toBe(false);
 		expect(ledger.hold("m1", { stamps: 2, points: 0 }, expiry - 1).ok).toBe(
 			true,
@@ -281,8 +283,23 @@ describe("state transition testing: a clawback reverses an earn once", () => {
 		});
 	});
 
-	it("after a redemption the balance goes below zero: the one accepted negative case", () => {
+	it("after a redemption the clawback takes back what is left and writes off the rest (ADR-046)", () => {
 		const ledger = ledgerWithMember();
+		const earn = entryId(
+			ledger.earn("m1", { stamps: 0, points: 60 }, { soldAt: 0, at: 1 }),
+		);
+		ledger.hold("m1", { stamps: 0, points: 40 }, 2);
+		const claw = ledger.entry(entryId(ledger.clawback(earn, 3)));
+		expect(claw).toMatchObject({
+			pointDelta: -20,
+			reason: "invoice_voided; short by 40 points",
+		});
+		expect(ledger.balance("m1").points).toBe(0);
+	});
+
+	it("before ADR-046 (uncapped clawbacks) the same case left -40", () => {
+		const ledger = new LoyaltyLedger(RULES, { uncappedClawbacks: true });
+		ledger.join("m1");
 		const earn = entryId(
 			ledger.earn("m1", { stamps: 0, points: 60 }, { soldAt: 0, at: 1 }),
 		);
@@ -323,10 +340,11 @@ describe("adjustments", () => {
 				),
 			),
 		);
-		expect(adjust?.expiresAt).toBe(at("2028-10-21T15:00"));
+		// Changed by ADR-047: valid through 21 October, ending at the midnight that closes it (was 15:00).
+		expect(adjust?.expiresAt).toBe(at("2028-10-22T00:00"));
 		expect(
 			ledger.spendableLots("m1", at("2027-10-21T15:00"))[0]?.expiresAt,
-		).toBe(at("2028-04-21T15:00"));
+		).toBe(at("2028-04-22T00:00"));
 	});
 
 	it("refuses a debit beyond the balance, and takes one that fits", () => {
@@ -379,7 +397,8 @@ describe("expiry: first in first out, net of what was spent, held and reversed",
 			{ stamps: 0, points: 20 },
 			{ soldAt: sold + 86_400_000, at: sold + 86_400_001 },
 		);
-		const first = addMonthsUtc(sold, 12);
+		// Changed by ADR-047: the credit ends at the midnight closing its anniversary day.
+		const first = creditExpiresAt(sold, 12, RULES.timezone);
 		expect(ledger.expire(first - 1)).toEqual({
 			memberships: 0,
 			stamps: 0,
@@ -417,7 +436,8 @@ describe("expiry: first in first out, net of what was spent, held and reversed",
 			{ soldAt: sold + 86_400_000, at: sold + 86_400_001 },
 		);
 		ledger.hold("m1", { stamps: 0, points: 10 }, sold + 2 * 86_400_000);
-		const first = addMonthsUtc(sold, 12);
+		// Changed by ADR-047: the credit ends at the midnight closing its anniversary day.
+		const first = creditExpiresAt(sold, 12, RULES.timezone);
 		expect(expiringPoints(ledger.entries, "m1", first)).toBe(0);
 		expect(expiringPoints(ledger.entries, "m1", first + 86_400_000)).toBe(10);
 	});
@@ -438,7 +458,7 @@ describe("expiry: first in first out, net of what was spent, held and reversed",
 			),
 		);
 		ledger.clawback(settled, sold + 3);
-		const later = addMonthsUtc(sold, 12) + 1;
+		const later = creditExpiresAt(sold, 12, RULES.timezone) + 1;
 		expect(ledger.expire(later)).toEqual({
 			memberships: 0,
 			stamps: 0,

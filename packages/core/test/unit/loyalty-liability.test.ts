@@ -85,7 +85,14 @@ function rowAt(ledger: LoyaltyLedger, asOf: number, members: string[]) {
 }
 
 function ledgerOf(...members: string[]): LoyaltyLedger {
-	const ledger = new LoyaltyLedger(RULES);
+	return ledgerWith({}, ...members);
+}
+
+function ledgerWith(
+	options: ConstructorParameters<typeof LoyaltyLedger>[1],
+	...members: string[]
+): LoyaltyLedger {
+	const ledger = new LoyaltyLedger(RULES, options);
 	for (const member of members) {
 		ledger.join(member);
 	}
@@ -286,7 +293,10 @@ describe("computeLiabilityRow: one night's row from a hand-made ledger", () => {
 	});
 
 	it("leaves a negative balance out instead of netting it against the others", () => {
-		const ledger = ledgerOf("a", "d");
+		// Since ADR-046 a clawback stops at zero; a negative balance is one that
+		// rows written before it left, so the ledger here is built with the old
+		// uncapped clawback and the liability's greatest(0, ...) is the safety net.
+		const ledger = ledgerWith({ uncappedClawbacks: true }, "a", "d");
 		const sold = at("2026-11-10T10:00");
 		ledger.earn("a", { stamps: 0, points: 12 }, { soldAt: sold, at: sold + 1 });
 		const earn = ledger.earn(
@@ -301,6 +311,27 @@ describe("computeLiabilityRow: one night's row from a hand-made ledger", () => {
 		const row = rowAt(ledger, at("2026-11-11T04:00"), ["a", "d"]);
 		expect(row.outstandingPoints).toBe(12);
 		expect(row.pointsClawedBack).toBe(60);
+	});
+
+	it("counts as clawed back only what a capped clawback took, the write-off not at all (ADR-046)", () => {
+		const ledger = ledgerOf("a", "d");
+		const sold = at("2026-11-10T10:00");
+		ledger.earn("a", { stamps: 0, points: 12 }, { soldAt: sold, at: sold + 1 });
+		const earn = ledger.earn(
+			"d",
+			{ stamps: 0, points: 60 },
+			{ soldAt: sold, at: sold + 2 },
+		);
+		ledger.hold("d", { stamps: 0, points: 40 }, sold + 3);
+		if (!earn.ok) throw new Error("earn refused");
+		ledger.clawback(earn.entryId, sold + 4);
+		expect(ledgerBalance(ledger.entries, "d").points).toBe(0);
+		expect(ledger.entries.find((row) => row.kind === "clawback")?.reason).toBe(
+			"invoice_voided; short by 40 points",
+		);
+		const row = rowAt(ledger, at("2026-11-11T04:00"), ["a", "d"]);
+		expect(row.outstandingPoints).toBe(12);
+		expect(row.pointsClawedBack).toBe(20);
 	});
 
 	it("nets a released hold out of the redeemed points and does not count it as issued", () => {
@@ -707,6 +738,227 @@ describe("breakage by issue month and the month boundary of the expiry run", () 
 				expiredByIssueMonth(entries, RULES, at("2027-10-31T23:59")).size,
 			).toBe(0);
 		});
+
+		// Review of G-104 (2026-11-23): each case below fails under one mutation of
+		// expiredByIssueMonth that the tests above let through (the mutation is named).
+		const run = at("2027-03-15T04:00");
+
+		it("negative test: a clawback written after the expiry run does not shrink that run's trace (mutation: count every clawback)", () => {
+			const entries = [
+				entry({
+					id: 1,
+					kind: "earn",
+					pointDelta: 10,
+					expiresAt: at("2027-01-11T00:00"),
+					occurredAt: at("2026-01-10T10:00"),
+				}),
+				entry({
+					id: 2,
+					kind: "earn",
+					pointDelta: 10,
+					expiresAt: at("2027-02-11T00:00"),
+					occurredAt: at("2026-02-10T10:00"),
+				}),
+				entry({
+					id: 3,
+					member: "a",
+					kind: "redeem",
+					pointDelta: -10,
+					occurredAt: at("2026-03-01T10:00"),
+				}),
+				entry({
+					id: 4,
+					kind: "expire",
+					pointDelta: -10,
+					reason: "expired",
+					occurredAt: run,
+				}),
+				entry({
+					id: 5,
+					kind: "clawback",
+					pointDelta: -10,
+					sourceId: 2,
+					reason: "invoice_voided",
+					occurredAt: run + 3_600_000,
+				}),
+			];
+			expect([...expiredByIssueMonth(entries, RULES, run + 7_200_000)]).toEqual(
+				[["2026-02", 10]],
+			);
+		});
+
+		it("two members expiring in the same run are each traced to their own credits (mutation: line up every member's credits)", () => {
+			const entries = [
+				entry({
+					id: 1,
+					member: "a",
+					kind: "earn",
+					pointDelta: 10,
+					expiresAt: at("2027-01-11T00:00"),
+					occurredAt: at("2026-01-10T10:00"),
+				}),
+				entry({
+					id: 2,
+					member: "b",
+					kind: "earn",
+					pointDelta: 10,
+					expiresAt: at("2027-03-11T00:00"),
+					occurredAt: at("2026-03-10T10:00"),
+				}),
+				entry({
+					id: 3,
+					member: "a",
+					kind: "expire",
+					pointDelta: -10,
+					reason: "expired",
+					occurredAt: run,
+				}),
+				entry({
+					id: 4,
+					member: "b",
+					kind: "expire",
+					pointDelta: -10,
+					reason: "expired",
+					occurredAt: run,
+				}),
+			];
+			expect([...expiredByIssueMonth(entries, RULES, run)]).toEqual([
+				["2026-01", 10],
+				["2026-03", 10],
+			]);
+		});
+
+		it("lines credits up by expiry, not by issue: an adjust credit ending before an older earn is consumed first (mutation: order by issue)", () => {
+			const entries = [
+				entry({
+					id: 1,
+					kind: "earn",
+					pointDelta: 10,
+					expiresAt: at("2027-01-11T00:00"),
+					occurredAt: at("2026-01-10T10:00"),
+				}),
+				entry({
+					id: 2,
+					kind: "adjust",
+					pointDelta: 10,
+					reason: "goodwill",
+					expiresAt: at("2026-12-02T00:00"),
+					occurredAt: at("2026-02-01T10:00"),
+				}),
+				entry({
+					id: 3,
+					kind: "redeem",
+					pointDelta: -10,
+					occurredAt: at("2026-03-01T10:00"),
+				}),
+				entry({
+					id: 4,
+					kind: "expire",
+					pointDelta: -10,
+					reason: "expired",
+					occurredAt: run,
+				}),
+			];
+			expect([...expiredByIssueMonth(entries, RULES, run)]).toEqual([
+				["2026-01", 10],
+			]);
+		});
+
+		it.each([
+			{ label: "at the run", ends: run, traced: true },
+			{ label: "one millisecond after the run", ends: run + 1, traced: false },
+		])(
+			"boundary values: a credit ending $label is traced: $traced (mutation: expiresAt < the run)",
+			({ ends, traced }) => {
+				const entries = [
+					entry({
+						id: 1,
+						kind: "adjust",
+						pointDelta: 10,
+						reason: "goodwill",
+						expiresAt: ends,
+						occurredAt: at("2026-01-10T10:00"),
+					}),
+					entry({
+						id: 2,
+						kind: "expire",
+						pointDelta: -10,
+						reason: "expired",
+						occurredAt: run,
+					}),
+				];
+				expect([...expiredByIssueMonth(entries, RULES, run)]).toEqual(
+					traced ? [["2026-01", 10]] : [["2026-03", 10]],
+				);
+			},
+		);
+
+		it("negative test: a pending earn past its sale's expiry is not lined up, it never expires (ADR-046; mutation: line up unconfirmed earns)", () => {
+			const entries = [
+				entry({
+					id: 1,
+					kind: "earn",
+					pointDelta: 10,
+					expiresAt: at("2027-01-11T00:00"),
+					occurredAt: at("2026-01-10T10:00"),
+				}),
+				entry({
+					id: 2,
+					kind: "earn",
+					pointDelta: 10,
+					pending: true,
+					expiresAt: at("2027-02-11T00:00"),
+					occurredAt: at("2026-02-10T10:00"),
+				}),
+				entry({
+					id: 3,
+					kind: "expire",
+					pointDelta: -10,
+					reason: "expired",
+					occurredAt: run,
+				}),
+			];
+			expect([...expiredByIssueMonth(entries, RULES, run)]).toEqual([
+				["2026-01", 10],
+			]);
+		});
+
+		it("a confirmed pending earn is lined up by its confirm row's expiry, not the earn's (ADR-046; mutation: read the earn's expiry)", () => {
+			const entries = [
+				entry({
+					id: 1,
+					kind: "earn",
+					pointDelta: 10,
+					expiresAt: at("2027-01-11T00:00"),
+					occurredAt: at("2026-01-10T10:00"),
+				}),
+				entry({
+					id: 2,
+					kind: "earn",
+					pointDelta: 10,
+					pending: true,
+					expiresAt: at("2027-02-11T00:00"),
+					occurredAt: at("2026-02-10T10:00"),
+				}),
+				entry({
+					id: 3,
+					kind: "confirm",
+					sourceId: 2,
+					expiresAt: at("2027-06-02T00:00"),
+					occurredAt: at("2026-06-01T10:00"),
+				}),
+				entry({
+					id: 4,
+					kind: "expire",
+					pointDelta: -10,
+					reason: "expired",
+					occurredAt: run,
+				}),
+			];
+			expect([...expiredByIssueMonth(entries, RULES, run)]).toEqual([
+				["2026-01", 10],
+			]);
+		});
 	});
 
 	it("lists a month once with its issued and expired points, in month order", () => {
@@ -819,7 +1071,7 @@ describe("the 30-day liability replay (CI integration against supabase/tests/236
 		).toBe(true);
 	});
 
-	it("exercises every flow and the negative balance", () => {
+	it("exercises every flow, and the member whose voided earn was spent ends at zero with a write-off (ADR-046)", () => {
 		const all = [...fixture.rows, ...fixture.closing];
 		expect(all.some((row) => row.pointsIssued > 0)).toBe(true);
 		expect(all.some((row) => row.pointsRedeemed > 0)).toBe(true);
@@ -828,12 +1080,22 @@ describe("the 30-day liability replay (CI integration against supabase/tests/236
 		expect(all.some((row) => row.pointsClawedBack > 0)).toBe(true);
 		const runner = new LiabilityReplayRunner();
 		for (const op of fixture.ops) runner.apply(op);
-		const negative = Array.from(
+		const balances = Array.from(
 			{ length: LIABILITY_MEMBER_COUNT },
 			(_, index) =>
 				ledgerBalance(runner.ledger.entries, memberId(index)).points,
-		).filter((points) => points < 0);
-		expect(negative.length).toBeGreaterThan(0);
+		);
+		expect(balances.filter((points) => points < 0)).toEqual([]);
+		// Member 11: 45 points earned, a cake of 40 confirmed, the last earn of 15
+		// voided: the clawback takes the 5 left and writes off 10.
+		expect(balances[11]).toBe(0);
+		const writeOff = runner.ledger.entries.find(
+			(row) => row.kind === "clawback" && row.member === memberId(11),
+		);
+		expect(writeOff).toMatchObject({
+			pointDelta: -5,
+			reason: "invoice_voided; short by 10 points",
+		});
 		const kinds = new Set(fixture.ops.map((op) => op.kind));
 		for (const kind of [
 			"earn",

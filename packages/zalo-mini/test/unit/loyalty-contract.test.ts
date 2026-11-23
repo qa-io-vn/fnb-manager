@@ -204,7 +204,14 @@ describe("the loyalty contract's readers", () => {
 			["pending", "member_code"],
 			["reversed", "phone"],
 		]);
-		expect(wallet.points.expiring).toEqual({ points: 45, on: "2027-11-09" });
+		// a server before ADR-047 sends the last day under on and expires_on, and no instant
+		expect(wallet.points.expiring).toEqual({
+			points: 45,
+			validThrough: "2027-11-09",
+			expiresAt: null,
+		});
+		expect(wallet.stampCards[0]?.validThrough).toBe("2027-03-30");
+		expect(wallet.stampCards[0]?.expiresAt).toBeNull();
 		expect(wallet.claims[0]?.state).toBe("pending");
 		expect(() =>
 			readWallet({
@@ -215,6 +222,60 @@ describe("the loyalty contract's readers", () => {
 		expect(() => readWallet({ ...WALLET, marketing_consent: "yes" })).toThrow(
 			"marketing consent",
 		);
+	});
+
+	it("read the last valid day and the instant of ADR-047, the new key first, and refuse a malformed one", () => {
+		const wallet = readWallet({
+			...WALLET,
+			stamp_cards: [
+				{
+					...WALLET.stamp_cards[0],
+					expires_on: "2027-03-30",
+					valid_through: "2027-03-30",
+					expires_at: "2027-03-30T17:00:00+00:00",
+				},
+			],
+			points: {
+				...WALLET.points,
+				expiring: {
+					points: 45,
+					on: "2027-11-09",
+					valid_through: "2027-11-09",
+					expires_at: "2027-11-09T17:00:00+00:00",
+				},
+			},
+		});
+		expect(wallet.stampCards[0]).toMatchObject({
+			validThrough: "2027-03-30",
+			expiresAt: Date.parse("2027-03-30T17:00:00Z"),
+		});
+		expect(wallet.points.expiring).toEqual({
+			points: 45,
+			validThrough: "2027-11-09",
+			expiresAt: Date.parse("2027-11-09T17:00:00Z"),
+		});
+		expect(() =>
+			readWallet({
+				...WALLET,
+				points: {
+					...WALLET.points,
+					expiring: { points: 45, valid_through: "2027-11-09T23:59:59" },
+				},
+			}),
+		).toThrow();
+		expect(() =>
+			readWallet({
+				...WALLET,
+				points: {
+					...WALLET.points,
+					expiring: {
+						points: 45,
+						valid_through: "2027-11-09",
+						expires_at: "soon",
+					},
+				},
+			}),
+		).toThrow();
 	});
 
 	it("read the wallet's deletion request with both deadlines, or none", () => {
