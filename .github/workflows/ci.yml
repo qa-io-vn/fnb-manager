@@ -179,7 +179,8 @@ jobs:
   mini-apps:
     name: Mini App builds, budgets and browser checks
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 30 since 2026-11-23: the job took 14 to 18 minutes and run 45151976690 was cancelled at the old 20-minute limit
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
