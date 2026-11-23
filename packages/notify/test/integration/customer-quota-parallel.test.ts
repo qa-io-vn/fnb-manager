@@ -144,6 +144,48 @@ describe.skipIf(!ENABLED)("the OA's daily quota under two dispatchers", () => {
 		await sql?.end({ timeout: 5 });
 	});
 
+	// Deterministic version of the race, which the test below only shows by timing (it failed on every nightly CI run
+	// and passed on a fast machine): one claimer holds its transaction open after taking the only message the quota of 1
+	// allows, a second claimer decides at the same moment under a short lock timeout. The quota is counted from rows
+	// already sending or sent, which an open transaction has not committed, so without the serialisation the second
+	// claimer reads the same count and takes a second message (a quota of 1 sends 2); with it, the second claimer waits
+	// behind the first (lock_timeout, 55P03) and, once the first has committed, finds the quota used up.
+	it("a second claimer deciding while the first has not committed waits for it, so the quota cannot be overshot", async () => {
+		const tenant = fixture.tenantId;
+		await sql`update app.customer_message_settings set zbs_daily_quota = 1 where tenant_id = ${tenant}::uuid`;
+		const first = await sql.reserve();
+		const second = await sql.reserve();
+		try {
+			await first`begin`;
+			const taken = await first`
+				select * from app.claim_next_customer_message('it-quota-race-a', array['template']::text[], interval '2 minutes', ${tomorrow10}::timestamptz, ${tenant}::uuid)
+			`;
+			expect(taken).toHaveLength(1);
+			await second`set lock_timeout = '400ms'`;
+			let blocked: string | null = null;
+			let overshoot = 0;
+			try {
+				const extra = await second`
+					select * from app.claim_next_customer_message('it-quota-race-b', array['template']::text[], interval '2 minutes', ${tomorrow10}::timestamptz, ${tenant}::uuid)
+				`;
+				overshoot = extra.length;
+			} catch (error) {
+				blocked = (error as { code?: string }).code ?? "error";
+			}
+			expect(
+				overshoot,
+				"the second claimer took a message past the quota",
+			).toBe(0);
+			expect(blocked).toBe("55P03");
+		} finally {
+			// the first claimer's transaction is rolled back: its message goes back to the queue for the test below
+			await first`rollback`.catch(() => undefined);
+			first.release();
+			second.release();
+			await sql`update app.customer_message_settings set zbs_daily_quota = ${QUOTA} where tenant_id = ${tenant}::uuid`;
+		}
+	}, 60_000);
+
 	it("exactly the quota is sent, the rest is held, none twice", async () => {
 		const [queued] = await sql<{ count: string }[]>`
 			select count(*)::text as count from public.outbound_messages

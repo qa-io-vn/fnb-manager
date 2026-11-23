@@ -15,34 +15,40 @@
 -- Every instant is fixed (nothing reads now() for the rule), the contacts are synthetic, nothing is sent, and the file
 -- rolls back.
 begin;
-select plan(26);
+select plan(37);
 
 create temp table fx as
 select
   'ffffffff-ffff-4fff-8fff-000000239001'::uuid as tenant_a,
   'ffffffff-ffff-4fff-8fff-000000239002'::uuid as tenant_b,
   'ffffffff-ffff-4fff-8fff-000000239003'::uuid as tenant_c,
+  'ffffffff-ffff-4fff-8fff-000000239004'::uuid as tenant_d,
   'ffffffff-ffff-4fff-8fff-000000239101'::uuid as owner_a,
   'ffffffff-ffff-4fff-8fff-000000239102'::uuid as owner_b,
-  'ffffffff-ffff-4fff-8fff-000000239103'::uuid as owner_c;
+  'ffffffff-ffff-4fff-8fff-000000239103'::uuid as owner_c,
+  'ffffffff-ffff-4fff-8fff-000000239104'::uuid as owner_d;
 
 insert into auth.users (id, instance_id, aud, role, email)
 select u.id, '00000000-0000-0000-0000-000000000000'::uuid, 'authenticated', 'authenticated', 'dsr-escalation-' || right(u.id::text, 4) || '@example.com'
-from fx cross join lateral unnest(array[fx.owner_a, fx.owner_b, fx.owner_c]) as u (id);
+from fx cross join lateral unnest(array[fx.owner_a, fx.owner_b, fx.owner_c, fx.owner_d]) as u (id);
 
 insert into public.tenants (id, slug, name, country_code, timezone)
 select tenant_a, 'dsr-escalation-a-pgtap', 'DSR escalation A pgTAP', 'VN', 'Asia/Ho_Chi_Minh' from fx
 union all
 select tenant_b, 'dsr-escalation-b-pgtap', 'DSR escalation B pgTAP', 'VN', 'Asia/Ho_Chi_Minh' from fx
 union all
-select tenant_c, 'dsr-escalation-c-pgtap', 'DSR escalation C pgTAP', 'VN', 'Asia/Ho_Chi_Minh' from fx;
+select tenant_c, 'dsr-escalation-c-pgtap', 'DSR escalation C pgTAP', 'VN', 'Asia/Ho_Chi_Minh' from fx
+union all
+select tenant_d, 'dsr-escalation-d-pgtap', 'DSR escalation D pgTAP', 'VN', 'Asia/Ho_Chi_Minh' from fx;
 
 insert into public.tenant_members (tenant_id, user_id, role, store_ids)
 select tenant_a, owner_a, 'owner'::public.tenant_role, null::uuid[] from fx
 union all
 select tenant_b, owner_b, 'owner'::public.tenant_role, null::uuid[] from fx
 union all
-select tenant_c, owner_c, 'owner'::public.tenant_role, null::uuid[] from fx;
+select tenant_c, owner_c, 'owner'::public.tenant_role, null::uuid[] from fx
+union all
+select tenant_d, owner_d, 'owner'::public.tenant_role, null::uuid[] from fx;
 
 -- One Zalo bot destination for the owner of tenant A; tenant B gets its destination later in the test.
 create temp table chan (name text primary key, id uuid);
@@ -61,6 +67,7 @@ begin
 end;
 $$;
 select pg_temp.add_destination('owner_a', (select tenant_a from fx), (select owner_a from fx));
+select pg_temp.add_destination('owner_d', (select tenant_d from fx), (select owner_d from fx));
 
 create function pg_temp.add_request(p_tenant uuid, p_name text, p_first timestamptz, p_completion timestamptz)
 returns uuid
@@ -175,6 +182,46 @@ select is(
        or (o.id is not null and not app.facts_are_count_only(o.params)))),
   0,
   'security: no episode or message holds a contact or a note, and every message parameter is count-only'
+);
+
+-- H. Hardening after an independent review (migration 20261123200000).
+-- H1. An episode that opens already overdue inside the 24-hour cool-down of the one before it inherits that one's last
+-- notice; it must still get its message (it never had one).
+select pg_temp.add_request((select tenant_d from fx), 'd1', pg_temp.t0() + interval '2 hours', pg_temp.t0() + interval '40 days');
+select is(pg_temp.evaluate((select tenant_d from fx), pg_temp.t0()), '1:0:1:-', 'H1: the first episode opens on a request due soon and tells the owner once');
+update public.data_subject_requests set status = 'in_progress', responded_at = pg_temp.t0() + interval '30 minutes' where tenant_id = (select tenant_d from fx);
+select is(pg_temp.evaluate((select tenant_d from fx), pg_temp.t0() + interval '1 hour'), '0:0:0:0', 'H1: the owner replies in time: nothing is due and the episode is cleared');
+select pg_temp.add_request((select tenant_d from fx), 'd2', pg_temp.t0(), pg_temp.t0() + interval '40 days');
+select pg_temp.evaluate((select tenant_d from fx), pg_temp.t0() + interval '2 hours');
+select is(
+  (select concat_ws(' | ', e.state, e.facts ->> 'overdue', e.notifications, e.suppressed_reason is not null)
+   from public.alert_events e where e.tenant_id = (select tenant_d from fx) and e.rule_key = 'dsr_due_soon' and e.state = 'open'),
+  'open | 1 | 0 | t',
+  'H1: the second episode opens already overdue, suppressed by the cool-down, with no message of its own'
+);
+select is(pg_temp.evaluate((select tenant_d from fx), pg_temp.t0() + interval '3 hours'), '0:1:0:1', 'H1: the next reading queues the overdue notice, though last_notified_at carries the first episode''s time');
+select is(pg_temp.messages((select tenant_d from fx)), 2, 'H1: two messages in all, the early notice of the first episode and the overdue notice of the second');
+
+-- H2. The reminder is not spent while the rule is switched off.
+insert into public.alert_rules (tenant_id, store_id, rule_key, enabled) select tenant_d, null, 'dsr_due_soon', false from fx;
+select is(pg_temp.evaluate((select tenant_d from fx), pg_temp.t0() + interval '28 hours'), '0:1:0:0', 'H2: a day later, with the rule off, nothing is queued although the cadence is due');
+select is(pg_temp.messages((select tenant_d from fx)), 2, 'H2: and no message was counted or sent while it is off');
+select is(
+  (select e.last_notified_at = pg_temp.t0() + interval '3 hours' from public.alert_events e where e.tenant_id = (select tenant_d from fx) and e.rule_key = 'dsr_due_soon' and e.state = 'open'),
+  true,
+  'H2: the last notice is untouched, so the cadence is still owed'
+);
+delete from public.alert_rules where tenant_id = (select tenant_d from fx) and rule_key = 'dsr_due_soon';
+select is(pg_temp.evaluate((select tenant_d from fx), pg_temp.t0() + interval '29 hours'), '0:1:0:1', 'H2: switched back on, the overdue notice goes out at once (not up to 24 hours later)');
+
+-- H3. Overlapping ticks: the open episode is read for update (a structural guard, the overlap itself needs two sessions).
+select ok(
+  (select position('for update of e' in lower(p.prosrc)) > 0 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'app' and p.proname = 'evaluate_dsr_due_soon'),
+  'H3: the evaluator reads the open episode for update, so two ticks cannot both see the same previous counts'
+);
+select ok(
+  (select position('v_enabled' in p.prosrc) > 0 and position('v_notifications = 0' in p.prosrc) > 0 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'app' and p.proname = 'evaluate_dsr_due_soon'),
+  'H3: and it keeps its rule-off and no-message guards'
 );
 
 select * from finish();

@@ -10,7 +10,7 @@
 --
 -- Every instant is explicit, phones and names are synthetic, nothing is sent, and the file rolls back.
 begin;
-select plan(43);
+select plan(55);
 
 create temp table fx as
 select
@@ -248,12 +248,86 @@ select throws_ok(format('select app.revise_digest(%L, ''{}''::jsonb, %L, ''[]'',
 select throws_ok(format('select app.revise_digest(%L, ''{}''::jsonb, %L, ''{}''::jsonb, now())', pg_temp.did('d2'), repeat('a', 64)), '22023', null, 'entries that are not an array are refused');
 select throws_ok(format('select app.revise_digest(%L, ''{}''::jsonb, %L, ''[]'', null)', pg_temp.did('d2'), repeat('a', 64)), '22023', null, 'a missing instant is refused');
 select throws_ok(format('select app.revise_digest(%L, ''{}''::jsonb, %L, ''[]'', now())', 'ffffffff-ffff-4fff-8fff-000024199999', repeat('a', 64)), '22023', null, 'a digest that does not exist is refused');
-select throws_ok(
-  format('select app.revise_digest(%L, ''{"revenue": 1}''::jsonb, %L, %L::jsonb, now())', pg_temp.did('u1'), repeat('e', 64),
-    jsonb_build_array(jsonb_build_object('channel_id', (select id from chan where name = 'owner_t'), 'correction', jsonb_build_object('title', 'x', 'body', 'y')))::text),
-  '22023', null, 'a destination of another tenant is refused'
+-- A destination of another tenant is not a destination of this digest: since the recipients are checked again it is
+-- skipped, not an error, and nobody is told (before, the enqueue refused it with 22023).
+select is(
+  app.revise_digest(pg_temp.did('u1'), '{"revenue": 1}'::jsonb, repeat('e', 64),
+    jsonb_build_array(jsonb_build_object('channel_id', (select id from chan where name = 'owner_t'), 'correction', jsonb_build_object('title', 'x', 'body', 'y'))),
+    timestamptz '2026-11-21 09:00+07'),
+  0,
+  'a destination of another tenant gets no correction'
 );
-select is(pg_temp.state_of('u1'), '0 | t | 100 | f', 'and the refused call left the digest of the other tenant as it was');
+select is(
+  (select count(*)::integer from public.outbound_messages o where o.digest_id = pg_temp.did('u1')),
+  0,
+  'and nothing was queued for the digest of the other tenant'
+);
+
+-- The digests of the review cases (built here, after the candidate cases above, which they would change).
+select pg_temp.build('d3', (select tenant_t from fx), date '2026-11-18', array[(select store_1 from fx), (select store_2 from fx)], (select owner_t from fx), timestamptz '2026-11-19 03:30+07');
+select pg_temp.build('d4', (select tenant_t from fx), date '2026-11-17', array[(select store_1 from fx), (select store_2 from fx)], (select owner_t from fx), timestamptz '2026-11-18 03:30+07');
+select pg_temp.build('d5', (select tenant_t from fx), date '2026-11-16', array[(select store_1 from fx), (select store_2 from fx)], (select owner_t from fx), timestamptz '2026-11-17 03:30+07');
+
+-- E2. A writer carrying an older instant than the last revision cannot put an older model back.
+select is(
+  app.revise_digest(pg_temp.did('d2'), '{"revenue": 70}'::jsonb, repeat('7', 64), pg_temp.entries(false), timestamptz '2026-11-21 10:00+07'),
+  0,
+  'a first revision with nothing to correct replaces the model'
+);
+select is(
+  app.revise_digest(pg_temp.did('d2'), '{"revenue": 60}'::jsonb, repeat('6', 64), pg_temp.entries(true), timestamptz '2026-11-21 09:00+07'),
+  0,
+  'a call stamped before the last revision changes nothing and queues nothing'
+);
+select is(pg_temp.state_of('d2'), '0 | f | 70 | t', 'the model and fingerprint of the later revision stand, revision stays 0');
+
+-- E3. The destinations are checked again: a correction never goes to someone the digest rule would no longer select.
+select is(
+  (select count(*)::integer from public.outbound_messages o where o.digest_id = pg_temp.did('d3')),
+  0,
+  'baseline: d3 has no message yet'
+);
+update public.tenant_members set role = 'staff'::public.tenant_role where tenant_id = (select tenant_t from fx) and user_id = (select manager_t from fx);
+select is(
+  app.revise_digest(pg_temp.did('d3'), '{"revenue": 55}'::jsonb, repeat('5', 64), pg_temp.entries(true), timestamptz '2026-11-21 11:00+07'),
+  1,
+  'a manager demoted to staff no longer gets the correction: one of the two destinations is queued'
+);
+select is(
+  (select string_agg(c.name, ',') from public.outbound_messages o join chan c on c.id = o.channel_id where o.digest_id = pg_temp.did('d3')),
+  'owner_t',
+  'and the one that got it is the owner''s'
+);
+update public.tenant_members set role = 'manager'::public.tenant_role where tenant_id = (select tenant_t from fx) and user_id = (select manager_t from fx);
+update public.notification_channels set muted_rules = array['daily_digest'] where id = (select id from chan where name = 'manager_t');
+select is(
+  app.revise_digest(pg_temp.did('d4'), '{"revenue": 45}'::jsonb, repeat('4', 64), pg_temp.entries(true), timestamptz '2026-11-21 11:10+07'),
+  1,
+  'a destination that muted the daily digest gets no correction'
+);
+update public.notification_channels set muted_rules = '{}' where id = (select id from chan where name = 'manager_t');
+update public.tenant_members set store_ids = array[(select store_1 from fx)] where tenant_id = (select tenant_t from fx) and user_id = (select manager_t from fx);
+select is(
+  app.revise_digest(pg_temp.did('d5'), '{"revenue": 35}'::jsonb, repeat('3', 64), pg_temp.entries(true), timestamptz '2026-11-21 11:20+07'),
+  1,
+  'a manager whose stores narrowed to one no longer gets the correction of a digest of both stores'
+);
+update public.tenant_members set store_ids = null where tenant_id = (select tenant_t from fx) and user_id = (select manager_t from fx);
+select is(
+  (select count(*)::integer from public.outbound_messages o join chan c on c.id = o.channel_id where o.digest_id in (pg_temp.did('d3'), pg_temp.did('d4'), pg_temp.did('d5')) and c.name = 'manager_t'),
+  0,
+  'in all three cases nothing was queued for the manager'
+);
+select is(
+  (select count(*)::integer from public.outbound_messages o where o.digest_id in (pg_temp.did('d3'), pg_temp.did('d4'), pg_temp.did('d5')) and o.kind = 'digest_correction'),
+  3,
+  'and the owner got exactly one correction of each'
+);
+select is(
+  app.digest_destination_current((select tenant_t from fx), array[(select store_1 from fx), (select store_2 from fx)], (select id from chan where name = 'manager_t')),
+  true,
+  'once the role, the mute and the scope are back, the manager is a current destination again'
+);
 
 -- G. Security: no API role runs either function. The statements are built here, as the superuser, and run as the role.
 create function pg_temp.as_role(p_role text, p_statement text)
@@ -278,6 +352,7 @@ $$;
 select is(pg_temp.as_role('authenticated', 'select * from app.digests_to_revise(now(), null)'), '42501', 'a signed-in member cannot list the digests to revise');
 select is(pg_temp.as_role('authenticated', format('select app.revise_digest(%L, ''{}''::jsonb, %L, ''[]'', now())', pg_temp.did('d2'), repeat('a', 64))), '42501', 'nor revise one');
 select is(pg_temp.as_role('anon', 'select * from app.digests_to_revise(now(), null)'), '42501', 'anon cannot list them');
+select is(pg_temp.as_role('authenticated', format('select app.digest_destination_current(%L, array[]::uuid[], %L)', (select tenant_t from fx), (select id from chan where name = 'owner_t'))), '42501', 'nor ask which destinations are current');
 
 select * from finish();
 rollback;
