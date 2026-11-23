@@ -10,6 +10,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useCustomerData, useLoad } from "../data/customer-data";
 import { shownInstant } from "../data/dates";
 import { useStoreLink } from "../data/store-link";
+import { useNow } from "../data/use-now";
 import { storeOrOnly } from "../home/model";
 import {
 	BackButton,
@@ -45,15 +46,6 @@ export const VOUCHERS_PATH = "/vi-voucher";
 
 export function voucherPath(id: string): string {
 	return `/voucher/${encodeURIComponent(id)}`;
-}
-
-export function useNow(tickMs = 1000): number {
-	const [now, setNow] = useState(() => Date.now());
-	useEffect(() => {
-		const timer = setInterval(() => setNow(Date.now()), tickMs);
-		return () => clearInterval(timer);
-	}, [tickMs]);
-	return now;
 }
 
 function useVouchers() {

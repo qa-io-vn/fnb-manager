@@ -4687,7 +4687,7 @@
 					"type": "string"
 				},
 				"expires_at": {
-					"description": "on a crediting row, when its points expire, fixed at issue from the programme's points_expiry_months; each stamp carries its own expiry on its stamps row",
+					"description": "on a crediting row, when its points expire, fixed at issue from the programme's points_expiry_months; on the confirm row of a pending earn, when the points of that earn expire, counted from the confirmation (ADR-046: a pending earn never expires while it is pending); each stamp carries its own expiry on its stamps row",
 					"format": "timestamp with time zone",
 					"type": "string"
 				},
@@ -14223,7 +14223,7 @@
 			"type": "string"
 		},
 		"rowFilter.loyalty_ledger.expires_at": {
-			"description": "on a crediting row, when its points expire, fixed at issue from the programme's points_expiry_months; each stamp carries its own expiry on its stamps row",
+			"description": "on a crediting row, when its points expire, fixed at issue from the programme's points_expiry_months; on the confirm row of a pending earn, when the points of that earn expire, counted from the confirmation (ADR-046: a pending earn never expires while it is pending); each stamp carries its own expiry on its stamps row",
 			"in": "query",
 			"name": "expires_at",
 			"required": false,
@@ -40290,7 +40290,7 @@
 						"description": "OK"
 					}
 				},
-				"summary": "RPC: app.loyalty_balance for a membership the caller reads (a customer session its own, owners, managers and viewers their tenant's)",
+				"summary": "RPC: app.loyalty_balance at this moment (ADR-047: a credit past its expiry is out of the balance before the nightly run writes its expire row) for a membership the caller reads (a customer session its own, owners, managers and viewers their tenant's)",
 				"tags": ["(rpc) loyalty_balance"]
 			},
 			"post": {
@@ -40300,7 +40300,7 @@
 						"name": "args",
 						"required": true,
 						"schema": {
-							"description": "RPC: app.loyalty_balance for a membership the caller reads (a customer session its own, owners, managers and viewers their tenant's)",
+							"description": "RPC: app.loyalty_balance at this moment (ADR-047: a credit past its expiry is out of the balance before the nightly run writes its expire row) for a membership the caller reads (a customer session its own, owners, managers and viewers their tenant's)",
 							"properties": {
 								"p_membership_id": {
 									"format": "uuid",
@@ -40325,7 +40325,7 @@
 						"description": "OK"
 					}
 				},
-				"summary": "RPC: app.loyalty_balance for a membership the caller reads (a customer session its own, owners, managers and viewers their tenant's)",
+				"summary": "RPC: app.loyalty_balance at this moment (ADR-047: a credit past its expiry is out of the balance before the nightly run writes its expire row) for a membership the caller reads (a customer session its own, owners, managers and viewers their tenant's)",
 				"tags": ["(rpc) loyalty_balance"]
 			}
 		},

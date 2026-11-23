@@ -13,6 +13,7 @@ import { BillsToConfirmCard } from "../bills/bill-confirm";
 import { claimReasonKey } from "../claim/model";
 import { useCustomerData, useLoad } from "../data/customer-data";
 import { shownDate, shownInstant } from "../data/dates";
+import { useNow } from "../data/use-now";
 import { JoinActions } from "../home/join-actions";
 import { programmeTexts } from "../home/programme";
 import {
@@ -26,7 +27,6 @@ import {
 	secondaryButton,
 } from "../ui";
 import { StampsRing } from "./stamps-ring";
-import { useNow } from "./vouchers";
 
 /**
  * ADR-047: a credit is spendable until the instant it ends (the midnight that

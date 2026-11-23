@@ -587,7 +587,7 @@ describe.skipIf(!ENABLED)(
 			}
 		}, 180_000);
 
-		it("claws back a sale voided and a sale edited in a later sync, leaving a negative balance once the earn was spent", async () => {
+		it("claws back a sale voided and a sale edited in a later sync, taking back no more than is left once the earn was spent (ADR-046: a balance never goes negative)", async () => {
 			const now = new Date();
 			const minutes = (offset: number) =>
 				new Date(now.getTime() + offset * MINUTE);
@@ -641,15 +641,19 @@ describe.skipIf(!ENABLED)(
 			const nightly = await runner.loyaltyNightly(tenantId, minutes(20));
 			expect(nightly.clawbacks).toBe(2);
 
-			expect(await balance("void")).toEqual({ stamps: 2, points: -10 });
+			// ADR-046: the 10 points were spent (held), so there is nothing of them to take back: the balance stays at
+			// 0, never -10, and the 10 points the programme absorbs are written on the row and counted in the answer.
+			expect(await balance("void")).toEqual({ stamps: 2, points: 0 });
+			expect(nightly.written_off_points).toBe(10);
+			expect(nightly.written_off_stamps).toBe(0);
 			const shown = await wallet("void", minutes(21));
-			expect(shown.points.balance).toBe(-10);
+			expect(shown.points.balance).toBe(0);
 			expect(shown.history.find((entry) => entry.kind === "earn")?.state).toBe(
 				"reversed",
 			);
 			expect(
 				shown.history.find((entry) => entry.kind === "reversal")?.reason,
-			).toBe("invoice_voided");
+			).toBe("invoice_voided; short by 10 points");
 			const [redemption] = await sql<{ state: string }[]>`
 				select state::text from public.redemptions where id = ${hold.redemption_id}::uuid
 			`;

@@ -26,8 +26,9 @@ test("the wallet shows the card, stamps, points, tier, expiry and the history st
 		}),
 	).toBeVisible();
 	await expect(page.getByTestId("points-balance")).toHaveText("105");
-	await expect(page.getByTestId("points-expiring")).toContainText(
-		"45 điểm hết hạn ngày",
+	// ADR-047: the notice names the last valid day, a date and never a time.
+	await expect(page.getByTestId("points-expiring")).toHaveText(
+		/^45 điểm có hạn đến hết ngày \d{2}\/\d{2}\/\d{4}$/,
 	);
 	await expect(page.getByTestId("tier")).toHaveText(
 		"Hạng Thành viên. Còn 395 điểm để lên hạng Bạc.",
