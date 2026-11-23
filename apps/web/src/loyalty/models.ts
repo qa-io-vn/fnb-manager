@@ -22,6 +22,8 @@ import type {
 	QueueItemRow,
 	QueueReason,
 	QueueState,
+	ReconciliationItemRow,
+	ReconciliationReason,
 	ShiftAnomaly,
 } from "./source";
 
@@ -66,6 +68,16 @@ export const REFUSAL_KEYS: Readonly<Record<LoyaltyRefusalReason, MessageKey>> =
 export const QUEUE_REASON_KEYS: Readonly<Record<QueueReason, MessageKey>> = {
 	two_candidates: "loyalty.queue.reason.two_candidates",
 	duplicate_receipt: "loyalty.queue.reason.duplicate_receipt",
+};
+
+export const RECONCILIATION_REASON_KEYS: Readonly<
+	Record<ReconciliationReason, MessageKey>
+> = {
+	verified_without_invoice:
+		"loyalty.reconciliation.reason.verified_without_invoice",
+	discount_without_redemption:
+		"loyalty.reconciliation.reason.discount_without_redemption",
+	amount_mismatch: "loyalty.reconciliation.reason.amount_mismatch",
 };
 
 export const QUEUE_STATE_KEYS: Readonly<Record<QueueState, MessageKey>> = {
@@ -255,6 +267,30 @@ export function openQueueItems(items: readonly QueueItemRow[]): QueueItemRow[] {
 			left.createdAt === right.createdAt
 				? left.id.localeCompare(right.id)
 				: left.createdAt.localeCompare(right.createdAt),
+		);
+}
+
+/** The open path D items, oldest first. */
+export function openReconciliationItems(
+	items: readonly ReconciliationItemRow[],
+): ReconciliationItemRow[] {
+	return items
+		.filter((item) => item.state === "open")
+		.sort((left, right) =>
+			left.createdAt === right.createdAt
+				? left.id.localeCompare(right.id)
+				: left.createdAt.localeCompare(right.createdAt),
+		);
+}
+
+/** The path D items that are no longer open, latest first. */
+export function closedReconciliationItems(
+	items: readonly ReconciliationItemRow[],
+): ReconciliationItemRow[] {
+	return items
+		.filter((item) => item.state !== "open")
+		.sort((left, right) =>
+			(right.resolvedAt ?? "").localeCompare(left.resolvedAt ?? ""),
 		);
 }
 

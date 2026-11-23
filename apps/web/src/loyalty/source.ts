@@ -298,6 +298,32 @@ export interface QueueItemRow {
 	readonly candidates: readonly InvoiceReference[];
 }
 
+/**
+ * The path D items of the manager queue (G-100): where the vouchers and the POS discounts of the redemption fallback
+ * rails disagree. No member, no candidates; the page only lists them.
+ */
+export const RECONCILIATION_REASONS = [
+	"verified_without_invoice",
+	"discount_without_redemption",
+	"amount_mismatch",
+] as const;
+
+export type ReconciliationReason = (typeof RECONCILIATION_REASONS)[number];
+
+export interface ReconciliationItemRow {
+	readonly id: string;
+	readonly storeId: string;
+	readonly reason: ReconciliationReason;
+	readonly state: QueueState;
+	readonly createdAt: string;
+	readonly resolvedAt: string | null;
+	/** The POS discount entry name: the reward's entry for a redemption, else the bill's discount name. Never a code. */
+	readonly entryName: string | null;
+	/** The receipt number of the invoice the item is about, when it is about one. */
+	readonly receiptNo: string | null;
+	readonly soldAt: string | null;
+}
+
 export interface QueueResolution {
 	readonly itemId: string;
 	readonly choice: string | null;
@@ -407,6 +433,7 @@ export interface CustomerSource {
 	): Promise<MemberRow | null>;
 	ledger(membershipIds: readonly string[]): Promise<LedgerEntryRow[]>;
 	queue(tenantId: string): Promise<QueueItemRow[]>;
+	reconciliation(tenantId: string): Promise<ReconciliationItemRow[]>;
 	resolveQueueItem(resolution: QueueResolution): Promise<QueueOutcome>;
 	anomalies(
 		storeIds: readonly string[],

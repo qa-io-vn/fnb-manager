@@ -38,6 +38,7 @@ import {
 	QUEUE_REASONS,
 	QUEUE_STATES,
 	type QueueItemRow,
+	RECONCILIATION_REASONS,
 	RFM_SEGMENTS,
 	type ShiftAnomaly,
 	SILENCE_OUTCOMES,
@@ -375,6 +376,36 @@ const queueRow = z.object({
 		})
 		.nullable()
 		.optional(),
+});
+
+// The path D items (G-100): ids only. The entry name and the receipt are read from the redemption and the invoice by
+// id, and the redemption's code is never selected.
+export const RECONCILIATION_PATH = "D";
+
+const reconciliationRow = z.object({
+	id: z.string(),
+	store_id: z.string(),
+	reason: z.enum(RECONCILIATION_REASONS),
+	state: z.enum(QUEUE_STATES),
+	created_at: z.string(),
+	resolved_at: z.string().nullable(),
+	redemption_id: z.string().nullable(),
+	invoice_id: z.string().nullable(),
+});
+
+const RECONCILIATION_SELECT =
+	"id,store_id,reason,state,created_at,resolved_at,redemption_id,invoice_id";
+
+const reconciliationInvoiceRow = z.object({
+	id: z.string(),
+	receipt_no: z.string().nullable(),
+	sold_at: z.string(),
+	bill_discount_name: z.string().nullable(),
+});
+
+const reconciliationRedemptionRow = z.object({
+	id: z.string(),
+	pos_discount_name: z.string().nullable(),
 });
 
 const queueOutcome = z.object({
@@ -717,6 +748,47 @@ async function invoicesById(
 	return found;
 }
 
+async function reconciliationDetails(
+	client: SupabaseClient,
+	rows: readonly z.infer<typeof reconciliationRow>[],
+) {
+	const invoices = new Map<string, z.infer<typeof reconciliationInvoiceRow>>();
+	const invoiceIds = [
+		...new Set(
+			rows.flatMap((row) => (row.invoice_id === null ? [] : [row.invoice_id])),
+		),
+	];
+	for (const part of chunks(invoiceIds, ID_CHUNK)) {
+		const found = await fetchOnce(
+			reconciliationInvoiceRow,
+			client
+				.from("invoices")
+				.select("id,receipt_no,sold_at,bill_discount_name")
+				.in("id", part),
+		);
+		for (const row of found) invoices.set(row.id, row);
+	}
+	const redemptions = new Map<
+		string,
+		z.infer<typeof reconciliationRedemptionRow>
+	>();
+	const redemptionIds = [
+		...new Set(
+			rows.flatMap((row) =>
+				row.redemption_id === null ? [] : [row.redemption_id],
+			),
+		),
+	];
+	for (const part of chunks(redemptionIds, ID_CHUNK)) {
+		const found = await fetchOnce(
+			reconciliationRedemptionRow,
+			client.from("redemptions").select("id,pos_discount_name").in("id", part),
+		);
+		for (const row of found) redemptions.set(row.id, row);
+	}
+	return { invoices, redemptions };
+}
+
 function queueItemOf(
 	row: z.infer<typeof queueRow>,
 	invoices: ReadonlyMap<string, InvoiceReference>,
@@ -861,6 +933,57 @@ export function createSupabaseCustomerSource(
 				rows.flatMap((row) => row.candidate_invoice_ids),
 			);
 			return rows.map((row) => queueItemOf(row, invoices));
+		},
+		async reconciliation(tenantId) {
+			const [open, closed] = await Promise.all([
+				byId(reconciliationRow, () =>
+					client
+						.from("loyalty_queue")
+						.select(RECONCILIATION_SELECT)
+						.eq("tenant_id", tenantId)
+						.eq("matched_path", RECONCILIATION_PATH)
+						.eq("state", "open"),
+				),
+				fetchOnce(
+					reconciliationRow,
+					client
+						.from("loyalty_queue")
+						.select(RECONCILIATION_SELECT)
+						.eq("tenant_id", tenantId)
+						.eq("matched_path", RECONCILIATION_PATH)
+						.neq("state", "open")
+						.order("resolved_at", { ascending: false })
+						.order("id")
+						.limit(CLOSED_QUEUE_ITEMS),
+				),
+			]);
+			const rows = [...open, ...closed];
+			const { invoices, redemptions } = await reconciliationDetails(
+				client,
+				rows,
+			);
+			return rows.map((row) => {
+				const invoice =
+					row.invoice_id === null ? undefined : invoices.get(row.invoice_id);
+				const redemption =
+					row.redemption_id === null
+						? undefined
+						: redemptions.get(row.redemption_id);
+				return {
+					id: row.id,
+					storeId: row.store_id,
+					reason: row.reason,
+					state: row.state,
+					createdAt: row.created_at,
+					resolvedAt: row.resolved_at,
+					entryName:
+						redemption?.pos_discount_name ??
+						invoice?.bill_discount_name ??
+						null,
+					receiptNo: invoice?.receipt_no ?? null,
+					soldAt: invoice?.sold_at ?? null,
+				};
+			});
 		},
 		async resolveQueueItem(resolution) {
 			let result: { data: unknown; error: PostgrestFailure | null };

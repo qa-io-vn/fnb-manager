@@ -82,6 +82,7 @@ function renderMembers({
 		member: vi.fn(async () => null),
 		ledger: vi.fn(async () => []),
 		queue: vi.fn(async () => []),
+		reconciliation: vi.fn(async () => []),
 		resolveQueueItem: vi.fn(),
 		anomalies: vi.fn(async () => []),
 	} as unknown as CustomerSource;

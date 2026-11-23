@@ -8,14 +8,18 @@ import type { LoyaltyAccess } from "../../loyalty/access";
 import {
 	candidatesInOrder,
 	closedQueueItems,
+	closedReconciliationItems,
 	invoiceText,
 	loyaltyCsvName,
 	momentText,
 	openQueueItems,
+	openReconciliationItems,
 	PATH_KEYS,
 	phoneText,
 	QUEUE_REASON_KEYS,
+	QUEUE_STATE_KEYS,
 	queueHistoryTable,
+	RECONCILIATION_REASON_KEYS,
 	REFUSAL_KEYS,
 	RESOLUTION_REASON_MAX,
 	type ResolutionIssue,
@@ -23,11 +27,16 @@ import {
 	type StoreName,
 	storeName,
 } from "../../loyalty/models";
-import { useLoyaltyAction, useQueue } from "../../loyalty/queries";
+import {
+	useLoyaltyAction,
+	useQueue,
+	useReconciliation,
+} from "../../loyalty/queries";
 import type {
 	QueueItemRow,
 	QueueOutcome,
 	QueueResolution,
+	ReconciliationItemRow,
 } from "../../loyalty/source";
 import { controlClass, Field } from "../../settings/forms/field";
 import { UNAVAILABLE_CLASS } from "../../settings/forms/save-bar";
@@ -245,6 +254,142 @@ function QueueItem({
 	);
 }
 
+function ReconciliationItem({
+	item,
+	stores,
+}: {
+	readonly item: ReconciliationItemRow;
+	readonly stores: readonly StoreName[];
+}) {
+	const t = useT();
+	const { tenant } = useReadyTenantScope();
+	const formatters = useFormatters(tenant);
+	const when = (iso: string | null) =>
+		momentText(formatters, tenant.timeZone, iso) ?? "";
+	return (
+		<li
+			className="space-y-1 py-3"
+			data-testid="loyalty-reconciliation-item"
+			data-reason={item.reason}
+		>
+			<h3 className="font-medium">
+				{t("loyalty.reconciliation.item", {
+					store: storeName(t, stores, item.storeId),
+					time: when(item.createdAt),
+				})}
+			</h3>
+			<p className="text-sm" data-testid="loyalty-reconciliation-reason">
+				{t(RECONCILIATION_REASON_KEYS[item.reason])}
+			</p>
+			<p
+				className="text-sm text-ink-muted"
+				data-testid="loyalty-reconciliation-entry"
+			>
+				{item.entryName === null
+					? t("loyalty.reconciliation.noEntry")
+					: t("loyalty.reconciliation.entry", { name: item.entryName })}
+			</p>
+			<p
+				className="text-sm text-ink-muted"
+				data-testid="loyalty-reconciliation-receipt"
+			>
+				{item.receiptNo === null
+					? t("loyalty.reconciliation.noReceipt")
+					: t("loyalty.reconciliation.receipt", {
+							receipt: item.receiptNo,
+							time: when(item.soldAt),
+						})}
+			</p>
+			{item.state === "open" ? null : (
+				<p
+					className="text-sm text-ink-muted"
+					data-testid="loyalty-reconciliation-closed"
+				>
+					{t("loyalty.reconciliation.closed", {
+						state: t(QUEUE_STATE_KEYS[item.state]),
+						time: when(item.resolvedAt),
+					})}
+				</p>
+			)}
+		</li>
+	);
+}
+
+/** The path D items (G-100): read only, no member and no code on the page. */
+function ReconciliationSection({ access }: { readonly access: LoyaltyAccess }) {
+	const t = useT();
+	const ids = useId();
+	const { tenant, stores } = useReadyTenantScope();
+	const formatters = useFormatters(tenant);
+	const items = useReconciliation(access.canResolve);
+	if (items.status === "error") {
+		return (
+			<div
+				role="alert"
+				className="space-y-2"
+				data-testid="loyalty-reconciliation-failed"
+			>
+				<p className="text-sm">{t("report.card.error")}</p>
+				<Button
+					tone="secondary"
+					size="compact"
+					onClick={() => void items.refetch()}
+				>
+					{t("app.retry")}
+				</Button>
+			</div>
+		);
+	}
+	if (items.data === undefined) return null;
+	const open = openReconciliationItems(items.data);
+	const closed = closedReconciliationItems(items.data);
+	return (
+		<section
+			aria-labelledby={`${ids}-reconciliation`}
+			className="space-y-2 rounded-xl border border-line bg-surface-raised p-4"
+			data-testid="loyalty-reconciliation"
+		>
+			<h2 id={`${ids}-reconciliation`} className="text-base font-semibold">
+				{t("loyalty.reconciliation.title", {
+					count: formatters.count(open.length),
+				})}
+			</h2>
+			<p className="text-sm text-ink-muted">
+				{t("loyalty.reconciliation.intro")}
+			</p>
+			{open.length === 0 ? (
+				<p className="text-sm" data-testid="loyalty-reconciliation-none">
+					{t("loyalty.reconciliation.none")}
+				</p>
+			) : (
+				<ul
+					className="divide-y divide-line"
+					data-testid="loyalty-reconciliation-open"
+				>
+					{open.map((item) => (
+						<ReconciliationItem key={item.id} item={item} stores={stores} />
+					))}
+				</ul>
+			)}
+			{closed.length === 0 ? null : (
+				<>
+					<h3 className="pt-2 text-sm font-semibold">
+						{t("loyalty.reconciliation.history.title")}
+					</h3>
+					<ul
+						className="divide-y divide-line"
+						data-testid="loyalty-reconciliation-closed-list"
+					>
+						{closed.map((item) => (
+							<ReconciliationItem key={item.id} item={item} stores={stores} />
+						))}
+					</ul>
+				</>
+			)}
+		</section>
+	);
+}
+
 function QueueBody({ access }: { readonly access: LoyaltyAccess }) {
 	const t = useT();
 	const ids = useId();
@@ -361,6 +506,7 @@ function QueueBody({ access }: { readonly access: LoyaltyAccess }) {
 					fileName={loyaltyCsvName("khach-hang", "doi-soat")}
 				/>
 			</section>
+			<ReconciliationSection access={access} />
 		</div>
 	);
 }

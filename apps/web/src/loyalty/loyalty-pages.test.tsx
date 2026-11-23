@@ -24,21 +24,26 @@ import {
 	anomalyTable,
 	candidatesInOrder,
 	closedQueueItems,
+	closedReconciliationItems,
 	ledgerTable,
 	lookupPhoneText,
 	memberColumns,
 	memberTableRows,
 	openQueueItems,
+	openReconciliationItems,
+	RECONCILIATION_REASON_KEYS,
 	resolutionIssue,
 } from "./models";
-import type {
-	CustomerSource,
-	InvoiceReference,
-	LedgerEntryRow,
-	LoyaltySource,
-	MemberRow,
-	QueueItemRow,
-	ShiftAnomaly,
+import {
+	type CustomerSource,
+	type InvoiceReference,
+	type LedgerEntryRow,
+	type LoyaltySource,
+	type MemberRow,
+	type QueueItemRow,
+	RECONCILIATION_REASONS,
+	type ReconciliationItemRow,
+	type ShiftAnomaly,
 } from "./source";
 import { EMPTY_METRICS } from "./testing";
 
@@ -254,6 +259,72 @@ const CLOSED: QueueItemRow = {
 	chosenInvoiceId: "i4",
 	resolutionReason: "Khách đưa hóa đơn giấy",
 };
+
+// Path D items (G-100): where a voucher and a POS discount disagree. No member, no phone, no code.
+const DISCOUNT_ENTRY = "Giảm giá thành viên 10%";
+const D_MISSING_INVOICE: ReconciliationItemRow = {
+	id: "dddddddd-0000-4000-8000-000000000001",
+	storeId: STORE_1,
+	reason: "verified_without_invoice",
+	state: "open",
+	createdAt: "2026-11-17T09:00:00Z",
+	resolvedAt: null,
+	entryName: DISCOUNT_ENTRY,
+	receiptNo: null,
+	soldAt: null,
+};
+const D_NO_REDEMPTION: ReconciliationItemRow = {
+	...D_MISSING_INVOICE,
+	id: "dddddddd-0000-4000-8000-000000000002",
+	storeId: STORE_2,
+	reason: "discount_without_redemption",
+	createdAt: "2026-11-17T07:00:00Z",
+	entryName: "Giảm giá tay",
+	receiptNo: "R-778",
+	soldAt: "2026-11-17T06:30:00Z",
+};
+const D_AMOUNT: ReconciliationItemRow = {
+	...D_NO_REDEMPTION,
+	id: "dddddddd-0000-4000-8000-000000000003",
+	storeId: STORE_1,
+	reason: "amount_mismatch",
+	createdAt: "2026-11-17T08:00:00Z",
+	receiptNo: "R-779",
+	entryName: null,
+};
+const D_CLOSED: ReconciliationItemRow = {
+	...D_AMOUNT,
+	id: "dddddddd-0000-4000-8000-000000000004",
+	state: "resolved",
+	resolvedAt: "2026-11-16T08:00:00Z",
+};
+
+describe("the path D items of the queue (G-100): models", () => {
+	it("lists the open ones oldest first and the closed ones latest first", () => {
+		const items = [D_CLOSED, D_MISSING_INVOICE, D_AMOUNT, D_NO_REDEMPTION];
+		expect(openReconciliationItems(items).map((item) => item.id)).toEqual([
+			D_NO_REDEMPTION.id,
+			D_AMOUNT.id,
+			D_MISSING_INVOICE.id,
+		]);
+		expect(closedReconciliationItems(items).map((item) => item.id)).toEqual([
+			D_CLOSED.id,
+		]);
+	});
+
+	it("names every reason in both languages", () => {
+		for (const reason of RECONCILIATION_REASONS) {
+			const key = RECONCILIATION_REASON_KEYS[reason];
+			expect(translate("vi", key)).not.toBe(key);
+			expect(translate("en", key)).not.toBe(key);
+		}
+	});
+
+	it("keeps the open and closed lists apart when there is nothing", () => {
+		expect(openReconciliationItems([])).toEqual([]);
+		expect(closedReconciliationItems([])).toEqual([]);
+	});
+});
 
 describe("the members page model", () => {
 	it("lists members with the masked phones and balances the database gives, in the table and in its CSV", () => {
@@ -607,6 +678,10 @@ function fakeCustomers({ owner = true } = {}): FakeCustomers {
 			calls.push("queue");
 			return [ITEM, CLOSED];
 		}),
+		reconciliation: vi.fn(async () => {
+			calls.push("reconciliation");
+			return [D_MISSING_INVOICE, D_NO_REDEMPTION, D_AMOUNT, D_CLOSED];
+		}),
 		resolveQueueItem: vi.fn(async () => ({
 			state: "resolved" as const,
 			entryId: "e9",
@@ -899,6 +974,71 @@ describe("the reconciliation queue page", () => {
 			"Khách đưa hóa đơn giấy",
 		);
 		expectNoFullPhone();
+	});
+
+	it("lists the path D items below the queue: store, reason, discount entry and receipt, oldest first, read only", async () => {
+		renderPage(<QueuePage />, "/khach-hang/doi-soat", "/khach-hang/doi-soat", {
+			membership: { role: "manager", storeIds: [STORE_1, STORE_2] },
+		});
+		const section = await screen.findByTestId("loyalty-reconciliation");
+		expect(section).toHaveTextContent("Chênh lệch voucher và giảm giá (3)");
+		const open = within(
+			within(section).getByTestId("loyalty-reconciliation-open"),
+		).getAllByTestId("loyalty-reconciliation-item");
+		expect(open.map((item) => item.getAttribute("data-reason"))).toEqual([
+			"discount_without_redemption",
+			"amount_mismatch",
+			"verified_without_invoice",
+		]);
+		expect(open[0]).toHaveTextContent("Cửa hàng mẫu 2");
+		expect(open[0]).toHaveTextContent(
+			"Có giảm giá trên hóa đơn nhưng không có lượt đổi quà",
+		);
+		expect(open[0]).toHaveTextContent("Tên giảm giá trên POS: Giảm giá tay");
+		expect(open[0]).toHaveTextContent("Hóa đơn số R-778");
+		expect(open[1]).toHaveTextContent("Chưa có tên giảm giá.");
+		expect(open[2]).toHaveTextContent("Chưa có hóa đơn.");
+		expect(open[2]).toHaveTextContent(
+			`Tên giảm giá trên POS: ${DISCOUNT_ENTRY}`,
+		);
+		const closed = within(
+			within(section).getByTestId("loyalty-reconciliation-closed-list"),
+		).getAllByTestId("loyalty-reconciliation-item");
+		expect(closed).toHaveLength(1);
+		expect(closed[0]).toHaveTextContent("Đã chọn hóa đơn lúc");
+		// read only: nothing on the page resolves a path D item
+		expect(
+			within(section).queryByTestId("loyalty-queue-choose"),
+		).not.toBeInTheDocument();
+		expect(within(section).queryAllByRole("button")).toHaveLength(0);
+		expectNoFullPhone();
+	});
+
+	it("shows an empty path D list as nothing waiting, with no history", async () => {
+		renderPage(<QueuePage />, "/khach-hang/doi-soat", "/khach-hang/doi-soat", {
+			customers: { ...fakeCustomers(), reconciliation: vi.fn(async () => []) },
+		});
+		expect(
+			await screen.findByTestId("loyalty-reconciliation-none"),
+		).toHaveTextContent("Không có chênh lệch nào đang chờ.");
+		expect(
+			screen.queryByTestId("loyalty-reconciliation-closed-list"),
+		).not.toBeInTheDocument();
+	});
+
+	it("keeps the queue working when the path D list cannot be read, with a retry for that list only", async () => {
+		renderPage(<QueuePage />, "/khach-hang/doi-soat", "/khach-hang/doi-soat", {
+			customers: {
+				...fakeCustomers(),
+				reconciliation: vi.fn(async () => {
+					throw new Error("network");
+				}),
+			},
+		});
+		expect(await screen.findByTestId("loyalty-queue-item")).toBeVisible();
+		expect(
+			await screen.findByTestId("loyalty-reconciliation-failed"),
+		).toBeVisible();
 	});
 
 	it("tells a viewer the queue is for owners and managers and reads nothing", async () => {

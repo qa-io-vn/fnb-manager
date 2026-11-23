@@ -29,6 +29,7 @@ export type LoyaltyRead =
 	| "member"
 	| "ledger"
 	| "queue"
+	| "reconciliation"
 	| "anomalies"
 	| "requests"
 	| "metrics"
@@ -145,6 +146,15 @@ export function useQueue(enabled: boolean) {
 		"queue",
 		[],
 		(source, tenantId) => source.queue(tenantId),
+		enabled,
+	);
+}
+
+export function useReconciliation(enabled: boolean) {
+	return useCustomerRead(
+		"reconciliation",
+		[],
+		(source, tenantId) => source.reconciliation(tenantId),
 		enabled,
 	);
 }
