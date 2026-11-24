@@ -37,6 +37,7 @@ jobs:
       LOYALTY_INTEGRATION: "1"
       NOTIFY_INTEGRATION: "1"
       ZALO_INTEGRATION: "1"
+      DATAPACK_INTEGRATION: "1"
       REGRESSION_MAX_WORKERS: "2"
     steps:
       - uses: actions/checkout@v5

@@ -933,7 +933,7 @@ CI runs on every push to `main` and every pull request with `permissions: conten
 
 | Not in CI | Why it matters | Where it runs instead | Request or plan |
 |---|---|---|---|
-| The integration suites behind a switch (notifications, Zalo, loyalty pipeline) | The dispatcher and the Zalo paths are checked per push only by their unit tests | The nightly `regression.yml` and the build machine | The sync and command-line suites run in the `database` job since 2026-11-20 (R-T04) |
+| The integration suites behind a switch that need served Edge Functions (`zalo:integration/session`, `functions:voucher-callback/integration`, the Mini Apps' `*-local` loops) | The Zalo session and the voucher callback over HTTP are checked per push only by their unit and Deno handler tests | The nightly `regression.yml` (what it can serve) and the build machine | The sync and command-line suites run in the `database` job since 2026-11-20 (R-T04); since 2026-11-24 (G-14, G-83) that job also runs the loyalty pipeline, datapack, OA menu, notification and Zalo token suites with their switches |
 | The database advisors | A function without a pinned `search_path` is not caught | Locally | R-T01 |
 | The live checks | They need the real data, which exists only on the build machine | The build machine | By design |
 | Lighthouse | Scores are measured by hand | Locally; the live app after go-live | – |
