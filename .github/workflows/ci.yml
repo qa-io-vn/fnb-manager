@@ -26,6 +26,8 @@ jobs:
           node-version-file: .nvmrc
           package-manager-cache: false
       - run: node scripts/check-public-safe.mjs
+      - name: The public-safety scan's own rules (forbidden-terms list), G-83
+        run: node --test scripts/check-public-safe.test.mjs
 
   code:
     name: Lint, typecheck, unit tests
@@ -110,6 +112,15 @@ jobs:
         run: |
           pnpm --filter @fnb/sync exec vitest run test/integration
           pnpm --filter @fnb/jobs exec vitest run test/integration --no-file-parallelism
+      - name: Plan publishing and validator parity on the fresh stack (DATAPACK_INTEGRATION, G-83)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          DATAPACK_INTEGRATION: "1"
+        run: |
+          eval "$(pnpm exec supabase status -o env)"
+          test -n "$API_URL" && test -n "$PUBLISHABLE_KEY"
+          SUPABASE_URL="$API_URL" SUPABASE_PUBLISHABLE_KEY="$PUBLISHABLE_KEY" \
+            pnpm --filter @fnb/jobs exec vitest run test/integration/datapack.test.ts
       - if: always()
         run: pnpm exec supabase stop --no-backup
 
