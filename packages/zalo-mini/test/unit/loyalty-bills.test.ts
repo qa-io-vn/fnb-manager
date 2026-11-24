@@ -12,6 +12,7 @@ import type { RestClient } from "../../src/data/rest-client";
 import {
 	BILL_REFUSALS,
 	CLAIM_REASONS,
+	COUNTER_CLAIM_RECORD_STATES,
 	COUNTER_CLAIM_REFUSALS,
 	COUNTER_QR_PATTERN,
 	CUSTOMER_FUNCTIONS,
@@ -23,6 +24,7 @@ import {
 	readBillConfirmResult,
 	readBillDisputeResult,
 	readBillToConfirm,
+	readCounterClaimRecord,
 	readCounterClaimResult,
 	readCounterQr,
 	readCustomerStore,
@@ -172,6 +174,114 @@ describe("the bills waiting for the customer", () => {
 				matched_path: "bill",
 			}).matchedPath,
 		).toBe("bill");
+	});
+});
+
+describe("the counter claims in the wallet (G-92)", () => {
+	const CLAIM = {
+		id: "00000000-0000-4000-8000-00000000c001",
+		store_name: "Cửa hàng Mẫu 1",
+		bill_no: "C-0457",
+		submitted_at: "2026-11-19T03:00:00Z",
+		state: "awaiting_staff",
+		waiting_until: "2026-11-19T09:00:00Z",
+		decided_at: null,
+	};
+
+	it("default to none in a wallet that predates them", () => {
+		expect(readWallet(WALLET).counterClaims).toEqual([]);
+		expect(
+			readWallet({ ...WALLET, counter_claims: null }).counterClaims,
+		).toEqual([]);
+	});
+
+	it("read a waiting claim with its deadline, and never a total the row might carry", () => {
+		const read = readWallet({
+			...WALLET,
+			counter_claims: [{ ...CLAIM, total: 85_000 }],
+		}).counterClaims;
+		expect(read).toEqual([
+			{
+				id: CLAIM.id,
+				storeName: "Cửa hàng Mẫu 1",
+				billNo: "C-0457",
+				submittedAt: "2026-11-19T03:00:00Z",
+				state: "awaiting_staff",
+				waitingUntil: "2026-11-19T09:00:00Z",
+				decidedAt: null,
+			},
+		]);
+		expect(JSON.stringify(read)).not.toContain("85000");
+	});
+
+	it.each(
+		COUNTER_CLAIM_RECORD_STATES.filter((state) => state !== "awaiting_staff"),
+	)("read a claim in state %s without a deadline", (state) => {
+		expect(
+			readCounterClaimRecord({
+				...CLAIM,
+				state,
+				waiting_until: null,
+				decided_at: state === "queued" ? null : "2026-11-19T04:00:00Z",
+			}).state,
+		).toBe(state);
+	});
+
+	it("need a deadline exactly while the claim waits for the staff (decision table)", () => {
+		expect(() =>
+			readCounterClaimRecord({ ...CLAIM, waiting_until: null }),
+		).toThrow(/counter claim deadline/);
+		expect(() =>
+			readCounterClaimRecord({ ...CLAIM, state: "confirmed" }),
+		).toThrow(/counter claim deadline/);
+	});
+
+	it("refuse an unknown state, a bad id, number or time, or a list that is not one", () => {
+		expect(() =>
+			readCounterClaimRecord({ ...CLAIM, state: "awaiting_customer" }),
+		).toThrow(/counter claim state/);
+		expect(() => readCounterClaimRecord({ ...CLAIM, id: "c-1" })).toThrow(
+			/counter claim id/,
+		);
+		expect(() =>
+			readCounterClaimRecord({ ...CLAIM, bill_no: "C 0457" }),
+		).toThrow(/counter claim number/);
+		expect(() =>
+			readCounterClaimRecord({ ...CLAIM, submitted_at: "soon" }),
+		).toThrow(/counter claim time/);
+		expect(() => readWallet({ ...WALLET, counter_claims: {} })).toThrow(
+			/counter claims/,
+		);
+	});
+});
+
+describe("an answer sent a second time (G-92)", () => {
+	it("is read like the first: the replayed flag changes nothing the app shows", () => {
+		expect(
+			readBillConfirmResult({
+				state: "confirmed",
+				refusal: null,
+				evidence_level: 2,
+				replayed: true,
+			}),
+		).toEqual({ state: "confirmed", refusal: null, evidenceLevel: 2 });
+		expect(
+			readBillDisputeResult({
+				state: "reversed",
+				refusal: null,
+				replayed: true,
+			}),
+		).toEqual({ state: "reversed", refusal: null });
+		expect(
+			readCounterClaimResult({
+				state: "awaiting_staff",
+				refusal: null,
+				bill_id: BILL_ID,
+				evidence_level: 0,
+				expires_at: "2026-11-19T09:00:00Z",
+				replayed: true,
+			}),
+		).toMatchObject({ state: "awaiting_staff", billId: BILL_ID });
 	});
 });
 

@@ -323,6 +323,32 @@ export interface BillToConfirm {
 	readonly confirmBy: string;
 }
 
+export const COUNTER_CLAIM_RECORD_STATES = [
+	"awaiting_staff",
+	"queued",
+	"confirmed",
+	"rejected",
+	"expired",
+	"reversed",
+] as const;
+export type CounterClaimRecordState =
+	(typeof COUNTER_CLAIM_RECORD_STATES)[number];
+
+/**
+ * A bill the customer claimed with the counter QR, as the wallet lists it (G-92): those still waiting, and those sent
+ * in the last 7 days. It never carries a total.
+ */
+export interface CounterClaimRecord {
+	readonly id: string;
+	readonly storeName: string;
+	readonly billNo: string;
+	readonly submittedAt: string;
+	readonly state: CounterClaimRecordState;
+	/** until when a staff member can answer it, while it waits for one */
+	readonly waitingUntil: string | null;
+	readonly decidedAt: string | null;
+}
+
 export interface Wallet {
 	readonly card: MemberCard;
 	readonly stampCards: readonly StampCard[];
@@ -334,6 +360,7 @@ export interface Wallet {
 	readonly claimsToday: number;
 	readonly claimsPerDay: number;
 	readonly billsToConfirm: readonly BillToConfirm[];
+	readonly counterClaims: readonly CounterClaimRecord[];
 	readonly deletionRequest: DeletionRequest | null;
 }
 
@@ -952,6 +979,35 @@ export function readBillToConfirm(value: unknown): BillToConfirm {
 	};
 }
 
+export function readCounterClaimRecord(value: unknown): CounterClaimRecord {
+	const row = record(value, "counter claim");
+	const id = text(row.id, "counter claim id");
+	if (!UUID_PATTERN.test(id)) invalid("counter claim id");
+	const billNo = text(row.bill_no, "counter claim number");
+	if (!RECEIPT_NO_PATTERN.test(billNo)) invalid("counter claim number");
+	const state = oneOf(
+		COUNTER_CLAIM_RECORD_STATES,
+		row.state,
+		"counter claim state",
+	);
+	const waitingUntil = optionalInstant(
+		row.waiting_until,
+		"counter claim deadline",
+	);
+	if ((state === "awaiting_staff") !== (waitingUntil !== null))
+		invalid("counter claim deadline");
+	// Only these fields are kept: a total in the row never reaches the screen.
+	return {
+		id,
+		storeName: text(row.store_name, "counter claim store"),
+		billNo,
+		submittedAt: instant(row.submitted_at, "counter claim time"),
+		state,
+		waitingUntil,
+		decidedAt: optionalInstant(row.decided_at, "counter claim decision"),
+	};
+}
+
 export function readWallet(value: unknown): Wallet {
 	const row = record(value, "wallet");
 	return {
@@ -969,6 +1025,9 @@ export function readWallet(value: unknown): Wallet {
 		),
 		billsToConfirm: list(row.bills_to_confirm ?? [], "bills to confirm").map(
 			readBillToConfirm,
+		),
+		counterClaims: list(row.counter_claims ?? [], "counter claims").map(
+			readCounterClaimRecord,
 		),
 		deletionRequest:
 			row.deletion_request === null || row.deletion_request === undefined

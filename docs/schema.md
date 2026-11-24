@@ -1972,7 +1972,7 @@ A paper bill at a staff-mode store (path E). `source` `staff_scan` (recorded by 
 
 ### `bill_confirmations`, `bill_audits`, `loyalty_counter_codes`, `loyalty_audit_events`
 
-- `bill_confirmations`: one reading per bill and source (`staff`, `customer`, later `reader` with its `reading`), with `entered_total` and `agrees`. Owners and managers of the store read it.
+- `bill_confirmations`: one reading per bill and source (`staff`, `customer`, later `reader` with its `reading`), with `entered_total` and `agrees`. Owners and managers of the store read it. `answered_state` (migration `customer_bill_answer_replay`, G-92; the customer's row only, a CHECK) keeps the outcome the customer was given for their reading (`awaiting_customer`, `awaiting_staff`, `queued` or `confirmed`), so the same answer sent again (a lost one) gets it back instead of a refusal; null on rows written before the migration, which still answer `already_answered`.
 - `bill_audits`: the random audit of a confirmed bill, `open`, `passed` or `failed` (with a note). Owners and managers read it.
 - `loyalty_counter_codes`: the rotating 12-character counter tokens; no API role reads them.
 - `loyalty_audit_events`: the audit trail of the mode (settings changes, every bill outcome, audits, counter QR issues, staff redemption confirmations and voids, shadow flags) with actor, subject, membership and amount; details never hold a phone, code or name. Owners and managers of the store read it; the data-subject erasure blanks `membership_id`.
@@ -1988,7 +1988,7 @@ A paper bill at a staff-mode store (path E). `source` `staff_scan` (recorded by 
 
 ### Tests
 
-pgTAP 220 (settings), 221 (decision table mode x action x role), 222 (bill state transitions), 223 (boundaries), 224 (security), 225 (staff redemption transitions), 226 (anomaly report, audits, shadow check, the store lock, erasure); `supabase/snippets/bill-parallel-caps.sh` runs eight bills in parallel sessions against a cap of three.
+pgTAP 220 (settings), 221 (decision table mode x action x role), 222 (bill state transitions), 223 (boundaries), 224 (security), 225 (staff redemption transitions), 226 (anomaly report, audits, shadow check, the store lock, erasure), 248 (an answer sent twice and the wallet's counter claims, G-92); `supabase/snippets/bill-parallel-caps.sh` runs eight bills in parallel sessions against a cap of three.
 
 ## Till-side rails (phase 16b)
 

@@ -430,6 +430,15 @@ test("the QR text decides the answer: partitions of the code, the grace boundary
 	const replay = await submitClaim(session, a.payload, billNo(), 85_000);
 	expect(replay.body).toMatchObject({ state: "refused", refusal: "code_used" });
 	expect(await noOf()).toBe(1);
+	// 2b. the same bill again with the same code (its answer was lost): the first outcome and no second bill (G-92)
+	const resent = await submitClaim(session, a.payload, x1, 85_000);
+	expect(resent.body).toMatchObject({
+		state: "awaiting_staff",
+		refusal: null,
+		bill_id: (claimed.body as Record<string, unknown>).bill_id,
+		replayed: true,
+	});
+	expect(await noOf()).toBe(1);
 
 	// 3. refusals before a bill exists, each leaving no bill (decision table)
 	const e = await fresh();

@@ -1602,6 +1602,11 @@
 					"format": "boolean",
 					"type": "boolean"
 				},
+				"answered_state": {
+					"description": "for the customer's reading only: the outcome the customer was given for it (the bill's state right after the answer), returned again when the same answer is sent twice (G-92); null for staff and reader rows and for customer rows written before migration customer_bill_answer_replay",
+					"format": "text",
+					"type": "string"
+				},
 				"bill_id": {
 					"format": "uuid",
 					"type": "string"
@@ -11009,6 +11014,13 @@
 		"rowFilter.bill_confirmations.agrees": {
 			"in": "query",
 			"name": "agrees",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.bill_confirmations.answered_state": {
+			"description": "for the customer's reading only: the outcome the customer was given for it (the bill's state right after the answer), returned again when the same answer is sent twice (G-92); null for staff and reader rows and for customer rows written before migration customer_bill_answer_replay",
+			"in": "query",
+			"name": "answered_state",
 			"required": false,
 			"type": "string"
 		},
@@ -22388,6 +22400,9 @@
 						"$ref": "#/parameters/rowFilter.bill_confirmations.entered_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.answered_state"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -22427,6 +22442,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.bill_confirmations.entered_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.answered_state"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -22495,6 +22513,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.bill_confirmations.entered_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.bill_confirmations.answered_state"
 					},
 					{
 						"$ref": "#/parameters/body.bill_confirmations"

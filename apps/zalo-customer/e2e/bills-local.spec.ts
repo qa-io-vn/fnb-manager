@@ -6,8 +6,8 @@
 //   wallet shows the stamp and the points;
 // - boundary values of the amount tolerance (1,000 đồng): exactly 1,000 apart agrees, 1 đồng more disagrees and queues
 //   the bill for a manager without a stamp;
-// - state transition: a bill answered once refuses the second answer from a stale screen (already_answered) and
-//   writes no second earn;
+// - state transition: a bill answered once gives a second answer from a stale screen the first outcome back (G-92)
+//   and writes no second earn;
 // - security: a customer session is refused every staff bill function (42501), the anonymous role too, an unknown bill
 //   answers like another member's (unknown_bill, no existence oracle); no full phone in any data response of any page.
 // Every member, phone and bill number is synthetic; the specs erase their customers and bills and restore the stores.
@@ -398,7 +398,7 @@ test("a total 1,000 apart agrees and a total 1 đồng further disagrees: no sta
 	expect(await customerScan.leaks()).toEqual([]);
 });
 
-test("a second answer from a stale screen is refused as already answered and writes no second stamp", async ({
+test("a second answer from a stale screen gets the first outcome back and writes no second stamp (G-92)", async ({
 	page,
 	browser,
 }) => {
@@ -435,14 +435,13 @@ test("a second answer from a stale screen is refused as already answered and wri
 	);
 
 	await typeAndConfirm(stale, BILL_TOTAL);
-	const refused = stale
+	const again = stale
 		.getByTestId("bills-to-confirm")
 		.getByTestId("bill-result");
-	await expect(refused).toHaveAttribute(
-		"data-outcome",
-		"bill.refusal.already_answered",
+	await expect(again).toHaveAttribute("data-outcome", "bill.result.confirmed");
+	await expect(again).toHaveText(
+		`Đã xác nhận hóa đơn ${no}. Điểm đã được cộng vào thẻ.`,
 	);
-	await expect(refused).toHaveText(`Hóa đơn ${no} đã được trả lời trước đó.`);
 	await checkCustomerScreen(stale);
 
 	await openWalletBills(stale, 0);

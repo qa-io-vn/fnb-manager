@@ -1,4 +1,9 @@
 import {
+	COUNTER_CLAIM_RECORD_STATES,
+	type CounterClaimRecord,
+	type CounterClaimRecordState,
+} from "@fnb/zalo-mini/loyalty";
+import {
 	act,
 	fireEvent,
 	screen,
@@ -8,6 +13,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderCustomerApp, setSearch } from "../test/render-app";
 import { ringSegments } from "./stamps-ring";
+import { CounterClaimsCard } from "./wallet-screen";
 
 afterEach(() => setSearch(""));
 
@@ -160,5 +166,80 @@ describe("the wallet", () => {
 		expect(
 			screen.queryByRole("button", { name: "Dừng nhận tin" }),
 		).not.toBeInTheDocument();
+	});
+});
+
+// G-92. Equivalence partitioning of a counter claim's state (each has its own words and tone), the decision of the
+// deadline line (only while the claim waits for the staff), and security: a total never reaches the screen.
+describe("the counter claims of the wallet", () => {
+	const claim = (
+		state: CounterClaimRecordState,
+		index: number,
+	): CounterClaimRecord => ({
+		id: `00000000-0000-4000-8000-00000000c00${index}`,
+		storeName: "Cửa hàng Mẫu 1",
+		billNo: `HD07${index}`,
+		submittedAt: "2026-11-19T03:00:00.000Z",
+		state,
+		waitingUntil:
+			state === "awaiting_staff" ? "2026-11-19T09:00:00.000Z" : null,
+		decidedAt: null,
+	});
+
+	it("words every state, and gives a deadline only to a claim waiting for the staff", async () => {
+		const claims = COUNTER_CLAIM_RECORD_STATES.map(claim);
+		renderCustomerApp({
+			settings: { member: true },
+			routes: [{ path: "/", element: <CounterClaimsCard claims={claims} /> }],
+		});
+		const card = await screen.findByTestId("counter-claims");
+		expect(
+			within(card).getByRole("heading", { name: "Hóa đơn gửi tại quầy" }),
+		).toBeInTheDocument();
+		const items = within(card).getAllByTestId("counter-claim-item");
+		expect(items.map((item) => item.getAttribute("data-state"))).toEqual([
+			...COUNTER_CLAIM_RECORD_STATES,
+		]);
+		expect(items.map((item) => item.textContent)).toEqual(
+			[
+				"Chờ nhân viên đối chiếu",
+				"Quản lý đang kiểm tra",
+				"Đã cộng điểm",
+				"Không nhận",
+				"Hết thời gian chờ",
+				"Đã hủy",
+			].map((state) => expect.stringContaining(state)),
+		);
+		expect(items[0]).toHaveTextContent("Hóa đơn HD070");
+		expect(items[0]).toHaveTextContent(
+			/Cửa hàng Mẫu 1, gửi lúc \d\d:\d\d \d\d\/\d\d\/\d{4}/,
+		);
+		expect(
+			within(items[0] as HTMLElement).getByTestId("counter-claim-deadline"),
+		).toHaveTextContent(
+			/^Nhân viên đối chiếu trước \d\d:\d\d \d\d\/\d\d\/\d{4}$/,
+		);
+		expect(within(card).getAllByTestId("counter-claim-deadline")).toHaveLength(
+			1,
+		);
+	});
+
+	it("shows nothing when there is no claim", async () => {
+		renderCustomerApp({
+			settings: { member: true },
+			routes: [
+				{
+					path: "/",
+					element: (
+						<>
+							<p>loaded</p>
+							<CounterClaimsCard claims={[]} />
+						</>
+					),
+				},
+			],
+		});
+		await screen.findByText("loaded");
+		expect(screen.queryByTestId("counter-claims")).toBeNull();
 	});
 });

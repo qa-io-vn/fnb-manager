@@ -1975,6 +1975,8 @@ returns jsonb
     - Each row also has the ledger `reason`, `store_name`, the invoice's `receipt_no` and `matched_path`: `phone`, `member_code`, `receipt_claim`, `voucher`, `welcome` or `manual`, and null for a redeem row and for the `redemption_released` adjustment, which the app words "Hoàn lại quà chưa dùng".
   - `claims`: the latest 50 receipt claims with `state` and `reason` as `receipt_claims` stores them.
   - `claims_today` (every submission of the business day, refused ones included) and `claims_per_day`.
+  - `bills_to_confirm`: the staff-recorded bills waiting for the customer's blind total, as [`customer_pending_bills`](#publiccustomer_pending_bills) answers them.
+  - `counter_claims` (G-92): the bills the customer claimed with the counter QR that still wait (`awaiting_staff` or `queued`, however old) or were sent in the 7 days before the call, newest first, at most 20: `id`, `store_name`, `bill_no`, `submitted_at`, `state` (`awaiting_staff`, `queued`, `confirmed`, `rejected`, `expired` or `reversed`), `waiting_until` (until when a staff member can answer it, only while `awaiting_staff`) and `decided_at`. Never a total.
   - `deletion_request`: the customer's deletion request as `customer_request_deletion` answers it. It is the open one (`received` or `in_progress`), else the latest whatever its status (a `rejected` one, so the app can offer a new request), else null. The app reads it after a restart.
 
 #### `public.customer_member_code`
@@ -2542,7 +2544,7 @@ returns jsonb
 
 - **Status:** built (staff mode, self claims).
 - **Who may call:** a joined customer session (`42501` otherwise).
-- **Notes:** claims a bill with the counter QR of a store in staff mode with self claims, the bill number and the total the customer paid. Refusals `locked`, `code_unknown`, `wrong_store` (a QR of a store outside the customer's app), `not_available`, `code_expired` (issued later than now, or more than 120 seconds past its expiry: no remote claims), `code_used` (one claim per member and QR), `daily_limit` (`receipt_claims_per_phone_per_day`) or a refusal of `app.bill_precheck`. Otherwise the bill waits 6 hours for a staff member's blind total (`awaiting_staff`), or is confirmed at once at level 0 when the total is within `auto_approve_max_amount` and the store's `auto_approve_per_day` is not used up. A malformed QR, number or total is `22023`. Audited.
+- **Notes:** claims a bill with the counter QR of a store in staff mode with self claims, the bill number and the total the customer paid. Refusals `locked`, `code_unknown`, `wrong_store` (a QR of a store outside the customer's app), `not_available`, `code_expired` (issued later than now, or more than 120 seconds past its expiry: no remote claims), `code_used` (one claim per member and QR), `daily_limit` (`receipt_claims_per_phone_per_day`) or a refusal of `app.bill_precheck`. Otherwise the bill waits 6 hours for a staff member's blind total (`awaiting_staff`), or is confirmed at once at level 0 when the total is within `auto_approve_max_amount` and the store's `auto_approve_per_day` is not used up. Every answer carries `replayed`: the same bill number (read by its key) sent again with the same QR, as after a lost answer, returns the first outcome again (`bill_id`, `expires_at` or `stamps_earned` and `points_earned`) with `replayed` true, even after the QR has expired, and records nothing (G-92); another bill number with that QR is still `code_used`. A malformed QR, number or total is `22023`. Audited.
 
 #### `public.customer_pending_bills`
 
@@ -2564,7 +2566,7 @@ returns jsonb
 
 - **Status:** built (staff mode, plan phase 2).
 - **Who may call:** a joined customer session (`42501` otherwise).
-- **Notes:** the customer types the total they paid for one of their waiting bills, without seeing the staff total; one answer per bill. A total within `bill_amount_tolerance` gives level 2 (confirmed at once unless the bill needs a manager); a different one queues the bill (`disagreement`). Refusals `unknown_bill` (not a bill of this member: no existence oracle), `already_answered` and `too_late`. A total out of range is `22023`. Audited.
+- **Notes:** the customer types the total they paid for one of their waiting bills, without seeing the staff total; one answer per bill. A total within `bill_amount_tolerance` gives level 2 (confirmed at once unless the bill needs a manager); a different one queues the bill (`disagreement`). The answer is `{"state", "refusal", "evidence_level", "replayed"}`: the same customer answering the bill again (a lost answer, or a second screen) gets the first outcome back with `replayed` true, whatever total they type the second time, and nothing is written (G-92). Refusals `unknown_bill` (not a bill of this member: no existence oracle), `already_answered` (the bill was disputed, is no longer waiting, or was answered before the outcome was kept) and `too_late`. A total out of range is `22023`. Audited.
 
 #### `public.customer_dispute_bill`
 
@@ -2575,7 +2577,7 @@ returns jsonb
 
 - **Status:** built (staff mode).
 - **Who may call:** a joined customer session (`42501` otherwise).
-- **Notes:** "Không đúng" on a bill waiting for the customer: the bill is reversed (`disputed`), the earn clawed back, and `loyalty_staff_anomaly` raised for the staff member who recorded it. Refusals `unknown_bill` and `already_answered`.
+- **Notes:** "Không đúng" on a bill waiting for the customer: the bill is reversed (`disputed`), the earn clawed back, and `loyalty_staff_anomaly` raised for the staff member who recorded it. The same dispute sent again answers `reversed` with `replayed` true (G-92). Refusals `unknown_bill` and `already_answered` (the bill was answered with a total, or is no longer waiting).
 
 #### `public.staff_confirm_redemption`
 

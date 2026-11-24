@@ -1,6 +1,8 @@
 import type {
 	ClaimRecord,
 	ClaimState,
+	CounterClaimRecord,
+	CounterClaimRecordState,
 	LedgerEntry,
 	LedgerState,
 	LoyaltyClient,
@@ -74,6 +76,20 @@ const CLAIM_TONES: Readonly<
 	queued: "pending",
 	rejected: "negative",
 	expired: "neutral",
+};
+
+const COUNTER_CLAIM_TONES: Readonly<
+	Record<
+		CounterClaimRecordState,
+		"pending" | "positive" | "negative" | "neutral"
+	>
+> = {
+	awaiting_staff: "pending",
+	queued: "pending",
+	confirmed: "positive",
+	rejected: "negative",
+	expired: "neutral",
+	reversed: "negative",
 };
 
 function signed(value: number): string {
@@ -163,6 +179,66 @@ function ClaimItem({ claim }: { readonly claim: ClaimRecord }) {
 	);
 }
 
+/**
+ * G-92: the bills the customer sent with the counter QR, still waiting or sent in the last 7 days, so a claim does
+ * not vanish once its answer screen is closed. Never a total.
+ */
+export function CounterClaimsCard({
+	claims,
+}: {
+	readonly claims: readonly CounterClaimRecord[];
+}) {
+	const { t } = useI18n();
+	const titleId = useId();
+	if (claims.length === 0) return null;
+	return (
+		<section
+			aria-labelledby={titleId}
+			className="flex flex-col gap-2"
+			data-testid="counter-claims"
+		>
+			<h2 id={titleId} className="text-lg font-semibold text-ink">
+				{t("counterClaims.title")}
+			</h2>
+			<ul className="flex flex-col gap-2">
+				{claims.map((claim) => (
+					<li
+						key={claim.id}
+						className="flex flex-col gap-1 rounded-xl bg-surface-raised px-4 py-3"
+						data-testid="counter-claim-item"
+						data-state={claim.state}
+					>
+						<div className="flex items-start justify-between gap-3">
+							<span className="text-base font-semibold text-ink">
+								{t("bill.number", { bill: claim.billNo })}
+							</span>
+							<Badge tone={COUNTER_CLAIM_TONES[claim.state]}>
+								{t(`counterClaims.state.${claim.state}`)}
+							</Badge>
+						</div>
+						<span className="text-sm text-ink-muted">
+							{t("counterClaims.meta", {
+								store: claim.storeName,
+								time: shownInstant(claim.submittedAt),
+							})}
+						</span>
+						{claim.waitingUntil === null ? null : (
+							<span
+								className="text-sm text-ink-muted"
+								data-testid="counter-claim-deadline"
+							>
+								{t("counterClaims.waitingUntil", {
+									time: shownInstant(claim.waitingUntil),
+								})}
+							</span>
+						)}
+					</li>
+				))}
+			</ul>
+		</section>
+	);
+}
+
 export function MemberCardView({ wallet }: { readonly wallet: Wallet }) {
 	const { t } = useI18n();
 	const card = wallet.card;
@@ -227,6 +303,7 @@ function WalletView({
 				bills={wallet.billsToConfirm}
 				onAnswered={onChanged}
 			/>
+			<CounterClaimsCard claims={wallet.counterClaims} />
 			{wallet.stampCards.map((card) => (
 				<Card key={card.id} testId="stamp-card">
 					<div className="flex items-center gap-4">

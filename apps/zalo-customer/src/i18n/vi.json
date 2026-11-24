@@ -361,5 +361,14 @@
 	"counter.refusal.no_programme": "Chương trình đang tạm ngưng.",
 	"counter.refusal.store_daily_cap": "Cửa hàng đã đạt giới hạn ghi nhận trong hôm nay. Hãy nhờ nhân viên hỗ trợ.",
 	"counter.refusal.other": "Hóa đơn này không được nhận.",
+	"counterClaims.title": "Hóa đơn gửi tại quầy",
+	"counterClaims.meta": "{store}, gửi lúc {time}",
+	"counterClaims.waitingUntil": "Nhân viên đối chiếu trước {time}",
+	"counterClaims.state.awaiting_staff": "Chờ nhân viên đối chiếu",
+	"counterClaims.state.queued": "Quản lý đang kiểm tra",
+	"counterClaims.state.confirmed": "Đã cộng điểm",
+	"counterClaims.state.rejected": "Không nhận",
+	"counterClaims.state.expired": "Hết thời gian chờ",
+	"counterClaims.state.reversed": "Đã hủy",
 	"counter.another": "Quét mã khác"
 }

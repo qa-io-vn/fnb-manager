@@ -150,6 +150,31 @@ describe("claiming with the counter QR", () => {
 		);
 	});
 
+	it("shows the first outcome when a lost claim is sent again, not code used (G-92)", async () => {
+		const { scan } = scanning(content(DEMO_COUNTER_QR));
+		renderCustomerApp({
+			settings: { member: true, staffMode: true, network: "lost-once" },
+			routes: [{ path: "/", element: <CounterClaimView scan={scan} /> }],
+		});
+		await scanOnce();
+		const form = await screen.findByTestId("counter-form");
+		fireEvent.change(within(form).getByTestId("counter-bill-no"), {
+			target: { value: "HD0610" },
+		});
+		fireEvent.change(within(form).getByTestId("counter-total"), {
+			target: { value: "150000" },
+		});
+		const sendButton = within(form).getByRole("button", {
+			name: "Gửi hóa đơn",
+		});
+		fireEvent.click(sendButton);
+		expect(await screen.findByRole("alert")).toBeInTheDocument();
+		fireEvent.click(sendButton);
+		const result = await screen.findByTestId("counter-result");
+		expect(result).toHaveAttribute("data-state", "awaiting_staff");
+		expect(result).not.toHaveAttribute("data-refusal", "code_used");
+	});
+
 	it("refuses a replayed code and an expired one, each with a new scan offered", async () => {
 		const { scan } = scanning(
 			content(DEMO_COUNTER_QR),

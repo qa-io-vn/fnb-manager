@@ -189,8 +189,16 @@ interface Bill {
 		| "reversed";
 	evidenceLevel: number;
 	answered: boolean;
+	/** the outcome the customer was given for their answer, sent back when the same answer comes again (G-92) */
+	firstOutcome: "awaiting_staff" | "confirmed" | "queued" | null;
+	disputed: boolean;
+	decidedAt: number | null;
 	entryId: string | null;
 }
+
+/** How long a decided counter claim stays in the wallet, and how many it lists, as app.customer_counter_claims. */
+const COUNTER_CLAIM_DAYS = 7;
+const COUNTER_CLAIMS_LISTED = 20;
 
 function billKey(billNo: string): string {
 	const upper = billNo.trim().toUpperCase();
@@ -524,6 +532,9 @@ export function createDemoWorld(
 			state: "awaiting_customer",
 			evidenceLevel: 0,
 			answered: false,
+			firstOutcome: null,
+			disputed: false,
+			decidedAt: null,
 			entryId: null,
 		};
 		bill.entryId = billEntry(bill, "pending");
@@ -926,6 +937,32 @@ export function createDemoWorld(
 					recorded_at: new Date(bill.recordedAt).toISOString(),
 					confirm_by: new Date(bill.confirmBy).toISOString(),
 				})),
+			counter_claims: bills
+				.filter(
+					(bill) =>
+						bill.source === "counter_claim" &&
+						bill.recordedAt <= now() &&
+						(bill.state === "awaiting_staff" ||
+							bill.state === "queued" ||
+							bill.recordedAt > now() - COUNTER_CLAIM_DAYS * DAY_MS),
+				)
+				.sort((left, right) => right.recordedAt - left.recordedAt)
+				.slice(0, COUNTER_CLAIMS_LISTED)
+				.map((bill) => ({
+					id: bill.id,
+					store_name: storeName(bill.store),
+					bill_no: bill.billNo,
+					submitted_at: new Date(bill.recordedAt).toISOString(),
+					state: bill.state,
+					waiting_until:
+						bill.state === "awaiting_staff"
+							? new Date(bill.confirmBy).toISOString()
+							: null,
+					decided_at:
+						bill.decidedAt === null
+							? null
+							: new Date(bill.decidedAt).toISOString(),
+				})),
 			deletion_request: deletion,
 		};
 	};
@@ -955,6 +992,14 @@ export function createDemoWorld(
 		const total = validTotal(args.p_total);
 		const bill = ownBill(args);
 		if (bill === null) return { state: "refused", refusal: "unknown_bill" };
+		// the same customer answering again (a lost answer): the first outcome, whatever total comes the second time
+		if (bill.answered && !bill.disputed && bill.firstOutcome !== null)
+			return {
+				state: bill.firstOutcome,
+				refusal: null,
+				evidence_level: bill.evidenceLevel,
+				replayed: true,
+			};
 		if (bill.state !== "awaiting_customer" || bill.answered)
 			return { state: "refused", refusal: "already_answered" };
 		if (bill.confirmBy <= now())
@@ -963,14 +1008,17 @@ export function createDemoWorld(
 		if (Math.abs(bill.total - total) <= DEMO_BILL_RULES.tolerance) {
 			bill.state = "confirmed";
 			bill.evidenceLevel = 2;
+			bill.decidedAt = now();
 			settleBill(bill, "confirmed");
 		} else {
 			bill.state = "queued";
 		}
+		bill.firstOutcome = bill.state;
 		return {
 			state: bill.state,
 			refusal: null,
 			evidence_level: bill.evidenceLevel,
+			replayed: false,
 		};
 	};
 
@@ -979,12 +1027,16 @@ export function createDemoWorld(
 	): Record<string, unknown> => {
 		const bill = ownBill(args);
 		if (bill === null) return { state: "refused", refusal: "unknown_bill" };
+		if (bill.disputed)
+			return { state: "reversed", refusal: null, replayed: true };
 		if (bill.state !== "awaiting_customer" || bill.answered)
 			return { state: "refused", refusal: "already_answered" };
 		bill.answered = true;
+		bill.disputed = true;
 		bill.state = "reversed";
+		bill.decidedAt = now();
 		settleBill(bill, "reversed");
-		return { state: "reversed", refusal: null };
+		return { state: "reversed", refusal: null, replayed: false };
 	};
 
 	const counterClaimRefusal = (
@@ -1051,6 +1103,30 @@ export function createDemoWorld(
 				bill_id: null,
 			};
 		}
+		// the same bill sent again with this QR (a lost answer): the first outcome, even once the QR has expired
+		const first = bills.find(
+			(bill) =>
+				bill.counterToken === token && billKey(bill.billNo) === billKey(billNo),
+		);
+		if (first !== undefined && first.firstOutcome === "awaiting_staff")
+			return {
+				state: "awaiting_staff",
+				refusal: null,
+				bill_id: first.id,
+				evidence_level: first.evidenceLevel,
+				expires_at: new Date(first.confirmBy).toISOString(),
+				replayed: true,
+			};
+		if (first !== undefined && first.firstOutcome === "confirmed")
+			return {
+				state: "confirmed",
+				refusal: null,
+				bill_id: first.id,
+				evidence_level: first.evidenceLevel,
+				stamps_earned: 1,
+				points_earned: billPoints(first.total),
+				replayed: true,
+			};
 		const refusal = counterClaimRefusal(
 			store,
 			code.expired,
@@ -1073,6 +1149,9 @@ export function createDemoWorld(
 			state: automatic ? "confirmed" : "awaiting_staff",
 			evidenceLevel: 0,
 			answered: true,
+			firstOutcome: automatic ? "confirmed" : "awaiting_staff",
+			disputed: false,
+			decidedAt: automatic ? at : null,
 			entryId: null,
 		};
 		bills.push(bill);
@@ -1083,6 +1162,7 @@ export function createDemoWorld(
 				bill_id: bill.id,
 				evidence_level: 0,
 				expires_at: new Date(bill.confirmBy).toISOString(),
+				replayed: false,
 			};
 		bill.entryId = billEntry(bill, "confirmed");
 		return {
@@ -1090,6 +1170,7 @@ export function createDemoWorld(
 			refusal: null,
 			bill_id: bill.id,
 			evidence_level: 0,
+			replayed: false,
 			stamps_earned: 1,
 			points_earned: billPoints(total),
 		};

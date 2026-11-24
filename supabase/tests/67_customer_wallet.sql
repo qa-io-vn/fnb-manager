@@ -148,7 +148,7 @@ select is(
 );
 select is(
   pg_temp.wallet((select login_1 from fx), (select t0 from fx)) - 'card' - 'stamp_cards' - 'history' - 'deletion_request',
-  '{"points": {"balance": 0, "pending": 0, "expiring": null}, "tier": null, "marketing_consent": false, "claims": [], "claims_today": 0, "claims_per_day": 3, "bills_to_confirm": []}'::jsonb,
+  '{"points": {"balance": 0, "pending": 0, "expiring": null}, "tier": null, "marketing_consent": false, "claims": [], "claims_today": 0, "claims_per_day": 3, "bills_to_confirm": [], "counter_claims": []}'::jsonb,
   'no points, no tier, no marketing consent and no claim yet'
 );
 

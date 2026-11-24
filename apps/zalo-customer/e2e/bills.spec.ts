@@ -12,6 +12,7 @@ import { expect, type Page, test } from "@playwright/test";
 import {
 	checkCustomerScreen,
 	openHome,
+	openTab,
 	watchCustomerPage,
 } from "./customer-checks";
 
@@ -143,6 +144,97 @@ test("a counter claim with the stand-in camera earns at once, and the same code 
 	);
 	await expect(result.getByRole("button", { name: "Quét lại" })).toBeVisible();
 	await expectNoStaffTotalOrPhone(page);
+});
+
+test("a lost answer on Xác nhận hóa đơn: the retry shows the first outcome, not already answered (G-92)", async ({
+	page,
+}) => {
+	const card = await openBills(page, "?member=1&bill=1&net=lost-once");
+	await card.getByTestId("bill-total").fill("85000");
+	await card.getByTestId("bill-confirm").click();
+	await expect(card.getByRole("alert")).toHaveText(
+		"Mất kết nối mạng. Kiểm tra mạng rồi thử lại.",
+	);
+	await expect(card.getByTestId("bill-result")).toHaveCount(0);
+	await checkCustomerScreen(page);
+	await card.getByTestId("bill-confirm").click();
+	await expect(card.getByTestId("bill-result")).toHaveText(
+		`Đã xác nhận hóa đơn ${BILL_NO}. Điểm đã được cộng vào thẻ.`,
+	);
+	await expect(page.getByTestId("history-item").first()).toHaveAttribute(
+		"data-state",
+		"confirmed",
+	);
+	await expectNoStaffTotalOrPhone(page);
+	await checkCustomerScreen(page);
+});
+
+test("a lost answer on a counter claim: the retry shows the first outcome, and the wallet lists the claim (G-92)", async ({
+	page,
+}) => {
+	await openHome(page, "?member=1&staff=1&net=lost-once");
+	await page.getByRole("button", { name: "Nhận điểm từ hóa đơn" }).click();
+	await page
+		.getByTestId("claim-counter-entry")
+		.getByRole("button", { name: "Quét mã tại quầy" })
+		.click();
+	await page.getByTestId("counter-scan-button").click();
+	const form = page.getByTestId("counter-form");
+	await form.getByTestId("counter-bill-no").fill("HD0620");
+	await form.getByTestId("counter-total").fill("150000");
+	await form.getByRole("button", { name: "Gửi hóa đơn" }).click();
+	await expect(form.getByRole("alert")).toHaveText(
+		"Mất kết nối mạng. Kiểm tra mạng rồi thử lại.",
+	);
+	await checkCustomerScreen(page);
+	await form.getByRole("button", { name: "Gửi hóa đơn" }).click();
+	const result = page.getByTestId("counter-result");
+	await expect(result).toHaveAttribute("data-state", "awaiting_staff");
+	await expect(result).not.toHaveAttribute("data-refusal", "code_used");
+	await openTab(page, "Thẻ thành viên");
+	const claims = page.getByTestId("counter-claims");
+	await expect(
+		claims.getByRole("heading", { name: "Hóa đơn gửi tại quầy" }),
+	).toBeVisible();
+	const item = claims.getByTestId("counter-claim-item");
+	await expect(item).toHaveCount(1);
+	await expect(item).toHaveAttribute("data-state", "awaiting_staff");
+	await expect(item).toContainText("Hóa đơn HD0620");
+	await expect(item).toContainText("Chờ nhân viên đối chiếu");
+	await expect(item.getByTestId("counter-claim-deadline")).toHaveText(
+		/^Nhân viên đối chiếu trước \d\d:\d\d \d\d\/\d\d\/\d{4}$/,
+	);
+	expect((await page.locator("body").textContent()) ?? "").not.toMatch(
+		/150[.,\s]?000/,
+	);
+	await checkCustomerScreen(page);
+});
+
+test("the wallet's counter claims in English (G-92)", async ({ page }) => {
+	await openHome(page, "?member=1&staff=1&lang=en");
+	await page.getByRole("button", { name: "Earn from a receipt" }).click();
+	await page
+		.getByTestId("claim-counter-entry")
+		.getByRole("button", { name: "Scan the counter code" })
+		.click();
+	await page.getByTestId("counter-scan-button").click();
+	const form = page.getByTestId("counter-form");
+	await form.getByTestId("counter-bill-no").fill("HD0621");
+	await form.getByTestId("counter-total").fill("150000");
+	await form.getByRole("button", { name: "Send the bill" }).click();
+	await expect(page.getByTestId("counter-result")).toHaveAttribute(
+		"data-state",
+		"awaiting_staff",
+	);
+	await openTab(page, "Member card");
+	const claims = page.getByTestId("counter-claims");
+	await expect(
+		claims.getByRole("heading", { name: "Bills sent at the counter" }),
+	).toBeVisible();
+	await expect(claims.getByTestId("counter-claim-item")).toContainText(
+		"Waiting for staff",
+	);
+	await checkCustomerScreen(page);
 });
 
 test("a stale counter code is refused as expired, and a text that is not one is never sent", async ({

@@ -163,6 +163,37 @@ describe("confirming a bill on the wallet", () => {
 		);
 	});
 
+	it("shows the first outcome when a lost confirmation is sent again, not already answered (G-92)", async () => {
+		renderCustomerApp({
+			settings: { member: true, bills: 1, network: "lost-once" },
+		});
+		const card = await openWallet();
+		typeTotal(card, String(BILL.staffTotal));
+		fireEvent.click(within(card).getByTestId("bill-confirm"));
+		expect(await within(card).findByRole("alert")).toBeInTheDocument();
+		expect(within(card).queryByTestId("bill-result")).toBeNull();
+		fireEvent.click(within(card).getByTestId("bill-confirm"));
+		const result = await within(card).findByTestId("bill-result");
+		expect(result).toHaveAttribute("data-outcome", "bill.result.confirmed");
+		expect(result).not.toHaveTextContent("đã được trả lời trước đó");
+	});
+
+	it("shows the reversal again when a lost dispute is sent again (G-92)", async () => {
+		renderCustomerApp({
+			settings: { member: true, bills: 1, network: "lost-once" },
+		});
+		const card = await openWallet();
+		fireEvent.click(within(card).getByTestId("bill-dispute"));
+		const yes = within(card).getByRole("button", {
+			name: "Đúng, không phải của tôi",
+		});
+		fireEvent.click(yes);
+		expect(await within(card).findByRole("alert")).toBeInTheDocument();
+		fireEvent.click(yes);
+		const result = await within(card).findByTestId("bill-result");
+		expect(result).toHaveAttribute("data-outcome", "bill.result.reversed");
+	});
+
 	it("shows no card when nothing waits", async () => {
 		renderCustomerApp({ settings: { member: true, staffMode: true } });
 		await screen.findByRole("heading", { name: "Thành viên Quán Mẫu Một" });

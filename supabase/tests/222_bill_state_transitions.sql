@@ -156,8 +156,9 @@ select is(app.customer_confirm_bill(pg_temp.id('b1'), 61000, (select t0 from fx)
   'the customer''s blind total within the tolerance (1,000) confirms it at once');
 select is(pg_temp.bill('b1'), 'confirmed:2', 'two agreeing readings: level 2');
 select is(pg_temp.balance('member_1'), '1/6/0/0', 'the stamp and points are spendable');
-select is(app.customer_confirm_bill(pg_temp.id('b1'), 60000, (select t0 from fx) + interval '6 minutes') ->> 'refusal', 'already_answered',
-  'a second answer is refused');
+select is(app.customer_confirm_bill(pg_temp.id('b1'), 60000, (select t0 from fx) + interval '6 minutes'),
+  '{"state": "confirmed", "refusal": null, "evidence_level": 2, "replayed": true}'::jsonb,
+  'a second answer (a lost one sent again, G-92) gets the first outcome back instead of a refusal');
 
 -- 2. awaiting_customer -> queued (disagreement) -> confirmed by a manager
 select is(pg_temp.submit('b2', (select staff_1 from fx), 'member_2', (select store_s1 from fx), '000124', 80000, (select t0 from fx)) ->> 'state',

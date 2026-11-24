@@ -361,5 +361,14 @@
 	"counter.refusal.no_programme": "The programme is paused.",
 	"counter.refusal.store_daily_cap": "The store has reached the limit for today. Ask the staff for help.",
 	"counter.refusal.other": "This bill cannot be accepted.",
+	"counterClaims.title": "Bills sent at the counter",
+	"counterClaims.meta": "{store}, sent {time}",
+	"counterClaims.waitingUntil": "Staff check it before {time}",
+	"counterClaims.state.awaiting_staff": "Waiting for staff",
+	"counterClaims.state.queued": "Being checked by a manager",
+	"counterClaims.state.confirmed": "Points added",
+	"counterClaims.state.rejected": "Not accepted",
+	"counterClaims.state.expired": "Expired",
+	"counterClaims.state.reversed": "Cancelled",
 	"counter.another": "Scan another code"
 }

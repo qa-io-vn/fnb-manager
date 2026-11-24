@@ -3,7 +3,8 @@
 // - equivalence partitioning: a total within the tolerance, outside it; a bill of the member, an unknown one;
 // - boundary values: ?bill=0, 1, 3 and 4; a total equal to the staff total +/- the tolerance and one đồng beyond;
 //   totals 0, 1 and 100,000,001; the deadline itself (too late at confirm_by); the 5th failed code locks;
-// - state transitions of a bill: awaiting_customer -> confirmed | queued | reversed, then already_answered;
+// - state transitions of a bill: awaiting_customer -> confirmed | queued | reversed; the same answer sent again gets the
+//   first outcome back (G-92), a crossing answer (a dispute after a total, a total after a dispute) is already_answered;
 // - decision table of the counter claim: code (live, stale, unknown, other store) x store mode x reuse x totals;
 // - security: the wallet never carries the staff total, a replayed counter QR is refused, malformed input is 22023.
 import {
@@ -167,13 +168,13 @@ describe("the demo bills waiting for the customer", () => {
 		},
 	);
 
-	it("take one answer per bill: a second confirm or a dispute is already answered (state transition)", async () => {
+	it("take one answer per bill: a second confirm gets the first outcome back, a dispute after it is already answered (state transition, G-92)", async () => {
 		const { client } = await member({ bills: 2 });
 		await client.confirmBill(FIRST.id, 1);
 		expect(await client.confirmBill(FIRST.id, FIRST.staffTotal)).toEqual({
-			state: "refused",
-			refusal: "already_answered",
-			evidenceLevel: null,
+			state: "queued",
+			refusal: null,
+			evidenceLevel: 0,
 		});
 		expect(await client.disputeBill(FIRST.id)).toEqual({
 			state: "refused",
@@ -197,9 +198,30 @@ describe("the demo bills waiting for the customer", () => {
 			matchedPath: "bill",
 		});
 		expect(wallet.points.pending).toBe(before - FIRST.staffTotal / 1000);
+		expect(await client.disputeBill(FIRST.id)).toEqual({
+			state: "reversed",
+			refusal: null,
+		});
+		expect((await client.wallet()).points.pending).toBe(
+			before - FIRST.staffTotal / 1000,
+		);
 		expect(await client.confirmBill(FIRST.id, FIRST.staffTotal)).toMatchObject({
 			refusal: "already_answered",
 		});
+	});
+
+	it("give a lost confirmation's outcome back when it is sent again, whatever total comes the second time (G-92)", async () => {
+		const { client } = await member({ bills: 1 });
+		const first = await client.confirmBill(FIRST.id, FIRST.staffTotal);
+		expect(first).toEqual({
+			state: "confirmed",
+			refusal: null,
+			evidenceLevel: 2,
+		});
+		const history = (await client.wallet()).history;
+		expect(await client.confirmBill(FIRST.id, FIRST.staffTotal)).toEqual(first);
+		expect(await client.confirmBill(FIRST.id, 1)).toEqual(first);
+		expect((await client.wallet()).history).toEqual(history);
 	});
 
 	it("refuse a bill that is not the member's, and a confirmation at the deadline", async () => {
@@ -298,6 +320,52 @@ describe("the demo counter claims", () => {
 				DEMO_COUNTER_QR.replace(":mau-1:", ":mau-2:"),
 			),
 		).toMatchObject({ refusal: "wrong_store" });
+	});
+
+	it("give a lost claim's outcome back when the same bill comes again with the same code, and nothing twice (G-92)", async () => {
+		const { client } = await member({ staffMode: true });
+		const waiting = await claim(
+			client,
+			"HD0512",
+			DEMO_BILL_RULES.autoApproveMax + 1,
+		);
+		expect(
+			await claim(client, "hd0512", DEMO_BILL_RULES.autoApproveMax + 5),
+		).toEqual(waiting);
+		expect(await claim(client, "HD0513", 50_000)).toMatchObject({
+			refusal: "code_used",
+		});
+		const wallet = await client.wallet();
+		expect(wallet.counterClaims).toEqual([
+			{
+				id: waiting.billId,
+				storeName: "Cửa hàng Mẫu 1",
+				billNo: "HD0512",
+				submittedAt: new Date(START).toISOString(),
+				state: "awaiting_staff",
+				waitingUntil: new Date(
+					START + DEMO_BILL_RULES.awaitingStaffHours * 3_600_000,
+				).toISOString(),
+				decidedAt: null,
+			},
+		]);
+		expect(JSON.stringify(wallet.counterClaims)).not.toContain(
+			String(DEMO_BILL_RULES.autoApproveMax + 1),
+		);
+	});
+
+	it("list a confirmed claim for 7 days, then drop it (boundary value)", async () => {
+		const { client, tick } = await member({ staffMode: true });
+		const confirmed = await claim(client, "HD0514", 50_000);
+		expect(confirmed).toMatchObject({ state: "confirmed" });
+		expect(await claim(client, "HD0514", 50_000)).toEqual(confirmed);
+		expect((await client.wallet()).counterClaims).toMatchObject([
+			{ billNo: "HD0514", state: "confirmed", waitingUntil: null },
+		]);
+		tick(7 * 24 * 3_600_000 - 1);
+		expect((await client.wallet()).counterClaims).toHaveLength(1);
+		tick(1);
+		expect((await client.wallet()).counterClaims).toEqual([]);
 	});
 
 	it("say not_available at a store on POS sync", async () => {
