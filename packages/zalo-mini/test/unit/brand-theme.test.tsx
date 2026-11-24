@@ -226,7 +226,9 @@ describe("a brand theme in the configuration", () => {
 		expect(config.theme).toEqual(row.theme);
 		const reread = readAppConfig(JSON.parse(JSON.stringify(config)));
 		expect(reread.theme).toEqual(row.theme);
-		expect(buildThemeOf(reread)?.taglineEn).toBe("A test shop, for checks only.");
+		expect(buildThemeOf(reread)?.taglineEn).toBe(
+			"A test shop, for checks only.",
+		);
 		expect(buildThemeOf(buildAppConfig(validateMiniAppRow(ROW)))).toBeNull();
 		const deployed = deployedAppConfig(config, {});
 		expect(Object.keys(deployed).sort()).toEqual([
