@@ -223,7 +223,7 @@
 	"loyalty.privacy.deadline.today": "hết hạn hôm nay",
 	"loyalty.privacy.deadline.left": "còn {days} ngày",
 	"loyalty.privacy.action.export": "Tải dữ liệu (JSON)",
-	"loyalty.privacy.action.exported": "Đã tải tệp dữ liệu riêng tư gồm {count} dòng. Gửi cho khách qua kênh riêng, không gửi qua tin nhắn nhóm.",
+	"loyalty.privacy.action.exported": "Đã tải tệp dữ liệu riêng tư gồm {count} dòng; lần tải đã được ghi vào yêu cầu. Trao tận tay khách hoặc gửi đúng liên hệ đã gửi yêu cầu, không qua nhóm chat, rồi xóa tệp khỏi máy.",
 	"loyalty.privacy.action.correct": "Sửa tên",
 	"loyalty.privacy.action.correctLabel": "Tên đã sửa",
 	"loyalty.privacy.action.correctHint": "Chỉ sửa tên trên bản sao của chúng tôi; số điện thoại và dữ liệu bán hàng phải sửa trong POS rồi đồng bộ lại các ngày.",

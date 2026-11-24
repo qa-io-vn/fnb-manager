@@ -756,7 +756,20 @@ test("an owner records, exports and completes a deletion request, and the counts
 	await expect(request.getByTestId("privacy-export-done")).toContainText(
 		"Đã tải tệp dữ liệu riêng tư",
 	);
+	await expect(request.getByTestId("privacy-export-done")).toContainText(
+		"lần tải đã được ghi vào yêu cầu",
+	);
 	await expect(request).toHaveAttribute("data-status", "in_progress");
+	// G-53, ADR-054: the download is recorded once, with the file's counts and no content
+	const [recorded] = await withSql(
+		(sql) => sql<{ exports: number; ledger: string | null }[]>`
+			select count(*)::int as exports, max(a.counts ->> 'loyalty_ledger') as ledger
+			from public.data_subject_request_actions a
+			where a.tenant_id = ${settings().tenantId} and a.action = 'export'
+		`,
+	);
+	expect(recorded).toMatchObject({ exports: 1 });
+	expect(Number(recorded?.ledger)).toBe(exported.counts.loyalty_ledger);
 
 	await request.getByTestId("privacy-delete-start").click();
 	const confirm = page.getByTestId("privacy-delete-confirm");
@@ -794,7 +807,7 @@ test("an owner records, exports and completes a deletion request, and the counts
 				(select count(*)::int from public.customers where id = ${subjects().second}) as customers,
 				(select count(*)::int from public.memberships where customer_id = ${subjects().second}) as members,
 				(select count(*)::int from public.consent_records where subject_id = ${subjects().second}) as consents,
-				(select a.counts ->> 'loyalty_ledger' from public.data_subject_request_actions a where a.tenant_id = ${settings().tenantId}) as action
+				(select a.counts ->> 'loyalty_ledger' from public.data_subject_request_actions a where a.tenant_id = ${settings().tenantId} and a.action = 'deletion') as action
 		`,
 	);
 	expect(after).toMatchObject({ customers: 0, members: 0, consents: 0 });

@@ -400,6 +400,8 @@ Not chosen: a `name_corrected_at` flag that the sync respects (no sync writes th
 
 Build: pgTAP beside `pgtap:161`: a corrected name survives a join and an OA form that carry another name, and the list of functions that write `customers.name` is exactly the known three.
 
+Built 2026-11-24: `pgtap:249_corrected_name_stands` (17 tests; the OA form, the Zalo join, a synced invoice, its re-pull and the earn's lookup keep a corrected name; controls show both writers fill a null or blank name; the guard lists the three writers). With the two writers changed to overwrite, 5 tests fail.
+
 ## ADR-054 — A data export stays a browser download that no server keeps, and each download is recorded
 
 Date 2026-11-24 · Status accepted (delegated) · closes the decision of G-53
@@ -411,6 +413,8 @@ Why: the right of access asks for a copy in a common electronic format, and acco
 Not chosen: an expiring link (the file would have to be stored, and a link can be forwarded); an encrypted archive (most phones cannot open an AES-encrypted zip, and the password needs a second channel anyway).
 
 Build: the action kind `export`, the record in `dsr_export`, the wording on the request page, pgTAP beside `pgtap:161` (one action per export, count-only facts, nothing recorded for a refused caller).
+
+Built 2026-11-24 (migration `20261124120000_dsr_export_recorded`): the action check allows `export`, the one-row-per-request-and-action key became a partial unique index on the deletion, and `dsr_export` inserts one action per answer with `auth.uid()`, the moment, the counts and both deadlines. The request page says the download is recorded and how to hand it over. Tests: `pgtap:250_dsr_export_recorded` (24; without the record 9 fail) and `e2e:live/privacy-requests`.
 
 ## ADR-055 — The member frequency uplift compares matched cohorts; no hold-out group
 

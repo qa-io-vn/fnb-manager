@@ -2334,9 +2334,9 @@ returns jsonb
 
 - **Status:** built (#252); the export action of Yêu cầu về dữ liệu calls it and hands the JSON over as a private download.
 - **Who may call:** owners and managers with every store of the request's tenant; everyone else, and an unknown or foreign request id, gets `42501` (so ids cannot be probed). `22023` for a request about staff, naming no customer, rejected, or whose customer is gone.
-- **Notes:** every row of the request's customer and of nothing else: `request`, `customer`, `invoices` (the customer fields only), `memberships`, `loyalty_ledger`, `stamps`, `receipt_claims`, `redemptions`, `consent_records`, `messages` (the log row, not the text) and `counts` equal to the array lengths. The full phone is in the file for an owner and masked for a manager, in the customer and the invoices. A received request moves to `in_progress`, which stamps the first response.
+- **Notes:** every row of the request's customer and of nothing else: `request`, `customer`, `invoices` (the customer fields only), `memberships`, `loyalty_ledger`, `stamps`, `receipt_claims`, `redemptions`, `consent_records`, `messages` (the log row, not the text) and `counts` equal to the array lengths. The full phone is in the file for an owner and masked for a manager, in the customer and the invoices. A received request moves to `in_progress`, which stamps the first response. Every answer records one `export` action in `data_subject_request_actions` with the caller, the moment, the `counts` and both deadlines (ADR-054); a refused caller or request records nothing. The file is made in the browser and stored nowhere else.
 
-Tests: pgTAP `161_data_subject_tooling.sql`; vitest `privacy/export-shape.test.ts`.
+Tests: pgTAP `161_data_subject_tooling.sql`, `250_dsr_export_recorded.sql`; vitest `privacy/export-shape.test.ts`; Playwright `e2e/live/privacy-requests.spec.ts`.
 
 #### `public.dsr_correct`
 
@@ -2678,7 +2678,7 @@ Every table in `public` has RLS enabled, and `anon` holds no privilege on any ta
 |---|---|---|---|---|
 | `consent_records` | append-only consent ledger per subject and purpose | data roles of the tenant | [yes](#writes-through-tables), except `notifications` and `staff_ops` | none |
 | `data_subject_requests` | requests of data subjects, with statutory deadlines | owners and managers with an unlimited scope | [yes](#writes-through-tables) | none |
-| `data_subject_request_actions` | what was done for a request (a deletion's counts per table), logged against both deadlines | owners and managers with an unlimited scope | none ([`dsr_delete`](#publicdsr_delete)) | none |
+| `data_subject_request_actions` | what was done for a request (a deletion's counts per table, each export's counts), logged against both deadlines | owners and managers with an unlimited scope | none ([`dsr_delete`](#publicdsr_delete), [`dsr_export`](#publicdsr_export)) | none |
 
 ### Analytics
 

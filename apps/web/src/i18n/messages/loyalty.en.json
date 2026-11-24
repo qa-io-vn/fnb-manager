@@ -223,7 +223,7 @@
 	"loyalty.privacy.deadline.today": "due today",
 	"loyalty.privacy.deadline.left": "{days} days left",
 	"loyalty.privacy.action.export": "Download data (JSON)",
-	"loyalty.privacy.action.exported": "Private data file downloaded with {count} rows. Hand it to the customer privately, never in a group chat.",
+	"loyalty.privacy.action.exported": "Private data file downloaded with {count} rows; the download is recorded on the request. Hand it to the customer in person or send it to the contact the request came from, never in a group chat, then delete the file from this device.",
 	"loyalty.privacy.action.correct": "Correct the name",
 	"loyalty.privacy.action.correctLabel": "Corrected name",
 	"loyalty.privacy.action.correctHint": "Only the name is corrected on our copy; the phone and sales data are corrected in the POS first and the days synced again.",

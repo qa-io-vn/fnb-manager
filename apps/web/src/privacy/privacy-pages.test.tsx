@@ -550,7 +550,7 @@ describe("the requests page", () => {
 		);
 		expect(downloads.files[0]?.name).not.toContain("84");
 		expect(await screen.findByTestId("privacy-export-done")).toHaveTextContent(
-			"Đã tải tệp dữ liệu riêng tư gồm 8 dòng.",
+			"Đã tải tệp dữ liệu riêng tư gồm 8 dòng; lần tải đã được ghi vào yêu cầu. Trao tận tay khách hoặc gửi đúng liên hệ đã gửi yêu cầu, không qua nhóm chat, rồi xóa tệp khỏi máy.",
 		);
 		expectNoFullPhone(view);
 	});

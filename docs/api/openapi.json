@@ -2915,6 +2915,7 @@
 					"type": "string"
 				},
 				"action": {
+					"description": "deletion (one per request, written by dsr_delete) or export (one per answer of dsr_export: who made the copy and when; the copy itself is never stored)",
 					"format": "text",
 					"type": "string"
 				},
@@ -12362,6 +12363,7 @@
 			"type": "string"
 		},
 		"rowFilter.data_subject_request_actions.action": {
+			"description": "deletion (one per request, written by dsr_delete) or export (one per answer of dsr_export: who made the copy and when; the copy itself is never stored)",
 			"in": "query",
 			"name": "action",
 			"required": false,
@@ -38801,7 +38803,7 @@
 						"name": "args",
 						"required": true,
 						"schema": {
-							"description": "RPC for owners and managers with every store (42501 for every other caller, a customer session included): every row of the customer of a data-subject request of their tenant as one JSON (the customer, the customer fields of invoices, memberships, ledger, stamps, claims, redemptions, consent records and message log rows, with the counts) and nothing of another customer or tenant; the full phone only for an owner, masked for a manager; moves a received request to in_progress; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
+							"description": "RPC for owners and managers with every store (42501 for every other caller, a customer session included): every row of the customer of a data-subject request of their tenant as one JSON (the customer, the customer fields of invoices, memberships, ledger, stamps, claims, redemptions, consent records and message log rows, with the counts) and nothing of another customer or tenant; the full phone only for an owner, masked for a manager; moves a received request to in_progress and records an export action in data_subject_request_actions (the caller, the moment, the counts; never the content, ADR-054) at every answer; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
 							"properties": {
 								"p_request_id": {
 									"format": "uuid",
@@ -38826,7 +38828,7 @@
 						"description": "OK"
 					}
 				},
-				"summary": "RPC for owners and managers with every store (42501 for every other caller, a customer session included): every row of the customer of a data-subject request of their tenant as one JSON (the customer, the customer fields of invoices, memberships, ledger, stamps, claims, redemptions, consent records and message log rows, with the counts) and nothing of another customer or tenant; the full phone only for an owner, masked for a manager; moves a received request to in_progress; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
+				"summary": "RPC for owners and managers with every store (42501 for every other caller, a customer session included): every row of the customer of a data-subject request of their tenant as one JSON (the customer, the customer fields of invoices, memberships, ledger, stamps, claims, redemptions, consent records and message log rows, with the counts) and nothing of another customer or tenant; the full phone only for an owner, masked for a manager; moves a received request to in_progress and records an export action in data_subject_request_actions (the caller, the moment, the counts; never the content, ADR-054) at every answer; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
 				"tags": ["(rpc) dsr_export"]
 			}
 		},
