@@ -8,9 +8,10 @@ import {
 import { createFakeConnector } from "../support/fake-connector.js";
 import { sale, totalsFor } from "../support/sales.js";
 
-// G-05. ISTQB technique: state transition (member, erased, new evidence from the POS, joined again). A synthetic
+// G-05, G-47 (a). ISTQB technique: state transition (member, erased, new evidence from the POS, joined again). A synthetic
 // customer is erased on a deletion request, then the same phone comes back with a later sync and the nightly re-pull.
-// Nothing may be re-linked, nothing re-identified; a re-join starts clean. Gated on a database URL like its neighbour;
+// Nothing may be re-linked, nothing re-identified, and the stored POS payloads hold the phone nowhere; a re-join starts
+// clean. Gated on a database URL like its neighbour;
 // it creates one it-erase- tenant and removes it at the end. Synthetic phone, no POS and no Zalo.
 const DATABASE_URL = process.env.DATABASE_URL;
 const PHONE = "0900000501";
@@ -51,6 +52,12 @@ async function scenario(): Promise<void> {
 				netAmount: net,
 				grossAmount: net,
 				paidAmount: net,
+				raw: {
+					id,
+					customer_phone: PHONE,
+					customer_name: SYNTHETIC_NAME,
+					sale_note: `gọi ${PHONE.slice(0, 4)} ${PHONE.slice(4, 7)} ${PHONE.slice(7)}`,
+				},
 			});
 		const sales = [
 			withPhone("E-1", "2026-11-17T02:00:00.000Z", "2026-11-17"),
@@ -100,6 +107,29 @@ async function scenario(): Promise<void> {
 				]),
 			);
 		};
+		// the strings of each stored sale record that hold the phone, in any form the database reads
+		const payloadPhones = async (): Promise<Record<string, number>> => {
+			const rows = await sql<{ external_id: string; n: number }[]>`
+				select e.entry::jsonb ->> 'external_id' as external_id, count(*)::int as n
+				from public.sale_payloads p
+				cross join lateral string_to_table(p.payload, chr(10)) as e (entry)
+				cross join lateral jsonb_path_query(e.entry::jsonb, 'strict $.** ? (@.type() == "string")') as s (value)
+				where p.tenant_id = ${tenantId}
+					and app.text_holds_phone(s.value #>> '{}', app.loyalty_normalize_phone(${PHONE}))
+				group by 1
+				order by 1
+			`;
+			return Object.fromEntries(rows.map((row) => [row.external_id, row.n]));
+		};
+		const erasedInvoicePayload = async (): Promise<unknown> => {
+			const [row] = await sql<{ invoice: unknown }[]>`
+				select e.entry::jsonb -> 'invoice' as invoice
+				from public.sale_payloads p
+				cross join lateral string_to_table(p.payload, chr(10)) as e (entry)
+				where p.tenant_id = ${tenantId} and e.entry::jsonb ->> 'external_id' = 'E-1'
+			`;
+			return row?.invoice;
+		};
 		const counts = async (): Promise<Counts> => {
 			const [row] = await sql<Counts[]>`
 				select
@@ -140,6 +170,7 @@ async function scenario(): Promise<void> {
 			"E-1": `${PHONE}|${SYNTHETIC_NAME}`,
 			"E-2": null,
 		});
+		expect(await payloadPhones()).toEqual({ "E-1": 2 });
 
 		// the owner erases the customer on their request
 		const [request] = await sql<{ id: string }[]>`
@@ -160,6 +191,13 @@ async function scenario(): Promise<void> {
 			messages: 0,
 		});
 		expect(await phones()).toEqual({ "E-1": null, "E-2": null });
+		expect(await payloadPhones()).toEqual({});
+		expect(await erasedInvoicePayload()).toEqual({
+			id: "E-1",
+			customer_phone: null,
+			customer_name: null,
+			sale_note: null,
+		});
 
 		// a later sync of the same day (the invoice changed at the till) and a new sale with the same phone
 		connector.data.sales = [
@@ -175,10 +213,18 @@ async function scenario(): Promise<void> {
 			select net_amount::text as net from public.invoices where tenant_id = ${tenantId} and external_id = 'E-1'
 		`;
 		expect(kept?.net).toBe("50000.00");
+		expect(await payloadPhones()).toEqual({});
+		expect(await erasedInvoicePayload()).toEqual({
+			id: "E-1",
+			customer_phone: null,
+			customer_name: null,
+			sale_note: null,
+		});
 
 		// the nightly re-pull of the same window changes nothing and brings no phone
 		await engine.syncWindow(account, stores, WINDOW, "nightly");
 		expect(await phones()).toEqual({ "E-1": null, "E-2": null, "E-3": null });
+		expect(await payloadPhones()).toEqual({});
 
 		// the reconciliation and the nightly job create nothing for the erased phone
 		await reconcile(new Date("2026-11-19T01:00:00Z"));
@@ -233,6 +279,7 @@ async function scenario(): Promise<void> {
 			"E-3": null,
 			"E-4": `${PHONE}|${SYNTHETIC_NAME}`,
 		});
+		expect(await payloadPhones()).toEqual({ "E-4": 2 });
 	} finally {
 		await sql`delete from public.tenants where slug = ${slug}`;
 		await sql.end({ timeout: 5 });

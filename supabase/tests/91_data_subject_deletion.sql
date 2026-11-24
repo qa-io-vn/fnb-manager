@@ -348,6 +348,7 @@ select is(
       'outbound_messages_redacted', (b ->> 'outbound_messages')::int,
       'invoices_unlinked', (b ->> 'invoices_linked')::int,
       'invoices_blanked', 2,
+      'sale_records_scrubbed', 0,
       'customer_logins', (b ->> 'customer_logins')::int,
       'auth_users', 1,
       'customers', 1
