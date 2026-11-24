@@ -5,6 +5,7 @@ import {
 	type AppConfig,
 	AppConfigError,
 	buildAppConfig,
+	buildThemeOf,
 	type MiniAppBuildConfig,
 	type MiniAppKind,
 	parseMiniAppConfiguration,
@@ -521,6 +522,7 @@ export function miniApp(options: MiniAppPluginOptions): Plugin[] {
 				brand: active.brand,
 				kind: options.kind,
 				app: config.app,
+				theme: buildThemeOf(config),
 			};
 			return `export default ${JSON.stringify(value)};`;
 		},

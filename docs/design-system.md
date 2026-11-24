@@ -42,6 +42,18 @@ Tokens are named for their role, never for their colour: `accent`, not `green`. 
 2. Run `pnpm --filter @fnb/design-tokens build`.
 3. Run `pnpm verify`: the token tests check the contrast pairs, axe checks the contrast of every page in both schemes, and the end-to-end print checks cover the print values.
 
+### 2.4 Brand themes of the Mini Apps
+
+The web app always uses the tokens above. Each brand's Mini Apps may carry the brand's own identity on top of them (ADR-056): an optional `theme` in the brand's Mini App row (the private brand file, or `packages/zalo-mini/config/synthetic-brands.json` for the two synthetic brands) with a light and a dark palette of twelve roles and, optionally, a tile wordmark of one to four letters, a tagline in Vietnamese and English and a short kicker line.
+
+| Role | Overrides | Used for |
+|---|---|---|
+| `surface`, `surface_raised`, `surface_sunken`, `ink`, `ink_muted`, `line`, `accent`, `accent_ink` | the token of the same name (`--surface-raised` and so on); `accent` also sets `--focus` | every screen |
+| `highlight` | `--brand-highlight` | the active tab of the tab bar |
+| `hero`, `hero_ink`, `tile` | `--brand-hero`, `--brand-hero-ink`, `--brand-tile` | the brand banner (`BrandHero`) on the customer home, the staff home and the sign-in states: the banner, its text, the coloured tiles and the kicker |
+
+`app-config` refuses a theme that misses a role, holds a colour that is not `#RRGGBB` or fails a contrast rule in either palette (`THEME_CONTRAST_RULES` in `packages/zalo-mini/src/app-config/index.ts`: 4.5:1 for text, 3:1 for large bold letters and interface parts). The colours reach the app through the build config and are applied at start-up as one style sheet (`html:root`, which outranks the tokens' `:root`; the dark palette under `prefers-color-scheme: dark`), because Zalo does not upload `index.html`. A brand without a theme looks exactly as before. The deployed `app-config.json` never carries the theme.
+
 ## 3. Components
 
 ### 3.1 Where they live

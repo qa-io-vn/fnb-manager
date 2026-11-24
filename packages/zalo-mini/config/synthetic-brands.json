@@ -31,7 +31,41 @@
 			"header_color_light": "#F6F4EF",
 			"header_color_dark": "#121114",
 			"text_color_light": "black",
-			"text_color_dark": "white"
+			"text_color_dark": "white",
+			"theme": {
+				"light": {
+					"surface": "#F3F5F8",
+					"surface_raised": "#FFFFFF",
+					"surface_sunken": "#E6EAF0",
+					"ink": "#14213D",
+					"ink_muted": "#4A5568",
+					"line": "#CBD2DC",
+					"accent": "#14213D",
+					"accent_ink": "#FFFFFF",
+					"highlight": "#1F4E8C",
+					"hero": "#14213D",
+					"hero_ink": "#F3F5F8",
+					"tile": "#E0A458"
+				},
+				"dark": {
+					"surface": "#0F1626",
+					"surface_raised": "#18223A",
+					"surface_sunken": "#0A0F1A",
+					"ink": "#EEF1F6",
+					"ink_muted": "#B4BCCB",
+					"line": "#2E3A52",
+					"accent": "#E0A458",
+					"accent_ink": "#14213D",
+					"highlight": "#8FB8F0",
+					"hero": "#0A0F1A",
+					"hero_ink": "#EEF1F6",
+					"tile": "#E0A458"
+				},
+				"wordmark": "QMH",
+				"tagline_vi": "Quán mẫu thứ hai, chỉ để thử.",
+				"tagline_en": "The second sample shop, for tests only.",
+				"kicker": "Mẫu"
+			}
 		},
 		{
 			"brand_key": "brand-2",
@@ -42,7 +76,41 @@
 			"header_color_light": "#F6F4EF",
 			"header_color_dark": "#121114",
 			"text_color_light": "black",
-			"text_color_dark": "white"
+			"text_color_dark": "white",
+			"theme": {
+				"light": {
+					"surface": "#F3F5F8",
+					"surface_raised": "#FFFFFF",
+					"surface_sunken": "#E6EAF0",
+					"ink": "#14213D",
+					"ink_muted": "#4A5568",
+					"line": "#CBD2DC",
+					"accent": "#14213D",
+					"accent_ink": "#FFFFFF",
+					"highlight": "#1F4E8C",
+					"hero": "#14213D",
+					"hero_ink": "#F3F5F8",
+					"tile": "#E0A458"
+				},
+				"dark": {
+					"surface": "#0F1626",
+					"surface_raised": "#18223A",
+					"surface_sunken": "#0A0F1A",
+					"ink": "#EEF1F6",
+					"ink_muted": "#B4BCCB",
+					"line": "#2E3A52",
+					"accent": "#E0A458",
+					"accent_ink": "#14213D",
+					"highlight": "#8FB8F0",
+					"hero": "#0A0F1A",
+					"hero_ink": "#EEF1F6",
+					"tile": "#E0A458"
+				},
+				"wordmark": "QMH",
+				"tagline_vi": "Quán mẫu thứ hai, chỉ để thử.",
+				"tagline_en": "The second sample shop, for tests only.",
+				"kicker": "Mẫu"
+			}
 		}
 	]
 }

@@ -96,16 +96,26 @@ export function failureKey(failure: Failure): string {
 export function Failed({
 	failure,
 	onRetry,
+	detail,
 }: {
 	readonly failure: Failure;
 	readonly onRetry: () => void;
+	readonly detail?: string | undefined;
 }) {
 	const { t } = useI18n();
+	const showDetail =
+		detail !== undefined &&
+		import.meta.env.VITE_MINI_APP_STAGE === "development";
 	return (
 		<div className="flex flex-col gap-3 px-4 py-6" data-testid="failed">
 			<p role="alert" className="text-base text-ink">
 				{t(failureKey(failure))}
 			</p>
+			{showDetail ? (
+				<p className="text-sm text-ink-muted" data-testid="failed-detail">
+					{detail}
+				</p>
+			) : null}
 			<button type="button" className={secondaryButton} onClick={onRetry}>
 				{t("customer.retry")}
 			</button>

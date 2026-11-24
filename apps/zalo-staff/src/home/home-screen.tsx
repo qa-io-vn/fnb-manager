@@ -5,6 +5,7 @@ import {
 	type StoredSession,
 } from "@fnb/zalo-mini";
 import {
+	BrandHero,
 	SessionScreen,
 	useDataEndpoint,
 	useI18n,
@@ -604,6 +605,7 @@ function SignedInHome({
 			data-testid="home"
 			data-status={load.status}
 		>
+			<BrandHero />
 			<header className="flex flex-col gap-0.5">
 				<h1 id={headingId} className="text-xl font-semibold text-ink">
 					{t("session.greeting", { name: member.displayName })}

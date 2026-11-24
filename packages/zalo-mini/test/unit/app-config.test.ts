@@ -7,9 +7,9 @@ import {
 	AppConfigError,
 	appConfigJson,
 	buildAppConfig,
-	CONFIGURED_APP_FIELDS,
 	contrastRatio,
 	differingFields,
+	isConfiguredPath,
 	MINI_APP_KINDS,
 	type MiniAppRow,
 	parseMiniAppConfiguration,
@@ -90,9 +90,11 @@ describe("app-config.json per brand", () => {
 			);
 			expect(unconfiguredDifferences(first, second)).toEqual([]);
 			expect(differingFields(first, second).length).toBeGreaterThan(0);
+			expect(differingFields(first, second).every(isConfiguredPath)).toBe(true);
+			// the second synthetic brand carries a theme, so the comparison covers it
 			expect(
-				differingFields(first, second).every((path) =>
-					CONFIGURED_APP_FIELDS.includes(path),
+				differingFields(first, second).some((path) =>
+					path.startsWith("theme."),
 				),
 			).toBe(true);
 		},
@@ -107,7 +109,12 @@ describe("app-config.json per brand", () => {
 	it("keeps real identifiers out: the configuration holds no Mini App id", () => {
 		for (const row of JSON.parse(readFileSync(syntheticPath, "utf8"))
 			.mini_apps) {
-			expect(Object.keys(row).sort()).toEqual(Object.keys(validRow).sort());
+			// the row's fields and an optional theme, never an id
+			expect(
+				Object.keys(row)
+					.filter((key) => key !== "theme")
+					.sort(),
+			).toEqual(Object.keys(validRow).sort());
 		}
 	});
 

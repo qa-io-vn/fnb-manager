@@ -429,3 +429,15 @@ Not chosen: a configured hold-out group; propensity-score matching (too few iden
 Note: on 2026-11-22 the real tenant's 30 days held no invoice with a phone or customer id, so the uplift will read null there until the till records customers.
 
 Build: the cohort comparison in `customer_metrics`, its documentation in metrics.md, the web wording of the comparison, and a hand-calculated pgTAP case beside `pgtap:163` with two cohorts of different tenure.
+
+## ADR-056 — Each brand's Mini Apps carry the brand's identity from its configuration, checked against WCAG AA
+
+Date 2026-11-24 · Status accepted (the owner asked for the Mini Apps to follow the brand's identity)
+
+Decision: a brand's Mini App row may carry a `theme`: a light and a dark palette over the design tokens' roles plus four brand roles (`highlight`, `hero`, `hero_ink`, `tile`), and an optional tile wordmark, tagline and kicker. The build carries it to the app, which applies it as one style sheet at start-up and shows the brand banner on the home screens and the sign-in states. The repository holds only the mechanism and a synthetic theme; a real brand's colours and words live in its configuration. `app-config` refuses a theme below WCAG 2.2 AA contrast in either palette. The Zalo header colours stay the existing `header_color_*` fields, set to match.
+
+Why: the owner's customers should recognise the shop in Zalo at a glance; a generic multi-brand system keeps brand data out of the code, and the accessibility floor of ADR-034 must hold whatever colours a brand picks. A run-time style sheet is the only way, because Zalo serves its own page shell and ignores `index.html`.
+
+Not chosen: a stylesheet per brand in the repository (brand data in a public repository); custom fonts (a heavier first load, G-107); a logo image in the bundle (the tile wordmark draws the same mark in a few hundred bytes).
+
+Built 2026-11-24: `packages/zalo-mini/src/app-config/index.ts` (the theme's validation and style sheet), `src/react/brand-theme.tsx` (`applyBrandTheme`, `BrandHero`, `BrandWordmark`), both boots and the three screens. Tests: `zalo-mini:unit/brand-theme` (13: equivalence classes of a theme, the contrast boundaries at #767676/#777777 and #949494/#959595 on white, every rule failing in a flat dark palette, the wordmark and text bounds, the theme carried to the build and never into the deployed config, one style element, the tiles and the tagline in both languages), `zalo-mini:unit/app-config` (the second synthetic brand's theme in the comparison). Left: the `mini_apps` table has no theme column yet, so `fnb zalo app-config` from the database builds without it (G-108).

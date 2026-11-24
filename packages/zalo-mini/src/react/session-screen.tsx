@@ -1,6 +1,7 @@
 import { type FormEvent, type ReactNode, useId, useState } from "react";
 import type { MemberProfile, StaffNotice } from "../session/types";
 import { BINDING_CODE_PATTERN } from "../session/zalo-session-client";
+import { BrandHero } from "./brand-theme";
 import { useI18n } from "./i18n";
 import { useSession } from "./session";
 
@@ -20,6 +21,7 @@ function Section({
 			data-status={status}
 			className="flex flex-col gap-4 px-4 py-6"
 		>
+			<BrandHero />
 			{children}
 		</section>
 	);

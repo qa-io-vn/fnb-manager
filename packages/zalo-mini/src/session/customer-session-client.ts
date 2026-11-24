@@ -21,7 +21,12 @@ export const CUSTOMER_SESSION_STORAGE_KEY = "fnb.customer-session";
 export type CustomerSessionState =
 	| { readonly status: "connecting" }
 	| { readonly status: "ready"; readonly session: CustomerSession }
-	| { readonly status: "failed"; readonly reason: SessionFailure };
+	| {
+			readonly status: "failed";
+			readonly reason: SessionFailure;
+			/** A short technical code for a Development build's error line: never a token or personal data. */
+			readonly detail?: string;
+	  };
 
 export type JoinFailure = JoinRefusal | SessionFailure;
 
@@ -112,7 +117,21 @@ type MintResult =
 			readonly session: CustomerSession;
 			readonly joined: JoinOutcome | null;
 	  }
-	| { readonly ok: false; readonly failure: JoinFailure };
+	| {
+			readonly ok: false;
+			readonly failure: JoinFailure;
+			readonly detail?: string;
+	  };
+
+function sdkErrorCode(error: unknown): string {
+	if (typeof error === "object" && error !== null && "code" in error) {
+		const code = error.code;
+		if (typeof code === "number" || typeof code === "string") {
+			return String(code).slice(0, 20);
+		}
+	}
+	return "error";
+}
 
 async function errorCodeOf(response: Response): Promise<unknown> {
 	try {
@@ -136,8 +155,15 @@ export function createZaloCustomerSessionClient(
 		let zaloAccessToken: string;
 		try {
 			zaloAccessToken = await options.getAccessToken();
-		} catch {
-			return { ok: false, failure: "zalo" };
+		} catch (error) {
+			return {
+				ok: false,
+				failure: "zalo",
+				detail: `zalo-sdk ${sdkErrorCode(error)}`,
+			};
+		}
+		if (typeof zaloAccessToken !== "string" || zaloAccessToken === "") {
+			return { ok: false, failure: "zalo", detail: "zalo-sdk no-token" };
 		}
 		let response: Response;
 		try {
@@ -155,13 +181,20 @@ export function createZaloCustomerSessionClient(
 				}),
 			});
 		} catch {
-			return { ok: false, failure: "network" };
+			return { ok: false, failure: "network", detail: "session fetch" };
 		}
 		if (!response.ok) {
-			const refusal =
-				join === null ? null : joinRefusalOf(await errorCodeOf(response));
-			if (refusal === null) await response.body?.cancel().catch(() => null);
-			return { ok: false, failure: refusal ?? "refused" };
+			const code = await errorCodeOf(response);
+			const refusal = join === null ? null : joinRefusalOf(code);
+			const named =
+				typeof code === "string" && /^[a-z_]{1,40}$/.test(code)
+					? ` ${code}`
+					: "";
+			return {
+				ok: false,
+				failure: refusal ?? "refused",
+				detail: `session ${response.status}${named}`,
+			};
 		}
 		let answer: ReturnType<typeof parseCustomerSessionAnswer> = null;
 		try {
@@ -169,7 +202,9 @@ export function createZaloCustomerSessionClient(
 		} catch {
 			answer = null;
 		}
-		if (answer === null) return { ok: false, failure: "refused" };
+		if (answer === null) {
+			return { ok: false, failure: "refused", detail: "session answer" };
+		}
 		store.write(answer.session);
 		return { ok: true, session: answer.session, joined: answer.joined };
 	}
@@ -193,6 +228,9 @@ export function createZaloCustomerSessionClient(
 										result.failure === "network" || result.failure === "zalo"
 											? result.failure
 											: "refused",
+									...(result.detail === undefined
+										? {}
+										: { detail: result.detail }),
 								},
 				)
 				.finally(() => {
@@ -213,7 +251,8 @@ export function createZaloCustomerSessionClient(
 				return { ok: false, failure: "refused" };
 			}
 			const result = await mint(request);
-			if (!result.ok) return result;
+			// the detail is for a Development build's error line only; a join answer names its failure alone
+			if (!result.ok) return { ok: false, failure: result.failure };
 			if (result.joined === null || result.session.customer.customerId === null)
 				return { ok: false, failure: "refused" };
 			return { ok: true, session: result.session, joined: result.joined };

@@ -12,6 +12,7 @@ import {
 import type { MemberProfile, SessionClient } from "../session/types";
 import { createZaloSessionClient } from "../session/zalo-session-client";
 import { fromZmpNativeStorage } from "../storage/native-storage";
+import { applyBrandTheme } from "./brand-theme";
 import {
 	MiniApp,
 	type MiniAppGate,
@@ -109,6 +110,7 @@ export function bootMiniApp(options: BootOptions): void {
 		options.onboarding === true,
 	);
 	document.title = options.config.app.title;
+	applyBrandTheme(options.config.theme);
 	createRoot(container).render(
 		<StrictMode>
 			<MiniApp

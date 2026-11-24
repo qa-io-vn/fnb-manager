@@ -330,6 +330,7 @@ describe("the demo source", () => {
 		expect(await demo.session.connect()).toEqual({
 			status: "failed",
 			reason: "network",
+			detail: "session fetch",
 		});
 	});
 });

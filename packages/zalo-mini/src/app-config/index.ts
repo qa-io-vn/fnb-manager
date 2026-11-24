@@ -16,6 +16,8 @@ export interface MiniAppRow {
 	readonly header_color_dark: string;
 	readonly text_color_light: HeaderTextColor;
 	readonly text_color_dark: HeaderTextColor;
+	/** The brand's palette and wordmark (optional; the design tokens apply without it). */
+	readonly theme?: BrandThemeRow;
 }
 
 export interface AppConfigApp {
@@ -36,12 +38,19 @@ export interface AppConfig {
 	readonly listCSS: readonly string[];
 	readonly listSyncJS: readonly string[];
 	readonly listAsyncJS: readonly string[];
+	/** Read by the build only: the deployed app-config.json never carries it. */
+	readonly theme?: BrandThemeRow;
 }
 
 export interface MiniAppBuildConfig {
 	readonly brand: string;
 	readonly kind: MiniAppKind;
 	readonly app: AppConfigApp;
+	readonly theme?: BrandTheme | null;
+}
+
+export function buildThemeOf(config: AppConfig): BrandTheme | null {
+	return config.theme === undefined ? null : brandThemeOf(config.theme);
 }
 
 export const CONFIGURED_APP_FIELDS: readonly string[] = [
@@ -195,6 +204,10 @@ export function validateMiniAppRow(value: unknown): MiniAppRow {
 	}
 	const light = themeColors(value, "light", problems);
 	const dark = themeColors(value, "dark", problems);
+	const theme =
+		value.theme === undefined || value.theme === null
+			? null
+			: validateBrandThemeRow(value.theme, problems);
 	if (problems.length > 0 || !kind || !light.textColor || !dark.textColor) {
 		throw new AppConfigError(problems);
 	}
@@ -208,6 +221,7 @@ export function validateMiniAppRow(value: unknown): MiniAppRow {
 		header_color_dark: dark.headerColor,
 		text_color_light: light.textColor,
 		text_color_dark: dark.textColor,
+		...(theme === null ? {} : { theme }),
 	};
 }
 
@@ -273,6 +287,7 @@ export function buildAppConfig(row: MiniAppRow): AppConfig {
 		listCSS: [],
 		listSyncJS: [],
 		listAsyncJS: [],
+		...(row.theme === undefined ? {} : { theme: row.theme }),
 	};
 }
 
@@ -298,6 +313,7 @@ export function readAppConfig(value: unknown): AppConfig {
 		header_color_dark: headerColor.dark,
 		text_color_light: textColor.light,
 		text_color_dark: textColor.dark,
+		theme: value.theme,
 	});
 	return buildAppConfig(row);
 }
@@ -321,11 +337,330 @@ export function differingFields(first: unknown, second: unknown): string[] {
 	return [...paths].filter((path) => left.get(path) !== right.get(path)).sort();
 }
 
+/** A path of app-config.json that a brand sets: the configured app fields and anything of its theme. */
+export function isConfiguredPath(path: string): boolean {
+	return (
+		CONFIGURED_APP_FIELDS.includes(path) ||
+		path === "theme" ||
+		path.startsWith("theme.")
+	);
+}
+
 export function unconfiguredDifferences(
 	first: unknown,
 	second: unknown,
 ): string[] {
 	return differingFields(first, second).filter(
-		(path) => !CONFIGURED_APP_FIELDS.includes(path),
+		(path) => !isConfiguredPath(path),
 	);
+}
+
+// A brand's visual identity for its Mini Apps: a light and a dark palette over the design tokens, and an optional
+// tile wordmark with a tagline for the home screen. It lives in the brand's configuration (a mini_apps row or the
+// owner's private brand file), never in this repository, and is checked against WCAG 2.2 AA (ADR-034) before a
+// build uses it.
+
+export const THEME_TOKENS = [
+	"surface",
+	"surface_raised",
+	"surface_sunken",
+	"ink",
+	"ink_muted",
+	"line",
+	"accent",
+	"accent_ink",
+	"highlight",
+	"hero",
+	"hero_ink",
+	"tile",
+] as const;
+
+export type ThemeToken = (typeof THEME_TOKENS)[number];
+
+export type BrandPalette = Readonly<Record<ThemeToken, string>>;
+
+export interface BrandTheme {
+	readonly light: BrandPalette;
+	readonly dark: BrandPalette;
+	/** One to four letters or digits, drawn as rounded tiles (a 2x2 grid for four). */
+	readonly wordmark: string | null;
+	readonly taglineVi: string | null;
+	readonly taglineEn: string | null;
+	/** A short line under the tagline, such as the kind of place. */
+	readonly kicker: string | null;
+}
+
+/** The theme as it is written in a configuration row (snake case). */
+export interface BrandThemeRow {
+	readonly light: Readonly<Record<ThemeToken, string>>;
+	readonly dark: Readonly<Record<ThemeToken, string>>;
+	readonly wordmark?: string;
+	readonly tagline_vi?: string;
+	readonly tagline_en?: string;
+	readonly kicker?: string;
+}
+
+export interface ContrastRule {
+	readonly foreground: ThemeToken;
+	readonly background: ThemeToken;
+	readonly minimum: number;
+	readonly use: string;
+}
+
+// 4.5:1 for body text, 3:1 for large bold text and for interface parts (WCAG 2.2 SC 1.4.3 and 1.4.11)
+export const THEME_CONTRAST_RULES: readonly ContrastRule[] = [
+	{
+		foreground: "ink",
+		background: "surface",
+		minimum: 4.5,
+		use: "text on the page",
+	},
+	{
+		foreground: "ink",
+		background: "surface_raised",
+		minimum: 4.5,
+		use: "text on a card",
+	},
+	{
+		foreground: "ink",
+		background: "surface_sunken",
+		minimum: 4.5,
+		use: "text on a sunken panel",
+	},
+	{
+		foreground: "ink_muted",
+		background: "surface",
+		minimum: 4.5,
+		use: "secondary text on the page",
+	},
+	{
+		foreground: "ink_muted",
+		background: "surface_raised",
+		minimum: 4.5,
+		use: "secondary text on a card",
+	},
+	{
+		foreground: "accent_ink",
+		background: "accent",
+		minimum: 4.5,
+		use: "the label of a main button",
+	},
+	{
+		foreground: "accent",
+		background: "surface",
+		minimum: 3,
+		use: "a main button and the focus ring against the page",
+	},
+	{
+		foreground: "highlight",
+		background: "surface_raised",
+		minimum: 4.5,
+		use: "the active tab's label on the tab bar",
+	},
+	{
+		foreground: "hero_ink",
+		background: "hero",
+		minimum: 4.5,
+		use: "the tagline on the brand banner",
+	},
+	{
+		foreground: "tile",
+		background: "hero",
+		minimum: 4.5,
+		use: "the short line under the tagline on the brand banner",
+	},
+	{
+		foreground: "hero",
+		background: "tile",
+		minimum: 3,
+		use: "a large wordmark letter on a coloured tile",
+	},
+	{
+		foreground: "hero",
+		background: "hero_ink",
+		minimum: 3,
+		use: "a large wordmark letter on a light tile",
+	},
+];
+
+export const WORDMARK_MAX_LETTERS = 4;
+export const TAGLINE_MAX_LENGTH = 80;
+export const KICKER_MAX_LENGTH = 40;
+
+const WORDMARK = /^[\p{L}\p{N}]{1,4}$/u;
+const CONTROL = /\p{Cc}/u;
+
+export function themeContrast(first: string, second: string): number {
+	return contrastRatio(first, second);
+}
+
+function palette(
+	value: unknown,
+	mode: "light" | "dark",
+	problems: string[],
+): Record<ThemeToken, string> | null {
+	if (!isRecord(value)) {
+		problems.push(`theme.${mode} must list the ${THEME_TOKENS.length} colours`);
+		return null;
+	}
+	const unknown = Object.keys(value).filter(
+		(key) => !(THEME_TOKENS as readonly string[]).includes(key),
+	);
+	if (unknown.length > 0) {
+		problems.push(`theme.${mode} has unknown colours: ${unknown.join(", ")}`);
+	}
+	const colours = {} as Record<ThemeToken, string>;
+	let complete = true;
+	for (const token of THEME_TOKENS) {
+		const colour = value[token];
+		if (typeof colour !== "string" || !HEX_COLOR_PATTERN.test(colour)) {
+			problems.push(`theme.${mode}.${token} must be a colour such as #241C14`);
+			complete = false;
+			continue;
+		}
+		colours[token] = colour.toUpperCase();
+	}
+	if (!complete) return null;
+	for (const rule of THEME_CONTRAST_RULES) {
+		const ratio = themeContrast(
+			colours[rule.foreground],
+			colours[rule.background],
+		);
+		if (ratio < rule.minimum) {
+			problems.push(
+				`theme.${mode}: ${rule.foreground} on ${rule.background} (${rule.use}) has a contrast of ${ratio.toFixed(2)}:1, below ${rule.minimum}:1`,
+			);
+		}
+	}
+	return colours;
+}
+
+function optionalText(
+	value: Record<string, unknown>,
+	field: string,
+	max: number,
+	problems: string[],
+): string | undefined {
+	const text = value[field];
+	if (text === undefined || text === null) return undefined;
+	if (typeof text !== "string" || text.trim() === "") {
+		problems.push(`theme.${field} must be a text when it is given`);
+		return undefined;
+	}
+	const trimmed = text.trim();
+	if ([...trimmed].length > max || CONTROL.test(trimmed)) {
+		problems.push(
+			`theme.${field} must be at most ${max} characters without control characters`,
+		);
+		return undefined;
+	}
+	return trimmed;
+}
+
+/** Checks a theme row and returns it normalised, or adds its problems; null when it is unusable. */
+export function validateBrandThemeRow(
+	value: unknown,
+	problems: string[],
+): BrandThemeRow | null {
+	if (!isRecord(value)) {
+		problems.push("theme must be an object with light and dark colours");
+		return null;
+	}
+	const known = [
+		"light",
+		"dark",
+		"wordmark",
+		"tagline_vi",
+		"tagline_en",
+		"kicker",
+	];
+	const unknown = Object.keys(value).filter((key) => !known.includes(key));
+	if (unknown.length > 0) {
+		problems.push(`theme has unknown fields: ${unknown.join(", ")}`);
+	}
+	const before = problems.length;
+	const light = palette(value.light, "light", problems);
+	const dark = palette(value.dark, "dark", problems);
+	let wordmark: string | undefined;
+	if (value.wordmark !== undefined && value.wordmark !== null) {
+		const text =
+			typeof value.wordmark === "string" ? value.wordmark.trim() : "";
+		if (!WORDMARK.test(text)) {
+			problems.push(
+				`theme.wordmark must be 1 to ${WORDMARK_MAX_LETTERS} letters or digits`,
+			);
+		} else {
+			wordmark = text.toLocaleUpperCase("vi");
+		}
+	}
+	const taglineVi = optionalText(
+		value,
+		"tagline_vi",
+		TAGLINE_MAX_LENGTH,
+		problems,
+	);
+	const taglineEn = optionalText(
+		value,
+		"tagline_en",
+		TAGLINE_MAX_LENGTH,
+		problems,
+	);
+	const kicker = optionalText(value, "kicker", KICKER_MAX_LENGTH, problems);
+	const given = (field: string) =>
+		value[field] !== undefined && value[field] !== null;
+	if (given("tagline_vi") !== given("tagline_en")) {
+		problems.push("theme.tagline_vi and theme.tagline_en are given together");
+	}
+	if (problems.length > before || light === null || dark === null) return null;
+	return {
+		light,
+		dark,
+		...(wordmark === undefined ? {} : { wordmark }),
+		...(taglineVi === undefined ? {} : { tagline_vi: taglineVi }),
+		...(taglineEn === undefined ? {} : { tagline_en: taglineEn }),
+		...(kicker === undefined ? {} : { kicker }),
+	};
+}
+
+export function brandThemeOf(row: BrandThemeRow): BrandTheme {
+	return {
+		light: row.light,
+		dark: row.dark,
+		wordmark: row.wordmark ?? null,
+		taglineVi: row.tagline_vi ?? null,
+		taglineEn: row.tagline_en ?? null,
+		kicker: row.kicker ?? null,
+	};
+}
+
+const CSS_VARIABLES: Readonly<Record<ThemeToken, string>> = {
+	surface: "--surface",
+	surface_raised: "--surface-raised",
+	surface_sunken: "--surface-sunken",
+	ink: "--ink",
+	ink_muted: "--ink-muted",
+	line: "--line",
+	accent: "--accent",
+	accent_ink: "--accent-ink",
+	highlight: "--brand-highlight",
+	hero: "--brand-hero",
+	hero_ink: "--brand-hero-ink",
+	tile: "--brand-tile",
+};
+
+function declarations(colours: BrandPalette): string {
+	return [
+		...THEME_TOKENS.map((token) => `${CSS_VARIABLES[token]}:${colours[token]}`),
+		`--focus:${colours.accent}`,
+		"--zaui-light-bottom-navigation-active-color:var(--brand-highlight)",
+		"--zaui-dark-bottom-navigation-active-color:var(--brand-highlight)",
+	].join(";");
+}
+
+/**
+ * The style sheet of a theme. `html:root` outranks the tokens' `:root`, so the order of the style sheets does not
+ * matter; the dark palette follows the same media query as the tokens.
+ */
+export function brandThemeCss(theme: BrandTheme): string {
+	return `html:root{${declarations(theme.light)}}@media (prefers-color-scheme: dark){html:root{${declarations(theme.dark)}}}`;
 }

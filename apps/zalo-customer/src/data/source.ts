@@ -73,6 +73,15 @@ export const loyaltyClientFor: LoyaltySourceFactory = (endpoint, session) =>
 
 export type Failure = "network" | "session" | "not-member" | "unknown";
 
+/** A short technical code for a Development build's error line: the status and code of a data error, never data. */
+export function failureDetailOf(error: unknown): string {
+	if (error instanceof RestError) {
+		return `data ${error.status}${error.code === null ? "" : ` ${error.code.slice(0, 40)}`}`;
+	}
+	if (error instanceof Error) return `app ${error.name.slice(0, 40)}`;
+	return "app error";
+}
+
 export function failureOf(error: unknown): Failure {
 	if (!(error instanceof RestError)) return "unknown";
 	if (error.status === 0) return "network";

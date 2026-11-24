@@ -151,7 +151,7 @@ describe("the customer session client", () => {
 		expect(requests).toHaveLength(3);
 	});
 
-	it("reports Zalo, network and refused failures and keeps nothing", async () => {
+	it("reports Zalo, network and refused failures with a short technical detail and keeps nothing", async () => {
 		const zalo = client([sessionAnswer(null)], {
 			token: async () => {
 				throw new Error("no token");
@@ -160,22 +160,50 @@ describe("the customer session client", () => {
 		expect(await zalo.session.connect()).toEqual({
 			status: "failed",
 			reason: "zalo",
+			detail: "zalo-sdk error",
 		});
 		expect(zalo.requests).toHaveLength(0);
+		const coded = client([sessionAnswer(null)], {
+			token: async () => {
+				throw Object.assign(new Error("denied"), { code: -1401 });
+			},
+		});
+		expect(await coded.session.connect()).toEqual({
+			status: "failed",
+			reason: "zalo",
+			detail: "zalo-sdk -1401",
+		});
+		const empty = client([sessionAnswer(null)], { token: async () => "" });
+		expect(await empty.session.connect()).toEqual({
+			status: "failed",
+			reason: "zalo",
+			detail: "zalo-sdk no-token",
+		});
+		expect(empty.requests).toHaveLength(0);
 		const lost = client([new TypeError("offline")]);
 		expect(await lost.session.connect()).toEqual({
 			status: "failed",
 			reason: "network",
+			detail: "session fetch",
 		});
 		const refused = client([{ status_code: 403, error: "app_disabled" }]);
 		expect(await refused.session.connect()).toEqual({
 			status: "failed",
 			reason: "refused",
+			detail: "session 403 app_disabled",
+		});
+		// a code that is not a plain snake-case name is not echoed (it could carry anything)
+		const odd = client([{ status_code: 401, error: "Bearer abc.def" }]);
+		expect(await odd.session.connect()).toEqual({
+			status: "failed",
+			reason: "refused",
+			detail: "session 401",
 		});
 		const malformed = client([{ status: "bound" }]);
 		expect(await malformed.session.connect()).toEqual({
 			status: "failed",
 			reason: "refused",
+			detail: "session answer",
 		});
 		expect(malformed.storage.getItem(CUSTOMER_SESSION_STORAGE_KEY)).toBeNull();
 	});

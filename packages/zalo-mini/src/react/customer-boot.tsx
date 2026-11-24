@@ -14,6 +14,7 @@ import {
 	type NativeStorage,
 } from "../storage/native-storage";
 import { MINI_APP_ROOT_ID } from "./boot";
+import { applyBrandTheme } from "./brand-theme";
 import {
 	MiniApp,
 	type MiniAppGate,
@@ -91,6 +92,7 @@ export function bootCustomerMiniApp(options: CustomerBootOptions): void {
 		options.standIn,
 	);
 	document.title = options.config.app.title;
+	applyBrandTheme(options.config.theme);
 	createRoot(container).render(
 		<StrictMode>
 			<MiniApp

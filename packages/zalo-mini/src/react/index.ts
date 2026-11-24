@@ -10,6 +10,13 @@ export {
 	type MiniAppEnvironment,
 	miniAppEnvironment,
 } from "./boot";
+export {
+	applyBrandTheme,
+	BRAND_THEME_STYLE_ID,
+	BrandHero,
+	BrandWordmark,
+	currentBrandTheme,
+} from "./brand-theme";
 export { type ColorScheme, useColorScheme } from "./color-scheme";
 export {
 	bootCustomerMiniApp,

@@ -20,6 +20,7 @@ import {
 import { useBackOnline } from "./offline";
 import {
 	type Failure,
+	failureDetailOf,
 	failureOf,
 	type LoyaltySourceFactory,
 	loyaltyClientFor,
@@ -28,7 +29,11 @@ import {
 export type Load<T> =
 	| { readonly status: "loading" }
 	| { readonly status: "ready"; readonly data: T }
-	| { readonly status: "failed"; readonly failure: Failure };
+	| {
+			readonly status: "failed";
+			readonly failure: Failure;
+			readonly detail?: string;
+	  };
 
 export interface CustomerDataValue {
 	readonly sessionState: CustomerSessionState;
@@ -123,7 +128,7 @@ export function CustomerDataProvider({
 				setHome((previous) =>
 					previous.status === "ready"
 						? previous
-						: { status: "failed", failure },
+						: { status: "failed", failure, detail: failureDetailOf(error) },
 				);
 			},
 		);
@@ -154,6 +159,7 @@ export function CustomerDataProvider({
 					? {
 							status: "failed",
 							failure: state.reason === "network" ? "network" : "unknown",
+							...(state.detail === undefined ? {} : { detail: state.detail }),
 						}
 					: home,
 			deletion: deletionNow,

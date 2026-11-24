@@ -1,5 +1,5 @@
 import type { CustomerHome, MenuHighlight } from "@fnb/zalo-mini/loyalty";
-import { useI18n } from "@fnb/zalo-mini/react";
+import { BrandHero, useI18n } from "@fnb/zalo-mini/react";
 import { useId } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCustomerData } from "../data/customer-data";
@@ -87,6 +87,7 @@ function ReadyHome({ home }: { readonly home: CustomerHome }) {
 		home.programme === null ? null : programmeTexts(home.programme, t);
 	return (
 		<Screen testId="home">
+			<BrandHero />
 			{declined === undefined ? null : <DeclinedNotice reason={declined} />}
 			<BillsPrompt home={home} />
 			<Card labelledBy={titleId} testId="programme">
@@ -211,13 +212,18 @@ function ReadyHome({ home }: { readonly home: CustomerHome }) {
 export function HomeScreen() {
 	const { home, sessionState, retrySession, reloadHome } = useCustomerData();
 	if (home.status === "ready") return <ReadyHome home={home.data} />;
-	if (home.status === "failed") {
-		return (
-			<Failed
-				failure={home.failure}
-				onRetry={sessionState.status === "failed" ? retrySession : reloadHome}
-			/>
-		);
-	}
-	return <Loading />;
+	return (
+		<>
+			<BrandHero className="mx-4 mt-5" />
+			{home.status === "failed" ? (
+				<Failed
+					failure={home.failure}
+					detail={home.detail}
+					onRetry={sessionState.status === "failed" ? retrySession : reloadHome}
+				/>
+			) : (
+				<Loading />
+			)}
+		</>
+	);
 }
