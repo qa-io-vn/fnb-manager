@@ -264,8 +264,7 @@ export function businessDate(
 		: calendarDate;
 }
 
-function wallClockAsUtc(instant: Date, timezone: string): number {
-	const time = instant.getTime();
+function wallClockAsUtc(time: number, timezone: string): number {
 	if (Number.isFinite(time)) {
 		const offset = steadyHourOffset(
 			Math.floor(time / MILLISECONDS_PER_HOUR),
@@ -276,7 +275,7 @@ function wallClockAsUtc(instant: Date, timezone: string): number {
 			return Math.floor(wallTime / 1000) * 1000;
 		}
 	}
-	const clock = wallClockIn(instant, timezone);
+	const clock = wallClockIn(new Date(time), timezone);
 	return Date.UTC(
 		clock.year,
 		clock.month - 1,
@@ -296,6 +295,10 @@ const SIX_HOURS = 6 * 60 * MILLISECONDS_PER_MINUTE;
  * before the change, and a time that a change makes occur twice (an overlap) is
  * the later of its two instants. Both are the wall clock less the smaller of the
  * two offsets around the change (America/Santiago 2026-09-06 00:00 is 04:00Z).
+ *
+ * The demo calls this once per generated sale, so the usual case (one offset
+ * for six hours either side) compares the four offsets directly, with no set
+ * and no intermediate Date.
  */
 export function zonedInstant(
 	date: string,
@@ -305,18 +308,20 @@ export function zonedInstant(
 	const { year, month, day } = parseIsoDate(date);
 	const wallClockUtc = Date.UTC(year, month - 1, day, 0, minutesOfDay);
 	const offsetAt = (instant: number): number =>
-		wallClockAsUtc(new Date(instant), timezone) - instant;
+		wallClockAsUtc(instant, timezone) - instant;
 	const firstOffset = offsetAt(wallClockUtc);
 	const candidate = wallClockUtc - firstOffset;
-	const offsets = new Set([
-		firstOffset,
-		offsetAt(candidate),
-		offsetAt(candidate - SIX_HOURS),
-		offsetAt(candidate + SIX_HOURS),
-	]);
-	if (offsets.size === 1) {
+	const atCandidate = offsetAt(candidate);
+	const before = offsetAt(candidate - SIX_HOURS);
+	const after = offsetAt(candidate + SIX_HOURS);
+	if (
+		atCandidate === firstOffset &&
+		before === firstOffset &&
+		after === firstOffset
+	) {
 		return new Date(candidate);
 	}
+	const offsets = new Set([firstOffset, atCandidate, before, after]);
 	const valid = [...offsets].filter(
 		(offset) => offsetAt(wallClockUtc - offset) === offset,
 	);

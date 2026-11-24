@@ -181,6 +181,84 @@ describe("zonedInstant and business day bounds", () => {
 		},
 	);
 
+	// Back-to-back test of the fast path (2026-11-24): an oracle that asks Intl
+	// directly, with no cached offset, states the same rule (the offsets 15 hours
+	// either side bracket any change near the wall clock; a valid offset maps back
+	// to itself; the smaller one wins). Every 15 minutes of each transition day of
+	// 2026 and the days either side, in zones with whole-hour, half-hour and
+	// 45-minute offsets and a 30-minute daylight-saving shift.
+	it("agrees with an uncached Intl oracle every 15 minutes around every change of 2026", () => {
+		const HOUR = 3_600_000;
+		const intlOffset = (instant: number, tz: string): number => {
+			const clock = formattedWallClock(new Date(instant), tz);
+			return (
+				Date.UTC(
+					clock.year,
+					clock.month - 1,
+					clock.day,
+					clock.hour,
+					clock.minute,
+					clock.second,
+				) - instant
+			);
+		};
+		const oracle = (date: string, minutes: number, tz: string): string => {
+			const { year, month, day } = parseIsoDate(date);
+			const wall = Date.UTC(year, month - 1, day, 0, minutes);
+			const around = [
+				...new Set([
+					intlOffset(wall - 15 * HOUR, tz),
+					intlOffset(wall + 15 * HOUR, tz),
+				]),
+			];
+			const valid = around.filter(
+				(offset) => intlOffset(wall - offset, tz) === offset,
+			);
+			return new Date(
+				wall - Math.min(...(valid.length > 0 ? valid : around)),
+			).toISOString();
+		};
+		const zones = [
+			"America/Santiago",
+			"America/Havana",
+			NEW_YORK,
+			"Europe/London",
+			"Australia/Lord_Howe",
+			"Pacific/Chatham",
+			"Asia/Kolkata",
+			VIETNAM,
+		];
+		let checked = 0;
+		let transitions = 0;
+		for (const tz of zones) {
+			const dates = new Set<string>(["2026-01-01", "2026-06-30"]);
+			for (const date of isoDatesBetween("2026-01-01", "2026-12-31")) {
+				const { year, month, day } = parseIsoDate(date);
+				const midnight = Date.UTC(year, month - 1, day);
+				if (
+					intlOffset(midnight - 12 * HOUR, tz) !==
+					intlOffset(midnight + 36 * HOUR, tz)
+				) {
+					transitions += 1;
+					for (const shift of [-1, 0, 1, 2]) {
+						dates.add(shiftIsoDate(date, shift));
+					}
+				}
+			}
+			for (const date of dates) {
+				for (let minutes = 0; minutes < 24 * 60; minutes += 15) {
+					expect(
+						zonedInstant(date, minutes, tz).toISOString(),
+						`${tz} ${date} minute ${minutes}`,
+					).toBe(oracle(date, minutes, tz));
+					checked += 1;
+				}
+			}
+		}
+		expect(transitions).toBeGreaterThanOrEqual(10);
+		expect(checked).toBeGreaterThan(5_000);
+	});
+
 	it("bounds a business day from its day start to the instant before the next", () => {
 		const start = businessDayStart("2026-11-07", VIETNAM, DAY_START_FIVE);
 		const end = businessDayEnd("2026-11-07", VIETNAM, DAY_START_FIVE);
