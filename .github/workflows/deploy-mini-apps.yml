@@ -107,6 +107,9 @@ jobs:
             dir="apps/zalo-$kind"
             node apps/jobs/bin/fnb.mjs zalo app-config --brand "$brand" --app "$kind" --out "$dir/app-config.json"
             VITE_ZALO_RUNTIME=zalo VITE_MINI_APP_STAGE="$STAGE" VITE_BRAND_KEY="$brand" pnpm --filter "@fnb/zalo-$kind" build
+            # zmp-cli reads app-config.json from the app folder, and only the built one lists the assets (listCSS,
+            # listSyncJS, listAsyncJS); without it the deploy fails with "No asset defined" (found 2026-11-24)
+            cp "$dir/dist/app-config.json" "$dir/app-config.json"
             node apps/jobs/bin/fnb.mjs zalo zmp env --brand "$brand" --app "$kind" --out "$dir/.env"
             set -a
             . "$dir/.env"
