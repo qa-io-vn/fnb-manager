@@ -397,6 +397,65 @@ describe("the ledger lookup model", () => {
 			store: "Toàn chuỗi",
 		});
 	});
+
+	it.each([
+		{
+			reason: "invoice_voided; short by 1 stamp and 6 points",
+			vi: "Hóa đơn bị hủy; không thu hồi được 1 dấu và 6 điểm vì khách không còn đủ",
+			en: "Invoice voided; 1 stamp and 6 points not taken back, the member no longer had them",
+		},
+		{
+			reason: "invoice_edited; short by 2 stamps",
+			vi: "Hóa đơn bị sửa; không thu hồi được 2 dấu vì khách không còn đủ",
+			en: "Invoice edited; 2 stamps not taken back, the member no longer had them",
+		},
+		{
+			reason: "invoice_voided; short by 1 point",
+			vi: "Hóa đơn bị hủy; không thu hồi được 1 điểm vì khách không còn đủ",
+			en: "Invoice voided; 1 point not taken back, the member no longer had them",
+		},
+		{
+			reason: "invoice_voided; short by 12500 points",
+			vi: "Hóa đơn bị hủy; không thu hồi được 12.500 điểm vì khách không còn đủ",
+			en: "Invoice voided; 12,500 points not taken back, the member no longer had them",
+		},
+		{
+			reason: "khách trả lại; short by 3 points",
+			vi: "khách trả lại; không thu hồi được 3 điểm vì khách không còn đủ",
+			en: "khách trả lại; 3 points not taken back, the member no longer had them",
+		},
+	])(
+		"words a capped clawback (ADR-046): $reason",
+		({ reason, vi: viText, en }) => {
+			const rows = [LEDGER[1], { ...LEDGER[2], reason }] as LedgerEntryRow[];
+			const reasonIn = (
+				locale: "vi" | "en",
+				count: (value: number) => string,
+			) =>
+				ledgerTable(rows, {
+					...CONTEXT,
+					t: (key, params) => translate(locale, key, params),
+					formatters: { ...CONTEXT.formatters, count },
+				}).rows.find((row) => row.id === "e3")?.cells.reason;
+			expect(reasonIn("vi", (value) => value.toLocaleString("vi-VN"))).toBe(
+				viText,
+			);
+			expect(reasonIn("en", (value) => value.toLocaleString("en-US"))).toBe(en);
+		},
+	);
+
+	it.each([
+		"invoice_voided; short by 0 points",
+		"invoice_voided; short by 1 stamps",
+		"invoice_voided; short by 2 points and 1 stamp",
+		"đã trả lại tiền mặt; short by one point",
+	])("negative: %j is shown as it was written", (reason) => {
+		const rows = [LEDGER[1], { ...LEDGER[2], reason }] as LedgerEntryRow[];
+		const cells = ledgerTable(rows, CONTEXT).rows.find(
+			(row) => row.id === "e3",
+		)?.cells;
+		expect(cells?.reason).toBe(reason);
+	});
 });
 
 describe("the reconciliation queue model", () => {

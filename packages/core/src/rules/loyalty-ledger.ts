@@ -142,6 +142,31 @@ export function clawbackReason(reason: string, short: Amounts): string {
 	return [...reason].slice(0, 200 - suffix.length).join("") + suffix;
 }
 
+const CLAWBACK_SHORTFALL =
+	/^([\s\S]*); short by (?:(\d+) stamps?(?: and (\d+) points?)?|(\d+) points?)$/;
+
+/**
+ * Reads a reason `clawbackReason` wrote back into the reason it was given and
+ * the write-off, so a screen can word both in its own language. Only a text
+ * that `clawbackReason` gives back unchanged is read (the singular and plural,
+ * no zero, no leading zeros); anything else, a manager's own words included,
+ * is null and shown as it is.
+ */
+export function parseClawbackReason(
+	text: string,
+): { readonly reason: string; readonly short: Amounts } | null {
+	const match = CLAWBACK_SHORTFALL.exec(text);
+	if (match === null) {
+		return null;
+	}
+	const [, reason = "", stamps, pointsWithStamps, pointsAlone] = match;
+	const short: Amounts = {
+		stamps: stamps === undefined ? 0 : Number(stamps),
+		points: Number(pointsWithStamps ?? pointsAlone ?? 0),
+	};
+	return clawbackReason(reason, short) === text ? { reason, short } : null;
+}
+
 /**
  * When the points of a crediting row expire: the row's own expiry, or for an
  * earn that was written pending, the expiry its confirm row carries (its clock

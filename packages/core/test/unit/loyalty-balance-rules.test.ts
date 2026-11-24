@@ -20,6 +20,7 @@ import {
 	type LedgerRules,
 	LoyaltyLedger,
 	localIsoDate,
+	parseClawbackReason,
 	validThrough,
 } from "../../src/index.js";
 
@@ -432,6 +433,103 @@ describe("clawbackReason: the write-off written on the row (equivalence partitio
 		});
 		expect(written).toBe("bill_disputed; short by 9 stamps and 99999 points");
 		expect(written).not.toMatch(PHONE);
+	});
+});
+
+describe("parseClawbackReason: reads back what clawbackReason wrote (equivalence partitions, negative tests, a seeded round trip)", () => {
+	it.each([
+		{
+			text: "invoice_voided; short by 1 stamp",
+			reason: "invoice_voided",
+			short: { stamps: 1, points: 0 },
+		},
+		{
+			text: "invoice_voided; short by 2 stamps",
+			reason: "invoice_voided",
+			short: { stamps: 2, points: 0 },
+		},
+		{
+			text: "invoice_edited; short by 1 point",
+			reason: "invoice_edited",
+			short: { stamps: 0, points: 1 },
+		},
+		{
+			text: "invoice_voided; short by 3 stamps and 40 points",
+			reason: "invoice_voided",
+			short: { stamps: 3, points: 40 },
+		},
+		{
+			text: "; short by 1 stamp and 1 point",
+			reason: "",
+			short: { stamps: 1, points: 1 },
+		},
+		{
+			text: "bill; short by 2 x; short by 5 points",
+			reason: "bill; short by 2 x",
+			short: { stamps: 0, points: 5 },
+		},
+	])("$text", ({ text, reason, short }) => {
+		expect(parseClawbackReason(text)).toEqual({ reason, short });
+	});
+
+	it.each([
+		"invoice_voided",
+		"welcome",
+		"",
+		"invoice_voided; short by 0 points",
+		"invoice_voided; short by 0 stamps and 4 points",
+		"invoice_voided; short by 1 stamp and 0 points",
+		"invoice_voided; short by 1 stamps",
+		"invoice_voided; short by 2 point",
+		"invoice_voided; short by 05 points",
+		"invoice_voided; short by -1 points",
+		"invoice_voided; short by 1.5 points",
+		"invoice_voided; short by 2 points and 1 stamp",
+		"invoice_voided; short by 1 stamp and",
+		"invoice_voided; short by ",
+		"invoice_voided; Short by 1 point",
+		"invoice_voided; short by 1 point ",
+		"invoice_voided;short by 1 point",
+		"invoice_voided; short by 1 point\n",
+		"invoice_voided; short by 99999999999999999999 points",
+		`${"r".repeat(200)}; short by 1 point`,
+	])("negative: %j is not a write-off and is shown as it is", (text) => {
+		expect(parseClawbackReason(text)).toBeNull();
+	});
+
+	it("round trip: 2,000 seeded reasons and write-offs, the 200-character cut included", () => {
+		let seed = 20261124;
+		const next = (limit: number): number => {
+			seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+			return seed % limit;
+		};
+		const ALPHABET = ["a", "Z", "_", ";", " ", "1", "đ", "ể", "😀", "\n"];
+		for (let i = 0; i < 2_000; i++) {
+			const reason = Array.from(
+				{ length: next(230) },
+				() => ALPHABET[next(ALPHABET.length)],
+			).join("");
+			const short = {
+				stamps: next(3) === 0 ? 0 : next(1_000) + 1,
+				points: next(3) === 0 ? 0 : next(100_000) + 1,
+			};
+			const text = clawbackReason(reason, short);
+			const parsed = parseClawbackReason(text);
+			if (short.stamps === 0 && short.points === 0) {
+				expect(text).toBe(reason);
+				continue;
+			}
+			expect(parsed?.short).toEqual(short);
+			expect(parsed && clawbackReason(parsed.reason, parsed.short)).toBe(text);
+			expect([...(parsed?.reason ?? "")].length).toBeLessThanOrEqual(200);
+		}
+	});
+
+	it("security: a long hostile text is read in linear time, not backtracked", () => {
+		const hostile = `${"; short by 1 stamp and ".repeat(40_000)}x`;
+		const started = performance.now();
+		expect(parseClawbackReason(hostile)).toBeNull();
+		expect(performance.now() - started).toBeLessThan(1_000);
 	});
 });
 

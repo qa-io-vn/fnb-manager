@@ -1,8 +1,10 @@
 import {
+	type Amounts,
 	LOYALTY_REFUSAL_REASONS,
 	type LoyaltyEntryKind,
 	type LoyaltyRefusalReason,
 	type MatchedPath,
+	parseClawbackReason,
 } from "@fnb/core";
 import type { IsoDate } from "@fnb/reports";
 import type {
@@ -97,10 +99,48 @@ const LEDGER_REASON_KEYS: Readonly<Record<string, MessageKey>> = {
 	...REFUSAL_KEYS,
 };
 
-export function reasonText(t: Translate, reason: string | null): string | null {
-	if (reason === null) return null;
+function reasonCodeText(t: Translate, reason: string): string {
 	const key = LEDGER_REASON_KEYS[reason];
 	return key === undefined ? reason : t(key);
+}
+
+function shortfallText(
+	t: Translate,
+	count: (value: number) => string,
+	short: Amounts,
+): string {
+	const stamps = t(
+		short.stamps === 1 ? "loyalty.shortfall.stamp" : "loyalty.shortfall.stamps",
+		{ count: count(short.stamps) },
+	);
+	const points = t(
+		short.points === 1 ? "loyalty.shortfall.point" : "loyalty.shortfall.points",
+		{ count: count(short.points) },
+	);
+	if (short.stamps > 0 && short.points > 0) {
+		return t("loyalty.shortfall.both", { stamps, points });
+	}
+	return short.stamps > 0 ? stamps : points;
+}
+
+/**
+ * A ledger row's reason in words: a known code translated, and a capped
+ * clawback's "short by n" (ADR-046) read back and worded, so a manager sees what
+ * the programme wrote off. Anything else, a manager's own words included, is
+ * shown as it is.
+ */
+export function reasonText(
+	t: Translate,
+	reason: string | null,
+	count: (value: number) => string = String,
+): string | null {
+	if (reason === null) return null;
+	const clawback = parseClawbackReason(reason);
+	if (clawback === null) return reasonCodeText(t, reason);
+	return t("loyalty.reason.shortfall", {
+		reason: reasonCodeText(t, clawback.reason),
+		short: shortfallText(t, count, clawback.short),
+	});
 }
 
 /** A phone as the database masked it; never unmasked in the browser. */
@@ -256,7 +296,7 @@ export function ledgerTable(
 					entry.matchedPath === null ? null : t(PATH_KEYS[entry.matchedPath]),
 				invoice: invoiceText(t, formatters, entry.invoice),
 				store: storeName(t, context.stores, entry.storeId),
-				reason: reasonText(t, entry.reason),
+				reason: reasonText(t, entry.reason, formatters.count),
 				state: entryState(t, entry, entries),
 			},
 		})),

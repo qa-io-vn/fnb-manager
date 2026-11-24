@@ -54,6 +54,7 @@ export {
 	type LedgerRules,
 	LoyaltyLedger,
 	ledgerBalance,
+	parseClawbackReason,
 	REDEMPTION_REASON,
 	REDEMPTION_RELEASED,
 	type RedemptionState,
