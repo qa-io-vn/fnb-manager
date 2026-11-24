@@ -351,3 +351,77 @@ Not chosen: refusing a multi-brand login at creation (it blocks real managers), 
 Build: the per-login brand list and flag on the access page, and a pgTAP case beside `pgtap:104_follow_oa_and_access` that pins the store scope.
 
 Built 2026-11-23: the brands line of each row of the staff roster in Settings, Staff (`apps/web/src/settings/staff/staff-brands.tsx`, rules `brandsOfScope` and `crossesBrands` in `staff-rules.ts`; the brand is named by its staff Mini App; shown for a tenant with two brands or more; a staff login that spans brands carries a warning note, a manager does not) and six cases in `pgtap:104` (a login of two brands is accepted at both stores, a login of one store and a manager of the other brand are refused 42501 at the other brand's store, an outsider is refused everywhere). Tests: `web:unit/settings/staff/staff-brands`.
+
+## ADR-050 — An invoice whose amount changes after it earned goes to a manager; the earn is not recomputed by itself
+
+Date 2026-11-24 · Status accepted (the owner delegated the choice: "all other thing you choose for me") · closes the decision of G-44
+
+Decision: when a sync or the nightly re-pull changes the net amount of an invoice that already earned on a POS path and is not voided, the loyalty reconciliation compares what the earn gave with what the programme's rules give for the new amount. When they differ, one item opens in the loyalty queue for the store's managers (path D, reason `earned_invoice_edited`), naming the invoice and its earn; the manager settles it with an ordinary adjustment, which ADR-046 floors at the balance, or closes it with a reason. An item is opened once per invoice. A void stays an automatic clawback (G-03); an amount that changes back to what earned opens nothing.
+
+Why: a difference that a rule cannot settle safely goes to an exception queue for a person, which is how reconciliations are run. An edit after payment is rare, and it is a known cashier-fraud pattern (ring a large bill, let a member claim it, then edit it down), so a person should see each one rather than have the system quietly absorb it. An automatic correcting entry would touch the ADR-046 cap, the expiry order, the liability cohorts (ADR-048) and the replayed ledger model (G-15) for a rare case.
+
+Not chosen: keeping the first amount silently (hides the fraud pattern); an automatic entry for the difference (the ripple above); reversing the earn and earning again on the new amount (with the ADR-046 cap, a member who already spent the points would be credited twice).
+
+Build: the comparison in the reconciliation, the new queue reason, its wording on the web queue page, and state-transition tests (amount down below the stamp minimum, amount up across it, the amount changed back, a voided invoice, a second change of an invoice already queued).
+
+## ADR-051 — A staff-phone adjustment is refused with an answer, kept as a refused request, and counted in the shift report
+
+Date 2026-11-24 · Status accepted (delegated) · closes the decision of G-45
+
+Decision: a manual adjustment or a dispute credit on the membership of a staff phone is still refused, whoever asks, but no longer as an error. The request is kept in the request log with state `refused` and the system's refusal `staff_phone`, and the caller gets the same answer shape as any request with that state and refusal. A manager's approval of an older request that turns out to name a staff phone is refused the same way. `loyalty_shift_anomalies` counts these refusals under `staff_phone`, in the shift of the request's time.
+
+Why: fraud monitoring counts attempts, not only the actions that succeeded: a staff member trying to credit their own phone is exactly what the owner needs to see, and an error rolls back everything, so nothing could be counted. The request log already holds every adjustment with who asked and when, so it is the one record to count from.
+
+Not chosen: making `loyalty_refusals.invoice_id` nullable (every reader of that table and its uniqueness key assume an invoice); counting nothing.
+
+Build: a `refusal` column on the request log that only the system sets, the two request functions, the shift-anomaly function, the staff app's reading of the answer, pgTAP beside `pgtap:150` and `pgtap:81`.
+
+## ADR-052 — The erased-phone memory is a keyed hash with a key per tenant
+
+Date 2026-11-24 · Status accepted (delegated) · closes the decision of G-46
+
+Decision: the memory of erased phones stores an HMAC-SHA-256 of the phone in E.164 form, keyed with 32 random bytes per tenant that live in a table no API role can read and are created at the tenant's first erasure. Two tenants hold different values for one phone. Entries written before this change (a plain SHA-256) still match; an old entry is rewritten in the keyed form the first time its phone is seen again (a synced invoice, a join, a new erasure). What stays: someone with full access to the database can read a key and still test every possible number of that tenant. That is accepted, because the same person can already read every phone of the members who were not erased, while an erased customer's data is gone.
+
+Why: pseudonymisation guidance (ENISA, 2019) treats a plain hash of a phone number as reversible by trying every number, and recommends a keyed hash. A key per tenant keeps one tenant's list from being linked with another's and makes precomputed tables useless, so a copy of the list alone (an export, a log, a support extract) reveals nothing. The key stays inside the database because a restore must bring it back: a key lost in a restore would silently empty the erasure memory, and the POS would bring the erased phones back, which is the worse harm.
+
+Not chosen: Supabase Vault or a function secret (a restore into a new project, the disaster case of `backup.yml`, would lose the key); a slow hash (paid again at every synced invoice); keeping the plain hash.
+
+Build: the key table, `app.phone_hash` per tenant, every reader and writer of `app.erased_phones`, and pgTAP that two tenants hold different values for one phone, that an old entry still blanks a synced phone and is rewritten in the keyed form, and that no API role reads the keys.
+
+## ADR-053 — A corrected name stands: nothing that writes a customer's name overwrites one that is set
+
+Date 2026-11-24 · Status accepted (delegated) · closes the decision of G-52
+
+Decision: no flag; the rule already holds and is now pinned by tests. No POS sync writes `customers.name` (the POS name lives on the invoices and in the raw sale data), and the two other writers, a Zalo join and the OA form, fill a name only when it is empty. So a name corrected through `dsr_correct` survives every later sync, join and form. Any future writer, a POS customer sync for example, must keep that rule: fill an empty name, never overwrite one. The request page keeps telling the owner to correct the name in the POS as well, because the invoices and the raw sale data hold the POS's copy.
+
+Why: the right to have personal data corrected means a correction has to stick. A protection flag would only guard against a writer that does not exist, and a guard test that fails when a new writer appears does the same job.
+
+Not chosen: a `name_corrected_at` flag that the sync respects (no sync writes the name); asking the owner to correct the POS first (the apps show our copy, so it must be right whatever the POS holds).
+
+Build: pgTAP beside `pgtap:161`: a corrected name survives a join and an OA form that carry another name, and the list of functions that write `customers.name` is exactly the known three.
+
+## ADR-054 — A data export stays a browser download that no server keeps, and each download is recorded
+
+Date 2026-11-24 · Status accepted (delegated) · closes the decision of G-53
+
+Decision: `dsr_export` records an `export` action in `data_subject_request_actions` every time it answers: who made the copy, when, and the counts of what it holds, never the content. The file is still made in the owner's browser and never stored on a server or behind a link. The request page says how to hand it over: in person, or sent to the contact the request came from, and the downloaded file deleted afterwards.
+
+Why: the right of access asks for a copy in a common electronic format, and accountability asks for a record of who made a copy and when. Every copy at rest is one more place that can leak, so a file that never lands in storage is the smallest surface; a JSON file opens on any phone.
+
+Not chosen: an expiring link (the file would have to be stored, and a link can be forwarded); an encrypted archive (most phones cannot open an AES-encrypted zip, and the password needs a second channel anyway).
+
+Build: the action kind `export`, the record in `dsr_export`, the wording on the request page, pgTAP beside `pgtap:161` (one action per export, count-only facts, nothing recorded for a refused caller).
+
+## ADR-055 — The member frequency uplift compares matched cohorts; no hold-out group
+
+Date 2026-11-24 · Status accepted (delegated) · closes the decision of G-54
+
+Decision: the uplift compares members with identified non-members of the same cohort: the same first-visit month and the same first store (an exact match on both). Each cohort cell's difference in visit frequency is weighted by its number of members; a cell with fewer than 10 customers on either side is left out; with fewer than 10 matched members in all, the uplift stays null. The answer names the comparison `matched_cohorts` and gives the matched sizes. There is no hold-out group. `customer_ltv` waits until item costs cover the stores.
+
+Why: customers who already come often are the ones who join, so the plain gap between members and non-members overstates what the programme does. Matching on tenure and store is the standard low-cost correction (coarsened exact matching). A hold-out would deny the programme to some customers, which a single store cannot explain at the till, and it would leave too few customers to measure anything.
+
+Not chosen: a configured hold-out group; propensity-score matching (too few identified customers for a model to be stable).
+
+Note: on 2026-11-22 the real tenant's 30 days held no invoice with a phone or customer id, so the uplift will read null there until the till records customers.
+
+Build: the cohort comparison in `customer_metrics`, its documentation in metrics.md, the web wording of the comparison, and a hand-calculated pgTAP case beside `pgtap:163` with two cohorts of different tenure.
