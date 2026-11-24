@@ -63,6 +63,40 @@ describe("graph me", () => {
 		});
 	});
 
+	it("signs in a user who never gave the name consent: the name is refused, the id alone is asked once more", async () => {
+		const { mock, options } = graph();
+		const token = mock.issueAccessToken(SECRET, USER, { nameConsent: false });
+		expect(await fetchZaloUser(options, token, SECRET)).toEqual({
+			ok: true,
+			value: { id: USER.id, name: null },
+		});
+		const asked = mock.requests(GRAPH_ME_PATH).map((request) => request.query);
+		expect(asked).toHaveLength(2);
+		expect(asked[0]).toBe("?fields=id,name");
+		expect(asked[1]).toBe("?fields=id");
+		// with the consent, one request and the name
+		const consented = mock.issueAccessToken(SECRET, USER);
+		expect(await fetchZaloUser(options, consented, SECRET)).toEqual({
+			ok: true,
+			value: USER,
+		});
+		expect(mock.requests(GRAPH_ME_PATH)).toHaveLength(3);
+	});
+
+	it("still refuses a wrong proof or an unknown token after the second request", async () => {
+		const { mock, options } = graph();
+		const token = mock.issueAccessToken(SECRET, USER, { nameConsent: false });
+		expect(await fetchZaloUser(options, token, OTHER_SECRET)).toEqual({
+			ok: false,
+			error: MOCK_ZALO_ERRORS.proofInvalid,
+		});
+		expect(mock.requests(GRAPH_ME_PATH)).toHaveLength(2);
+		expect(await fetchZaloUser(options, "unknown", SECRET)).toEqual({
+			ok: false,
+			error: MOCK_ZALO_ERRORS.accessTokenInvalid,
+		});
+	});
+
 	it("keeps a user without a name and refuses an answer without a usable id", async () => {
 		const { mock, options } = graph();
 		const token = mock.issueAccessToken(SECRET, { id: "8800000000000000002" });

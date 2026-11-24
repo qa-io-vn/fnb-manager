@@ -10,6 +10,7 @@ import { appSecretProof } from "../proof.js";
 
 export const MOCK_ZALO_ERRORS = {
 	accessTokenInvalid: -9001,
+	permissionNotGranted: -9010,
 	accessTokenExpired: -9002,
 	proofInvalid: -9003,
 	phoneTokenInvalid: -9004,
@@ -68,6 +69,8 @@ export interface MockZaloUser {
 
 export interface MockZaloRequest {
 	readonly path: string;
+	/** The query string with its "?", or "" (a Graph request's fields; never a token, which travels in a header). */
+	readonly query: string;
 	readonly headerNames: readonly string[];
 	readonly at: number;
 }
@@ -104,7 +107,10 @@ export interface MockZalo {
 	issueAccessToken(
 		appSecret: string,
 		user: MockZaloUser,
-		options?: { readonly lifetimeMs?: number },
+		options?: {
+			readonly lifetimeMs?: number;
+			readonly nameConsent?: boolean;
+		},
 	): string;
 	issuePhoneToken(
 		accessToken: string,
@@ -140,6 +146,8 @@ interface AccessEntry {
 	readonly appSecret: string;
 	readonly user: MockZaloUser;
 	readonly expiresAt: number;
+	/** false: the user never gave scope.userInfo, so Zalo refuses an answer that asks for the name. */
+	readonly nameConsent: boolean;
 }
 
 interface PhoneEntry {
@@ -506,9 +514,20 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 				"appsecret_proof is invalid",
 			);
 		}
+		const fields = (new URL(request.url).searchParams.get("fields") ?? "id")
+			.split(",")
+			.map((field) => field.trim());
+		if (!entry.nameConsent && fields.includes("name")) {
+			return failure(
+				MOCK_ZALO_ERRORS.permissionNotGranted,
+				"the user has not granted scope.userInfo",
+			);
+		}
 		return answer({
 			id: entry.user.id,
-			...(entry.user.name === undefined || entry.user.name === null
+			...(entry.user.name === undefined ||
+			entry.user.name === null ||
+			!fields.includes("name")
 				? {}
 				: { name: entry.user.name }),
 			error: 0,
@@ -626,6 +645,7 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 		const url = new URL(request.url);
 		recorded.push({
 			path: url.pathname,
+			query: url.search,
 			headerNames: [...request.headers.keys()].sort(),
 			at: clock,
 		});
@@ -705,6 +725,7 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 				user,
 				expiresAt:
 					clock + (tokenOptions.lifetimeMs ?? MOCK_ACCESS_TOKEN_LIFETIME_MS),
+				nameConsent: tokenOptions.nameConsent ?? true,
 			});
 			return token;
 		},

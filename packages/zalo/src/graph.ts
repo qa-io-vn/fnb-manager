@@ -75,16 +75,27 @@ export function cleanDisplayName(value: unknown): string | null {
 	return [...cleaned].slice(0, DISPLAY_NAME_MAX_LENGTH).join("").trim();
 }
 
+/**
+ * The Zalo user behind a Mini App access token. Since SDK 2.35.0 a Mini App gets a token without asking the user,
+ * and such a token gives the user's id only; the name needs the user's scope.userInfo consent. So the name is
+ * asked for first and, when Zalo refuses that answer, the id alone is asked for once more: a user who never
+ * consented still signs in, without a name.
+ */
 export async function fetchZaloUser(
 	options: ZaloGraphOptions,
 	accessToken: string,
 	appSecret: string,
 ): Promise<GraphOutcome<ZaloUser>> {
 	const proof = await appSecretProof(accessToken, appSecret);
-	const body = await graphGet(options, `${GRAPH_ME_PATH}?fields=id,name`, {
-		access_token: accessToken,
-		appsecret_proof: proof,
-	});
+	const headers = { access_token: accessToken, appsecret_proof: proof };
+	let body = await graphGet(
+		options,
+		`${GRAPH_ME_PATH}?fields=id,name`,
+		headers,
+	);
+	if (graphError(body) !== null) {
+		body = await graphGet(options, `${GRAPH_ME_PATH}?fields=id`, headers);
+	}
 	const error = graphError(body);
 	if (error !== null) {
 		return { ok: false, error };
