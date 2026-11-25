@@ -254,6 +254,33 @@ Deno.test("context.secret reads a secret by name and protects it in the logs", (
 	);
 });
 
+Deno.test("context.secret drops a line ending or spaces around a pasted secret and still protects it", () => {
+	const { lines, log } = capture();
+	const context = createRequestContext(
+		{
+			ZALO_APP_SECRET_BRAND_1: `${APP_SECRET}\r\n`,
+			ZALO_APP_SECRET_BRAND_2: ` ${OA_SECRET}\t`,
+		},
+		{ name: "zalo-test", log, requestId: () => "request-1" },
+	);
+	assertEquals(
+		context.secret("ZALO_APP_SECRET_BRAND_1"),
+		APP_SECRET,
+		"a Windows line ending is dropped",
+	);
+	assertEquals(
+		context.secret("ZALO_APP_SECRET_BRAND_2"),
+		OA_SECRET,
+		"spaces and a tab are dropped",
+	);
+	context.log(`computed with ${APP_SECRET} and ${OA_SECRET}`);
+	assertEquals(
+		lines,
+		["zalo-test request-1: computed with *** and ***"],
+		"both trimmed values stay redacted",
+	);
+});
+
 Deno.test("context.secret throws MissingSecretError for a missing, blank or malformed name", () => {
 	const context = createRequestContext(
 		{ ZALO_APP_SECRET_BRAND_2: "   " },

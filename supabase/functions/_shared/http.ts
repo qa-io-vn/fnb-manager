@@ -253,10 +253,14 @@ export function createRequestContext(
 			if (!SECRET_NAME_PATTERN.test(name)) {
 				throw new MissingSecretError(name);
 			}
-			const value = environment[name];
-			if (value === undefined || value.trim() === "") {
+			const raw = environment[name];
+			// a secret pasted through a clipboard or a Windows file can carry a line ending or a space; no key, token
+			// or password the functions use has white space at either end, and a stray one silently breaks an HMAC
+			const value = raw?.trim();
+			if (raw === undefined || value === undefined || value === "") {
 				throw new MissingSecretError(name);
 			}
+			context.protect(raw);
 			context.protect(value);
 			return value;
 		},
