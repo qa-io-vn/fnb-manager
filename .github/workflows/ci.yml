@@ -28,6 +28,8 @@ jobs:
       - run: node scripts/check-public-safe.mjs
       - name: The public-safety scan's own rules (forbidden-terms list), G-83
         run: node --test scripts/check-public-safe.test.mjs
+      - name: The real sign-in check's own rules, against a fake network (G-109)
+        run: node --test scripts/zalo-sign-in-check.test.mjs
 
   code:
     name: Lint, typecheck, unit tests
