@@ -5,7 +5,15 @@ export {
 	type SupabaseBackendOptions,
 	serviceKeyFrom,
 } from "./backend.js";
-export { asRefusal, functionBackend, functionSettings } from "./function.js";
+export {
+	asRefusal,
+	functionBackend,
+	functionSettings,
+	graphFetchFor,
+	relayKeyOf,
+	relayKeyText,
+	relayUrlOf,
+} from "./function.js";
 export {
 	cleanDisplayName,
 	DISPLAY_NAME_MAX_LENGTH,
@@ -35,6 +43,44 @@ export {
 } from "./http.js";
 export { appSecretProof, hex, hmacSha256Hex } from "./proof.js";
 export { ZaloRefusal } from "./refusal.js";
+export {
+	fromBase64,
+	type GraphCall,
+	graphCallOf,
+	importRelayKey,
+	newRelayKey,
+	open as openRelayEnvelope,
+	openAnnouncement,
+	openRelayAnswer,
+	openRelayRequest,
+	RELAY_ANNOUNCE_MAX_SKEW_MS,
+	RELAY_GRAPH_PATHS,
+	RELAY_HEARTBEAT_MS,
+	RELAY_KEY_BYTES,
+	RELAY_MAX_ANSWER_BYTES,
+	RELAY_MAX_ENVELOPE_BYTES,
+	RELAY_MAX_SKEW_MS,
+	RELAY_PATH,
+	type RelayAnnouncement,
+	type RelayAnswer,
+	RelayError,
+	type RelayFetchOptions,
+	type RelayGraphPath,
+	type RelayPurpose,
+	type RelayRefusal,
+	type RelayRequest,
+	ReplayGuard,
+	relayFetch,
+	relayUrlProblem,
+	seal as sealRelayEnvelope,
+	sealAnnouncement,
+	sealRelayAnswer,
+	sealRelayRequest,
+	toBase64,
+	validateRelayRequest,
+	ZALO_GRAPH_ORIGIN,
+	ZALO_RELAY_KEY_VARIABLE,
+} from "./relay.js";
 export {
 	BINDING_CODE_PATTERN,
 	BRAND_KEY_PATTERN,

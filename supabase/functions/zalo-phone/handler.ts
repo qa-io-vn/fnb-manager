@@ -6,7 +6,9 @@ import {
 	functionBackend,
 	functionSettings,
 	type GraphOutcome,
+	graphFetchFor,
 	PHONE_TOKEN_USED,
+	relayKeyText,
 	requireBrandApp,
 	type SupabaseBackend,
 	UpstreamError,
@@ -148,9 +150,14 @@ async function zaloPhone(
 			);
 		}
 		const phoneToken = input.phoneToken ?? "";
+		const graphFetch = await graphFetchFor(
+			relayKeyText(context.environment, (name) => context.secret(name)),
+			backend,
+			dependencies.fetch,
+		);
 		const result = await exchangeOnce(() =>
 			exchangePhoneToken(
-				{ baseUrl: settings.graphBaseUrl, fetch: dependencies.fetch },
+				{ baseUrl: settings.graphBaseUrl, fetch: graphFetch },
 				input.accessToken,
 				phoneToken,
 				appSecret,

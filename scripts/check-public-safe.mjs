@@ -179,7 +179,7 @@ for (const [position, file] of trackedFiles().entries()) {
 		for (const identifier of privateIdentifiers) {
 			if (line.toLowerCase().includes(identifier.toLowerCase())) {
 				findings.push({
-					file,
+					shown,
 					line: index + 1,
 					rule: "private identifier",
 					sample: identifier.slice(0, 4),

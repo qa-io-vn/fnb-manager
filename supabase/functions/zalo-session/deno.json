@@ -93,11 +93,13 @@
 		"../../../packages/zalo/src/oa/messages.js": "../../../packages/zalo/src/oa/messages.ts",
 		"../../../packages/zalo/src/proof.js": "../../../packages/zalo/src/proof.ts",
 		"../../../packages/zalo/src/refusal.js": "../../../packages/zalo/src/refusal.ts",
+		"../../../packages/zalo/src/relay.js": "../../../packages/zalo/src/relay.ts",
 		"../../../packages/zalo/src/session.js": "../../../packages/zalo/src/session.ts",
 		"../../../packages/zalo/src/settings.js": "../../../packages/zalo/src/settings.ts",
 		"../../../packages/zalo/src/testing/environment.js": "../../../packages/zalo/src/testing/environment.ts",
 		"../../../packages/zalo/src/testing/fake-backend.js": "../../../packages/zalo/src/testing/fake-backend.ts",
 		"../../../packages/zalo/src/testing/mock-zalo.js": "../../../packages/zalo/src/testing/mock-zalo.ts",
+		"../../../packages/zalo/src/testing/relay-network.js": "../../../packages/zalo/src/testing/relay-network.ts",
 		"@fnb/connector-core": "../../../packages/connector-core/src/index.ts",
 		"@fnb/core": "../../../packages/core/src/index.ts",
 		"@fnb/sync": "../../../packages/sync/src/index.ts",
@@ -262,6 +264,7 @@
 			"./http.js": "../../../packages/zalo/src/http.ts",
 			"./proof.js": "../../../packages/zalo/src/proof.ts",
 			"./refusal.js": "../../../packages/zalo/src/refusal.ts",
+			"./relay.js": "../../../packages/zalo/src/relay.ts",
 			"./session.js": "../../../packages/zalo/src/session.ts",
 			"./settings.js": "../../../packages/zalo/src/settings.ts"
 		},
@@ -277,11 +280,13 @@
 			"../http.js": "../../../packages/zalo/src/http.ts",
 			"../oa/api.js": "../../../packages/zalo/src/oa/api.ts",
 			"../proof.js": "../../../packages/zalo/src/proof.ts",
+			"../relay.js": "../../../packages/zalo/src/relay.ts",
 			"../session.js": "../../../packages/zalo/src/session.ts",
 			"../settings.js": "../../../packages/zalo/src/settings.ts",
 			"./environment.js": "../../../packages/zalo/src/testing/environment.ts",
 			"./fake-backend.js": "../../../packages/zalo/src/testing/fake-backend.ts",
-			"./mock-zalo.js": "../../../packages/zalo/src/testing/mock-zalo.ts"
+			"./mock-zalo.js": "../../../packages/zalo/src/testing/mock-zalo.ts",
+			"./relay-network.js": "../../../packages/zalo/src/testing/relay-network.ts"
 		}
 	}
 }

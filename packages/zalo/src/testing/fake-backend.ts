@@ -117,6 +117,10 @@ export interface FakeBackend extends SupabaseBackend {
 	customers(): readonly FakeCustomer[];
 	customerConsents(): readonly FakeCustomerConsent[];
 	appMetadataOf(userId: string): Readonly<Record<string, unknown>> | undefined;
+	/** The relay address zalo_relay_current answers (ADR-057), as if announced now. */
+	setRelay(url: string | null): void;
+	/** The last stored relay announcement. */
+	relay(): { readonly url: string; readonly at: string } | null;
 }
 
 interface PairingCode {
@@ -134,6 +138,7 @@ function textArg(value: unknown): string | null {
 }
 
 export function createFakeBackend(): FakeBackend {
+	let relay: { url: string; at: string } | null = null;
 	const apps: FakeBrandApp[] = [];
 	const members = new Map<string, FakeMember>();
 	const identities = new Map<string, FakeIdentity>();
@@ -620,6 +625,21 @@ export function createFakeBackend(): FakeBackend {
 			if (name === "customer_join") {
 				return customerJoin(args);
 			}
+			if (name === "zalo_relay_current") {
+				return relay?.url ?? null;
+			}
+			if (name === "zalo_relay_announce") {
+				const url = textArg(args.p_url);
+				const at = textArg(args.p_at);
+				if (url === null || at === null) {
+					throw new UpstreamError("supabase", "status", 400);
+				}
+				if (relay !== null && Date.parse(relay.at) >= Date.parse(at)) {
+					return false;
+				}
+				relay = { url, at };
+				return true;
+			}
 			throw new UpstreamError("supabase", "status", 404);
 		},
 		async userEmail(userId) {
@@ -810,6 +830,12 @@ export function createFakeBackend(): FakeBackend {
 		},
 		appMetadataOf(userId) {
 			return metadata.get(userId);
+		},
+		setRelay(url) {
+			relay = url === null ? null : { url, at: new Date().toISOString() };
+		},
+		relay() {
+			return relay;
 		},
 	};
 }

@@ -6,12 +6,17 @@ import {
 	fetchZaloUser,
 	functionBackend,
 	functionSettings,
+	graphFetchFor,
 	legalTextAnswer,
 	NOTICE_VERSION_PATTERN,
 	noticeAnswer,
+	openAnnouncement,
 	PAIRING_CODE_PATTERN,
 	parseSignIn,
 	parseTexts,
+	RelayError,
+	relayKeyOf,
+	relayKeyText,
 	requireBrandApp,
 	type SignInResult,
 	type SupabaseBackend,
@@ -37,6 +42,7 @@ export const DEFAULT_DISPLAY_NAME = "Thành viên";
 export const ACCESS_TOKEN_MAX_LENGTH = 4096;
 export const SHOWN_AT_MAX_LENGTH = 40;
 export const TEXTS_REQUEST_FIELDS: readonly string[] = ["brand", "texts"];
+export const RELAY_REQUEST_FIELDS: readonly string[] = ["relay"];
 
 export interface ZaloSessionDependencies {
 	readonly fetch?: ZaloFetch;
@@ -44,6 +50,7 @@ export interface ZaloSessionDependencies {
 	readonly log?: (line: string) => void;
 	readonly requestId?: () => string;
 	readonly newLoginId?: () => string;
+	readonly now?: () => number;
 }
 
 interface NoticeAcceptance {
@@ -134,6 +141,54 @@ function textsBrand(body: Readonly<Record<string, unknown>>): string {
 		throw new HttpError(400, "invalid_brand");
 	}
 	return brand;
+}
+
+/**
+ * A relay announcing its address (ADR-057): the body is one sealed envelope, opened with the relay key; anything
+ * that does not open, is stale or names an unacceptable address is refused before the database is asked.
+ */
+async function relayAnnouncement(
+	body: Readonly<Record<string, unknown>>,
+	context: RequestContext,
+	dependencies: ZaloSessionDependencies,
+): Promise<Response> {
+	if (
+		typeof body.relay !== "string" ||
+		!Object.keys(body).every((field) => RELAY_REQUEST_FIELDS.includes(field))
+	) {
+		throw new HttpError(400, "invalid_relay");
+	}
+	const keyText = relayKeyText(context.environment, (name) =>
+		context.secret(name),
+	);
+	if (keyText === null) {
+		throw new HttpError(404, "relay_not_configured");
+	}
+	const key = await relayKeyOf(keyText);
+	const now = dependencies.now ?? (() => Date.now());
+	let announced: { readonly url: string; readonly at: number };
+	try {
+		announced = await openAnnouncement(key, body.relay, now());
+	} catch (error) {
+		context.log(
+			`relay announcement refused (${error instanceof RelayError ? error.code : "invalid"})`,
+		);
+		throw new HttpError(401, "relay_refused");
+	}
+	context.protect(announced.url);
+	const backend =
+		dependencies.backend ??
+		functionBackend(context.environment, dependencies.fetch);
+	const stored = await backend.rpc("zalo_relay_announce", {
+		p_url: announced.url,
+		p_at: new Date(announced.at).toISOString(),
+	});
+	context.log(
+		stored === true
+			? "relay announced"
+			: "relay announcement kept the newer address",
+	);
+	return json({ status: "relay_announced" }, 200);
 }
 
 async function publishedTexts(
@@ -269,14 +324,20 @@ async function identify(
 	readonly app: BrandApp;
 	readonly appSecret: string;
 	readonly me: ZaloUser;
+	readonly graphFetch: ZaloFetch | undefined;
 }> {
 	const backend =
 		dependencies.backend ??
 		functionBackend(context.environment, dependencies.fetch);
 	const app = await requireBrandApp(backend, settings, brand);
 	const appSecret = context.secret(app.secretName);
+	const graphFetch = await graphFetchFor(
+		relayKeyText(context.environment, (name) => context.secret(name)),
+		backend,
+		dependencies.fetch,
+	);
 	const me = await fetchZaloUser(
-		{ baseUrl: settings.graphBaseUrl, fetch: dependencies.fetch },
+		{ baseUrl: settings.graphBaseUrl, fetch: graphFetch },
 		accessToken,
 		appSecret,
 	);
@@ -288,7 +349,7 @@ async function identify(
 	if (me.value.name !== null) {
 		context.protect(me.value.name);
 	}
-	return { backend, app, appSecret, me: me.value };
+	return { backend, app, appSecret, me: me.value, graphFetch };
 }
 
 async function zaloSession(
@@ -300,6 +361,9 @@ async function zaloSession(
 	try {
 		const settings = functionSettings(context.environment);
 		const { body } = await readJsonObject(request);
+		if (body.relay !== undefined) {
+			return await relayAnnouncement(body, context, dependencies);
+		}
 		if (body.texts !== undefined) {
 			return await publishedTexts(
 				textsBrand(body),
@@ -326,7 +390,7 @@ async function zaloSession(
 					app: known.app,
 					me: known.me,
 					appSecret: known.appSecret,
-					fetch: dependencies.fetch,
+					fetch: known.graphFetch,
 					newLoginId: dependencies.newLoginId ?? (() => crypto.randomUUID()),
 				},
 				context,

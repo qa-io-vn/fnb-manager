@@ -82,7 +82,7 @@ function assertNothingPersonal(text) {
 		);
 }
 
-test("a token Zalo accepts and the cloud refuses names the wrong App secret, and exits 1", async () => {
+test("a token Zalo accepts and the cloud refuses names both causes, -501 (no relay) and 453 (wrong App secret), and exits 1", async () => {
 	const net = network({
 		session: () => json({ error: "zalo_token_refused", request_id: "r" }, 401),
 	});
@@ -94,12 +94,25 @@ test("a token Zalo accepts and the cloud refuses names the wrong App secret, and
 	assert.equal(code, 1);
 	assert.equal(out[0], "zalo token: valid");
 	assert.equal(out[1], "sign-in: 401 zalo_token_refused");
-	assert.match(out[2], /App secret stored for the brand .* does not match/);
+	assert.match(out[2], /-501 means Zalo refused the cloud server/);
+	assert.match(out[2], /pnpm zalo:relay/);
+	assert.match(out[2], /453 means the App secret stored for the brand/);
 	// the home is never asked for without a session
 	assert.equal(
 		net.calls.some((call) => call.url.endsWith("customer_home")),
 		false,
 	);
+	assertNothingPersonal(text);
+});
+
+test("a relay the cloud cannot reach (502 zalo_unavailable) says to check the relay, and exits 1", async () => {
+	const net = network({
+		session: () => json({ error: "zalo_unavailable", request_id: "r" }, 502),
+	});
+	const { code, out, text } = await run(["--token-file", "t"], ENV, net);
+	assert.equal(code, 1);
+	assert.equal(out[1], "sign-in: 502 zalo_unavailable");
+	assert.match(out.at(-1), /pnpm zalo:relay is running/);
 	assertNothingPersonal(text);
 });
 

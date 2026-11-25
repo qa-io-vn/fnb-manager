@@ -48,3 +48,8 @@ export {
 	type MockZaloUser,
 	startMockZalo,
 } from "./mock-zalo.js";
+export {
+	createRelayNetwork,
+	type RelayNetwork,
+	SYNTHETIC_RELAY_URL,
+} from "./relay-network.js";

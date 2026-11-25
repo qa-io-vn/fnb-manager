@@ -108,7 +108,14 @@ export function diagnose(result) {
 			result.zalo === 0
 		) {
 			lines.push(
-				"Zalo accepts the token but the cloud refuses it: the App secret stored for the brand (ZALO_APP_SECRET_<BRAND> in the function secrets) does not match the brand's Zalo App. Copy the key from the Zalo App's settings and save it again.",
+				"Zalo accepts the token but the cloud refuses it. Read the Graph error in the zalo-session log (Edge Functions > zalo-session > Logs): -501 means Zalo refused the cloud server, which it does outside Vietnam, so start the relay (pnpm zalo:relay, ADR-057); 453 means the App secret stored for the brand (ZALO_APP_SECRET_<BRAND> in the function secrets) does not match the brand's Zalo App, so copy the key from the Zalo App's settings and save it again.",
+			);
+		} else if (
+			result.session.status === 502 &&
+			result.session.code === "zalo_unavailable"
+		) {
+			lines.push(
+				"The cloud could not reach Zalo through the relay: check that pnpm zalo:relay is running and says it announced itself (ADR-057).",
 			);
 		} else if (result.session.code === "unknown_brand") {
 			lines.push(

@@ -22,6 +22,7 @@
 		"db:load-real": "node scripts/load-real-data.mjs",
 		"loyalty:sale": "node scripts/simulate-sale.mjs",
 		"zalo:dev": "node scripts/zalo-dev.mjs",
+		"zalo:relay": "node scripts/zalo-relay.mjs",
 		"docs:check-api": "node scripts/check-api-docs.mjs",
 		"verify": "bash scripts/verify.sh",
 		"test:smoke": "node scripts/regression.mjs --smoke",
