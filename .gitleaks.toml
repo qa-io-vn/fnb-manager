@@ -29,3 +29,10 @@ paths = [
 	'''apps/zalo-customer/src/demo/fixtures\.ts''',
 	'''apps/zalo-staff/src/loyalty/bills-demo\.ts''',
 ]
+
+[[allowlists]]
+description = "The synthetic publishable key of the Zalo relay's command-line tests (ADR-057)"
+targetRules = ["generic-api-key"]
+regexes = [
+	'''sb_publishable_syntheticKey123''',
+]
