@@ -13,6 +13,7 @@ export {
 export {
 	applyBrandTheme,
 	BRAND_THEME_STYLE_ID,
+	BrandBanner,
 	BrandHero,
 	BrandWordmark,
 	currentBrandTheme,

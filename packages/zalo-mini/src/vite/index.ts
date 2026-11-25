@@ -275,7 +275,14 @@ export function loadMiniAppConfig(
 	const rows = parseMiniAppConfiguration(
 		JSON.parse(readFileSync(SYNTHETIC_CONFIGURATION_PATH, "utf8")),
 	);
-	return buildAppConfig(selectMiniAppRow(rows, SYNTHETIC_BRAND, kind));
+	// a browser build may name another synthetic brand (the design checks build brand-2, the one with a theme); a key
+	// the synthetic configuration does not hold keeps the default synthetic brand, as before
+	const named = rows.some(
+		(row) => row.brand_key === settings.brand && row.kind === kind,
+	);
+	return buildAppConfig(
+		selectMiniAppRow(rows, named ? settings.brand : SYNTHETIC_BRAND, kind),
+	);
 }
 
 export function forbiddenImport(source: string): string | null {

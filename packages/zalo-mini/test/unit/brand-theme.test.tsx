@@ -19,6 +19,7 @@ import {
 import {
 	applyBrandTheme,
 	BRAND_THEME_STYLE_ID,
+	BrandBanner,
 	BrandHero,
 	currentBrandTheme,
 } from "../../src/react/brand-theme";
@@ -322,5 +323,49 @@ describe("the brand theme in the running app", () => {
 		unmount();
 		applyBrandTheme(brandThemeOf({ light: LIGHT, dark: DARK }));
 		expect(hero("vi").container.innerHTML).toBe("");
+	});
+
+	// Test design (ISTQB): equivalence partitions of the home banner, theme or none, with or without a line under the
+	// wordmark, room for an overlapping card or not, and the two languages; plus a security case: the line under the
+	// wordmark (a customer's Zalo name) is shown as text, never as markup.
+	function banner(
+		language: "vi" | "en",
+		props: { readonly overlap?: boolean; readonly line?: string } = {},
+	) {
+		return render(
+			<I18nProvider language={language} catalogs={{ vi: {}, en: {} }}>
+				<BrandBanner overlap={props.overlap ?? false}>{props.line}</BrandBanner>
+			</I18nProvider>,
+		);
+	}
+
+	it("draws the full-width banner with the small wordmark, the line, the tagline and the kicker", () => {
+		applyBrandTheme(brandThemeOf(VALID));
+		const { unmount } = banner("vi", { line: "Xin chào, Khách thử!" });
+		const header = screen.getByTestId("brand-banner");
+		expect(header.tagName).toBe("HEADER");
+		expect(header.style.background).toBe("var(--brand-hero)");
+		expect(header.style.color).toBe("var(--brand-hero-ink)");
+		expect(screen.getByTestId("brand-wordmark").textContent).toBe("ABCD");
+		expect(screen.getByText("Xin chào, Khách thử!")).toBeTruthy();
+		expect(screen.getByText("Một quán thử, chỉ để kiểm tra.")).toBeTruthy();
+		expect(screen.getByText("Test line")).toBeTruthy();
+		expect(header.className).toContain("pb-7");
+		unmount();
+		banner("en", { overlap: true });
+		expect(screen.getByText("A test shop, for checks only.")).toBeTruthy();
+		expect(screen.getByTestId("brand-banner").className).toContain("pb-16");
+	});
+
+	it("shows a name with markup in it as plain text", () => {
+		applyBrandTheme(brandThemeOf(VALID));
+		const name = '<img src="x" onerror="alert(1)">';
+		const { container } = banner("vi", { line: name });
+		expect(screen.getByText(name)).toBeTruthy();
+		expect(container.querySelector("img")).toBeNull();
+	});
+
+	it("draws no banner without a theme, so a brand without one keeps the plain page", () => {
+		expect(banner("vi", { line: "Xin chào!" }).container.innerHTML).toBe("");
 	});
 });

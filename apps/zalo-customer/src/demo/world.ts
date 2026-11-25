@@ -67,10 +67,17 @@ export const DEMO_NETWORKS = [
 ] as const;
 export type DemoNetwork = (typeof DEMO_NETWORKS)[number];
 
+export type DemoSessionRefusal = "never" | "once" | "always";
+
 export interface DemoSettings {
 	readonly member: boolean;
 	readonly marketing: boolean;
 	readonly sessionFailure: boolean;
+	/**
+	 * The sign-in is refused the way the cloud refuses a Zalo token it cannot check (401 zalo_token_refused, the answer
+	 * a wrong Zalo App secret gives, G-109): `?session=refused` every time, `?session=refused-once` only the first time.
+	 */
+	readonly sessionRefused: DemoSessionRefusal;
 	readonly claimsUsed: number;
 	readonly delayMs: number;
 	readonly programme: DemoProgrammeState;
@@ -94,6 +101,7 @@ export const DEMO_DEFAULTS: DemoSettings = {
 	member: false,
 	marketing: false,
 	sessionFailure: false,
+	sessionRefused: "never",
 	claimsUsed: 0,
 	delayMs: 0,
 	programme: "active",
@@ -135,6 +143,12 @@ export function demoSettingsFrom(search: string): DemoSettings {
 		member,
 		marketing: member && params.get("marketing") === "1",
 		sessionFailure: params.get("session") === "failed",
+		sessionRefused:
+			params.get("session") === "refused"
+				? "always"
+				: params.get("session") === "refused-once"
+					? "once"
+					: "never",
 		claimsUsed:
 			Number.isInteger(claims) && claims > 0
 				? Math.min(claims, MAX_CLAIMS_PER_DAY)
@@ -608,9 +622,17 @@ export function createDemoWorld(
 		});
 	};
 
+	let sessionRefusals = 0;
 	const sessionFetch: typeof fetch = async (_input, init) => {
 		await pause();
 		if (settings.sessionFailure) throw new TypeError("demo network failure");
+		if (
+			settings.sessionRefused === "always" ||
+			(settings.sessionRefused === "once" && sessionRefusals === 0)
+		) {
+			sessionRefusals += 1;
+			return json({ error: "zalo_token_refused", request_id: "demo" }, 401);
+		}
 		const body: unknown =
 			typeof init?.body === "string" ? JSON.parse(init.body) : null;
 		if (typeof body !== "object" || body === null)

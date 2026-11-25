@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { type BrandTheme, brandThemeCss } from "../app-config";
 import { useI18n } from "./i18n";
 
@@ -69,6 +70,61 @@ export function BrandWordmark({
 				</span>
 			))}
 		</span>
+	);
+}
+
+/**
+ * The full-width brand header of a home screen: the brand's hero colour from edge to edge with rounded lower corners,
+ * the small tile wordmark, an optional line under it (a greeting), the tagline and the kicker. `overlap` leaves room
+ * at the bottom for the first card to sit over the banner. Nothing without a brand theme.
+ */
+export function BrandBanner({
+	children,
+	overlap = false,
+}: {
+	readonly children?: ReactNode;
+	readonly overlap?: boolean;
+} = {}) {
+	const { language } = useI18n();
+	const theme = current;
+	if (theme === null) return null;
+	const tagline = language === "en" ? theme.taglineEn : theme.taglineVi;
+	return (
+		<header
+			className={`flex flex-col gap-4 rounded-b-[28px] px-5 pt-6 ${overlap ? "pb-16" : "pb-7"}`}
+			style={{
+				background: "var(--brand-hero)",
+				color: "var(--brand-hero-ink)",
+			}}
+			data-testid="brand-banner"
+		>
+			<div className="flex items-center gap-3">
+				{theme.wordmark === null ? null : (
+					<BrandWordmark letters={theme.wordmark} size="small" />
+				)}
+				{children === undefined ? null : (
+					<div className="min-w-0 flex-1 text-base font-semibold">
+						{children}
+					</div>
+				)}
+			</div>
+			{tagline === null ? null : (
+				<p className="text-2xl font-extrabold leading-tight">{tagline}</p>
+			)}
+			{theme.kicker === null ? null : (
+				<p
+					className="flex items-center gap-2 text-xs font-semibold tracking-[0.2em] uppercase"
+					style={{ color: "var(--brand-tile)" }}
+				>
+					<span
+						aria-hidden="true"
+						className="h-0.5 w-5 rounded-full"
+						style={{ background: "var(--brand-tile)" }}
+					/>
+					{theme.kicker}
+				</p>
+			)}
+		</header>
 	);
 }
 

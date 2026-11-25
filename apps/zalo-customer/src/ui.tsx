@@ -2,19 +2,49 @@ import { useI18n } from "@fnb/zalo-mini/react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Failure } from "./data/source";
+import { AlertIcon } from "./icons";
 
 const focusRing =
 	"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
-export const primaryButton = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 text-base font-semibold text-accent-ink disabled:opacity-60 ${focusRing}`;
+const press = "transition-transform active:scale-[0.98]";
 
-export const secondaryButton = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-line px-4 text-base text-ink disabled:opacity-60 ${focusRing}`;
+export const primaryButton = `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-accent px-5 text-base font-semibold text-accent-ink shadow-sm disabled:opacity-60 disabled:active:scale-100 ${press} ${focusRing}`;
 
-export const dangerButton = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-line px-4 text-base text-negative disabled:opacity-60 ${focusRing}`;
+export const secondaryButton = `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface-raised px-5 text-base font-medium text-ink disabled:opacity-60 disabled:active:scale-100 ${press} ${focusRing}`;
+
+export const dangerButton = `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line px-5 text-base text-negative disabled:opacity-60 ${press} ${focusRing}`;
 
 export const quietButton = `inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl px-3 text-base text-ink underline underline-offset-4 ${focusRing}`;
 
-export const rowButton = `flex min-h-11 w-full items-center gap-3 rounded-xl bg-surface-raised px-4 py-3 text-left text-ink ${focusRing}`;
+export const rowButton = `flex min-h-11 w-full items-center gap-3 rounded-2xl border border-line/60 bg-surface-raised px-4 py-3.5 text-left text-ink ${press} ${focusRing}`;
+
+/** A round tinted holder for a line icon, in the brand's tile colour. */
+export function IconBadge({ children }: { readonly children: ReactNode }) {
+	return (
+		<span
+			aria-hidden="true"
+			className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-ink"
+		>
+			{children}
+		</span>
+	);
+}
+
+/** The heading of a home section, with an optional count or note on the right. */
+export function SectionTitle({
+	id,
+	children,
+}: {
+	readonly id: string;
+	readonly children: ReactNode;
+}) {
+	return (
+		<h2 id={id} className="px-1 text-lg font-bold text-ink">
+			{children}
+		</h2>
+	);
+}
 
 export const fieldClass =
 	"min-h-11 w-full rounded-xl border border-line bg-surface-raised px-4 text-base text-ink";
@@ -55,7 +85,7 @@ export function Card({
 		<section
 			data-testid={testId}
 			aria-labelledby={labelledBy}
-			className="flex flex-col gap-3 rounded-2xl bg-surface-raised p-4"
+			className="flex flex-col gap-3 rounded-3xl border border-line/60 bg-surface-raised p-5 shadow-sm"
 		>
 			{children}
 		</section>
@@ -77,6 +107,21 @@ export function Loading({ label }: { readonly label?: string }) {
 			/>
 			{label ?? t("customer.loading")}
 		</p>
+	);
+}
+
+/** Grey placeholders in the shape of the home card and two rows while the first answer is on its way. */
+export function HomeSkeleton() {
+	return (
+		<div
+			aria-hidden="true"
+			className="flex animate-pulse flex-col gap-3 px-4"
+			data-testid="home-skeleton"
+		>
+			<div className="h-44 rounded-3xl bg-surface-raised shadow-sm" />
+			<div className="h-20 rounded-2xl bg-surface-raised" />
+			<div className="h-20 rounded-2xl bg-surface-raised" />
+		</div>
 	);
 }
 
@@ -107,18 +152,29 @@ export function Failed({
 		detail !== undefined &&
 		import.meta.env.VITE_MINI_APP_STAGE === "development";
 	return (
-		<div className="flex flex-col gap-3 px-4 py-6" data-testid="failed">
-			<p role="alert" className="text-base text-ink">
-				{t(failureKey(failure))}
-			</p>
-			{showDetail ? (
-				<p className="text-sm text-ink-muted" data-testid="failed-detail">
-					{detail}
+		<div className="px-4 py-2" data-testid="failed">
+			<div className="flex flex-col items-center gap-3 rounded-3xl border border-line/60 bg-surface-raised px-5 py-6 text-center shadow-sm">
+				<span
+					aria-hidden="true"
+					className="flex size-12 items-center justify-center rounded-full bg-warning-soft text-ink"
+				>
+					<AlertIcon />
+				</span>
+				<p role="alert" className="text-base text-ink">
+					{t(failureKey(failure))}
 				</p>
-			) : null}
-			<button type="button" className={secondaryButton} onClick={onRetry}>
-				{t("customer.retry")}
-			</button>
+				{showDetail ? (
+					<p
+						className="rounded-lg bg-surface-sunken px-2 py-1 font-mono text-sm text-ink"
+						data-testid="failed-detail"
+					>
+						{detail}
+					</p>
+				) : null}
+				<button type="button" className={primaryButton} onClick={onRetry}>
+					{t("customer.retry")}
+				</button>
+			</div>
 		</div>
 	);
 }
@@ -127,7 +183,7 @@ export function NoStores() {
 	const { t } = useI18n();
 	return (
 		<p
-			className="rounded-xl bg-neutral-soft px-4 py-3 text-base text-ink"
+			className="rounded-2xl bg-neutral-soft px-4 py-3 text-base text-ink"
 			data-testid="no-stores"
 		>
 			{t("customer.noStores")}

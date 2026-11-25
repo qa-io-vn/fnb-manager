@@ -77,6 +77,21 @@ describe("Mini App build settings", () => {
 		).toThrow("a Zalo build needs the generated app-config.json of its brand");
 	});
 
+	it("build another synthetic brand a browser build names, and keep the default for a key it does not hold", () => {
+		const themed = loadMiniAppConfig(
+			miniAppSettings({ VITE_BRAND_KEY: "brand-2" }, "build", appRoot),
+			"customer",
+		);
+		expect(themed.app.title).toBe("Thành viên Quán Mẫu Hai");
+		expect(themed.theme?.wordmark).toBe("QMH");
+		expect(
+			loadMiniAppConfig(
+				miniAppSettings({ VITE_BRAND_KEY: "brand-9" }, "build", appRoot),
+				"customer",
+			).app.title,
+		).toBe("Thành viên Quán Mẫu Một");
+	});
+
 	it("read the generated app-config.json when it exists", () => {
 		const path = join(appRoot, "app-config.json");
 		const generated = buildAppConfig({
