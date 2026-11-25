@@ -67,6 +67,7 @@ describe("demo settings", () => {
 			member: true,
 			marketing: true,
 			sessionFailure: true,
+			sessionRefused: "never",
 			claimsUsed: MAX_CLAIMS_PER_DAY,
 			delayMs: 10_000,
 			programme: "active",
@@ -102,6 +103,43 @@ describe("demo settings", () => {
 			"active",
 		);
 		expect(demoSettingsFrom("?programme=draft").programme).toBe("active");
+		expect(demoSettingsFrom("?session=refused").sessionRefused).toBe("always");
+		expect(demoSettingsFrom("?session=refused-once").sessionRefused).toBe(
+			"once",
+		);
+		expect(demoSettingsFrom("?session=refused-twice").sessionRefused).toBe(
+			"never",
+		);
+		expect(demoSettingsFrom("?session=failed").sessionRefused).toBe("never");
+	});
+
+	// G-109: the cloud refusing a Zalo token it cannot check, as a state transition: refused every time, or refused
+	// once and then signed in
+	it("refuses the sign-in like the cloud does with a wrong App secret, always or only the first time", async () => {
+		const ask = (world: ReturnType<typeof createDemoWorld>) =>
+			world.sessionFetch("stand-in:zalo-session", {
+				method: "POST",
+				body: JSON.stringify({ kind: "customer", access_token: "t" }),
+			});
+		const always = createDemoWorld({
+			...DEMO_DEFAULTS,
+			sessionRefused: "always",
+		});
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const refused = await ask(always);
+			expect(refused.status).toBe(401);
+			expect(await refused.json()).toEqual({
+				error: "zalo_token_refused",
+				request_id: "demo",
+			});
+		}
+		const once = createDemoWorld({ ...DEMO_DEFAULTS, sessionRefused: "once" });
+		expect((await ask(once)).status).toBe(401);
+		const second = await ask(once);
+		expect(second.status).toBe(200);
+		expect((await second.json()).status).toBe("customer");
+		const never = createDemoWorld(DEMO_DEFAULTS);
+		expect((await ask(never)).status).toBe(200);
 	});
 });
 
