@@ -490,6 +490,13 @@ insert into matrix (fn, label, statement, expect) values
   '{"*": "DENY", "service": "GATE"}'),
 ('zalo_session_visit', 'zalo_session_visit',
   $$select public.zalo_session_visit('{app_a}'::uuid, 'staff')::text$$,
+  '{"*": "DENY", "service": "GATE"}'),
+-- ADR-057: the Zalo Graph relay's address, written and read only by zalo-session and zalo-phone.
+('zalo_relay_announce', 'zalo_relay_announce',
+  $$select public.zalo_relay_announce('https://synthetic-relay-120.trycloudflare.com', now())::text$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('zalo_relay_current', 'zalo_relay_current',
+  $$select coalesce(public.zalo_relay_current(), 'none')$$,
   '{"*": "DENY", "service": "GATE"}');
 
 insert into ph select 'customer_2_u', customer_2_u::text from fx;
