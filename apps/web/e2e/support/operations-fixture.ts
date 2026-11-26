@@ -359,7 +359,7 @@ export async function jpegFromBrowser(
 		if (context === null) throw new Error("no canvas");
 		context.fillStyle = "#4d7c8a";
 		context.fillRect(0, 0, 48, 32);
-		context.fillStyle = "#f2c14e";
+		context.fillStyle = "#e3a63b";
 		context.fillRect(8, 8, 32, 16);
 		return canvas.toDataURL("image/jpeg", 0.8);
 	});
