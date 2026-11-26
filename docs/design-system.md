@@ -44,7 +44,7 @@ Tokens are named for their role, never for their colour: `accent`, not `green`. 
 
 ### 2.4 Brand themes of the Mini Apps
 
-The web app always uses the tokens above. Each brand's Mini Apps may carry the brand's own identity on top of them (ADR-056): an optional `theme` in the brand's Mini App row (the private brand file, or `packages/zalo-mini/config/synthetic-brands.json` for the two synthetic brands) with a light and a dark palette of twelve roles and, optionally, a tile wordmark of one to four letters, a tagline in Vietnamese and English and a short kicker line.
+The web app always uses the tokens above. Each brand's Mini Apps may carry the brand's own identity on top of them (ADR-056, extended by ADR-059): an optional `theme` in the brand's Mini App row (the private brand file, or `packages/zalo-mini/config/synthetic-brands.json` for the three synthetic brands) with a light and a dark palette of twelve roles and, optionally, further colour roles, a shape, a body size, a tile wordmark of one to four letters, a tagline in Vietnamese and English and a short kicker line.
 
 | Role | Overrides | Used for |
 |---|---|---|
@@ -54,7 +54,41 @@ The web app always uses the tokens above. Each brand's Mini Apps may carry the b
 
 The customer home (2026-11-25) is built from these parts: the banner; the programme card (a kicker, the programme's name, the reward line in `highlight`, a row of coffee cups one per stamp of a full card, filled with the member's stamps, the rules in a closed disclosure, then the actions); for a member, three shortcut tiles (member code, rewards, voucher wallet); store cards with an icon, today's hours behind a coloured dot and the address; menu highlights; the legal buttons. Buttons are 48 px pills, cards have 24 px corners and a hairline border, and the loading state shows card-shaped placeholders. `zalo-customer:e2e/design.spec.ts` checks it on a themed synthetic brand in light, dark and WebKit.
 
-`app-config` refuses a theme that misses a role, holds a colour that is not `#RRGGBB` or fails a contrast rule in either palette (`THEME_CONTRAST_RULES` in `packages/zalo-mini/src/app-config/index.ts`: 4.5:1 for text, 3:1 for large bold letters and interface parts). The colours reach the app through the build config and are applied at start-up as one style sheet (`html:root`, which outranks the tokens' `:root`; the dark palette under `prefers-color-scheme: dark`), because Zalo does not upload `index.html`. A brand without a theme looks exactly as before. The deployed `app-config.json` never carries the theme.
+#### Optional roles, shape and type (ADR-059)
+
+Each group of optional colour roles is all or nothing and is set in the light and the dark palette alike; the shell's style sheet (`packages/zalo-mini/src/styles/mini-app.css`) gives every role a default made of the design tokens and the twelve roles, so a brand that sets none is unchanged.
+
+| Group | Roles | Custom properties and utilities | Used for |
+|---|---|---|---|
+| line | `line_strong` | `--line-strong`, `border-line-strong` | the edge of fields, steppers and idle option pills (3:1) |
+| badge | `badge`, `badge_ink` | `--badge`, `--badge-ink`, `bg-badge`, `text-badge-ink` | pills and shortcuts that must stand out |
+| status | `positive`, `positive_soft`, `negative`, `negative_soft`, `warning`, `warning_soft`, `neutral_soft` | the tokens' `--positive` and the others, `bg-negative-soft` | text and boxes of a status; a brand without the group is checked against the tokens' own status colours |
+| inverse | `inverse`, `inverse_ink` | `--inverse`, `bg-inverse`, `text-inverse-ink` | a bar or a toast on the opposite scheme |
+| tones | `tone_n`, `tone_n_ink`, `tone_n_soft` for n = 1 to 4, numbered from 1 | `--tone-n`, `bg-tone-1`, `text-tone-1-ink`, `bg-tone-1-soft` | the tone of a chip, a section or an item without a photo; a tone is never the only sign |
+| plate | `art_plate` | `--art-plate`, `bg-art-plate` | the plate behind a brand's picture |
+
+`app-config` checks 47 contrast rules in all (`THEME_CONTRAST_RULES`; the table of the design spec is a unit test over the synthetic brand-3, which also pins the pairs the handbook forbids). `highlight` is also the colour utility `text-highlight` (the accent when a brand sets none).
+
+`shape` and `type` are optional, and each field that is not set keeps today's look, because every utility falls back to the value of the literal class it replaced:
+
+| Field | Values | Custom properties | Utilities (today's value) |
+|---|---|---|---|
+| `shape.card` | 0 to 32, steps of 0.5 | `--radius-card` | `rounded-card` (1.5 rem), `rounded-card-2xl` (1 rem), `rounded-card-xl` (0.75 rem): cards, rows and boxes |
+| `shape.panel` | 0 to 32 | `--radius-panel` | `rounded-panel` (1 rem), `rounded-b-panel` (28 px): the banners |
+| `shape.control` | 0 to 24 or `"pill"` | `--radius-control` | `rounded-control` (a pill), `rounded-control-xl` (0.75 rem): buttons and chips |
+| `shape.field` | 0 to 32 | `--radius-field` | `rounded-field` (0.75 rem): text fields and selects |
+| `shape.tile` | 0 to 32 | `--radius-tile` | `rounded-tile` (0.75 rem): photos, icon tiles and plates |
+| `shape.sheet` | 0 to 40 | `--radius-sheet` | `rounded-t-sheet` (1 rem): the top corners of a sheet |
+| `shape.border` | 1, 1.5 or 2 | `--card-border`, `--field-border` | `border-card`, `border-field` (1 px) |
+| `shape.outline` | 1.5 or 2 | `--outline-width`, `--outline-color` (the ink), `--outline-danger-color` (the negative colour) | `border-outline` (1 px), `border-edge`, `border-edge-danger` (the line colour): secondary buttons, idle chips, steppers |
+| `shape.shadow` | true or false | `--card-shadow` (none) | `shadow-card` (today's small shadow) |
+| `type.body` | 15 or 16 | `--text-body`, `--text-body--line-height` (1.45 at 15) | `text-body` (1 rem), also `kicker`, `font-display` and `font-hand` (the system font until a brand loads its own) |
+
+The screens use these utilities instead of `rounded-xl`, `border`, `shadow-sm` and `text-base`; text fields keep 16 px (iOS zooms a focused field below that), and small marks such as a checkbox corner and `rounded-full` dots stay literal. The style sheet writes only `#RRGGBB` values, bounded numbers and the word `pill`. `e2e/style-baseline.json` of each app records the look of the unthemed screens (the corner radii, border widths, shadows and font sizes of every drawn element), and the screen check compares every screen with it, so a refactor cannot change an unthemed build or a brand without a shape.
+
+Prices, times and dates are written by `@fnb/zalo-mini/format` (`formatVnd` 35.000đ, `formatVndDelta` +5.000đ, `formatTimeRange` 07:00–23:00, `formatDate` 26/11/2026), and a price is shown only by `PriceText`, an element marked `data-price`. The kit (`StatusPill`, `Stepper`, `OptionPills`, `ChipGroup`, `StickyActionBar`, `Toast`, `kitButton`) reads the roles and the shape tokens; a Development build shows it on one screen, `?route=/kit`, which the brand-3 checks use.
+
+`app-config` refuses a theme that misses a role, holds a colour that is not `#RRGGBB` or fails a contrast rule in either palette (`THEME_CONTRAST_RULES` in `packages/zalo-mini/src/app-config/index.ts`: 4.5:1 for text, 3:1 for large bold letters and interface parts), holds a shape or a type value outside its bounds, or an unknown field. The colours reach the app through the build config and are applied at start-up as one style sheet (`html:root`, which outranks the tokens' `:root`; the dark palette under `prefers-color-scheme: dark`), because Zalo does not upload `index.html`. A brand without a theme looks exactly as before. The deployed `app-config.json` never carries the theme.
 
 ## 3. Components
 

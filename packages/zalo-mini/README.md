@@ -24,6 +24,33 @@ Last updated 2026-11-19
 
 `zmp-sdk` 2.53.3 and `zmp-ui` 1.11.15-2 are pinned exactly. The session answer the client reads is exactly what `zalo-session` answers ([docs/api.md](../../docs/api.md#zalo-session)): `status` `bound` with `access_token`, `refresh_token`, `expires_at` in seconds and `member` with `display_name`, `role`, `stores` and, since #213, `tenant_id`; `status` `unpaired`, since #213 with the published staff `notice` and, for a pairing request, a `reason` (`code_refused`, `wait` with `retry_after` in seconds, `notice_outdated`); or `status` `notice_required` with the `notice`. It maps them to the states `signed-in`, `unpaired` (with `codeRejected`, `notice`, `reason`, `retryAfterSeconds`) and `notice-required`. Its refusals are `{error, request_id}` with a fixed status per code. The pairing screens that call `pair` are the staff app's (#215, in progress); until then `SessionScreen`'s code entry calls `bind`.
 
+## The brand theme
+
+A `theme` in a Mini App row (the owner's private brand file, or `config/synthetic-brands.json`) looks like this; the values are the synthetic brand-3's, not any real brand's. Every field after `dark` is optional, and the file is checked against WCAG 2.2 AA at every build (`app-config --config <file> --list` reads it too).
+
+```jsonc
+"theme": {
+	"light": {
+		"surface": "#F5F0F6", "surface_raised": "#FFFFFF", "surface_sunken": "#E6DCE9", "ink": "#231A2B", "ink_muted": "#6C5D77",
+		"line": "#DCCFE0", "accent": "#6B2D7B", "accent_ink": "#FFFFFF", "highlight": "#6B2D7B",
+		"hero": "#6B2D7B", "hero_ink": "#F5F0F6", "tile": "#F5F0F6",
+		// optional groups, each all or nothing, the same in "dark":
+		"line_strong": "#9684A3", "badge": "#F0B84B", "badge_ink": "#231A2B",
+		"positive": "#347B58", "positive_soft": "#E2F0E8", "negative": "#A8232F", "negative_soft": "#F9E3E5",
+		"warning": "#7F5A00", "warning_soft": "#FBF0CF", "neutral_soft": "#ECE6EE",
+		"inverse": "#231A2B", "inverse_ink": "#F5F0F6",
+		"tone_1": "#7A3B8F", "tone_1_ink": "#FFFFFF", "tone_1_soft": "#EFE2F3",
+		"art_plate": "#F5F0F6"
+	},
+	"dark": { /* the same keys */ },
+	"wordmark": "QMB", "tagline_vi": "…", "tagline_en": "…", "kicker": "…",
+	"shape": { "card": 20, "panel": 28, "control": 14, "field": 10, "tile": 8, "sheet": 28, "border": 1.5, "outline": 2, "shadow": false },
+	"type": { "body": 15 }
+}
+```
+
+`app-config` refuses a colour that is not `#RRGGBB`, a group set in part or in one palette only, tones that are not numbered from 1 without a gap, an unknown field, a contrast below its rule and a shape or type value outside its bounds (`validateBrandThemeRow` names the field). A brand without the status group is checked against the design tokens' status colours. [docs/design-system.md](../../docs/design-system.md#24-brand-themes-of-the-mini-apps) lists every role, custom property and utility.
+
 ## The build plugin
 
 `miniApp()` in an app's `vite.config.ts` reads these variables:
