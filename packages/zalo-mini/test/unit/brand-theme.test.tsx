@@ -7,6 +7,7 @@ import {
 	brandThemeOf,
 	buildAppConfig,
 	buildThemeOf,
+	DEFAULT_STATUS_COLOURS,
 	type MiniAppRow,
 	readAppConfig,
 	THEME_CONTRAST_RULES,
@@ -87,6 +88,26 @@ function withLight(changes: Partial<Record<string, string>>): unknown {
 	return { ...THEME, light: { ...LIGHT, ...changes } };
 }
 
+// The status colours of a brand that draws its boxes on white: the soft ones are white, so a test of one boundary does
+// not meet the status rules that a brand without a status group gets from the design tokens.
+const STATUS_ON_WHITE = {
+	positive: "#1B7A48",
+	positive_soft: "#FFFFFF",
+	negative: "#B3261E",
+	negative_soft: "#FFFFFF",
+	warning: "#8A5A00",
+	warning_soft: "#FFFFFF",
+	neutral_soft: "#FFFFFF",
+} as const;
+
+function withWhiteLight(changes: Partial<Record<string, string>>): unknown {
+	return {
+		...THEME,
+		light: { ...LIGHT, ...STATUS_ON_WHITE, ...changes },
+		dark: { ...DARK, ...DEFAULT_STATUS_COLOURS.dark },
+	};
+}
+
 describe("a brand theme in the configuration", () => {
 	it("accepts a complete theme, upper-cases the colours and the wordmark", () => {
 		const problems: string[] = [];
@@ -140,17 +161,23 @@ describe("a brand theme in the configuration", () => {
 			surface_raised: "#FFFFFF",
 			surface_sunken: "#FFFFFF",
 		};
-		expect(problemsOf(withLight({ ...white, ink_muted: "#767676" }))).toEqual(
-			[],
+		expect(
+			problemsOf(withWhiteLight({ ...white, ink_muted: "#767676" })),
+		).toEqual([]);
+		// on white, #777777 fails every rule of secondary text: the page, a card, a sunken panel and the three boxes
+		const below = problemsOf(
+			withWhiteLight({ ...white, ink_muted: "#777777" }),
 		);
-		const below = problemsOf(withLight({ ...white, ink_muted: "#777777" }));
-		expect(below).toHaveLength(2);
+		expect(below).toHaveLength(6);
 		expect(below[0]).toMatch(
 			/^theme\.light: ink_muted on surface \(secondary text on the page\) has a contrast of 4\.4\d:1, below 4\.5:1$/,
 		);
 		expect(
+			below.every((problem) => problem.startsWith("theme.light: ink_muted on")),
+		).toBe(true);
+		expect(
 			problemsOf(
-				withLight({
+				withWhiteLight({
 					...white,
 					ink: "#000000",
 					accent: "#949494",
@@ -158,9 +185,10 @@ describe("a brand theme in the configuration", () => {
 				}),
 			),
 		).toEqual([]);
+		// #959595 is just below 3:1 against the three white surfaces: the rules of the page, a card and a sunken panel fail
 		expect(
 			problemsOf(
-				withLight({
+				withWhiteLight({
 					...white,
 					ink: "#000000",
 					accent: "#959595",
@@ -169,6 +197,12 @@ describe("a brand theme in the configuration", () => {
 			),
 		).toEqual([
 			expect.stringMatching(/^theme\.light: accent on surface .* below 3:1$/),
+			expect.stringMatching(
+				/^theme\.light: accent on surface_raised .* below 3:1$/,
+			),
+			expect.stringMatching(
+				/^theme\.light: accent on surface_sunken .* below 3:1$/,
+			),
 		]);
 	});
 
@@ -177,12 +211,20 @@ describe("a brand theme in the configuration", () => {
 			THEME_TOKENS.map((token) => [token, "#808080"]),
 		);
 		const problems = problemsOf({ light: LIGHT, dark: flat });
-		expect(problems).toHaveLength(THEME_CONTRAST_RULES.length);
-		for (const rule of THEME_CONTRAST_RULES) {
+		const required = new Set<string>(THEME_TOKENS);
+		const ofRequiredRoles = THEME_CONTRAST_RULES.filter(
+			(rule) => required.has(rule.foreground) && required.has(rule.background),
+		);
+		for (const rule of ofRequiredRoles) {
 			expect(problems).toContain(
 				`theme.dark: ${rule.foreground} on ${rule.background} (${rule.use}) has a contrast of 1.00:1, below ${rule.minimum}:1`,
 			);
 		}
+		// the status rules answer too, with the design tokens' status colours, and say so
+		expect(problems.length).toBeGreaterThan(ofRequiredRoles.length);
+		expect(
+			problems.filter((problem) => problem.includes("(default)")),
+		).toHaveLength(problems.length - ofRequiredRoles.length);
 	});
 
 	it("bounds the wordmark (1 to 4 letters or digits) and the texts", () => {

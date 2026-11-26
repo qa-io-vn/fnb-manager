@@ -377,7 +377,80 @@ export const THEME_TOKENS = [
 
 export type ThemeToken = (typeof THEME_TOKENS)[number];
 
-export type BrandPalette = Readonly<Record<ThemeToken, string>>;
+// Optional colour roles. Each group is all or nothing, and a theme sets the same groups in its light and its dark
+// palette. A brand that sets none of them keeps today's look: the design tokens answer for the status colours, and the
+// style sheet of the shell (`styles/mini-app.css`) gives every other role a default made of the roles above.
+export const STATUS_TOKENS = [
+	"positive",
+	"positive_soft",
+	"negative",
+	"negative_soft",
+	"warning",
+	"warning_soft",
+	"neutral_soft",
+] as const;
+
+export type StatusToken = (typeof STATUS_TOKENS)[number];
+
+export const OPTIONAL_THEME_GROUPS = {
+	line_strong: ["line_strong"],
+	badge: ["badge", "badge_ink"],
+	status: STATUS_TOKENS,
+	inverse: ["inverse", "inverse_ink"],
+	tone_1: ["tone_1", "tone_1_ink", "tone_1_soft"],
+	tone_2: ["tone_2", "tone_2_ink", "tone_2_soft"],
+	tone_3: ["tone_3", "tone_3_ink", "tone_3_soft"],
+	tone_4: ["tone_4", "tone_4_ink", "tone_4_soft"],
+	art_plate: ["art_plate"],
+} as const;
+
+export type OptionalThemeGroup = keyof typeof OPTIONAL_THEME_GROUPS;
+
+export type OptionalThemeToken =
+	(typeof OPTIONAL_THEME_GROUPS)[OptionalThemeGroup][number];
+
+export const OPTIONAL_THEME_GROUP_NAMES = Object.keys(
+	OPTIONAL_THEME_GROUPS,
+) as readonly OptionalThemeGroup[];
+
+export const OPTIONAL_THEME_TOKENS: readonly OptionalThemeToken[] =
+	OPTIONAL_THEME_GROUP_NAMES.flatMap(
+		(group): readonly OptionalThemeToken[] => OPTIONAL_THEME_GROUPS[group],
+	);
+
+/** A role of a palette: one of the twelve required colours or one of the optional ones. */
+export type ThemeRole = ThemeToken | OptionalThemeToken;
+
+export type BrandPalette = Readonly<Record<ThemeToken, string>> &
+	Readonly<Partial<Record<OptionalThemeToken, string>>>;
+
+/**
+ * What a brand without a status group gets: the design tokens' status colours (`packages/design-tokens`, kept in step
+ * with them by a unit test). The brand's surfaces and ink are checked against these, because the status colours are
+ * drawn on them whether or not the brand chose its own.
+ */
+export const DEFAULT_STATUS_COLOURS: Readonly<
+	Record<"light" | "dark", Readonly<Record<StatusToken, string>>>
+> = {
+	light: {
+		positive: "#1B7A48",
+		positive_soft: "#DCF2E4",
+		negative: "#B3261E",
+		negative_soft: "#F9DCD9",
+		warning: "#8A5A00",
+		warning_soft: "#FBE9C4",
+		neutral_soft: "#E8E4DC",
+	},
+	dark: {
+		positive: "#6FD39C",
+		positive_soft: "#163826",
+		negative: "#FF8F86",
+		negative_soft: "#44201D",
+		warning: "#F0C060",
+		warning_soft: "#3D2E0C",
+		neutral_soft: "#2D2B31",
+	},
+};
 
 export interface BrandTheme {
 	readonly light: BrandPalette;
@@ -392,8 +465,8 @@ export interface BrandTheme {
 
 /** The theme as it is written in a configuration row (snake case). */
 export interface BrandThemeRow {
-	readonly light: Readonly<Record<ThemeToken, string>>;
-	readonly dark: Readonly<Record<ThemeToken, string>>;
+	readonly light: BrandPalette;
+	readonly dark: BrandPalette;
 	readonly wordmark?: string;
 	readonly tagline_vi?: string;
 	readonly tagline_en?: string;
@@ -401,86 +474,122 @@ export interface BrandThemeRow {
 }
 
 export interface ContrastRule {
-	readonly foreground: ThemeToken;
-	readonly background: ThemeToken;
+	readonly foreground: ThemeRole;
+	readonly background: ThemeRole;
 	readonly minimum: number;
 	readonly use: string;
 }
 
-// 4.5:1 for body text, 3:1 for large bold text and for interface parts (WCAG 2.2 SC 1.4.3 and 1.4.11)
+function rule(
+	foreground: ThemeRole,
+	background: ThemeRole,
+	minimum: number,
+	use: string,
+): ContrastRule {
+	return { foreground, background, minimum, use };
+}
+
+const TONE_NUMBERS = [1, 2, 3, 4] as const;
+
+function toneRules(n: (typeof TONE_NUMBERS)[number]): ContrastRule[] {
+	const tone = `tone_${n}` as const;
+	return [
+		rule(tone, "surface", 4.5, `the text of tone ${n} on the page`),
+		rule(tone, "surface_raised", 4.5, `the text of tone ${n} on a card`),
+		rule(`${tone}_ink`, tone, 4.5, `the label of a selected tone ${n} chip`),
+	];
+}
+
+// 4.5:1 for body text, 3:1 for large bold text and for interface parts (WCAG 2.2 SC 1.4.3 and 1.4.11). A rule whose
+// roles are optional applies when the brand sets them; the status roles also apply when it does not, with the defaults.
 export const THEME_CONTRAST_RULES: readonly ContrastRule[] = [
-	{
-		foreground: "ink",
-		background: "surface",
-		minimum: 4.5,
-		use: "text on the page",
-	},
-	{
-		foreground: "ink",
-		background: "surface_raised",
-		minimum: 4.5,
-		use: "text on a card",
-	},
-	{
-		foreground: "ink",
-		background: "surface_sunken",
-		minimum: 4.5,
-		use: "text on a sunken panel",
-	},
-	{
-		foreground: "ink_muted",
-		background: "surface",
-		minimum: 4.5,
-		use: "secondary text on the page",
-	},
-	{
-		foreground: "ink_muted",
-		background: "surface_raised",
-		minimum: 4.5,
-		use: "secondary text on a card",
-	},
-	{
-		foreground: "accent_ink",
-		background: "accent",
-		minimum: 4.5,
-		use: "the label of a main button",
-	},
-	{
-		foreground: "accent",
-		background: "surface",
-		minimum: 3,
-		use: "a main button and the focus ring against the page",
-	},
-	{
-		foreground: "highlight",
-		background: "surface_raised",
-		minimum: 4.5,
-		use: "the active tab's label on the tab bar",
-	},
-	{
-		foreground: "hero_ink",
-		background: "hero",
-		minimum: 4.5,
-		use: "the tagline on the brand banner",
-	},
-	{
-		foreground: "tile",
-		background: "hero",
-		minimum: 4.5,
-		use: "the short line under the tagline on the brand banner",
-	},
-	{
-		foreground: "hero",
-		background: "tile",
-		minimum: 3,
-		use: "a large wordmark letter on a coloured tile",
-	},
-	{
-		foreground: "hero",
-		background: "hero_ink",
-		minimum: 3,
-		use: "a large wordmark letter on a light tile",
-	},
+	rule("ink", "surface", 4.5, "text on the page"),
+	rule("ink", "surface_raised", 4.5, "text on a card"),
+	rule("ink", "surface_sunken", 4.5, "text on a sunken panel"),
+	rule("ink_muted", "surface", 4.5, "secondary text on the page"),
+	rule("ink_muted", "surface_raised", 4.5, "secondary text on a card"),
+	rule("accent_ink", "accent", 4.5, "the label of a main button"),
+	rule(
+		"accent",
+		"surface",
+		3,
+		"a main button and the focus ring against the page",
+	),
+	rule(
+		"highlight",
+		"surface_raised",
+		4.5,
+		"the active tab's label on the tab bar",
+	),
+	rule("hero_ink", "hero", 4.5, "the tagline on the brand banner"),
+	rule(
+		"tile",
+		"hero",
+		4.5,
+		"the short line under the tagline on the brand banner",
+	),
+	rule("hero", "tile", 3, "a large wordmark letter on a coloured tile"),
+	rule("hero", "hero_ink", 3, "a large wordmark letter on a light tile"),
+	// added with the optional roles
+	rule("ink_muted", "surface_sunken", 4.5, "secondary text on a sunken panel"),
+	rule(
+		"accent",
+		"surface_raised",
+		3,
+		"the focus ring and a selected option on a card",
+	),
+	rule(
+		"accent",
+		"surface_sunken",
+		3,
+		"a progress bar and a stamp ring against a sunken panel",
+	),
+	rule("highlight", "surface", 4.5, "prices, kickers and links on the page"),
+	rule(
+		"highlight",
+		"surface_sunken",
+		3,
+		"a large (24 px) hand-written line on a sunken panel; large text only",
+	),
+	rule(
+		"line_strong",
+		"surface",
+		3,
+		"the edge of a field or a checkbox on the page",
+	),
+	rule(
+		"line_strong",
+		"surface_raised",
+		3,
+		"the edge of a field, a stepper or an option on a card",
+	),
+	rule("badge_ink", "badge", 4.5, "the label of a badge"),
+	rule("positive", "surface", 4.5, "positive text on the page"),
+	rule("positive", "surface_raised", 4.5, "positive text on a card"),
+	rule(
+		"surface_raised",
+		"positive",
+		4.5,
+		"the label of a filled positive pill",
+	),
+	rule("negative", "surface", 4.5, "error text on the page"),
+	rule("negative", "surface_raised", 4.5, "error text on a card"),
+	rule("warning", "surface", 4.5, "warning text on the page"),
+	rule("warning", "warning_soft", 4.5, "warning text on its own box"),
+	rule("ink", "positive_soft", 4.5, "text inside a positive box"),
+	rule("ink", "negative_soft", 4.5, "text inside a negative box"),
+	rule("ink", "warning_soft", 4.5, "text inside a warning box"),
+	rule("ink", "neutral_soft", 4.5, "text inside a neutral box"),
+	rule("ink_muted", "neutral_soft", 4.5, "secondary text inside a neutral box"),
+	rule("ink_muted", "warning_soft", 4.5, "secondary text inside a warning box"),
+	rule(
+		"ink_muted",
+		"positive_soft",
+		4.5,
+		"secondary text inside a positive box",
+	),
+	rule("inverse_ink", "inverse", 4.5, "the label on an inverse bar or button"),
+	...TONE_NUMBERS.flatMap(toneRules),
 ];
 
 export const WORDMARK_MAX_LETTERS = 4;
@@ -494,17 +603,86 @@ export function themeContrast(first: string, second: string): number {
 	return contrastRatio(first, second);
 }
 
+function isColour(value: unknown): value is string {
+	return typeof value === "string" && HEX_COLOR_PATTERN.test(value);
+}
+
+function isGiven(value: unknown): boolean {
+	return value !== undefined && value !== null;
+}
+
+/** The groups of optional roles that a palette sets completely. */
+export function optionalGroupsOf(
+	colours: BrandPalette,
+): readonly OptionalThemeGroup[] {
+	return OPTIONAL_THEME_GROUP_NAMES.filter((group) =>
+		OPTIONAL_THEME_GROUPS[group].every(
+			(token: OptionalThemeToken) => colours[token] !== undefined,
+		),
+	);
+}
+
+// the optional colours of one palette: hex values, whole groups only, tones numbered from 1 without gaps
+function optionalColours(
+	value: Record<string, unknown>,
+	mode: "light" | "dark",
+	problems: string[],
+): Partial<Record<OptionalThemeToken, string>> {
+	const colours: Partial<Record<OptionalThemeToken, string>> = {};
+	const tones: number[] = [];
+	for (const group of OPTIONAL_THEME_GROUP_NAMES) {
+		const tokens: readonly OptionalThemeToken[] = OPTIONAL_THEME_GROUPS[group];
+		const given = tokens.filter((token) => isGiven(value[token]));
+		if (given.length === 0) continue;
+		let valid = true;
+		for (const token of given) {
+			if (!isColour(value[token])) {
+				problems.push(
+					`theme.${mode}.${token} must be a colour such as #241C14`,
+				);
+				valid = false;
+			}
+		}
+		if (given.length < tokens.length) {
+			const missing = tokens.filter((token) => !given.includes(token));
+			problems.push(
+				`theme.${mode} sets part of the ${group} colours; it needs all of them (missing: ${missing.join(", ")})`,
+			);
+			valid = false;
+		}
+		if (!valid) continue;
+		for (const token of tokens) {
+			colours[token] = String(value[token]).toUpperCase();
+		}
+		if (group.startsWith("tone_")) tones.push(Number(group.slice(5)));
+	}
+	if (tones.some((tone, index) => tone !== index + 1)) {
+		problems.push(
+			`theme.${mode} must number its tone colours from tone_1 without gaps`,
+		);
+	}
+	return colours;
+}
+
+function describeRole(role: ThemeRole, statusIsDefault: boolean): string {
+	return statusIsDefault && (STATUS_TOKENS as readonly string[]).includes(role)
+		? `${role} (default)`
+		: role;
+}
+
 function palette(
 	value: unknown,
 	mode: "light" | "dark",
 	problems: string[],
-): Record<ThemeToken, string> | null {
+): BrandPalette | null {
 	if (!isRecord(value)) {
 		problems.push(`theme.${mode} must list the ${THEME_TOKENS.length} colours`);
 		return null;
 	}
 	const unknown = Object.keys(value).filter(
-		(key) => !(THEME_TOKENS as readonly string[]).includes(key),
+		(key) =>
+			!(THEME_TOKENS as readonly string[]).includes(key) &&
+			!(OPTIONAL_THEME_TOKENS as readonly string[]).includes(key),
 	);
 	if (unknown.length > 0) {
 		problems.push(`theme.${mode} has unknown colours: ${unknown.join(", ")}`);
@@ -513,26 +691,40 @@ function palette(
 	let complete = true;
 	for (const token of THEME_TOKENS) {
 		const colour = value[token];
-		if (typeof colour !== "string" || !HEX_COLOR_PATTERN.test(colour)) {
+		if (!isColour(colour)) {
 			problems.push(`theme.${mode}.${token} must be a colour such as #241C14`);
 			complete = false;
 			continue;
 		}
 		colours[token] = colour.toUpperCase();
 	}
-	if (!complete) return null;
+	const before = problems.length;
+	const optional = optionalColours(value, mode, problems);
+	if (!complete || problems.length > before) return null;
+	const full: BrandPalette = { ...colours, ...optional };
+	// the brand's own status colours, or the design tokens' when it sets none: they sit on its surfaces either way
+	const statusIsDefault = !optionalGroupsOf(full).includes("status");
+	const resolved: Partial<Record<ThemeRole, string>> = {
+		...(statusIsDefault ? DEFAULT_STATUS_COLOURS[mode] : {}),
+		...full,
+	};
 	for (const rule of THEME_CONTRAST_RULES) {
-		const ratio = themeContrast(
-			colours[rule.foreground],
-			colours[rule.background],
+		const foreground = resolved[rule.foreground];
+		const background = resolved[rule.background];
+		if (foreground === undefined || background === undefined) continue;
+		const ratio = themeContrast(foreground, background);
+		if (ratio >= rule.minimum) continue;
+		const first = describeRole(rule.foreground, statusIsDefault);
+		const second = describeRole(rule.background, statusIsDefault);
+		const note =
+			first !== rule.foreground || second !== rule.background
+				? "; the status colours are not set, so the default ones apply"
+				: "";
+		problems.push(
+			`theme.${mode}: ${first} on ${second} (${rule.use}) has a contrast of ${ratio.toFixed(2)}:1, below ${rule.minimum}:1${note}`,
 		);
-		if (ratio < rule.minimum) {
-			problems.push(
-				`theme.${mode}: ${rule.foreground} on ${rule.background} (${rule.use}) has a contrast of ${ratio.toFixed(2)}:1, below ${rule.minimum}:1`,
-			);
-		}
 	}
-	return colours;
+	return full;
 }
 
 function optionalText(
@@ -581,6 +773,19 @@ export function validateBrandThemeRow(
 	const before = problems.length;
 	const light = palette(value.light, "light", problems);
 	const dark = palette(value.dark, "dark", problems);
+	if (light !== null && dark !== null) {
+		const inLight = optionalGroupsOf(light);
+		const inDark = optionalGroupsOf(dark);
+		for (const group of OPTIONAL_THEME_GROUP_NAMES) {
+			if (inLight.includes(group) === inDark.includes(group)) continue;
+			const [has, lacks] = inLight.includes(group)
+				? (["light", "dark"] as const)
+				: (["dark", "light"] as const);
+			problems.push(
+				`theme.${lacks} must set the ${group} colours too, as theme.${has} does`,
+			);
+		}
+	}
 	let wordmark: string | undefined;
 	if (value.wordmark !== undefined && value.wordmark !== null) {
 		const text =
@@ -633,7 +838,7 @@ export function brandThemeOf(row: BrandThemeRow): BrandTheme {
 	};
 }
 
-const CSS_VARIABLES: Readonly<Record<ThemeToken, string>> = {
+const CSS_VARIABLES: Readonly<Record<ThemeRole, string>> = {
 	surface: "--surface",
 	surface_raised: "--surface-raised",
 	surface_sunken: "--surface-sunken",
@@ -646,12 +851,47 @@ const CSS_VARIABLES: Readonly<Record<ThemeToken, string>> = {
 	hero: "--brand-hero",
 	hero_ink: "--brand-hero-ink",
 	tile: "--brand-tile",
+	line_strong: "--line-strong",
+	badge: "--badge",
+	badge_ink: "--badge-ink",
+	positive: "--positive",
+	positive_soft: "--positive-soft",
+	negative: "--negative",
+	negative_soft: "--negative-soft",
+	warning: "--warning",
+	warning_soft: "--warning-soft",
+	neutral_soft: "--neutral-soft",
+	inverse: "--inverse",
+	inverse_ink: "--inverse-ink",
+	tone_1: "--tone-1",
+	tone_1_ink: "--tone-1-ink",
+	tone_1_soft: "--tone-1-soft",
+	tone_2: "--tone-2",
+	tone_2_ink: "--tone-2-ink",
+	tone_2_soft: "--tone-2-soft",
+	tone_3: "--tone-3",
+	tone_3_ink: "--tone-3-ink",
+	tone_3_soft: "--tone-3-soft",
+	tone_4: "--tone-4",
+	tone_4_ink: "--tone-4-ink",
+	tone_4_soft: "--tone-4-soft",
+	art_plate: "--art-plate",
 };
 
+// Only a #RRGGBB value is ever written, so nothing a brand's configuration holds can add a rule, a selector or a URL
+// to the style sheet (a value that is not one is left out, and the token underneath answers).
 function declarations(colours: BrandPalette): string {
+	const roles: readonly ThemeRole[] = [
+		...THEME_TOKENS,
+		...OPTIONAL_THEME_TOKENS,
+	];
+	const written = roles.flatMap((role) => {
+		const colour = colours[role];
+		return isColour(colour) ? [`${CSS_VARIABLES[role]}:${colour}`] : [];
+	});
 	return [
-		...THEME_TOKENS.map((token) => `${CSS_VARIABLES[token]}:${colours[token]}`),
-		`--focus:${colours.accent}`,
+		...written,
+		...(isColour(colours.accent) ? [`--focus:${colours.accent}`] : []),
 		"--zaui-light-bottom-navigation-active-color:var(--brand-highlight)",
 		"--zaui-dark-bottom-navigation-active-color:var(--brand-highlight)",
 	].join(";");

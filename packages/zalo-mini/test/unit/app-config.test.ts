@@ -49,12 +49,14 @@ function problemsOf(row: Record<string, unknown>): readonly string[] {
 }
 
 describe("app-config.json per brand", () => {
-	it("holds two synthetic brands with a staff and a customer Mini App each", () => {
+	it("holds three synthetic brands with a staff and a customer Mini App each", () => {
 		expect(synthetic.map((row) => `${row.brand_key} ${row.kind}`)).toEqual([
 			"brand-1 staff",
 			"brand-1 customer",
 			"brand-2 staff",
 			"brand-2 customer",
+			"brand-3 staff",
+			"brand-3 customer",
 		]);
 	});
 
@@ -232,6 +234,8 @@ describe("app-config command", () => {
 			"brand-1 customer",
 			"brand-2 staff",
 			"brand-2 customer",
+			"brand-3 staff",
+			"brand-3 customer",
 		]);
 	});
 

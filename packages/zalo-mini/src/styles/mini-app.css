@@ -14,6 +14,53 @@
 	--zaui-dark-bottom-navigation-divider-color: var(--line);
 }
 
+/*
+ * Roles a brand's theme may add (app-config: OPTIONAL_THEME_GROUPS). A brand that does not set one keeps today's look
+ * through these defaults, which are made of the design tokens and of the roles every brand sets, so each default
+ * follows the brand's palette and the dark scheme. The status roles (--positive and the others) come from the tokens.
+ */
+:root {
+	--line-strong: var(--line);
+	--badge: var(--neutral-soft);
+	--badge-ink: var(--ink);
+	--inverse: var(--ink);
+	--inverse-ink: var(--surface);
+	--tone-1: var(--accent);
+	--tone-1-ink: var(--accent-ink);
+	--tone-1-soft: var(--surface-sunken);
+	--tone-2: var(--positive);
+	--tone-2-ink: var(--surface-raised);
+	--tone-2-soft: var(--positive-soft);
+	--tone-3: var(--warning);
+	--tone-3-ink: var(--surface-raised);
+	--tone-3-soft: var(--warning-soft);
+	--tone-4: var(--neutral);
+	--tone-4-ink: var(--surface-raised);
+	--tone-4-soft: var(--neutral-soft);
+	--art-plate: var(--surface-sunken);
+}
+
+@theme inline {
+	--color-line-strong: var(--line-strong);
+	--color-badge: var(--badge);
+	--color-badge-ink: var(--badge-ink);
+	--color-inverse: var(--inverse);
+	--color-inverse-ink: var(--inverse-ink);
+	--color-tone-1: var(--tone-1);
+	--color-tone-1-ink: var(--tone-1-ink);
+	--color-tone-1-soft: var(--tone-1-soft);
+	--color-tone-2: var(--tone-2);
+	--color-tone-2-ink: var(--tone-2-ink);
+	--color-tone-2-soft: var(--tone-2-soft);
+	--color-tone-3: var(--tone-3);
+	--color-tone-3-ink: var(--tone-3-ink);
+	--color-tone-3-soft: var(--tone-3-soft);
+	--color-tone-4: var(--tone-4);
+	--color-tone-4-ink: var(--tone-4-ink);
+	--color-tone-4-soft: var(--tone-4-soft);
+	--color-art-plate: var(--art-plate);
+}
+
 html,
 body {
 	margin: 0;

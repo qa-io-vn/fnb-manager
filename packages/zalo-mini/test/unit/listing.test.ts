@@ -33,11 +33,12 @@ function listing(overrides: Partial<Listing>): Listing {
 const solid = (color: string) => () => hex(color);
 
 describe("listing rules", () => {
-	it("pass for both synthetic brands' customer Mini Apps", () => {
+	it("pass for the three synthetic brands' customer Mini Apps", () => {
 		const listed = listings.filter(isListed);
 		expect(listed.map((entry) => `${entry.brandKey} ${entry.kind}`)).toEqual([
 			"brand-1 customer",
 			"brand-2 customer",
+			"brand-3 customer",
 		]);
 		for (const entry of listed) expect(listingProblems(entry)).toEqual([]);
 		expect(brandOne).toMatchObject({
@@ -260,6 +261,9 @@ describe("the listing command", () => {
 		);
 		expect(result.out).toContain(
 			'brand-2 customer "Thành viên Quán Mẫu Hai": ok',
+		);
+		expect(result.out).toContain(
+			'brand-3 customer "Thành viên Quán Mẫu Ba": ok',
 		);
 		expect(result.out).toContain(
 			"[ ] the logo is the brand's own mark and shows no QR code and no phone number",

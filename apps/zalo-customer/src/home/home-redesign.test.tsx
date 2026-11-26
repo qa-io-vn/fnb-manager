@@ -25,12 +25,27 @@ const PALETTE = {
 	hero_ink: "#F5F1E8",
 	tile: "#B9874E",
 };
+// the dark palette answers to the design tokens' dark status colours too, so it has to be a dark one
+const DARK_PALETTE = {
+	surface: "#1B1612",
+	surface_raised: "#27201A",
+	surface_sunken: "#13100C",
+	ink: "#F5F1E8",
+	ink_muted: "#C8BBA8",
+	line: "#43392F",
+	accent: "#B9874E",
+	accent_ink: "#1E1A16",
+	highlight: "#D6A770",
+	hero: "#100C09",
+	hero_ink: "#F5F1E8",
+	tile: "#B9874E",
+};
 const SYNTHETIC_THEME = (() => {
 	const problems: string[] = [];
 	const valid = validateBrandThemeRow(
 		{
 			light: PALETTE,
-			dark: PALETTE,
+			dark: DARK_PALETTE,
 			wordmark: "QMH",
 			tagline_vi: "Một quán thử, chỉ để kiểm tra.",
 			tagline_en: "A test shop, for checks only.",

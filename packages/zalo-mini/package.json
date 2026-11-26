@@ -45,6 +45,10 @@
 			"types": "./src/testing/network-scan.ts",
 			"import": "./src/testing/network-scan.ts"
 		},
+		"./testing/tailwind-css": {
+			"types": "./src/testing/tailwind-css.ts",
+			"import": "./src/testing/tailwind-css.ts"
+		},
 		"./testing/paint-budget": {
 			"types": "./src/testing/paint-budget.ts",
 			"import": "./src/testing/paint-budget.ts"
