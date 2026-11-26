@@ -20,17 +20,17 @@ function OwnRequestCard({ request }: { readonly request: OwnRequest }) {
 		>
 			<Card>
 				<div className="flex items-start justify-between gap-2">
-					<p className="min-w-0 break-words text-base font-semibold text-ink">
+					<p className="min-w-0 break-words text-body font-semibold text-ink">
 						{kindName(request)}
 					</p>
 					<StatusChip status={request.status} />
 				</div>
-				<p className="whitespace-pre-line break-words text-base text-ink">
+				<p className="whitespace-pre-line break-words text-body text-ink">
 					{request.details}
 				</p>
 				{request.refusalReason === null ? null : (
 					<p
-						className="whitespace-pre-line break-words rounded-xl bg-negative-soft px-3 py-2 text-base text-negative"
+						className="whitespace-pre-line break-words rounded-card-xl bg-negative-soft px-3 py-2 text-body text-negative"
 						data-testid="refusal-reason"
 					>
 						{t("ask.refusalReason", { reason: request.refusalReason })}
@@ -92,7 +92,7 @@ export function MyTeamRequestsScreen(_: TeamScreenProps) {
 				</div>
 			) : requests.length === 0 ? (
 				<p
-					className="text-base text-ink-muted"
+					className="text-body text-ink-muted"
 					data-testid="own-requests-empty"
 				>
 					{t("ask.mineEmpty")}

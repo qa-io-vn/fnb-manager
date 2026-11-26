@@ -61,10 +61,10 @@ function HomeSection({
 			data-testid={testId}
 			data-status={status}
 		>
-			<h2 id={headingId} className="text-base font-semibold text-ink">
+			<h2 id={headingId} className="text-body font-semibold text-ink">
 				{title}
 			</h2>
-			<div className="flex flex-col gap-3 rounded-2xl border border-line bg-surface-raised p-4">
+			<div className="flex flex-col gap-3 rounded-card-2xl border-card border-line bg-surface-raised p-4">
 				{children}
 			</div>
 		</section>
@@ -87,12 +87,12 @@ function PinnedRow({
 			<button
 				type="button"
 				onClick={onOpen}
-				className={`flex min-h-11 w-full min-w-0 items-start gap-3 rounded-xl py-2 text-left ${focusRing}`}
+				className={`flex min-h-11 w-full min-w-0 items-start gap-3 rounded-control-xl py-2 text-left ${focusRing}`}
 			>
 				{unread ? <UnreadDot /> : <span className="w-2.5 shrink-0" />}
 				<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 					<span
-						className={`break-words text-base text-ink ${unread ? "font-semibold" : ""}`}
+						className={`break-words text-body text-ink ${unread ? "font-semibold" : ""}`}
 					>
 						{announcement.title}
 					</span>
@@ -134,7 +134,7 @@ function SignedInNotices({
 				status="failed"
 			>
 				<div className="flex items-center justify-between gap-2">
-					<p className="text-base text-ink-muted">
+					<p className="text-body text-ink-muted">
 						{t("team.home.noticesFailed")}
 					</p>
 					<button type="button" className={quietAction} onClick={reload}>
@@ -172,7 +172,7 @@ function SignedInNotices({
 				</div>
 			)}
 			{unread === 0 ? null : (
-				<p className="text-base text-ink" data-testid="home-unread-count">
+				<p className="text-body text-ink" data-testid="home-unread-count">
 					{t("team.home.unread", { count: unread })}
 				</p>
 			)}
@@ -242,7 +242,7 @@ function SignedInRequests({
 					data-testid="home-approvals"
 				>
 					<div className="flex flex-wrap items-center justify-between gap-2">
-						<p className="text-base font-semibold text-ink">
+						<p className="text-body font-semibold text-ink">
 							{t("approvals.title")}
 						</p>
 						<PendingCount session={session} sourceFor={sourceFor} />

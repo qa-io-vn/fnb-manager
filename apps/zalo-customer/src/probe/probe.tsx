@@ -44,7 +44,7 @@ export function ProbeEntry() {
 			<button
 				type="button"
 				onClick={() => navigate("/probe")}
-				className="min-h-11 w-full rounded-xl border border-line px-4 text-base text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+				className="min-h-11 w-full rounded-field border-field border-line-strong px-4 text-base text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
 			>
 				{t("probe.open")}
 			</button>
@@ -69,30 +69,30 @@ export function ProbeScreen() {
 			className="flex flex-col gap-4 px-4 py-6"
 		>
 			<h1 className="text-xl font-semibold text-ink">{t("probe.title")}</h1>
-			<p className="text-base text-ink">{t("probe.purpose")}</p>
+			<p className="text-body text-ink">{t("probe.purpose")}</p>
 			<button
 				type="button"
 				onClick={start}
 				disabled={running}
 				aria-busy={running}
-				className="min-h-11 w-full rounded-xl bg-accent px-4 text-base font-semibold text-accent-ink disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+				className="min-h-11 w-full rounded-control-xl bg-accent px-4 text-body font-semibold text-accent-ink disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
 			>
 				{running ? t("probe.running") : t("probe.start")}
 			</button>
 			{outcome ? (
 				<dl
 					data-testid="probe-outcome"
-					className="flex flex-col gap-3 rounded-xl bg-surface-raised p-4"
+					className="flex flex-col gap-3 rounded-card-xl bg-surface-raised p-4"
 				>
 					<div>
 						<dt className="text-sm text-ink-muted">{t("probe.consented")}</dt>
-						<dd className="text-base text-ink">
+						<dd className="text-body text-ink">
 							{outcome.consented ? t("probe.yes") : t("probe.no")}
 						</dd>
 					</div>
 					<div>
 						<dt className="text-sm text-ink-muted">{t("probe.errorCode")}</dt>
-						<dd className="text-base text-ink">
+						<dd className="text-body text-ink">
 							{outcome.errorCode === null
 								? t("probe.noError")
 								: String(outcome.errorCode)}

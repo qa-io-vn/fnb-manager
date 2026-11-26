@@ -62,7 +62,7 @@ const UNAUTHORIZED = 401;
 const FORBIDDEN = 403;
 
 const primaryButton =
-	"min-h-11 w-full rounded-xl bg-accent px-4 text-base font-semibold text-accent-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+	"min-h-11 w-full rounded-control-xl bg-accent px-4 text-body font-semibold text-accent-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 const focusRing =
 	"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
@@ -84,7 +84,7 @@ function Card({
 		<div
 			data-testid={testId}
 			data-state={state}
-			className={`flex min-w-0 flex-col gap-1 rounded-2xl border border-line bg-surface-raised p-4 ${wide ? "col-span-2" : ""}`}
+			className={`flex min-w-0 flex-col gap-1 rounded-card-2xl border-card border-line bg-surface-raised p-4 ${wide ? "col-span-2" : ""}`}
 		>
 			<p className="text-sm text-ink-muted">{label}</p>
 			{children}
@@ -94,7 +94,7 @@ function Card({
 
 function NoData() {
 	const { t } = useI18n();
-	return <p className="py-1 text-base text-ink-muted">{t("home.noData")}</p>;
+	return <p className="py-1 text-body text-ink-muted">{t("home.noData")}</p>;
 }
 
 function MoneyValue({
@@ -267,7 +267,7 @@ function OpeningHoursCard({ hours }: { readonly hours: HoursToday }) {
 					))}
 				</ul>
 			) : (
-				<p className="py-1 text-base text-ink-muted">
+				<p className="py-1 text-body text-ink-muted">
 					{hours.kind === "closed"
 						? t("home.closedToday")
 						: t("home.noOpeningHours")}
@@ -338,7 +338,7 @@ function StorePicker({
 			<div className="flex flex-col gap-0.5">
 				<p className="text-sm text-ink-muted">{t("home.store")}</p>
 				<p
-					className="text-base font-semibold text-ink"
+					className="text-body font-semibold text-ink"
 					data-testid="home-store"
 				>
 					{selected.name}
@@ -357,7 +357,7 @@ function StorePicker({
 					data-testid="store-picker"
 					value={selected.id}
 					onChange={(event) => onSelect(event.target.value)}
-					className={`min-h-11 w-full appearance-none rounded-xl border border-line bg-surface-raised py-2 pr-10 pl-4 text-base font-semibold text-ink ${focusRing}`}
+					className={`min-h-11 w-full appearance-none rounded-field border-field border-line-strong bg-surface-raised py-2 pr-10 pl-4 text-base font-semibold text-ink ${focusRing}`}
 				>
 					{stores.map((store) => (
 						<option key={store.id} value={store.id}>
@@ -391,7 +391,7 @@ function TodaySection({
 			className="flex flex-col gap-3"
 			data-testid="home-today"
 		>
-			<h2 id={headingId} className="text-base font-semibold text-ink">
+			<h2 id={headingId} className="text-body font-semibold text-ink">
 				{t("home.today", {
 					time: formatters.time(data.loadedAt),
 					date: formatters.date(store.today),
@@ -427,7 +427,7 @@ function TasksSection({
 			className="flex flex-col gap-3"
 			data-testid="home-tasks"
 		>
-			<h2 id={headingId} className="text-base font-semibold text-ink">
+			<h2 id={headingId} className="text-body font-semibold text-ink">
 				{t("home.tasks", { date: formatters.date(store.today) })}
 			</h2>
 			<div className="grid grid-cols-2 gap-3">
@@ -469,7 +469,7 @@ function HomeReady({
 	return (
 		<>
 			{store === undefined ? (
-				<p className="text-base text-ink-muted" data-testid="home-no-stores">
+				<p className="text-body text-ink-muted" data-testid="home-no-stores">
 					{t("home.noStores")}
 				</p>
 			) : (
@@ -485,7 +485,7 @@ function HomeReady({
 				formatters={formatters}
 			/>
 			{refreshFailed ? (
-				<div className="flex items-center justify-between gap-3 rounded-xl bg-warning-soft py-1 pr-1 pl-3">
+				<div className="flex items-center justify-between gap-3 rounded-card-xl bg-warning-soft py-1 pr-1 pl-3">
 					<p role="alert" className="text-sm text-warning">
 						{t("home.refreshFailed")}
 					</p>
@@ -531,7 +531,7 @@ function HomeLoading() {
 			<div
 				role="status"
 				aria-live="polite"
-				className="flex items-center gap-3 text-base text-ink"
+				className="flex items-center gap-3 text-body text-ink"
 				data-testid="home-loading"
 			>
 				<span
@@ -541,9 +541,9 @@ function HomeLoading() {
 				{t("home.loading")}
 			</div>
 			<div aria-hidden="true" className="grid grid-cols-2 gap-3">
-				<div className="col-span-2 h-28 animate-pulse rounded-2xl bg-surface-sunken" />
-				<div className="h-24 animate-pulse rounded-2xl bg-surface-sunken" />
-				<div className="h-24 animate-pulse rounded-2xl bg-surface-sunken" />
+				<div className="col-span-2 h-28 animate-pulse rounded-card-2xl bg-surface-sunken" />
+				<div className="h-24 animate-pulse rounded-card-2xl bg-surface-sunken" />
+				<div className="h-24 animate-pulse rounded-card-2xl bg-surface-sunken" />
 			</div>
 		</>
 	);
@@ -553,7 +553,7 @@ function HomeFailed({ onRetry }: { readonly onRetry: () => void }) {
 	const { t } = useI18n();
 	return (
 		<div className="flex flex-col gap-3" data-testid="home-failed">
-			<p role="alert" className="text-base text-ink">
+			<p role="alert" className="text-body text-ink">
 				{t("home.failed")}
 			</p>
 			<button type="button" className={primaryButton} onClick={onRetry}>

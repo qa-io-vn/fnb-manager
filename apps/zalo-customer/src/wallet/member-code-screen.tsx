@@ -86,20 +86,20 @@ function CodeCard({ store }: { readonly store: string }) {
 				>
 					{code.code}
 				</p>
-				<p className="text-base text-ink" data-testid="code-store">
+				<p className="text-body text-ink" data-testid="code-store">
 					{code.storeName}
 				</p>
 				{expired ? (
 					<p
 						role="alert"
-						className="text-base text-negative"
+						className="text-body text-negative"
 						data-testid="code-expired"
 					>
 						{t("code.expired")}
 					</p>
 				) : (
 					<p
-						className="text-base text-ink"
+						className="text-body text-ink"
 						data-testid="code-countdown"
 						aria-live="off"
 					>
@@ -148,7 +148,7 @@ function MemberCodeView() {
 		<Screen testId="member-code-screen">
 			<BackButton />
 			<h1 className="text-xl font-semibold text-ink">{t("code.title")}</h1>
-			<p className="text-base text-ink">{t("code.intro")}</p>
+			<p className="text-body text-ink">{t("code.intro")}</p>
 			{stores.length === 0 ? (
 				<NoStores />
 			) : (
@@ -161,7 +161,7 @@ function MemberCodeView() {
 				/>
 			)}
 			{stores.length === 0 ? null : store === null ? (
-				<p className="text-base text-ink" data-testid="code-pick-first">
+				<p className="text-body text-ink" data-testid="code-pick-first">
 					{t("code.pickFirst")}
 				</p>
 			) : (

@@ -185,7 +185,7 @@ export function StaffConfirm({
 			<p
 				role="status"
 				data-testid="redeem-voided"
-				className="rounded-xl bg-surface-sunken px-3 py-3 text-base text-ink"
+				className="rounded-card-xl bg-surface-sunken px-3 py-3 text-body text-ink"
 			>
 				{t("redeem.staff.voided")}
 			</p>
@@ -195,7 +195,7 @@ export function StaffConfirm({
 	const voidable = manager && withinWindow(phase.voidUntil, new Date());
 	return (
 		<div
-			className="flex flex-col gap-3 rounded-xl bg-positive-soft p-3"
+			className="flex flex-col gap-3 rounded-card-xl bg-positive-soft p-3"
 			data-testid="redeem-confirmed"
 		>
 			<p className="text-lg font-semibold text-positive">
@@ -203,7 +203,7 @@ export function StaffConfirm({
 			</p>
 			{phase.discountName === null ? null : (
 				<>
-					<p className="text-base text-ink">{t("redeem.staff.apply")}</p>
+					<p className="text-body text-ink">{t("redeem.staff.apply")}</p>
 					<p
 						className="text-xl font-semibold break-words text-ink"
 						data-testid="redeem-confirmed-discount"

@@ -89,11 +89,11 @@ export function BillItem({
 
 	return (
 		<li
-			className="flex flex-col gap-3 rounded-xl border border-line px-4 py-3"
+			className="flex flex-col gap-3 rounded-card-xl border-card border-line px-4 py-3"
 			data-testid="bill-to-confirm"
 		>
 			<div className="flex flex-col gap-0.5">
-				<span className="text-base font-semibold text-ink">
+				<span className="text-body font-semibold text-ink">
 					{t("bill.number", { bill: bill.billNo })}
 				</span>
 				<span className="text-sm text-ink">{bill.storeName}</span>
@@ -106,7 +106,7 @@ export function BillItem({
 			</div>
 			{asking ? (
 				<div className="flex flex-col gap-2" data-testid="bill-dispute-ask">
-					<p className="text-base text-ink">
+					<p className="text-body text-ink">
 						{t("bill.disputeAsk", { bill: bill.billNo })}
 					</p>
 					<button
@@ -180,7 +180,7 @@ export function BillItem({
 				</form>
 			)}
 			{failure === null ? null : (
-				<p role="alert" className="text-base text-negative">
+				<p role="alert" className="text-body text-negative">
 					{t(failure)}
 				</p>
 			)}
@@ -205,7 +205,7 @@ export function BillsToConfirmCard({
 	return (
 		<section
 			aria-labelledby={titleId}
-			className="flex flex-col gap-3 rounded-2xl bg-surface-raised p-4"
+			className="flex flex-col gap-3 rounded-card-2xl bg-surface-raised p-4"
 			data-testid="bills-to-confirm"
 		>
 			<h2 id={titleId} className="text-lg font-semibold text-ink">
@@ -213,7 +213,7 @@ export function BillsToConfirmCard({
 			</h2>
 			{open.length === 0 ? null : (
 				<>
-					<p className="text-base text-ink">{t("bill.intro")}</p>
+					<p className="text-body text-ink">{t("bill.intro")}</p>
 					<ul className="flex flex-col gap-3">
 						{open.map((bill) => (
 							<BillItem
@@ -236,7 +236,7 @@ export function BillsToConfirmCard({
 					<p
 						key={bill.id}
 						role="status"
-						className={`rounded-xl px-3 py-2 text-base text-ink ${TONES[outcome.tone]}`}
+						className={`rounded-card-xl px-3 py-2 text-body text-ink ${TONES[outcome.tone]}`}
 						data-testid="bill-result"
 						data-outcome={outcome.key}
 					>

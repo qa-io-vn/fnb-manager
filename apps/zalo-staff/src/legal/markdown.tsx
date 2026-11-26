@@ -113,7 +113,7 @@ export function MarkdownText({
 }) {
 	return (
 		<div
-			className="flex flex-col gap-3 text-base text-ink"
+			className="flex flex-col gap-3 text-body text-ink"
 			data-testid="markdown"
 		>
 			{markdownBlocks(markdown).map((block) => {
@@ -126,7 +126,7 @@ export function MarkdownText({
 							)
 						] ?? "h6";
 					return (
-						<Tag key={block.id} className="pt-1 text-base font-semibold">
+						<Tag key={block.id} className="pt-1 text-body font-semibold">
 							{inlineText(block.text)}
 						</Tag>
 					);

@@ -84,12 +84,12 @@ export function NotReady({
 	const { t } = useI18n();
 	return (
 		<div
-			className="flex flex-col gap-1 rounded-xl bg-surface-sunken px-3 py-2"
+			className="flex flex-col gap-1 rounded-card-xl bg-surface-sunken px-3 py-2"
 			data-testid={testId}
 			data-state="not-ready"
 		>
 			<p className="text-sm font-semibold text-ink">{t("notify.notReady")}</p>
-			<p className="text-base text-ink">{children}</p>
+			<p className="text-body text-ink">{children}</p>
 		</div>
 	);
 }
@@ -162,7 +162,7 @@ function ConsentLine({ settings }: { readonly settings: Settings }) {
 				: null;
 	return (
 		<p
-			className="text-base text-ink"
+			className="text-body text-ink"
 			data-testid="consent-state"
 			data-state={consent.state}
 		>
@@ -189,7 +189,7 @@ function DestinationCard({
 			<Card>
 				<div className="flex items-start justify-between gap-2">
 					<div className="flex min-w-0 flex-col gap-0.5">
-						<p className="break-words text-base font-semibold text-ink">
+						<p className="break-words text-body font-semibold text-ink">
 							{destination.label}
 						</p>
 						{destination.hint === null ? null : (
@@ -246,7 +246,7 @@ function Destinations({
 					<ConsentLine settings={load.value} />
 					{load.value.destinations.length === 0 ? (
 						<p
-							className="text-base text-ink-muted"
+							className="text-body text-ink-muted"
 							data-testid="destinations-empty"
 						>
 							{t("notify.noDestinations")}
@@ -300,7 +300,7 @@ function NoticeStep({
 	return (
 		<section
 			aria-labelledby={headingId}
-			className="flex flex-col gap-3 rounded-2xl border border-line bg-surface-raised p-4"
+			className="flex flex-col gap-3 rounded-card-2xl border-card border-line bg-surface-raised p-4"
 			data-testid="bot-notice"
 			data-version={notice.version}
 		>
@@ -308,11 +308,11 @@ function NoticeStep({
 				id={headingId}
 				ref={headingRef}
 				tabIndex={-1}
-				className="text-base font-semibold text-ink outline-none"
+				className="text-body font-semibold text-ink outline-none"
 			>
 				{t("notify.bot.noticeTitle")}
 			</h3>
-			<p className="text-base text-ink" data-testid="notice-text">
+			<p className="text-body text-ink" data-testid="notice-text">
 				{notice.text}
 			</p>
 			<Hint>{t("notify.bot.noticeHint")}</Hint>
@@ -358,7 +358,7 @@ function CodeStep({
 		<Card testId="bot-code" state={left > 0 ? "live" : "expired"}>
 			{left > 0 ? (
 				<>
-					<p className="text-base text-ink">{t("notify.bot.codeIntro")}</p>
+					<p className="text-body text-ink">{t("notify.bot.codeIntro")}</p>
 					<p
 						className="select-all break-all text-center font-mono text-2xl font-semibold tracking-widest text-ink"
 						data-testid="link-code"
@@ -366,13 +366,13 @@ function CodeStep({
 						{link.code}
 					</p>
 					<p
-						className="text-center text-base text-ink"
+						className="text-center text-body text-ink"
 						data-testid="link-countdown"
 					>
 						{t("notify.bot.expiresIn", { time: clockText(left) })}
 					</p>
 					<ol
-						className="flex list-decimal flex-col gap-1 pl-5 text-base text-ink"
+						className="flex list-decimal flex-col gap-1 pl-5 text-body text-ink"
 						data-testid="link-steps"
 					>
 						<li>
@@ -391,7 +391,7 @@ function CodeStep({
 				<>
 					<p
 						role="status"
-						className="text-base text-ink"
+						className="text-body text-ink"
 						data-testid="link-expired"
 					>
 						{t("notify.bot.expired")}
@@ -452,7 +452,7 @@ function BotLink({
 		);
 	} else if (linked !== null) {
 		body = (
-			<p className="text-base text-ink" data-testid="bot-linked">
+			<p className="text-body text-ink" data-testid="bot-linked">
 				{t("notify.bot.linked")}
 			</p>
 		);
@@ -475,7 +475,7 @@ function BotLink({
 	} else {
 		body = (
 			<Card testId="bot-start">
-				<p className="text-base text-ink">{t("notify.bot.intro")}</p>
+				<p className="text-body text-ink">{t("notify.bot.intro")}</p>
 				<button
 					type="button"
 					className={secondaryButton}
@@ -531,13 +531,13 @@ function FollowOa({
 				</NotReady>
 			) : (
 				<Card>
-					<p className="text-base text-ink" data-testid="follow-purpose">
+					<p className="text-body text-ink" data-testid="follow-purpose">
 						{t("notify.follow.purpose")}
 					</p>
 					{state === "done" ? (
 						<p
 							role="status"
-							className="rounded-xl bg-positive-soft px-3 py-2 text-base text-positive"
+							className="rounded-card-xl bg-positive-soft px-3 py-2 text-body text-positive"
 							data-testid="follow-done"
 						>
 							{t("notify.follow.done")}
@@ -547,7 +547,7 @@ function FollowOa({
 							{state === "refused" ? (
 								<p
 									role="status"
-									className="text-base text-ink"
+									className="text-body text-ink"
 									data-testid="follow-refused"
 								>
 									{t("notify.follow.refused")}
@@ -608,7 +608,7 @@ function DestinationMutes({
 			data-testid="mute-destination"
 			data-destination={destination.id}
 		>
-			<legend className="mb-2 text-base font-semibold text-ink">
+			<legend className="mb-2 text-body font-semibold text-ink">
 				{destination.hint === null
 					? destination.label
 					: t("notify.mute.destination", {
@@ -645,11 +645,11 @@ function Mutes({
 	return (
 		<Panel title={t("notify.mute.title")} testId="notify-mute">
 			{destinations.length === 0 ? (
-				<p className="text-base text-ink-muted" data-testid="mute-empty">
+				<p className="text-body text-ink-muted" data-testid="mute-empty">
 					{t("notify.mute.noDestination")}
 				</p>
 			) : settings.rules.length === 0 ? (
-				<p className="text-base text-ink-muted" data-testid="mute-empty">
+				<p className="text-body text-ink-muted" data-testid="mute-empty">
 					{t("notify.mute.noRules")}
 				</p>
 			) : (
@@ -707,12 +707,12 @@ function StopNotifications({
 		body = (
 			<div
 				role="status"
-				className="flex flex-col gap-1 rounded-xl bg-positive-soft px-3 py-2 text-positive"
+				className="flex flex-col gap-1 rounded-card-xl bg-positive-soft px-3 py-2 text-positive"
 				data-testid="stop-done"
 			>
-				<p className="text-base">{t("notify.stop.done")}</p>
+				<p className="text-body">{t("notify.stop.done")}</p>
 				{step.cancelled > 0 ? (
-					<p className="text-base">
+					<p className="text-body">
 						{t("notify.stop.cancelled", { count: step.cancelled })}
 					</p>
 				) : null}
@@ -720,7 +720,7 @@ function StopNotifications({
 		);
 	} else if (!receiving(settings) || tenantId === null) {
 		body = (
-			<p className="text-base text-ink-muted" data-testid="stop-nothing">
+			<p className="text-body text-ink-muted" data-testid="stop-nothing">
 				{t("notify.stop.nothing")}
 			</p>
 		);
@@ -728,18 +728,18 @@ function StopNotifications({
 		body = (
 			<section
 				aria-labelledby={questionId}
-				className="flex flex-col gap-3 rounded-2xl border border-line bg-surface-raised p-4"
+				className="flex flex-col gap-3 rounded-card-2xl border-card border-line bg-surface-raised p-4"
 				data-testid="stop-confirm"
 			>
 				<p
 					id={questionId}
 					ref={questionRef}
 					tabIndex={-1}
-					className="text-base font-semibold text-ink outline-none"
+					className="text-body font-semibold text-ink outline-none"
 				>
 					{t("notify.stop.question")}
 				</p>
-				<p className="text-base text-ink">{t("notify.stop.consequence")}</p>
+				<p className="text-body text-ink">{t("notify.stop.consequence")}</p>
 				<button
 					type="button"
 					className={dangerButton}
@@ -766,7 +766,7 @@ function StopNotifications({
 	} else {
 		body = (
 			<>
-				<p className="text-base text-ink">{t("notify.stop.body")}</p>
+				<p className="text-body text-ink">{t("notify.stop.body")}</p>
 				<button
 					type="button"
 					className={dangerButton}
@@ -819,7 +819,7 @@ export function NotificationSettings({
 			)}
 			<FollowOa follow={follow} tenantId={tenantId} />
 			<Panel title={t("notify.group.title")} testId="notify-group">
-				<p className="text-base text-ink">{t("notify.group.body")}</p>
+				<p className="text-body text-ink">{t("notify.group.body")}</p>
 			</Panel>
 			{settings === null ? null : (
 				<>

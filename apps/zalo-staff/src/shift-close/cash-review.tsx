@@ -36,7 +36,7 @@ function ShiftRow({
 	return (
 		<Card testId="cash-shift" state={row.state}>
 			<div className="flex items-start justify-between gap-2">
-				<p className="text-base font-semibold text-ink">
+				<p className="text-body font-semibold text-ink">
 					{row.shiftNumber !== null
 						? t("cash.shiftOn", {
 								shift: t("ops.shift", { n: row.shiftNumber }),
@@ -153,7 +153,7 @@ export function CashReview({
 						</>
 					}
 				>
-					<p className="text-base text-ink">{t("cash.reopenBody")}</p>
+					<p className="text-body text-ink">{t("cash.reopenBody")}</p>
 					{action.failure !== null ? (
 						<Alert>{t(failureKey(action.failure))}</Alert>
 					) : null}

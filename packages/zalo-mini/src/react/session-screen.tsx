@@ -6,7 +6,7 @@ import { useI18n } from "./i18n";
 import { useSession } from "./session";
 
 const primaryButton =
-	"min-h-11 w-full rounded-xl bg-accent px-4 text-base font-semibold text-accent-ink disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+	"min-h-11 w-full rounded-control-xl bg-accent px-4 text-body font-semibold text-accent-ink disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 function Section({
 	status,
@@ -34,7 +34,7 @@ function Connecting() {
 			<div
 				role="status"
 				aria-live="polite"
-				className="flex items-center gap-3 text-base text-ink"
+				className="flex items-center gap-3 text-body text-ink"
 			>
 				<span
 					aria-hidden="true"
@@ -51,7 +51,7 @@ function Start() {
 	const { start } = useSession();
 	return (
 		<Section status="new">
-			<p className="text-base text-ink">{t("session.startBody")}</p>
+			<p className="text-body text-ink">{t("session.startBody")}</p>
 			<button type="button" className={primaryButton} onClick={start}>
 				{t("session.start")}
 			</button>
@@ -66,16 +66,16 @@ function SignedIn({ member }: { readonly member: MemberProfile }) {
 			<h1 className="text-xl font-semibold text-ink">
 				{t("session.greeting", { name: member.displayName })}
 			</h1>
-			<dl className="flex flex-col gap-3 rounded-xl bg-surface-raised p-4">
+			<dl className="flex flex-col gap-3 rounded-card-xl bg-surface-raised p-4">
 				<div>
 					<dt className="text-sm text-ink-muted">{t("session.role")}</dt>
-					<dd className="text-base text-ink" data-testid="member-role">
+					<dd className="text-body text-ink" data-testid="member-role">
 						{t(`role.${member.role}`)}
 					</dd>
 				</div>
 				<div>
 					<dt className="text-sm text-ink-muted">{t("session.stores")}</dt>
-					<dd className="text-base text-ink" data-testid="member-stores">
+					<dd className="text-body text-ink" data-testid="member-stores">
 						{member.stores.length === 0 ? (
 							t("session.noStores")
 						) : (
@@ -108,8 +108,8 @@ function Unpaired({ codeRejected }: { readonly codeRejected: boolean }) {
 			<h1 className="text-xl font-semibold text-ink">
 				{t("session.unpairedTitle")}
 			</h1>
-			<p className="text-base text-ink">{t("session.unpairedBody")}</p>
-			<ol className="list-decimal flex flex-col gap-1 pl-5 text-base text-ink">
+			<p className="text-body text-ink">{t("session.unpairedBody")}</p>
+			<ol className="list-decimal flex flex-col gap-1 pl-5 text-body text-ink">
 				<li>{t("session.unpairedStep1")}</li>
 				<li>{t("session.unpairedStep2")}</li>
 				<li>{t("session.unpairedStep3")}</li>
@@ -129,7 +129,7 @@ function Unpaired({ codeRejected }: { readonly codeRejected: boolean }) {
 					maxLength={6}
 					aria-invalid={codeRejected}
 					aria-describedby={codeRejected ? errorId : undefined}
-					className="min-h-11 rounded-xl border border-line bg-surface-raised px-4 text-lg tracking-widest text-ink"
+					className="min-h-11 rounded-field border-field border-line-strong bg-surface-raised px-4 text-lg tracking-widest text-ink"
 				/>
 				{codeRejected ? (
 					<p id={errorId} role="alert" className="text-sm text-negative">
@@ -156,7 +156,7 @@ function NoticeRequired({ notice }: { readonly notice: StaffNotice | null }) {
 	if (notice === null) {
 		return (
 			<Section status="notice-required">
-				<p className="text-base text-ink">{t("session.noticeUnavailable")}</p>
+				<p className="text-body text-ink">{t("session.noticeUnavailable")}</p>
 				<button type="button" className={primaryButton} onClick={retry}>
 					{t("session.retry")}
 				</button>
@@ -167,7 +167,7 @@ function NoticeRequired({ notice }: { readonly notice: StaffNotice | null }) {
 		<Section status="notice-required">
 			<h1 className="text-xl font-semibold text-ink">{notice.title}</h1>
 			<p
-				className="whitespace-pre-line text-base text-ink"
+				className="whitespace-pre-line text-body text-ink"
 				data-testid="staff-notice"
 			>
 				{notice.bodyMarkdown}
@@ -193,7 +193,7 @@ function Failed() {
 			<h1 className="text-xl font-semibold text-ink">
 				{t("session.failedTitle")}
 			</h1>
-			<p className="text-base text-ink">{t("session.failedBody")}</p>
+			<p className="text-body text-ink">{t("session.failedBody")}</p>
 			<button type="button" className={primaryButton} onClick={retry}>
 				{t("session.retry")}
 			</button>

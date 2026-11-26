@@ -118,19 +118,19 @@ function HistoryItem({ entry }: { readonly entry: LedgerEntry }) {
 	].filter((part): part is string => part !== null);
 	return (
 		<li
-			className="flex flex-col gap-1 rounded-xl bg-surface-raised px-4 py-3"
+			className="flex flex-col gap-1 rounded-card-xl bg-surface-raised px-4 py-3"
 			data-testid="history-item"
 			data-state={entry.state}
 		>
 			<div className="flex items-start justify-between gap-3">
-				<span className="text-base font-semibold text-ink">
+				<span className="text-body font-semibold text-ink">
 					{t(entryTitleKey(entry), { store: entry.storeName ?? "" })}
 				</span>
 				<Badge tone={STATE_TONES[entry.state]}>
 					{t(`wallet.state.${entry.state}`)}
 				</Badge>
 			</div>
-			<span className="text-base text-ink">{amounts.join(" · ")}</span>
+			<span className="text-body text-ink">{amounts.join(" · ")}</span>
 			<span className="text-sm text-ink-muted">
 				{[
 					shownInstant(entry.at),
@@ -152,12 +152,12 @@ function ClaimItem({ claim }: { readonly claim: ClaimRecord }) {
 	const { t } = useI18n();
 	return (
 		<li
-			className="flex flex-col gap-1 rounded-xl bg-surface-raised px-4 py-3"
+			className="flex flex-col gap-1 rounded-card-xl bg-surface-raised px-4 py-3"
 			data-testid="claim-item"
 			data-state={claim.state}
 		>
 			<div className="flex items-start justify-between gap-3">
-				<span className="text-base font-semibold text-ink">
+				<span className="text-body font-semibold text-ink">
 					{t("wallet.receipt", { receipt: claim.receiptNo })}
 				</span>
 				<Badge tone={CLAIM_TONES[claim.state]}>
@@ -204,12 +204,12 @@ export function CounterClaimsCard({
 				{claims.map((claim) => (
 					<li
 						key={claim.id}
-						className="flex flex-col gap-1 rounded-xl bg-surface-raised px-4 py-3"
+						className="flex flex-col gap-1 rounded-card-xl bg-surface-raised px-4 py-3"
 						data-testid="counter-claim-item"
 						data-state={claim.state}
 					>
 						<div className="flex items-start justify-between gap-3">
-							<span className="text-base font-semibold text-ink">
+							<span className="text-body font-semibold text-ink">
 								{t("bill.number", { bill: claim.billNo })}
 							</span>
 							<Badge tone={COUNTER_CLAIM_TONES[claim.state]}>
@@ -244,7 +244,7 @@ export function MemberCardView({ wallet }: { readonly wallet: Wallet }) {
 	const card = wallet.card;
 	return (
 		<section
-			className="flex flex-col gap-2 rounded-2xl bg-accent p-4 text-accent-ink"
+			className="flex flex-col gap-2 rounded-card-2xl bg-accent p-4 text-accent-ink"
 			data-testid="member-card"
 			aria-label={t("wallet.cardLabel")}
 		>
@@ -254,7 +254,7 @@ export function MemberCardView({ wallet }: { readonly wallet: Wallet }) {
 			<p className="text-xl font-semibold" data-testid="card-name">
 				{card.displayName}
 			</p>
-			<p className="text-base" data-testid="card-phone">
+			<p className="text-body" data-testid="card-phone">
 				{card.phoneMasked}
 			</p>
 			<div className="flex flex-wrap justify-between gap-2 text-sm">
@@ -314,7 +314,7 @@ function WalletView({
 						/>
 						<div className="flex min-w-0 flex-col gap-1">
 							<p
-								className="text-base font-semibold text-ink"
+								className="text-body font-semibold text-ink"
 								data-testid="stamp-count"
 							>
 								{t("wallet.stamps", {
@@ -345,7 +345,7 @@ function WalletView({
 			))}
 			<Card testId="points">
 				<div className="flex items-baseline justify-between gap-3">
-					<span className="text-base text-ink">{t("wallet.points")}</span>
+					<span className="text-body text-ink">{t("wallet.points")}</span>
 					<span
 						className="text-2xl font-semibold text-ink"
 						data-testid="points-balance"
@@ -367,7 +367,7 @@ function WalletView({
 					</p>
 				)}
 				{wallet.tier === null ? null : (
-					<p className="text-base text-ink" data-testid="tier">
+					<p className="text-body text-ink" data-testid="tier">
 						{wallet.tier.nextName === null || wallet.tier.pointsToNext === null
 							? t("wallet.tierTop", { tier: wallet.tier.name })
 							: t("wallet.tier", {
@@ -434,7 +434,7 @@ function WalletView({
 					{t("wallet.history")}
 				</h2>
 				{wallet.history.length === 0 ? (
-					<p className="text-base text-ink-muted">{t("wallet.noHistory")}</p>
+					<p className="text-body text-ink-muted">{t("wallet.noHistory")}</p>
 				) : (
 					<ul className="flex flex-col gap-2" data-testid="history">
 						{wallet.history.map((entry) => (
@@ -456,7 +456,7 @@ export function JoinPrompt({ next }: { readonly next: "card" | "claim" }) {
 			<h1 className="text-xl font-semibold text-ink">
 				{t("wallet.notMemberTitle")}
 			</h1>
-			<p className="text-base text-ink">
+			<p className="text-body text-ink">
 				{programme === null
 					? t("wallet.notMemberBody")
 					: programmeTexts(programme, t).summary}

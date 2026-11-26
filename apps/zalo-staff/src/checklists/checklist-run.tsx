@@ -184,7 +184,7 @@ function PhotoPreviewLarge({
 			src={url}
 			alt={label}
 			data-testid="photo-large"
-			className="w-full rounded-xl border border-line object-contain"
+			className="w-full rounded-tile border-card border-line object-contain"
 		/>
 	);
 }
@@ -332,7 +332,7 @@ function ItemRow({
 			data-testid="checklist-item"
 			data-position={item.position}
 			data-done={item.done}
-			className="flex flex-col gap-3 rounded-2xl border border-line bg-surface-raised p-4"
+			className="flex flex-col gap-3 rounded-card-2xl border-card border-line bg-surface-raised p-4"
 		>
 			<div className="flex items-start gap-3">
 				<span className="relative -m-2 flex size-11 shrink-0 items-center justify-center">
@@ -344,9 +344,9 @@ function ItemRow({
 						disabled={!editable}
 						onChange={toggle}
 						data-testid="item-done"
-						className="peer absolute inset-0 m-0 size-11 cursor-pointer appearance-none rounded-xl opacity-0 disabled:cursor-default"
+						className="peer absolute inset-0 m-0 size-11 cursor-pointer appearance-none rounded-field opacity-0 disabled:cursor-default"
 					/>
-					<span className="pointer-events-none flex size-11 items-center justify-center rounded-xl peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus peer-disabled:opacity-70">
+					<span className="pointer-events-none flex size-11 items-center justify-center rounded-control-xl peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus peer-disabled:opacity-70">
 						{save.busy && !photoBusy ? (
 							<span className="text-accent">
 								<Spinner />
@@ -357,7 +357,7 @@ function ItemRow({
 					</span>
 				</span>
 				<div className="flex min-w-0 flex-1 flex-col gap-1">
-					<p id={labelId} className="text-base font-semibold text-ink">
+					<p id={labelId} className="text-body font-semibold text-ink">
 						{item.label}
 					</p>
 					<div className="flex flex-wrap gap-2">
@@ -389,7 +389,7 @@ function ItemRow({
 							data-testid="item-number"
 							className={`${fieldClass} max-w-40 tabular-nums`}
 						/>
-						<span className="text-base text-ink">{item.numberUnit}</span>
+						<span className="text-body text-ink">{item.numberUnit}</span>
 					</div>
 				</div>
 			) : null}
@@ -717,7 +717,7 @@ export function ChecklistRunScreen({
 						</>
 					}
 				>
-					<p className="text-base text-ink">
+					<p className="text-body text-ink">
 						{t("checklist.confirmBody", {
 							left: progress.total - progress.done,
 						})}

@@ -24,7 +24,7 @@ function ReaderRow({ reader }: { readonly reader: Reader }) {
 			className="flex items-center justify-between gap-2 border-t border-line py-2 first:border-t-0"
 			data-testid="unread-reader"
 		>
-			<span className="min-w-0 break-words text-base text-ink">
+			<span className="min-w-0 break-words text-body text-ink">
 				{reader.name ?? t("notices.unnamed")}
 			</span>
 			<span className="shrink-0 text-sm text-ink-muted">
@@ -98,7 +98,7 @@ function ReadRatePanel({ id }: { readonly id: string }) {
 						</div>
 					) : (
 						<p
-							className="text-base text-positive"
+							className="text-body text-positive"
 							data-testid="notice-rate-all"
 						>
 							{t("notices.rate.all")}
@@ -124,7 +124,7 @@ function ReadAction({
 		return (
 			<p
 				role="status"
-				className="rounded-xl bg-positive-soft px-3 py-2 text-base text-positive"
+				className="rounded-card-xl bg-positive-soft px-3 py-2 text-body text-positive"
 				data-testid="notice-read-at"
 			>
 				{t("notices.readAt", when(announcement.readAt))}
@@ -178,7 +178,7 @@ export function AnnouncementDetail({
 				onBack={onBack}
 				testId="notice-detail"
 			>
-				<p className="text-base text-ink-muted" data-testid="notice-missing">
+				<p className="text-body text-ink-muted" data-testid="notice-missing">
 					{t("notices.missing")}
 				</p>
 				<button
@@ -208,7 +208,7 @@ export function AnnouncementDetail({
 			) : null}
 			<Card testId="notice-body-card">
 				<p
-					className="whitespace-pre-line break-words text-base text-ink"
+					className="whitespace-pre-line break-words text-body text-ink"
 					data-testid="notice-body"
 				>
 					{announcement.body}

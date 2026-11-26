@@ -23,7 +23,7 @@ export function QrCode({
 			width="216"
 			height="216"
 			shapeRendering="crispEdges"
-			className={`rounded-xl bg-white ${dimmed ? "opacity-30" : ""}`}
+			className={`rounded-tile bg-white ${dimmed ? "opacity-30" : ""}`}
 			data-testid={testId}
 			data-payload={payload}
 		>

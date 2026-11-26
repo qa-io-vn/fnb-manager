@@ -204,7 +204,7 @@ export function SendRequestScreen({ open }: TeamScreenProps) {
 			testId="send-request"
 		>
 			{context.stores.length === 0 ? (
-				<p className="text-base text-ink-muted" data-testid="ask-no-stores">
+				<p className="text-body text-ink-muted" data-testid="ask-no-stores">
 					{t("home.noStores")}
 				</p>
 			) : load.status === "loading" ? (
@@ -222,7 +222,7 @@ export function SendRequestScreen({ open }: TeamScreenProps) {
 					</button>
 				</div>
 			) : load.value.length === 0 ? (
-				<p className="text-base text-ink-muted" data-testid="ask-no-kinds">
+				<p className="text-body text-ink-muted" data-testid="ask-no-kinds">
 					{t("ask.noKinds")}
 				</p>
 			) : (

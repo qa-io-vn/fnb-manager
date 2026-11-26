@@ -24,7 +24,7 @@ export function JoinClosedNote({
 	return (
 		<p
 			id={id}
-			className="rounded-xl bg-neutral-soft px-4 py-3 text-base text-ink"
+			className="rounded-card-xl bg-neutral-soft px-4 py-3 text-body text-ink"
 			data-testid="join-closed"
 			data-reason={block}
 		>

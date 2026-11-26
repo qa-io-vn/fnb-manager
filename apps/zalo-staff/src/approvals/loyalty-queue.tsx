@@ -90,13 +90,13 @@ function ItemSummary({
 				) : null}
 			</div>
 			<p
-				className="text-base font-semibold text-ink"
+				className="text-body font-semibold text-ink"
 				data-testid="queue-member"
 			>
 				{t("loyalty.member", { phone: shownPhone(item.phoneMasked) })}
 			</p>
 			{item.kind === "match" ? null : (
-				<p className="text-base text-ink tabular-nums">
+				<p className="text-body text-ink tabular-nums">
 					{t("queue.amounts", {
 						stamps: signed(item.stamps),
 						points: signed(item.points),
@@ -104,7 +104,7 @@ function ItemSummary({
 				</p>
 			)}
 			{item.reason === null ? null : (
-				<p className="whitespace-pre-line text-base text-ink">{item.reason}</p>
+				<p className="whitespace-pre-line text-body text-ink">{item.reason}</p>
 			)}
 			<p className="text-sm text-ink-muted">
 				{item.requestedBy === null
@@ -144,7 +144,7 @@ function ChoiceOption({
 }) {
 	return (
 		<label
-			className={`relative flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2 text-base text-ink ${checked ? "border-accent bg-surface-sunken" : "border-line"} has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus`}
+			className={`relative flex min-h-12 items-center gap-3 rounded-control-xl border-field px-3 py-2 text-body text-ink ${checked ? "border-accent bg-surface-sunken" : "border-line-strong"} has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus`}
 		>
 			<input
 				type="radio"
@@ -153,7 +153,7 @@ function ChoiceOption({
 				checked={checked}
 				disabled={disabled}
 				onChange={() => onChoose(value)}
-				className="absolute inset-0 m-0 size-full cursor-pointer appearance-none rounded-xl opacity-0 disabled:cursor-default"
+				className="absolute inset-0 m-0 size-full cursor-pointer appearance-none rounded-field opacity-0 disabled:cursor-default"
 			/>
 			<span
 				aria-hidden="true"
@@ -345,7 +345,7 @@ function QueueList({
 	if (sorted.length === 0) {
 		return (
 			<div className="flex flex-col gap-3" data-testid="queue-empty">
-				<p className="text-base text-ink-muted">{t("queue.empty")}</p>
+				<p className="text-body text-ink-muted">{t("queue.empty")}</p>
 				<button
 					type="button"
 					className={primaryButton}
@@ -420,7 +420,7 @@ export function LoyaltyQueueScreen(_: LoyaltyScreenProps) {
 		return (
 			<LoyaltyFrame title={t("queue.title")} testId="loyalty-queue">
 				<div data-testid="queue-refused" className="flex flex-col gap-3">
-					<p className="text-base text-ink">{t("queue.managersOnly")}</p>
+					<p className="text-body text-ink">{t("queue.managersOnly")}</p>
 					<button
 						type="button"
 						className={primaryButton}

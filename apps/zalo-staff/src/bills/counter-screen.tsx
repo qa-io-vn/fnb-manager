@@ -268,7 +268,7 @@ function ClaimAnswerForm({
 						<p
 							role="alert"
 							data-testid="claim-total-problem"
-							className="rounded-xl bg-negative-soft px-3 py-2 text-base text-negative"
+							className="rounded-card-xl bg-negative-soft px-3 py-2 text-body text-negative"
 						>
 							{t(`bills.problem.total.${totalProblem}`)}
 						</p>
@@ -343,10 +343,10 @@ function ClaimRow({
 	return (
 		<li data-testid="counter-claim" data-bill-no={claim.billNo}>
 			<Card>
-				<p className="font-mono text-base font-semibold text-ink">
+				<p className="font-mono text-body font-semibold text-ink">
 					{claim.billNo}
 				</p>
-				<p className="text-base text-ink" data-testid="claim-member">
+				<p className="text-body text-ink" data-testid="claim-member">
 					{claim.displayName === null
 						? t("loyalty.member", { phone: shownPhone(claim.phoneMasked) })
 						: t("counter.memberNamed", {
@@ -407,7 +407,7 @@ export function CounterScreen(_: LoyaltyScreenProps) {
 		code.load.status === "ready" && code.load.code.state === "ready";
 	return (
 		<LoyaltyFrame title={t("counter.title")} testId="counter">
-			<p className="text-base text-ink">{t("counter.intro")}</p>
+			<p className="text-body text-ink">{t("counter.intro")}</p>
 			<CounterQr load={code.load} onRetry={code.reload} />
 			{available ? (
 				<Panel
@@ -430,7 +430,7 @@ export function CounterScreen(_: LoyaltyScreenProps) {
 							{t("counter.claimsFailed")}
 						</Alert>
 					) : claims.load.claims.length === 0 ? (
-						<p className="text-base text-ink-muted" data-testid="claims-empty">
+						<p className="text-body text-ink-muted" data-testid="claims-empty">
 							{t("counter.claimsEmpty")}
 						</p>
 					) : (

@@ -80,10 +80,10 @@ function StaffStoreNotice() {
 	const navigate = useNavigate();
 	return (
 		<div
-			className="flex flex-col gap-2 rounded-xl bg-warning-soft px-3 py-2"
+			className="flex flex-col gap-2 rounded-card-xl bg-warning-soft px-3 py-2"
 			data-testid="claim-staff-store"
 		>
-			<p className="text-base text-ink">{t("claim.staffStore")}</p>
+			<p className="text-body text-ink">{t("claim.staffStore")}</p>
 			<button
 				type="button"
 				className={secondaryButton}
@@ -281,7 +281,7 @@ export function ClaimFormView({
 			</Field>
 			{claimsLeft === null ? null : (
 				<p
-					className={`text-base ${limitReached ? "text-negative" : "text-ink"}`}
+					className={`text-body ${limitReached ? "text-negative" : "text-ink"}`}
 					data-testid="claims-left"
 					role={limitReached ? "alert" : undefined}
 				>
@@ -291,7 +291,7 @@ export function ClaimFormView({
 				</p>
 			)}
 			{failure === null ? null : (
-				<p role="alert" className="text-base text-negative">
+				<p role="alert" className="text-body text-negative">
 					{t(failureKey(failure))}
 				</p>
 			)}
@@ -363,13 +363,13 @@ export function ClaimResultView({
 					{t(`claim.result.${result.state}.title`)}
 				</h2>
 				<Badge tone={tone}>{t(`claim.state.${result.state}`)}</Badge>
-				<p className="text-base text-ink">
+				<p className="text-body text-ink">
 					{result.reason === null
 						? t(`claim.result.${result.state}.body`)
 						: t(claimReasonKey(result.reason))}
 				</p>
 			</div>
-			<p className="text-base text-ink" data-testid="claims-left-after">
+			<p className="text-body text-ink" data-testid="claims-left-after">
 				{result.claimsLeftToday > 0
 					? t("claim.left", { count: result.claimsLeftToday })
 					: t("claim.limitReached")}
@@ -479,7 +479,7 @@ function ClaimView() {
 				<NoStores />
 			) : result === null ? (
 				<>
-					<p className="text-base text-ink">{t("claim.intro")}</p>
+					<p className="text-body text-ink">{t("claim.intro")}</p>
 					{stores.some((store) => store.counterClaims) ? (
 						<CounterEntry />
 					) : null}

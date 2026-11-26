@@ -126,10 +126,10 @@ function BillResult({
 					</p>
 					<BillStateChip state={answer.state} testId="bill-result-state" />
 				</div>
-				<p className="text-base text-ink" data-testid="bill-member">
+				<p className="text-body text-ink" data-testid="bill-member">
 					{t("loyalty.member", { phone: shownPhone(member.phoneMasked) })}
 				</p>
-				<p className="text-base text-ink tabular-nums" data-testid="bill-earn">
+				<p className="text-body text-ink tabular-nums" data-testid="bill-earn">
 					{t("bills.result.earn", {
 						stamps: answer.stampsEarned,
 						points: answer.pointsEarned,
@@ -137,7 +137,7 @@ function BillResult({
 				</p>
 				{answer.state === "awaiting_customer" && answer.confirmBy !== null ? (
 					<p
-						className="text-base font-semibold text-ink"
+						className="text-body font-semibold text-ink"
 						data-testid="bill-confirm-by"
 					>
 						{t("bills.result.confirmBy", when(answer.confirmBy))}
@@ -261,7 +261,7 @@ function BillForm({
 				id={`${field}-problem`}
 				role="alert"
 				data-testid={`bill-problem-${field}`}
-				className="rounded-xl bg-negative-soft px-3 py-2 text-base text-negative"
+				className="rounded-card-xl bg-negative-soft px-3 py-2 text-body text-negative"
 			>
 				{t(`bills.problem.${field}.${problem.problem}`)}
 			</p>
@@ -270,7 +270,7 @@ function BillForm({
 
 	return (
 		<>
-			<p className="text-base text-ink">{t("bills.intro")}</p>
+			<p className="text-body text-ink">{t("bills.intro")}</p>
 			<ScanButton
 				state={scanner.state}
 				disabled={busy}
@@ -505,12 +505,12 @@ function RecentRow({
 		>
 			<Card>
 				<div className="flex flex-wrap items-center justify-between gap-2">
-					<p className="font-mono text-base font-semibold text-ink">
+					<p className="font-mono text-body font-semibold text-ink">
 						{bill.billNo}
 					</p>
 					<BillStateChip state={bill.state} />
 				</div>
-				<p className="text-base text-ink tabular-nums">
+				<p className="text-body text-ink tabular-nums">
 					{t("bills.line", {
 						time: when(bill.createdAt).time,
 						total: formatters.moneyExact(bill.total),
@@ -572,7 +572,7 @@ function RecentList({
 			testId="recent-bills"
 		>
 			{recent.bills.length === 0 ? (
-				<p className="text-base text-ink-muted">{t("bills.recentEmpty")}</p>
+				<p className="text-body text-ink-muted">{t("bills.recentEmpty")}</p>
 			) : (
 				<ul className="flex flex-col gap-3">
 					{recent.bills.map((bill) => (
@@ -624,7 +624,7 @@ export function BillsScreen(_: LoyaltyScreenProps) {
 					</div>
 				) : load.recent.mode !== "staff" ? (
 					<div className="flex flex-col gap-3" data-testid="bills-pos-sync">
-						<p className="text-base text-ink">{t("bills.posSync")}</p>
+						<p className="text-body text-ink">{t("bills.posSync")}</p>
 						<button
 							type="button"
 							className={primaryButton}

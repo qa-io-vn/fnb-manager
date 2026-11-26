@@ -1,13 +1,13 @@
 const focusRing =
 	"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
-export const primaryButton = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 text-base font-semibold text-accent-ink disabled:opacity-60 ${focusRing}`;
+export const primaryButton = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-control-xl bg-accent px-4 text-body font-semibold text-accent-ink disabled:opacity-60 ${focusRing}`;
 
-export const secondaryButton = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-line px-4 text-base text-ink disabled:opacity-60 ${focusRing}`;
+export const secondaryButton = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-control-xl border-outline border-edge px-4 text-body text-ink disabled:opacity-60 ${focusRing}`;
 
-export const dangerButton = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-line px-4 text-base text-negative disabled:opacity-60 ${focusRing}`;
+export const dangerButton = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-control-xl border-outline border-edge-danger px-4 text-body text-negative disabled:opacity-60 ${focusRing}`;
 
-export const quietButton = `inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl px-3 text-base text-ink underline underline-offset-4 ${focusRing}`;
+export const quietButton = `inline-flex min-h-11 min-w-11 items-center justify-center rounded-control-xl px-3 text-body text-ink underline underline-offset-4 ${focusRing}`;
 
 export function Spinner() {
 	return (

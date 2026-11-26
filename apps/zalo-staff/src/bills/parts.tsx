@@ -126,7 +126,7 @@ export function ReasonField({
 					id={problemId}
 					role="alert"
 					data-testid={`${testId}-problem`}
-					className="rounded-xl bg-negative-soft px-3 py-2 text-base text-negative"
+					className="rounded-card-xl bg-negative-soft px-3 py-2 text-body text-negative"
 				>
 					{t(reasonProblemKey(problem))}
 				</p>
@@ -149,7 +149,7 @@ export function RefusalAlert({
 			role="alert"
 			data-testid={testId}
 			data-refusal={refusal}
-			className="rounded-xl bg-negative-soft px-3 py-2 text-base text-negative"
+			className="rounded-card-xl bg-negative-soft px-3 py-2 text-body text-negative"
 		>
 			{text}
 		</p>

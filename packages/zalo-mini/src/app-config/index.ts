@@ -452,6 +452,68 @@ export const DEFAULT_STATUS_COLOURS: Readonly<
 	},
 };
 
+// The shape of a brand's screens (rounded or square, flat or with a shadow) and the size of its body text. Every
+// field is optional: one that is not set keeps today's look, because each utility of the shell's style sheet falls back
+// to today's value (`rounded-card` is `var(--radius-card, 1.5rem)`).
+export const SHAPE_FIELDS = [
+	"card",
+	"panel",
+	"control",
+	"field",
+	"tile",
+	"sheet",
+	"border",
+	"outline",
+	"shadow",
+] as const;
+
+export type ShapeField = (typeof SHAPE_FIELDS)[number];
+
+/** The largest corner radius, in px, of each rounded part; a radius is a multiple of 0.5. */
+export const SHAPE_RADIUS_MAX = {
+	card: 32,
+	panel: 32,
+	control: 24,
+	field: 32,
+	tile: 32,
+	sheet: 40,
+} as const;
+
+export const RADIUS_STEP = 0.5;
+export const BORDER_WIDTHS = [1, 1.5, 2] as const;
+export const OUTLINE_WIDTHS = [1.5, 2] as const;
+export const BODY_SIZES = [15, 16] as const;
+/** The radius that makes a part a pill, written for `control: "pill"`. */
+export const PILL_RADIUS_PX = 9999;
+/** The line height that goes with a 15 px body (a 16 px body keeps today's 1.5). */
+export const BODY_15_LINE_HEIGHT = 1.45;
+
+export interface BrandShape {
+	/** Cards, list rows, coupons, tiles of figures and the boxes of messages. */
+	readonly card?: number;
+	/** The big panels: the brand banner and the member card. */
+	readonly panel?: number;
+	/** Buttons, chips and option pills; "pill" is fully round. */
+	readonly control?: number | "pill";
+	/** Text fields, selects and search fields. */
+	readonly field?: number;
+	/** Photos, icon tiles and plates. */
+	readonly tile?: number;
+	/** The top corners of a sheet. */
+	readonly sheet?: number;
+	/** The width of a card's and a field's border. */
+	readonly border?: 1 | 1.5 | 2;
+	/** The width of the outline of a secondary button, an idle chip and a stepper. */
+	readonly outline?: 1.5 | 2;
+	/** False turns the shadow of cards and buttons off. */
+	readonly shadow?: boolean;
+}
+
+export interface BrandType {
+	/** The size in px of body text. */
+	readonly body?: 15 | 16;
+}
+
 export interface BrandTheme {
 	readonly light: BrandPalette;
 	readonly dark: BrandPalette;
@@ -461,6 +523,8 @@ export interface BrandTheme {
 	readonly taglineEn: string | null;
 	/** A short line under the tagline, such as the kind of place. */
 	readonly kicker: string | null;
+	readonly shape: BrandShape | null;
+	readonly type: BrandType | null;
 }
 
 /** The theme as it is written in a configuration row (snake case). */
@@ -471,6 +535,8 @@ export interface BrandThemeRow {
 	readonly tagline_vi?: string;
 	readonly tagline_en?: string;
 	readonly kicker?: string;
+	readonly shape?: BrandShape;
+	readonly type?: BrandType;
 }
 
 export interface ContrastRule {
@@ -749,6 +815,103 @@ function optionalText(
 	return trimmed;
 }
 
+function isWholeStep(value: unknown, max: number): value is number {
+	return (
+		typeof value === "number" &&
+		Number.isFinite(value) &&
+		value >= 0 &&
+		value <= max &&
+		Number.isInteger(value / RADIUS_STEP)
+	);
+}
+
+function oneOf<T extends number>(
+	value: unknown,
+	allowed: readonly T[],
+): value is T {
+	return allowed.some((candidate) => candidate === value);
+}
+
+function shapeOf(value: unknown, problems: string[]): BrandShape | undefined {
+	if (value === undefined || value === null) return undefined;
+	if (!isRecord(value)) {
+		problems.push("theme.shape must be an object");
+		return undefined;
+	}
+	const unknown = Object.keys(value).filter(
+		(key) => !(SHAPE_FIELDS as readonly string[]).includes(key),
+	);
+	if (unknown.length > 0) {
+		problems.push(`theme.shape has unknown fields: ${unknown.join(", ")}`);
+	}
+	const shape: { -readonly [K in keyof BrandShape]: BrandShape[K] } = {};
+	for (const field of SHAPE_FIELDS) {
+		const given = value[field];
+		if (given === undefined || given === null) continue;
+		switch (field) {
+			case "card":
+			case "panel":
+			case "field":
+			case "tile":
+			case "sheet": {
+				const max = SHAPE_RADIUS_MAX[field];
+				if (isWholeStep(given, max)) shape[field] = given;
+				else {
+					problems.push(
+						`theme.shape.${field} must be a number from 0 to ${max} in steps of ${RADIUS_STEP}`,
+					);
+				}
+				break;
+			}
+			case "control": {
+				if (given === "pill" || isWholeStep(given, SHAPE_RADIUS_MAX.control)) {
+					shape.control = given;
+				} else {
+					problems.push(
+						`theme.shape.control must be "pill" or a number from 0 to ${SHAPE_RADIUS_MAX.control} in steps of ${RADIUS_STEP}`,
+					);
+				}
+				break;
+			}
+			case "border": {
+				if (oneOf(given, BORDER_WIDTHS)) shape.border = given;
+				else problems.push("theme.shape.border must be 1, 1.5 or 2");
+				break;
+			}
+			case "outline": {
+				if (oneOf(given, OUTLINE_WIDTHS)) shape.outline = given;
+				else problems.push("theme.shape.outline must be 1.5 or 2");
+				break;
+			}
+			case "shadow": {
+				if (typeof given === "boolean") shape.shadow = given;
+				else problems.push("theme.shape.shadow must be true or false");
+				break;
+			}
+		}
+	}
+	return shape;
+}
+
+function typeOf(value: unknown, problems: string[]): BrandType | undefined {
+	if (value === undefined || value === null) return undefined;
+	if (!isRecord(value)) {
+		problems.push("theme.type must be an object");
+		return undefined;
+	}
+	const unknown = Object.keys(value).filter((key) => key !== "body");
+	if (unknown.length > 0) {
+		problems.push(`theme.type has unknown fields: ${unknown.join(", ")}`);
+	}
+	const type: { -readonly [K in keyof BrandType]: BrandType[K] } = {};
+	const body = value.body;
+	if (body !== undefined && body !== null) {
+		if (oneOf(body, BODY_SIZES)) type.body = body;
+		else problems.push("theme.type.body must be 15 or 16");
+	}
+	return type;
+}
+
 /** Checks a theme row and returns it normalised, or adds its problems; null when it is unusable. */
 export function validateBrandThemeRow(
 	value: unknown,
@@ -765,6 +928,8 @@ export function validateBrandThemeRow(
 		"tagline_vi",
 		"tagline_en",
 		"kicker",
+		"shape",
+		"type",
 	];
 	const unknown = Object.keys(value).filter((key) => !known.includes(key));
 	if (unknown.length > 0) {
@@ -816,10 +981,14 @@ export function validateBrandThemeRow(
 	if (given("tagline_vi") !== given("tagline_en")) {
 		problems.push("theme.tagline_vi and theme.tagline_en are given together");
 	}
+	const shape = shapeOf(value.shape, problems);
+	const type = typeOf(value.type, problems);
 	if (problems.length > before || light === null || dark === null) return null;
 	return {
 		light,
 		dark,
+		...(shape === undefined ? {} : { shape }),
+		...(type === undefined ? {} : { type }),
 		...(wordmark === undefined ? {} : { wordmark }),
 		...(taglineVi === undefined ? {} : { tagline_vi: taglineVi }),
 		...(taglineEn === undefined ? {} : { tagline_en: taglineEn }),
@@ -835,6 +1004,8 @@ export function brandThemeOf(row: BrandThemeRow): BrandTheme {
 		taglineVi: row.tagline_vi ?? null,
 		taglineEn: row.tagline_en ?? null,
 		kicker: row.kicker ?? null,
+		shape: row.shape ?? null,
+		type: row.type ?? null,
 	};
 }
 
@@ -897,10 +1068,66 @@ function declarations(colours: BrandPalette): string {
 	].join(";");
 }
 
+function radiusPx(value: unknown, max: number): string | null {
+	return isWholeStep(value, max) ? `${value}px` : null;
+}
+
+// The custom properties of a brand's shape and body size. Each one is written only when it is a number inside its
+// bounds (or the word "pill"), so no text of a configuration can reach the style sheet through them.
+function shapeDeclarations(
+	shape: BrandShape | null,
+	type: BrandType | null,
+): string[] {
+	const written: string[] = [];
+	const radii: ReadonlyArray<readonly [string, string | null]> = [
+		["--radius-card", radiusPx(shape?.card, SHAPE_RADIUS_MAX.card)],
+		["--radius-panel", radiusPx(shape?.panel, SHAPE_RADIUS_MAX.panel)],
+		[
+			"--radius-control",
+			shape?.control === "pill"
+				? `${PILL_RADIUS_PX}px`
+				: radiusPx(shape?.control, SHAPE_RADIUS_MAX.control),
+		],
+		["--radius-field", radiusPx(shape?.field, SHAPE_RADIUS_MAX.field)],
+		["--radius-tile", radiusPx(shape?.tile, SHAPE_RADIUS_MAX.tile)],
+		["--radius-sheet", radiusPx(shape?.sheet, SHAPE_RADIUS_MAX.sheet)],
+	];
+	for (const [name, value] of radii) {
+		if (value !== null) written.push(`${name}:${value}`);
+	}
+	if (oneOf(shape?.border, BORDER_WIDTHS)) {
+		written.push(
+			`--card-border:${shape?.border}px`,
+			`--field-border:${shape?.border}px`,
+		);
+	}
+	if (oneOf(shape?.outline, OUTLINE_WIDTHS)) {
+		// a brand with an outline draws it in its ink (a danger action in its negative colour), as the handbook does
+		written.push(
+			`--outline-width:${shape?.outline}px`,
+			"--outline-color:var(--ink)",
+			"--outline-danger-color:var(--negative)",
+		);
+	}
+	if (shape?.shadow === false) written.push("--card-shadow:none");
+	if (type?.body === 15) {
+		written.push(
+			`--text-body:15px`,
+			`--text-body--line-height:${BODY_15_LINE_HEIGHT}`,
+		);
+	}
+	return written;
+}
+
 /**
  * The style sheet of a theme. `html:root` outranks the tokens' `:root`, so the order of the style sheets does not
  * matter; the dark palette follows the same media query as the tokens.
  */
 export function brandThemeCss(theme: BrandTheme): string {
-	return `html:root{${declarations(theme.light)}}@media (prefers-color-scheme: dark){html:root{${declarations(theme.dark)}}}`;
+	// the shape and the body size do not depend on the colour scheme: they sit in the first block only
+	const first = [
+		declarations(theme.light),
+		...shapeDeclarations(theme.shape, theme.type),
+	].join(";");
+	return `html:root{${first}}@media (prefers-color-scheme: dark){html:root{${declarations(theme.dark)}}}`;
 }

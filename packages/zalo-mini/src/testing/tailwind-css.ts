@@ -59,3 +59,37 @@ export async function compileAppCss(
 	});
 	return compiler.build([...candidates]);
 }
+
+/** The declarations of one class in compiled CSS (the first rule of that selector), or null when there is none. */
+export function declarationsOf(
+	css: string,
+	className: string,
+): Record<string, string> | null {
+	const selector = `.${className.replace(/[[\]:./%]/g, "\\$&")} {`;
+	const start = css.indexOf(selector);
+	if (start < 0) return null;
+	const end = css.indexOf("}", start);
+	const body = css.slice(start + selector.length, end);
+	const found: Record<string, string> = {};
+	for (const declaration of body.split(/;\s*(?:\n|$)/)) {
+		const colon = declaration.indexOf(":");
+		if (colon < 0) continue;
+		found[declaration.slice(0, colon).trim()] = declaration
+			.slice(colon + 1)
+			.replace(/\s+/g, " ")
+			.trim();
+	}
+	return found;
+}
+
+/** Every custom property that the compiled CSS defines (the theme's, the tokens' and the shell's), by name. */
+export function customProperties(css: string): Record<string, string> {
+	const found: Record<string, string> = {};
+	for (const match of css.matchAll(/(--[\w-]+):\s*([^;{}]+);/g)) {
+		const [, name, value] = match;
+		if (name !== undefined && value !== undefined && !(name in found)) {
+			found[name] = value.trim();
+		}
+	}
+	return found;
+}

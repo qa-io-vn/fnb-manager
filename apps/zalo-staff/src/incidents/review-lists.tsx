@@ -21,7 +21,7 @@ function when(
 
 function NoteText({ text }: { readonly text: string }) {
 	return (
-		<p className="whitespace-pre-line break-words text-base text-ink">{text}</p>
+		<p className="whitespace-pre-line break-words text-body text-ink">{text}</p>
 	);
 }
 
@@ -175,7 +175,7 @@ function IncidentCard({
 				{when(incident.occurredAt, formatters)}
 			</p>
 			{incident.itemLabel !== null ? (
-				<p className="text-base font-semibold text-ink">
+				<p className="text-body font-semibold text-ink">
 					{t("review.item", { item: incident.itemLabel })}
 				</p>
 			) : null}

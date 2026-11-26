@@ -33,11 +33,11 @@ function Instruction({ answer }: { readonly answer: Accepted }) {
 	const instruction = answer.instruction;
 	return (
 		<div
-			className="flex flex-col gap-2 rounded-xl bg-surface-sunken p-3"
+			className="flex flex-col gap-2 rounded-card-xl bg-surface-sunken p-3"
 			data-testid="redeem-instruction"
 			data-kind={instruction.kind}
 		>
-			<p className="text-base text-ink">
+			<p className="text-body text-ink">
 				{t(`redeem.instruction.${instruction.kind}`)}
 			</p>
 			{instruction.kind === "pos_discount" ? (
@@ -94,7 +94,7 @@ function AcceptedView({
 				</div>
 				{answer.firstVerification || answer.verifiedAt === null ? null : (
 					<p
-						className="text-base font-semibold text-ink"
+						className="text-body font-semibold text-ink"
 						data-testid="redeem-checked-before"
 					>
 						{t("redeem.checkedBefore", {
@@ -104,7 +104,7 @@ function AcceptedView({
 				)}
 				<Instruction answer={answer} />
 				{answer.minBillAmount === null ? null : (
-					<p className="text-base text-ink" data-testid="redeem-min-bill">
+					<p className="text-body text-ink" data-testid="redeem-min-bill">
 						{t("redeem.minBill", {
 							amount: formatters.moneyExact(answer.minBillAmount),
 						})}
@@ -175,11 +175,11 @@ function RefusedView({ answer }: { readonly answer: Refused }) {
 			role="alert"
 			data-testid="redeem-refused"
 			data-refusal={refusal}
-			className="flex flex-col gap-1 rounded-xl bg-negative-soft px-3 py-3 text-negative"
+			className="flex flex-col gap-1 rounded-card-xl bg-negative-soft px-3 py-3 text-negative"
 		>
 			<p className="text-lg font-semibold">{t(`redeem.refusal.${refusal}`)}</p>
-			{detail === null ? null : <p className="text-base">{detail}</p>}
-			<p className="text-base">{t("redeem.refusal.doNotApply")}</p>
+			{detail === null ? null : <p className="text-body">{detail}</p>}
+			<p className="text-body">{t("redeem.refusal.doNotApply")}</p>
 		</div>
 	);
 }
@@ -267,7 +267,7 @@ export function RedemptionScreen(_: LoyaltyScreenProps) {
 				<AcceptedView answer={answer} staffMode={staffMode} onAgain={again} />
 			) : (
 				<>
-					<p className="text-base text-ink">{t("redeem.intro")}</p>
+					<p className="text-body text-ink">{t("redeem.intro")}</p>
 					<ScanButton
 						state={scanner.state}
 						disabled={busy}
@@ -307,7 +307,7 @@ export function RedemptionScreen(_: LoyaltyScreenProps) {
 							<p
 								id={problemId}
 								role="alert"
-								className="rounded-xl bg-negative-soft px-3 py-2 text-base text-negative"
+								className="rounded-card-xl bg-negative-soft px-3 py-2 text-body text-negative"
 							>
 								{t("redeem.problem")}
 							</p>

@@ -44,7 +44,7 @@ export function BrandWordmark({
 	const grid = chars.length === 4;
 	const tile =
 		size === "large"
-			? "size-12 rounded-xl text-2xl"
+			? "size-12 rounded-tile text-2xl"
 			: "size-7 rounded-md text-sm";
 	return (
 		<span
@@ -91,7 +91,7 @@ export function BrandBanner({
 	const tagline = language === "en" ? theme.taglineEn : theme.taglineVi;
 	return (
 		<header
-			className={`flex flex-col gap-4 rounded-b-[28px] px-5 pt-6 ${overlap ? "pb-16" : "pb-7"}`}
+			className={`flex flex-col gap-4 rounded-b-panel px-5 pt-6 ${overlap ? "pb-16" : "pb-7"}`}
 			style={{
 				background: "var(--brand-hero)",
 				color: "var(--brand-hero-ink)",
@@ -103,7 +103,7 @@ export function BrandBanner({
 					<BrandWordmark letters={theme.wordmark} size="small" />
 				)}
 				{children === undefined ? null : (
-					<div className="min-w-0 flex-1 text-base font-semibold">
+					<div className="min-w-0 flex-1 text-body font-semibold">
 						{children}
 					</div>
 				)}
@@ -141,7 +141,7 @@ export function BrandHero({
 	if (theme.wordmark === null && tagline === null) return null;
 	return (
 		<section
-			className={`flex items-center gap-4 rounded-2xl px-5 py-5 ${className}`}
+			className={`flex items-center gap-4 rounded-panel px-5 py-5 ${className}`}
 			style={{
 				background: "var(--brand-hero)",
 				color: "var(--brand-hero-ink)",

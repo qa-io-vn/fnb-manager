@@ -5,9 +5,9 @@ import { Spinner } from "../ui";
 export const focusRing =
 	"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
-export const quietAction = `inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-3 text-base font-semibold text-accent disabled:opacity-60 ${focusRing}`;
+export const quietAction = `inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-control-xl px-3 text-body font-semibold text-accent disabled:opacity-60 ${focusRing}`;
 
-export const fieldClass = `min-h-11 w-full rounded-xl border border-line bg-surface-raised px-4 py-2 text-base text-ink ${focusRing}`;
+export const fieldClass = `min-h-11 w-full rounded-field border-field border-line-strong bg-surface-raised px-4 py-2 text-base text-ink ${focusRing}`;
 
 function BackIcon() {
 	return (
@@ -59,7 +59,7 @@ export function SubScreen({
 					onClick={onBack}
 					disabled={backDisabled}
 					aria-label={t("ops.back")}
-					className={`-ml-3 flex size-11 shrink-0 items-center justify-center rounded-xl text-ink disabled:opacity-60 ${focusRing}`}
+					className={`-ml-3 flex size-11 shrink-0 items-center justify-center rounded-control-xl text-ink disabled:opacity-60 ${focusRing}`}
 				>
 					<BackIcon />
 				</button>
@@ -100,7 +100,7 @@ export function Panel({
 			className="flex flex-col gap-3"
 		>
 			<div className="flex items-center justify-between gap-2">
-				<h2 id={id} className="text-base font-semibold text-ink">
+				<h2 id={id} className="text-body font-semibold text-ink">
 					{title}
 				</h2>
 				{aside}
@@ -123,7 +123,7 @@ export function Card({
 		<div
 			data-testid={testId}
 			data-state={state}
-			className="flex min-w-0 flex-col gap-3 rounded-2xl border border-line bg-surface-raised p-4"
+			className="flex min-w-0 flex-col gap-3 rounded-card-2xl border-card border-line bg-surface-raised p-4"
 		>
 			{children}
 		</div>
@@ -170,7 +170,7 @@ export function Alert({
 		<p
 			role="alert"
 			data-testid={testId}
-			className="rounded-xl bg-negative-soft px-3 py-2 text-base text-negative"
+			className="rounded-card-xl bg-negative-soft px-3 py-2 text-body text-negative"
 		>
 			{children}
 		</p>
@@ -196,7 +196,7 @@ export function Loading({ label }: { readonly label: string }) {
 		<div
 			role="status"
 			aria-live="polite"
-			className="flex items-center gap-3 py-2 text-base text-ink"
+			className="flex items-center gap-3 py-2 text-body text-ink"
 		>
 			<span
 				aria-hidden="true"
@@ -250,7 +250,7 @@ export function OfflineBanner() {
 		<p
 			role="alert"
 			data-testid="offline"
-			className="rounded-xl bg-warning-soft px-3 py-2 text-base text-warning"
+			className="rounded-card-xl bg-warning-soft px-3 py-2 text-body text-warning"
 		>
 			{t("ops.offline")}
 		</p>

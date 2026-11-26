@@ -61,7 +61,7 @@ function QueueRow({
 			data-status={count.status}
 		>
 			<div className="flex flex-wrap items-center justify-between gap-2">
-				<p className="text-base font-semibold text-ink">{t("loyalty.queue")}</p>
+				<p className="text-body font-semibold text-ink">{t("loyalty.queue")}</p>
 				{count.status === "ready" ? (
 					<div className="flex flex-wrap gap-2">
 						<Chip
@@ -147,7 +147,7 @@ function BillQueueRow({
 			data-status={count.status}
 		>
 			<div className="flex flex-wrap items-center justify-between gap-2">
-				<p className="text-base font-semibold text-ink">
+				<p className="text-body font-semibold text-ink">
 					{t("loyalty.billQueue")}
 				</p>
 				{count.status === "ready" ? (
@@ -225,10 +225,10 @@ export function LoyaltyHomeCard({
 			className="flex flex-col gap-3"
 			data-testid="home-loyalty"
 		>
-			<h2 id={headingId} className="text-base font-semibold text-ink">
+			<h2 id={headingId} className="text-body font-semibold text-ink">
 				{t("loyalty.section")}
 			</h2>
-			<div className="flex flex-col gap-3 rounded-2xl border border-line bg-surface-raised p-4">
+			<div className="flex flex-col gap-3 rounded-card-2xl border-card border-line bg-surface-raised p-4">
 				<p className="text-sm text-ink-muted">
 					{t(staffMode ? "loyalty.sectionBodyStaff" : "loyalty.sectionBody")}
 				</p>

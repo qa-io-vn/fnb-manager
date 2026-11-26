@@ -33,12 +33,12 @@ function RequestCard({ request }: { readonly request: MyRequest }) {
 		>
 			<Card>
 				<div className="flex items-start justify-between gap-2">
-					<p className="text-base font-semibold text-ink">
+					<p className="text-body font-semibold text-ink">
 						{t(`queue.kind.${request.kind}`)}
 					</p>
 					<RequestChip state={request.state} />
 				</div>
-				<p className="text-base text-ink">
+				<p className="text-body text-ink">
 					{t("loyalty.member", { phone: shownPhone(request.phoneMasked) })}
 					{" · "}
 					<span className="tabular-nums">
@@ -48,12 +48,12 @@ function RequestCard({ request }: { readonly request: MyRequest }) {
 						})}
 					</span>
 				</p>
-				<p className="whitespace-pre-line text-base text-ink">
+				<p className="whitespace-pre-line text-body text-ink">
 					{request.reason}
 				</p>
 				{request.decisionReason === null ? null : (
 					<p
-						className="rounded-xl bg-surface-sunken px-3 py-2 text-base text-ink"
+						className="rounded-card-xl bg-surface-sunken px-3 py-2 text-body text-ink"
 						data-testid="decision-reason"
 					>
 						{t("requests.decisionReason", { reason: request.decisionReason })}
@@ -106,7 +106,7 @@ export function MyRequestsScreen(_: LoyaltyScreenProps) {
 				</div>
 			) : load.requests.length === 0 ? (
 				<div className="flex flex-col gap-3">
-					<p className="text-base text-ink-muted" data-testid="requests-empty">
+					<p className="text-body text-ink-muted" data-testid="requests-empty">
 						{t("requests.empty")}
 					</p>
 					<button

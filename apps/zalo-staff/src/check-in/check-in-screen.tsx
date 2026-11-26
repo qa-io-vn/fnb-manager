@@ -62,7 +62,7 @@ function CheckinResult({
 					</p>
 					<VisitChip state={state} testId="checkin-state" />
 				</div>
-				<p className="text-base text-ink" data-testid="checkin-member">
+				<p className="text-body text-ink" data-testid="checkin-member">
 					{t("loyalty.member", { phone: shownPhone(member.phoneMasked) })}
 				</p>
 				{member.stamps !== null && member.stampsPerCard !== null ? (
@@ -77,7 +77,7 @@ function CheckinResult({
 					<>
 						{answer.confirmBy === null ? null : (
 							<p
-								className="text-base font-semibold text-ink"
+								className="text-body font-semibold text-ink"
 								data-testid="checkin-confirm-by"
 							>
 								{t("checkin.result.confirmBy", {
@@ -217,7 +217,7 @@ export function CheckInScreen(_: LoyaltyScreenProps) {
 				<CheckinResult answer={answer} onAgain={again} />
 			) : (
 				<>
-					<p className="text-base text-ink">{t("checkin.intro")}</p>
+					<p className="text-body text-ink">{t("checkin.intro")}</p>
 					<ScanButton
 						state={scanner.state}
 						disabled={busy}
@@ -263,7 +263,7 @@ export function CheckInScreen(_: LoyaltyScreenProps) {
 								role="alert"
 								data-testid="checkin-problem"
 								data-refusal={refusal?.refusal ?? problem ?? undefined}
-								className="rounded-xl bg-negative-soft px-3 py-2 text-base text-negative"
+								className="rounded-card-xl bg-negative-soft px-3 py-2 text-body text-negative"
 							>
 								{message}
 							</p>

@@ -33,7 +33,7 @@ export function OfflineNotice() {
 	return (
 		<p
 			role="status"
-			className="mx-4 mt-3 rounded-xl bg-warning-soft px-4 py-3 text-base text-ink"
+			className="mx-4 mt-3 rounded-card-xl bg-warning-soft px-4 py-3 text-body text-ink"
 			data-testid="offline"
 		>
 			{t("customer.offline")}

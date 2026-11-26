@@ -90,7 +90,7 @@ function RewardItem({
 						{costText(rewardCost(reward), t)}
 					</span>
 				</div>
-				<p className="text-base text-ink" data-testid="reward-kind">
+				<p className="text-body text-ink" data-testid="reward-kind">
 					{rewardKindText(reward, t, language)}
 				</p>
 				{reward.description === null ? null : (
@@ -187,14 +187,14 @@ function RewardList({
 			{problem === null || confirming !== null ? null : (
 				<p
 					role="alert"
-					className="rounded-xl bg-negative-soft px-4 py-3 text-base text-ink"
+					className="rounded-card-xl bg-negative-soft px-4 py-3 text-body text-ink"
 					data-testid="redeem-problem"
 				>
 					{problem}
 				</p>
 			)}
 			{state.data.length === 0 ? (
-				<p className="text-base text-ink" data-testid="rewards-empty">
+				<p className="text-body text-ink" data-testid="rewards-empty">
 					{t("reward.empty")}
 				</p>
 			) : (
@@ -246,13 +246,13 @@ function RewardList({
 						{problem === null ? null : (
 							<p
 								role="alert"
-								className="rounded-xl bg-negative-soft px-4 py-3 text-base text-ink"
+								className="rounded-card-xl bg-negative-soft px-4 py-3 text-body text-ink"
 								data-testid="redeem-problem"
 							>
 								{problem}
 							</p>
 						)}
-						<p className="text-base text-ink" data-testid="redeem-cost">
+						<p className="text-body text-ink" data-testid="redeem-cost">
 							{t("reward.confirm.body", {
 								cost: costText(rewardCost(confirming), t),
 								store: store.name,
@@ -282,7 +282,7 @@ function RewardsView() {
 		<Screen testId="rewards-screen">
 			<BackButton />
 			<h1 className="text-xl font-semibold text-ink">{t("reward.title")}</h1>
-			<p className="text-base text-ink">{t("reward.intro")}</p>
+			<p className="text-body text-ink">{t("reward.intro")}</p>
 			{stores.length === 0 ? (
 				<NoStores />
 			) : (
@@ -295,7 +295,7 @@ function RewardsView() {
 				/>
 			)}
 			{stores.length === 0 ? null : store === null ? (
-				<p className="text-base text-ink" data-testid="reward-pick-first">
+				<p className="text-body text-ink" data-testid="reward-pick-first">
 					{t("reward.pickFirst")}
 				</p>
 			) : (
@@ -335,7 +335,7 @@ function VoucherFacts({
 	switch (voucher.state) {
 		case "held":
 			return voucher.holdExpiresAt === null ? null : (
-				<p className="text-base text-ink" data-testid="voucher-time-left">
+				<p className="text-body text-ink" data-testid="voucher-time-left">
 					{t("voucher.timeLeft", {
 						time: timeLeft(voucher.holdExpiresAt, now),
 					})}
@@ -343,7 +343,7 @@ function VoucherFacts({
 			);
 		case "used":
 			return (
-				<p className="text-base text-ink" data-testid="voucher-used">
+				<p className="text-body text-ink" data-testid="voucher-used">
 					{voucher.confirmedAt === null
 						? t("voucher.state.used")
 						: t("voucher.usedAt", {
@@ -353,18 +353,18 @@ function VoucherFacts({
 			);
 		case "returned":
 			return (
-				<p className="text-base text-ink" data-testid="voucher-returned">
+				<p className="text-body text-ink" data-testid="voucher-returned">
 					{t("voucher.returnedBody", { cost })}
 				</p>
 			);
 		case "expired":
 			return (
-				<p className="text-base text-ink">
+				<p className="text-body text-ink">
 					{t("voucher.expiredBody", { cost })}
 				</p>
 			);
 		case "cancelled":
-			return <p className="text-base text-ink">{t("voucher.cancelledBody")}</p>;
+			return <p className="text-body text-ink">{t("voucher.cancelledBody")}</p>;
 	}
 }
 
@@ -379,12 +379,12 @@ function VoucherItem({
 	const navigate = useNavigate();
 	return (
 		<li
-			className="flex flex-col gap-2 rounded-xl bg-surface-raised px-4 py-3"
+			className="flex flex-col gap-2 rounded-card-xl bg-surface-raised px-4 py-3"
 			data-testid="voucher-item"
 			data-state={voucher.state}
 		>
 			<div className="flex items-start justify-between gap-3">
-				<span className="text-base font-semibold text-ink">{voucher.name}</span>
+				<span className="text-body font-semibold text-ink">{voucher.name}</span>
 				<Badge tone={VOUCHER_TONES[voucher.state]}>
 					{t(`voucher.state.${voucher.state}`)}
 				</Badge>
@@ -434,7 +434,7 @@ function VoucherList() {
 			) : state.status === "failed" ? (
 				<Failed failure={state.failure} onRetry={reload} />
 			) : state.data.length === 0 ? (
-				<p className="text-base text-ink" data-testid="vouchers-empty">
+				<p className="text-body text-ink" data-testid="vouchers-empty">
 					{t("voucher.empty")}
 				</p>
 			) : (
@@ -479,7 +479,7 @@ function HeldCode({
 	if (voucher.code === null || voucher.qrPayload === null) return null;
 	return (
 		<Card testId="voucher-code-card">
-			<p className="text-base text-ink" id={instructionId}>
+			<p className="text-body text-ink" id={instructionId}>
 				{t("voucher.instruction")}
 			</p>
 			<div className="flex justify-center">
@@ -500,7 +500,7 @@ function HeldCode({
 			{voucher.holdExpiresAt === null ? null : (
 				<>
 					<p
-						className="text-center text-base text-ink"
+						className="text-center text-body text-ink"
 						role="timer"
 						aria-live="off"
 						data-testid="voucher-countdown"
@@ -579,7 +579,7 @@ function VoucherView() {
 		<Screen testId="voucher-screen">
 			<BackButton to={VOUCHERS_PATH} />
 			{voucher === null ? (
-				<p className="text-base text-ink" data-testid="voucher-missing">
+				<p className="text-body text-ink" data-testid="voucher-missing">
 					{t("voucher.missing")}
 				</p>
 			) : (
@@ -592,11 +592,11 @@ function VoucherView() {
 							</span>
 						</Badge>
 					</div>
-					<p className="text-base text-ink">
+					<p className="text-body text-ink">
 						{rewardKindText(voucher, t, language)}
 					</p>
 					{voucher.storeName === null ? null : (
-						<p className="text-base text-ink">
+						<p className="text-body text-ink">
 							{t("voucher.at", { store: voucher.storeName })}
 						</p>
 					)}

@@ -65,18 +65,18 @@ function DeletionDeadlines({ request }: { readonly request: DeletionRequest }) {
 	const { firstResponseDueAt, completionDueAt } = request;
 	if (completionDueAt === null)
 		return (
-			<p className="text-base text-ink" data-testid="deletion-deadline">
+			<p className="text-body text-ink" data-testid="deletion-deadline">
 				{t("settings.deleteDeadline")}
 			</p>
 		);
 	return (
 		<div className="flex flex-col gap-1" data-testid="deletion-deadline">
 			{request.status === "received" && firstResponseDueAt !== null ? (
-				<p className="text-base text-ink" data-testid="deletion-reply-by">
+				<p className="text-body text-ink" data-testid="deletion-reply-by">
 					{t("settings.deleteReplyBy", { date: dueDate(firstResponseDueAt) })}
 				</p>
 			) : null}
-			<p className="text-base text-ink" data-testid="deletion-done-by">
+			<p className="text-body text-ink" data-testid="deletion-done-by">
 				{t("settings.deleteDoneBy", { date: dueDate(completionDueAt) })}
 			</p>
 		</div>
@@ -110,10 +110,10 @@ export function DeletionState({
 			{deletionOpen(request) ? (
 				<>
 					<DeletionDeadlines request={request} />
-					<p className="text-base text-ink">{t("settings.deleteUntil")}</p>
+					<p className="text-body text-ink">{t("settings.deleteUntil")}</p>
 				</>
 			) : (
-				<p className="text-base text-ink">
+				<p className="text-body text-ink">
 					{t(`settings.deleteStateBody.${request.status}`)}
 				</p>
 			)}
@@ -194,16 +194,16 @@ function MemberSettings({
 	return (
 		<>
 			<Card testId="settings-member">
-				<p className="text-base font-semibold text-ink">
+				<p className="text-body font-semibold text-ink">
 					{wallet.card.displayName}
 				</p>
-				<p className="text-base text-ink">{wallet.card.phoneMasked}</p>
+				<p className="text-body text-ink">{wallet.card.phoneMasked}</p>
 			</Card>
 			<Card labelledBy={marketingId} testId="settings-marketing">
 				<h2 id={marketingId} className="text-lg font-semibold text-ink">
 					{t("settings.marketing")}
 				</h2>
-				<p className="text-base text-ink" data-testid="marketing-state">
+				<p className="text-body text-ink" data-testid="marketing-state">
 					{wallet.marketingConsent
 						? t("settings.marketingOn")
 						: t("settings.marketingOff")}
@@ -227,7 +227,7 @@ function MemberSettings({
 				) : (
 					<>
 						{deletion === null ? null : <DeletionState request={deletion} />}
-						<p className="text-base text-ink">{t("settings.deleteBody")}</p>
+						<p className="text-body text-ink">{t("settings.deleteBody")}</p>
 						<button
 							type="button"
 							className={dangerButton}
@@ -274,13 +274,13 @@ function MemberSettings({
 				>
 					{deleting ? (
 						<div className="flex flex-col gap-3">
-							<p className="text-base text-ink">
+							<p className="text-body text-ink">
 								{t("settings.deleteConfirmBody")}
 							</p>
-							<p className="text-base text-ink">
+							<p className="text-body text-ink">
 								{t("settings.deleteDeadline")}
 							</p>
-							<p className="text-base text-ink">{t("settings.deleteUntil")}</p>
+							<p className="text-body text-ink">{t("settings.deleteUntil")}</p>
 							<div className="flex items-start gap-3">
 								<CheckControl
 									id={ackId}
@@ -290,18 +290,18 @@ function MemberSettings({
 									testId="delete-understood"
 									onChange={setUnderstood}
 								/>
-								<label htmlFor={ackId} className="pt-2 text-base text-ink">
+								<label htmlFor={ackId} className="pt-2 text-body text-ink">
 									{t("settings.deleteAck")}
 								</label>
 							</div>
 						</div>
 					) : (
-						<p className="text-base text-ink">
+						<p className="text-body text-ink">
 							{t("settings.stopConfirmBody")}
 						</p>
 					)}
 					{failure === null ? null : (
-						<p role="alert" className="pt-3 text-base text-negative">
+						<p role="alert" className="pt-3 text-body text-negative">
 							{t(failureKey(failure))}
 						</p>
 					)}
@@ -337,7 +337,7 @@ function AccountPart() {
 	if (member) return <MemberPart />;
 	return (
 		<Card testId="settings-visitor">
-			<p className="text-base text-ink">{t("settings.notMember")}</p>
+			<p className="text-body text-ink">{t("settings.notMember")}</p>
 			<JoinActions claim={false} />
 		</Card>
 	);

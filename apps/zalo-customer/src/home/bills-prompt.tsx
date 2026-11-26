@@ -22,10 +22,10 @@ export function BillsPrompt({ home }: { readonly home: CustomerHome }) {
 	return (
 		<div
 			role="status"
-			className="flex flex-col gap-2 rounded-xl bg-warning-soft px-4 py-3"
+			className="flex flex-col gap-2 rounded-card-xl bg-warning-soft px-4 py-3"
 			data-testid="bills-prompt"
 		>
-			<p className="text-base text-ink">{t("bill.prompt", { count })}</p>
+			<p className="text-body text-ink">{t("bill.prompt", { count })}</p>
 			<button
 				type="button"
 				className={secondaryButton}

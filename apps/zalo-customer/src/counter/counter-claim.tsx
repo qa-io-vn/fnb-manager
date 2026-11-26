@@ -80,11 +80,11 @@ function ScanStep({
 	};
 	return (
 		<div className="flex flex-col gap-4" data-testid="counter-scan">
-			<p className="text-base text-ink">{t("counter.intro")}</p>
+			<p className="text-body text-ink">{t("counter.intro")}</p>
 			{notice === null ? null : (
 				<p
 					role="alert"
-					className="rounded-xl bg-negative-soft px-3 py-2 text-base text-ink"
+					className="rounded-card-xl bg-negative-soft px-3 py-2 text-body text-ink"
 					data-testid="counter-notice"
 				>
 					{t(notice)}
@@ -167,7 +167,7 @@ function FormStep({
 			data-testid="counter-form"
 		>
 			<p
-				className="rounded-xl bg-positive-soft px-3 py-2 text-base text-ink"
+				className="rounded-card-xl bg-positive-soft px-3 py-2 text-body text-ink"
 				data-testid="counter-store"
 			>
 				{t("counter.scanned", {
@@ -223,7 +223,7 @@ function FormStep({
 				)}
 			</div>
 			{failure === null ? null : (
-				<p role="alert" className="text-base text-negative">
+				<p role="alert" className="text-body text-negative">
 					{t(failure)}
 				</p>
 			)}
@@ -292,11 +292,11 @@ export function CounterResultView({
 							? t("claim.state.pending")
 							: t("claim.state.rejected")}
 				</Badge>
-				<p className="text-base text-ink" data-testid="counter-result-body">
+				<p className="text-body text-ink" data-testid="counter-result-body">
 					{body}
 				</p>
 				{earned.length === 0 ? null : (
-					<p className="text-base text-ink" data-testid="counter-earned">
+					<p className="text-body text-ink" data-testid="counter-earned">
 						{earned.join(" · ")}
 					</p>
 				)}

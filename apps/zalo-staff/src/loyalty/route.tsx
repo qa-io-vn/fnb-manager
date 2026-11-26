@@ -88,7 +88,7 @@ export function LoyaltyFrame({
 						value={env.store.id}
 						disabled={backDisabled}
 						onChange={(event) => env.selectStore(event.target.value)}
-						className={`min-h-11 w-full rounded-xl border border-line bg-surface-raised px-4 py-2 text-base font-semibold text-ink ${focusRing}`}
+						className={`min-h-11 w-full rounded-field border-field border-line-strong bg-surface-raised px-4 py-2 text-base font-semibold text-ink ${focusRing}`}
 					>
 						{env.context.stores.map((store) => (
 							<option key={store.id} value={store.id}>
@@ -193,7 +193,7 @@ function ReadyLoyalty({
 	if (env === null || !canUseTill(context.role)) {
 		return (
 			<FrameMessage title={t(titleKey)} testId={testId} status="no-stores">
-				<p className="text-base text-ink-muted">
+				<p className="text-body text-ink-muted">
 					{env === null ? t("home.noStores") : t("loyalty.notForRole")}
 				</p>
 				<button

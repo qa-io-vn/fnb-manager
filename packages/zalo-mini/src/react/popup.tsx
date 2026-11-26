@@ -49,7 +49,7 @@ export function Popup({
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby={titleId}
-				className="flex max-h-[85dvh] w-full max-w-lg flex-col overflow-y-auto overscroll-contain rounded-t-2xl bg-surface-raised pb-[var(--zaui-safe-area-inset-bottom,0px)] text-ink"
+				className="flex max-h-[85dvh] w-full max-w-lg flex-col overflow-y-auto overscroll-contain rounded-t-sheet bg-surface-raised pb-[var(--zaui-safe-area-inset-bottom,0px)] text-ink"
 			>
 				<div className="sticky top-0 z-10 flex items-start gap-2 border-b border-line bg-surface-raised py-2 pr-2 pl-4">
 					<h2 id={titleId} className="flex-1 py-2 text-lg font-semibold">
@@ -60,7 +60,7 @@ export function Popup({
 						type="button"
 						onClick={onClose}
 						aria-label={t("popup.close")}
-						className="flex size-11 shrink-0 items-center justify-center rounded-xl text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+						className="flex size-11 shrink-0 items-center justify-center rounded-control-xl text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
 					>
 						<svg
 							aria-hidden="true"
@@ -109,7 +109,7 @@ export function ResultModal({ message, onDone }: ResultModalProps) {
 			<div
 				role="status"
 				aria-live="polite"
-				className="flex w-full max-w-xs flex-col items-center gap-3 rounded-2xl bg-surface-raised p-6 text-center text-ink"
+				className="flex w-full max-w-xs flex-col items-center gap-3 rounded-card-2xl bg-surface-raised p-6 text-center text-ink"
 			>
 				<svg
 					aria-hidden="true"
@@ -126,7 +126,7 @@ export function ResultModal({ message, onDone }: ResultModalProps) {
 					<circle cx="20" cy="20" r="17" />
 					<path d="M12.5 20.5l5 5 10-11" />
 				</svg>
-				<p className="text-base font-semibold">{message}</p>
+				<p className="text-body font-semibold">{message}</p>
 			</div>
 		</div>
 	);

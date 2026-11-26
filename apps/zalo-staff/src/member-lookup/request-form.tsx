@@ -104,7 +104,7 @@ export function RequestForm({
 			backDisabled={busy}
 			testId="request-form"
 		>
-			<p className="text-base text-ink">
+			<p className="text-body text-ink">
 				{kind === "dispute"
 					? t("request.intro.dispute")
 					: limits === null
@@ -142,7 +142,7 @@ export function RequestForm({
 				)}
 				{waitsForManager ? (
 					<p
-						className="rounded-xl bg-warning-soft px-3 py-2 text-base text-warning"
+						className="rounded-card-xl bg-warning-soft px-3 py-2 text-body text-warning"
 						data-testid="request-needs-manager"
 					>
 						{t("request.needsManager")}

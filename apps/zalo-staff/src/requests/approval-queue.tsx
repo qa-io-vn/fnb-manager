@@ -51,10 +51,10 @@ function RequestSummary({ request }: { readonly request: PendingRequest }) {
 					<span className="text-sm text-ink-muted">{store}</span>
 				)}
 			</div>
-			<p className="text-base font-semibold text-ink" data-testid="requester">
+			<p className="text-body font-semibold text-ink" data-testid="requester">
 				{request.requesterName ?? t("approvals.unnamed")}
 			</p>
-			<p className="whitespace-pre-line break-words text-base text-ink">
+			<p className="whitespace-pre-line break-words text-body text-ink">
 				{request.details}
 			</p>
 			<p className="text-sm text-ink-muted">
@@ -265,7 +265,7 @@ export function ApprovalQueueScreen(_: TeamScreenProps) {
 	if (!manager) {
 		return (
 			<SubScreen title={t("approvals.title")} onBack={home} testId="approvals">
-				<p className="text-base text-ink" data-testid="approvals-refused">
+				<p className="text-body text-ink" data-testid="approvals-refused">
 					{t("approvals.managersOnly")}
 				</p>
 				<button
@@ -322,7 +322,7 @@ export function ApprovalQueueScreen(_: TeamScreenProps) {
 					</div>
 				) : requests.length === 0 ? (
 					<div className="flex flex-col gap-3" data-testid="approvals-empty">
-						<p className="text-base text-ink-muted">{t("approvals.empty")}</p>
+						<p className="text-body text-ink-muted">{t("approvals.empty")}</p>
 						<button
 							type="button"
 							className={primaryButton}

@@ -36,7 +36,7 @@ export function QrCode({
 			width="232"
 			height="232"
 			shapeRendering="crispEdges"
-			className="mx-auto rounded-xl bg-white"
+			className="mx-auto rounded-tile bg-white"
 			data-testid={testId}
 			data-payload={payload}
 		>

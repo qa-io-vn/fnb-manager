@@ -74,7 +74,7 @@ export function LegalPopup({
 				<p
 					role="status"
 					aria-live="polite"
-					className="flex items-center gap-3 text-base text-ink"
+					className="flex items-center gap-3 text-body text-ink"
 				>
 					<span
 						aria-hidden="true"
@@ -84,7 +84,7 @@ export function LegalPopup({
 				</p>
 			) : state.status === "unavailable" ? (
 				<div className="flex flex-col gap-3">
-					<p role="alert" className="text-base text-ink">
+					<p role="alert" className="text-body text-ink">
 						{t("legal.unavailable")}
 					</p>
 					<button

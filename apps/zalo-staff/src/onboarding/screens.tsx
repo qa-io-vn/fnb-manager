@@ -89,20 +89,20 @@ export function OnboardingScreen({
 	const { t } = useI18n();
 	return (
 		<Screen name="onboarding" title={t("entry.onboarding.title")}>
-			<p className="text-base text-ink">
+			<p className="text-body text-ink">
 				{t("entry.onboarding.intro", { app: appName })}
 			</p>
 			<div className="flex flex-col gap-1">
-				<h2 className="text-base font-semibold text-ink">
+				<h2 className="text-body font-semibold text-ink">
 					{t("entry.onboarding.whyTitle")}
 				</h2>
-				<p className="text-base text-ink">{t("entry.onboarding.why")}</p>
+				<p className="text-body text-ink">{t("entry.onboarding.why")}</p>
 			</div>
 			<div className="flex flex-col gap-1">
-				<h2 className="text-base font-semibold text-ink">
+				<h2 className="text-body font-semibold text-ink">
 					{t("entry.onboarding.keptTitle")}
 				</h2>
-				<ul className="flex list-disc flex-col gap-1 pl-5 text-base text-ink">
+				<ul className="flex list-disc flex-col gap-1 pl-5 text-body text-ink">
 					<li>{t("entry.onboarding.keptId")}</li>
 					<li>{t("entry.onboarding.keptPhone")}</li>
 				</ul>
@@ -124,7 +124,7 @@ export function ConnectingScreen() {
 			<div
 				role="status"
 				aria-live="polite"
-				className="flex items-center gap-3 text-base text-ink"
+				className="flex items-center gap-3 text-body text-ink"
 			>
 				<span
 					aria-hidden="true"
@@ -140,7 +140,7 @@ export function FailedScreen({ onRetry }: { readonly onRetry: () => void }) {
 	const { t } = useI18n();
 	return (
 		<Screen name="failed" title={t("entry.failed.title")}>
-			<p className="text-base text-ink">{t("entry.failed.body")}</p>
+			<p className="text-body text-ink">{t("entry.failed.body")}</p>
 			<PrimaryButton onClick={onRetry}>{t("entry.retry")}</PrimaryButton>
 		</Screen>
 	);
@@ -150,7 +150,7 @@ export function NoNoticeScreen({ onRetry }: { readonly onRetry: () => void }) {
 	const { t } = useI18n();
 	return (
 		<Screen name="no-notice" title={t("entry.noNotice.title")}>
-			<p className="text-base text-ink">{t("entry.noNotice.body")}</p>
+			<p className="text-body text-ink">{t("entry.noNotice.body")}</p>
 			<PrimaryButton onClick={onRetry}>{t("entry.retry")}</PrimaryButton>
 		</Screen>
 	);
@@ -185,8 +185,8 @@ export function NoticeScreen({
 			<p
 				className={
 					updated
-						? "rounded-xl bg-warning-soft px-4 py-3 text-base text-ink"
-						: "text-base text-ink"
+						? "rounded-card-xl bg-warning-soft px-4 py-3 text-body text-ink"
+						: "text-body text-ink"
 				}
 				data-testid="notice-hint"
 				role={updated ? "status" : undefined}
@@ -200,13 +200,13 @@ export function NoticeScreen({
 				})}
 			</p>
 			<div
-				className="rounded-xl border border-line bg-surface-raised p-4"
+				className="rounded-card-xl border-card border-line bg-surface-raised p-4"
 				data-testid="staff-notice"
 			>
 				<MarkdownText markdown={notice.bodyMarkdown} />
 			</div>
 			{failed ? (
-				<p role="alert" className="text-base text-negative">
+				<p role="alert" className="text-body text-negative">
 					{t("entry.notice.failed")}
 				</p>
 			) : null}
@@ -271,21 +271,21 @@ export function PairingScreen({
 		if (complete && !busy && !waiting) onSubmit(code);
 	};
 	const message = waiting ? (
-		<p id={messageId} role="timer" className="text-base text-negative">
+		<p id={messageId} role="timer" className="text-body text-negative">
 			{t("entry.pairing.wait", { time: waitText((waitUntil ?? now) - now) })}
 		</p>
 	) : waitUntil !== null ? (
-		<p id={messageId} role="status" className="text-base text-ink">
+		<p id={messageId} role="status" className="text-body text-ink">
 			{t("entry.pairing.waitOver")}
 		</p>
 	) : refused ? (
-		<p id={messageId} role="alert" className="text-base text-negative">
+		<p id={messageId} role="alert" className="text-body text-negative">
 			{t("entry.pairing.refused")}
 		</p>
 	) : null;
 	return (
 		<Screen name="pairing" title={t("entry.pairing.title")}>
-			<p className="text-base text-ink">{t("entry.pairing.body")}</p>
+			<p className="text-body text-ink">{t("entry.pairing.body")}</p>
 			<form className="flex flex-col gap-3" onSubmit={submit} noValidate>
 				<label htmlFor={inputId} className="text-sm text-ink-muted">
 					{t("entry.pairing.label")}
@@ -301,7 +301,7 @@ export function PairingScreen({
 					maxLength={PAIRING_CODE_LENGTH}
 					aria-invalid={refused && !waiting && waitUntil === null}
 					aria-describedby={message === null ? undefined : messageId}
-					className="min-h-12 rounded-xl border border-line bg-surface-raised px-4 text-center text-2xl tracking-[0.4em] text-ink tabular-nums"
+					className="min-h-12 rounded-field border-field border-line-strong bg-surface-raised px-4 text-center text-2xl tracking-[0.4em] text-ink tabular-nums"
 				/>
 				{message}
 				<PrimaryButton
@@ -334,13 +334,13 @@ export function RefusalScreen({
 	const { t } = useI18n();
 	return (
 		<Screen name="refused" title={t("entry.refused.title")}>
-			<p className="text-base text-ink">{t("entry.refused.body")}</p>
-			<div className="flex flex-col gap-1 rounded-xl border border-line bg-surface-raised p-4">
-				<h2 className="text-base font-semibold text-ink">
+			<p className="text-body text-ink">{t("entry.refused.body")}</p>
+			<div className="flex flex-col gap-1 rounded-card-xl border-card border-line bg-surface-raised p-4">
+				<h2 className="text-body font-semibold text-ink">
 					{t("entry.refused.contactTitle")}
 				</h2>
 				<p
-					className="whitespace-pre-line text-base text-ink"
+					className="whitespace-pre-line text-body text-ink"
 					data-testid="refusal-contact"
 				>
 					{contact ?? t("entry.refused.contactFallback")}

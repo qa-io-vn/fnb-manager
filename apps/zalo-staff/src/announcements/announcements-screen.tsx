@@ -40,7 +40,7 @@ function NoticeCard({
 			<button
 				type="button"
 				onClick={onOpen}
-				className="flex w-full min-w-0 gap-3 rounded-2xl border border-line bg-surface-raised p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+				className="flex w-full min-w-0 gap-3 rounded-card-2xl border-card border-line bg-surface-raised p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
 			>
 				{unread ? <UnreadDot /> : <span className="w-2.5 shrink-0" />}
 				<span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -59,7 +59,7 @@ function NoticeCard({
 						</span>
 					) : null}
 					<span
-						className={`break-words text-base text-ink ${unread ? "font-semibold" : ""}`}
+						className={`break-words text-body text-ink ${unread ? "font-semibold" : ""}`}
 					>
 						{announcement.title}
 					</span>
@@ -93,7 +93,7 @@ function NoticeList({
 	);
 	if (ordered.length === 0) {
 		return (
-			<p className="text-base text-ink-muted" data-testid="notices-empty">
+			<p className="text-body text-ink-muted" data-testid="notices-empty">
 				{t("notices.empty")}
 			</p>
 		);

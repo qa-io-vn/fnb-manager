@@ -81,13 +81,13 @@ export function inlineText(text: string): ReactNode[] {
 export function MarkdownText({ markdown }: { readonly markdown: string }) {
 	return (
 		<div
-			className="flex flex-col gap-3 text-base text-ink"
+			className="flex flex-col gap-3 text-body text-ink"
 			data-testid="markdown"
 		>
 			{markdownBlocks(markdown).map((block) => {
 				if (block.kind === "heading") {
 					return (
-						<h3 key={block.id} className="pt-1 text-base font-semibold">
+						<h3 key={block.id} className="pt-1 text-body font-semibold">
 							{inlineText(block.text)}
 						</h3>
 					);

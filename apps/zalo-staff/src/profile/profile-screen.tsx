@@ -35,9 +35,9 @@ function Section({
 		<section
 			aria-labelledby={id}
 			data-testid={testId}
-			className="flex flex-col gap-3 rounded-2xl border border-line bg-surface-raised p-4"
+			className="flex flex-col gap-3 rounded-card-2xl border-card border-line bg-surface-raised p-4"
 		>
-			<h2 id={id} className="text-base font-semibold text-ink">
+			<h2 id={id} className="text-body font-semibold text-ink">
 				{title}
 			</h2>
 			{children}
@@ -95,11 +95,11 @@ function PhonePurpose({
 			>
 				{t("phone.title")}
 			</h1>
-			<p className="text-base text-ink">{t("phone.purpose")}</p>
-			<p className="text-base text-ink">{t("phone.optional")}</p>
-			<p className="text-base text-ink">{t("phone.prompt")}</p>
+			<p className="text-body text-ink">{t("phone.purpose")}</p>
+			<p className="text-body text-ink">{t("phone.optional")}</p>
+			<p className="text-body text-ink">{t("phone.prompt")}</p>
 			{failed ? (
-				<p role="alert" className="text-base text-negative">
+				<p role="alert" className="text-body text-negative">
 					{t("phone.failed")}
 				</p>
 			) : null}
@@ -180,9 +180,9 @@ function WithdrawPopup({ onClose }: { readonly onClose: () => void }) {
 			}
 		>
 			<div className="flex flex-col gap-3">
-				<p className="text-base text-ink">{t("profile.withdraw.body")}</p>
+				<p className="text-body text-ink">{t("profile.withdraw.body")}</p>
 				{failed ? (
-					<p role="alert" className="text-base text-negative">
+					<p role="alert" className="text-body text-negative">
 						{t("profile.withdraw.failed")}
 					</p>
 				) : null}
@@ -240,7 +240,7 @@ export function ProfileScreen({
 			</header>
 			{onRoster ? (
 				<Section title={t("profile.phone.title")} testId="profile-phone">
-					<p className="text-base text-ink" data-testid="profile-phone-state">
+					<p className="text-body text-ink" data-testid="profile-phone-state">
 						{phoneLinked
 							? t("profile.phone.linked", { hint: phoneHint ?? "" })
 							: t("profile.phone.none")}
@@ -256,7 +256,7 @@ export function ProfileScreen({
 				</Section>
 			) : null}
 			<Section title={t("notify.title")} testId="profile-notifications">
-				<p className="text-base text-ink">{t("notify.profileBody")}</p>
+				<p className="text-body text-ink">{t("notify.profileBody")}</p>
 				<button
 					type="button"
 					className={secondaryButton}
@@ -270,7 +270,7 @@ export function ProfileScreen({
 			</Section>
 			{onRoster ? (
 				<Section title={t("profile.consent.title")} testId="profile-consent">
-					<p className="text-base text-ink">{t("profile.consent.body")}</p>
+					<p className="text-body text-ink">{t("profile.consent.body")}</p>
 					<button
 						type="button"
 						className={dangerButton}

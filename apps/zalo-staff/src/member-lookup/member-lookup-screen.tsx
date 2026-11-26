@@ -52,7 +52,7 @@ function MemberCardView({ card }: { readonly card: MemberCard }) {
 						{shownPhone(card.phoneMasked)}
 					</p>
 					{card.displayName === null ? null : (
-						<p className="text-base text-ink">{card.displayName}</p>
+						<p className="text-body text-ink">{card.displayName}</p>
 					)}
 				</div>
 				{card.status === "active" ? (
@@ -68,7 +68,7 @@ function MemberCardView({ card }: { readonly card: MemberCard }) {
 				)}
 			</div>
 			<dl className="grid grid-cols-2 gap-3">
-				<div className="flex flex-col gap-0.5 rounded-xl bg-surface-sunken p-3">
+				<div className="flex flex-col gap-0.5 rounded-card-xl bg-surface-sunken p-3">
 					<dt className="text-sm text-ink-muted">{t("lookup.stamps")}</dt>
 					<dd
 						className="text-2xl font-semibold tabular-nums text-ink"
@@ -85,7 +85,7 @@ function MemberCardView({ card }: { readonly card: MemberCard }) {
 						</dd>
 					) : null}
 				</div>
-				<div className="flex flex-col gap-0.5 rounded-xl bg-surface-sunken p-3">
+				<div className="flex flex-col gap-0.5 rounded-card-xl bg-surface-sunken p-3">
 					<dt className="text-sm text-ink-muted">{t("lookup.points")}</dt>
 					<dd
 						className="text-2xl font-semibold tabular-nums text-ink"
@@ -119,7 +119,7 @@ function VisitRow({ visit }: { readonly visit: Visit }) {
 			data-state={visit.state}
 		>
 			<div className="flex min-w-0 flex-col gap-0.5">
-				<p className="text-base font-semibold tabular-nums text-ink">
+				<p className="text-body font-semibold tabular-nums text-ink">
 					{formatters.time(new Date(visit.at))}
 					{" · "}
 					{t(`lookup.path.${visit.path}`)}
@@ -155,11 +155,11 @@ function FoundView({
 		<div className="flex flex-col gap-4" data-testid="lookup-found">
 			<MemberCardView card={answer.card} />
 			<section aria-labelledby={headingId} className="flex flex-col gap-1">
-				<h2 id={headingId} className="text-base font-semibold text-ink">
+				<h2 id={headingId} className="text-body font-semibold text-ink">
 					{t("lookup.today", { store: answer.storeName ?? store.name })}
 				</h2>
 				{answer.today.length === 0 ? (
-					<p className="text-base text-ink-muted" data-testid="visits-none">
+					<p className="text-body text-ink-muted" data-testid="visits-none">
 						{t("lookup.todayNone")}
 					</p>
 				) : (
@@ -314,7 +314,7 @@ export function MemberLookupScreen({ open }: LoyaltyScreenProps) {
 						<p
 							id={problemId}
 							role="alert"
-							className="rounded-xl bg-negative-soft px-3 py-2 text-base text-negative"
+							className="rounded-card-xl bg-negative-soft px-3 py-2 text-body text-negative"
 						>
 							{t("checkin.problem.phone")}
 						</p>
@@ -323,7 +323,7 @@ export function MemberLookupScreen({ open }: LoyaltyScreenProps) {
 						<p
 							role="alert"
 							data-testid="lookup-not-found"
-							className="rounded-xl bg-warning-soft px-3 py-2 text-base text-warning"
+							className="rounded-card-xl bg-warning-soft px-3 py-2 text-body text-warning"
 						>
 							{t("lookup.notFound")}
 						</p>

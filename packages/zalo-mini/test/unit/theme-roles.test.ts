@@ -734,9 +734,16 @@ describe("the style sheet of a theme with optional roles", () => {
 			expect(light, name).not.toContain(name);
 		}
 		expect(css).toContain(`--badge:${brand3.dark.badge}`);
-		// what remains is made only of #RRGGBB values, var() of the two Zalo links and the media query
+		// what remains is made only of #RRGGBB values, brand-3's shape and body size (numbers in px, none), var() of the
+		// two Zalo links and the media query
 		const stripped = css
 			.replace(/--[a-z0-9-]+:#[0-9A-F]{6}/g, "")
+			.replace(
+				/--(?:radius-[a-z]+|card-border|field-border|outline-width|text-body):\d+(?:\.\d+)?px/g,
+				"",
+			)
+			.replace(/--text-body--line-height:1\.45|--card-shadow:none/g, "")
+			.replace(/--outline-(?:danger-)?color:var\(--(?:ink|negative)\)/g, "")
 			.replace(
 				/--zaui-(light|dark)-bottom-navigation-active-color:var\(--brand-highlight\)/g,
 				"",

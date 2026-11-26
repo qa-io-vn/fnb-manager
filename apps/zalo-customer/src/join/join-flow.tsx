@@ -65,27 +65,27 @@ function PurposeScreen({
 			<h1 className="text-xl font-semibold text-ink">
 				{t(next === "claim" ? "join.purpose.titleClaim" : "join.purpose.title")}
 			</h1>
-			<p className="text-base text-ink">
+			<p className="text-body text-ink">
 				{t("join.purpose.intro", { programme: home.programme.name })}
 			</p>
-			<dl className="flex flex-col gap-3 rounded-2xl bg-surface-raised p-4">
+			<dl className="flex flex-col gap-3 rounded-card-2xl bg-surface-raised p-4">
 				<div className="flex flex-col gap-0.5">
 					<dt className="text-sm text-ink-muted">
 						{t("join.purpose.whatLabel")}
 					</dt>
-					<dd className="text-base text-ink">{t("join.purpose.what")}</dd>
+					<dd className="text-body text-ink">{t("join.purpose.what")}</dd>
 				</div>
 				<div className="flex flex-col gap-0.5">
 					<dt className="text-sm text-ink-muted">
 						{t("join.purpose.whyLabel")}
 					</dt>
-					<dd className="text-base text-ink">{t("join.purpose.why")}</dd>
+					<dd className="text-body text-ink">{t("join.purpose.why")}</dd>
 				</div>
 				<div className="flex flex-col gap-0.5">
 					<dt className="text-sm text-ink-muted">
 						{t("join.purpose.howLongLabel")}
 					</dt>
-					<dd className="text-base text-ink">
+					<dd className="text-body text-ink">
 						{retentionText(home.programme, t)}
 					</dd>
 				</div>
@@ -93,7 +93,7 @@ function PurposeScreen({
 					<dt className="text-sm text-ink-muted">
 						{t("join.purpose.whoLabel")}
 					</dt>
-					<dd className="text-base text-ink">
+					<dd className="text-body text-ink">
 						{home.legal.entityName ?? t("join.entityUnknown")}
 					</dd>
 				</div>
@@ -154,7 +154,7 @@ function ConsentScreen({
 						onChange={onLoyalty}
 						testId="consent-loyalty"
 					/>
-					<label htmlFor={loyaltyId} className="pt-2 text-base text-ink">
+					<label htmlFor={loyaltyId} className="pt-2 text-body text-ink">
 						{t("join.consent.loyalty", {
 							entity: home.legal.entityName ?? t("join.entityUnknown"),
 						})}
@@ -171,7 +171,7 @@ function ConsentScreen({
 						testId="consent-marketing"
 					/>
 					<div className="flex flex-col gap-0.5 pt-2">
-						<label htmlFor={marketingId} className="text-base text-ink">
+						<label htmlFor={marketingId} className="text-body text-ink">
 							{t("join.consent.marketing")}
 						</label>
 						<p id={marketingHint} className="text-sm text-ink-muted">
@@ -193,7 +193,7 @@ function ConsentScreen({
 			{state.problem === null ? null : (
 				<p
 					role="alert"
-					className="text-base text-negative"
+					className="text-body text-negative"
 					data-testid="join-problem"
 				>
 					{t(`join.problem.${state.problem}`)}
@@ -260,7 +260,7 @@ function JoinedScreen({
 						: t("join.done.title")}
 				</h1>
 				{state.welcomeStamps > 0 ? (
-					<p className="text-base text-ink" data-testid="welcome-stamps">
+					<p className="text-body text-ink" data-testid="welcome-stamps">
 						{t("join.done.welcome", { count: state.welcomeStamps })}
 					</p>
 				) : null}
@@ -270,9 +270,9 @@ function JoinedScreen({
 					<h2 className="text-lg font-semibold text-ink">
 						{t("join.follow.title")}
 					</h2>
-					<p className="text-base text-ink">{t("join.follow.body")}</p>
+					<p className="text-body text-ink">{t("join.follow.body")}</p>
 					{followed ? (
-						<p className="text-base text-positive" data-testid="follow-done">
+						<p className="text-body text-positive" data-testid="follow-done">
 							{t("join.follow.done")}
 						</p>
 					) : (

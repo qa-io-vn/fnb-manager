@@ -234,7 +234,7 @@ function StoreChooser({
 				data-testid="shift-store-picker"
 				value={selected.id}
 				onChange={(event) => onSelect(event.target.value)}
-				className={`min-h-11 w-full rounded-xl border border-line bg-surface-raised px-4 py-2 text-base font-semibold text-ink ${focusRing}`}
+				className={`min-h-11 w-full rounded-field border-field border-line-strong bg-surface-raised px-4 py-2 text-base font-semibold text-ink ${focusRing}`}
 			>
 				{stores.map((store) => (
 					<option key={store.id} value={store.id}>
@@ -304,7 +304,7 @@ function BoardView({
 					testId="close-card"
 					state={counted === undefined ? "open" : "counted"}
 				>
-					<p className="text-base text-ink">{t("shift.closeBody")}</p>
+					<p className="text-body text-ink">{t("shift.closeBody")}</p>
 					{counted !== undefined ? (
 						<Chip tone="positive" testId="close-counted">
 							{t("shift.countedAt", {
@@ -483,7 +483,7 @@ function ReadyShift({
 				data-status="no-stores"
 			>
 				<h1 className="text-xl font-semibold text-ink">{t("shift.title")}</h1>
-				<p className="text-base text-ink-muted">{t("home.noStores")}</p>
+				<p className="text-body text-ink-muted">{t("home.noStores")}</p>
 			</section>
 		);
 	}

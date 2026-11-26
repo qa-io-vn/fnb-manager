@@ -128,7 +128,7 @@ export function PhotoPreview({
 			data-bytes={blob.size}
 			data-width={photo instanceof Blob ? undefined : photo.width}
 			data-height={photo instanceof Blob ? undefined : photo.height}
-			className="h-20 w-20 shrink-0 rounded-xl border border-line object-cover"
+			className="h-20 w-20 shrink-0 rounded-tile border-card border-line object-cover"
 		/>
 	);
 }

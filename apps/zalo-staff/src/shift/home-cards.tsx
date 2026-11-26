@@ -55,7 +55,7 @@ function TaskCard({
 	return (
 		<div
 			data-testid={testId}
-			className="col-span-2 flex min-w-0 flex-col gap-2 rounded-2xl border border-line bg-surface-raised p-4"
+			className="col-span-2 flex min-w-0 flex-col gap-2 rounded-card-2xl border-card border-line bg-surface-raised p-4"
 		>
 			<div className="flex items-center justify-between gap-2">
 				<p className="text-sm text-ink-muted">{label}</p>
@@ -102,7 +102,7 @@ function ReadyCards({
 				}
 			>
 				{due === undefined ? (
-					<p className="text-base text-ink-muted">{t("homeTasks.noneDue")}</p>
+					<p className="text-body text-ink-muted">{t("homeTasks.noneDue")}</p>
 				) : (
 					<div className="flex flex-col gap-1">
 						<p className="text-lg font-semibold text-ink">{due.title}</p>
@@ -139,7 +139,7 @@ function ReadyCards({
 				</button>
 			</TaskCard>
 			<TaskCard testId="home-card-close" label={t("homeTasks.close")}>
-				<p className="text-base text-ink" data-testid="home-close-state">
+				<p className="text-body text-ink" data-testid="home-close-state">
 					{counted === undefined
 						? t("homeTasks.notCounted")
 						: t("shift.countedAt", {
@@ -245,7 +245,7 @@ function SignedInCards({
 			<div
 				role="status"
 				aria-live="polite"
-				className="col-span-2 rounded-2xl border border-line bg-surface-raised p-4 text-base text-ink-muted"
+				className="col-span-2 rounded-card-2xl border-card border-line bg-surface-raised p-4 text-body text-ink-muted"
 				data-testid="home-tasks-loading"
 			>
 				{t("homeTasks.loading")}
@@ -255,10 +255,10 @@ function SignedInCards({
 	if (load.status === "failed") {
 		return (
 			<div
-				className="col-span-2 flex items-center justify-between gap-2 rounded-2xl border border-line bg-surface-raised py-2 pr-2 pl-4"
+				className="col-span-2 flex items-center justify-between gap-2 rounded-card-2xl border-card border-line bg-surface-raised py-2 pr-2 pl-4"
 				data-testid="home-tasks-failed"
 			>
-				<p className="text-base text-ink-muted">{t("homeTasks.failed")}</p>
+				<p className="text-body text-ink-muted">{t("homeTasks.failed")}</p>
 				<button type="button" className={quietAction} onClick={fetchCards}>
 					{t("ops.retry")}
 				</button>

@@ -276,7 +276,7 @@ function QueuedCard({
 		>
 			<Card>
 				<div className="flex flex-wrap items-center justify-between gap-2">
-					<p className="font-mono text-base font-semibold text-ink">
+					<p className="font-mono text-body font-semibold text-ink">
 						{bill.billNo}
 					</p>
 					<Chip
@@ -286,7 +286,7 @@ function QueuedCard({
 					</Chip>
 				</div>
 				<p
-					className="text-base text-ink tabular-nums"
+					className="text-body text-ink tabular-nums"
 					data-testid="staff-total"
 				>
 					{t("billQueue.staffTotal", {
@@ -294,7 +294,7 @@ function QueuedCard({
 					})}
 				</p>
 				<p
-					className="text-base text-ink tabular-nums"
+					className="text-body text-ink tabular-nums"
 					data-testid="customer-total"
 				>
 					{t("billQueue.customerTotal", {
@@ -353,10 +353,10 @@ function AuditCard({
 	return (
 		<li data-testid="bill-audit" data-bill-no={audit.billNo}>
 			<Card>
-				<p className="font-mono text-base font-semibold text-ink">
+				<p className="font-mono text-body font-semibold text-ink">
 					{audit.billNo}
 				</p>
-				<p className="text-base text-ink tabular-nums">
+				<p className="text-body text-ink tabular-nums">
 					{t("billQueue.auditTotal", {
 						amount: formatters.moneyExact(audit.total),
 					})}
@@ -417,7 +417,7 @@ export function BillQueueScreen(_: LoyaltyScreenProps) {
 		return (
 			<LoyaltyFrame title={t("billQueue.title")} testId="bill-queue">
 				<div data-testid="bill-queue-refused" className="flex flex-col gap-3">
-					<p className="text-base text-ink">{t("billQueue.managersOnly")}</p>
+					<p className="text-body text-ink">{t("billQueue.managersOnly")}</p>
 					<button
 						type="button"
 						className={primaryButton}
@@ -466,7 +466,7 @@ export function BillQueueScreen(_: LoyaltyScreenProps) {
 					<>
 						<Panel title={t("billQueue.bills")} testId="queued-bills">
 							{load.queue.bills.length === 0 ? (
-								<p className="text-base text-ink-muted">
+								<p className="text-body text-ink-muted">
 									{t("billQueue.billsEmpty")}
 								</p>
 							) : (
@@ -487,7 +487,7 @@ export function BillQueueScreen(_: LoyaltyScreenProps) {
 						</Panel>
 						<Panel title={t("billQueue.audits")} testId="bill-audits">
 							{load.queue.audits.length === 0 ? (
-								<p className="text-base text-ink-muted">
+								<p className="text-body text-ink-muted">
 									{t("billQueue.auditsEmpty")}
 								</p>
 							) : (

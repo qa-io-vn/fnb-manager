@@ -64,7 +64,7 @@ function StandInHeader({
 				color: app.textColor[scheme] === "white" ? "#FFFFFF" : "#000000",
 			}}
 		>
-			<span className="truncate text-base font-semibold">
+			<span className="truncate text-body font-semibold">
 				{app.headerTitle[language]}
 			</span>
 		</header>
@@ -217,7 +217,7 @@ export function PlainState() {
 	const { t } = useI18n();
 	return (
 		<section className="px-4 py-6" data-testid="plain-state">
-			<p className="text-base text-ink-muted">{t("shell.plainState")}</p>
+			<p className="text-body text-ink-muted">{t("shell.plainState")}</p>
 		</section>
 	);
 }

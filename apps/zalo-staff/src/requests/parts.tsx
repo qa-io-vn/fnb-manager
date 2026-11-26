@@ -41,7 +41,7 @@ export function ChoiceOption({
 }) {
 	return (
 		<label
-			className={`relative flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2 text-base text-ink ${checked ? "border-accent bg-surface-sunken" : "border-line"} has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus`}
+			className={`relative flex min-h-12 items-center gap-3 rounded-control-xl border-field px-3 py-2 text-body text-ink ${checked ? "border-accent bg-surface-sunken" : "border-line-strong"} has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus`}
 		>
 			<input
 				type="radio"
@@ -50,7 +50,7 @@ export function ChoiceOption({
 				checked={checked}
 				disabled={disabled}
 				onChange={() => onChoose(value)}
-				className="absolute inset-0 m-0 size-full cursor-pointer appearance-none rounded-xl opacity-0 disabled:cursor-default"
+				className="absolute inset-0 m-0 size-full cursor-pointer appearance-none rounded-field opacity-0 disabled:cursor-default"
 			/>
 			<span
 				aria-hidden="true"

@@ -73,7 +73,7 @@ function Stepper({
 		>
 			<label
 				htmlFor={inputId}
-				className="min-w-0 flex-1 text-base font-semibold tabular-nums text-ink"
+				className="min-w-0 flex-1 text-body font-semibold tabular-nums text-ink"
 			>
 				{faceText}
 			</label>
@@ -83,7 +83,7 @@ function Stepper({
 					onClick={() => onChange(Math.max(0, count - 1))}
 					disabled={count === 0}
 					aria-label={t("close.less", { face: faceText })}
-					className={`flex size-11 items-center justify-center rounded-xl border border-line text-xl text-ink disabled:opacity-40 ${focusRing}`}
+					className={`flex size-11 items-center justify-center rounded-control-xl border-outline border-edge text-xl text-ink disabled:opacity-40 ${focusRing}`}
 				>
 					−
 				</button>
@@ -99,13 +99,13 @@ function Stepper({
 						if (value !== null) onChange(value);
 					}}
 					aria-label={t("close.pieces", { face: faceText })}
-					className={`min-h-11 w-16 max-w-16 shrink-0 rounded-xl border border-line bg-surface-raised px-2 py-2 text-center text-base tabular-nums text-ink placeholder:text-ink-muted ${focusRing}`}
+					className={`min-h-11 w-16 max-w-16 shrink-0 rounded-field border-field border-line-strong bg-surface-raised px-2 py-2 text-center text-base tabular-nums text-ink placeholder:text-ink-muted ${focusRing}`}
 				/>
 				<button
 					type="button"
 					onClick={() => onChange(count + 1)}
 					aria-label={t("close.more", { face: faceText })}
-					className={`flex size-11 items-center justify-center rounded-xl border border-line text-xl text-ink ${focusRing}`}
+					className={`flex size-11 items-center justify-center rounded-control-xl border-outline border-edge text-xl text-ink ${focusRing}`}
 				>
 					+
 				</button>
@@ -316,7 +316,7 @@ export function CloseFlow({ onBack }: { readonly onBack: () => void }) {
 								type="button"
 								aria-pressed={draft.mode === mode}
 								onClick={() => setDraft({ ...draft, mode })}
-								className={`flex-1 ${draft.mode === mode ? "inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-accent bg-surface-raised px-3 text-base font-semibold text-ink" : `${secondaryButton}`} ${focusRing}`}
+								className={`flex-1 ${draft.mode === mode ? "inline-flex min-h-11 items-center justify-center rounded-control-xl border-2 border-accent bg-surface-raised px-3 text-body font-semibold text-ink" : `${secondaryButton}`} ${focusRing}`}
 							>
 								{t(`close.mode.${mode}`)}
 							</button>
@@ -325,7 +325,7 @@ export function CloseFlow({ onBack }: { readonly onBack: () => void }) {
 				) : null}
 				{draft.mode === "pieces" ? (
 					<ul
-						className="flex flex-col divide-y divide-line rounded-2xl border border-line bg-surface-raised px-4"
+						className="flex flex-col divide-y divide-line rounded-card-2xl border-card border-line bg-surface-raised px-4"
 						aria-label={t("close.denominations")}
 					>
 						{faces.map((face) => (
@@ -381,7 +381,7 @@ export function CloseFlow({ onBack }: { readonly onBack: () => void }) {
 				) : null}
 				<div className="sticky bottom-[calc(48px+var(--zaui-safe-area-inset-bottom,0px))] -mx-4 flex flex-col gap-2 border-t border-line bg-surface px-4 pt-3 pb-3">
 					<p
-						className="flex items-baseline justify-between text-base text-ink"
+						className="flex items-baseline justify-between text-body text-ink"
 						aria-live="polite"
 						data-testid="running-total"
 						data-amount={amount ?? ""}

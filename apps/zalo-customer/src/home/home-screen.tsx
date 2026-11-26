@@ -54,7 +54,7 @@ export function MenuList({
 			{items.map((item) => (
 				<li
 					key={item.id}
-					className="flex items-center gap-3 rounded-2xl border border-line/60 bg-surface-raised px-4 py-3"
+					className="flex items-center gap-3 rounded-card-2xl border-card border-line/60 bg-surface-raised px-4 py-3"
 					data-testid="menu-item"
 				>
 					<span
@@ -64,7 +64,7 @@ export function MenuList({
 						<CupIcon filled={false} />
 					</span>
 					<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-						<span className="text-base font-semibold text-ink">
+						<span className="text-body font-semibold text-ink">
 							{item.name}
 						</span>
 						{item.description === null ? null : (
@@ -88,7 +88,7 @@ function DeclinedNotice({ reason }: { readonly reason: DeclineReason }) {
 	return (
 		<p
 			role="status"
-			className="rounded-2xl bg-neutral-soft px-4 py-3 text-base text-ink"
+			className="rounded-card-2xl bg-neutral-soft px-4 py-3 text-body text-ink"
 			data-testid="declined-notice"
 		>
 			{t(`home.declined.${reason}`)}
@@ -165,7 +165,7 @@ function ProgrammeCard({ home }: { readonly home: CustomerHome }) {
 			{texts === null ? (
 				<>
 					<CupRow total={6} />
-					<p className="text-base text-ink">{t("home.noProgrammeBody")}</p>
+					<p className="text-body text-ink">{t("home.noProgrammeBody")}</p>
 				</>
 			) : (
 				<>
@@ -176,10 +176,10 @@ function ProgrammeCard({ home }: { readonly home: CustomerHome }) {
 						{texts.reward}
 					</p>
 					<MemberStamps perCard={programme?.stampsPerCard ?? 1} />
-					<p className="text-base text-ink">{texts.summary}</p>
-					<details className="group rounded-2xl bg-surface-sunken">
+					<p className="text-body text-ink">{texts.summary}</p>
+					<details className="group rounded-card-2xl bg-surface-sunken">
 						{/* the whole row is the tap target, at least 44 px high */}
-						<summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 text-sm font-semibold text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+						<summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-card-2xl px-4 text-sm font-semibold text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
 							{t("home.rules")}
 							<span
 								aria-hidden="true"
@@ -252,7 +252,7 @@ function Shortcuts() {
 					key={tile.to}
 					type="button"
 					onClick={() => navigate(tile.to)}
-					className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border border-line/60 bg-surface-raised px-2 py-3 text-center text-sm font-medium text-ink transition-transform active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+					className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-card-2xl border-card border-line/60 bg-surface-raised px-2 py-3 text-center text-sm font-medium text-ink transition-transform active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
 				>
 					<IconBadge>{tile.icon}</IconBadge>
 					{tile.label}
@@ -287,7 +287,7 @@ function StoreList({ home }: { readonly home: CustomerHome }) {
 										<StoreIcon />
 									</IconBadge>
 									<span className="flex min-w-0 flex-1 flex-col gap-1">
-										<span className="text-base font-semibold">
+										<span className="text-body font-semibold">
 											{store.name}
 										</span>
 										<span

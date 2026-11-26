@@ -9,15 +9,15 @@ const focusRing =
 
 const press = "transition-transform active:scale-[0.98]";
 
-export const primaryButton = `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-accent px-5 text-base font-semibold text-accent-ink shadow-sm disabled:opacity-60 disabled:active:scale-100 ${press} ${focusRing}`;
+export const primaryButton = `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-accent px-5 text-body font-semibold text-accent-ink shadow-card disabled:opacity-60 disabled:active:scale-100 ${press} ${focusRing}`;
 
-export const secondaryButton = `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface-raised px-5 text-base font-medium text-ink disabled:opacity-60 disabled:active:scale-100 ${press} ${focusRing}`;
+export const secondaryButton = `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-control border-outline border-edge bg-surface-raised px-5 text-body font-medium text-ink disabled:opacity-60 disabled:active:scale-100 ${press} ${focusRing}`;
 
-export const dangerButton = `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-line px-5 text-base text-negative disabled:opacity-60 ${press} ${focusRing}`;
+export const dangerButton = `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-control border-outline border-edge-danger px-5 text-body text-negative disabled:opacity-60 ${press} ${focusRing}`;
 
-export const quietButton = `inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl px-3 text-base text-ink underline underline-offset-4 ${focusRing}`;
+export const quietButton = `inline-flex min-h-11 min-w-11 items-center justify-center rounded-control-xl px-3 text-body text-ink underline underline-offset-4 ${focusRing}`;
 
-export const rowButton = `flex min-h-11 w-full items-center gap-3 rounded-2xl border border-line/60 bg-surface-raised px-4 py-3.5 text-left text-ink ${press} ${focusRing}`;
+export const rowButton = `flex min-h-11 w-full items-center gap-3 rounded-card-2xl border-card border-line/60 bg-surface-raised px-4 py-3.5 text-left text-ink ${press} ${focusRing}`;
 
 /** A round tinted holder for a line icon, in the brand's tile colour. */
 export function IconBadge({ children }: { readonly children: ReactNode }) {
@@ -47,7 +47,7 @@ export function SectionTitle({
 }
 
 export const fieldClass =
-	"min-h-11 w-full rounded-xl border border-line bg-surface-raised px-4 text-base text-ink";
+	"min-h-11 w-full rounded-field border-field border-line-strong bg-surface-raised px-4 text-base text-ink";
 
 export function Spinner() {
 	return (
@@ -85,7 +85,7 @@ export function Card({
 		<section
 			data-testid={testId}
 			aria-labelledby={labelledBy}
-			className="flex flex-col gap-3 rounded-3xl border border-line/60 bg-surface-raised p-5 shadow-sm"
+			className="flex flex-col gap-3 rounded-card border-card border-line/60 bg-surface-raised p-5 shadow-card"
 		>
 			{children}
 		</section>
@@ -98,7 +98,7 @@ export function Loading({ label }: { readonly label?: string }) {
 		<p
 			role="status"
 			aria-live="polite"
-			className="flex items-center gap-3 px-4 py-6 text-base text-ink"
+			className="flex items-center gap-3 px-4 py-6 text-body text-ink"
 			data-testid="loading"
 		>
 			<span
@@ -118,9 +118,9 @@ export function HomeSkeleton() {
 			className="flex animate-pulse flex-col gap-3 px-4"
 			data-testid="home-skeleton"
 		>
-			<div className="h-44 rounded-3xl bg-surface-raised shadow-sm" />
-			<div className="h-20 rounded-2xl bg-surface-raised" />
-			<div className="h-20 rounded-2xl bg-surface-raised" />
+			<div className="h-44 rounded-card bg-surface-raised shadow-card" />
+			<div className="h-20 rounded-card-2xl bg-surface-raised" />
+			<div className="h-20 rounded-card-2xl bg-surface-raised" />
 		</div>
 	);
 }
@@ -153,14 +153,14 @@ export function Failed({
 		import.meta.env.VITE_MINI_APP_STAGE === "development";
 	return (
 		<div className="px-4 py-2" data-testid="failed">
-			<div className="flex flex-col items-center gap-3 rounded-3xl border border-line/60 bg-surface-raised px-5 py-6 text-center shadow-sm">
+			<div className="flex flex-col items-center gap-3 rounded-card border-card border-line/60 bg-surface-raised px-5 py-6 text-center shadow-card">
 				<span
 					aria-hidden="true"
 					className="flex size-12 items-center justify-center rounded-full bg-warning-soft text-ink"
 				>
 					<AlertIcon />
 				</span>
-				<p role="alert" className="text-base text-ink">
+				<p role="alert" className="text-body text-ink">
 					{t(failureKey(failure))}
 				</p>
 				{showDetail ? (
@@ -183,7 +183,7 @@ export function NoStores() {
 	const { t } = useI18n();
 	return (
 		<p
-			className="rounded-2xl bg-neutral-soft px-4 py-3 text-base text-ink"
+			className="rounded-card-2xl bg-neutral-soft px-4 py-3 text-body text-ink"
 			data-testid="no-stores"
 		>
 			{t("customer.noStores")}
@@ -198,7 +198,7 @@ export function BackButton({ to }: { readonly to?: string }) {
 		<button
 			type="button"
 			onClick={() => (to === undefined ? navigate(-1) : navigate(to))}
-			className={`-ml-3 inline-flex min-h-11 min-w-11 items-center gap-1 self-start rounded-xl px-3 text-base text-ink ${focusRing}`}
+			className={`-ml-3 inline-flex min-h-11 min-w-11 items-center gap-1 self-start rounded-control-xl px-3 text-body text-ink ${focusRing}`}
 		>
 			<svg
 				aria-hidden="true"
@@ -268,7 +268,7 @@ export function CheckControl({
 				aria-describedby={describedBy}
 				onChange={(event) => onChange(event.target.checked)}
 				data-testid={testId}
-				className="peer absolute inset-0 m-0 size-11 cursor-pointer appearance-none rounded-xl opacity-0 disabled:cursor-default"
+				className="peer absolute inset-0 m-0 size-11 cursor-pointer appearance-none rounded-field opacity-0 disabled:cursor-default"
 			/>
 			{kind === "checkbox" ? (
 				<span
@@ -296,7 +296,7 @@ export function CheckControl({
 					aria-hidden="true"
 					className={`pointer-events-none flex h-6 w-10 items-center rounded-full p-0.5 transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus peer-disabled:opacity-60 ${checked ? "justify-end bg-accent" : "justify-start bg-line"}`}
 				>
-					<span className="size-5 rounded-full bg-surface-raised shadow" />
+					<span className="size-5 rounded-full bg-surface-raised shadow-card" />
 				</span>
 			)}
 		</span>

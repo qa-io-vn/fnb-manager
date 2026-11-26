@@ -4,7 +4,7 @@ import { MAX_ADJUSTMENT } from "../loyalty/contract";
 import { readAdjustment } from "../loyalty/model";
 import { fieldClass, focusRing } from "../shift/parts";
 
-const stepClass = `flex size-11 shrink-0 items-center justify-center rounded-xl border border-line text-xl font-semibold text-ink disabled:opacity-60 ${focusRing}`;
+const stepClass = `flex size-11 shrink-0 items-center justify-center rounded-control-xl border-outline border-edge text-xl font-semibold text-ink disabled:opacity-60 ${focusRing}`;
 
 export function AdjustmentField({
 	label,

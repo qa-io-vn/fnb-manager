@@ -42,7 +42,7 @@ function StoreDetails({
 			<div className="flex flex-col gap-1">
 				<h1 className="text-xl font-semibold text-ink">{store.name}</h1>
 				{store.address === null ? null : (
-					<p className="text-base text-ink" data-testid="store-address">
+					<p className="text-body text-ink" data-testid="store-address">
 						{store.address}
 					</p>
 				)}
@@ -56,7 +56,7 @@ function StoreDetails({
 						{weekRows(store, today).map((row) => (
 							<div
 								key={row.weekday}
-								className={`flex justify-between gap-3 text-base ${row.today ? "font-semibold text-ink" : "text-ink"}`}
+								className={`flex justify-between gap-3 text-body ${row.today ? "font-semibold text-ink" : "text-ink"}`}
 								data-today={row.today ? "true" : undefined}
 							>
 								<dt>{t(`weekday.${row.weekday}`)}</dt>
@@ -69,7 +69,7 @@ function StoreDetails({
 						))}
 					</dl>
 				) : (
-					<p className="text-base text-ink">{t("store.hoursUnknown")}</p>
+					<p className="text-body text-ink">{t("store.hoursUnknown")}</p>
 				)}
 			</Card>
 			<div className="flex flex-col gap-2">
@@ -122,7 +122,7 @@ export function StoreScreen() {
 				<h1 className="text-xl font-semibold text-ink">
 					{t("store.missingTitle")}
 				</h1>
-				<p className="text-base text-ink">{t("store.missingBody")}</p>
+				<p className="text-body text-ink">{t("store.missingBody")}</p>
 			</Screen>
 		);
 	}

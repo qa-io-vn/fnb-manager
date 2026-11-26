@@ -355,7 +355,7 @@ export function ReportForm({
 												),
 											)
 										}
-										className={`min-h-11 min-w-11 rounded-xl px-2 text-sm text-negative ${focusRing}`}
+										className={`min-h-11 min-w-11 rounded-card-xl px-2 text-sm text-negative ${focusRing}`}
 									>
 										{t("report.removePhoto")}
 									</button>

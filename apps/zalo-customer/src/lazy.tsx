@@ -15,7 +15,7 @@ function ScreenFailed({ retry }: { readonly retry: () => void }) {
 		>
 			<p
 				role="alert"
-				className="rounded-xl bg-negative-soft px-3 py-2 text-base text-negative"
+				className="rounded-card-xl bg-negative-soft px-3 py-2 text-body text-negative"
 			>
 				{t("customer.error.network")}
 			</p>

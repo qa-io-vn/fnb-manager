@@ -1,5 +1,14 @@
+import { join } from "node:path";
 import { MINI_APP_VIEWPORT } from "@fnb/zalo-mini/testing/design-checks";
 import { defineConfig, devices } from "@playwright/test";
+
+// The look of the unthemed screens, recorded before the shape and type tokens and compared at every screen check
+// (design-checks.ts: checkStyleBaseline). MINI_APP_STYLE_MODE=write records it again after a deliberate change.
+process.env.MINI_APP_STYLE_BASELINE ??= join(
+	import.meta.dirname,
+	"e2e",
+	"style-baseline.json",
+);
 
 const portOffset = Number(process.env.E2E_PORT_OFFSET ?? "0");
 const port = 5742 + portOffset;

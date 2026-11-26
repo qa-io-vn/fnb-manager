@@ -55,7 +55,7 @@ function LegalBody({
 	const document = pickDocument(legal.documents, kind, language);
 	if (document === null) {
 		return (
-			<p role="alert" className="text-base text-ink">
+			<p role="alert" className="text-body text-ink">
 				{t("legal.unavailable")}
 			</p>
 		);
@@ -63,7 +63,7 @@ function LegalBody({
 	return (
 		<div className="flex flex-col gap-3" data-testid="legal-document">
 			{legal.entityName === null ? null : (
-				<p className="text-base text-ink" data-testid="legal-entity">
+				<p className="text-body text-ink" data-testid="legal-entity">
 					{t("legal.entity", { entity: legal.entityName })}
 				</p>
 			)}
@@ -96,12 +96,12 @@ export function LegalPopup({
 			{home.status === "ready" ? (
 				<LegalBody legal={home.data.legal} kind={kind} />
 			) : home.status === "loading" ? (
-				<p role="status" className="text-base text-ink">
+				<p role="status" className="text-body text-ink">
 					{t("customer.loading")}
 				</p>
 			) : (
 				<div className="flex flex-col gap-3">
-					<p role="alert" className="text-base text-ink">
+					<p role="alert" className="text-body text-ink">
 						{t("legal.unavailable")}
 					</p>
 					<button

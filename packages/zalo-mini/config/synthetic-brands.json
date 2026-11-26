@@ -204,7 +204,21 @@
 				"wordmark": "QMB",
 				"tagline_vi": "Quán mẫu thứ ba, chỉ để thử.",
 				"tagline_en": "The third sample shop, for tests only.",
-				"kicker": "Mẫu ba"
+				"kicker": "Mẫu ba",
+				"shape": {
+					"card": 20,
+					"panel": 28,
+					"control": 14,
+					"field": 10,
+					"tile": 8,
+					"sheet": 28,
+					"border": 1.5,
+					"outline": 2,
+					"shadow": false
+				},
+				"type": {
+					"body": 15
+				}
 			}
 		},
 		{
@@ -299,7 +313,21 @@
 				"wordmark": "QMB",
 				"tagline_vi": "Quán mẫu thứ ba, chỉ để thử.",
 				"tagline_en": "The third sample shop, for tests only.",
-				"kicker": "Mẫu ba"
+				"kicker": "Mẫu ba",
+				"shape": {
+					"card": 20,
+					"panel": 28,
+					"control": 14,
+					"field": 10,
+					"tile": 8,
+					"sheet": 28,
+					"border": 1.5,
+					"outline": 2,
+					"shadow": false
+				},
+				"type": {
+					"body": 15
+				}
 			}
 		}
 	]
