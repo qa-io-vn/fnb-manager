@@ -28,5 +28,8 @@
 	"role.publisher": "Publisher",
 	"shell.mainNavigation": "Main navigation",
 	"shell.plainState": "Nothing here yet.",
-	"popup.close": "Close"
+	"popup.close": "Close",
+	"price.spoken": "{amount} dong",
+	"price.spokenPlus": "plus {amount} dong",
+	"price.spokenMinus": "minus {amount} dong"
 }

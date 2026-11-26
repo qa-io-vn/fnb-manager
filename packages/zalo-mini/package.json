@@ -13,6 +13,10 @@
 			"types": "./src/react/index.ts",
 			"import": "./src/react/index.ts"
 		},
+		"./format": {
+			"types": "./src/format/index.ts",
+			"import": "./src/format/index.ts"
+		},
 		"./app-config": {
 			"types": "./src/app-config/index.ts",
 			"import": "./src/app-config/index.ts"

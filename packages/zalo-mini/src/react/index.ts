@@ -82,3 +82,9 @@ export {
 	PRELOAD_DELAY_MS,
 	preloadLazyScreens,
 } from "./lazy";
+export {
+	PriceText,
+	type PriceTextProps,
+	type PriceTextSize,
+	type PriceTextTone,
+} from "./ui-kit/index";

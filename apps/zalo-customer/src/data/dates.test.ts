@@ -2,7 +2,9 @@
 // a credit is valid through the local date of its issue plus the programme's
 // months and ends at the local midnight closing that day. Boundary value
 // analysis on month ends, 29 February and the hours of a sale.
+import { formatDate, formatTimeRange } from "@fnb/zalo-mini/format";
 import { describe, expect, it } from "vitest";
+import { spansText } from "../home/model";
 import { addMonths, creditEnd, localMidnight, shownDate } from "./dates";
 
 const at = (local: string) => Date.parse(`${local}:00+07:00`);
@@ -64,6 +66,31 @@ describe("creditEnd: valid through the anniversary day, ending at the midnight t
 		);
 		expect(localMidnight("2027-01-10", "America/New_York")).toBe(
 			Date.parse("2027-01-10T05:00:00Z"),
+		);
+	});
+});
+
+// The app writes dates and opening hours with its own helpers; the shared formatters of the design spec (5.2) must
+// write the same text, so a screen that moves to them does not change.
+describe("the app's dates and opening hours agree with the shared formatters", () => {
+	it.each([
+		"2026-11-26",
+		"2026-01-01",
+		"2026-12-31",
+		"2028-02-29",
+		"2027-03-01",
+	])("%s", (date) => {
+		expect(shownDate(date)).toBe(formatDate(date));
+	});
+
+	it("writes spans the way formatTimeRange does, joined by a comma", () => {
+		expect(
+			spansText([
+				["07:00", "11:00"],
+				["13:00", "24:00"],
+			]),
+		).toBe(
+			`${formatTimeRange("07:00", "11:00")}, ${formatTimeRange("13:00", "24:00")}`,
 		);
 	});
 });
