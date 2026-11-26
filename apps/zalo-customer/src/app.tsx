@@ -55,12 +55,26 @@ function developmentRoutes(): readonly MiniAppRoute[] {
 	const ProbeScreen = lazy(() =>
 		import("./probe/probe").then((module) => ({ default: module.ProbeScreen })),
 	);
+	const KitScreen = lazy(() =>
+		import("./probe/kit-probe").then((module) => ({
+			default: module.KitScreen,
+		})),
+	);
 	return [
 		{
 			path: "/probe",
 			element: (
 				<Suspense fallback={null}>
 					<ProbeScreen />
+				</Suspense>
+			),
+		},
+		// the design kit on one screen: opened with ?route=/kit in a Development build
+		{
+			path: "/kit",
+			element: (
+				<Suspense fallback={null}>
+					<KitScreen />
 				</Suspense>
 			),
 		},

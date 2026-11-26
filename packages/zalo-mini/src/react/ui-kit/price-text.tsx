@@ -25,7 +25,7 @@ const SIZES: Readonly<Record<PriceTextSize, string>> = {
 };
 
 const TONES: Readonly<Record<PriceTextTone, string>> = {
-	highlight: "",
+	highlight: "text-highlight",
 	ink: "text-ink",
 	muted: "text-ink-muted",
 };
@@ -59,11 +59,6 @@ export function PriceText({
 			data-price={amount}
 			data-testid={testId}
 			className={classes === "" ? undefined : classes}
-			style={
-				tone === "highlight"
-					? { color: "var(--brand-highlight, var(--accent))" }
-					: undefined
-			}
 		>
 			<span aria-hidden="true">{written}</span>
 			<span className="sr-only">{spoken}</span>

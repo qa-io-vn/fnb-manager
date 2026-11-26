@@ -4,6 +4,7 @@ import {
 } from "@fnb/zalo-mini/testing/constants";
 import {
 	checkMiniAppScreen,
+	expectPricesOnlyWhereAllowed,
 	watchMiniAppPage,
 } from "@fnb/zalo-mini/testing/design-checks";
 import { expect, type Page } from "@playwright/test";
@@ -11,8 +12,6 @@ import { expect, type Page } from "@playwright/test";
 export const SHOP_NOW = new Date("2026-11-19T10:00:00+07:00");
 export const PROGRAMME = "Thành viên Quán Mẫu Một";
 const INDEXED_DB_GLOBAL = "__CUSTOMER_INDEXED_DB__";
-const PRICE =
-	/\d[\d.,\s]*\s?(?:₫|đ(?![\p{L}])|đồng|vnđ|vnd)|(?:₫|vnđ|vnd)\s?\d/iu;
 
 export async function watchCustomerPage(
 	page: Page,
@@ -36,18 +35,9 @@ export async function watchCustomerPage(
 	}, INDEXED_DB_GLOBAL);
 }
 
+// No price anywhere: the customer app shows none until ordering exists. The shared check, with ordering not allowed.
 export async function expectNoPrice(page: Page): Promise<void> {
-	const texts = await page.evaluate(() =>
-		[...document.body.querySelectorAll("*")].map((element) =>
-			[...element.childNodes]
-				.filter((node) => node.nodeType === Node.TEXT_NODE)
-				.map((node) => node.textContent ?? "")
-				.join(" ")
-				.trim(),
-		),
-	);
-	const prices = texts.filter((text) => PRICE.test(text));
-	expect(prices, "prices on screen").toEqual([]);
+	await expectPricesOnlyWhereAllowed(page, { allowed: false });
 }
 
 export async function checkCustomerScreen(page: Page): Promise<void> {

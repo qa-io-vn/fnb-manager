@@ -71,6 +71,20 @@ function StandInHeader({
 	);
 }
 
+// Development builds only: ?route=/path opens a screen directly (the design kit, a flow screen), which a browser test cannot
+// reach by tapping before its data exists. A path is one to six segments of letters, digits, dashes and underscores, so
+// nothing else (a host, a query, a dot) can be navigated to; a Testing or Zalo build ignores the parameter.
+const DEV_ROUTE = /^\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+){0,5}$/;
+
+export function devRouteOf(
+	search: string,
+	stage: string | undefined,
+): string | null {
+	if (stage !== "development") return null;
+	const path = new URLSearchParams(search).get("route");
+	return path !== null && DEV_ROUTE.test(path) ? path : null;
+}
+
 function Frame({
 	routes,
 	tabs,
@@ -87,6 +101,13 @@ function Frame({
 	const { t } = useI18n();
 	const location = useLocation();
 	const navigate = useNavigate();
+	useEffect(() => {
+		const path = devRouteOf(
+			window.location.search,
+			import.meta.env.VITE_MINI_APP_STAGE,
+		);
+		if (path !== null) navigate(path, { replace: true });
+	}, [navigate]);
 	const activeTab =
 		tabs.find((tab) => tab.path === location.pathname)?.path ??
 		tabs[0]?.path ??

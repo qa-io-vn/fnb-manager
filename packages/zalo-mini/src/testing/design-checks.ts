@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { relative } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
+import { PRICE_PATTERN } from "../format/index";
 import { EXTERNAL_OPEN_APIS, MOCK_CALLS_GLOBAL } from "./constants";
 
 export const MINI_APP_VIEWPORT = { width: 360, height: 800 } as const;
@@ -27,14 +28,21 @@ const TARGET_SELECTOR = [
 
 interface PageRecord {
 	readonly errors: string[];
+	/** The address of every font file the page asked for. */
+	readonly fonts: string[];
 	styleChecks: number;
 }
 
 const watched = new WeakMap<Page, PageRecord>();
 
 export async function watchMiniAppPage(page: Page): Promise<void> {
-	const record: PageRecord = { errors: [], styleChecks: 0 };
+	const record: PageRecord = { errors: [], fonts: [], styleChecks: 0 };
 	watched.set(page, record);
+	page.on("response", (response) => {
+		if (response.request().resourceType() === "font") {
+			record.fonts.push(response.url());
+		}
+	});
 	page.on("console", (message) => {
 		if (message.type() === "error") record.errors.push(message.text());
 	});
@@ -348,6 +356,109 @@ export async function checkStyleBaseline(page: Page): Promise<void> {
 		if (was !== now) changes.push(`${was} -> ${now}: ${signature}`);
 	}
 	expect(changes, `the look of "${screen}" changed`).toEqual([]);
+}
+
+// Where a price may be (design spec 5.2, 7.8). Every text that looks like a price must sit inside an element marked
+// data-price, which PriceText makes; and a screen of a build or a route without ordering must hold no such element.
+export async function expectPricesOnlyWhereAllowed(
+	page: Page,
+	options: { readonly allowed: boolean },
+): Promise<void> {
+	const found = await page.evaluate(
+		({ source, flags }) => {
+			const pattern = new RegExp(source, flags);
+			const unmarked: string[] = [];
+			const walker = document.createTreeWalker(
+				document.body,
+				NodeFilter.SHOW_TEXT,
+			);
+			for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+				const text = (node.textContent ?? "").trim();
+				if (text === "" || !pattern.test(text)) continue;
+				if (node.parentElement?.closest("[data-price]") === null) {
+					unmarked.push(text.slice(0, 60));
+				}
+			}
+			return {
+				unmarked,
+				marked: document.querySelectorAll("[data-price]").length,
+			};
+		},
+		{ source: PRICE_PATTERN.source, flags: PRICE_PATTERN.flags },
+	);
+	expect(found.unmarked, "prices outside an element marked data-price").toEqual(
+		[],
+	);
+	if (!options.allowed) {
+		expect(
+			found.marked,
+			"elements marked data-price where none is allowed",
+		).toBe(0);
+	}
+}
+
+// No text may be drawn thinner than the ink it was given (the handbook: no opacity on text; a disabled or sold-out
+// state is written in the muted ink with a word). The effective opacity is the product of the element's and its
+// ancestors', and a colour with an alpha below 1 counts too.
+export async function expectNoTextOpacity(page: Page): Promise<void> {
+	await page.evaluate(
+		() =>
+			new Promise<void>((resolve) => {
+				requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+			}),
+	);
+	const faint = await page.evaluate(() => {
+		const alphaOf = (color: string): number => {
+			const slash = /\/\s*([\d.]+%?)\s*\)$/.exec(color);
+			if (slash?.[1] !== undefined) {
+				return slash[1].endsWith("%")
+					? Number.parseFloat(slash[1]) / 100
+					: Number.parseFloat(slash[1]);
+			}
+			const rgba = /^rgba\(.*,\s*([\d.]+)\)$/.exec(color);
+			return rgba?.[1] === undefined ? 1 : Number.parseFloat(rgba[1]);
+		};
+		const found: string[] = [];
+		for (const element of document.body.querySelectorAll("*")) {
+			const own = [...element.childNodes]
+				.filter((node) => node.nodeType === Node.TEXT_NODE)
+				.map((node) => (node.textContent ?? "").trim())
+				.join(" ")
+				.trim();
+			if (own === "" || element.getClientRects().length === 0) continue;
+			const style = getComputedStyle(element);
+			if (style.visibility === "hidden") continue;
+			let opacity = 1;
+			for (
+				let at: Element | null = element;
+				at !== null;
+				at = at.parentElement
+			) {
+				opacity *= Number.parseFloat(getComputedStyle(at).opacity);
+			}
+			const alpha = alphaOf(style.color);
+			if (opacity < 1 || alpha < 1) {
+				found.push(
+					`"${own.slice(0, 40)}" opacity ${opacity.toFixed(2)} colour alpha ${alpha}`,
+				);
+			}
+		}
+		return found;
+	});
+	expect(faint, "text drawn with an opacity or an alpha below 1").toEqual([]);
+}
+
+// The fonts of a brand come with the app (design spec 2.6, 7.5): every font file the page asked for is served from the
+// page's own origin, so nothing is fetched from Google or any other host.
+export async function expectFontsBundled(page: Page): Promise<void> {
+	const record = watched.get(page);
+	if (!record) {
+		throw new Error("call watchMiniAppPage(page) before the page opens");
+	}
+	await page.evaluate(() => document.fonts?.ready);
+	const own = new URL(page.url()).origin;
+	const foreign = record.fonts.filter((url) => new URL(url).origin !== own);
+	expect(foreign, "font files from another origin").toEqual([]);
 }
 
 export async function checkMiniAppScreen(page: Page): Promise<void> {

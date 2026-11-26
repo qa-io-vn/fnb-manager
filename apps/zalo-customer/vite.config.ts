@@ -10,7 +10,7 @@ export default defineConfig({
 		tailwindcss(),
 		...miniApp({
 			kind: "customer",
-			developmentOnlyMarkers: ["phone-probe"],
+			developmentOnlyMarkers: ["phone-probe", "kit-probe"],
 			appRoot: fileURLToPath(new URL(".", import.meta.url)),
 		}),
 	],

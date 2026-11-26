@@ -95,8 +95,8 @@ describe("PriceText", () => {
 		const list = marked(priceText({ amount: 35000, size: "list" }).container);
 		expect(list.className).toContain("text-[15px]");
 		expect(list.className).toContain("font-bold");
-		// the brand's price colour, the accent when the brand sets none
-		expect(list.style.color).toBe("var(--brand-highlight, var(--accent))");
+		// the brand's price colour, the accent when the brand sets none (text-highlight reads --brand-highlight)
+		expect(list.className).toContain("text-highlight");
 	});
 
 	it("has a lead size for an item price and a total, and a note size and a muted tone for a delta", () => {
@@ -105,7 +105,7 @@ describe("PriceText", () => {
 		);
 		expect(lead.className).toContain("text-[19px]");
 		expect(lead.className).toContain("text-ink");
-		expect(lead.style.color).toBe("");
+		expect(lead.className).not.toContain("text-highlight");
 		const note = marked(
 			priceText({ amount: 5000, kind: "delta", size: "note", tone: "muted" })
 				.container,

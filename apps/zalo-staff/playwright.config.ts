@@ -13,6 +13,11 @@ process.env.MINI_APP_STYLE_BASELINE ??= join(
 const portOffset = Number(process.env.E2E_PORT_OFFSET ?? "0");
 const port = 5742 + portOffset;
 const outDir = `node_modules/.cache/e2e-dist-${portOffset}`;
+// The brand-3 checks run on a second build: the synthetic brand-3, which sets every optional colour role, a shape and a
+// body size, as a Development build.
+const brand3Port = 5747 + portOffset;
+const brand3OutDir = `node_modules/.cache/e2e-brand3-dist-${portOffset}`;
+const brand3 = { baseURL: `http://127.0.0.1:${brand3Port}/` } as const;
 const phone = {
 	viewport: MINI_APP_VIEWPORT,
 	deviceScaleFactor: 2,
@@ -37,6 +42,41 @@ export default defineConfig({
 		timezoneId: "Asia/Ho_Chi_Minh",
 	},
 	projects: [
+		{
+			name: "b3-320-light",
+			testMatch: /design-brand3\.spec\.ts/,
+			use: {
+				...phone,
+				...brand3,
+				viewport: { width: 320, height: 640 },
+				colorScheme: "light",
+			},
+		},
+		{
+			name: "b3-360-light",
+			testMatch: /design-brand3\.spec\.ts/,
+			use: { ...phone, ...brand3, colorScheme: "light" },
+		},
+		{
+			name: "b3-360-dark",
+			testMatch: /design-brand3\.spec\.ts/,
+			use: { ...phone, ...brand3, colorScheme: "dark" },
+		},
+		{
+			name: "b3-412-dark",
+			testMatch: /design-brand3\.spec\.ts/,
+			use: {
+				...phone,
+				...brand3,
+				viewport: { width: 412, height: 915 },
+				colorScheme: "dark",
+			},
+		},
+		{
+			name: "b3-webkit",
+			testMatch: /design-brand3\.spec\.ts/,
+			use: { ...devices["iPhone 14"], ...brand3, colorScheme: "light" },
+		},
 		{
 			name: "phone-light",
 			testMatch:
@@ -67,11 +107,24 @@ export default defineConfig({
 			use: { ...phone, colorScheme: "light" },
 		},
 	],
-	webServer: {
-		command: `vite build --outDir ${outDir} --emptyOutDir && vite preview --outDir ${outDir} --host 127.0.0.1 --port ${port} --strictPort`,
-		url: `http://127.0.0.1:${port}/`,
-		reuseExistingServer: false,
-		timeout: 120_000,
-		env: { VITE_ZALO_RUNTIME: "browser", VITE_MINI_APP_STAGE: "testing" },
-	},
+	webServer: [
+		{
+			command: `vite build --outDir ${outDir} --emptyOutDir && vite preview --outDir ${outDir} --host 127.0.0.1 --port ${port} --strictPort`,
+			url: `http://127.0.0.1:${port}/`,
+			reuseExistingServer: false,
+			timeout: 120_000,
+			env: { VITE_ZALO_RUNTIME: "browser", VITE_MINI_APP_STAGE: "testing" },
+		},
+		{
+			command: `vite build --outDir ${brand3OutDir} --emptyOutDir && vite preview --outDir ${brand3OutDir} --host 127.0.0.1 --port ${brand3Port} --strictPort`,
+			url: `http://127.0.0.1:${brand3Port}/`,
+			reuseExistingServer: false,
+			timeout: 120_000,
+			env: {
+				VITE_ZALO_RUNTIME: "browser",
+				VITE_MINI_APP_STAGE: "development",
+				VITE_BRAND_KEY: "brand-3",
+			},
+		},
+	],
 });

@@ -59,6 +59,8 @@
 	--color-tone-4-ink: var(--tone-4-ink);
 	--color-tone-4-soft: var(--tone-4-soft);
 	--color-art-plate: var(--art-plate);
+	/* the brand's price, link and active-tab colour; the accent when the brand sets none */
+	--color-highlight: var(--brand-highlight, var(--accent));
 }
 
 html,
