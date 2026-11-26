@@ -860,6 +860,14 @@ Ordered simple to complex within the dependencies. **Sonnet** marks mechanical w
 
 Business decisions only; each has a default the build uses until answered.
 
+**Answered by the owner on 2026-11-26** (these override the defaults below):
+
+- **Items online (8):** every item on sale at the till goes online, except alcohol and beer; the owner hides what should not be sold online. `seed_online_menu` therefore marks seeded items visible.
+- **Table orders (2):** paid before preparation, at the counter now and online once phase 11 ships. A table order is accepted for preparation only after "Đã thu" (or a paid online payment).
+- **Pick-up time (6):** as soon as possible only; no chosen time and no ordering while closed in v1.
+- **Tables (phase 4):** named tables (for example "Sofa 1", "Cửa sổ 2"), entered by the owner on the web page Bàn & mã QR; no numbering scheme is imposed.
+- **Delivery (13):** wanted, built last; its areas, fees, minimum and courier are asked before phase 12.
+
 1. **Which store goes first, and with which order types?** Default: one store, takeaway and table.
 2. **Table orders: pay first or on leaving?** Customers order from the table and either pay at the counter before preparation or when they leave. Default: on leaving (staff record "Đã thu" then).
 3. **When the till is busy**, should the app keep taking orders until the waiting list reaches a limit, or should staff pause by hand? Default: automatic "busy" at 15 waiting orders, plus a manual pause.
