@@ -104,6 +104,26 @@ export {
 	sumMoney,
 } from "./rules/money.js";
 export {
+	type ActionOutcome,
+	actionTarget,
+	availableCounterActions,
+	CANCEL_REASONS,
+	type CancelReason,
+	COUNTER_ACTIONS,
+	type CounterAction,
+	type CustomerCancelOutcome,
+	counterAction,
+	customerCancel,
+	isTerminal,
+	type NativeOrderType,
+	ORDER_STATUSES,
+	type OrderPaymentStatus,
+	type OrderSnapshot,
+	type OrderStatus,
+	orderDisplayNumber,
+	PAYMENT_STATUSES,
+} from "./rules/order-lifecycle.js";
+export {
 	classifyPaymentKind,
 	DEFAULT_PAYMENT_KIND_RULES,
 	type PaymentKindOptions,

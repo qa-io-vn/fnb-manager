@@ -2807,6 +2807,53 @@
 			],
 			"type": "object"
 		},
+		"customer_order_blocks": {
+			"description": "a customer login barred from ordering at the tenant until blocked_until, made by three suspected_prank cancellations within 7 days; owners and managers of the store lift it by deleting the row",
+			"properties": {
+				"blocked_until": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"customer_login_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"customer_login_id",
+				"blocked_until",
+				"reason",
+				"created_at"
+			],
+			"type": "object"
+		},
 		"customers": {
 			"properties": {
 				"external_id": {
@@ -6787,6 +6834,169 @@
 			],
 			"type": "object"
 		},
+		"order_events": {
+			"description": "the append-only log of every order: each lifecycle and payment step with its actor (customer, staff with the user, system, provider), reason and amount; every cancellation and refund is here with who, when and how much; no role changes or deletes a row",
+			"properties": {
+				"action": {
+					"format": "text",
+					"type": "string"
+				},
+				"actor_kind": {
+					"format": "text",
+					"type": "string"
+				},
+				"actor_user_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"amount": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"from_state": {
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "int64",
+					"type": "integer"
+				},
+				"kind": {
+					"format": "text",
+					"type": "string"
+				},
+				"occurred_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"order_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"reason_code": {
+					"format": "text",
+					"type": "string"
+				},
+				"reason_text": {
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"to_state": {
+					"format": "text",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"order_id",
+				"kind",
+				"action",
+				"actor_kind",
+				"occurred_at"
+			],
+			"type": "object"
+		},
+		"order_lines": {
+			"description": "the lines of an order with the names and prices they were sold at (the size price as unit_price, the options as [{group_id, group, option_id, name, price}]); a later menu change never alters them",
+			"properties": {
+				"counts_for_stamps": {
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"item_id": {
+					"description": "Note:\nThis is a Foreign Key to `menu_items.id`.<fk table='menu_items' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"item_name": {
+					"format": "text",
+					"type": "string"
+				},
+				"line_no": {
+					"format": "int32",
+					"type": "integer"
+				},
+				"line_total": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"note": {
+					"format": "text",
+					"type": "string"
+				},
+				"options": {
+					"format": "jsonb"
+				},
+				"options_amount": {
+					"default": 0,
+					"format": "numeric",
+					"type": "number"
+				},
+				"order_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"quantity": {
+					"format": "int32",
+					"type": "integer"
+				},
+				"size_id": {
+					"description": "Note:\nThis is a Foreign Key to `menu_item_sizes.id`.<fk table='menu_item_sizes' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"size_label": {
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"unit_price": {
+					"format": "numeric",
+					"type": "number"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"order_id",
+				"line_no",
+				"item_name",
+				"quantity",
+				"unit_price",
+				"options",
+				"options_amount",
+				"line_total",
+				"counts_for_stamps"
+			],
+			"type": "object"
+		},
 		"ordering_closures": {
 			"description": "business dates on which a store takes no order (a holiday, works): at most 62 days a row, with the reason customers are shown",
 			"properties": {
@@ -6845,6 +7055,219 @@
 				"starts_on",
 				"ends_on",
 				"reason",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"orders": {
+			"description": "a native order (ADR-061): its store, brand, type and table, the customer login or the staff member who keyed it, the fixed lifecycle (status) and the money (payment_status) apart, the totals computed in SQL, the idempotency key and hash, the number of the store's business day, and the times and actors of every step; written only by security definer functions",
+			"properties": {
+				"accepted_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"brand_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"business_date": {
+					"format": "date",
+					"type": "string"
+				},
+				"cancel_actor": {
+					"format": "text",
+					"type": "string"
+				},
+				"cancel_note": {
+					"format": "text",
+					"type": "string"
+				},
+				"cancel_reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"cancelled_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"cancelled_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"change_seq": {
+					"description": "the next value of app.order_change_seq at every change, the counter board's cursor",
+					"format": "int64",
+					"type": "integer"
+				},
+				"completed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"customer_login_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"discount_amount": {
+					"default": 0,
+					"format": "numeric",
+					"type": "number"
+				},
+				"done_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"menu_version": {
+					"default": 0,
+					"format": "int64",
+					"type": "integer"
+				},
+				"note": {
+					"format": "text",
+					"type": "string"
+				},
+				"order_no": {
+					"description": "the number of the order in its store and business day, given when it is accepted (never to an unpaid online attempt), counted without gaps under a row lock",
+					"format": "int32",
+					"type": "integer"
+				},
+				"order_type": {
+					"format": "text",
+					"type": "string"
+				},
+				"paid_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"payment_due_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"payment_method": {
+					"format": "text",
+					"type": "string"
+				},
+				"payment_status": {
+					"default": "unpaid",
+					"enum": [
+						"unpaid",
+						"paid",
+						"refund_pending",
+						"refunded",
+						"partially_refunded"
+					],
+					"format": "public.order_payment_status",
+					"type": "string"
+				},
+				"pickup_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"placed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"preparing_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"request_hash": {
+					"format": "text",
+					"type": "string"
+				},
+				"request_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"source": {
+					"format": "text",
+					"type": "string"
+				},
+				"status": {
+					"enum": [
+						"awaiting_payment",
+						"accepted",
+						"preparing",
+						"ready",
+						"serving",
+						"completed",
+						"cancelled"
+					],
+					"format": "public.order_status",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"subtotal": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"table_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"table_label": {
+					"format": "text",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"total": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"version": {
+					"default": 1,
+					"description": "moves by one at every change; a counter action names the version it saw",
+					"format": "int32",
+					"type": "integer"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"brand_id",
+				"store_id",
+				"source",
+				"order_type",
+				"business_date",
+				"status",
+				"payment_status",
+				"payment_method",
+				"version",
+				"change_seq",
+				"subtotal",
+				"discount_amount",
+				"total",
+				"request_id",
+				"request_hash",
+				"menu_version",
+				"placed_at",
 				"created_at",
 				"updated_at"
 			],
@@ -9858,6 +10281,15 @@
 				"$ref": "#/definitions/coupons"
 			}
 		},
+		"body.customer_order_blocks": {
+			"description": "customer_order_blocks",
+			"in": "body",
+			"name": "customer_order_blocks",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/customer_order_blocks"
+			}
+		},
 		"body.customers": {
 			"description": "customers",
 			"in": "body",
@@ -10290,6 +10722,24 @@
 				"$ref": "#/definitions/oas"
 			}
 		},
+		"body.order_events": {
+			"description": "order_events",
+			"in": "body",
+			"name": "order_events",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/order_events"
+			}
+		},
+		"body.order_lines": {
+			"description": "order_lines",
+			"in": "body",
+			"name": "order_lines",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/order_lines"
+			}
+		},
 		"body.ordering_closures": {
 			"description": "ordering_closures",
 			"in": "body",
@@ -10297,6 +10747,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/ordering_closures"
+			}
+		},
+		"body.orders": {
+			"description": "orders",
+			"in": "body",
+			"name": "orders",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/orders"
 			}
 		},
 		"body.outbound_messages": {
@@ -13495,6 +13954,48 @@
 			"description": "last business day the reward may be redeemed (fixed dates); null for no end; valid_days still bounds each hold after issue",
 			"in": "query",
 			"name": "valid_until",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.customer_order_blocks.blocked_until": {
+			"in": "query",
+			"name": "blocked_until",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.customer_order_blocks.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.customer_order_blocks.customer_login_id": {
+			"in": "query",
+			"name": "customer_login_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.customer_order_blocks.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.customer_order_blocks.reason": {
+			"in": "query",
+			"name": "reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.customer_order_blocks.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.customer_order_blocks.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
 			"required": false,
 			"type": "string"
 		},
@@ -17563,6 +18064,186 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.order_events.action": {
+			"in": "query",
+			"name": "action",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.actor_kind": {
+			"in": "query",
+			"name": "actor_kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.actor_user_id": {
+			"in": "query",
+			"name": "actor_user_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.amount": {
+			"in": "query",
+			"name": "amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.from_state": {
+			"in": "query",
+			"name": "from_state",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.kind": {
+			"in": "query",
+			"name": "kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.occurred_at": {
+			"in": "query",
+			"name": "occurred_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.order_id": {
+			"in": "query",
+			"name": "order_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.reason_code": {
+			"in": "query",
+			"name": "reason_code",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.reason_text": {
+			"in": "query",
+			"name": "reason_text",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_events.to_state": {
+			"in": "query",
+			"name": "to_state",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.counts_for_stamps": {
+			"in": "query",
+			"name": "counts_for_stamps",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.item_id": {
+			"in": "query",
+			"name": "item_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.item_name": {
+			"in": "query",
+			"name": "item_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.line_no": {
+			"in": "query",
+			"name": "line_no",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.line_total": {
+			"in": "query",
+			"name": "line_total",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.note": {
+			"in": "query",
+			"name": "note",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.options": {
+			"in": "query",
+			"name": "options",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.options_amount": {
+			"in": "query",
+			"name": "options_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.order_id": {
+			"in": "query",
+			"name": "order_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.quantity": {
+			"in": "query",
+			"name": "quantity",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.size_id": {
+			"in": "query",
+			"name": "size_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.size_label": {
+			"in": "query",
+			"name": "size_label",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_lines.unit_price": {
+			"in": "query",
+			"name": "unit_price",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.ordering_closures.created_at": {
 			"in": "query",
 			"name": "created_at",
@@ -17620,6 +18301,243 @@
 		"rowFilter.ordering_closures.updated_by": {
 			"in": "query",
 			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.accepted_at": {
+			"in": "query",
+			"name": "accepted_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.brand_id": {
+			"in": "query",
+			"name": "brand_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.business_date": {
+			"in": "query",
+			"name": "business_date",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.cancel_actor": {
+			"in": "query",
+			"name": "cancel_actor",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.cancel_note": {
+			"in": "query",
+			"name": "cancel_note",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.cancel_reason": {
+			"in": "query",
+			"name": "cancel_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.cancelled_at": {
+			"in": "query",
+			"name": "cancelled_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.cancelled_by": {
+			"in": "query",
+			"name": "cancelled_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.change_seq": {
+			"description": "the next value of app.order_change_seq at every change, the counter board's cursor",
+			"in": "query",
+			"name": "change_seq",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.completed_at": {
+			"in": "query",
+			"name": "completed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.customer_login_id": {
+			"in": "query",
+			"name": "customer_login_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.discount_amount": {
+			"in": "query",
+			"name": "discount_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.done_at": {
+			"in": "query",
+			"name": "done_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.menu_version": {
+			"in": "query",
+			"name": "menu_version",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.note": {
+			"in": "query",
+			"name": "note",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.order_no": {
+			"description": "the number of the order in its store and business day, given when it is accepted (never to an unpaid online attempt), counted without gaps under a row lock",
+			"in": "query",
+			"name": "order_no",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.order_type": {
+			"in": "query",
+			"name": "order_type",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.paid_at": {
+			"in": "query",
+			"name": "paid_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.payment_due_at": {
+			"in": "query",
+			"name": "payment_due_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.payment_method": {
+			"in": "query",
+			"name": "payment_method",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.payment_status": {
+			"in": "query",
+			"name": "payment_status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.pickup_at": {
+			"in": "query",
+			"name": "pickup_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.placed_at": {
+			"in": "query",
+			"name": "placed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.preparing_at": {
+			"in": "query",
+			"name": "preparing_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.request_hash": {
+			"in": "query",
+			"name": "request_hash",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.request_id": {
+			"in": "query",
+			"name": "request_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.source": {
+			"in": "query",
+			"name": "source",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.subtotal": {
+			"in": "query",
+			"name": "subtotal",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.table_id": {
+			"in": "query",
+			"name": "table_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.table_label": {
+			"in": "query",
+			"name": "table_label",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.total": {
+			"in": "query",
+			"name": "total",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.version": {
+			"description": "moves by one at every change; a counter action names the version it saw",
+			"in": "query",
+			"name": "version",
 			"required": false,
 			"type": "string"
 		},
@@ -27799,6 +28717,163 @@
 				},
 				"summary": "the reward catalogue of a programme (completed in phase 18b): what a reward costs in stamps or points, where it is valid and whether it is active; a reward is active only when every store in its scope maps it in coupon_rail_rewards (FR-CMP-11)",
 				"tags": ["coupons"]
+			}
+		},
+		"/customer_order_blocks": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.blocked_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.created_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a customer login barred from ordering at the tenant until blocked_until, made by three suspected_prank cancellations within 7 days; owners and managers of the store lift it by deleting the row",
+				"tags": ["customer_order_blocks"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.blocked_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.created_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/customer_order_blocks"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "a customer login barred from ordering at the tenant until blocked_until, made by three suspected_prank cancellations within 7 days; owners and managers of the store lift it by deleting the row",
+				"tags": ["customer_order_blocks"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.blocked_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.customer_order_blocks.created_at"
+					},
+					{
+						"$ref": "#/parameters/body.customer_order_blocks"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a customer login barred from ordering at the tenant until blocked_until, made by three suspected_prank cancellations within 7 days; owners and managers of the store lift it by deleting the row",
+				"tags": ["customer_order_blocks"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.customer_order_blocks"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "a customer login barred from ordering at the tenant until blocked_until, made by three suspected_prank cancellations within 7 days; owners and managers of the store lift it by deleting the row",
+				"tags": ["customer_order_blocks"]
 			}
 		},
 		"/customers": {
@@ -38225,6 +39300,464 @@
 				"tags": ["oas"]
 			}
 		},
+		"/order_events": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.order_events.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.action"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.from_state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.to_state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.actor_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.actor_user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.reason_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.reason_text"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the append-only log of every order: each lifecycle and payment step with its actor (customer, staff with the user, system, provider), reason and amount; every cancellation and refund is here with who, when and how much; no role changes or deletes a row",
+				"tags": ["order_events"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.order_events.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.action"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.from_state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.to_state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.actor_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.actor_user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.reason_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.reason_text"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/order_events"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the append-only log of every order: each lifecycle and payment step with its actor (customer, staff with the user, system, provider), reason and amount; every cancellation and refund is here with who, when and how much; no role changes or deletes a row",
+				"tags": ["order_events"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.order_events.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.action"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.from_state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.to_state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.actor_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.actor_user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.reason_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.reason_text"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_events.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/body.order_events"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the append-only log of every order: each lifecycle and payment step with its actor (customer, staff with the user, system, provider), reason and amount; every cancellation and refund is here with who, when and how much; no role changes or deletes a row",
+				"tags": ["order_events"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.order_events"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the append-only log of every order: each lifecycle and payment step with its actor (customer, staff with the user, system, provider), reason and amount; every cancellation and refund is here with who, when and how much; no role changes or deletes a row",
+				"tags": ["order_events"]
+			}
+		},
+		"/order_lines": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.line_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.item_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.size_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.item_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.size_label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.quantity"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.unit_price"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.options"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.options_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.line_total"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.counts_for_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.note"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the lines of an order with the names and prices they were sold at (the size price as unit_price, the options as [{group_id, group, option_id, name, price}]); a later menu change never alters them",
+				"tags": ["order_lines"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.line_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.item_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.size_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.item_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.size_label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.quantity"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.unit_price"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.options"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.options_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.line_total"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.counts_for_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.note"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/order_lines"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the lines of an order with the names and prices they were sold at (the size price as unit_price, the options as [{group_id, group, option_id, name, price}]); a later menu change never alters them",
+				"tags": ["order_lines"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.line_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.item_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.size_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.item_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.size_label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.quantity"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.unit_price"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.options"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.options_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.line_total"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.counts_for_stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_lines.note"
+					},
+					{
+						"$ref": "#/parameters/body.order_lines"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the lines of an order with the names and prices they were sold at (the size price as unit_price, the options as [{group_id, group, option_id, name, price}]); a later menu change never alters them",
+				"tags": ["order_lines"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.order_lines"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the lines of an order with the names and prices they were sold at (the size price as unit_price, the options as [{group_id, group, option_id, name, price}]); a later menu change never alters them",
+				"tags": ["order_lines"]
+			}
+		},
 		"/ordering_closures": {
 			"delete": {
 				"parameters": [
@@ -38407,6 +39940,451 @@
 				},
 				"summary": "business dates on which a store takes no order (a holiday, works): at most 62 days a row, with the reason customers are shown",
 				"tags": ["ordering_closures"]
+			}
+		},
+		"/orders": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.orders.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.order_type"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.table_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.table_label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.pickup_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.order_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.payment_status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.payment_method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.change_seq"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.subtotal"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.discount_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.total"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.request_hash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.menu_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.placed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.payment_due_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.accepted_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.preparing_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.done_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.completed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.paid_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancelled_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancelled_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancel_actor"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancel_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancel_note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a native order (ADR-061): its store, brand, type and table, the customer login or the staff member who keyed it, the fixed lifecycle (status) and the money (payment_status) apart, the totals computed in SQL, the idempotency key and hash, the number of the store's business day, and the times and actors of every step; written only by security definer functions",
+				"tags": ["orders"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.orders.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.order_type"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.table_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.table_label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.pickup_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.order_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.payment_status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.payment_method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.change_seq"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.subtotal"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.discount_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.total"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.request_hash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.menu_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.placed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.payment_due_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.accepted_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.preparing_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.done_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.completed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.paid_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancelled_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancelled_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancel_actor"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancel_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancel_note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/orders"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "a native order (ADR-061): its store, brand, type and table, the customer login or the staff member who keyed it, the fixed lifecycle (status) and the money (payment_status) apart, the totals computed in SQL, the idempotency key and hash, the number of the store's business day, and the times and actors of every step; written only by security definer functions",
+				"tags": ["orders"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.orders.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.order_type"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.table_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.table_label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.pickup_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.order_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.payment_status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.payment_method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.change_seq"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.subtotal"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.discount_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.total"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.request_hash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.menu_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.placed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.payment_due_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.accepted_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.preparing_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.done_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.completed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.paid_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancelled_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancelled_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancel_actor"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancel_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.cancel_note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.orders"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a native order (ADR-061): its store, brand, type and table, the customer login or the staff member who keyed it, the fixed lifecycle (status) and the money (payment_status) apart, the totals computed in SQL, the idempotency key and hash, the number of the store's business day, and the times and actors of every step; written only by security definer functions",
+				"tags": ["orders"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.orders"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "a native order (ADR-061): its store, brand, type and table, the customer login or the staff member who keyed it, the fixed lifecycle (status) and the money (payment_status) apart, the totals computed in SQL, the idempotency key and hash, the number of the store's business day, and the times and actors of every step; written only by security definer functions",
+				"tags": ["orders"]
 			}
 		},
 		"/outbound_messages": {
@@ -42246,6 +44224,87 @@
 				"tags": ["(rpc) counter_ack_call"]
 			}
 		},
+		"/rpc/counter_board": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app: app.counter_board at the current time",
+							"properties": {
+								"p_cursor": {
+									"format": "int64",
+									"type": "integer"
+								},
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_board at the current time",
+				"tags": ["(rpc) counter_board"]
+			}
+		},
+		"/rpc/counter_create_order": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app: app.counter_create_order at the current time",
+							"properties": {
+								"p_request": {
+									"format": "jsonb"
+								},
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store", "p_request"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_create_order at the current time",
+				"tags": ["(rpc) counter_create_order"]
+			}
+		},
 		"/rpc/counter_menu": {
 			"get": {
 				"parameters": [
@@ -42304,6 +44363,115 @@
 				},
 				"summary": "RPC for the counter web app: app.counter_menu at the current time",
 				"tags": ["(rpc) counter_menu"]
+			}
+		},
+		"/rpc/counter_order": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_order",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_order at the current time",
+				"tags": ["(rpc) counter_order"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app: app.counter_order at the current time",
+							"properties": {
+								"p_order": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_order"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_order at the current time",
+				"tags": ["(rpc) counter_order"]
+			}
+		},
+		"/rpc/counter_order_act": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app: app.counter_order_act at the current time",
+							"properties": {
+								"p_action": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_expected_version": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_order": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_reason": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_order", "p_action", "p_expected_version"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_order_act at the current time",
+				"tags": ["(rpc) counter_order_act"]
 			}
 		},
 		"/rpc/counter_set_pause": {
@@ -42570,6 +44738,102 @@
 				},
 				"summary": "RPC for the customer Mini App: app.customer_call_staff at the current time",
 				"tags": ["(rpc) customer_call_staff"]
+			}
+		},
+		"/rpc/customer_cancel_order": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_cancel_order at the current time",
+							"properties": {
+								"p_order": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_order"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_cancel_order at the current time",
+				"tags": ["(rpc) customer_cancel_order"]
+			}
+		},
+		"/rpc/customer_check_cart": {
+			"get": {
+				"parameters": [
+					{
+						"format": "jsonb",
+						"in": "query",
+						"name": "p_request",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_check_cart at the current time",
+				"tags": ["(rpc) customer_check_cart"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_check_cart at the current time",
+							"properties": {
+								"p_request": {
+									"format": "jsonb"
+								}
+							},
+							"required": ["p_request"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_check_cart at the current time",
+				"tags": ["(rpc) customer_check_cart"]
 			}
 		},
 		"/rpc/customer_confirm_bill": {
@@ -43006,6 +45270,125 @@
 				"tags": ["(rpc) customer_metrics"]
 			}
 		},
+		"/rpc/customer_order": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_order",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_order at the current time",
+				"tags": ["(rpc) customer_order"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_order at the current time",
+							"properties": {
+								"p_order": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_order"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_order at the current time",
+				"tags": ["(rpc) customer_order"]
+			}
+		},
+		"/rpc/customer_orders": {
+			"get": {
+				"parameters": [
+					{
+						"format": "timestamp with time zone",
+						"in": "query",
+						"name": "p_before",
+						"required": false,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_orders at the current time",
+				"tags": ["(rpc) customer_orders"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_orders at the current time",
+							"properties": {
+								"p_before": {
+									"format": "timestamp with time zone",
+									"type": "string"
+								}
+							},
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_orders at the current time",
+				"tags": ["(rpc) customer_orders"]
+			}
+		},
 		"/rpc/customer_pending_bills": {
 			"get": {
 				"produces": [
@@ -43048,6 +45431,42 @@
 				},
 				"summary": "RPC: app.customer_pending_bills at now()",
 				"tags": ["(rpc) customer_pending_bills"]
+			}
+		},
+		"/rpc/customer_place_order": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_place_order at the current time",
+							"properties": {
+								"p_request": {
+									"format": "jsonb"
+								}
+							},
+							"required": ["p_request"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_place_order at the current time",
+				"tags": ["(rpc) customer_place_order"]
 			}
 		},
 		"/rpc/customer_redeem": {

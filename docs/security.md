@@ -325,6 +325,11 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Write the price log or the import record | no | no | no | no | no |
 | Read a store's tables and staff calls; never a table token or its hash | scope | scope | no (`counter_table_map`) | scope | no |
 | Write tables (not the QR columns), print and rotate table QR codes | scope | scope | no | no | no |
+| Read native orders, their lines and events | scope | scope | no (`counter_board`, `counter_order` for its store) | scope | no |
+| Move an order through its lifecycle, key an order at the counter | scope | scope | scope (the `counter_*` functions) | no | no |
+| Mark an order paid | no client: only the counter's payment record and the verified provider confirmation through the server-side seam | | | | |
+| Write an order, a line or an event directly | no | no | no | no | no |
+| Lift a customer's ordering block | scope (delete) | scope (delete) | no | no | no |
 | Read the OA webhook's events (`oa_events`), the binding codes, the pairing codes and wrong-code counts, a staff member's phone, the POS or Zalo token caches, the payload documents or anything in `app` | no | no | no | no | no |
 
 Destinations are created, linked and withdrawn through `security definer` functions and the CLI, not by direct writes.

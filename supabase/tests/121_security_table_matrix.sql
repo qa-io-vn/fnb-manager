@@ -321,6 +321,22 @@ select tenant_a, store_a2, 'Bàn 1' from fx union all
 select tenant_b, store_b1, 'Bàn 1' from fx;
 insert into public.table_calls (tenant_id, store_id, table_id)
 select t.tenant_id, t.store_id, t.id from public.store_tables t cross join fx where t.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.orders (tenant_id, brand_id, store_id, source, customer_login_id, order_type, table_id, table_label, business_date, order_no, status,
+  payment_method, subtotal, total, request_id, request_hash, placed_at, accepted_at)
+select s.tenant_id, b.id, s.id, 'app', l.id, 'table', t.id, t.label, current_date, 1, 'accepted', 'counter', 29000, 29000, gen_random_uuid(), repeat('a', 64), now(), now()
+from public.stores s
+cross join fx
+join public.brands b on b.tenant_id = s.tenant_id and s.id = any (b.store_ids)
+join public.store_tables t on t.store_id = s.id
+left join app.customer_logins l on l.user_id = case when s.tenant_id = fx.tenant_a then fx.customer_u else fx.customer_b_u end
+where s.id in (fx.store_a1, fx.store_a2, fx.store_b1);
+insert into public.order_lines (tenant_id, store_id, order_id, line_no, item_name, quantity, unit_price, line_total, counts_for_stamps)
+select o.tenant_id, o.store_id, o.id, 1, 'Cà phê', 1, 29000, 29000, true from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.order_events (tenant_id, store_id, order_id, kind, action, to_state, actor_kind, occurred_at)
+select o.tenant_id, o.store_id, o.id, 'status', 'placed', 'accepted', 'customer', now() from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.customer_order_blocks (tenant_id, store_id, customer_login_id, blocked_until, reason)
+select o.tenant_id, o.store_id, o.customer_login_id, now() + interval '1 day', 'suspected_prank' from public.orders o cross join fx
+where o.tenant_id in (fx.tenant_a, fx.tenant_b) and o.customer_login_id is not null;
 
 -- Who reads what (docs/security.md 5.3, docs/api.md section 4). Reader groups:
 --   data: owner, owner_a1, manager, manager_a1, viewer, staff, staff_a2 (and owner_b in tenant B)
@@ -389,7 +405,11 @@ insert into tables_in_scope (tbl, readers, scoped, own, writers) values
   ('menu_price_changes', 'omv', false, null, '{}'),
   ('menu_imports', 'omv', false, null, '{}'),
   ('store_tables', 'omv', true, null, '{owner,owner_a1,manager,manager_a1}'),
-  ('table_calls', 'omv', true, null, '{}');
+  ('table_calls', 'omv', true, null, '{}'),
+  ('orders', 'omv', true, null, '{}'),
+  ('order_lines', 'omv', true, null, '{}'),
+  ('order_events', 'omv', true, null, '{}'),
+  ('customer_order_blocks', 'om', true, null, '{owner,owner_a1,manager,manager_a1}');
 
 create function pg_temp.signature_sql(p_table text, p_filter text default 'true')
 returns text
