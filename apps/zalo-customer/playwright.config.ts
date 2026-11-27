@@ -119,18 +119,18 @@ export default defineConfig({
 		},
 		{
 			name: "ordering-light",
-			testMatch: /ordering\.spec\.ts/,
+			testMatch: /(ordering|company-invoice)\.spec\.ts/,
 			use: { ...phone, ...ordering, colorScheme: "light" },
 		},
 		{
 			name: "ordering-dark",
-			testMatch: /ordering\.spec\.ts/,
+			testMatch: /(ordering|company-invoice)\.spec\.ts/,
 			use: { ...phone, ...ordering, colorScheme: "dark" },
 		},
 		{
 			// the owner's phone is an iPhone: the ordering screens on WebKit as well
 			name: "ordering-webkit",
-			testMatch: /ordering\.spec\.ts/,
+			testMatch: /(ordering|company-invoice)\.spec\.ts/,
 			use: { ...devices["iPhone 14"], ...ordering, colorScheme: "light" },
 		},
 		{

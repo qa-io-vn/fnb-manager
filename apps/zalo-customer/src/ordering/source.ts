@@ -49,6 +49,7 @@ export function demoOrderingWorld(
 		world.settings.orderingReason,
 		world.settings.onlinePayments,
 		world.settings.member,
+		!world.settings.einvoiceOff,
 	);
 	world.extend(ordering);
 	attached.set(world, ordering);

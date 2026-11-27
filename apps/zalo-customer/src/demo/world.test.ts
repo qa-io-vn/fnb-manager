@@ -81,9 +81,12 @@ describe("demo settings", () => {
 			bills: 0,
 			orderingReason: null,
 			onlinePayments: false,
+			einvoiceOff: false,
 		});
 		expect(demoSettingsFrom("?payments=online").onlinePayments).toBe(true);
 		expect(demoSettingsFrom("?payments=all").onlinePayments).toBe(false);
+		expect(demoSettingsFrom("?einvoice=off").einvoiceOff).toBe(true);
+		expect(demoSettingsFrom("?einvoice=on").einvoiceOff).toBe(false);
 		expect(demoSettingsFrom("?ordering=paused").orderingReason).toBe("paused");
 		expect(demoSettingsFrom("?ordering=banana").orderingReason).toBeNull();
 		expect(demoSettingsFrom("?net=lost-once&answerDelay=50000")).toMatchObject({

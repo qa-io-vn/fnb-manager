@@ -17,6 +17,7 @@ import {
 } from "@fnb/zalo-mini/ordering";
 import { isoDateIn } from "../data/dates";
 import { hasForbiddenCharacter } from "../ordering/cart";
+import { createInvoiceWorld, type DemoInvoiceTill } from "./invoice-world";
 import {
 	DEMO_BANK,
 	DEMO_CATEGORY_NAMES,
@@ -47,7 +48,7 @@ export type DemoTillAction = "pay" | "start" | "done" | "complete" | "cancel";
 export type DemoTransferOutcome = "paid" | "held" | "unknown";
 
 /** The counter's side of the demo, for tests: what staff do at the till, and the gateway and the bank. */
-export interface DemoTill {
+export interface DemoTill extends DemoInvoiceTill {
 	/** switch an item sold out (true) or back on sale; moves the menu version */
 	soldOut(itemId: string, on: boolean): void;
 	/** change a size's price; moves the menu version */
@@ -354,6 +355,7 @@ export function createOrderingWorld(
 	initialReason: string | null,
 	onlinePayments = false,
 	member = false,
+	einvoiceOn = true,
 ): OrderingWorld {
 	const items = demoMenuItems();
 	const soldOut = new Set<string>();
@@ -946,6 +948,7 @@ export function createOrderingWorld(
 			reason_code: null,
 			amount: order.total,
 		});
+		invoices.paid(order);
 	};
 
 	// the verified notification of the gateway or the bank: the only way an online attempt pays an order (T3)
@@ -997,7 +1000,11 @@ export function createOrderingWorld(
 			? [...orders].reverse().find((entry) => entry.owner === "me")
 			: orders.find((entry) => entry.id === orderId);
 
+	// e-invoices and company invoices (C18), with the order's money as this world holds it
+	const invoices = createInvoiceWorld({ now, einvoiceOn, mine, target });
+
 	const till: DemoTill = {
+		...invoices.till,
 		addRequest() {
 			const tomorrow = isoDateIn(now() + 24 * 3_600_000);
 			const id = crypto.randomUUID();
@@ -1232,6 +1239,7 @@ export function createOrderingWorld(
 		history.length = 0;
 		requests.length = 0;
 		attached.length = 0;
+		invoices.accountDeleted();
 		return {
 			state: "deleted",
 			refusal: null,
@@ -1243,6 +1251,7 @@ export function createOrderingWorld(
 
 	const exportData = () => {
 		const mineNow = orders.filter((order) => order.owner === "me");
+		const invoiceSections = invoices.exportSections();
 		const since = new Date(now() - 30 * 86_400_000).toISOString();
 		return {
 			generated_at: iso(),
@@ -1278,6 +1287,8 @@ export function createOrderingWorld(
 				...request,
 				contact_phone: "0900000000",
 			})),
+			invoice_requests: invoiceSections.invoice_requests,
+			saved_companies: invoiceSections.saved_companies,
 			staff_calls: [],
 			order_blocks: [],
 			deletion_request: null,
@@ -1286,6 +1297,8 @@ export function createOrderingWorld(
 				orders: mineNow.length,
 				attached_orders: attached.length,
 				requests: requests.length,
+				invoice_requests: invoiceSections.invoice_requests.length,
+				saved_companies: invoiceSections.saved_companies.length,
 				staff_calls: 0,
 				stamp_entries: history.length,
 				memberships: 0,
@@ -1448,7 +1461,7 @@ export function createOrderingWorld(
 			case ACCOUNT_FUNCTIONS.cancelRequest:
 				return cancelRequest(args.p_request);
 			default:
-				return undefined;
+				return invoices.answer(fn, args);
 		}
 	};
 
@@ -1630,6 +1643,7 @@ export function createOrderingWorld(
 			ACCOUNT_FUNCTIONS.stampCode,
 			ACCOUNT_FUNCTIONS.deleteAccount,
 			ACCOUNT_FUNCTIONS.cancelRequest,
+			...invoices.changingFunctions,
 		],
 	};
 }

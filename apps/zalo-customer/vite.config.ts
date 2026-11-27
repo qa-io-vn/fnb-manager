@@ -17,6 +17,7 @@ export default defineConfig({
 				"checkout-submit",
 				"active-order-strip",
 				"pay-step",
+				"company-invoice-form",
 			],
 			appRoot: fileURLToPath(new URL(".", import.meta.url)),
 		}),

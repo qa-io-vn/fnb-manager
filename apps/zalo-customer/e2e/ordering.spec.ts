@@ -401,7 +401,8 @@ test("Tôi leads to the order history, the member code and the data screen, and 
 	await addBlackCoffee(page);
 	await placeOrder(page);
 	await page.getByRole("navigation").getByText("Tôi", { exact: true }).click();
-	await expect(page.getByTestId("account-row")).toHaveCount(4);
+	// orders, member code, company invoices (C18), requests, data
+	await expect(page.getByTestId("account-row")).toHaveCount(5);
 	await checkOrderingScreen(page);
 	await page.locator("[data-testid=account-row][data-row=orders]").click();
 	await expect(page.getByTestId("order-row")).toHaveCount(1);

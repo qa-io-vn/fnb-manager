@@ -2,6 +2,7 @@ import { useI18n } from "@fnb/zalo-mini/i18n";
 import { StatusPill } from "@fnb/zalo-mini/ui-kit";
 import { Link } from "react-router-dom";
 import { card, PageTitle } from "../ui/kit";
+import { useEInvoiceAttention } from "./einvoices-page";
 import { useInbox } from "./requests-page";
 
 export const MANAGER_SECTIONS = [
@@ -10,13 +11,18 @@ export const MANAGER_SECTIONS = [
 	{ to: "/quan-ly/yeu-cau", key: "requests" },
 	{ to: "/quan-ly/nhan-su", key: "staff" },
 	{ to: "/quan-ly/ca-lam", key: "shifts" },
+	{ to: "/quan-ly/hoa-don-dien-tu", key: "einvoices" },
 	{ to: "/quan-ly/ma-qr", key: "qr" },
 ] as const;
 
-/** Quản lý: the manager's sections, on the tablet and on the phone; the inbox says how many are unread (M01). */
+/**
+ * Quản lý: the manager's sections, on the tablet and on the phone; the inbox says how many are unread (M01) and the
+ * e-invoices how many failed (ADR-069).
+ */
 export function ManagerHome() {
 	const { t } = useI18n();
 	const unread = useInbox().data?.unread ?? 0;
+	const failing = useEInvoiceAttention(true);
 	return (
 		<div className="mx-auto flex max-w-5xl flex-col gap-4">
 			<PageTitle>{t("nav.manager")}</PageTitle>
@@ -33,6 +39,14 @@ export function ManagerHome() {
 								{section.key === "requests" && unread > 0 ? (
 									<StatusPill tone="warning" testId="manager-requests-unread">
 										{t("requests.unread", { count: unread })}
+									</StatusPill>
+								) : null}
+								{section.key === "einvoices" && failing > 0 ? (
+									<StatusPill
+										tone="negative"
+										testId="manager-einvoices-failing"
+									>
+										{t("einvoices.failingBadge", { count: failing })}
 									</StatusPill>
 								) : null}
 							</span>

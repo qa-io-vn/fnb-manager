@@ -28,6 +28,16 @@ import {
 	storeArgs,
 	tableArgs,
 } from "./contract";
+import {
+	INVOICE_FUNCTIONS,
+	invoiceStatusArgs,
+	readDeleteSavedCompanyAnswer,
+	readInvoiceStatus,
+	readRequestInvoiceAnswer,
+	readSavedCompanies,
+	requestInvoiceArgs,
+	savedCompanyArgs,
+} from "./invoice-contract";
 
 /** The native till's customer functions through the Data API, with the customer's session. */
 export function createRestOrderingClient(rest: RestClient): OrderingClient {
@@ -97,6 +107,29 @@ export function createRestOrderingClient(rest: RestClient): OrderingClient {
 		async cancelRequest(id) {
 			return readCancelRequestAnswer(
 				await rest.rpc(ACCOUNT_FUNCTIONS.cancelRequest, requestIdArgs(id)),
+			);
+		},
+		async invoiceStatus(orderId) {
+			return readInvoiceStatus(
+				await rest.rpc(INVOICE_FUNCTIONS.status, invoiceStatusArgs(orderId)),
+			);
+		},
+		async requestInvoice(request) {
+			return readRequestInvoiceAnswer(
+				await rest.rpc(INVOICE_FUNCTIONS.request, requestInvoiceArgs(request)),
+			);
+		},
+		async savedCompanies() {
+			return readSavedCompanies(
+				await rest.rpc(INVOICE_FUNCTIONS.savedCompanies),
+			);
+		},
+		async deleteSavedCompany(id) {
+			return readDeleteSavedCompanyAnswer(
+				await rest.rpc(
+					INVOICE_FUNCTIONS.deleteSavedCompany,
+					savedCompanyArgs(id),
+				),
 			);
 		},
 	};

@@ -11,6 +11,13 @@ import type {
 	DeleteAccountAnswer,
 	StampCodeAnswer,
 } from "./account-contract";
+import type {
+	DeleteSavedCompanyAnswer,
+	InvoiceRequestInput,
+	InvoiceStatus,
+	RequestInvoiceAnswer,
+	SavedCompany,
+} from "./invoice-contract";
 
 export const ORDERING_FUNCTIONS = {
 	menu: "customer_menu",
@@ -454,6 +461,14 @@ export interface OrderingClient {
 	/** the customer's own requests (bookings, holds…) with a time the store proposed */
 	requests(): Promise<{ readonly requests: readonly CustomerRequest[] }>;
 	cancelRequest(id: string): Promise<CancelRequestAnswer>;
+	/** C18 and C14: whether a company invoice can be asked for the order now, the request and the e-invoice */
+	invoiceStatus(orderId: string): Promise<InvoiceStatus>;
+	/** C18: asks for a company invoice (one request id per attempt: a retry or a double tap makes one request) */
+	requestInvoice(request: InvoiceRequestInput): Promise<RequestInvoiceAnswer>;
+	/** C18 and C19: the companies the customer saved, the most recently used first */
+	savedCompanies(): Promise<{ readonly companies: readonly SavedCompany[] }>;
+	/** C19: forgets a saved company (a request made with it stays) */
+	deleteSavedCompany(id: string): Promise<DeleteSavedCompanyAnswer>;
 }
 
 type Row = Readonly<Record<string, unknown>>;

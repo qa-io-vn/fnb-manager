@@ -7,5 +7,6 @@ export {
 	type PaymentClientOptions,
 	PaymentError,
 } from "./fetch-payment-client";
+export * from "./invoice-contract";
 export * from "./payment-contract";
 export { createRestOrderingClient } from "./rest-ordering-client";

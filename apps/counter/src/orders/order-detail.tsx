@@ -21,6 +21,7 @@ import {
 import { useBoard } from "./board-context";
 import { cancellable, nextAction, payable } from "./board-model";
 import { CancelDialog, RefundDialog } from "./cancel-dialog";
+import { EInvoiceCard } from "./einvoice-ui";
 import { attachable } from "./member";
 import { MemberDialog } from "./member-dialog";
 import {
@@ -287,6 +288,7 @@ export function OrderDetailPage() {
 							{message}
 						</PlainNote>
 					)}
+					<EInvoiceCard order={order} />
 				</section>
 			</div>
 			<section
