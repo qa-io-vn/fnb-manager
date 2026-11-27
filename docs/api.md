@@ -2976,7 +2976,7 @@ returns jsonb
 
 - **Status:** built (2026-11-28).
 - **Who may call:** a customer session (`42501` otherwise, also after the deletion, so a replay with the old token does nothing); `p_confirm` must be `true` (`22023` otherwise).
-- **Notes:** "Xóa tài khoản" for a customer who never joined with a phone, at once. Refused while an order of theirs is open (`open_orders`, with `orders`) or a refund is owed to them (`refund_pending`); a joined customer answers `member_request` and uses `customer_request_deletion`, which an owner completes with `dsr_delete`. Otherwise it answers `{state: "deleted", deleted: true, deleted_at, counts}` after, in one transaction: the stamp card with its rewards and ledger, the member codes, the requests (they carry the contact typed), the ordering blocks, the login and its Auth user with every session are deleted; the notes the customer typed on their orders and lines are cleared; their orders, the counter orders attached to their card and their staff calls lose the link; the orders, payments, refunds, order events and the store's invoices stay as the money records the law keeps (the events keep the deleted login's id, which then names nobody). A keyed hash of the Zalo App and user id (HMAC-SHA-256 under the tenant's key) with the time and the counts is kept as the proof (`app.customer_login_erasures`, read by no API role). The same Zalo account signing in again is a new customer with no stamps.
+- **Notes:** "Xóa tài khoản" for a customer who never joined with a phone, at once. Refused while an order of theirs is open (`open_orders`, with `orders`) or a refund is owed to them (`refund_pending`); a joined customer answers `member_request` and uses `customer_request_deletion`, which an owner completes with `dsr_delete`. Otherwise it answers `{state: "deleted", deleted: true, deleted_at, counts}` after, in one transaction: the stamp card with its rewards and ledger, the member codes, the requests (they carry the contact typed), the ordering blocks, the saved companies, the login and its Auth user with every session are deleted; the company invoice requests stay with their invoices for the legal period without the link; the notes the customer typed on their orders and lines are cleared; their orders, the counter orders attached to their card and their staff calls lose the link; the orders, payments, refunds, order events and the store's invoices stay as the money records the law keeps (the events keep the deleted login's id, which then names nobody). A keyed hash of the Zalo App and user id (HMAC-SHA-256 under the tenant's key) with the time and the counts is kept as the proof (`app.customer_login_erasures`, read by no API role). The same Zalo account signing in again is a new customer with no stamps.
 
 #### `public.customer_export_data`
 
@@ -2987,7 +2987,7 @@ returns jsonb
 
 - **Status:** built (2026-11-28).
 - **Who may call:** a customer session (`42501` otherwise).
-- **Notes:** "Tải bản sao dữ liệu": one JSON of everything held about the caller's login: `{generated_at, login: {zalo_user_id, brand, created_at, joined}, customer (a joined customer's name, phone and dates, else null), memberships, consents, stamp_card: {stamps, total_earned, created_at, rewards, entries}, orders (each as `customer_order` shows it, with the store's name and the money), attached_orders, requests (with the phone typed), staff_calls, order_blocks, deletion_request, not_kept, counts}`, nothing of anyone else. Each export is recorded with its counts only, never its content (`app.customer_data_exports`, ADR-054).
+- **Notes:** "Tải bản sao dữ liệu": one JSON of everything held about the caller's login: `{generated_at, login: {zalo_user_id, brand, created_at, joined}, customer (a joined customer's name, phone and dates, else null), memberships, consents, stamp_card: {stamps, total_earned, created_at, rewards, entries}, orders (each as `customer_order` shows it, with the store's name and the money), attached_orders, requests (with the phone typed), invoice_requests (the company invoices asked for, with the company), saved_companies, staff_calls, order_blocks, deletion_request, not_kept, counts}`, nothing of anyone else. Each export is recorded with its counts only, never its content (`app.customer_data_exports`, ADR-054).
 
 Tests: pgTAP `280_customer_account_deletion.sql`, rows in `120` and `47`.
 
@@ -3226,6 +3226,117 @@ returns jsonb
 - **Who may call:** an owner or manager of the exception's store (`42501` otherwise, the same for an unknown id).
 - **Notes:** `refunded` (handed back outside the app) or `dismissed`, with a note of 1–200 characters on one line (`22023`); `{state, replayed, refusal}`, the same resolution again a replay, another one `already_resolved`; logged on the order with who and the amount.
 
+### 3.30 E-invoices and company invoices (ADR-069, ADR-070)
+
+Migration `einvoices` adds the e-invoice provider a brand (or a store with a tax code of its own) switches on, one record per document the provider is asked to make (the sale invoice of a paid order "made from a cash register", the company invoice that replaces it, and the adjustment or cancellation a refund or an undone payment needs), the company invoice requests of C18 and Q01 with the customers' saved companies, and the e-invoice job. A paid order is queued by a trigger, never by a client; the job fixes every amount when it takes a document. The Edge Function is `einvoice-job` (section 5); the adapters are `packages/einvoice`. Tests: pgTAP `291_einvoices.sql`, `292_company_invoices.sql`, rows in `03`, `26`, `31`, `47`, `120`, `121`, `170`, `280`.
+
+Three functions are for `einvoice-job` only: the service role may execute them, `authenticated` and `anon` get `42501`, and they are not part of this page's check:
+
+- `einvoice_job_claim(p_ticket uuid)` → boolean: claims a ticket of the minute job once.
+- `einvoice_job_work(p_limit integer DEFAULT 10)` → `{invoices: [{invoice_id, claim, kind, action, reason, query_first, amount, currency, sold_at, order: {id, display_no, business_date, store_name}, lines: [{name, quantity, unit_price, amount}], payment_methods, buyer: {tax_code, company_name, address, email} | null, original: {invoice_id, provider_ref, invoice_no, series, issued_at, amount} | null, provider: {id, brand_id, store_id, adapter, mode, secret_name, settings}}], emails: [{request_id, to, company_name, tax_code, order_display_no, store_name, invoice}]}`: up to `p_limit` documents (at most 50) whose provider is on, each claimed for 5 minutes and counted as an attempt (`query_first` from the second), sale invoices first, a company invoice once its sale invoice is issued, a correction once nothing of its order is on its way; a document with nothing to send that never reached the provider is settled without being listed; then up to `p_limit` company invoice emails, claimed for 5 minutes.
+- `einvoice_job_result(p_request jsonb)`: `{kind: "invoice", invoice_id, claim, outcome: "issued", provider_ref, action?, amount?, invoice_no?, series?, lookup_code?, lookup_url? (https), tax_authority_code?, emailed?}`, `{..., outcome: "not_found"}` (asked again, never made, nothing to send) or `{..., outcome: "failed", error_class}` (`timeout`, `unavailable`, `rate_limited`, `rejected_auth`, `not_configured`, `unknown` retried after 1, 2, 4 … minutes, at most an hour, 10 times; `rejected_data`, `rejected_duplicate`, `unsupported` given up at once; any other class is kept as `unknown`); or `{kind: "email", request_id, ok, error_class?}` (`timeout`, `unavailable`, `rejected`, `no_mailer`, `unknown`; 5 tries). Answers `{state, next_attempt_at, gave_up}`, or `{state: "stale"}` under a lapsed or another claim (nothing changes). Giving up raises `einvoice_failed`. `22023` for a malformed result or an unknown document.
+
+The minute job is `app.einvoice_tick` (while enabled and work waits, posts one ticket at a time to `einvoice-job`), scheduled by `app.enable_einvoice_jobs(<einvoice-job URL>, <cron>)` and removed by `app.disable_einvoice_jobs()`, for `postgres` only.
+
+#### `public.einvoice_set_provider`
+
+```sql
+public.einvoice_set_provider(p_request jsonb)
+returns jsonb
+```
+
+- **Status:** built (migration `einvoices`).
+- **Who may call:** an owner whose scope holds every store of the brand (`42501` otherwise, a manager or a store-limited owner included).
+- **Notes:** `{brand, store?, adapter?: "mock", mode: "off" | "sandbox" | "live", secret_name, settings: {seller_tax_code, template, series, vat_rate}}`: the secret's name `EINVOICE_KEY_<NAME>` (a name shaped like a pasted value is `22023`), the seller's tax code (10 digits or 10-3), template `1` (VAT invoice, `vat_rate` `0`, `5`, `8` or `10`) or `2` (sales invoice, `vat_rate` `none`), the six-character series of a cash register (`^[CK][0-9]{2}M[A-Z0-9]{2}$`); the mock never live; any other setting `22023`. Answers `{state: "saved" | "unchanged", provider}`. Each change is logged in `einvoice_provider_changes` with before and after; a store row overrides the brand's.
+
+#### `public.customer_invoice_status`
+
+```sql
+public.customer_invoice_status(p_order uuid)
+returns jsonb
+```
+
+- **Status:** built (migration `einvoices`).
+- **Who may call:** a customer session (`42501` otherwise).
+- **Notes:** C18 and C14: `{order_id, display_no, paid_at, total, eligible, refusal, window_days, last_day, request, einvoice}`: whether a company invoice can be asked for now, else the first refusal of `already_requested`, `einvoice_off`, `not_paid`, `refunded`, `nothing_to_invoice`, `window_passed`; the last day of the window (`YYYY-MM-DD`, the payment's local date plus the store's `company_invoice_days`); the request already made (as `customer_request_invoice` answers it); the order's e-invoice as the counter's pill shows it. Another customer's order or an unknown id answers `{eligible: false, refusal: "unknown_order", request: null, einvoice: null}` and nothing else.
+
+#### `public.customer_request_invoice`
+
+```sql
+public.customer_request_invoice(p_request jsonb)
+returns jsonb
+```
+
+- **Status:** built (migration `einvoices`).
+- **Who may call:** a customer session (`42501` otherwise).
+- **Notes:** C18 "Xin hóa đơn công ty": `{request_id, order, company: {tax_code, company_name, address, email} | saved_company, save?}` (exactly one of `company` and `saved_company`; `22023` otherwise). In order: `rate_limited` with `retry_at` (10 calls an hour per customer, 1,000 per tenant, then an hour's wait); `unknown_order`; `unknown_company` (a saved company that is not the caller's); the same `request_id` again answers the first request with `replayed: true`, or `request_conflict` when its company differs; `already_requested` (with the request), `einvoice_off`, `not_paid`, `refunded`, `nothing_to_invoice`, `window_passed` (with `last_day`); `invalid` with `fields` (`tax_code`, `company_name`, `address`, `email`). The tax code is trimmed, 10 digits or 10-3 (13 bare digits gain the hyphen); the name 1–200 and the address 1–300 characters on one line, without control characters or `< > { }`; the email at most 254 characters (local part 64), no leading, trailing or double dot. Answers `{state: "received", replayed, request: {id, order_id, source, status, tax_code, company_name, address, email, requested_at, issued_at, emailed_at, invoice}, saved}`; `save: true` keeps the company (at most 10 per customer; `saved` says whether it was kept). The company invoice replaces the sale invoice once that one is issued; the request then reads `issuing`, `issued`, `emailed`, or `failed` / `cancelled`.
+
+#### `public.customer_saved_companies`
+
+```sql
+public.customer_saved_companies()
+returns jsonb
+```
+
+- **Status:** built (migration `einvoices`).
+- **Who may call:** a customer session (`42501` otherwise).
+- **Notes:** `{companies: [{id, tax_code, company_name, address, email, updated_at}]}`, the most recently used first; nothing of anyone else.
+
+#### `public.customer_delete_saved_company`
+
+```sql
+public.customer_delete_saved_company(p_company uuid)
+returns jsonb
+```
+
+- **Status:** built (migration `einvoices`).
+- **Who may call:** a customer session (`42501` otherwise).
+- **Notes:** `{state: "deleted"}`, or `{state: "refused", refusal: "unknown_company"}` for another customer's or an unknown id. A request made with the company stays.
+
+#### `public.counter_request_invoice`
+
+```sql
+public.counter_request_invoice(p_order uuid, p_request jsonb)
+returns jsonb
+```
+
+- **Status:** built (migration `einvoices`).
+- **Who may call:** an owner, manager or staff member of the order's store (`42501` otherwise, the same for an unknown order).
+- **Notes:** Q01's company row for a counter order: `{request_id, company: {tax_code, company_name, address, email}}` with the checks and refusals of `customer_request_invoice` (no saved companies, no rate limit), and `not_counter_order` for an order of the app (its customer asks in the app). Recorded with who keyed it.
+
+#### `public.counter_order_einvoice`
+
+```sql
+public.counter_order_einvoice(p_order uuid)
+returns jsonb
+```
+
+- **Status:** built (migration `einvoices`).
+- **Who may call:** an owner, manager or staff member of the order's store (`42501` otherwise, the same for an unknown order).
+- **Notes:** the pill of Q01: `{order_id, state, invoice: {id, kind, state, mode, invoice_no, series, lookup_code, lookup_url, tax_authority_code, amount, issued_at}, replacing, corrections_pending, attempts, next_attempt_at, request}`; `state` is `pending` ("Đang xuất…"), `issued` ("Đã xuất"), `retrying` ("Chưa xuất được. Hệ thống tự thử lại, đơn vẫn hoàn tất."), `failed` (given up), `cancelled`, `off` (no provider) or `none` (nothing to invoice).
+
+#### `public.manager_einvoices`
+
+```sql
+public.manager_einvoices(p_store uuid, p_filter text DEFAULT 'failing'::text, p_limit integer DEFAULT 50)
+returns jsonb
+```
+
+- **Status:** built (migration `einvoices`).
+- **Who may call:** an owner or manager of the store (`42501` otherwise).
+- **Notes:** `{failing, gave_up, pending, emails_failing, invoices: [{id, kind, state, invoice_no, …, order_id, display_no, business_date, reason, attempts, last_error_class, last_attempt_at, next_attempt_at, gave_up_at, queued_at, request_status}]}`, newest attempt first, at most 200; `p_filter` `failing`, `pending` or `all` (`22023` otherwise). Error classes only, never a buyer's data. Giving up also raises the alert `einvoice_failed`.
+
+#### `public.manager_retry_einvoice`
+
+```sql
+public.manager_retry_einvoice(p_invoice uuid)
+returns jsonb
+```
+
+- **Status:** built (migration `einvoices`).
+- **Who may call:** an owner or manager of the document's store (`42501` otherwise, the same for an unknown id).
+- **Notes:** a failed document is queued again with a fresh round of 10 attempts (`{state: "queued"}`); the next attempt still asks the provider first. `{state, refusal: "not_failed"}` for any other state.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -3390,7 +3501,7 @@ Built locally (migration `native_catalogue`, pgTAP `260` and `261`); empty until
 
 | Relation | Purpose | Who reads | Client writes | Read by a client today |
 |---|---|---|---|---|
-| `store_ordering_settings` | a store's till mode and ordering settings | owners, managers and viewers, stores in scope | owners and managers in scope, every column but `till_mode`, `payment_methods` and the pause | none |
+| `store_ordering_settings` | a store's till mode and ordering settings (with `company_invoice_days`, the company invoice window, 1–30, 7 by default) | owners, managers and viewers, stores in scope | owners and managers in scope, every column but `till_mode`, `payment_methods` and the pause | none |
 | `ordering_closures` | business dates without orders | owners, managers and viewers, stores in scope | owners and managers in scope | none |
 | `menu_categories`, `menu_items`, `menu_item_sizes`, `menu_option_groups`, `menu_options`, `menu_item_option_groups` | a native brand's menu with its prices | owners, managers and viewers of the tenant | owners and managers whose scope holds every store of the brand (not the import provenance or the author columns) | none (the counter app later) |
 | `menu_store_items` | per-store offered switch and sold-out time | owners, managers and viewers, stores in scope | owners and managers in scope (`offered`, `sold_out_until`); staff through `counter_set_sold_out` | none |
@@ -3409,6 +3520,11 @@ Built locally (migration `native_catalogue`, pgTAP `260` and `261`); empty until
 | `payment_providers` | the online payment providers of a brand or store: method, adapter, mode, the name of the secret with the key, public settings (ADR-067) | owners and managers, stores in scope (a brand-wide row: those with every store) | none (`checkout_set_provider`) | none |
 | `payment_provider_changes` | the append-only log of every provider change with who, when, before and after | owners and managers who read the provider | none | none |
 | `payment_exceptions` | money a verified provider reported that was not applied (partial, late, duplicate, unknown reference) and its resolution (ADR-068) | owners and managers, stores in scope | none (the manager queue functions) | none |
+| `einvoice_providers` | the e-invoice provider of a brand or store: adapter, mode, the name of the secret with the credentials, the seller's settings (ADR-069) | owners and managers, stores in scope (a brand-wide row: those with every store) | none (`einvoice_set_provider`) | none |
+| `einvoice_provider_changes` | the append-only log of every e-invoice provider change with who, when, before and after | owners and managers who read the provider | none | none |
+| `e_invoices` | one record per document the provider is asked to make (sale invoice, company replacement, adjustment, cancellation): state, attempts, error class, the provider's reference, number, lookup code and address; no buyer data | owners, managers and viewers, stores in scope | none (the trigger, the request functions and the job) | none |
+| `invoice_requests` | the company invoices asked for (C18, Q01): the buyer's tax code, name, address and email, the status and the email's attempts (ADR-070) | owners and managers, stores in scope | none (`customer_request_invoice`, `counter_request_invoice`) | none |
+| `saved_companies` | the companies a customer saved for their next company invoice | the customer who saved them, nobody else | none (`customer_request_invoice`, `customer_delete_saved_company`) | none |
 
 ## 5. Edge Function endpoints
 
@@ -3690,6 +3806,15 @@ Built against fakes (ADR-068; Deno 6 tests). The minute job `checkout-tick` post
 - **Authorization:** none at the gateway (`verify_jwt = false`); the single-use ticket, claimed with `checkout_job_claim` (401 `ticket_refused` otherwise).
 - **Configuration:** the Checkout keys; `ZALO_RELAY_KEY` for the relay of ADR-057, which carries exactly Zalo's four payment calls; `ZALO_PAYMENT_BASE_URL` (a loopback mock) only with `ZALO_LOCAL_DEV=1`, `ZALO_INTEGRATION=1` or `PAYMENTS_MOCK=on`.
 - **Work:** re-queries (`getOrderStatus`; an answer naming another reference is not applied), wallet refunds (`createRefund`, then `getRefundStatus`, settled with `checkout_refund_confirm`), reports of paid bank-transfer popups (`purchase-payment`), within 25 seconds; answers the counts `{requeried, settled, refunds_sent, refunds_settled, reported, errors}`.
+
+### `einvoice-job`
+
+Built against fakes and the mock provider (ADR-069; Deno 8 tests). The minute job `einvoice-tick` posts here.
+
+- **URL:** `<SUPABASE_URL>/functions/v1/einvoice-job`. **Method:** `POST` `{"ticket": "<uuid>"}`.
+- **Authorization:** none at the gateway (`verify_jwt = false`); the single-use ticket, claimed with `einvoice_job_claim` (401 `ticket_refused` otherwise).
+- **Configuration:** the provider's credentials in the `EINVOICE_KEY_` secret its row names; `EINVOICE_MOCK=on` lets the mock provider run (local and e2e only; never live); `EINVOICE_MAILER=mock` sends the company invoice emails through the mock mailer (no real email provider yet; without it an email is reported `no_mailer`).
+- **Work:** `einvoice_job_work`, then for each document: asks the provider first when an attempt was already made, then issues, replaces, adjusts or cancels (a refused cancellation becomes an adjustment to zero), and reports `einvoice_job_result` under the document's claim with the provider's numbers, `not_found` or an error class; then the emails; within 25 seconds. Answers the counts `{issued, not_found, failed, emailed, email_failed, errors}`. The log holds counts and classes only, never a buyer's data.
 
 ### `web-requests`
 
