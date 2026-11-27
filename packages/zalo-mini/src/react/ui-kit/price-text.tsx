@@ -2,7 +2,7 @@ import { formatCount, formatVnd, formatVndDelta } from "../../format/index";
 import { useI18n } from "../i18n";
 
 export type PriceTextSize = "inline" | "list" | "lead" | "note";
-export type PriceTextTone = "highlight" | "ink" | "muted";
+export type PriceTextTone = "highlight" | "ink" | "muted" | "inherit";
 
 export interface PriceTextProps {
 	/** Whole đồng. A price is 0 or more; a change of price ("delta") may be negative. */
@@ -11,7 +11,10 @@ export interface PriceTextProps {
 	readonly kind?: "price" | "delta";
 	/** inline: the size around it; list: 15 bold; lead: 19 bold (an item's price, a total); note: 13 semibold. */
 	readonly size?: PriceTextSize;
-	/** highlight: the brand's price colour (the accent without a brand theme); ink; muted: secondary text. */
+	/**
+	 * highlight: the brand's price colour (the accent without a brand theme); ink; muted: secondary text; inherit: the
+	 * colour around it (a price on an inverse bar or a filled pill, whose ink is already checked for contrast).
+	 */
 	readonly tone?: PriceTextTone;
 	readonly className?: string;
 	readonly testId?: string;
@@ -28,6 +31,7 @@ const TONES: Readonly<Record<PriceTextTone, string>> = {
 	highlight: "text-highlight",
 	ink: "text-ink",
 	muted: "text-ink-muted",
+	inherit: "",
 };
 
 /**

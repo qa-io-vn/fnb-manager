@@ -49,6 +49,11 @@ export interface MiniAppRoute {
 	readonly element: ReactNode;
 	/** "tabs" (the default) shows the tab bar and the strip above it; "flow" hides both and leaves the bottom to the screen. */
 	readonly chrome?: RouteChrome;
+	/**
+	 * The tab shown active on this route when it is not a tab itself: a tab's path, or null for none (an order's
+	 * screen, design spec 6.1), so that every tab opens its screen from here. Left out, the first tab is shown active.
+	 */
+	readonly activeTab?: string | null;
 }
 
 export type MiniAppGate = ComponentType<{ readonly children: ReactNode }>;
@@ -97,6 +102,16 @@ export function shellProblems(
 		if (routes.find((route) => route.path === tab.path)?.chrome === "flow") {
 			problems.push(
 				`the route of the tab ${tab.path} is a flow route: it would hide its own tab bar`,
+			);
+		}
+	}
+	for (const route of routes) {
+		if (
+			typeof route.activeTab === "string" &&
+			!tabs.some((tab) => tab.path === route.activeTab)
+		) {
+			problems.push(
+				`the route ${route.path} names the active tab ${route.activeTab}, which is not a tab`,
 			);
 		}
 	}
@@ -207,12 +222,15 @@ function Frame({
 		);
 		if (path !== null) navigate(path, { replace: true });
 	}, [navigate]);
+	const route = routeAt(routes, location.pathname);
+	// a route that is not a tab shows the tab it names, none (null), or by default the first one
 	const activeTab =
 		tabs.find((tab) => tab.path === location.pathname)?.path ??
-		tabs[0]?.path ??
-		"/";
+		(route?.activeTab === undefined
+			? (tabs[0]?.path ?? "/")
+			: (route.activeTab ?? ""));
 	// a flow route hides the tab bar (and with it the strip above it); a tab route shows both
-	const chrome = routeAt(routes, location.pathname)?.chrome ?? "tabs";
+	const chrome = route?.chrome ?? "tabs";
 	const showTabs = tabs.length > 0 && chrome === "tabs";
 	const showStrip = showTabs && aboveTabs !== null && aboveTabs !== undefined;
 	const stripRef = useRef<HTMLDivElement>(null);
