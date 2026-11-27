@@ -462,7 +462,7 @@ Built 2026-11-25: `packages/zalo/src/relay.ts` (sealing, allow-lists, replay gua
 
 ## ADR-058 — Online ordering: server-priced orders, one status machine in SQL, pay at the counter through the Checkout SDK first, staff key orders into the till, delivery last
 
-Date 2026-11-26 · Status proposed (the owner decided that customers see prices and order in the customer Mini App, at the table, for takeaway and later for delivery, paying at the counter first; the design is [deep-dives/online-ordering.md](deep-dives/online-ordering.md))
+Date 2026-11-26 · Status proposed, amended on 2026-11-27 by ADR-060 to ADR-065 (the owner decided that customers see prices and order in the customer Mini App, at the table, for takeaway and later for delivery, paying at the counter first; the design is [deep-dives/online-ordering.md](deep-dives/online-ordering.md)). The amendments replace decision 1 (prices now come from the menu a native store owns), decision 2 (the status machine), decision 3 (payments), decision 4 (keying into the till and matching back) and decision 5 (the drift guard); the Zalo review rules, the Checkout SDK's MAC and webhook design, the table QR codes and the security design stand. Its first build is parked on the local branch `parked/ordering-pos-priced-menu`.
 
 Context: Zalo's review policy (section 8) requires the Checkout SDK of any Mini App that creates orders, shows prices and has a payment function, and otherwise forbids showing prices; no page exempts payment at the counter, while the SDK itself offers a cash method (`COD`) and custom methods that need no payment provider. iPOS has no public write API (ADR-016), so an online order cannot reach the till by itself. The menu, prices and modifiers already arrive with the POS catalogue, which only a master-data run writes.
 
@@ -483,3 +483,65 @@ Not chosen: an online price list kept by the owner (two prices drift, and the ti
 Consequences: phases 1 to 7 ship to testers only, and the first public version with prices is the one submitted with the Checkout SDK; sign-in and the payment API depend on the relay in Vietnam until it runs on a VPS; the matrix of `pgtap:120` widens its scope to the ordering names; the ledger gains path `F`; staff need a counter device with the queue open. Open owner questions and the checks before each phase are in sections 14 and 15 of the deep dive.
 
 Build: the thirteen phases of the deep dive's section 13, each with its migrations, functions, apps and tests (Sonnet for mechanical phases, a stronger model for prices, tokens, orders, the Checkout SDK, matching, payments and delivery).
+
+## ADR-060 — A store can run on our platform as its till ("native" mode), with a menu and prices the managers own
+
+Date 2026-11-27 · Status proposed (the owner chose on 2026-11-27 to make the platform the till of the first brand's store and to follow the brand's implementation plan strictly; the architecture is [deep-dives/native-till.md](deep-dives/native-till.md)) · amends ADR-058
+
+Decision: each store has a till mode, `ipos` (the default: the POS is the till and we read it, as before) or `native` (orders, payments and the menu live here). Only an owner with every store changes it. A native brand owns its menu: categories, items, a price per size, option groups with option prices, labels, photos and per-store availability, written by owners and managers whose scope holds every store of the brand. Every price insert and change is written by a trigger to an append-only price log with who and when. Each order line snapshots the names and prices it was sold at. The POS catalogue (items, sizes, item types and its option groups, which the master-data run now also stores) may seed a brand's empty menu once; nothing keeps them in step afterwards.
+
+Why: the brand's plan wants one source for the customer app, the counter and the website, so that switching an item off hides it at once and staff never key an order twice; a POS that cannot take orders by API (ADR-016) cannot be that source. Owned prices with a log keep the history auditable, and line snapshots keep old orders and reports stable when prices change.
+
+Not chosen: online prices derived from the POS (ADR-058 decision 1; the POS stops being the till); a separate online price list beside the POS (two lists drift); keeping the menu in step with the POS after the import (two masters).
+
+Consequences: ADR-058's drift guard, catalogue-refresh ticket and price precedence are dropped; other brands keep `ipos`; a native store's sales enter the sales facts from our orders (ADR-061).
+
+## ADR-061 — Native orders follow one fixed lifecycle with a separate payment status, enforced by the database
+
+Date 2026-11-27 · Status proposed (the owner's plan fixes the six states and the counter rules) · amends ADR-058
+
+Decision: an order is `awaiting_payment`, `accepted`, `preparing`, `ready` (takeaway) or `serving` (table), `completed`, or `cancelled`, the last only from `awaiting_payment` or `accepted`. The database refuses every other transition, whatever a screen sends. Payment status (`unpaid`, `paid`, `refund_pending`, `refunded`, `partially_refunded`) moves separately: an order paid online leaves `awaiting_payment` only through the server's confirmation of a verified gateway or bank notification; a pay-at-counter order enters the queue at once as `accepted` and `unpaid` and is completed only after the counter records its payment; takeaway is prepaid. Every transition writes an append-only event with its actor; every cancellation and refund is logged with who, when and the amount. Customer requests carry an idempotency key, staff actions the version they saw. Order numbers count per store and business day and are given when an order is accepted. A completed and paid order becomes an invoice of the store in the sales facts, through a POS account of connector `native`, so reports keep working. One stamp per drink is added when an order completes, to the customer's Zalo account (no phone), nine giving a free tenth drink as a reward; a cancellation or refund takes the stamps back.
+
+Why: the counter, the customer app and the payment notifications must never disagree about an order, and only a single owner of every transition, with its log, can guarantee that (acceptance criteria 3 and 4 of the plan). Keeping money apart from fulfilment lets a table order be prepared before it is paid at the counter while still forbidding its completion.
+
+Not chosen: ADR-058's eleven-state machine with acceptance by staff and expiry (the owner's lifecycle has no staff acceptance step); trusting the client's payment result; stamps through the phone-matched loyalty paths (the first release has no phone).
+
+## ADR-062 — Online payment through the Checkout SDK and a dynamic VietQR, confirmed only by the server
+
+Date 2026-11-27 · Status proposed (the owner's plan adopts three ways to pay) · amends ADR-058 decision 3
+
+Decision: customers pay with e-wallets through Zalo's Checkout SDK, by bank transfer to a dynamic VietQR whose bank notification arrives automatically through a provider adapter (a mock first; the provider is chosen with the bank), or in cash or by card at the counter. Every attempt is an `order_payments` row with an idempotency key and is moved only by a service-role confirmation that a webhook calls after verifying the provider's signature and the amount; a duplicate notification answers the first outcome; a minute job re-queries an attempt whose notification is late. Refunds are `order_refunds` rows. Provider secrets live only in Edge Function secrets.
+
+Why: staff should never have to check a bank account, the customer's device can lie, and a lost notification must not leave a paid order waiting or create a second one (acceptance criterion 3).
+
+Not chosen: transfers confirmed by staff looking at the bank app (the earlier spec); a pay-at-counter custom method through the Checkout SDK as the only way (ADR-058's first public path stays possible for counter orders when Zalo's review requires it).
+
+## ADR-063 — The server issues an e-invoice for every paid order through a provider-agnostic adapter
+
+Date 2026-11-27 · Status proposed (the owner's plan puts e-invoices in the first release) · provider not chosen yet
+
+Decision: every order whose payment succeeds, and every counter sale, queues an `einvoice_requests` row; a worker sends it through an `EinvoiceProvider` adapter (`issue`, `query`, `cancel`) with a mock first, retries with back-off, alerts the owner after the last attempt, and issues the provider's adjustment for a refund. A customer may ask for a company invoice with a tax code. The issuance is of the kind generated from a cash register.
+
+Why: from 1 July 2026 household businesses above one billion đồng of yearly revenue must use e-invoices (the plan cites decree 254/2026/NĐ-CP), and a store open long hours passes that line; the provider is not chosen, so the order code must not depend on it.
+
+Not chosen: issuing invoices by hand in the provider's portal (staff would key every order twice); a second POS kept only for invoices once the native till runs stably.
+
+## ADR-064 — The counter is a web app on a tablet that signs in with Zalo; staff not on the list are refused by the database
+
+Date 2026-11-27 · Status proposed (the owner's plan moves the counter from a Mini App to a web app)
+
+Decision: the counter (queue, table map, sold-out switches, orders at the counter, payments, cancellations, shift clock-in) is a web app on a tablet fixed at the counter, which managers also open on their phones; it signs in with Zalo's web login, mapped by a server function to a staff login as `zalo-session` does today, and a person who is not an active member of the store's roster gets no session. Every `counter_*` database function checks the caller's role and store scope again. It polls `counter_board` every 2 seconds and prints tickets on the tablet's thermal printer.
+
+Why: the counter screen must stay open with sound and printing, and one Mini App less needs no Zalo review (plan); the database check holds even if a screen hides a button wrongly (acceptance criterion 5).
+
+Not chosen: the staff Mini App as the counter; a username and password for staff.
+
+## ADR-065 — Customers follow their orders in the app; paid Zalo messages only for takeaway-ready, bookings, cancellations and refunds
+
+Date 2026-11-27 · Status proposed (the owner's plan)
+
+Decision: order status reaches customers in the app (the order screen polls) and on the counter screen for staff, at no cost. ZBS template messages are sent only for a takeaway order that is ready, a booking confirmation, a cancellation and a refund (with the amount and when the money returns), only between 06:00 and 22:00 (later, the app alone), through the outbox of ADR-030. Promotions go only to customers who opted in, at most two a week. Table orders get no Zalo message. The owner is alerted when the ZBS balance runs low.
+
+Why: ZBS is paid per message, its templates need Zalo's approval and it may not be sent at night; a customer at a table already sees the status.
+
+Not chosen: a ZBS message for every status change; Mini App notifications (their availability is unverified, ADR-058 section 9).
