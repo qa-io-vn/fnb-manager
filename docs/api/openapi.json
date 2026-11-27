@@ -6997,6 +6997,170 @@
 			],
 			"type": "object"
 		},
+		"order_payments": {
+			"description": "every payment of a native order (ADR-062): cash and card recorded by staff at the counter (succeeded at once), online attempts (zalo_checkout, vietqr) pending until the server's verified provider confirmation; a counter payment voided within 10 minutes by its recorder or later by a manager; written only by security definer functions",
+			"properties": {
+				"amount": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"failure_reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"idempotency_key": {
+					"format": "text",
+					"type": "string"
+				},
+				"method": {
+					"format": "text",
+					"type": "string"
+				},
+				"order_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"provider": {
+					"format": "text",
+					"type": "string"
+				},
+				"provider_ref": {
+					"description": "the provider's transaction id, unique per provider, so a repeated notification answers its first outcome",
+					"format": "text",
+					"type": "string"
+				},
+				"recorded_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"requested_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"settled_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"status": {
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"void_reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"voided_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"voided_by": {
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"order_id",
+				"method",
+				"amount",
+				"status",
+				"requested_at"
+			],
+			"type": "object"
+		},
+		"order_refunds": {
+			"description": "every refund of a native order with its amount, reason, who asked and who recorded it (ADR-061: every cancel and refund is logged): due when a paid order is cancelled, succeeded at once for cash and card handed back at the counter, pending for an online payment until the provider's confirmation",
+			"properties": {
+				"amount": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"method": {
+					"format": "text",
+					"type": "string"
+				},
+				"order_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"payment_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"provider_ref": {
+					"format": "text",
+					"type": "string"
+				},
+				"reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"recorded_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"requested_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"requested_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"settled_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"status": {
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"order_id",
+				"method",
+				"amount",
+				"status",
+				"reason",
+				"requested_at"
+			],
+			"type": "object"
+		},
 		"ordering_closures": {
 			"description": "business dates on which a store takes no order (a holiday, works): at most 62 days a row, with the reason customers are shown",
 			"properties": {
@@ -8578,6 +8742,357 @@
 			],
 			"type": "object"
 		},
+		"staff_shifts": {
+			"description": "the shifts worked at a native store's counter: clocked in with the counter QR code and the opening cash, clocked out with a blind count of the drawer compared with the cash the person recorded during the shift; a difference waits for a manager's confirmation (closed_by, close_note); a forgotten clock-out is closed by a manager; at most one shift per person that is not closed; read by the store's owners and managers and by the person; written only by the shift functions",
+			"properties": {
+				"business_date": {
+					"format": "date",
+					"type": "string"
+				},
+				"cash_difference": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"clock_in_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"clock_out_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"close_note": {
+					"format": "text",
+					"type": "string"
+				},
+				"closed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"closed_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"counted_cash": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"expected_cash": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"opening_cash": {
+					"default": 0,
+					"format": "numeric",
+					"type": "number"
+				},
+				"status": {
+					"default": "open",
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"user_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"version": {
+					"default": 1,
+					"format": "int32",
+					"type": "integer"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"user_id",
+				"business_date",
+				"clock_in_at",
+				"opening_cash",
+				"status",
+				"version",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"stamp_card_settings": {
+			"description": "a brand's native stamp card: on or off, how many stamps make a reward (9 by default: the 10th drink free) and the reward's name; a brand without a row uses the defaults",
+			"properties": {
+				"brand_id": {
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"enabled": {
+					"default": true,
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"reward_name": {
+					"default": "Ly miễn phí",
+					"format": "text",
+					"type": "string"
+				},
+				"stamps_per_reward": {
+					"default": 9,
+					"format": "int32",
+					"type": "integer"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"brand_id",
+				"tenant_id",
+				"enabled",
+				"stamps_per_reward",
+				"reward_name",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"stamp_cards": {
+			"description": "the stamp card of a customer's Zalo account at a brand (no phone needed): the stamps toward the next reward and all stamps ever earned; written only by the ledger functions; removed with the login",
+			"properties": {
+				"brand_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"customer_login_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"stamps": {
+					"default": 0,
+					"format": "int32",
+					"type": "integer"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"total_earned": {
+					"default": 0,
+					"format": "int32",
+					"type": "integer"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"brand_id",
+				"customer_login_id",
+				"stamps",
+				"total_earned",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
+		"stamp_entries": {
+			"description": "the append-only ledger of the stamp cards: stamps earned by a completed order (once per order), taken back by a refund, spent on a reward, and the rewards used, returned and voided, each with the balance after it and who caused it; no role changes or deletes a row",
+			"properties": {
+				"actor_kind": {
+					"format": "text",
+					"type": "string"
+				},
+				"actor_user_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"balance_after": {
+					"format": "int32",
+					"type": "integer"
+				},
+				"brand_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"card_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"delta": {
+					"format": "int32",
+					"type": "integer"
+				},
+				"id": {
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "int64",
+					"type": "integer"
+				},
+				"kind": {
+					"format": "text",
+					"type": "string"
+				},
+				"note": {
+					"format": "text",
+					"type": "string"
+				},
+				"occurred_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"order_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"reward_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"brand_id",
+				"card_id",
+				"kind",
+				"delta",
+				"balance_after",
+				"actor_kind",
+				"occurred_at"
+			],
+			"type": "object"
+		},
+		"stamp_rewards": {
+			"description": "the rewards of a stamp card (a free drink) with the stamps they took: available, used on an order (at most one per order), or void when a refund took back the stamps that made it",
+			"properties": {
+				"brand_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"card_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"issued_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"issued_order_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"stamps": {
+					"format": "int32",
+					"type": "integer"
+				},
+				"status": {
+					"format": "text",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"used_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"used_order_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"void_reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"voided_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"brand_id",
+				"card_id",
+				"status",
+				"stamps",
+				"issued_at"
+			],
+			"type": "object"
+		},
 		"stamps": {
 			"description": "one row per stamp credited by a ledger row, with its expiry; redemptions use the oldest active stamps first, the nightly expiry and clawbacks close them; a working table beside the ledger, which alone gives the balance",
 			"properties": {
@@ -8696,6 +9211,12 @@
 		"store_ordering_settings": {
 			"description": "one row per store that has till or ordering settings (native-till.md section 2); a store without a row is an ipos store that takes no order",
 			"properties": {
+				"counter_qr_version": {
+					"default": 1,
+					"description": "the version of the store's counter QR code staff scan to clock in; moved only by manager_counter_qr with rotate, which retires the printed code",
+					"format": "int32",
+					"type": "integer"
+				},
 				"created_at": {
 					"default": "now()",
 					"format": "timestamp with time zone",
@@ -8771,10 +9292,36 @@
 					"format": "int32",
 					"type": "integer"
 				},
+				"request_answer_minutes": {
+					"default": 30,
+					"description": "how soon a new request should be answered (the promise of the website); a new request older than this is overdue in the inbox",
+					"format": "int32",
+					"type": "integer"
+				},
+				"request_kinds": {
+					"description": "the kinds of request the store takes: booking (the default), workshop, hold (an item kept for the customer) and application (a job application)",
+					"format": "text[]",
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
 				"staff_presence_required": {
 					"default": true,
 					"format": "boolean",
 					"type": "boolean"
+				},
+				"standard_day_hours": {
+					"default": 8,
+					"description": "the hours that make one worked day (8 by default): a business day's recorded hours over this, at most 1",
+					"format": "numeric",
+					"type": "number"
+				},
+				"standard_month_days": {
+					"default": 28,
+					"description": "the worked days of a full month (28 by default, the S11 standard) the monthly days are read against",
+					"format": "int32",
+					"type": "integer"
 				},
 				"store_id": {
 					"description": "Note:\nThis is a Primary Key.<pk/>",
@@ -8817,6 +9364,134 @@
 				"max_order_amount",
 				"max_waiting_orders",
 				"staff_presence_required",
+				"created_at",
+				"updated_at",
+				"request_kinds",
+				"request_answer_minutes",
+				"counter_qr_version",
+				"standard_day_hours",
+				"standard_month_days"
+			],
+			"type": "object"
+		},
+		"store_requests": {
+			"description": "the requests inbox (native-till.md section 12): bookings, workshop sign-ups, holds of an item and job applications sent from the website (by a service-role Edge Function, with the SHA-256 of its client key) or the customer app (with the customer's login), each once per request id; the contact typed, the time asked for, then the answer of an owner or manager (confirmed, declined, cancelled with who, when and the message) or the customer's cancellation; read only by the store's owners and managers; deleted with the customer's account, purged 180 days after its date",
+			"properties": {
+				"answer_message": {
+					"format": "text",
+					"type": "string"
+				},
+				"answered_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"answered_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"cancelled_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"cancelled_by_kind": {
+					"format": "text",
+					"type": "string"
+				},
+				"channel": {
+					"format": "text",
+					"type": "string"
+				},
+				"client_key_sha256": {
+					"format": "text",
+					"type": "string"
+				},
+				"client_request_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"contact_name": {
+					"format": "text",
+					"type": "string"
+				},
+				"contact_phone": {
+					"format": "text",
+					"type": "string"
+				},
+				"created_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"customer_login_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"kind": {
+					"format": "text",
+					"type": "string"
+				},
+				"note": {
+					"format": "text",
+					"type": "string"
+				},
+				"party_size": {
+					"format": "int32",
+					"type": "integer"
+				},
+				"request_hash": {
+					"format": "text",
+					"type": "string"
+				},
+				"requested_for": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"status": {
+					"default": "new",
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"subject": {
+					"format": "text",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"version": {
+					"default": 1,
+					"format": "int32",
+					"type": "integer"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"kind",
+				"channel",
+				"client_request_id",
+				"request_hash",
+				"contact_name",
+				"contact_phone",
+				"status",
+				"version",
 				"created_at",
 				"updated_at"
 			],
@@ -10740,6 +11415,24 @@
 				"$ref": "#/definitions/order_lines"
 			}
 		},
+		"body.order_payments": {
+			"description": "order_payments",
+			"in": "body",
+			"name": "order_payments",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/order_payments"
+			}
+		},
+		"body.order_refunds": {
+			"description": "order_refunds",
+			"in": "body",
+			"name": "order_refunds",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/order_refunds"
+			}
+		},
 		"body.ordering_closures": {
 			"description": "ordering_closures",
 			"in": "body",
@@ -10893,6 +11586,51 @@
 				"$ref": "#/definitions/staff_roster"
 			}
 		},
+		"body.staff_shifts": {
+			"description": "staff_shifts",
+			"in": "body",
+			"name": "staff_shifts",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/staff_shifts"
+			}
+		},
+		"body.stamp_card_settings": {
+			"description": "stamp_card_settings",
+			"in": "body",
+			"name": "stamp_card_settings",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/stamp_card_settings"
+			}
+		},
+		"body.stamp_cards": {
+			"description": "stamp_cards",
+			"in": "body",
+			"name": "stamp_cards",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/stamp_cards"
+			}
+		},
+		"body.stamp_entries": {
+			"description": "stamp_entries",
+			"in": "body",
+			"name": "stamp_entries",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/stamp_entries"
+			}
+		},
+		"body.stamp_rewards": {
+			"description": "stamp_rewards",
+			"in": "body",
+			"name": "stamp_rewards",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/stamp_rewards"
+			}
+		},
 		"body.stamps": {
 			"description": "stamps",
 			"in": "body",
@@ -10918,6 +11656,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/store_ordering_settings"
+			}
+		},
+		"body.store_requests": {
+			"description": "store_requests",
+			"in": "body",
+			"name": "store_requests",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/store_requests"
 			}
 		},
 		"body.store_tables": {
@@ -18244,6 +18991,193 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.order_payments.amount": {
+			"in": "query",
+			"name": "amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.failure_reason": {
+			"in": "query",
+			"name": "failure_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.idempotency_key": {
+			"in": "query",
+			"name": "idempotency_key",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.method": {
+			"in": "query",
+			"name": "method",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.order_id": {
+			"in": "query",
+			"name": "order_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.provider": {
+			"in": "query",
+			"name": "provider",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.provider_ref": {
+			"description": "the provider's transaction id, unique per provider, so a repeated notification answers its first outcome",
+			"in": "query",
+			"name": "provider_ref",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.recorded_by": {
+			"in": "query",
+			"name": "recorded_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.requested_at": {
+			"in": "query",
+			"name": "requested_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.settled_at": {
+			"in": "query",
+			"name": "settled_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.void_reason": {
+			"in": "query",
+			"name": "void_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.voided_at": {
+			"in": "query",
+			"name": "voided_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_payments.voided_by": {
+			"in": "query",
+			"name": "voided_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.amount": {
+			"in": "query",
+			"name": "amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.method": {
+			"in": "query",
+			"name": "method",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.order_id": {
+			"in": "query",
+			"name": "order_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.payment_id": {
+			"in": "query",
+			"name": "payment_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.provider_ref": {
+			"in": "query",
+			"name": "provider_ref",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.reason": {
+			"in": "query",
+			"name": "reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.recorded_by": {
+			"in": "query",
+			"name": "recorded_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.requested_at": {
+			"in": "query",
+			"name": "requested_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.requested_by": {
+			"in": "query",
+			"name": "requested_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.settled_at": {
+			"in": "query",
+			"name": "settled_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.order_refunds.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.ordering_closures.created_at": {
 			"in": "query",
 			"name": "created_at",
@@ -19913,6 +20847,366 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.staff_shifts.business_date": {
+			"in": "query",
+			"name": "business_date",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.cash_difference": {
+			"in": "query",
+			"name": "cash_difference",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.clock_in_at": {
+			"in": "query",
+			"name": "clock_in_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.clock_out_at": {
+			"in": "query",
+			"name": "clock_out_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.close_note": {
+			"in": "query",
+			"name": "close_note",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.closed_at": {
+			"in": "query",
+			"name": "closed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.closed_by": {
+			"in": "query",
+			"name": "closed_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.counted_cash": {
+			"in": "query",
+			"name": "counted_cash",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.expected_cash": {
+			"in": "query",
+			"name": "expected_cash",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.opening_cash": {
+			"in": "query",
+			"name": "opening_cash",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.user_id": {
+			"in": "query",
+			"name": "user_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.version": {
+			"in": "query",
+			"name": "version",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_card_settings.brand_id": {
+			"in": "query",
+			"name": "brand_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_card_settings.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_card_settings.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_card_settings.enabled": {
+			"in": "query",
+			"name": "enabled",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_card_settings.reward_name": {
+			"in": "query",
+			"name": "reward_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_card_settings.stamps_per_reward": {
+			"in": "query",
+			"name": "stamps_per_reward",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_card_settings.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_card_settings.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_card_settings.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_cards.brand_id": {
+			"in": "query",
+			"name": "brand_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_cards.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_cards.customer_login_id": {
+			"in": "query",
+			"name": "customer_login_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_cards.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_cards.stamps": {
+			"in": "query",
+			"name": "stamps",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_cards.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_cards.total_earned": {
+			"in": "query",
+			"name": "total_earned",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_cards.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.actor_kind": {
+			"in": "query",
+			"name": "actor_kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.actor_user_id": {
+			"in": "query",
+			"name": "actor_user_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.balance_after": {
+			"in": "query",
+			"name": "balance_after",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.brand_id": {
+			"in": "query",
+			"name": "brand_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.card_id": {
+			"in": "query",
+			"name": "card_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.delta": {
+			"in": "query",
+			"name": "delta",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.kind": {
+			"in": "query",
+			"name": "kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.note": {
+			"in": "query",
+			"name": "note",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.occurred_at": {
+			"in": "query",
+			"name": "occurred_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.order_id": {
+			"in": "query",
+			"name": "order_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.reward_id": {
+			"in": "query",
+			"name": "reward_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_entries.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_rewards.brand_id": {
+			"in": "query",
+			"name": "brand_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_rewards.card_id": {
+			"in": "query",
+			"name": "card_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_rewards.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_rewards.issued_at": {
+			"in": "query",
+			"name": "issued_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_rewards.issued_order_id": {
+			"in": "query",
+			"name": "issued_order_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_rewards.stamps": {
+			"in": "query",
+			"name": "stamps",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_rewards.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_rewards.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_rewards.used_at": {
+			"in": "query",
+			"name": "used_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_rewards.used_order_id": {
+			"in": "query",
+			"name": "used_order_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_rewards.void_reason": {
+			"in": "query",
+			"name": "void_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.stamp_rewards.voided_at": {
+			"in": "query",
+			"name": "voided_at",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.stamps.closed_at": {
 			"in": "query",
 			"name": "closed_at",
@@ -20027,6 +21321,13 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.store_ordering_settings.counter_qr_version": {
+			"description": "the version of the store's counter QR code staff scan to clock in; moved only by manager_counter_qr with rotate, which retires the printed code",
+			"in": "query",
+			"name": "counter_qr_version",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.store_ordering_settings.created_at": {
 			"in": "query",
 			"name": "created_at",
@@ -20115,9 +21416,37 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.store_ordering_settings.request_answer_minutes": {
+			"description": "how soon a new request should be answered (the promise of the website); a new request older than this is overdue in the inbox",
+			"in": "query",
+			"name": "request_answer_minutes",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_ordering_settings.request_kinds": {
+			"description": "the kinds of request the store takes: booking (the default), workshop, hold (an item kept for the customer) and application (a job application)",
+			"in": "query",
+			"name": "request_kinds",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.store_ordering_settings.staff_presence_required": {
 			"in": "query",
 			"name": "staff_presence_required",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_ordering_settings.standard_day_hours": {
+			"description": "the hours that make one worked day (8 by default): a business day's recorded hours over this, at most 1",
+			"in": "query",
+			"name": "standard_day_hours",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_ordering_settings.standard_month_days": {
+			"description": "the worked days of a full month (28 by default, the S11 standard) the monthly days are read against",
+			"in": "query",
+			"name": "standard_month_days",
 			"required": false,
 			"type": "string"
 		},
@@ -20149,6 +21478,150 @@
 		"rowFilter.store_ordering_settings.updated_by": {
 			"in": "query",
 			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.answer_message": {
+			"in": "query",
+			"name": "answer_message",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.answered_at": {
+			"in": "query",
+			"name": "answered_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.answered_by": {
+			"in": "query",
+			"name": "answered_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.cancelled_at": {
+			"in": "query",
+			"name": "cancelled_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.cancelled_by_kind": {
+			"in": "query",
+			"name": "cancelled_by_kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.channel": {
+			"in": "query",
+			"name": "channel",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.client_key_sha256": {
+			"in": "query",
+			"name": "client_key_sha256",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.client_request_id": {
+			"in": "query",
+			"name": "client_request_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.contact_name": {
+			"in": "query",
+			"name": "contact_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.contact_phone": {
+			"in": "query",
+			"name": "contact_phone",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.customer_login_id": {
+			"in": "query",
+			"name": "customer_login_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.kind": {
+			"in": "query",
+			"name": "kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.note": {
+			"in": "query",
+			"name": "note",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.party_size": {
+			"in": "query",
+			"name": "party_size",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.request_hash": {
+			"in": "query",
+			"name": "request_hash",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.requested_for": {
+			"in": "query",
+			"name": "requested_for",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.subject": {
+			"in": "query",
+			"name": "subject",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.version": {
+			"in": "query",
+			"name": "version",
 			"required": false,
 			"type": "string"
 		},
@@ -39758,6 +41231,473 @@
 				"tags": ["order_lines"]
 			}
 		},
+		"/order_payments": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.provider"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.provider_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.idempotency_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.recorded_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.requested_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.settled_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.failure_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.voided_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.voided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.void_reason"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "every payment of a native order (ADR-062): cash and card recorded by staff at the counter (succeeded at once), online attempts (zalo_checkout, vietqr) pending until the server's verified provider confirmation; a counter payment voided within 10 minutes by its recorder or later by a manager; written only by security definer functions",
+				"tags": ["order_payments"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.provider"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.provider_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.idempotency_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.recorded_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.requested_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.settled_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.failure_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.voided_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.voided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.void_reason"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/order_payments"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "every payment of a native order (ADR-062): cash and card recorded by staff at the counter (succeeded at once), online attempts (zalo_checkout, vietqr) pending until the server's verified provider confirmation; a counter payment voided within 10 minutes by its recorder or later by a manager; written only by security definer functions",
+				"tags": ["order_payments"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.provider"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.provider_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.idempotency_key"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.recorded_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.requested_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.settled_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.failure_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.voided_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.voided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_payments.void_reason"
+					},
+					{
+						"$ref": "#/parameters/body.order_payments"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "every payment of a native order (ADR-062): cash and card recorded by staff at the counter (succeeded at once), online attempts (zalo_checkout, vietqr) pending until the server's verified provider confirmation; a counter payment voided within 10 minutes by its recorder or later by a manager; written only by security definer functions",
+				"tags": ["order_payments"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.order_payments"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "every payment of a native order (ADR-062): cash and card recorded by staff at the counter (succeeded at once), online attempts (zalo_checkout, vietqr) pending until the server's verified provider confirmation; a counter payment voided within 10 minutes by its recorder or later by a manager; written only by security definer functions",
+				"tags": ["order_payments"]
+			}
+		},
+		"/order_refunds": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.payment_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.provider_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.requested_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.requested_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.recorded_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.settled_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "every refund of a native order with its amount, reason, who asked and who recorded it (ADR-061: every cancel and refund is logged): due when a paid order is cancelled, succeeded at once for cash and card handed back at the counter, pending for an online payment until the provider's confirmation",
+				"tags": ["order_refunds"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.payment_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.provider_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.requested_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.requested_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.recorded_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.settled_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/order_refunds"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "every refund of a native order with its amount, reason, who asked and who recorded it (ADR-061: every cancel and refund is logged): due when a paid order is cancelled, succeeded at once for cash and card handed back at the counter, pending for an online payment until the provider's confirmation",
+				"tags": ["order_refunds"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.payment_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.provider_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.requested_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.requested_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.recorded_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.order_refunds.settled_at"
+					},
+					{
+						"$ref": "#/parameters/body.order_refunds"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "every refund of a native order with its amount, reason, who asked and who recorded it (ADR-061: every cancel and refund is logged): due when a paid order is cancelled, succeeded at once for cash and card handed back at the counter, pending for an online payment until the provider's confirmation",
+				"tags": ["order_refunds"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.order_refunds"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "every refund of a native order with its amount, reason, who asked and who recorded it (ADR-061: every cancel and refund is logged): due when a paid order is cancelled, succeeded at once for cash and card handed back at the counter, pending for an online payment until the provider's confirmation",
+				"tags": ["order_refunds"]
+			}
+		},
 		"/ordering_closures": {
 			"delete": {
 				"parameters": [
@@ -44474,6 +46414,105 @@
 				"tags": ["(rpc) counter_order_act"]
 			}
 		},
+		"/rpc/counter_record_payment": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app: app.counter_record_payment at the current time",
+							"properties": {
+								"p_amount": {
+									"format": "numeric",
+									"type": "number"
+								},
+								"p_expected_version": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_method": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_order": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"p_order",
+								"p_method",
+								"p_amount",
+								"p_expected_version"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_record_payment at the current time",
+				"tags": ["(rpc) counter_record_payment"]
+			}
+		},
+		"/rpc/counter_refund": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app: app.counter_refund at the current time",
+							"properties": {
+								"p_amount": {
+									"format": "numeric",
+									"type": "number"
+								},
+								"p_order": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_reason": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_order", "p_amount", "p_reason"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_refund at the current time",
+				"tags": ["(rpc) counter_refund"]
+			}
+		},
 		"/rpc/counter_set_pause": {
 			"post": {
 				"parameters": [
@@ -44628,6 +46667,47 @@
 				"tags": ["(rpc) counter_table_map"]
 			}
 		},
+		"/rpc/counter_void_payment": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app: app.counter_void_payment at the current time",
+							"properties": {
+								"p_payment": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_reason": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_payment", "p_reason"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_void_payment at the current time",
+				"tags": ["(rpc) counter_void_payment"]
+			}
+		},
 		"/rpc/coupon_discount_days": {
 			"get": {
 				"parameters": [
@@ -44775,6 +46855,43 @@
 				},
 				"summary": "RPC for the customer Mini App: app.customer_cancel_order at the current time",
 				"tags": ["(rpc) customer_cancel_order"]
+			}
+		},
+		"/rpc/customer_cancel_request": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_cancel_request at the current time",
+							"properties": {
+								"p_request": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_request"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_cancel_request at the current time",
+				"tags": ["(rpc) customer_cancel_request"]
 			}
 		},
 		"/rpc/customer_check_cart": {
@@ -45540,6 +47657,94 @@
 				"tags": ["(rpc) customer_request_deletion"]
 			}
 		},
+		"/rpc/customer_requests": {
+			"get": {
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_requests at the current time",
+				"tags": ["(rpc) customer_requests"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_requests at the current time",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_requests at the current time",
+				"tags": ["(rpc) customer_requests"]
+			}
+		},
+		"/rpc/customer_stamp_card": {
+			"get": {
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_stamp_card at the current time",
+				"tags": ["(rpc) customer_stamp_card"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_stamp_card at the current time",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_stamp_card at the current time",
+				"tags": ["(rpc) customer_stamp_card"]
+			}
+		},
 		"/rpc/customer_stop_marketing": {
 			"post": {
 				"parameters": [
@@ -45662,6 +47867,42 @@
 				},
 				"summary": "RPC: app.customer_submit_counter_claim at now()",
 				"tags": ["(rpc) customer_submit_counter_claim"]
+			}
+		},
+		"/rpc/customer_submit_request": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C08): app.customer_submit_request at the current time",
+							"properties": {
+								"p_request": {
+									"format": "jsonb"
+								}
+							},
+							"required": ["p_request"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C08): app.customer_submit_request at the current time",
+				"tags": ["(rpc) customer_submit_request"]
 			}
 		},
 		"/rpc/customer_table": {
@@ -48291,6 +50532,502 @@
 				},
 				"summary": "the shift anomaly report of the web section Khách hàng (#253): per store, business date and shift (shift_number n of Ca {n}, numbered by opening time then external id among the store's shifts of that business date, as app.shift_number does; null for events outside every shift), the earns, the refusals by reason ({\"reason\": count}, only reasons that occurred) and their total, the manual adjustments (adjust rows whose reason is not welcome) and the check-ins recorded without an invoice (not matched, not queued). An earn or refusal belongs to the shift its invoice names, else to the shift open when the invoice was sold; an adjustment or a check-in to the shift open at that moment. A row belongs to the business date of its shift, else to its own. Only rows with an event come back, never a cashier name or the POS shift label. A report function: security invoker, 0 to 50 stores and at most 92 days (22023 otherwise); stores outside the caller's loyalty scope (owners, managers and viewers) give nothing, so staff and the publisher get no row",
 				"tags": ["(rpc) loyalty_shift_anomalies"]
+			}
+		},
+		"/rpc/manager_answer_request": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the manager app (S10): app.manager_answer_request at the current time",
+							"properties": {
+								"p_expected_version": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_message": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_request": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_status": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": [
+								"p_request",
+								"p_status",
+								"p_message",
+								"p_expected_version"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app (S10): app.manager_answer_request at the current time",
+				"tags": ["(rpc) manager_answer_request"]
+			}
+		},
+		"/rpc/manager_close_shift": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the manager app: app.manager_close_shift at the current time",
+							"properties": {
+								"p_clock_out_at": {
+									"format": "timestamp with time zone",
+									"type": "string"
+								},
+								"p_counted_cash": {
+									"format": "numeric",
+									"type": "number"
+								},
+								"p_note": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_shift": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"p_shift",
+								"p_clock_out_at",
+								"p_counted_cash",
+								"p_note"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app: app.manager_close_shift at the current time",
+				"tags": ["(rpc) manager_close_shift"]
+			}
+		},
+		"/rpc/manager_confirm_shift": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the manager app: app.manager_confirm_shift at the current time",
+							"properties": {
+								"p_note": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_shift": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_shift", "p_note"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app: app.manager_confirm_shift at the current time",
+				"tags": ["(rpc) manager_confirm_shift"]
+			}
+		},
+		"/rpc/manager_counter_qr": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the manager app: app.manager_counter_qr at the current time",
+							"properties": {
+								"p_rotate": {
+									"format": "boolean",
+									"type": "boolean"
+								},
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app: app.manager_counter_qr at the current time",
+				"tags": ["(rpc) manager_counter_qr"]
+			}
+		},
+		"/rpc/manager_day_reconciliation": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_date",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app: app.manager_day_reconciliation at the current time",
+				"tags": ["(rpc) manager_day_reconciliation"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the manager app: app.manager_day_reconciliation at the current time",
+							"properties": {
+								"p_date": {
+									"format": "date",
+									"type": "string"
+								},
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store", "p_date"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app: app.manager_day_reconciliation at the current time",
+				"tags": ["(rpc) manager_day_reconciliation"]
+			}
+		},
+		"/rpc/manager_requests": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "text",
+						"in": "query",
+						"name": "p_status",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "p_limit",
+						"required": false,
+						"type": "integer"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app (S10): app.manager_requests at the current time",
+				"tags": ["(rpc) manager_requests"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the manager app (S10): app.manager_requests at the current time",
+							"properties": {
+								"p_limit": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_status": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app (S10): app.manager_requests at the current time",
+				"tags": ["(rpc) manager_requests"]
+			}
+		},
+		"/rpc/manager_shifts": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_from",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_to",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app: app.manager_shifts at the current time",
+				"tags": ["(rpc) manager_shifts"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the manager app: app.manager_shifts at the current time",
+							"properties": {
+								"p_from": {
+									"format": "date",
+									"type": "string"
+								},
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_to": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"required": ["p_store", "p_from", "p_to"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app: app.manager_shifts at the current time",
+				"tags": ["(rpc) manager_shifts"]
+			}
+		},
+		"/rpc/manager_worked_days": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_month",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app (S11): app.manager_worked_days at the current time",
+				"tags": ["(rpc) manager_worked_days"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the manager app (S11): app.manager_worked_days at the current time",
+							"properties": {
+								"p_month": {
+									"format": "date",
+									"type": "string"
+								},
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store", "p_month"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app (S11): app.manager_worked_days at the current time",
+				"tags": ["(rpc) manager_worked_days"]
 			}
 		},
 		"/rpc/mark_announcement_read": {
@@ -52600,6 +55337,88 @@
 				"tags": ["(rpc) staff_bill_queue"]
 			}
 		},
+		"/rpc/staff_clock_in": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app (\"Vào ca\"): app.staff_clock_in at the current time",
+							"properties": {
+								"p_counter_token": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_opening_cash": {
+									"format": "numeric",
+									"type": "number"
+								},
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store", "p_counter_token"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app (\"Vào ca\"): app.staff_clock_in at the current time",
+				"tags": ["(rpc) staff_clock_in"]
+			}
+		},
+		"/rpc/staff_clock_out": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app (\"Ra ca\"): app.staff_clock_out at the current time",
+							"properties": {
+								"p_counted_cash": {
+									"format": "numeric",
+									"type": "number"
+								}
+							},
+							"required": ["p_counted_cash"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app (\"Ra ca\"): app.staff_clock_out at the current time",
+				"tags": ["(rpc) staff_clock_out"]
+			}
+		},
 		"/rpc/staff_close_bill_audit": {
 			"post": {
 				"parameters": [
@@ -53023,6 +55842,65 @@
 				},
 				"summary": "RPC for the staff app: app.staff_my_loyalty_requests",
 				"tags": ["(rpc) staff_my_loyalty_requests"]
+			}
+		},
+		"/rpc/staff_my_shift": {
+			"get": {
+				"parameters": [
+					{
+						"format": "date",
+						"in": "query",
+						"name": "p_month",
+						"required": false,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.staff_my_shift at the current time",
+				"tags": ["(rpc) staff_my_shift"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app: app.staff_my_shift at the current time",
+							"properties": {
+								"p_month": {
+									"format": "date",
+									"type": "string"
+								}
+							},
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.staff_my_shift at the current time",
+				"tags": ["(rpc) staff_my_shift"]
 			}
 		},
 		"/rpc/staff_recent_bills": {
@@ -55170,6 +58048,1016 @@
 				"tags": ["staff_roster"]
 			}
 		},
+		"/staff_shifts": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.clock_in_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.opening_cash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.clock_out_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.expected_cash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.counted_cash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.cash_difference"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.closed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.closed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.close_note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the shifts worked at a native store's counter: clocked in with the counter QR code and the opening cash, clocked out with a blind count of the drawer compared with the cash the person recorded during the shift; a difference waits for a manager's confirmation (closed_by, close_note); a forgotten clock-out is closed by a manager; at most one shift per person that is not closed; read by the store's owners and managers and by the person; written only by the shift functions",
+				"tags": ["staff_shifts"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.clock_in_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.opening_cash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.clock_out_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.expected_cash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.counted_cash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.cash_difference"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.closed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.closed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.close_note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/staff_shifts"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the shifts worked at a native store's counter: clocked in with the counter QR code and the opening cash, clocked out with a blind count of the drawer compared with the cash the person recorded during the shift; a difference waits for a manager's confirmation (closed_by, close_note); a forgotten clock-out is closed by a manager; at most one shift per person that is not closed; read by the store's owners and managers and by the person; written only by the shift functions",
+				"tags": ["staff_shifts"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.business_date"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.clock_in_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.opening_cash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.clock_out_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.expected_cash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.counted_cash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.cash_difference"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.closed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.closed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.close_note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.staff_shifts"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the shifts worked at a native store's counter: clocked in with the counter QR code and the opening cash, clocked out with a blind count of the drawer compared with the cash the person recorded during the shift; a difference waits for a manager's confirmation (closed_by, close_note); a forgotten clock-out is closed by a manager; at most one shift per person that is not closed; read by the store's owners and managers and by the person; written only by the shift functions",
+				"tags": ["staff_shifts"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.staff_shifts"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the shifts worked at a native store's counter: clocked in with the counter QR code and the opening cash, clocked out with a blind count of the drawer compared with the cash the person recorded during the shift; a difference waits for a manager's confirmation (closed_by, close_note); a forgotten clock-out is closed by a manager; at most one shift per person that is not closed; read by the store's owners and managers and by the person; written only by the shift functions",
+				"tags": ["staff_shifts"]
+			}
+		},
+		"/stamp_card_settings": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.enabled"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.stamps_per_reward"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.reward_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a brand's native stamp card: on or off, how many stamps make a reward (9 by default: the 10th drink free) and the reward's name; a brand without a row uses the defaults",
+				"tags": ["stamp_card_settings"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.enabled"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.stamps_per_reward"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.reward_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/stamp_card_settings"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "a brand's native stamp card: on or off, how many stamps make a reward (9 by default: the 10th drink free) and the reward's name; a brand without a row uses the defaults",
+				"tags": ["stamp_card_settings"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.enabled"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.stamps_per_reward"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.reward_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_card_settings.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.stamp_card_settings"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a brand's native stamp card: on or off, how many stamps make a reward (9 by default: the 10th drink free) and the reward's name; a brand without a row uses the defaults",
+				"tags": ["stamp_card_settings"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.stamp_card_settings"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "a brand's native stamp card: on or off, how many stamps make a reward (9 by default: the 10th drink free) and the reward's name; a brand without a row uses the defaults",
+				"tags": ["stamp_card_settings"]
+			}
+		},
+		"/stamp_cards": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.total_earned"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the stamp card of a customer's Zalo account at a brand (no phone needed): the stamps toward the next reward and all stamps ever earned; written only by the ledger functions; removed with the login",
+				"tags": ["stamp_cards"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.total_earned"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/stamp_cards"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the stamp card of a customer's Zalo account at a brand (no phone needed): the stamps toward the next reward and all stamps ever earned; written only by the ledger functions; removed with the login",
+				"tags": ["stamp_cards"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.total_earned"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_cards.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.stamp_cards"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the stamp card of a customer's Zalo account at a brand (no phone needed): the stamps toward the next reward and all stamps ever earned; written only by the ledger functions; removed with the login",
+				"tags": ["stamp_cards"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.stamp_cards"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the stamp card of a customer's Zalo account at a brand (no phone needed): the stamps toward the next reward and all stamps ever earned; written only by the ledger functions; removed with the login",
+				"tags": ["stamp_cards"]
+			}
+		},
+		"/stamp_entries": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.card_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.reward_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.delta"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.balance_after"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.actor_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.actor_user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the append-only ledger of the stamp cards: stamps earned by a completed order (once per order), taken back by a refund, spent on a reward, and the rewards used, returned and voided, each with the balance after it and who caused it; no role changes or deletes a row",
+				"tags": ["stamp_entries"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.card_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.reward_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.delta"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.balance_after"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.actor_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.actor_user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/stamp_entries"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the append-only ledger of the stamp cards: stamps earned by a completed order (once per order), taken back by a refund, spent on a reward, and the rewards used, returned and voided, each with the balance after it and who caused it; no role changes or deletes a row",
+				"tags": ["stamp_entries"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.card_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.reward_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.delta"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.balance_after"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.actor_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.actor_user_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_entries.occurred_at"
+					},
+					{
+						"$ref": "#/parameters/body.stamp_entries"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the append-only ledger of the stamp cards: stamps earned by a completed order (once per order), taken back by a refund, spent on a reward, and the rewards used, returned and voided, each with the balance after it and who caused it; no role changes or deletes a row",
+				"tags": ["stamp_entries"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.stamp_entries"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the append-only ledger of the stamp cards: stamps earned by a completed order (once per order), taken back by a refund, spent on a reward, and the rewards used, returned and voided, each with the balance after it and who caused it; no role changes or deletes a row",
+				"tags": ["stamp_entries"]
+			}
+		},
+		"/stamp_rewards": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.card_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.issued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.issued_order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.used_order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.used_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.voided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.void_reason"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the rewards of a stamp card (a free drink) with the stamps they took: available, used on an order (at most one per order), or void when a refund took back the stamps that made it",
+				"tags": ["stamp_rewards"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.card_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.issued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.issued_order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.used_order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.used_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.voided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.void_reason"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/stamp_rewards"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the rewards of a stamp card (a free drink) with the stamps they took: available, used on an order (at most one per order), or void when a refund took back the stamps that made it",
+				"tags": ["stamp_rewards"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.card_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.stamps"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.issued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.issued_order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.used_order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.used_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.voided_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.stamp_rewards.void_reason"
+					},
+					{
+						"$ref": "#/parameters/body.stamp_rewards"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the rewards of a stamp card (a free drink) with the stamps they took: available, used on an order (at most one per order), or void when a refund took back the stamps that made it",
+				"tags": ["stamp_rewards"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.stamp_rewards"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the rewards of a stamp card (a free drink) with the stamps they took: available, used on an order (at most one per order), or void when a refund took back the stamps that made it",
+				"tags": ["stamp_rewards"]
+			}
+		},
 		"/stamps": {
 			"delete": {
 				"parameters": [
@@ -55589,6 +59477,21 @@
 						"$ref": "#/parameters/rowFilter.store_ordering_settings.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.request_kinds"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.request_answer_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.counter_qr_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.standard_day_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.standard_month_days"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -55661,6 +59564,21 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.store_ordering_settings.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.request_kinds"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.request_answer_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.counter_qr_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.standard_day_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.standard_month_days"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -55764,6 +59682,21 @@
 						"$ref": "#/parameters/rowFilter.store_ordering_settings.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.request_kinds"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.request_answer_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.counter_qr_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.standard_day_hours"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.standard_month_days"
+					},
+					{
 						"$ref": "#/parameters/body.store_ordering_settings"
 					},
 					{
@@ -55797,6 +59730,316 @@
 				},
 				"summary": "one row per store that has till or ordering settings (native-till.md section 2); a store without a row is an ipos store that takes no order",
 				"tags": ["store_ordering_settings"]
+			}
+		},
+		"/store_requests": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.channel"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.client_request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.client_key_sha256"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.request_hash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.contact_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.contact_phone"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.party_size"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.requested_for"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.subject"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.answered_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.answered_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.answer_message"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.cancelled_by_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.cancelled_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the requests inbox (native-till.md section 12): bookings, workshop sign-ups, holds of an item and job applications sent from the website (by a service-role Edge Function, with the SHA-256 of its client key) or the customer app (with the customer's login), each once per request id; the contact typed, the time asked for, then the answer of an owner or manager (confirmed, declined, cancelled with who, when and the message) or the customer's cancellation; read only by the store's owners and managers; deleted with the customer's account, purged 180 days after its date",
+				"tags": ["store_requests"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.channel"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.client_request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.client_key_sha256"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.request_hash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.contact_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.contact_phone"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.party_size"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.requested_for"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.subject"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.answered_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.answered_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.answer_message"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.cancelled_by_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.cancelled_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/store_requests"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the requests inbox (native-till.md section 12): bookings, workshop sign-ups, holds of an item and job applications sent from the website (by a service-role Edge Function, with the SHA-256 of its client key) or the customer app (with the customer's login), each once per request id; the contact typed, the time asked for, then the answer of an owner or manager (confirmed, declined, cancelled with who, when and the message) or the customer's cancellation; read only by the store's owners and managers; deleted with the customer's account, purged 180 days after its date",
+				"tags": ["store_requests"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.channel"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.client_request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.client_key_sha256"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.request_hash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.contact_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.contact_phone"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.party_size"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.requested_for"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.subject"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.answered_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.answered_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.answer_message"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.cancelled_by_kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.cancelled_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.store_requests"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the requests inbox (native-till.md section 12): bookings, workshop sign-ups, holds of an item and job applications sent from the website (by a service-role Edge Function, with the SHA-256 of its client key) or the customer app (with the customer's login), each once per request id; the contact typed, the time asked for, then the answer of an owner or manager (confirmed, declined, cancelled with who, when and the message) or the customer's cancellation; read only by the store's owners and managers; deleted with the customer's account, purged 180 days after its date",
+				"tags": ["store_requests"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.store_requests"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the requests inbox (native-till.md section 12): bookings, workshop sign-ups, holds of an item and job applications sent from the website (by a service-role Edge Function, with the SHA-256 of its client key) or the customer app (with the customer's login), each once per request id; the contact typed, the time asked for, then the answer of an owner or manager (confirmed, declined, cancelled with who, when and the message) or the customer's cancellation; read only by the store's owners and managers; deleted with the customer's account, purged 180 days after its date",
+				"tags": ["store_requests"]
 			}
 		},
 		"/store_tables": {
