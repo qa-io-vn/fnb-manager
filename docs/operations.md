@@ -778,6 +778,34 @@ The Zalo Graph answers error `-501` to every server outside Vietnam, so the clou
 - **Problems.** "not announced: HTTP 401 relay_refused": the key file and the function secret differ, or the PC clock is more than two minutes off. "HTTP 404 relay_not_configured": the function secret is missing. `refused a request (stale)` in the relay: the PC clock is more than a minute off. `(sealed)`: something other than our functions knocked; nothing was forwarded.
 - **Moving to a VPS in Vietnam.** Run the same command there, as a service, with the key file copied over a secure channel; stop the PC's relay. The newest announcement wins.
 
+### 4.24 Switching on online payment (ADR-067, ADR-068)
+
+Customers pay with e-wallets through Zalo's Checkout SDK and by bank transfer to a dynamic VietQR that a bank-notification service confirms; the counter takes the same VietQR from walk-ins. Nothing offers online payment until a provider row is on, and the customer app also needs a build with `VITE_ONLINE_PAYMENT=on`. Start in `sandbox`, test with small amounts, then `live`.
+
+**The owner's paperwork first (weeks):** the household business's own bank account; the Zalo Mini App's verification (KYB) and food-safety papers; a ZaloPay merchant account (sandbox at sbmc.zalopay.vn, live at mc.zalopay.vn; ZaloPay may need a Mini App that already passed review); an account with a service that watches the bank account and posts each incoming transfer (SePay is built; PayOS or Casso need an adapter, about a day each); the custom bank-transfer integration of the Checkout SDK, which is in beta until 03/2027.
+
+**E-wallets (Checkout SDK):**
+
+1. In the Zalo Mini App console → Checkout SDK → Cấu hình chung: copy the private key; set the security method HmacSHA256; set the Callback URL to `https://<project ref>.supabase.co/functions/v1/checkout-webhook/callback` and, if the console asks for one, the Notify URL to `…/checkout-webhook/notify` (cash and bank transfer are not offered in the sheet; a notify is refused). Add ZaloPay with its Merchant App ID, Key1 and Key2 from the ZaloPay merchant portal (they stay in Zalo's console, not with us).
+2. Store the private key as the Edge Function secret `ZALO_CHECKOUT_KEY_<BRAND>` (Supabase dashboard → Edge Functions → Secrets; `<BRAND>` the brand key in capitals). Never paste it anywhere else.
+3. Switch it on, as an owner with every store, from the SQL editor or the CLI signed in as that owner: `select public.checkout_set_provider('{"brand": "<brand id>", "method": "zalo_checkout", "mode": "sandbox", "secret_name": "ZALO_CHECKOUT_KEY_BRAND_1", "settings": {"wallet_method": "ZALOPAY"}}');`. The stores of the brand now offer "Ví ZaloPay". In sandbox the sheet shows `ZALOPAY_SANDBOX`, visible only to the Mini App's administrators, developers and test users.
+4. Relay: Zalo's payment API may refuse servers outside Vietnam (as the Graph does), so the cloud asks it through the relay of section 4.20; update the relay on the shop's PC to this version (it now carries Zalo's four payment calls) before the job can re-query or refund.
+
+**VietQR with automatic confirmation:**
+
+1. Create the service's webhook (for SePay: Webhooks → add, authentication "API Key", content JSON; filter on the reference prefix if offered). Note its key and store it as the Edge Function secret `PAYMENT_BANK_<NAME>`.
+2. Switch it on: `select public.checkout_set_provider('{"brand": "<brand id>", "method": "vietqr", "adapter": "sepay", "mode": "sandbox", "secret_name": "PAYMENT_BANK_BRAND_1", "settings": {"bank_bin": "<6-digit BIN of the bank>", "bank_name": "<bank as customers know it>", "account_number": "<account>", "account_name": "<NAME AS THE BANK PRINTS IT>", "reference_prefix": "<2-4 capitals, e.g. the brand initials>"}}');` (add `"store": "<store id>"` for an account of one store). The answer's `webhook_path` (`bank-webhook/<id>`) completes the URL to give the service: `https://<project ref>.supabase.co/functions/v1/bank-webhook/<id>`.
+3. Test: order with "Chuyển khoản QR", pay a small amount from a banking app, and watch the order turn "Đã nhận" within seconds; transfer 1,000 đồng less once and check that it appears in the manager queue (`manager_payment_exceptions`) and the order stays unpaid.
+4. Every change of a provider is logged (`payment_provider_changes`: who, when, before, after). A changed account number redirects customers' money: check the log after any change.
+
+**The job:** `select app.enable_checkout_jobs('https://<project ref>.supabase.co/functions/v1/payments-job');` as `postgres` schedules `checkout-tick` every minute (attempts expire; while work waits it wakes `payments-job`, which asks Zalo about late wallet payments, sends refunds of paid cancelled orders and reports paid transfers to Zalo). `app.disable_checkout_jobs()` removes it.
+
+**Every day:** a manager opens the queue (`manager_payment_exceptions`): a partial, late or second transfer, or one with an unknown reference, is never applied; hand the money back by bank transfer and resolve it as `refunded` with a note (or `dismissed`). A wallet refund the provider failed shows on the order as a failed refund; settle it in cash at the counter (`counter_refund`).
+
+**Switching off:** the same call with `"mode": "off"`; the stores stop offering the method at once, and notifications of attempts opened before are still verified and recorded.
+
+**Problems.** `not_configured` from `checkout-order`: the secret the row names is not set. Zalo's callbacks answered `-1`: the key differs from the console's, or the callback is for another Mini App; the function's log names the refusal (`signature`, `wrong_app`). Callbacks from an address outside Zalo's two documented ones are logged in observe mode; once the real addresses are seen, set `CHECKOUT_WEBHOOK_IP_MODE=enforce` (and `CHECKOUT_WEBHOOK_IPS` if Zalo announces others). Bank posts answered 401: the service's key and the secret differ.
+
 ## 5. Maintenance calendar
 
 | When | Task | Who | How |

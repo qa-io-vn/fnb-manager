@@ -338,6 +338,10 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Read the requests inbox and answer a request | scope | scope | no | no | own requests only (`customer_requests`, `customer_cancel_request`) |
 | Submit a request | no: customers from the app with their session; the website only through its Edge Function with the service role (anon nothing) | | | | |
 | Clock in and out at the counter | scope (counter code) | scope (counter code) | scope (counter code) | no | no |
+| Switch an online payment provider on or off, change its account (ADR-067) | when the scope holds every store of the brand (`checkout_set_provider`, logged with before and after) | no | no | no | no |
+| Read payment providers, their change log and the manager queue of money not applied (ADR-068) | scope (brand-wide rows: every store) | scope (the same) | no (`counter_payment_methods` gives the store's methods) | no | no |
+| Resolve an entry of the manager queue | scope | scope | no | no | no |
+| Open, link or settle an online payment attempt | no client: `checkout-order` for the session's own order (or, VietQR only, a counter order of the staff member's store), the webhooks after verifying Zalo's MAC or the bank service's key, the payment job with its ticket | | | | |
 | Read shifts and worked days; print the counter code; confirm a cash difference or close a forgotten shift (never one's own); the day's reconciliation | scope | scope | own shifts and days only | no | no |
 | Write an order, a line or an event directly | no | no | no | no | no |
 | Lift a customer's ordering block | scope (delete) | scope (delete) | no | no | no |

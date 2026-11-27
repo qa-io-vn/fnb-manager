@@ -39,12 +39,19 @@ export function mocksAllowed(environment: FunctionEnvironment): boolean {
 	return environment[PAYMENTS_MOCK_VARIABLE]?.trim() === "on";
 }
 
-/** A loopback base for Zalo's payment API (a mock in tests); anything else means Zalo's own address. */
+/**
+ * A loopback base for Zalo's payment API (a mock), honoured only with a local or test switch on (ZALO_LOCAL_DEV=1,
+ * ZALO_INTEGRATION=1 or PAYMENTS_MOCK=on), as the other Zalo base overrides; anything else means Zalo's own address.
+ */
 export function zaloPaymentBase(
 	environment: FunctionEnvironment,
 ): string | undefined {
 	const value = environment[ZALO_PAYMENT_BASE_URL_VARIABLE]?.trim() ?? "";
-	return value !== "" && isLoopbackBaseUrl(value) ? value : undefined;
+	const local =
+		environment.ZALO_LOCAL_DEV === "1" ||
+		environment.ZALO_INTEGRATION === "1" ||
+		mocksAllowed(environment);
+	return local && value !== "" && isLoopbackBaseUrl(value) ? value : undefined;
 }
 
 /** CORS for the payment calls of the apps: the Zalo Mini App's origins, the counter's, and loopback on the local stack. */

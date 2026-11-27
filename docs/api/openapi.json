@@ -7682,6 +7682,103 @@
 			],
 			"type": "object"
 		},
+		"payment_exceptions": {
+			"description": "money a verified provider reported that the server did not apply to an order (ADR-068): a partial or larger transfer, money after the attempt expired or the order was cancelled, a second payment of a paid order, a reference nobody issued; never auto-confirmed; a manager hands it back and resolves it with a note; holds no payer name or account",
+			"properties": {
+				"amount": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"expected_amount": {
+					"format": "numeric",
+					"type": "number"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"method": {
+					"format": "text",
+					"type": "string"
+				},
+				"order_id": {
+					"description": "Note:\nThis is a Foreign Key to `orders.id`.<fk table='orders' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"payment_id": {
+					"description": "Note:\nThis is a Foreign Key to `order_payments.id`.<fk table='order_payments' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"provider_id": {
+					"description": "Note:\nThis is a Foreign Key to `payment_providers.id`.<fk table='payment_providers' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"provider_ref": {
+					"format": "text",
+					"type": "string"
+				},
+				"reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"received_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"reference": {
+					"format": "text",
+					"type": "string"
+				},
+				"resolution_note": {
+					"format": "text",
+					"type": "string"
+				},
+				"resolved_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"resolved_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"source": {
+					"format": "text",
+					"type": "string"
+				},
+				"status": {
+					"default": "open",
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"provider_id",
+				"method",
+				"provider_ref",
+				"amount",
+				"reason",
+				"source",
+				"received_at",
+				"status"
+			],
+			"type": "object"
+		},
 		"payment_fee_rates": {
 			"properties": {
 				"created_at": {
@@ -7900,6 +7997,118 @@
 				"first_seen_at",
 				"last_seen_at",
 				"pos_kind"
+			],
+			"type": "object"
+		},
+		"payment_provider_changes": {
+			"description": "the append-only log of every provider change with who, when, before and after (a changed bank account redirects customers' money, so every change is kept); no role changes or deletes a row",
+			"properties": {
+				"after": {
+					"format": "jsonb"
+				},
+				"before": {
+					"format": "jsonb"
+				},
+				"changed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"changed_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "int64",
+					"type": "integer"
+				},
+				"provider_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": ["id", "tenant_id", "provider_id", "changed_at", "after"],
+			"type": "object"
+		},
+		"payment_providers": {
+			"description": "the online payment providers a brand (or one of its stores, for a VietQR account of its own) switched on (ADR-067): the method, the adapter, the mode (off, sandbox, live), the name of the Edge Function secret holding its key (never the key) and its public settings; the most specific row decides; written only by checkout_set_provider (an owner with every store of the brand), read by its owners and managers",
+			"properties": {
+				"adapter": {
+					"format": "text",
+					"type": "string"
+				},
+				"brand_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"method": {
+					"format": "text",
+					"type": "string"
+				},
+				"mode": {
+					"default": "off",
+					"format": "text",
+					"type": "string"
+				},
+				"secret_name": {
+					"description": "the Edge Function secret with the key: ZALO_CHECKOUT_KEY_<BRAND> (the Checkout SDK private key) or PAYMENT_BANK_<NAME> (the bank service's webhook key)",
+					"format": "text",
+					"type": "string"
+				},
+				"settings": {
+					"description": "public settings: wallet_method for the Checkout SDK; bank_bin, bank_name, account_number, account_name and reference_prefix for a VietQR (shown to customers on the QR anyway)",
+					"format": "jsonb"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"brand_id",
+				"method",
+				"adapter",
+				"mode",
+				"secret_name",
+				"settings",
+				"created_at",
+				"updated_at"
 			],
 			"type": "object"
 		},
@@ -11469,6 +11678,15 @@
 				"$ref": "#/definitions/packages"
 			}
 		},
+		"body.payment_exceptions": {
+			"description": "payment_exceptions",
+			"in": "body",
+			"name": "payment_exceptions",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/payment_exceptions"
+			}
+		},
 		"body.payment_fee_rates": {
 			"description": "payment_fee_rates",
 			"in": "body",
@@ -11494,6 +11712,24 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/payment_methods"
+			}
+		},
+		"body.payment_provider_changes": {
+			"description": "payment_provider_changes",
+			"in": "body",
+			"name": "payment_provider_changes",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/payment_provider_changes"
+			}
+		},
+		"body.payment_providers": {
+			"description": "payment_providers",
+			"in": "body",
+			"name": "payment_providers",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/payment_providers"
 			}
 		},
 		"body.pending_checkins": {
@@ -19771,6 +20007,114 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.payment_exceptions.amount": {
+			"in": "query",
+			"name": "amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.expected_amount": {
+			"in": "query",
+			"name": "expected_amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.method": {
+			"in": "query",
+			"name": "method",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.order_id": {
+			"in": "query",
+			"name": "order_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.payment_id": {
+			"in": "query",
+			"name": "payment_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.provider_id": {
+			"in": "query",
+			"name": "provider_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.provider_ref": {
+			"in": "query",
+			"name": "provider_ref",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.reason": {
+			"in": "query",
+			"name": "reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.received_at": {
+			"in": "query",
+			"name": "received_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.reference": {
+			"in": "query",
+			"name": "reference",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.resolution_note": {
+			"in": "query",
+			"name": "resolution_note",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.resolved_at": {
+			"in": "query",
+			"name": "resolved_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.resolved_by": {
+			"in": "query",
+			"name": "resolved_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.source": {
+			"in": "query",
+			"name": "source",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_exceptions.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.payment_fee_rates.created_at": {
 			"in": "query",
 			"name": "created_at",
@@ -19957,6 +20301,128 @@
 		"rowFilter.payment_methods.tenant_id": {
 			"in": "query",
 			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_provider_changes.after": {
+			"in": "query",
+			"name": "after",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_provider_changes.before": {
+			"in": "query",
+			"name": "before",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_provider_changes.changed_at": {
+			"in": "query",
+			"name": "changed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_provider_changes.changed_by": {
+			"in": "query",
+			"name": "changed_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_provider_changes.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_provider_changes.provider_id": {
+			"in": "query",
+			"name": "provider_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_provider_changes.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.adapter": {
+			"in": "query",
+			"name": "adapter",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.brand_id": {
+			"in": "query",
+			"name": "brand_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.method": {
+			"in": "query",
+			"name": "method",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.mode": {
+			"in": "query",
+			"name": "mode",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.secret_name": {
+			"description": "the Edge Function secret with the key: ZALO_CHECKOUT_KEY_<BRAND> (the Checkout SDK private key) or PAYMENT_BANK_<NAME> (the bank service's webhook key)",
+			"in": "query",
+			"name": "secret_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.settings": {
+			"description": "public settings: wallet_method for the Checkout SDK; bank_bin, bank_name, account_number, account_name and reference_prefix for a VietQR (shown to customers on the QR anyway)",
+			"in": "query",
+			"name": "settings",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.payment_providers.updated_by": {
+			"in": "query",
+			"name": "updated_by",
 			"required": false,
 			"type": "string"
 		},
@@ -42943,6 +43409,262 @@
 				"tags": ["packages"]
 			}
 		},
+		"/payment_exceptions": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.provider_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.provider_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.expected_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.reference"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.payment_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.received_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.resolved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.resolved_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.resolution_note"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "money a verified provider reported that the server did not apply to an order (ADR-068): a partial or larger transfer, money after the attempt expired or the order was cancelled, a second payment of a paid order, a reference nobody issued; never auto-confirmed; a manager hands it back and resolves it with a note; holds no payer name or account",
+				"tags": ["payment_exceptions"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.provider_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.provider_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.expected_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.reference"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.payment_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.received_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.resolved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.resolved_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.resolution_note"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/payment_exceptions"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "money a verified provider reported that the server did not apply to an order (ADR-068): a partial or larger transfer, money after the attempt expired or the order was cancelled, a second payment of a paid order, a reference nobody issued; never auto-confirmed; a manager hands it back and resolves it with a note; holds no payer name or account",
+				"tags": ["payment_exceptions"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.provider_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.provider_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.expected_amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.reference"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.payment_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.received_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.resolved_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.resolved_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_exceptions.resolution_note"
+					},
+					{
+						"$ref": "#/parameters/body.payment_exceptions"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "money a verified provider reported that the server did not apply to an order (ADR-068): a partial or larger transfer, money after the attempt expired or the order was cancelled, a second payment of a paid order, a reference nobody issued; never auto-confirmed; a manager hands it back and resolves it with a note; holds no payer name or account",
+				"tags": ["payment_exceptions"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.payment_exceptions"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "money a verified provider reported that the server did not apply to an order (ADR-068): a partial or larger transfer, money after the attempt expired or the order was cancelled, a second payment of a paid order, a reference nobody issued; never auto-confirmed; a manager hands it back and resolves it with a note; holds no payer name or account",
+				"tags": ["payment_exceptions"]
+			}
+		},
 		"/payment_fee_rates": {
 			"delete": {
 				"parameters": [
@@ -43494,6 +44216,374 @@
 					}
 				},
 				"tags": ["payment_methods"]
+			}
+		},
+		"/payment_provider_changes": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.provider_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.changed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.changed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.before"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.after"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the append-only log of every provider change with who, when, before and after (a changed bank account redirects customers' money, so every change is kept); no role changes or deletes a row",
+				"tags": ["payment_provider_changes"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.provider_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.changed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.changed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.before"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.after"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/payment_provider_changes"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the append-only log of every provider change with who, when, before and after (a changed bank account redirects customers' money, so every change is kept); no role changes or deletes a row",
+				"tags": ["payment_provider_changes"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.provider_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.changed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.changed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.before"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_provider_changes.after"
+					},
+					{
+						"$ref": "#/parameters/body.payment_provider_changes"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the append-only log of every provider change with who, when, before and after (a changed bank account redirects customers' money, so every change is kept); no role changes or deletes a row",
+				"tags": ["payment_provider_changes"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.payment_provider_changes"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the append-only log of every provider change with who, when, before and after (a changed bank account redirects customers' money, so every change is kept); no role changes or deletes a row",
+				"tags": ["payment_provider_changes"]
+			}
+		},
+		"/payment_providers": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.adapter"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.secret_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.settings"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the online payment providers a brand (or one of its stores, for a VietQR account of its own) switched on (ADR-067): the method, the adapter, the mode (off, sandbox, live), the name of the Edge Function secret holding its key (never the key) and its public settings; the most specific row decides; written only by checkout_set_provider (an owner with every store of the brand), read by its owners and managers",
+				"tags": ["payment_providers"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.adapter"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.secret_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.settings"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/payment_providers"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the online payment providers a brand (or one of its stores, for a VietQR account of its own) switched on (ADR-067): the method, the adapter, the mode (off, sandbox, live), the name of the Edge Function secret holding its key (never the key) and its public settings; the most specific row decides; written only by checkout_set_provider (an owner with every store of the brand), read by its owners and managers",
+				"tags": ["payment_providers"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.method"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.adapter"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.secret_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.settings"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.payment_providers.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.payment_providers"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the online payment providers a brand (or one of its stores, for a VietQR account of its own) switched on (ADR-067): the method, the adapter, the mode (off, sandbox, live), the name of the Edge Function secret holding its key (never the key) and its public settings; the most specific row decides; written only by checkout_set_provider (an owner with every store of the brand), read by its owners and managers",
+				"tags": ["payment_providers"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.payment_providers"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the online payment providers a brand (or one of its stores, for a VietQR account of its own) switched on (ADR-067): the method, the adapter, the mode (off, sandbox, live), the name of the Edge Function secret holding its key (never the key) and its public settings; the most specific row decides; written only by checkout_set_provider (an owner with every store of the brand), read by its owners and managers",
+				"tags": ["payment_providers"]
 			}
 		},
 		"/pending_checkins": {
@@ -46026,6 +47116,42 @@
 				"tags": ["(rpc) checklist_run_detail"]
 			}
 		},
+		"/rpc/checkout_set_provider": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for owners: app.checkout_set_provider at the current time",
+							"properties": {
+								"p_request": {
+									"format": "jsonb"
+								}
+							},
+							"required": ["p_request"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners: app.checkout_set_provider at the current time",
+				"tags": ["(rpc) checkout_set_provider"]
+			}
+		},
 		"/rpc/cohort_retention": {
 			"get": {
 				"parameters": [
@@ -46412,6 +47538,66 @@
 				},
 				"summary": "RPC for the counter web app: app.counter_order_act at the current time",
 				"tags": ["(rpc) counter_order_act"]
+			}
+		},
+		"/rpc/counter_payment_methods": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_payment_methods",
+				"tags": ["(rpc) counter_payment_methods"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app: app.counter_payment_methods",
+							"properties": {
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_payment_methods",
+				"tags": ["(rpc) counter_payment_methods"]
 			}
 		},
 		"/rpc/counter_record_payment": {
@@ -50958,6 +52144,88 @@
 				"tags": ["(rpc) manager_dismiss_blocked_signin"]
 			}
 		},
+		"/rpc/manager_payment_exceptions": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "text",
+						"in": "query",
+						"name": "p_status",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "p_limit",
+						"required": false,
+						"type": "integer"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners and managers: app.manager_payment_exceptions",
+				"tags": ["(rpc) manager_payment_exceptions"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for owners and managers: app.manager_payment_exceptions",
+							"properties": {
+								"p_limit": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_status": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners and managers: app.manager_payment_exceptions",
+				"tags": ["(rpc) manager_payment_exceptions"]
+			}
+		},
 		"/rpc/manager_requests": {
 			"get": {
 				"parameters": [
@@ -51038,6 +52306,51 @@
 				},
 				"summary": "RPC for the manager app (S10): app.manager_requests at the current time",
 				"tags": ["(rpc) manager_requests"]
+			}
+		},
+		"/rpc/manager_resolve_payment_exception": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for owners and managers: app.manager_resolve_payment_exception at the current time",
+							"properties": {
+								"p_exception": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_note": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_resolution": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_exception", "p_resolution", "p_note"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners and managers: app.manager_resolve_payment_exception at the current time",
+				"tags": ["(rpc) manager_resolve_payment_exception"]
 			}
 		},
 		"/rpc/manager_shifts": {
