@@ -2699,6 +2699,76 @@ returns jsonb
 
 Tests: pgTAP `260_native_catalogue.sql`, `261_ordering_state.sql`, `120_security_function_matrix.sql` and `121_security_table_matrix.sql`.
 
+Tables and staff calls (step 2, migration `tables_and_calls`): a table QR carries `https://zalo.me/s/<customer Mini App id>/?store=<store link key>&src=table&t=<token>`, where the token is the first 16 bytes of HMAC-SHA-256(tenant key, `table:<id>:<version>`) in base64url (22 characters); only its SHA-256 is stored and no API role reads the key.
+
+#### `public.customer_table`
+
+```sql
+public.customer_table(p_store_code text, p_table_token text)
+returns jsonb
+```
+
+- **Status:** built (step 2).
+- **Who may call:** a customer session of the store's brand.
+- **Notes:** `{state: "ok", table: {label, area}}` for the active table whose current token it is, else `{state: "refused", refusal: "table_unknown"}` for every miss alike (unknown, rotated, inactive, another store's or tenant's token) or `{state: "refused", refusal: "rate_limited", retry_at}` once the caller made 10 misses, or the store 50, in 15 minutes (a 15-minute lock and the `code_guessing_lockout` alert). `22023` for a malformed token (1 to 64 URL-safe characters) or a store not of the brand. The app keeps the token for the session and sends it again with the order.
+
+#### `public.customer_call_staff`
+
+```sql
+public.customer_call_staff(p_store_code text, p_table_token text)
+returns jsonb
+```
+
+- **Status:** built (step 2).
+- **Who may call:** a customer session of the store's brand.
+- **Notes:** "Gọi nhân viên": `{state: "calling", called_at, replayed}`; a table has at most one open call, so a repeat answers the open one (`replayed: true`). A new call counts against the customer and the store (6 and 120 in 15 minutes, then `rate_limited` with `retry_at`); the token is resolved as `customer_table` does, with the same refusals.
+
+#### `public.table_qr_links`
+
+```sql
+public.table_qr_links(p_store uuid)
+returns jsonb
+```
+
+- **Status:** built (step 2).
+- **Who may call:** an owner or manager whose scope holds the store.
+- **Notes:** `{store_code, mini_app_id, missing, tables: [{id, label, area, sort_order, active, qr_version, token, link}]}` for printing the cards; `token` and `link` are null for an inactive table, and `link` is null with `missing` `customer_mini_app` or `store_code` when the store cannot be linked.
+
+#### `public.rotate_table_qr`
+
+```sql
+public.rotate_table_qr(p_table uuid)
+returns jsonb
+```
+
+- **Status:** built (step 2).
+- **Who may call:** an owner or manager whose scope holds the table's store (`42501` otherwise, the same for an unknown table).
+- **Notes:** moves the table's QR version, which refuses the printed card at once, and answers `{id, qr_version, token, link}`. `22023` for an inactive table (reactivating a table also issues a new version).
+
+#### `public.counter_table_map`
+
+```sql
+public.counter_table_map(p_store uuid)
+returns jsonb
+```
+
+- **Status:** built (step 2; open orders from step 3).
+- **Who may call:** an owner, manager or staff member whose scope holds the store.
+- **Notes:** `{store_id, tables: [{id, label, area, sort_order, call: null | {id, called_at, waiting_seconds}, open_orders}]}`: the active tables by area with their open call, for the counter's table map.
+
+#### `public.counter_ack_call`
+
+```sql
+public.counter_ack_call(p_call uuid)
+returns jsonb
+```
+
+- **Status:** built (step 2).
+- **Who may call:** an owner, manager or staff member whose scope holds the call's store (`42501` otherwise, the same for an unknown call).
+- **Notes:** "Tới ngay": `{state: "acknowledged", acknowledged_at, acknowledged_by, replayed}`; a call already answered is a replay.
+
+Tests: pgTAP `262_table_qr_and_calls.sql`, `170_code_guessing_limits.sql`, `120_security_function_matrix.sql` and `121_security_table_matrix.sql`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -2870,6 +2940,8 @@ Built locally (migration `native_catalogue`, pgTAP `260` and `261`); empty until
 | `menu_price_changes` | the append-only price log | owners, managers and viewers of the tenant | none (triggers) | none |
 | `menu_imports` | the one-time import of a brand's menu | owners, managers and viewers of the tenant | none | none |
 | `item_option_groups`, `item_option_group_options`, `item_option_group_targets` | the POS option groups, written by the master-data run | data roles of the tenant | none | none |
+| `store_tables` | a store's tables: label, area, order, active, QR version and issue time | owners, managers and viewers, stores in scope; the token hash `qr_token_sha256` by nobody | owners and managers in scope (`label`, `area`, `sort_order`, `active`) | none |
+| `table_calls` | "Gọi nhân viên" calls and who answered them | owners, managers and viewers, stores in scope | none (`customer_call_staff`, `counter_ack_call`) | none |
 
 ## 5. Edge Function endpoints
 

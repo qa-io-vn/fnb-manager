@@ -315,6 +315,12 @@ where i.tenant_id in (fx.tenant_a, fx.tenant_b);
 insert into public.menu_imports (brand_id, tenant_id, store_id, pos_account_id, counts)
 select brand_a, tenant_a, store_a1, account_a, '{}'::jsonb from fx union all
 select brand_b, tenant_b, store_b1, account_b, '{}'::jsonb from fx;
+insert into public.store_tables (tenant_id, store_id, label)
+select tenant_a, store_a1, 'Bàn 1' from fx union all
+select tenant_a, store_a2, 'Bàn 1' from fx union all
+select tenant_b, store_b1, 'Bàn 1' from fx;
+insert into public.table_calls (tenant_id, store_id, table_id)
+select t.tenant_id, t.store_id, t.id from public.store_tables t cross join fx where t.tenant_id in (fx.tenant_a, fx.tenant_b);
 
 -- Who reads what (docs/security.md 5.3, docs/api.md section 4). Reader groups:
 --   data: owner, owner_a1, manager, manager_a1, viewer, staff, staff_a2 (and owner_b in tenant B)
@@ -381,7 +387,9 @@ insert into tables_in_scope (tbl, readers, scoped, own, writers) values
   ('menu_item_option_groups', 'omv', false, null, '{owner,manager}'),
   ('menu_store_items', 'omv', true, null, '{owner,owner_a1,manager,manager_a1}'),
   ('menu_price_changes', 'omv', false, null, '{}'),
-  ('menu_imports', 'omv', false, null, '{}');
+  ('menu_imports', 'omv', false, null, '{}'),
+  ('store_tables', 'omv', true, null, '{owner,owner_a1,manager,manager_a1}'),
+  ('table_calls', 'omv', true, null, '{}');
 
 create function pg_temp.signature_sql(p_table text, p_filter text default 'true')
 returns text

@@ -323,6 +323,8 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Write a store's ordering settings, closures and per-store availability | scope (not the till mode, the payment methods or the pause) | scope (the same) | no (`counter_set_sold_out`, `counter_set_pause` up to 60 minutes) | no | no |
 | Change a store's till mode, import a brand's menu from the POS | unlimited (the import: every store of the brand) | no | no | no | no |
 | Write the price log or the import record | no | no | no | no | no |
+| Read a store's tables and staff calls; never a table token or its hash | scope | scope | no (`counter_table_map`) | scope | no |
+| Write tables (not the QR columns), print and rotate table QR codes | scope | scope | no | no | no |
 | Read the OA webhook's events (`oa_events`), the binding codes, the pairing codes and wrong-code counts, a staff member's phone, the POS or Zalo token caches, the payload documents or anything in `app` | no | no | no | no | no |
 
 Destinations are created, linked and withdrawn through `security definer` functions and the CLI, not by direct writes.

@@ -534,7 +534,26 @@ insert into matrix (fn, label, statement, expect) values
   '{"*": "DENY", "owner": "^ok:imported$"}'),
 ('import_menu_from_pos', 'import_menu_from_pos of brand B from B1',
   $$select public.import_menu_from_pos('{brand_b}', '{store_b1}') ->> 'state'$$,
-  '{"*": "DENY", "owner_b": "^ok:imported$"}');
+  '{"*": "DENY", "owner_b": "^ok:imported$"}'),
+-- ADR-060 step 2: tables, their QR codes and staff calls.
+('customer_table', 'customer_table with an unknown token at A1',
+  $$select public.customer_table('sa-1', 'AAAAAAAAAAAAAAAAAAAAAA') ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:table_unknown$", "visitor": "^ok:table_unknown$", "customer_b": "BAD"}'),
+('customer_call_staff', 'customer_call_staff with an unknown token at A1',
+  $$select public.customer_call_staff('sa-1', 'AAAAAAAAAAAAAAAAAAAAAA') ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:table_unknown$", "visitor": "^ok:table_unknown$", "customer_b": "BAD"}'),
+('table_qr_links', 'table_qr_links of A1',
+  $$select jsonb_array_length(public.table_qr_links('{store_a1}') -> 'tables')$$,
+  '{"*": "DENY", "owner": "^ok:0$", "owner_a1": "^ok:0$", "manager": "^ok:0$", "manager_a1": "^ok:0$"}'),
+('rotate_table_qr', 'rotate_table_qr of an unknown table',
+  $$select public.rotate_table_qr('aaaaaaaa-aaaa-4aaa-8aaa-000000012098')::text$$,
+  '{"*": "DENY"}'),
+('counter_table_map', 'counter_table_map at A1',
+  $$select jsonb_array_length(public.counter_table_map('{store_a1}') -> 'tables')$$,
+  '{"*": "DENY", "owner": "^ok:0$", "owner_a1": "^ok:0$", "manager": "^ok:0$", "manager_a1": "^ok:0$", "staff": "^ok:0$"}'),
+('counter_ack_call', 'counter_ack_call of an unknown call',
+  $$select public.counter_ack_call('aaaaaaaa-aaaa-4aaa-8aaa-000000012097')::text$$,
+  '{"*": "DENY"}');
 
 insert into ph select 'customer_2_u', customer_2_u::text from fx;
 

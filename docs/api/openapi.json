@@ -8399,6 +8399,93 @@
 			],
 			"type": "object"
 		},
+		"store_tables": {
+			"description": "the tables of a store with the names the owner chose (label, unique among the active tables case-insensitively) and their area; the QR columns are written only by the trigger: qr_version moves on rotation and on reactivation, and only the SHA-256 of the current token is kept",
+			"properties": {
+				"active": {
+					"default": true,
+					"format": "boolean",
+					"type": "boolean"
+				},
+				"area": {
+					"format": "text",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"label": {
+					"format": "text",
+					"type": "string"
+				},
+				"qr_issued_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"qr_token_sha256": {
+					"description": "SHA-256 of the table's current QR token; selectable by no API role",
+					"format": "text",
+					"type": "string"
+				},
+				"qr_version": {
+					"default": 1,
+					"format": "int32",
+					"type": "integer"
+				},
+				"sort_order": {
+					"default": 0,
+					"format": "int32",
+					"type": "integer"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"default": "auth.uid()",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"label",
+				"sort_order",
+				"active",
+				"qr_version",
+				"qr_token_sha256",
+				"qr_issued_at",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"stores": {
 			"properties": {
 				"active": {
@@ -8815,6 +8902,49 @@
 				"status",
 				"rows_upserted"
 			],
+			"type": "object"
+		},
+		"table_calls": {
+			"description": "\"Gọi nhân viên\" calls of a table: at most one open call per table, closed by the counter's \"Tới ngay\" with who and when; written only by customer_call_staff and counter_ack_call",
+			"properties": {
+				"acknowledged_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"acknowledged_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"customer_login_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"table_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": ["id", "tenant_id", "store_id", "table_id", "created_at"],
 			"type": "object"
 		},
 		"targets": {
@@ -10331,6 +10461,15 @@
 				"$ref": "#/definitions/store_ordering_settings"
 			}
 		},
+		"body.store_tables": {
+			"description": "store_tables",
+			"in": "body",
+			"name": "store_tables",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/store_tables"
+			}
+		},
 		"body.stores": {
 			"description": "stores",
 			"in": "body",
@@ -10365,6 +10504,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/sync_runs"
+			}
+		},
+		"body.table_calls": {
+			"description": "table_calls",
+			"in": "body",
+			"name": "table_calls",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/table_calls"
 			}
 		},
 		"body.targets": {
@@ -19086,6 +19234,91 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.store_tables.active": {
+			"in": "query",
+			"name": "active",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.area": {
+			"in": "query",
+			"name": "area",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.label": {
+			"in": "query",
+			"name": "label",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.qr_issued_at": {
+			"in": "query",
+			"name": "qr_issued_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.qr_token_sha256": {
+			"description": "SHA-256 of the table's current QR token; selectable by no API role",
+			"in": "query",
+			"name": "qr_token_sha256",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.qr_version": {
+			"in": "query",
+			"name": "qr_version",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.sort_order": {
+			"in": "query",
+			"name": "sort_order",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_tables.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.stores.active": {
 			"in": "query",
 			"name": "active",
@@ -19517,6 +19750,54 @@
 		"rowFilter.sync_runs.triggered_by": {
 			"in": "query",
 			"name": "triggered_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.table_calls.acknowledged_at": {
+			"in": "query",
+			"name": "acknowledged_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.table_calls.acknowledged_by": {
+			"in": "query",
+			"name": "acknowledged_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.table_calls.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.table_calls.customer_login_id": {
+			"in": "query",
+			"name": "customer_login_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.table_calls.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.table_calls.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.table_calls.table_id": {
+			"in": "query",
+			"name": "table_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.table_calls.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
 			"required": false,
 			"type": "string"
 		},
@@ -41928,6 +42209,43 @@
 				"tags": ["(rpc) cohort_retention"]
 			}
 		},
+		"/rpc/counter_ack_call": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app: app.counter_ack_call at the current time",
+							"properties": {
+								"p_call": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_call"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_ack_call at the current time",
+				"tags": ["(rpc) counter_ack_call"]
+			}
+		},
 		"/rpc/counter_menu": {
 			"get": {
 				"parameters": [
@@ -42082,6 +42400,66 @@
 				"tags": ["(rpc) counter_set_sold_out"]
 			}
 		},
+		"/rpc/counter_table_map": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_table_map at the current time",
+				"tags": ["(rpc) counter_table_map"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app: app.counter_table_map at the current time",
+							"properties": {
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app: app.counter_table_map at the current time",
+				"tags": ["(rpc) counter_table_map"]
+			}
+		},
 		"/rpc/coupon_discount_days": {
 			"get": {
 				"parameters": [
@@ -42151,6 +42529,47 @@
 				},
 				"summary": "information only (FR-CMP-12): the discount days of a calendar year of the items a reward discounts (its reward items, or every item but the excluded ones), from item_discount_days over the reward's stores (every active store for a tenant-wide reward, at most 50), with the dated discount-days limit in force at the year's end or today and whether an item is over it; never blocks a save; as the caller",
 				"tags": ["(rpc) coupon_discount_days"]
+			}
+		},
+		"/rpc/customer_call_staff": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_call_staff at the current time",
+							"properties": {
+								"p_store_code": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_table_token": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_code", "p_table_token"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_call_staff at the current time",
+				"tags": ["(rpc) customer_call_staff"]
 			}
 		},
 		"/rpc/customer_confirm_bill": {
@@ -42824,6 +43243,47 @@
 				},
 				"summary": "RPC: app.customer_submit_counter_claim at now()",
 				"tags": ["(rpc) customer_submit_counter_claim"]
+			}
+		},
+		"/rpc/customer_table": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App: app.customer_table at the current time",
+							"properties": {
+								"p_store_code": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_table_token": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_code", "p_table_token"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App: app.customer_table at the current time",
+				"tags": ["(rpc) customer_table"]
 			}
 		},
 		"/rpc/customer_vouchers": {
@@ -48695,6 +49155,43 @@
 				"tags": ["(rpc) rfm_quintiles"]
 			}
 		},
+		"/rpc/rotate_table_qr": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the managers' table page: app.rotate_table_qr",
+							"properties": {
+								"p_table": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_table"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the managers' table page: app.rotate_table_qr",
+				"tags": ["(rpc) rotate_table_qr"]
+			}
+		},
 		"/rpc/same_weekday_baseline": {
 			"get": {
 				"parameters": [
@@ -50888,6 +51385,43 @@
 				"tags": ["(rpc) submit_request"]
 			}
 		},
+		"/rpc/table_qr_links": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the managers' table page: app.table_qr_links",
+							"properties": {
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the managers' table page: app.table_qr_links",
+				"tags": ["(rpc) table_qr_links"]
+			}
+		},
 		"/rpc/today_store_totals": {
 			"get": {
 				"produces": [
@@ -52846,6 +53380,226 @@
 				"tags": ["store_ordering_settings"]
 			}
 		},
+		"/store_tables": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.area"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.sort_order"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.qr_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.qr_token_sha256"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.qr_issued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the tables of a store with the names the owner chose (label, unique among the active tables case-insensitively) and their area; the QR columns are written only by the trigger: qr_version moves on rotation and on reactivation, and only the SHA-256 of the current token is kept",
+				"tags": ["store_tables"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.area"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.sort_order"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.qr_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.qr_token_sha256"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.qr_issued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/store_tables"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the tables of a store with the names the owner chose (label, unique among the active tables case-insensitively) and their area; the QR columns are written only by the trigger: qr_version moves on rotation and on reactivation, and only the SHA-256 of the current token is kept",
+				"tags": ["store_tables"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.label"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.area"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.sort_order"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.active"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.qr_version"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.qr_token_sha256"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.qr_issued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_tables.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.store_tables"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the tables of a store with the names the owner chose (label, unique among the active tables case-insensitively) and their area; the QR columns are written only by the trigger: qr_version moves on rotation and on reactivation, and only the SHA-256 of the current token is kept",
+				"tags": ["store_tables"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.store_tables"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the tables of a store with the names the owner chose (label, unique among the active tables case-insensitively) and their area; the QR columns are written only by the trigger: qr_version moves on rotation and on reactivation, and only the SHA-256 of the current token is kept",
+				"tags": ["store_tables"]
+			}
+		},
 		"/stores": {
 			"delete": {
 				"parameters": [
@@ -53834,6 +54588,172 @@
 					}
 				},
 				"tags": ["sync_runs"]
+			}
+		},
+		"/table_calls": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.table_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.acknowledged_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.acknowledged_by"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "\"Gọi nhân viên\" calls of a table: at most one open call per table, closed by the counter's \"Tới ngay\" with who and when; written only by customer_call_staff and counter_ack_call",
+				"tags": ["table_calls"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.table_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.acknowledged_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.acknowledged_by"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/table_calls"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "\"Gọi nhân viên\" calls of a table: at most one open call per table, closed by the counter's \"Tới ngay\" with who and when; written only by customer_call_staff and counter_ack_call",
+				"tags": ["table_calls"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.table_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.acknowledged_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.table_calls.acknowledged_by"
+					},
+					{
+						"$ref": "#/parameters/body.table_calls"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "\"Gọi nhân viên\" calls of a table: at most one open call per table, closed by the counter's \"Tới ngay\" with who and when; written only by customer_call_staff and counter_ack_call",
+				"tags": ["table_calls"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.table_calls"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "\"Gọi nhân viên\" calls of a table: at most one open call per table, closed by the counter's \"Tới ngay\" with who and when; written only by customer_call_staff and counter_ack_call",
+				"tags": ["table_calls"]
 			}
 		},
 		"/targets": {
