@@ -307,7 +307,7 @@ select ok(
   has_function_privilege('service_role', 'public.web_submit_request(uuid, text, jsonb)', 'execute')
   and not has_function_privilege('authenticated', 'public.web_submit_request(uuid, text, jsonb)', 'execute')
   and has_function_privilege('authenticated', 'public.customer_submit_request(jsonb)', 'execute')
-  and has_function_privilege('authenticated', 'public.manager_answer_request(uuid, text, text, integer)', 'execute'),
+  and has_function_privilege('authenticated', 'public.manager_answer_request(uuid, text, text, integer, timestamptz)', 'execute'),
   'the website''s submission is for the service role only; the app''s and the inbox are for signed-in users'
 );
 select ok(

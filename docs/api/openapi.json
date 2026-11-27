@@ -9474,6 +9474,21 @@
 					"format": "int32",
 					"type": "integer"
 				},
+				"proposed_for": {
+					"description": "the other time an owner or manager proposed (\"Đề xuất giờ khác\"); kept as history once the request is confirmed (requested_for then takes it)",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"read_at": {
+					"description": "when an owner or manager of the store first opened the request (manager_request_read)",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"read_by": {
+					"description": "who first opened it",
+					"format": "uuid",
+					"type": "string"
+				},
 				"request_hash": {
 					"format": "text",
 					"type": "string"
@@ -21648,6 +21663,27 @@
 		"rowFilter.store_requests.party_size": {
 			"in": "query",
 			"name": "party_size",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.proposed_for": {
+			"description": "the other time an owner or manager proposed (\"Đề xuất giờ khác\"); kept as history once the request is confirmed (requested_for then takes it)",
+			"in": "query",
+			"name": "proposed_for",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.read_at": {
+			"description": "when an owner or manager of the store first opened the request (manager_request_read)",
+			"in": "query",
+			"name": "read_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.read_by": {
+			"description": "who first opened it",
+			"in": "query",
+			"name": "read_by",
 			"required": false,
 			"type": "string"
 		},
@@ -50826,7 +50862,7 @@
 						"name": "args",
 						"required": true,
 						"schema": {
-							"description": "RPC for the manager app (S10): app.manager_answer_request at the current time",
+							"description": "RPC for the manager app (S10, M01): app.manager_answer_request at the current time, with the time proposed for a proposal",
 							"properties": {
 								"p_expected_version": {
 									"format": "int32",
@@ -50834,6 +50870,10 @@
 								},
 								"p_message": {
 									"format": "text",
+									"type": "string"
+								},
+								"p_proposed_for": {
+									"format": "timestamp with time zone",
 									"type": "string"
 								},
 								"p_request": {
@@ -50868,7 +50908,7 @@
 						"description": "OK"
 					}
 				},
-				"summary": "RPC for the manager app (S10): app.manager_answer_request at the current time",
+				"summary": "RPC for the manager app (S10, M01): app.manager_answer_request at the current time, with the time proposed for a proposal",
 				"tags": ["(rpc) manager_answer_request"]
 			}
 		},
@@ -51240,6 +51280,43 @@
 				},
 				"summary": "RPC: app.manager_dismiss_blocked_signin",
 				"tags": ["(rpc) manager_dismiss_blocked_signin"]
+			}
+		},
+		"/rpc/manager_request_read": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the manager app (M01): app.manager_request_read at the current time",
+							"properties": {
+								"p_request": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_request"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app (M01): app.manager_request_read at the current time",
+				"tags": ["(rpc) manager_request_read"]
 			}
 		},
 		"/rpc/manager_requests": {
@@ -60290,6 +60367,15 @@
 						"$ref": "#/parameters/rowFilter.store_requests.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.store_requests.proposed_for"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.read_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.read_by"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -60374,6 +60460,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.store_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.proposed_for"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.read_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.read_by"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -60487,6 +60582,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.store_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.proposed_for"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.read_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.read_by"
 					},
 					{
 						"$ref": "#/parameters/body.store_requests"

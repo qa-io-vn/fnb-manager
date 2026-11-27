@@ -713,6 +713,11 @@ insert into matrix (fn, label, statement, expect) values
 ('customer_export_data', 'customer_export_data of the session',
   $$select (public.customer_export_data() ? 'orders')::text$$,
   '{"*": "DENY", "customer": "^ok:true$", "visitor": "^ok:true$", "customer_b": "^ok:true$"}'),
+-- Native till hardening (M01): opening a request is for owners and managers of its store (an unknown request is 42501
+-- for everyone).
+('manager_request_read', 'manager_request_read of an unknown request',
+  $$select public.manager_request_read('aaaaaaaa-aaaa-4aaa-8aaa-000000012091')::text$$,
+  '{"*": "DENY"}'),
 ('manager_approve_blocked_signin', 'manager_approve_blocked_signin of an unknown request',
   $$select public.manager_approve_blocked_signin('aaaaaaaa-aaaa-4aaa-8aaa-000000012094', 1, 'Synthetic', 'staff', null)::text$$,
   '{"*": "DENY"}');

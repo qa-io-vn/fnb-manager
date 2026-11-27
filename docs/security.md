@@ -347,6 +347,7 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Lift a customer's ordering block | scope (delete) | scope (delete) | no | no | no |
 | Look up a stamp card's member code and attach its holder to a counter order | scope | scope | scope | no | own code only (`customer_stamp_code`) |
 | Delete one's own account (never joined with a phone) and export one's own data | no | no | no | no | own (`customer_delete_account`, `customer_export_data`) |
+| Propose another time for a request; record its reading | scope | scope | no | no | cancel a proposed request of their own |
 | Read the OA webhook's events (`oa_events`), the binding codes, the pairing codes and wrong-code counts, a staff member's phone, the POS or Zalo token caches, the payload documents or anything in `app` | no | no | no | no | no |
 
 Destinations are created, linked and withdrawn through `security definer` functions and the CLI, not by direct writes.

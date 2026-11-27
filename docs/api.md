@@ -2991,7 +2991,7 @@ returns jsonb
 
 Tests: pgTAP `280_customer_account_deletion.sql`, rows in `120` and `47`.
 
-The requests inbox (step 7, migration `store_requests`, native-till.md section 12). A request is `{request_id (UUID), store (store code), kind ("booking", "workshop", "hold", "application"), name (1–60), phone, party_size (a booking: 1–30), at (an ISO instant with its offset, 30 minutes to 60 days ahead; required for a booking, a workshop and a hold), subject (1–100: the workshop, item or position; required but for a booking), note (1–500, one line)}`; any other key or type is `22023`. Submissions answer `{state: "submitted" | "refused", refusal, replayed, request}` with refusals `request_conflict`, `store_unknown`, `kind_not_offered`, `rate_limited` (with `retry_at`), `too_many_open_requests` (3 new ones), `name_invalid`, `phone_invalid`, `party_size_invalid`, `time_invalid`, `time_outside_hours` (a booking or a hold outside the store's opening hours or on a day an ordering closure covers; a store without hours is not checked; migration `web_request_hours`), `subject_invalid`, `note_invalid`; a request as the customer sees it is `{id, kind, store, status, party_size, requested_for, subject, note, created_at, answered_at, answer_message, cancelled_at, cancelled_by, version, contact_name}`, never the phone.
+The requests inbox (step 7, migration `store_requests`, native-till.md section 12). A request is `{request_id (UUID), store (store code), kind ("booking", "workshop", "hold", "application"), name (1–60), phone, party_size (a booking: 1–30), at (an ISO instant with its offset, 30 minutes to 60 days ahead; required for a booking, a workshop and a hold), subject (1–100: the workshop, item or position; required but for a booking), note (1–500, one line)}`; any other key or type is `22023`. Submissions answer `{state: "submitted" | "refused", refusal, replayed, request}` with refusals `request_conflict`, `store_unknown`, `kind_not_offered`, `rate_limited` (with `retry_at`), `too_many_open_requests` (3 new ones), `name_invalid`, `phone_invalid`, `party_size_invalid`, `time_invalid`, `time_outside_hours` (a booking or a hold outside the store's opening hours or on a day an ordering closure covers; a store without hours is not checked; migration `web_request_hours`), `subject_invalid`, `note_invalid`; a request as the customer sees it is `{id, kind, store, status, party_size, requested_for, proposed_for, subject, note, created_at, answered_at, answer_message, cancelled_at, cancelled_by, version, contact_name}`, never the phone; `status` is `new`, `proposed` (another time was proposed: `proposed_for`, with the message), `confirmed`, `declined` or `cancelled`.
 
 #### `public.customer_submit_request`
 
@@ -3022,7 +3022,7 @@ returns jsonb
 
 - **Status:** built (step 7).
 - **Who may call:** a customer session.
-- **Notes:** `{requests: [...]}`, the customer's own from the app, newest first (at most 50). Cancelling a new or confirmed one answers `{state: "cancelled" | "refused", refusal, replayed, request}`: `unknown_request` for another customer's or an unknown id, `not_allowed` once declined, a second cancel a replay.
+- **Notes:** `{requests: [...]}`, the customer's own from the app, newest first (at most 50). Cancelling a new, proposed or confirmed one (declining a time proposed is cancelling) answers `{state: "cancelled" | "refused", refusal, replayed, request}`: `unknown_request` for another customer's or an unknown id, `not_allowed` once declined, a second cancel a replay.
 
 #### `public.manager_requests`
 
@@ -3033,20 +3033,31 @@ returns jsonb
 
 - **Status:** built (step 7).
 - **Who may call:** an owner or manager whose scope holds the store (`42501` otherwise).
-- **Notes:** the inbox (S10): `{requests, new, overdue}`, new requests first, each with `channel`, `contact_name`, `contact_phone`, `answered_by`, `answer_due_at` and `overdue` (new and past `request_answer_minutes`). A status other than the four or a limit outside 1–200 is `22023`.
+- **Notes:** the inbox (S10, M01): `{requests, new, unread, overdue}`, new requests first, each with `channel`, `contact_name`, `contact_phone`, `answered_by`, `read_by`, `read_at`, `answer_due_at` and `overdue` (new and past `request_answer_minutes`; a proposed request is answered, so it is not overdue); `unread` counts the new ones nobody opened. A status other than the five (`new`, `proposed`, `confirmed`, `declined`, `cancelled`) or a limit outside 1–200 is `22023`.
 
 #### `public.manager_answer_request`
 
 ```sql
-public.manager_answer_request(p_request uuid, p_status text, p_message text, p_expected_version integer)
+public.manager_answer_request(p_request uuid, p_status text, p_message text, p_expected_version integer, p_proposed_for timestamp with time zone DEFAULT NULL::timestamp with time zone)
 returns jsonb
 ```
 
 - **Status:** built (step 7).
 - **Who may call:** an owner or manager of the request's store (`42501` otherwise, the same for an unknown id).
-- **Notes:** `confirmed`, `declined` or `cancelled` for a new request, `cancelled` for a confirmed one; declining and cancelling need a message (1–500). Answers `{state: "answered" | "conflict" | "refused", refusal, replayed, request}`: the same answer again is a replay, another version a conflict, any other move `not_allowed`. Records who answered, when and the message.
+- **Notes:** `confirmed`, `declined`, `cancelled` or `proposed` for a new request; `confirmed` (the customer agreed: the request moves to the time proposed), `declined`, `cancelled` or `proposed` again for a proposed one; `cancelled` for a confirmed one. Declining, cancelling and proposing need a message (1–500); `p_proposed_for` is required for `proposed` and refused with any other status (`22023`): 30 minutes to 60 days ahead and not the time asked (`time_invalid`), inside the opening hours for a booking or a hold (`time_outside_hours`) ("Đề xuất giờ khác", M01, migration `request_proposals_and_reads`). Answers `{state: "answered" | "conflict" | "refused", refusal, replayed, request}`: the same answer again is a replay, another version a conflict, any other move `not_allowed`. Records who answered, when and the message, and counts as a reading.
 
-Tests: pgTAP `272_store_requests.sql`, rows in `120`, `121`, `03`, `47` and `170`.
+#### `public.manager_request_read`
+
+```sql
+public.manager_request_read(p_request uuid)
+returns jsonb
+```
+
+- **Status:** built (2026-11-28, migration `request_proposals_and_reads`).
+- **Who may call:** an owner or manager of the request's store (`42501` otherwise, the same for an unknown id).
+- **Notes:** opening a request in the inbox (M01): the first opening is recorded with who and when (`read_by`, `read_at`), later ones change nothing; answers `{state: "read", request}` as the manager sees it. Answering a request also counts as reading it.
+
+Tests: pgTAP `272_store_requests.sql`, `281_web_request_hours.sql`, `282_request_proposals_and_reads.sql`, rows in `120`, `121`, `03`, `47` and `170`.
 
 Shifts (step 8, migration `staff_shifts`, native-till.md section 12). A shift as its person sees it is `{id, store_id, business_date, clock_in_at, clock_out_at, hours, opening_cash, counted_cash, status, closed_at, close_note, difference_reason, difference_note, version}`, with `expected_cash` and `cash_difference` once counted (the count is blind); a manager also sees `user_id`, `name` (the roster's), `closed_by` and the expected cash at any time.
 
