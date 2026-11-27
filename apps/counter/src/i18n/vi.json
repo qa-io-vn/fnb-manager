@@ -228,6 +228,7 @@
 	"pay.refusal.order_cancelled": "Đơn đã bị hủy.",
 	"pay.refusal.not_payable": "Đơn này không thu tiền tại quầy được.",
 	"pay.refusal.amount_differs": "Số tiền khác tổng đơn. Mở lại đơn.",
+	"pay.refusal.shift_required": "Bạn chưa vào ca ở quầy này. Vào ca rồi thu tiền.",
 	"pay.refusal.failed": "Chưa thu được. Thử lại.",
 	"cancel.title": "Hủy đơn {order}",
 	"cancel.reasonLegend": "Lý do hủy",

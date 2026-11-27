@@ -7296,6 +7296,21 @@
 					"format": "uuid",
 					"type": "string"
 				},
+				"member_attached_at": {
+					"description": "when the counter attached the member",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"member_attached_by": {
+					"description": "who attached the member",
+					"format": "uuid",
+					"type": "string"
+				},
+				"member_login_id": {
+					"description": "the stamp card holder the counter attached to a counter order by their member code (C20, Q01): the order's drinks earn stamps on that card when it completes; set only by counter_attach_member, cleared when the login is deleted; never an owner of the order (the customer cannot read, cancel or pay it)",
+					"format": "uuid",
+					"type": "string"
+				},
 				"menu_version": {
 					"default": 0,
 					"format": "int64",
@@ -8782,6 +8797,21 @@
 					"format": "timestamp with time zone",
 					"type": "string"
 				},
+				"difference_note": {
+					"description": "the counting person's note with the reason (1 to 200 characters on one line)",
+					"format": "text",
+					"type": "string"
+				},
+				"difference_reason": {
+					"description": "the counting person's reason for a cash difference (Q02): wrong_change (Trả nhầm tiền thừa), unrecorded_order (Quên ghi đơn), petty_cash (Chi tiền lặt vặt) or unknown (Chưa rõ nguyên nhân); set only by staff_clock_out on a shift whose count differs, cleared when a recount matches",
+					"format": "text",
+					"type": "string"
+				},
+				"difference_reason_at": {
+					"description": "when the person gave the reason",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
 				"expected_cash": {
 					"format": "numeric",
 					"type": "number"
@@ -9289,6 +9319,7 @@
 				},
 				"prep_minutes": {
 					"default": 10,
+					"description": "the store's preparation time in minutes (0 to 120, 10 by default): the earliest takeaway pick-up after placement, and the time after acceptance (or after staff start it) at which an order is estimated ready (ready_estimate_at)",
 					"format": "int32",
 					"type": "integer"
 				},
@@ -9442,6 +9473,21 @@
 				"party_size": {
 					"format": "int32",
 					"type": "integer"
+				},
+				"proposed_for": {
+					"description": "the other time an owner or manager proposed (\"Đề xuất giờ khác\"); kept as history once the request is confirmed (requested_for then takes it)",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"read_at": {
+					"description": "when an owner or manager of the store first opened the request (manager_request_read)",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"read_by": {
+					"description": "who first opened it",
+					"format": "uuid",
+					"type": "string"
 				},
 				"request_hash": {
 					"format": "text",
@@ -19335,6 +19381,27 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.orders.member_attached_at": {
+			"description": "when the counter attached the member",
+			"in": "query",
+			"name": "member_attached_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.member_attached_by": {
+			"description": "who attached the member",
+			"in": "query",
+			"name": "member_attached_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.member_login_id": {
+			"description": "the stamp card holder the counter attached to a counter order by their member code (C20, Q01): the order's drinks earn stamps on that card when it completes; set only by counter_attach_member, cleared when the login is deleted; never an owner of the order (the customer cannot read, cancel or pay it)",
+			"in": "query",
+			"name": "member_login_id",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.orders.menu_version": {
 			"in": "query",
 			"name": "menu_version",
@@ -20901,6 +20968,27 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.staff_shifts.difference_note": {
+			"description": "the counting person's note with the reason (1 to 200 characters on one line)",
+			"in": "query",
+			"name": "difference_note",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.difference_reason": {
+			"description": "the counting person's reason for a cash difference (Q02): wrong_change (Trả nhầm tiền thừa), unrecorded_order (Quên ghi đơn), petty_cash (Chi tiền lặt vặt) or unknown (Chưa rõ nguyên nhân); set only by staff_clock_out on a shift whose count differs, cleared when a recount matches",
+			"in": "query",
+			"name": "difference_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.difference_reason_at": {
+			"description": "when the person gave the reason",
+			"in": "query",
+			"name": "difference_reason_at",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.staff_shifts.expected_cash": {
 			"in": "query",
 			"name": "expected_cash",
@@ -21411,6 +21499,7 @@
 			"type": "string"
 		},
 		"rowFilter.store_ordering_settings.prep_minutes": {
+			"description": "the store's preparation time in minutes (0 to 120, 10 by default): the earliest takeaway pick-up after placement, and the time after acceptance (or after staff start it) at which an order is estimated ready (ready_estimate_at)",
 			"in": "query",
 			"name": "prep_minutes",
 			"required": false,
@@ -21574,6 +21663,27 @@
 		"rowFilter.store_requests.party_size": {
 			"in": "query",
 			"name": "party_size",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.proposed_for": {
+			"description": "the other time an owner or manager proposed (\"Đề xuất giờ khác\"); kept as history once the request is confirmed (requested_for then takes it)",
+			"in": "query",
+			"name": "proposed_for",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.read_at": {
+			"description": "when an owner or manager of the store first opened the request (manager_request_read)",
+			"in": "query",
+			"name": "read_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.read_by": {
+			"description": "who first opened it",
+			"in": "query",
+			"name": "read_by",
 			"required": false,
 			"type": "string"
 		},
@@ -42003,6 +42113,15 @@
 						"$ref": "#/parameters/rowFilter.orders.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.orders.member_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_attached_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_attached_by"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -42132,6 +42251,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.orders.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_attached_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_attached_by"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -42290,6 +42418,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.orders.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_attached_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_attached_by"
 					},
 					{
 						"$ref": "#/parameters/body.orders"
@@ -46164,6 +46301,51 @@
 				"tags": ["(rpc) counter_ack_call"]
 			}
 		},
+		"/rpc/counter_attach_member": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app (Q01): app.counter_attach_member at the current time",
+							"properties": {
+								"p_code": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_expected_version": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_order": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_order", "p_code", "p_expected_version"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app (Q01): app.counter_attach_member at the current time",
+				"tags": ["(rpc) counter_attach_member"]
+			}
+		},
 		"/rpc/counter_board": {
 			"post": {
 				"parameters": [
@@ -46243,6 +46425,47 @@
 				},
 				"summary": "RPC for the counter web app: app.counter_create_order at the current time",
 				"tags": ["(rpc) counter_create_order"]
+			}
+		},
+		"/rpc/counter_member_lookup": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app (Q01): app.counter_member_lookup at the current time",
+							"properties": {
+								"p_code": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store", "p_code"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app (Q01): app.counter_member_lookup at the current time",
+				"tags": ["(rpc) counter_member_lookup"]
 			}
 		},
 		"/rpc/counter_menu": {
@@ -47053,6 +47276,43 @@
 				"tags": ["(rpc) customer_coupons"]
 			}
 		},
+		"/rpc/customer_delete_account": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C19): app.customer_delete_account at the current time",
+							"properties": {
+								"p_confirm": {
+									"format": "boolean",
+									"type": "boolean"
+								}
+							},
+							"required": ["p_confirm"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C19): app.customer_delete_account at the current time",
+				"tags": ["(rpc) customer_delete_account"]
+			}
+		},
 		"/rpc/customer_dispute_bill": {
 			"post": {
 				"parameters": [
@@ -47088,6 +47348,36 @@
 				},
 				"summary": "RPC: app.customer_dispute_bill at now()",
 				"tags": ["(rpc) customer_dispute_bill"]
+			}
+		},
+		"/rpc/customer_export_data": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C19): app.customer_export_data at the current time",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C19): app.customer_export_data at the current time",
+				"tags": ["(rpc) customer_export_data"]
 			}
 		},
 		"/rpc/customer_home": {
@@ -47743,6 +48033,36 @@
 				},
 				"summary": "RPC for the customer Mini App: app.customer_stamp_card at the current time",
 				"tags": ["(rpc) customer_stamp_card"]
+			}
+		},
+		"/rpc/customer_stamp_code": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C20): app.customer_stamp_code at the current time",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C20): app.customer_stamp_code at the current time",
+				"tags": ["(rpc) customer_stamp_code"]
 			}
 		},
 		"/rpc/customer_stop_marketing": {
@@ -50542,7 +50862,7 @@
 						"name": "args",
 						"required": true,
 						"schema": {
-							"description": "RPC for the manager app (S10): app.manager_answer_request at the current time",
+							"description": "RPC for the manager app (S10, M01): app.manager_answer_request at the current time, with the time proposed for a proposal",
 							"properties": {
 								"p_expected_version": {
 									"format": "int32",
@@ -50550,6 +50870,10 @@
 								},
 								"p_message": {
 									"format": "text",
+									"type": "string"
+								},
+								"p_proposed_for": {
+									"format": "timestamp with time zone",
 									"type": "string"
 								},
 								"p_request": {
@@ -50584,7 +50908,7 @@
 						"description": "OK"
 					}
 				},
-				"summary": "RPC for the manager app (S10): app.manager_answer_request at the current time",
+				"summary": "RPC for the manager app (S10, M01): app.manager_answer_request at the current time, with the time proposed for a proposal",
 				"tags": ["(rpc) manager_answer_request"]
 			}
 		},
@@ -50956,6 +51280,43 @@
 				},
 				"summary": "RPC: app.manager_dismiss_blocked_signin",
 				"tags": ["(rpc) manager_dismiss_blocked_signin"]
+			}
+		},
+		"/rpc/manager_request_read": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the manager app (M01): app.manager_request_read at the current time",
+							"properties": {
+								"p_request": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_request"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the manager app (M01): app.manager_request_read at the current time",
+				"tags": ["(rpc) manager_request_read"]
 			}
 		},
 		"/rpc/manager_requests": {
@@ -55553,11 +55914,19 @@
 						"name": "args",
 						"required": true,
 						"schema": {
-							"description": "RPC for the counter web app (\"Ra ca\"): app.staff_clock_out at the current time",
+							"description": "RPC for the counter web app (\"Ra ca\", Q02): app.staff_clock_out at the current time, with the person's reason and note for a difference",
 							"properties": {
 								"p_counted_cash": {
 									"format": "numeric",
 									"type": "number"
+								},
+								"p_note": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_reason": {
+									"format": "text",
+									"type": "string"
 								}
 							},
 							"required": ["p_counted_cash"],
@@ -55578,7 +55947,7 @@
 						"description": "OK"
 					}
 				},
-				"summary": "RPC for the counter web app (\"Ra ca\"): app.staff_clock_out at the current time",
+				"summary": "RPC for the counter web app (\"Ra ca\", Q02): app.staff_clock_out at the current time, with the person's reason and note for a difference",
 				"tags": ["(rpc) staff_clock_out"]
 			}
 		},
@@ -58269,6 +58638,15 @@
 						"$ref": "#/parameters/rowFilter.staff_shifts.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_reason_at"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -58335,6 +58713,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.staff_shifts.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_reason_at"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -58430,6 +58817,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.staff_shifts.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_reason_at"
 					},
 					{
 						"$ref": "#/parameters/body.staff_shifts"
@@ -59971,6 +60367,15 @@
 						"$ref": "#/parameters/rowFilter.store_requests.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.store_requests.proposed_for"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.read_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.read_by"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -60055,6 +60460,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.store_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.proposed_for"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.read_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.read_by"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -60168,6 +60582,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.store_requests.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.proposed_for"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.read_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.read_by"
 					},
 					{
 						"$ref": "#/parameters/body.store_requests"

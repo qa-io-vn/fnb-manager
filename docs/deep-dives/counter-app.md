@@ -63,7 +63,7 @@ Layout: a top bar (the brand, "Quầy", the shift, the sound, the network, the p
 - An order accepted longer ago than the store's `late_order_minutes` is drawn red with "Chờ lâu · N phút" (the database's `late` flag).
 - A failed poll keeps every order shown and says "Mất mạng"; the first answer after it says how many orders arrived meanwhile. Actions are not queued offline. A refused poll (42501: the person was locked or lost the store) signs the person out at once.
 - Two devices on one order: each action names the version it saw; the stale one gets `conflict` with the current order, which the screen shows with a toast. The same step twice is a replay.
-- Completing an unpaid order is refused by the database (`payment_required`) and the screen says why; "Thu tiền" opens the payment dialog. Cash needs the cashier's open shift (the drawer is compared with the cash they recorded).
+- Completing an unpaid order is refused by the database (`payment_required`) and the screen says why; "Thu tiền" opens the payment dialog. Cash and card need the cashier's open shift at the store (the drawer is compared with the cash they recorded); the database refuses a payment without one (`shift_required`, "Bạn chưa vào ca ở quầy này"), owners and managers included.
 
 ## 4. Shifts
 
@@ -75,12 +75,12 @@ Clocking in takes the counter's code (the printed QR holds the app's address wit
 
 ## 6. Decisions and deviations from the designs (recorded 2026-11-28)
 
-1. The count at clock-out is blind (the database's rule), so Q02's "Đối chiếu" column before the count is shown only after it; the cashier's reason for a difference is chosen by the confirming manager and stored in the close note: the database has no field for the cashier's own reason.
+1. The count at clock-out is blind (the database's rule), so Q02's "Đối chiếu" column before the count is shown only after it; the cashier's reason for a difference is chosen by the confirming manager and stored in the close note: the database has no field for the cashier's own reason. Since migration `shift_difference_reason` (2026-11-28) it has one: the clock-out answer says `reason_required`, and the cashier counts again with the reason and a note (`staff_clock_out(p_counted_cash, p_reason, p_note)`), which the manager then reads beside the numbers; the screen does not ask for it yet.
 2. The manager PIN at the counter (Q02, decision D3) is not built: the database has no PIN; the manager confirms from their own device.
-3. VietQR, the wallet, the member scan (C20), the company invoice and the e-invoice status of Q01 wait for the providers and their functions; the payment dialog offers cash and card.
+3. VietQR, the wallet, the member scan (C20), the company invoice and the e-invoice status of Q01 wait for the providers and their functions; the payment dialog offers cash and card. The member scan's server side exists since migration `stamp_member_codes` (2026-11-28: `counter_member_lookup`, `counter_attach_member`); the screen does not call it yet.
 4. A counter order enters the queue when it is created (the database accepts it at once, unpaid) and is paid right after; closing the payment dialog leaves it in the queue as "Chưa thu tiền" (Q01 drew payment before the queue).
 5. The roster has two roles (staff and manager); the designs' cashier, barista and waiter are not separate roles. The database lets a manager add a manager; the screen offers the manager role to owners only (D10).
-6. The requests inbox answers confirm, decline and cancel with a message; "propose another time" and "replied" (M01) have no state in the database, so the answer itself stops the clock and a new time is written in the message.
+6. The requests inbox answers confirm, decline and cancel with a message; "propose another time" and "replied" (M01) have no state in the database, so the answer itself stops the clock and a new time is written in the message. Since migration `request_proposals_and_reads` (2026-11-28) the database has the proposal (`manager_answer_request(..., p_proposed_for)`, status `proposed`) and the first reading (`manager_request_read`, the inbox's `unread`); the screen does not use them yet. "Replied" stays the answer itself.
 7. Fonts and the brand's art are the system font and the tile wordmark until the font and art pieces of ADR-059 are built.
 8. A member of several stores chooses the device's store at sign-in; the full store switch (S14) comes later.
 9. Left for later, as the plan orders: online payment flows, e-invoices, ZBS, the roster (S07), payroll (S11), stock (S08), the weekly report (S12), promotions (S13), the store switch (S14).

@@ -105,6 +105,10 @@ insert into public.store_ordering_settings (store_id, tenant_id, till_mode, orde
 select store_a1, tenant_a, 'native', true, array['table', 'takeaway'], array['counter', 'vietqr'], false from fx union all
 select store_a2, tenant_a, 'native', true, array['table'], array['counter'], false from fx union all
 select store_b1, tenant_b, 'native', true, array['table'], array['counter'], false from fx;
+-- Cash and card are taken only by a person on shift at the store (migration counter_payment_needs_shift): the staff
+-- member of A1 who records the payments of these suites is clocked in there for the whole month.
+insert into public.staff_shifts (tenant_id, store_id, user_id, business_date, clock_in_at, opening_cash)
+select tenant_a, store_a1, staff_u, date '2026-11-01', timestamptz '2026-11-01 00:00+07', 0 from fx;
 
 insert into public.menu_categories (id, tenant_id, brand_id, name, sort_order)
 select pg_temp.id('cat_drink'), tenant_a, brand_a, 'Đồ uống', 10 from fx union all
@@ -303,7 +307,7 @@ select ok(
   has_function_privilege('service_role', 'public.web_submit_request(uuid, text, jsonb)', 'execute')
   and not has_function_privilege('authenticated', 'public.web_submit_request(uuid, text, jsonb)', 'execute')
   and has_function_privilege('authenticated', 'public.customer_submit_request(jsonb)', 'execute')
-  and has_function_privilege('authenticated', 'public.manager_answer_request(uuid, text, text, integer)', 'execute'),
+  and has_function_privilege('authenticated', 'public.manager_answer_request(uuid, text, text, integer, timestamptz)', 'execute'),
   'the website''s submission is for the service role only; the app''s and the inbox are for signed-in users'
 );
 select ok(

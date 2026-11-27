@@ -142,6 +142,11 @@ export async function openOrderingFixture(
 			values (${tenantId}::uuid, ${staffId}::uuid, 'staff', array[${storeId}::uuid]),
 				(${tenantId}::uuid, ${ownerId}::uuid, 'owner', array[${storeId}::uuid])
 		`;
+		// Cash and card are taken only by a person on shift at the store (migration counter_payment_needs_shift).
+		await sql`
+			insert into public.staff_shifts (tenant_id, store_id, user_id, business_date, clock_in_at, opening_cash)
+			values (${tenantId}::uuid, ${storeId}::uuid, ${staffId}::uuid, (now() at time zone 'Asia/Ho_Chi_Minh')::date, now() - interval '1 minute', 0)
+		`;
 		if (options.ownBrand) {
 			const brandId = randomUUID();
 			const appId = randomUUID();

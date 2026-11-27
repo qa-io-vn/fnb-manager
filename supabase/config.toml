@@ -471,3 +471,11 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/counter-session/deno.json"
 entrypoint = "./functions/counter-session/index.ts"
+
+# The website's forms (native-till.md section 12): public, no login; CORS and the brand come from WEB_REQUEST_ORIGINS,
+# the client key from WEB_REQUEST_KEY.
+[functions.web-requests]
+enabled = true
+verify_jwt = false
+import_map = "./functions/web-requests/deno.json"
+entrypoint = "./functions/web-requests/index.ts"
