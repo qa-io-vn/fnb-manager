@@ -1,6 +1,7 @@
 import { useI18n } from "@fnb/zalo-mini/i18n";
 import { type ReactNode, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { CreateOrderPage } from "./create/create-order-page";
 import { useMember, useSession } from "./lib/session";
 import { clockOf } from "./lib/time";
 import { ManagerHome } from "./manager/manager-home";
@@ -27,7 +28,7 @@ import {
 	TableIcon,
 	WifiOffIcon,
 } from "./ui/icons";
-import { PageTitle, PlainNote } from "./ui/kit";
+import { PlainNote } from "./ui/kit";
 
 /** Whether the browser says it is online; the board's polls say more once they run. */
 export function useBrowserOnline(): boolean {
@@ -131,10 +132,6 @@ function SoundChip() {
 	);
 }
 
-function Placeholder({ title }: { readonly title: string }) {
-	return <PageTitle>{title}</PageTitle>;
-}
-
 /** What a staff member sees at a manager's address: the database refuses them anyway (hiding is never the control). */
 export function ManagersOnly() {
 	const { t } = useI18n();
@@ -204,10 +201,7 @@ function Frame({ manager }: { readonly manager: boolean }) {
 				<Route path="/" element={<Navigate to="/don" replace />} />
 				<Route path="/don" element={<QueuePage />} />
 				<Route path="/don/:id" element={<OrderDetailPage />} />
-				<Route
-					path="/tao-don"
-					element={<Placeholder title={t("queue.newOrder")} />}
-				/>
+				<Route path="/tao-don" element={<CreateOrderPage />} />
 				<Route path="/ban" element={<TablesPage />} />
 				<Route path="/mon" element={<SoldOutPage />} />
 				<Route path="/ca" element={<ShiftPage />} />
