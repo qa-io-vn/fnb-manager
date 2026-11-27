@@ -43,3 +43,11 @@ targetRules = ["generic-api-key"]
 regexes = [
 	'''Ban12-forged''',
 ]
+
+[[allowlists]]
+description = "The synthetic idempotency keys of the online payment tests (ADR-067), which name a payment attempt and are no secret"
+targetRules = ["generic-api-key"]
+regexes = [
+	'''^key-12345678$''',
+	'''^synthetic-key-120$''',
+]
