@@ -44,7 +44,7 @@ describe("ordering at a table", () => {
 			"data-price",
 			"29000",
 		);
-		fireEvent.click(screen.getByRole("button", { name: "Xem giỏ: 1 món" }));
+		fireEvent.click(within(screen.getByTestId("cart-bar")).getByRole("button"));
 		expect(await screen.findByTestId("cart-table")).toHaveTextContent(
 			"Gọi tại bàn Bàn 12",
 		);
@@ -123,7 +123,7 @@ describe("ordering at a table", () => {
 	it("flags an item sold out at the counter while it is in the basket and refuses to go on (criterion 2)", async () => {
 		const { till } = await openMenu();
 		await addBlackCoffee();
-		fireEvent.click(screen.getByRole("button", { name: "Xem giỏ: 1 món" }));
+		fireEvent.click(within(screen.getByTestId("cart-bar")).getByRole("button"));
 		const line = await screen.findByTestId("cart-line");
 		expect(line).toHaveAttribute("data-sold-out", "false");
 		expect(screen.getByTestId("cart-continue")).toBeEnabled();
@@ -154,7 +154,7 @@ describe("ordering at a table", () => {
 		await screen.findByTestId("ordering-menu");
 		const { till } = rendered;
 		await addBlackCoffee();
-		fireEvent.click(screen.getByRole("button", { name: "Xem giỏ: 1 món" }));
+		fireEvent.click(within(screen.getByTestId("cart-bar")).getByRole("button"));
 		fireEvent.click(await screen.findByTestId("cart-continue"));
 		const submit = await screen.findByTestId("checkout-submit");
 		await waitFor(() => expect(submit).toBeEnabled());
@@ -177,7 +177,7 @@ describe("ordering at a table", () => {
 		fireEvent.change(note, { target: { value: hostile } });
 		fireEvent.click(screen.getByTestId("item-add"));
 		fireEvent.click(
-			await screen.findByRole("button", { name: "Xem giỏ: 1 món" }),
+			within(await screen.findByTestId("cart-bar")).getByRole("button"),
 		);
 		const shown = await screen.findByTestId("cart-line-note");
 		expect(shown).toHaveTextContent(hostile);
@@ -271,7 +271,7 @@ describe("the shell of the ordering build", () => {
 		for (const label of ["Trang chủ", "Thực đơn", "Tích điểm", "Tôi"])
 			expect(within(tabs).getByText(label)).toBeInTheDocument();
 		await addBlackCoffee();
-		fireEvent.click(screen.getByRole("button", { name: "Xem giỏ: 1 món" }));
+		fireEvent.click(within(screen.getByTestId("cart-bar")).getByRole("button"));
 		fireEvent.click(await screen.findByTestId("cart-continue"));
 		const submit = await screen.findByTestId("checkout-submit");
 		await waitFor(() => expect(submit).toBeEnabled());
@@ -290,7 +290,7 @@ describe("the shell of the ordering build", () => {
 	it("keeps the stamp card of the Zalo account on Tích điểm, without a phone", async () => {
 		const { till } = await openMenu();
 		await addBlackCoffee();
-		fireEvent.click(screen.getByRole("button", { name: "Xem giỏ: 1 món" }));
+		fireEvent.click(within(screen.getByTestId("cart-bar")).getByRole("button"));
 		fireEvent.click(await screen.findByTestId("cart-continue"));
 		const submit = await screen.findByTestId("checkout-submit");
 		await waitFor(() => expect(submit).toBeEnabled());

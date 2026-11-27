@@ -289,7 +289,6 @@ function ReadyMenu({ menu }: { readonly menu: Menu }) {
 				<button
 					type="button"
 					onClick={() => navigate("/gio-hang")}
-					aria-label={t("menu.cartBarLabel", { count: inCart })}
 					className="flex min-h-14 w-full items-center justify-between gap-3 rounded-control bg-inverse px-4 text-inverse-ink shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
 				>
 					<span className="flex items-center gap-2 text-[15px] font-bold">

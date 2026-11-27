@@ -51,10 +51,6 @@ export function ActiveOrderStrip() {
 				className="flex min-h-11 w-full items-center justify-between gap-2 rounded-control bg-neutral-soft px-3 text-left text-[15px] text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
 				data-testid="active-order-strip"
 				data-order-id={latest.id}
-				aria-label={t("strip.label", {
-					number: latest.displayNo ?? "",
-					status,
-				})}
 			>
 				<span className="truncate">
 					<span className="font-bold">{latest.displayNo ?? ""}</span> · {status}

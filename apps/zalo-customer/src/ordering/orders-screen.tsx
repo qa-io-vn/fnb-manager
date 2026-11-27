@@ -47,11 +47,6 @@ function OrderCard({ order }: { readonly order: OrderSummary }) {
 			<button
 				type="button"
 				onClick={() => navigate(`/don/${order.id}`)}
-				aria-label={t("orders.cardLabel", {
-					number: order.displayNo ?? "",
-					date,
-					status: t(status.key),
-				})}
 				className="flex w-full items-center gap-3 rounded-card-2xl border-card border-line/60 bg-surface-raised p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
 				data-testid="order-row"
 				data-status={order.status}

@@ -68,7 +68,6 @@ function Tiles() {
 					onClick={() =>
 						table?.state === "ok" ? navigate("/thuc-don") : scan()
 					}
-					aria-label={`${t("ordering.tileTable")}, ${tableSub}`}
 					data-testid="home-tile-table"
 					data-state={table?.state === "ok" ? "table" : "scan"}
 				>
