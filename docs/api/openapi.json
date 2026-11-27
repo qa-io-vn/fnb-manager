@@ -7296,6 +7296,21 @@
 					"format": "uuid",
 					"type": "string"
 				},
+				"member_attached_at": {
+					"description": "when the counter attached the member",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"member_attached_by": {
+					"description": "who attached the member",
+					"format": "uuid",
+					"type": "string"
+				},
+				"member_login_id": {
+					"description": "the stamp card holder the counter attached to a counter order by their member code (C20, Q01): the order's drinks earn stamps on that card when it completes; set only by counter_attach_member, cleared when the login is deleted; never an owner of the order (the customer cannot read, cancel or pay it)",
+					"format": "uuid",
+					"type": "string"
+				},
 				"menu_version": {
 					"default": 0,
 					"format": "int64",
@@ -19348,6 +19363,27 @@
 		"rowFilter.orders.id": {
 			"in": "query",
 			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.member_attached_at": {
+			"description": "when the counter attached the member",
+			"in": "query",
+			"name": "member_attached_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.member_attached_by": {
+			"description": "who attached the member",
+			"in": "query",
+			"name": "member_attached_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.orders.member_login_id": {
+			"description": "the stamp card holder the counter attached to a counter order by their member code (C20, Q01): the order's drinks earn stamps on that card when it completes; set only by counter_attach_member, cleared when the login is deleted; never an owner of the order (the customer cannot read, cancel or pay it)",
+			"in": "query",
+			"name": "member_login_id",
 			"required": false,
 			"type": "string"
 		},
@@ -42041,6 +42077,15 @@
 						"$ref": "#/parameters/rowFilter.orders.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.orders.member_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_attached_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_attached_by"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -42170,6 +42215,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.orders.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_attached_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_attached_by"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -42328,6 +42382,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.orders.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_attached_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.orders.member_attached_by"
 					},
 					{
 						"$ref": "#/parameters/body.orders"
@@ -46202,6 +46265,51 @@
 				"tags": ["(rpc) counter_ack_call"]
 			}
 		},
+		"/rpc/counter_attach_member": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app (Q01): app.counter_attach_member at the current time",
+							"properties": {
+								"p_code": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_expected_version": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_order": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_order", "p_code", "p_expected_version"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app (Q01): app.counter_attach_member at the current time",
+				"tags": ["(rpc) counter_attach_member"]
+			}
+		},
 		"/rpc/counter_board": {
 			"post": {
 				"parameters": [
@@ -46281,6 +46389,47 @@
 				},
 				"summary": "RPC for the counter web app: app.counter_create_order at the current time",
 				"tags": ["(rpc) counter_create_order"]
+			}
+		},
+		"/rpc/counter_member_lookup": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app (Q01): app.counter_member_lookup at the current time",
+							"properties": {
+								"p_code": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store", "p_code"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app (Q01): app.counter_member_lookup at the current time",
+				"tags": ["(rpc) counter_member_lookup"]
 			}
 		},
 		"/rpc/counter_menu": {
@@ -47781,6 +47930,36 @@
 				},
 				"summary": "RPC for the customer Mini App: app.customer_stamp_card at the current time",
 				"tags": ["(rpc) customer_stamp_card"]
+			}
+		},
+		"/rpc/customer_stamp_code": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C20): app.customer_stamp_code at the current time",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C20): app.customer_stamp_code at the current time",
+				"tags": ["(rpc) customer_stamp_code"]
 			}
 		},
 		"/rpc/customer_stop_marketing": {

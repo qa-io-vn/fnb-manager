@@ -691,6 +691,20 @@ insert into matrix (fn, label, statement, expect) values
 ('manager_dismiss_blocked_signin', 'manager_dismiss_blocked_signin of an unknown request',
   $$select public.manager_dismiss_blocked_signin('aaaaaaaa-aaaa-4aaa-8aaa-000000012094', 1)::text$$,
   '{"*": "DENY"}'),
+-- Native till hardening (C20, Q01): the stamp card's member code for a customer session; the counter's lookup and
+-- attach for staff of the store (A1 is an ipos store: not_native; an unknown order is 42501 for everyone).
+('customer_stamp_code', 'customer_stamp_code of the session',
+  $$select public.customer_stamp_code() ->> 'state'$$,
+  '{"*": "DENY", "customer": "^ok:issued$", "visitor": "^ok:issued$", "customer_b": "^ok:issued$"}'),
+('counter_member_lookup', 'counter_member_lookup at A1, an ipos store',
+  $$select public.counter_member_lookup('{store_a1}', '12345674') ->> 'refusal'$$,
+  '{"*": "DENY", "owner": "^ok:not_native$", "owner_a1": "^ok:not_native$", "manager": "^ok:not_native$", "manager_a1": "^ok:not_native$", "staff": "^ok:not_native$"}'),
+('counter_member_lookup', 'counter_member_lookup at A2, an ipos store',
+  $$select public.counter_member_lookup('{store_a2}', '12345674') ->> 'refusal'$$,
+  '{"*": "DENY", "owner": "^ok:not_native$", "manager": "^ok:not_native$", "staff_a2": "^ok:not_native$"}'),
+('counter_attach_member', 'counter_attach_member of an unknown order',
+  $$select public.counter_attach_member('aaaaaaaa-aaaa-4aaa-8aaa-000000012096', '12345674', 1)::text$$,
+  '{"*": "DENY"}'),
 ('manager_approve_blocked_signin', 'manager_approve_blocked_signin of an unknown request',
   $$select public.manager_approve_blocked_signin('aaaaaaaa-aaaa-4aaa-8aaa-000000012094', 1, 'Synthetic', 'staff', null)::text$$,
   '{"*": "DENY"}');

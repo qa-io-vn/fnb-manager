@@ -2769,7 +2769,7 @@ returns jsonb
 
 Tests: pgTAP `262_table_qr_and_calls.sql`, `170_code_guessing_limits.sql`, `120_security_function_matrix.sql` and `121_security_table_matrix.sql`.
 
-Orders (step 3, migration `native_orders`, ADR-061). An order's lifecycle is `awaiting_payment` → `accepted` → `preparing` → `ready` (takeaway) or `serving` (table) → `completed`, with `cancelled` only from `awaiting_payment` or `accepted`; its payment status (`unpaid`, `paid`, `refund_pending`, `refunded`, `partially_refunded`) moves apart. An order answer is `{id, order_no, display_no, business_date, source, type, table: {id (counter only), label}, pickup_at, status, payment_status, payment_method, version, subtotal, discount_amount, total, note, placed_at, payment_due_at, accepted_at, preparing_at, done_at, completed_at, paid_at, cancelled_at, cancel_reason, ready_estimate_at, late (counter only), lines: [{line_no, item_id, size_id, item_name, size_label, quantity, unit_price, options: [{group_id, group, option_id, name, price}], options_amount, line_total, counts_for_stamps, note}]}`. `ready_estimate_at` (migration `order_ready_estimate`) is when the order should be ready: for an accepted order its acceptance plus the store's `prep_minutes` (0–120, 10 by default) and not before its `pickup_at`, for a preparing one its start plus `prep_minutes` (recomputed when staff start it), null in every other state; a changed setting applies at once. `ready_estimate_at` (migration `order_ready_estimate`) is when the order should be ready: for an accepted order its acceptance plus the store's `prep_minutes` (0–120, 10 by default) and not before its `pickup_at`, for a preparing one its start plus `prep_minutes` (recomputed when staff start it), null in every other state; a changed setting applies at once. Business refusals are answers (`state: "refused"` with `refusal`), never errors; malformed input is `22023` and a wrong caller `42501`. Only the server marks an order paid: the counter's payment record (step 4) and the verified provider confirmation share the internal seam `app.order_payment_succeeded`, which no client may execute.
+Orders (step 3, migration `native_orders`, ADR-061). An order's lifecycle is `awaiting_payment` → `accepted` → `preparing` → `ready` (takeaway) or `serving` (table) → `completed`, with `cancelled` only from `awaiting_payment` or `accepted`; its payment status (`unpaid`, `paid`, `refund_pending`, `refunded`, `partially_refunded`) moves apart. An order answer is `{id, order_no, display_no, business_date, source, type, table: {id (counter only), label}, pickup_at, status, payment_status, payment_method, version, subtotal, discount_amount, total, note, placed_at, payment_due_at, accepted_at, preparing_at, done_at, completed_at, paid_at, cancelled_at, cancel_reason, ready_estimate_at, late (counter only), member_attached (counter only), lines: [{line_no, item_id, size_id, item_name, size_label, quantity, unit_price, options: [{group_id, group, option_id, name, price}], options_amount, line_total, counts_for_stamps, note}]}`. `ready_estimate_at` (migration `order_ready_estimate`) is when the order should be ready: for an accepted order its acceptance plus the store's `prep_minutes` (0–120, 10 by default) and not before its `pickup_at`, for a preparing one its start plus `prep_minutes` (recomputed when staff start it), null in every other state; a changed setting applies at once. `ready_estimate_at` (migration `order_ready_estimate`) is when the order should be ready: for an accepted order its acceptance plus the store's `prep_minutes` (0–120, 10 by default) and not before its `pickup_at`, for a preparing one its start plus `prep_minutes` (recomputed when staff start it), null in every other state; a changed setting applies at once. Business refusals are answers (`state: "refused"` with `refusal`), never errors; malformed input is `22023` and a wrong caller `42501`. Only the server marks an order paid: the counter's payment record (step 4) and the verified provider confirmation share the internal seam `app.order_payment_succeeded`, which no client may execute.
 
 #### `public.customer_place_order`
 
@@ -2924,9 +2924,46 @@ returns jsonb
 
 - **Status:** built (step 5).
 - **Who may call:** a customer session (visitor or member); `42501` otherwise.
-- **Notes:** the card at the brand of the session's app: `{enabled, stamps, stamps_per_reward, reward_name, total_earned, rewards: [{id, issued_at}], history: [{kind, delta, balance_after, at, order_no}]}` (the available rewards, oldest first; the last 20 entries, newest first); an empty card before the first stamp.
+- **Notes:** the card at the brand of the session's app: `{enabled, stamps, stamps_per_reward, reward_name, total_earned, rewards: [{id, issued_at}], history: [{kind, delta, balance_after, at, order_no}]}` (the available rewards, oldest first; the last 20 entries, newest first); an empty card before the first stamp. Since migration `stamp_member_codes` it also lists `attached: [{order_no, store_name, status, attached_at, stamps}]`, the counter orders attached to the card in the last 7 days with the drinks that earn when they complete (C20 frame 5), so a misuse of the code shows.
 
 Tests: pgTAP `270_stamp_cards.sql`, rows in `120`, `121`, `03` and `47`.
+
+The stamp card's member code (C20, Q01; migration `stamp_member_codes`). A customer who never joined with a phone shows the counter a short-lived code of their Zalo account's card, and the counter attaches them to an order keyed at the counter, whose drinks then earn on that card when it completes. A code is a QR payload `fnb-stamp:1:<22 characters of a 128-bit random token>` and an 8-digit number whose 8th digit is the Luhn check digit of the first seven, both valid 10 minutes; a new code revokes the customer's earlier one; only the SHA-256 of each is kept (`app.stamp_member_codes`, read by no API role). The phone programme's `customer_member_code` is unchanged.
+
+#### `public.customer_stamp_code`
+
+```sql
+public.customer_stamp_code()
+returns jsonb
+```
+
+- **Status:** built (2026-11-28).
+- **Who may call:** a customer session (visitor or member); `42501` otherwise.
+- **Notes:** a new code of the brand of the session's app: `{state: "issued", code: {qr_payload, number, display_number ("1234 5678"), issued_at, refresh_at (9 minutes on), expires_at (10 minutes on)}}`; `stamps_off` when the brand's stamp card is off; `rate_limited` with `retry_at` after 30 codes in 15 minutes. The app shows the QR and the number, refreshes at `refresh_at` while online, and keeps showing a cached code offline only until `expires_at`.
+
+#### `public.counter_member_lookup`
+
+```sql
+public.counter_member_lookup(p_store uuid, p_code text)
+returns jsonb
+```
+
+- **Status:** built (2026-11-28).
+- **Who may call:** an owner, manager or staff member whose scope holds the store (`42501` otherwise).
+- **Notes:** "Quét mã thành viên": `p_code` is what was scanned or typed: the QR payload, the bare token, or the 8 digits with optional spaces, dots or dashes (anything else is `22023`). Answers `{state: "found", member: {name, stamps, stamps_per_reward, rewards_available, code_expires_at}}`: `name` is the last word of the name of a customer who joined with a phone (at most 20 characters), null for a Zalo account without one; never a phone, an id or a full name. Refusals: `not_native`, `code_mistyped` (a wrong check digit: not counted), `code_unknown` (unknown, expired, revoked, or of another brand or tenant: a miss of the person and of the store), `rate_limited` with `retry_at` after 5 misses of a person or 20 of a store in 15 minutes (the `code_guessing_lockout` alert follows).
+
+#### `public.counter_attach_member`
+
+```sql
+public.counter_attach_member(p_order uuid, p_code text, p_expected_version integer)
+returns jsonb
+```
+
+- **Status:** built (2026-11-28).
+- **Who may call:** an owner, manager or staff member whose scope holds the order's store (`42501` otherwise, the same for an unknown order).
+- **Notes:** "Gắn vào đơn": attaches the holder of a live code of the order's brand to an order keyed at the counter, with the version seen. Answers `{state: "attached", replayed, stamps, stamps_earned_now, member, order}`: `stamps` the drinks that will earn when the order completes (or earned now, `stamps_earned_now: true`, when it was completed in the last 30 minutes); the same holder again is a replay. Refusals: `has_customer` (an order of the app already belongs to its customer), `code_mistyped`, `code_unknown` and `rate_limited` (as for the lookup, the same counts), `already_attached` (another holder), `conflict` (with the order), `not_attachable` (cancelled or refunded), `too_late` (more than 30 minutes after completion), `stamps_off`. The attach is an order event (`kind: "member"`, `action: "member_attached"`, the staff member), the counter's order answers carry `member_attached`, and the holder sees the order on their card (`customer_stamp_card`'s `attached`); they cannot read, cancel or pay it. A refund of the order takes its stamps back as for an app order; deleting the holder's login removes the link.
+
+Tests: pgTAP `279_stamp_member_codes.sql`, rows in `120`, `47` and `170`.
 
 The requests inbox (step 7, migration `store_requests`, native-till.md section 12). A request is `{request_id (UUID), store (store code), kind ("booking", "workshop", "hold", "application"), name (1–60), phone, party_size (a booking: 1–30), at (an ISO instant with its offset, 30 minutes to 60 days ahead; required for a booking, a workshop and a hold), subject (1–100: the workshop, item or position; required but for a booking), note (1–500, one line)}`; any other key or type is `22023`. Submissions answer `{state: "submitted" | "refused", refusal, replayed, request}` with refusals `request_conflict`, `store_unknown`, `kind_not_offered`, `rate_limited` (with `retry_at`), `too_many_open_requests` (3 new ones), `name_invalid`, `phone_invalid`, `party_size_invalid`, `time_invalid`, `subject_invalid`, `note_invalid`; a request as the customer sees it is `{id, kind, store, status, party_size, requested_for, subject, note, created_at, answered_at, answer_message, cancelled_at, cancelled_by, version, contact_name}`, never the phone.
 
