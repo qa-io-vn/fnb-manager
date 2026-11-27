@@ -124,3 +124,41 @@ export async function counterToken(
 		return row?.token ?? "";
 	});
 }
+
+/** An open shift for a person, as if they clocked in (the cash they take is then checked at clock-out). */
+export async function openShiftFor(
+	db: Sql,
+	seeded: SeededTenant,
+	userId: string,
+): Promise<void> {
+	await db`delete from public.staff_shifts where user_id = ${userId} and status <> 'closed'`;
+	await db`insert into public.staff_shifts (tenant_id, store_id, user_id, business_date, clock_in_at, opening_cash)
+		values (${seeded.tenantId}, ${seeded.storeA}, ${userId}, (now() at time zone 'Asia/Ho_Chi_Minh')::date, now() - interval '1 minute', 0)`;
+}
+
+/** Closes every open order of the tenant, so a test starts from an empty queue. */
+export async function clearQueue(db: Sql, seeded: SeededTenant): Promise<void> {
+	await db`delete from public.orders where tenant_id = ${seeded.tenantId}`;
+}
+
+/** The SQLSTATE a call answers for a member ("ok" when it does not refuse), in a savepoint so the test goes on. */
+export async function refusalOf(
+	db: Sql,
+	userId: string,
+	run: (tx: Sql) => PromiseLike<unknown>,
+): Promise<string> {
+	return await asMember(db, userId, async (tx) => {
+		try {
+			await (
+				tx as unknown as {
+					savepoint: (
+						fn: (sp: Sql) => PromiseLike<unknown>,
+					) => Promise<unknown>;
+				}
+			).savepoint(run);
+			return "ok";
+		} catch (error) {
+			return (error as { code?: string }).code ?? "error";
+		}
+	});
+}

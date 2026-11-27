@@ -5,11 +5,18 @@ import { useMember, useSession } from "./lib/session";
 import { clockOf } from "./lib/time";
 import { ManagerHome } from "./manager/manager-home";
 import { ManagerShiftsPage } from "./manager/shifts-page";
+import { BoardProvider, useBoard } from "./orders/board-context";
+import { laneOrders } from "./orders/board-model";
+import { OrderDetailPage } from "./orders/order-detail";
+import { QueuePage } from "./orders/queue-page";
+import { PrinterProvider } from "./print/printer";
 import { AppShell, type NavItem } from "./shell/layout";
 import { StatusChip, TopBar } from "./shell/top-bar";
 import { ShiftProvider, useShift } from "./shift/shift-context";
 import { ShiftPage } from "./shift/shift-page";
 import {
+	BellIcon,
+	BellOffIcon,
 	ChartIcon,
 	ClockIcon,
 	CupIcon,
@@ -98,6 +105,30 @@ function ShiftChip() {
 	);
 }
 
+function SoundChip() {
+	const { t } = useI18n();
+	const { soundOn, unlockSound } = useBoard();
+	return soundOn ? (
+		<StatusChip
+			tone="positive"
+			icon={<BellIcon size={18} />}
+			testId="sound-chip"
+		>
+			{t("status.soundOn")}
+		</StatusChip>
+	) : (
+		<StatusChip
+			tone="warning"
+			icon={<BellOffIcon size={18} />}
+			onClick={() => void unlockSound()}
+			label={t("status.soundOff")}
+			testId="sound-chip"
+		>
+			{t("status.soundOff")}
+		</StatusChip>
+	);
+}
+
 function Placeholder({ title }: { readonly title: string }) {
 	return <PageTitle>{title}</PageTitle>;
 }
@@ -120,12 +151,14 @@ function Frame({ manager }: { readonly manager: boolean }) {
 	const { t } = useI18n();
 	const { member } = useMember();
 	const { signOut } = useSession();
+	const { state } = useBoard();
 	const items: NavItem[] = [
 		{
 			to: "/don",
 			label: t("nav.orders"),
 			icon: <ReceiptIcon />,
 			testId: "orders",
+			badge: laneOrders(state, "new").length,
 		},
 		{
 			to: "/ban",
@@ -156,6 +189,7 @@ function Frame({ manager }: { readonly manager: boolean }) {
 					pills={
 						<>
 							<ShiftChip />
+							<SoundChip />
 							<ConnectionChip />
 						</>
 					}
@@ -165,7 +199,12 @@ function Frame({ manager }: { readonly manager: boolean }) {
 		>
 			<Routes>
 				<Route path="/" element={<Navigate to="/don" replace />} />
-				<Route path="/don" element={<Placeholder title={t("nav.orders")} />} />
+				<Route path="/don" element={<QueuePage />} />
+				<Route path="/don/:id" element={<OrderDetailPage />} />
+				<Route
+					path="/tao-don"
+					element={<Placeholder title={t("queue.newOrder")} />}
+				/>
 				<Route path="/ban" element={<Placeholder title={t("nav.tables")} />} />
 				<Route path="/mon" element={<Placeholder title={t("nav.menu")} />} />
 				<Route path="/ca" element={<ShiftPage />} />
@@ -181,7 +220,11 @@ function Frame({ manager }: { readonly manager: boolean }) {
 export function CounterPages({ manager }: { readonly manager: boolean }) {
 	return (
 		<ShiftProvider>
-			<Frame manager={manager} />
+			<BoardProvider>
+				<PrinterProvider>
+					<Frame manager={manager} />
+				</PrinterProvider>
+			</BoardProvider>
 		</ShiftProvider>
 	);
 }
