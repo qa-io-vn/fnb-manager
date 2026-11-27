@@ -1,6 +1,8 @@
 import { useI18n } from "@fnb/zalo-mini/i18n";
+import { StatusPill } from "@fnb/zalo-mini/ui-kit";
 import { Link } from "react-router-dom";
 import { card, PageTitle } from "../ui/kit";
+import { useInbox } from "./requests-page";
 
 export const MANAGER_SECTIONS = [
 	{ to: "/quan-ly/tong-quan", key: "overview" },
@@ -11,9 +13,10 @@ export const MANAGER_SECTIONS = [
 	{ to: "/quan-ly/ma-qr", key: "qr" },
 ] as const;
 
-/** Quản lý: the manager's sections, on the tablet and on the phone. */
+/** Quản lý: the manager's sections, on the tablet and on the phone; the inbox says how many are unread (M01). */
 export function ManagerHome() {
 	const { t } = useI18n();
+	const unread = useInbox().data?.unread ?? 0;
 	return (
 		<div className="mx-auto flex max-w-5xl flex-col gap-4">
 			<PageTitle>{t("nav.manager")}</PageTitle>
@@ -25,8 +28,13 @@ export function ManagerHome() {
 							className={`${card} flex min-h-24 flex-col justify-center gap-1 p-5 hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-focus`}
 							data-testid={`manager-${section.key}`}
 						>
-							<span className="text-lg font-extrabold">
+							<span className="flex flex-wrap items-center gap-2 text-lg font-extrabold">
 								{t(`manager.${section.key}.title`)}
+								{section.key === "requests" && unread > 0 ? (
+									<StatusPill tone="warning" testId="manager-requests-unread">
+										{t("requests.unread", { count: unread })}
+									</StatusPill>
+								) : null}
 							</span>
 							<span className="text-sm text-ink-muted">
 								{t(`manager.${section.key}.lead`)}

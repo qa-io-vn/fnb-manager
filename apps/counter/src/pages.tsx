@@ -8,7 +8,7 @@ import { ManagerHome } from "./manager/manager-home";
 import { MenuEditorPage } from "./manager/menu-page";
 import { OverviewPage } from "./manager/overview-page";
 import { QrPage } from "./manager/qr-page";
-import { RequestsPage } from "./manager/requests-page";
+import { RequestsPage, useInbox } from "./manager/requests-page";
 import { ManagerShiftsPage } from "./manager/shifts-page";
 import { StaffPage } from "./manager/staff-page";
 import { SoldOutPage } from "./menu/sold-out-page";
@@ -156,6 +156,8 @@ function Frame({ manager }: { readonly manager: boolean }) {
 	const { member } = useMember();
 	const { signOut } = useSession();
 	const { state } = useBoard();
+	// M01: the new requests nobody opened yet, on the manager's tab (staff never ask: the database refuses them)
+	const unread = useInbox(manager).data?.unread ?? 0;
 	const items: NavItem[] = [
 		{
 			to: "/don",
@@ -180,6 +182,7 @@ function Frame({ manager }: { readonly manager: boolean }) {
 						label: t("nav.manager"),
 						icon: <ChartIcon />,
 						testId: "manager",
+						badge: unread,
 					},
 				]
 			: []),

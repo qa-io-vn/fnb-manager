@@ -1,6 +1,6 @@
 import { formatVnd } from "@fnb/zalo-mini/format";
 import { useI18n } from "@fnb/zalo-mini/i18n";
-import { PriceText, StatusPill } from "@fnb/zalo-mini/ui-kit";
+import { ChipGroup, PriceText, StatusPill } from "@fnb/zalo-mini/ui-kit";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { type Counts, countTotal, differenceOf } from "../lib/cash";
@@ -16,7 +16,14 @@ import {
 	clockIn,
 	clockOut,
 	counterCodeOf,
+	DIFFERENCE_REASON_CODES,
+	DIFFERENCE_REASON_LABEL,
+	type DifferenceReason,
+	isDifferenceReason,
+	REASON_NOTE_MAX,
+	reasonNoteProblem,
 	type Shift,
+	shiftStage,
 } from "./api";
 import { CashCounter } from "./cash-counter";
 import { QrScanButton } from "./qr-scan";
@@ -154,6 +161,139 @@ function DifferenceBox({ shift }: { readonly shift: Shift }) {
 	);
 }
 
+/**
+ * Q02 "Báo lệch": after a count that differs, the person says why (one of the four reasons) with a note on one line,
+ * sent with the same count again (staff_clock_out with p_reason and p_note). The manager reads it beside the numbers
+ * and still confirms from their own device. The expected cash was shown only after the count, so the count stays blind.
+ */
+function ReasonStep({ shift }: { readonly shift: Shift }) {
+	const { t } = useI18n();
+	const { client } = useSession();
+	const { refresh } = useShift();
+	const { show } = useToast();
+	const [reason, setReason] = useState<DifferenceReason | "">("");
+	const [note, setNote] = useState("");
+	const [busy, setBusy] = useState(false);
+	const [message, setMessage] = useState<string | null>(null);
+	const problem = reasonNoteProblem(note);
+	const ready = reason !== "" && problem === null && !busy;
+	const submit = async () => {
+		if (reason === "" || problem !== null) return;
+		setBusy(true);
+		setMessage(null);
+		try {
+			const answer = await clockOut(client, shift.counted_cash ?? 0, {
+				code: reason,
+				note,
+			});
+			if (answer.state === "refused") {
+				setMessage(t(`shift.refusal.${answer.refusal}`));
+			} else if (answer.state === "closed") {
+				show(t("shift.closed"));
+			} else {
+				show(t("shift.reasonSent"));
+			}
+			await refresh();
+		} catch (error) {
+			setMessage(
+				t(
+					error instanceof RpcError && error.network
+						? "common.network"
+						: error instanceof RpcError && error.code === "22023"
+							? "shift.reasonInvalid"
+							: "common.failed",
+				),
+			);
+		} finally {
+			setBusy(false);
+		}
+	};
+	return (
+		<section
+			className="flex flex-col gap-3 rounded-card-xl border-card border-line p-4"
+			aria-labelledby="reason-title"
+			data-testid="reason-step"
+		>
+			<div className="flex flex-wrap items-center gap-2">
+				<h3 id="reason-title" className="text-lg font-extrabold">
+					{t("shift.reasonTitle")}
+				</h3>
+				<span className="ml-auto text-sm font-bold text-negative">
+					{t("shift.required")}
+				</span>
+			</div>
+			<p className="text-sm text-ink-muted">{t("shift.reasonLead")}</p>
+			<div className="-mx-4">
+				<ChipGroup
+					label={t("shift.reasonLabel")}
+					chips={DIFFERENCE_REASON_CODES.map((code) => ({
+						key: code,
+						label: t(DIFFERENCE_REASON_LABEL[code]),
+					}))}
+					selected={reason}
+					onSelect={(key) => setReason(isDifferenceReason(key) ? key : "")}
+					testId="cashier-reason"
+				/>
+			</div>
+			<label className="flex flex-col gap-1">
+				<span className="font-bold">{t("shift.reasonNote")}</span>
+				<input
+					className={field}
+					value={note}
+					maxLength={REASON_NOTE_MAX + 20}
+					autoComplete="off"
+					aria-invalid={note !== "" && problem !== null}
+					aria-describedby="reason-note-hint"
+					onChange={(event) => setNote(event.target.value)}
+					data-testid="reason-note"
+				/>
+				<span
+					id="reason-note-hint"
+					className="text-sm text-ink-muted"
+					data-testid="reason-note-hint"
+				>
+					{note !== "" && problem === "too_long"
+						? t("shift.reasonTooLong", { max: REASON_NOTE_MAX })
+						: t("shift.reasonNoteHint", { max: REASON_NOTE_MAX })}
+				</span>
+			</label>
+			{message === null ? null : (
+				<PlainNote tone="negative" testId="reason-message">
+					{message}
+				</PlainNote>
+			)}
+			<button
+				type="button"
+				className={button.primary}
+				disabled={!ready}
+				onClick={() => void submit()}
+				data-testid="reason-submit"
+			>
+				{t("shift.reasonSend")}
+			</button>
+		</section>
+	);
+}
+
+/** The reason the person gave, as the manager will read it. */
+function ReasonGiven({ shift }: { readonly shift: Shift }) {
+	const { t } = useI18n();
+	if (shift.difference_reason === null || shift.difference_reason === undefined)
+		return null;
+	return (
+		<p
+			className="rounded-card-xl bg-surface-sunken p-4 text-body"
+			data-testid="reason-given"
+		>
+			<span className="font-bold">{t("shift.reasonGiven")}</span>{" "}
+			{t(DIFFERENCE_REASON_LABEL[shift.difference_reason])}
+			{shift.difference_note === null || shift.difference_note === undefined
+				? null
+				: ` · ${shift.difference_note}`}
+		</p>
+	);
+}
+
 function OpenShift({ shift }: { readonly shift: Shift }) {
 	const { t } = useI18n();
 	const { client } = useSession();
@@ -165,6 +305,7 @@ function OpenShift({ shift }: { readonly shift: Shift }) {
 	const [busy, setBusy] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
 	const counted = countTotal(counts);
+	const stage = shiftStage(shift);
 	const awaiting = shift.status === "awaiting_confirmation";
 	const submit = async () => {
 		setBusy(true);
@@ -221,6 +362,11 @@ function OpenShift({ shift }: { readonly shift: Shift }) {
 			{awaiting ? (
 				<>
 					<DifferenceBox shift={shift} />
+					{stage === "reason_required" && !counting ? (
+						<ReasonStep shift={shift} />
+					) : (
+						<ReasonGiven shift={shift} />
+					)}
 					<div
 						className="flex gap-3 rounded-card-xl bg-warning-soft p-4"
 						data-testid="manager-needed"

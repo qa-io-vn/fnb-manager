@@ -102,6 +102,10 @@ export interface Order {
 	readonly cancelled_at: string | null;
 	readonly cancel_reason: string | null;
 	readonly late?: boolean;
+	/** when the order should be ready (accepted or started plus the store's prep_minutes), null in other states */
+	readonly ready_estimate_at?: string | null;
+	/** counter answers: whether a stamp card (a member code) is attached to the order */
+	readonly member_attached?: boolean;
 	readonly lines: readonly OrderLine[];
 	readonly timeline?: readonly TimelineEvent[];
 	readonly money?: Money;

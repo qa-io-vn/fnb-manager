@@ -1,13 +1,14 @@
 import { formatVnd } from "@fnb/zalo-mini/format";
 import { useI18n } from "@fnb/zalo-mini/i18n";
-import { PriceText } from "@fnb/zalo-mini/ui-kit";
+import { PriceText, StatusPill } from "@fnb/zalo-mini/ui-kit";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { RpcError } from "../lib/rpc";
 import { isManager, useMember, useSession } from "../lib/session";
+import { useStore } from "../lib/store";
 import { clockOf, dayAndClock } from "../lib/time";
 import { usePrinter } from "../print/printer";
-import { BackIcon, NoteIcon, PrinterIcon } from "../ui/icons";
+import { BackIcon, NoteIcon, PrinterIcon, QrIcon } from "../ui/icons";
 import { button, card, Loading, PlainNote } from "../ui/kit";
 import { useToast } from "../ui/toast";
 import {
@@ -20,7 +21,15 @@ import {
 import { useBoard } from "./board-context";
 import { cancellable, nextAction, payable } from "./board-model";
 import { CancelDialog, RefundDialog } from "./cancel-dialog";
-import { LineList, PaymentLabel, placeOf, StatusLabel } from "./order-bits";
+import { attachable } from "./member";
+import { MemberDialog } from "./member-dialog";
+import {
+	LineList,
+	PaymentLabel,
+	placeOf,
+	StatusLabel,
+	useNow,
+} from "./order-bits";
 import { PaymentDialog } from "./payment-dialog";
 import type { Order, TimelineEvent } from "./types";
 
@@ -86,9 +95,11 @@ export function OrderDetailPage() {
 	const [order, setOrder] = useState<Order | null>(null);
 	const [missing, setMissing] = useState(false);
 	const [names, setNames] = useState<ReadonlyMap<string, string>>(new Map());
-	const [dialog, setDialog] = useState<"pay" | "cancel" | "refund" | null>(
-		null,
-	);
+	const [dialog, setDialog] = useState<
+		"pay" | "cancel" | "refund" | "member" | null
+	>(null);
+	const now = useNow(30_000);
+	const { store } = useStore();
 	const [busy, setBusy] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
 	const boardVersion = state.orders.get(id)?.version;
@@ -174,9 +185,14 @@ export function OrderDetailPage() {
 					<span className="text-lg font-bold text-ink-muted">
 						{order.display_no}
 					</span>
-					<span className="ml-auto flex gap-2">
+					<span className="ml-auto flex flex-wrap gap-2">
 						<StatusLabel order={order} />
 						<PaymentLabel order={order} />
+						{order.member_attached === true ? (
+							<StatusPill tone="positive" testId="member-attached">
+								{t("member.attached")}
+							</StatusPill>
+						) : null}
 					</span>
 				</div>
 				<p className="text-sm text-ink-muted">
@@ -236,6 +252,17 @@ export function OrderDetailPage() {
 							{t("order.refund", { amount: formatVnd(due) })}
 						</button>
 					) : null}
+					{attachable(order, now) ? (
+						<button
+							type="button"
+							className={button.secondary}
+							onClick={() => setDialog("member")}
+							data-testid="open-member"
+						>
+							<QrIcon />
+							{t("member.open")}
+						</button>
+					) : null}
 					{cancellable(order) ? (
 						<button
 							type="button"
@@ -284,6 +311,25 @@ export function OrderDetailPage() {
 					onPaid={(paid) => {
 						setDialog(null);
 						changed(paid);
+					}}
+				/>
+			) : null}
+			{dialog === "member" ? (
+				<MemberDialog
+					store={store.id}
+					order={order}
+					onClose={() => setDialog(null)}
+					onAttached={(answer) => {
+						setDialog(null);
+						changed(
+							answer.order,
+							answer.stamps_earned_now === true
+								? t("member.earnedNow", { count: answer.stamps ?? 0 })
+								: t("member.attachedToast", {
+										order: answer.order.display_no ?? "",
+										count: answer.stamps ?? 0,
+									}),
+						);
 					}}
 				/>
 			) : null}
