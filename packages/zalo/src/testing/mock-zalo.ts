@@ -53,7 +53,12 @@ export const MOCK_OAUTH_PATHS = {
 	permission: "/v4/oa/permission",
 	oaAccessToken: "/v4/oa/access_token",
 	developerToken: "/v4/access_token",
+	/** The web login of a person (Zalo Login, OAuth v4 with PKCE): its authorise page; the code goes to developerToken. */
+	userPermission: "/v4/permission",
 } as const;
+
+/** The cookie a browser test sets on the mock's host to choose who signs in at the web login: "<id>~<name>". */
+export const MOCK_WEB_LOGIN_COOKIE = "mock_zalo_user";
 
 export const MOCK_TOKEN_LIFETIMES = {
 	oa: { accessSeconds: 90_000, refreshSeconds: 90 * 86_400 },
@@ -118,6 +123,8 @@ export interface MockZalo {
 		options?: MockPhoneTokenOptions,
 	): string;
 	registerApp(app: MockOauthApp): void;
+	/** Who signs in at the web login of an app when the browser names nobody (the cookie wins). */
+	setWebLoginUser(appId: string, user: MockZaloUser | null): void;
 	issueTokens(appId: string, kind: MockTokenKind): MockTokenPair;
 	refreshTokenState(refreshToken: string): MockRefreshTokenState;
 	accessTokenLive(accessToken: string): boolean;
@@ -162,7 +169,20 @@ interface CodeEntry {
 	readonly appId: string;
 	readonly challenge: string;
 	readonly expiresAt: number;
+	/** set for a person's web login; an OA authorisation has none */
+	readonly user?: MockZaloUser;
 	used: boolean;
+}
+
+function cookieUser(header: string | null): MockZaloUser | null {
+	for (const part of (header ?? "").split(";")) {
+		const [cookieName, ...rest] = part.trim().split("=");
+		if (cookieName !== MOCK_WEB_LOGIN_COOKIE) continue;
+		const [id = "", name = ""] = decodeURIComponent(rest.join("=")).split("~");
+		if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return null;
+		return { id, name: name === "" ? null : name };
+	}
+	return null;
 }
 
 interface RefreshEntry {
@@ -312,6 +332,7 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 	const oaSent: MockOaMessage[] = [];
 	const oaMenus = new Map<string, readonly unknown[]>();
 	const oaInteractions = new Map<string, number>();
+	const webLoginUsers = new Map<string, MockZaloUser>();
 	const counts = {
 		authorizations: 0,
 		exchanges: 0,
@@ -387,12 +408,95 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 		return redirectTo(redirect.toString());
 	};
 
+	const userPermission = (request: Request, url: URL): Response => {
+		const app = apps.get(url.searchParams.get("app_id") ?? "");
+		if (app === undefined) {
+			return failure(MOCK_ZALO_ERRORS.appUnknown, "app_id is unknown");
+		}
+		const challenge = url.searchParams.get("code_challenge") ?? "";
+		const state = url.searchParams.get("state") ?? "";
+		let redirect: URL;
+		try {
+			redirect = new URL(url.searchParams.get("redirect_uri") ?? "");
+		} catch {
+			return failure(MOCK_ZALO_ERRORS.grantInvalid, "redirect_uri is invalid");
+		}
+		if (!CHALLENGE_PATTERN.test(challenge) || state === "") {
+			return failure(
+				MOCK_ZALO_ERRORS.grantInvalid,
+				"code_challenge or state is missing",
+			);
+		}
+		const user =
+			cookieUser(request.headers.get("cookie")) ?? webLoginUsers.get(app.appId);
+		if (user === undefined) {
+			return failure(MOCK_ZALO_ERRORS.grantInvalid, "nobody signs in");
+		}
+		const code = `mock-zalo-code-${randomPart()}`;
+		codes.set(code, {
+			appId: app.appId,
+			challenge,
+			expiresAt: clock + MOCK_AUTHORIZATION_CODE_LIFETIME_MS,
+			user,
+			used: false,
+		});
+		counts.authorizations += 1;
+		redirect.searchParams.set("code", code);
+		redirect.searchParams.set("code_challenge", challenge);
+		redirect.searchParams.set("state", state);
+		return redirectTo(redirect.toString());
+	};
+
+	const userExchange = async (
+		form: URLSearchParams,
+		app: MockOauthApp,
+	): Promise<Response> => {
+		const code = codes.get(form.get("code") ?? "");
+		if (
+			code === undefined ||
+			code.appId !== app.appId ||
+			code.user === undefined
+		) {
+			return failure(MOCK_ZALO_ERRORS.codeInvalid, "code is invalid");
+		}
+		if (code.used) {
+			return failure(MOCK_ZALO_ERRORS.codeUsed, "code is used");
+		}
+		if (code.expiresAt <= clock) {
+			return failure(MOCK_ZALO_ERRORS.codeExpired, "code has expired");
+		}
+		code.used = true;
+		if ((await s256(form.get("code_verifier") ?? "")) !== code.challenge) {
+			return failure(
+				MOCK_ZALO_ERRORS.verifierInvalid,
+				"code_verifier is invalid",
+			);
+		}
+		counts.exchanges += 1;
+		const accessToken = `mock-zalo-access-${randomPart()}`;
+		accessTokens.set(accessToken, {
+			appSecret: app.appSecret,
+			user: code.user,
+			expiresAt: clock + MOCK_ACCESS_TOKEN_LIFETIME_MS,
+			nameConsent: true,
+		});
+		return answer({
+			access_token: accessToken,
+			refresh_token: `mock-zalo-user-refresh-${randomPart()}`,
+			expires_in: String(MOCK_ACCESS_TOKEN_LIFETIME_MS / 1000),
+		});
+	};
+
 	const exchange = async (
 		form: URLSearchParams,
 		app: MockOauthApp,
 	): Promise<Response> => {
 		const code = codes.get(form.get("code") ?? "");
-		if (code === undefined || code.appId !== app.appId) {
+		if (
+			code === undefined ||
+			code.appId !== app.appId ||
+			code.user !== undefined
+		) {
 			return failure(MOCK_ZALO_ERRORS.codeInvalid, "code is invalid");
 		}
 		if (code.used) {
@@ -471,6 +575,9 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 		const grant = form.get("grant_type");
 		if (grant === "authorization_code" && kind === "oa") {
 			return exchange(form, app);
+		}
+		if (grant === "authorization_code" && kind === "developer") {
+			return userExchange(form, app);
 		}
 		if (grant === "refresh_token") {
 			return refresh(form, app, kind);
@@ -668,6 +775,11 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 	};
 
 	const route = (request: Request, url: URL): Promise<Response> | Response => {
+		if (url.pathname === MOCK_OAUTH_PATHS.userPermission) {
+			return request.method === "GET"
+				? userPermission(request, url)
+				: answer({ message: "method not allowed" }, 405);
+		}
 		if (url.pathname === MOCK_OAUTH_PATHS.permission) {
 			return request.method === "GET"
 				? permission(url)
@@ -746,6 +858,10 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 		registerApp(app) {
 			apps.set(app.appId, app);
 		},
+		setWebLoginUser(appId, user) {
+			if (user === null) webLoginUsers.delete(appId);
+			else webLoginUsers.set(appId, user);
+		},
 		issueTokens(appId, kind) {
 			return pairFor(appId, kind);
 		},
@@ -800,6 +916,7 @@ export function createMockZalo(options: MockZaloOptions = {}): MockZalo {
 			oaSent.length = 0;
 			oaMenus.clear();
 			oaInteractions.clear();
+			webLoginUsers.clear();
 			counts.authorizations = 0;
 			counts.exchanges = 0;
 			counts.refreshes = 0;

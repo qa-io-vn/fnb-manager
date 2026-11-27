@@ -1,0 +1,56 @@
+@import "tailwindcss";
+@import "@fnb/design-tokens/tokens.css";
+@import "@fnb/zalo-mini/styles.css";
+
+@source "../../../packages/zalo-mini/src/react/ui-kit";
+
+html,
+body,
+#root {
+	height: 100%;
+}
+
+body {
+	overscroll-behavior: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+button {
+	cursor: pointer;
+	touch-action: manipulation;
+}
+
+/* the 80 mm ticket (ADR-066): while a ticket prints, only the ticket is on paper, at the printer's width; any other
+   page (the QR codes) prints without the bars */
+.print-only {
+	display: none;
+}
+
+@media print {
+	html,
+	body,
+	#root {
+		height: auto;
+		background: #fff;
+		color: #000;
+	}
+	.app-shell main {
+		overflow: visible;
+	}
+	body.printing-ticket .app-shell {
+		display: none;
+	}
+	body.printing-ticket .print-only {
+		display: block;
+	}
+}
+
+@page {
+	margin: 8mm;
+}
+
+@media print {
+	body.printing-ticket {
+		width: 80mm;
+	}
+}

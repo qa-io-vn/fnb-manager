@@ -1,0 +1,45 @@
+{
+	"name": "@fnb/counter",
+	"private": true,
+	"version": "0.1.0",
+	"description": "The counter web app of the native till: a tablet at the counter and the managers' phones, signing in with Zalo (ADR-064, ADR-066)",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build && node scripts/check-bundle.mjs",
+		"preview": "vite preview",
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+		"test": "vitest run",
+		"test:integration": "vitest run -c vitest.integration.config.ts",
+		"test:e2e": "playwright test",
+		"check:bundle": "node scripts/check-bundle.mjs"
+	},
+	"dependencies": {
+		"@fnb/design-tokens": "workspace:^",
+		"@fnb/zalo-mini": "workspace:^",
+		"@supabase/supabase-js": "^2.119.0",
+		"@tailwindcss/vite": "^4.3.5",
+		"@tanstack/react-query": "^5.107.1",
+		"react": "^19.3.1",
+		"react-dom": "^19.3.1",
+		"react-router-dom": "^7.18.5",
+		"tailwindcss": "^4.3.5",
+		"uqr": "0.1.3"
+	},
+	"devDependencies": {
+		"@axe-core/playwright": "^4.14.0",
+		"@fnb/zalo": "workspace:^",
+		"@playwright/test": "^1.65.0",
+		"@testing-library/jest-dom": "^7.0.1",
+		"@testing-library/react": "^16.3.3",
+		"@testing-library/user-event": "^14.6.8",
+		"@types/node": "^25.0.0",
+		"@types/react": "^19.3.0",
+		"@types/react-dom": "^19.3.0",
+		"@vitejs/plugin-react": "^6.2.1",
+		"jsdom": "^31.0.0",
+		"postgres": "^4.1.0",
+		"vite": "^8.3.6",
+		"vitest": "^5.1.0"
+	}
+}

@@ -50588,6 +50588,128 @@
 				"tags": ["(rpc) manager_answer_request"]
 			}
 		},
+		"/rpc/manager_approve_blocked_signin": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.manager_approve_blocked_signin",
+							"properties": {
+								"p_display_name": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_expected_version": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_request": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_role": {
+									"format": "tenant_role",
+									"type": "string"
+								},
+								"p_store_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"required": [
+								"p_request",
+								"p_expected_version",
+								"p_display_name",
+								"p_role",
+								"p_store_ids"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.manager_approve_blocked_signin",
+				"tags": ["(rpc) manager_approve_blocked_signin"]
+			}
+		},
+		"/rpc/manager_blocked_signins": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_tenant",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.manager_blocked_signins at the current time",
+				"tags": ["(rpc) manager_blocked_signins"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.manager_blocked_signins at the current time",
+							"properties": {
+								"p_tenant": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_tenant"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.manager_blocked_signins at the current time",
+				"tags": ["(rpc) manager_blocked_signins"]
+			}
+		},
 		"/rpc/manager_close_shift": {
 			"post": {
 				"parameters": [
@@ -50793,6 +50915,47 @@
 				},
 				"summary": "RPC for the manager app: app.manager_day_reconciliation at the current time",
 				"tags": ["(rpc) manager_day_reconciliation"]
+			}
+		},
+		"/rpc/manager_dismiss_blocked_signin": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC: app.manager_dismiss_blocked_signin",
+							"properties": {
+								"p_expected_version": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_request": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_request", "p_expected_version"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC: app.manager_dismiss_blocked_signin",
+				"tags": ["(rpc) manager_dismiss_blocked_signin"]
 			}
 		},
 		"/rpc/manager_requests": {

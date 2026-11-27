@@ -12,16 +12,17 @@ import {
 	RELAY_PATH,
 	RelayError,
 	ReplayGuard,
+	relayTargetOf,
 	sealRelayAnswer,
-	ZALO_GRAPH_ORIGIN,
 } from "../relay.js";
 
-/** How the relay calls the Zalo Graph; tests pass a stand-in, the relay itself the global fetch. */
+/** How the relay calls Zalo (the Graph, or the web login's token exchange); tests pass a stand-in, the relay itself the global fetch. */
 export type GraphSender = (
 	url: string,
 	init: {
-		readonly method: "GET";
+		readonly method: "GET" | "POST";
 		readonly headers: Readonly<Record<string, string>>;
+		readonly body?: string;
 		readonly signal: AbortSignal;
 	},
 ) => Promise<Response>;
@@ -136,13 +137,14 @@ export function relayHandler(
 			return;
 		}
 		const started = now();
-		const target = `${ZALO_GRAPH_ORIGIN}${relayed.path}${relayed.query === "" ? "" : `?${relayed.query}`}`;
+		const target = relayTargetOf(relayed);
 		let status: number;
 		let text: string;
 		try {
-			const graphAnswer = await graph(target, {
-				method: "GET",
-				headers: relayed.headers,
+			const graphAnswer = await graph(target.url, {
+				method: target.method,
+				headers: target.headers,
+				...(target.body === undefined ? {} : { body: target.body }),
 				signal: AbortSignal.timeout(
 					options.timeoutMs ?? RELAY_GRAPH_TIMEOUT_MS,
 				),
