@@ -6,6 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useCustomerData } from "../data/customer-data";
 import { useNow } from "../data/use-now";
 import { Failed, Loading } from "../ui";
+import { ONLINE_PAYMENT_ENABLED } from "./flag";
 import {
 	callWaiting,
 	canCancel,
@@ -481,6 +482,16 @@ export function OrderScreen() {
 			data-payment={order.paymentStatus}
 		>
 			<StatusCard order={order} now={now} />
+			{order.status === "awaiting_payment" && ONLINE_PAYMENT_ENABLED ? (
+				<button
+					type="button"
+					className={`${kitButton.primary} w-full`}
+					onClick={() => navigate(`/tra-tien/${order.id}`)}
+					data-testid="order-pay"
+				>
+					{t("order.payNow")}
+				</button>
+			) : null}
 			{isLate(order, now) ? (
 				<Notice testId="order-late">{t("order.late")}</Notice>
 			) : null}

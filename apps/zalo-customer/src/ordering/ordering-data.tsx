@@ -1,8 +1,10 @@
+import type { DataEndpoint } from "@fnb/zalo-mini";
 import {
 	MENU_POLL_MS,
 	type Menu,
 	type OrderingClient,
 	type OrderList,
+	type PaymentClient,
 	type PlaceAnswer,
 	type PlaceRequest,
 } from "@fnb/zalo-mini/ordering";
@@ -33,7 +35,14 @@ import {
 	requestLines,
 	setQuantity,
 } from "./cart";
-import { type OrderingSourceFactory, orderingClientFor } from "./source";
+import type { CheckoutPort } from "./payment-port";
+import {
+	checkoutPortFor,
+	type OrderingSourceFactory,
+	orderingClientFor,
+	type PaymentSourceFactory,
+	paymentClientFor,
+} from "./source";
 import {
 	type TableLink,
 	tableLinkFromEvent,
@@ -80,6 +89,10 @@ interface PollRegistry {
 
 export interface OrderingValue {
 	readonly client: OrderingClient | null;
+	/** the online payment function (checkout-order) with the session */
+	readonly payments: PaymentClient | null;
+	/** Zalo's Checkout SDK, or the browser's stand-in */
+	readonly checkout: CheckoutPort;
 	/** the store orders go to: the table's, the linked store, else the first store of the brand */
 	readonly store: string | null;
 	readonly table: TableContext | null;
@@ -102,8 +115,14 @@ export interface OrderingValue {
 		signature: string,
 		build: (requestId: string) => PlaceRequest,
 	): PlaceRequest;
-	/** an answer came back: the request is spent (an order) or refused; the next tap makes a new one */
-	settlePlacement(answer: PlaceAnswer): void;
+	/**
+	 * An answer came back: the request is spent (an order) or refused; the next tap makes a new one. An order empties
+	 * the basket, unless it was placed from elsewhere (an order placed again to pay at the counter keeps the basket).
+	 */
+	settlePlacement(
+		answer: PlaceAnswer,
+		options?: { readonly keepCart?: boolean },
+	): void;
 	reloadOrders(): void;
 	retryTable(): void;
 	/** a scanned code: a table's link sets the table (checked by the server); answers whether it was one */
@@ -144,9 +163,13 @@ function union(
 export function OrderingProvider({
 	children,
 	sourceFor = orderingClientFor,
+	paymentsFor = paymentClientFor,
+	checkoutFor = checkoutPortFor,
 }: {
 	readonly children: ReactNode;
 	readonly sourceFor?: OrderingSourceFactory;
+	readonly paymentsFor?: PaymentSourceFactory;
+	readonly checkoutFor?: (endpoint: DataEndpoint) => CheckoutPort;
 }) {
 	const { session, home, recover } = useCustomerData();
 	const endpoint = useDataEndpoint();
@@ -155,6 +178,14 @@ export function OrderingProvider({
 	const client = useMemo(
 		() => (session === null ? null : sourceFor(endpoint, session)),
 		[session, endpoint, sourceFor],
+	);
+	const payments = useMemo(
+		() => (session === null ? null : paymentsFor(endpoint, session)),
+		[session, endpoint, paymentsFor],
+	);
+	const checkout = useMemo(
+		() => checkoutFor(endpoint),
+		[endpoint, checkoutFor],
 	);
 
 	const [table, setTable] = useState<TableContext | null>(null);
@@ -349,12 +380,14 @@ export function OrderingProvider({
 		[],
 	);
 	const settlePlacement = useCallback(
-		(answer: PlaceAnswer) => {
+		(answer: PlaceAnswer, options?: { readonly keepCart?: boolean }) => {
 			pending.current = null;
 			if (answer.state !== "refused") {
-				cartRef.current = EMPTY_CART;
-				setCart(EMPTY_CART);
-				setPriceChanges([]);
+				if (options?.keepCart !== true) {
+					cartRef.current = EMPTY_CART;
+					setCart(EMPTY_CART);
+					setPriceChanges([]);
+				}
 				reloadOrders();
 			}
 		},
@@ -381,6 +414,8 @@ export function OrderingProvider({
 	const value = useMemo<OrderingValue>(
 		() => ({
 			client,
+			payments,
+			checkout,
 			store,
 			table,
 			menu,
@@ -406,6 +441,8 @@ export function OrderingProvider({
 		}),
 		[
 			client,
+			payments,
+			checkout,
 			store,
 			table,
 			menu,

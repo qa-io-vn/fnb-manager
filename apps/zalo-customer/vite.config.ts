@@ -16,6 +16,7 @@ export default defineConfig({
 				"ordering-menu",
 				"checkout-submit",
 				"active-order-strip",
+				"pay-step",
 			],
 			appRoot: fileURLToPath(new URL(".", import.meta.url)),
 		}),

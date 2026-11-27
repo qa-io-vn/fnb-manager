@@ -289,3 +289,17 @@ export const DEMO_ROTATED_TABLE_TOKEN = "demo-table-12-old";
 
 /** An order of another customer: reading it answers exactly as an unknown id (IDOR). */
 export const DEMO_FOREIGN_ORDER_ID = "ffffffff-0000-4000-8000-000000000001";
+
+/**
+ * The synthetic bank account of the demo store's VietQR (a stand-in of the server's provider settings): no real bank,
+ * BIN or account.
+ */
+export const DEMO_BANK = {
+	bin: "970400",
+	name: "Ngân hàng Mẫu",
+	accountNumber: "0123456789",
+	accountName: "CUA HANG MAU",
+} as const;
+
+/** How long an online attempt holds the order before it is cancelled (payment_timeout). */
+export const DEMO_PAYMENT_WINDOW_MS = 15 * 60_000;
