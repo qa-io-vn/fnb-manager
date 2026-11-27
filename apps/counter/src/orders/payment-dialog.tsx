@@ -31,6 +31,8 @@ export function PaymentDialog({
 	const { t } = useI18n();
 	const { client } = useSession();
 	const { current } = useShift();
+	// the payment names the version seen when the dialog opened
+	const [seen] = useState(order);
 	const { show } = useToast();
 	const [method, setMethod] = useState<Method>("cash");
 	const [given, setGiven] = useState("");
@@ -45,7 +47,7 @@ export function PaymentDialog({
 		setBusy(true);
 		setMessage(null);
 		try {
-			const answer = await recordPayment(client, order, method);
+			const answer = await recordPayment(client, seen, method);
 			if (answer.state === "paid") {
 				show(t("pay.done", { amount: formatVnd(order.total) }));
 				onPaid(answer.order);

@@ -122,7 +122,7 @@ function request(overrides: Partial<StoreRequest>): StoreRequest {
 		answer_message: null,
 		version: 1,
 		contact_name: "Khách mẫu",
-		contact_phone: "+84900000000",
+		contact_phone: "0900000000",
 		answer_due_at: "2026-11-28T03:30:00Z",
 		overdue: false,
 		...overrides,

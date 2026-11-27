@@ -33,6 +33,8 @@ export function CancelDialog({
 	const { t } = useI18n();
 	const { client } = useSession();
 	const { member } = useMember();
+	// the decision is made on the order as it was when the dialog opened: a change elsewhere meanwhile is a conflict
+	const [seen] = useState(order);
 	const [reason, setReason] = useState<CancelReason | null>(null);
 	const [text, setText] = useState("");
 	const [busy, setBusy] = useState(false);
@@ -44,7 +46,7 @@ export function CancelDialog({
 		setBusy(true);
 		setMessage(null);
 		try {
-			const answer = await act(client, order, "cancel", code);
+			const answer = await act(client, seen, "cancel", code);
 			if (answer.state === "conflict") {
 				onDone(answer.order, t("order.conflict"));
 				return;

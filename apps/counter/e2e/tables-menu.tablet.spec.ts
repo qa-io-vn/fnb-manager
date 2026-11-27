@@ -172,7 +172,9 @@ test("security: staff may pause an hour at most, and only at their own store", a
 			const [row] = await tx<
 				{ r: { paused_until: string } }[]
 			>`select app.counter_set_pause(${seeded.storeA}::uuid, 120, ${`thử ${randomUUID().slice(0, 4)}`}) as r`;
-			return row?.r.paused_until !== null;
+			const paused = row?.r.paused_until !== null;
+			await tx`select app.counter_set_pause(${seeded.storeA}::uuid, 0, null)`;
+			return paused;
 		}),
 	).toBe(true);
 });

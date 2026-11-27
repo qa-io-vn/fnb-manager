@@ -142,9 +142,10 @@ export async function openShiftFor(
 		values (${seeded.tenantId}, ${seeded.storeA}, ${userId}, (now() at time zone 'Asia/Ho_Chi_Minh')::date, now() - interval '1 minute', 0)`;
 }
 
-/** Closes every open order of the tenant, so a test starts from an empty queue. */
+/** Removes the tenant's orders and any pause, so a test starts from an empty queue that takes orders. */
 export async function clearQueue(db: Sql, seeded: SeededTenant): Promise<void> {
 	await db`delete from public.orders where tenant_id = ${seeded.tenantId}`;
+	await db`update public.store_ordering_settings set paused_until = null, paused_reason = null where tenant_id = ${seeded.tenantId}`;
 }
 
 /** The SQLSTATE a call answers for a member ("ok" when it does not refuse), in a savepoint so the test goes on. */

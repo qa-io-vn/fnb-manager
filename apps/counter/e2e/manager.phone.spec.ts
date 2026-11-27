@@ -24,7 +24,7 @@ test("criterion 5 end to end: blocked, added from the phone, paired, then locked
 }) => {
 	const stranger = {
 		zaloId: `${seeded.slug}-m02-${randomUUID().slice(0, 8)}`,
-		name: "Người mới M02",
+		name: `Người mới ${randomUUID().slice(0, 6)}`,
 	};
 	const tabletContext = await browser.newContext({
 		viewport: { width: 1280, height: 800 },
