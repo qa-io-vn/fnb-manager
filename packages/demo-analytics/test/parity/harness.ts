@@ -54,6 +54,9 @@ export const PGLITE_STUB = [
 	"create role supabase_auth_admin nologin;",
 	"create schema auth;",
 	"create schema extensions;",
+	// Supabase has pgcrypto in the extensions schema; table QR codes (ADR-060) sign with extensions.hmac in a SQL
+	// function, which Postgres checks when the migration creates it.
+	"create extension if not exists pgcrypto with schema extensions;",
 	"create table auth.users (id uuid primary key);",
 	"create schema storage;",
 	"create table storage.buckets (id text primary key, name text not null, public boolean default false, file_size_limit bigint, allowed_mime_types text[], owner uuid, created_at timestamptz default now(), updated_at timestamptz default now());",
@@ -116,9 +119,11 @@ const rawText = (value: string) => value;
 
 async function pgliteConnection(dataDir?: string): Promise<SqlConnection> {
 	const { PGlite } = await import("@electric-sql/pglite");
+	const { pgcrypto } = await import("@electric-sql/pglite/contrib/pgcrypto");
 	const migrated =
 		dataDir !== undefined && existsSync(join(dataDir, "PG_VERSION"));
 	const db: PGlite = await PGlite.create({
+		extensions: { pgcrypto },
 		parsers: { 1082: rawText, 1114: rawText, 1184: rawText },
 		...(dataDir === undefined ? {} : { dataDir }),
 	});
