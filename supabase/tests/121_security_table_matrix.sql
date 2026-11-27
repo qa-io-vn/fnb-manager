@@ -338,6 +338,15 @@ insert into public.order_payments (tenant_id, store_id, order_id, method, amount
 select o.tenant_id, o.store_id, o.id, 'cash', 29000, 'succeeded', now(), now() from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
 insert into public.order_refunds (tenant_id, store_id, order_id, method, amount, status, reason, requested_at)
 select o.tenant_id, o.store_id, o.id, 'cash', 1000, 'due', 'synthetic', now() from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.stamp_card_settings (brand_id, tenant_id)
+select b.id, b.tenant_id from public.brands b cross join fx where b.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.stamp_cards (tenant_id, brand_id, customer_login_id, stamps, total_earned)
+select l.tenant_id, a.brand_id, l.id, 0, 9 from app.customer_logins l join public.zalo_apps a on a.id = l.zalo_app_id cross join fx
+where l.user_id in (fx.customer_u, fx.customer_b_u);
+insert into public.stamp_rewards (tenant_id, brand_id, card_id, status, stamps, issued_at)
+select c.tenant_id, c.brand_id, c.id, 'available', 9, now() from public.stamp_cards c cross join fx where c.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.stamp_entries (tenant_id, brand_id, card_id, reward_id, kind, delta, balance_after, actor_kind, occurred_at)
+select r.tenant_id, r.brand_id, r.card_id, r.id, 'reward_issued', -9, 0, 'system', now() from public.stamp_rewards r cross join fx where r.tenant_id in (fx.tenant_a, fx.tenant_b);
 insert into public.customer_order_blocks (tenant_id, store_id, customer_login_id, blocked_until, reason)
 select o.tenant_id, o.store_id, o.customer_login_id, now() + interval '1 day', 'suspected_prank' from public.orders o cross join fx
 where o.tenant_id in (fx.tenant_a, fx.tenant_b) and o.customer_login_id is not null;
@@ -415,7 +424,12 @@ insert into tables_in_scope (tbl, readers, scoped, own, writers) values
   ('order_events', 'omv', true, null, '{}'),
   ('customer_order_blocks', 'om', true, null, '{owner,owner_a1,manager,manager_a1}'),
   ('order_payments', 'omv', true, null, '{}'),
-  ('order_refunds', 'omv', true, null, '{}');
+  ('order_refunds', 'omv', true, null, '{}'),
+  -- ADR-061 step 5: the stamp card; a brand's settings are written by its owners and managers, the rest only by the ledger functions.
+  ('stamp_card_settings', 'omv', false, null, '{owner,manager}'),
+  ('stamp_cards', 'omv', false, null, '{}'),
+  ('stamp_rewards', 'omv', false, null, '{}'),
+  ('stamp_entries', 'omv', false, null, '{}');
 
 create function pg_temp.signature_sql(p_table text, p_filter text default 'true')
 returns text
@@ -529,7 +543,7 @@ create temp table tables_found as
 select c.relname::text as tbl
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public' and c.relkind in ('r', 'p', 'v')
-  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_|^menu_|ordering|order|store_tables|item_option|table_calls)';
+  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_|^menu_|ordering|order|store_tables|item_option|table_calls|^stamp_)';
 
 select plan((select count(*)::integer from read_cells) + (select count(*)::integer from write_cells) + 4);
 

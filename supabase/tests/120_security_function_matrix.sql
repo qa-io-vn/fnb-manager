@@ -571,6 +571,10 @@ insert into matrix (fn, label, statement, expect) values
 ('customer_orders', 'customer_orders of the session only',
   $$select jsonb_array_length(public.customer_orders(null) -> 'orders')$$,
   '{"*": "DENY", "customer": "^ok:0$", "visitor": "^ok:0$", "customer_b": "^ok:0$"}'),
+-- ADR-061 step 5: the stamp card of the customer's Zalo account, read only through this RPC by a customer session.
+('customer_stamp_card', 'customer_stamp_card of the session only',
+  $$select public.customer_stamp_card() ->> 'stamps'$$,
+  '{"*": "DENY", "customer": "^ok:0$", "visitor": "^ok:0$", "customer_b": "^ok:0$"}'),
 ('counter_board', 'counter_board at A1',
   $$select jsonb_array_length(public.counter_board('{store_a1}', 0) -> 'orders')$$,
   '{"*": "DENY", "owner": "^ok:0$", "owner_a1": "^ok:0$", "manager": "^ok:0$", "manager_a1": "^ok:0$", "staff": "^ok:0$"}'),

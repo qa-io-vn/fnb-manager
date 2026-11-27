@@ -2780,7 +2780,7 @@ returns jsonb
 
 - **Status:** built (step 3).
 - **Who may call:** a customer session (visitor or member) of the store's brand.
-- **Notes:** `p_request` is `{request_id (UUID), store (link key), type ("table" or "takeaway"), table_token (table orders), pickup_at (takeaway, optional ISO instant), lines: [{size (UUID), qty (1–20), options: [option UUID, at most 10, none twice], note (≤ 100)}] (1–30 lines), note (≤ 200), payment ("counter", "zalo_checkout" or "vietqr"), expected_total (whole đồng the app showed), menu_version (optional)}`; any other key, `__proto__` included, is `22023`. The database prices every line from the menu and writes nothing until every check passes. Answers `{state: "placed" | "awaiting_payment" | "refused", refusal, replayed, order}`: a counter order is placed at once, accepted with its number and payment `unpaid`; an online one awaits its payment until `payment_due_at` without a number. Refusals: the ordering state's reason (`ordering_off`, `hours_unknown`, `closed_today`, `paused`, `closed_now`, `last_orders_passed`, `no_staff_online`, `busy`), `blocked`, `rate_limited` (20 calls of a customer and 200 of a store in 15 minutes; with `retry_at`), `too_many_open_orders` (3), `table_unknown`, `table_not_for_takeaway`, `pickup_time_invalid` (before the preparation time, outside the opening hours or on another business day), `payment_not_allowed` (a method the store has not switched on; takeaway is prepaid online), `item_unavailable` (with `unavailable_items`), `option_invalid` (with the line numbers), `amount_over_limit`, `price_changed` (with the server's `total`, `lines` and `menu_version`), `request_conflict`. A repeat of the same `request_id` with the same request answers the first order with `replayed: true`, also under parallel calls.
+- **Notes:** `p_request` is `{request_id (UUID), store (link key), type ("table" or "takeaway"), table_token (table orders), pickup_at (takeaway, optional ISO instant), lines: [{size (UUID), qty (1–20), options: [option UUID, at most 10, none twice], note (≤ 100)}] (1–30 lines), note (≤ 200), payment ("counter", "zalo_checkout" or "vietqr"), expected_total (whole đồng the app showed), menu_version (optional), use_reward (optional boolean, step 5)}`; any other key, `__proto__` included, is `22023`. The database prices every line from the menu and writes nothing until every check passes. Answers `{state: "placed" | "awaiting_payment" | "refused", refusal, replayed, order}`: a counter order is placed at once, accepted with its number and payment `unpaid`; an online one awaits its payment until `payment_due_at` without a number. Refusals: the ordering state's reason (`ordering_off`, `hours_unknown`, `closed_today`, `paused`, `closed_now`, `last_orders_passed`, `no_staff_online`, `busy`), `blocked`, `rate_limited` (20 calls of a customer and 200 of a store in 15 minutes; with `retry_at`), `too_many_open_orders` (3), `table_unknown`, `table_not_for_takeaway`, `pickup_time_invalid` (before the preparation time, outside the opening hours or on another business day), `payment_not_allowed` (a method the store has not switched on; takeaway is prepaid online), `item_unavailable` (with `unavailable_items`), `option_invalid` (with the line numbers), `amount_over_limit`, `price_changed` (with the server's `total`, `discount_amount`, `lines` and `menu_version`), `request_conflict`; with `use_reward` also `no_reward` and `reward_not_applicable` (no drink in the basket). With `use_reward: true` the customer's oldest stamp reward is taken off as the cheapest drink's size price (the order's `discount_amount`) and marked used; an order it makes free is accepted and paid at once. A repeat of the same `request_id` with the same request answers the first order with `replayed: true`, also under parallel calls.
 
 #### `public.customer_check_cart`
 
@@ -2791,7 +2791,7 @@ returns jsonb
 
 - **Status:** built (step 3).
 - **Who may call:** a customer session of the store's brand.
-- **Notes:** the same request as `customer_place_order` (`request_id`, `payment` and `expected_total` optional), priced without writing anything, for the confirmation step: `{state: "ok" | "refused", refusal, unavailable_items, bad_lines, lines, total, menu_version, ordering}`.
+- **Notes:** the same request as `customer_place_order` (`request_id`, `payment` and `expected_total` optional), priced without writing anything, for the confirmation step: `{state: "ok" | "refused", refusal, unavailable_items, bad_lines, lines, subtotal, discount_amount, total, reward, menu_version, ordering}`; with `use_reward: true`, `reward` is `applied` (the discount taken off `total`), `no_reward` or `reward_not_applicable`.
 
 #### `public.customer_cancel_order`
 
@@ -2912,6 +2912,21 @@ returns jsonb
 The online seams are executable by the service role only, for the payment Edge Functions (Checkout SDK, dynamic VietQR) after they verified the caller or the provider's signature: `checkout_payment_start(p_user, p_order, p_method, p_idempotency_key)` opens a pending attempt of the full total for the customer's own order awaiting payment (the same key answers the same attempt; one pending at a time; at most three failed), `checkout_payment_confirm(p_provider, p_provider_ref, p_payment, p_amount, p_success, p_reason)` settles it (unique on the provider's transaction id; another amount fails it; money arriving for a cancelled order is kept as a due refund), `checkout_payments_pending(p_older_than_minutes, p_limit)` lists the attempts to ask the provider about again, and `checkout_refund_confirm(p_refund, p_success, p_provider_ref, p_reason)` settles an online refund.
 
 Tests: pgTAP `269_order_payments.sql` (and the order suites, whose payments now go through these functions), rows in `120`, `121` and `47`.
+
+The stamp card (step 5, migration `stamp_cards`, native-till.md section 10). Stamps are earned when an order of a customer's Zalo account completes (one per drink), a reward is issued for every `stamps_per_reward` stamps (9 by default), `use_reward` spends it at placement (above), a cancellation gives it back and a succeeded refund takes the order's stamps back in proportion. No client writes a card, a reward or the ledger.
+
+#### `public.customer_stamp_card`
+
+```sql
+public.customer_stamp_card()
+returns jsonb
+```
+
+- **Status:** built (step 5).
+- **Who may call:** a customer session (visitor or member); `42501` otherwise.
+- **Notes:** the card at the brand of the session's app: `{enabled, stamps, stamps_per_reward, reward_name, total_earned, rewards: [{id, issued_at}], history: [{kind, delta, balance_after, at, order_no}]}` (the available rewards, oldest first; the last 20 entries, newest first); an empty card before the first stamp.
+
+Tests: pgTAP `270_stamp_cards.sql`, rows in `120`, `121`, `03` and `47`.
 
 ## 4. Tables and views
 
@@ -3089,6 +3104,8 @@ Built locally (migration `native_catalogue`, pgTAP `260` and `261`); empty until
 | `orders`, `order_lines`, `order_events` | native orders, their lines with the prices they were sold at, and the append-only log of every step with its actor and amount | owners, managers and viewers, stores in scope | none (the customer and counter functions) | none |
 | `customer_order_blocks` | customers blocked from ordering after three suspected pranks | owners and managers, stores in scope | owners and managers in scope delete a block to lift it | none |
 | `order_payments`, `order_refunds` | every payment of an order (counter cash and card, online attempts) and every refund, with who recorded it | owners, managers and viewers, stores in scope | none (the counter and checkout functions) | none |
+| `stamp_card_settings` | a brand's stamp card: on or off, stamps per reward (2–30, 9 by default), the reward's name | owners, managers and viewers of the tenant | owners and managers of the whole brand (`enabled`, `stamps_per_reward`, `reward_name`) | none |
+| `stamp_cards`, `stamp_rewards`, `stamp_entries` | the stamp card of a customer's Zalo account at a brand, its rewards and its append-only ledger | owners, managers and viewers of the tenant | none (the ledger functions) | none |
 
 ## 5. Edge Function endpoints
 
