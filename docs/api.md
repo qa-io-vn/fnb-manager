@@ -2780,7 +2780,7 @@ returns jsonb
 
 - **Status:** built (step 3).
 - **Who may call:** a customer session (visitor or member) of the store's brand.
-- **Notes:** `p_request` is `{request_id (UUID), store (link key), type ("table" or "takeaway"), table_token (table orders), pickup_at (takeaway, optional ISO instant), lines: [{size (UUID), qty (1–20), options: [option UUID, at most 10, none twice], note (≤ 100)}] (1–30 lines), note (≤ 200), payment ("counter", "zalo_checkout" or "vietqr"), expected_total (whole đồng the app showed), menu_version (optional)}`; any other key, `__proto__` included, is `22023`. The database prices every line from the menu and writes nothing until every check passes. Answers `{state: "placed" | "awaiting_payment" | "refused", refusal, replayed, order}`: a counter order is placed at once, accepted with its number and payment `unpaid`; an online one awaits its payment until `payment_due_at` without a number. Refusals: the ordering state's reason (`ordering_off`, `hours_unknown`, `closed_today`, `paused`, `closed_now`, `last_orders_passed`, `no_staff_online`, `busy`), `blocked`, `rate_limited` (20 calls of a customer and 200 of a store in 15 minutes; with `retry_at`), `too_many_open_orders` (3), `table_unknown`, `table_not_for_takeaway`, `pickup_time_invalid` (before the preparation time, outside the opening hours or on another business day), `payment_not_allowed` (a method the store has not switched on; takeaway is prepaid online), `item_unavailable` (with `unavailable_items`), `option_invalid` (with the line numbers), `amount_over_limit`, `price_changed` (with the server's `total`, `lines` and `menu_version`), `request_conflict`. A repeat of the same `request_id` with the same request answers the first order with `replayed: true`, also under parallel calls.
+- **Notes:** `p_request` is `{request_id (UUID), store (link key), type ("table" or "takeaway"), table_token (table orders), pickup_at (takeaway, optional ISO instant), lines: [{size (UUID), qty (1–20), options: [option UUID, at most 10, none twice], note (≤ 100)}] (1–30 lines), note (≤ 200), payment ("counter", "zalo_checkout" or "vietqr"), expected_total (whole đồng the app showed), menu_version (optional), use_reward (optional boolean, step 5)}`; any other key, `__proto__` included, is `22023`. The database prices every line from the menu and writes nothing until every check passes. Answers `{state: "placed" | "awaiting_payment" | "refused", refusal, replayed, order}`: a counter order is placed at once, accepted with its number and payment `unpaid`; an online one awaits its payment until `payment_due_at` without a number. Refusals: the ordering state's reason (`ordering_off`, `hours_unknown`, `closed_today`, `paused`, `closed_now`, `last_orders_passed`, `no_staff_online`, `busy`), `blocked`, `rate_limited` (20 calls of a customer and 200 of a store in 15 minutes; with `retry_at`), `too_many_open_orders` (3), `table_unknown`, `table_not_for_takeaway`, `pickup_time_invalid` (before the preparation time, outside the opening hours or on another business day), `payment_not_allowed` (a method the store has not switched on; takeaway is prepaid online), `item_unavailable` (with `unavailable_items`), `option_invalid` (with the line numbers), `amount_over_limit`, `price_changed` (with the server's `total`, `discount_amount`, `lines` and `menu_version`), `request_conflict`; with `use_reward` also `no_reward` and `reward_not_applicable` (no drink in the basket). With `use_reward: true` the customer's oldest stamp reward is taken off as the cheapest drink's size price (the order's `discount_amount`) and marked used; an order it makes free is accepted and paid at once. A repeat of the same `request_id` with the same request answers the first order with `replayed: true`, also under parallel calls.
 
 #### `public.customer_check_cart`
 
@@ -2791,7 +2791,7 @@ returns jsonb
 
 - **Status:** built (step 3).
 - **Who may call:** a customer session of the store's brand.
-- **Notes:** the same request as `customer_place_order` (`request_id`, `payment` and `expected_total` optional), priced without writing anything, for the confirmation step: `{state: "ok" | "refused", refusal, unavailable_items, bad_lines, lines, total, menu_version, ordering}`.
+- **Notes:** the same request as `customer_place_order` (`request_id`, `payment` and `expected_total` optional), priced without writing anything, for the confirmation step: `{state: "ok" | "refused", refusal, unavailable_items, bad_lines, lines, subtotal, discount_amount, total, reward, menu_version, ordering}`; with `use_reward: true`, `reward` is `applied` (the discount taken off `total`), `no_reward` or `reward_not_applicable`.
 
 #### `public.customer_cancel_order`
 
@@ -2874,6 +2874,170 @@ The minute job `app.ordering_tick` (pg_cron `ordering-tick`, created off; `app.e
 
 Tests: pgTAP `263_orders.sql`, `265_order_pricing.sql`, `266_order_state_transitions.sql`, `267_order_idempotency.sql`, `268_order_idor.sql`, rows in `120` and `121`; `jobs:integration/ordering-concurrency`; `core:unit/order-lifecycle`.
 
+Payments and refunds (step 4, migration `order_payments`, ADR-062). Every payment is an `order_payments` row and every refund an `order_refunds` row; both are written only by the functions below and shown in `counter_order` and `customer_order` as `money: {paid, refunded, refund_open, payments: [{id, method, amount, status, settled_at, recorded_by (counter only)}], refunds: [{id, method, amount, status, reason (counter only), requested_at, settled_at, recorded_by (counter only)}]}`. Nothing is marked paid without a payment record (the internal seam refuses).
+
+#### `public.counter_record_payment`
+
+```sql
+public.counter_record_payment(p_order uuid, p_method text, p_amount numeric, p_expected_version integer)
+returns jsonb
+```
+
+- **Status:** built (step 4).
+- **Who may call:** an owner, manager or staff member whose scope holds the order's store (`42501` otherwise, the same for an unknown order).
+- **Notes:** "Đã thu": `cash` or `card` for the order's full total, naming the version seen. Answers `{state: "paid" | "conflict" | "refused", refusal, replayed, payment_id, order}`: the same payment again is a replay; `already_paid`, `order_cancelled`, `not_payable`, `amount_differs` (with `total`) and `conflict` change nothing. An order still waiting for its online payment is accepted when the customer pays at the counter instead. A counter order can be completed only once paid.
+
+#### `public.counter_void_payment`
+
+```sql
+public.counter_void_payment(p_payment uuid, p_reason text)
+returns jsonb
+```
+
+- **Status:** built (step 4).
+- **Who may call:** staff of the payment's store: the member who recorded it within 10 minutes, an owner or manager of the store at any time (`manager_required` otherwise).
+- **Notes:** undoes a cash or card payment recorded by mistake, with a reason (1–200 characters); the order is unpaid again and the undo is logged with who, why and the amount. Refused as data after completion (`order_completed`: refund instead), once a refund exists (`has_refunds`) and for an online payment (`not_voidable`).
+
+#### `public.counter_refund`
+
+```sql
+public.counter_refund(p_order uuid, p_amount numeric, p_reason text)
+returns jsonb
+```
+
+- **Status:** built (step 4).
+- **Who may call:** staff of the order's store settle the due refund of a cancelled paid order in full; every other refund (a completed order, a partial amount, an online refund the provider failed) needs an owner or manager of the store (`manager_required`).
+- **Notes:** at most what was paid less earlier refunds (`amount_over_refundable` with `refundable`), with a reason. Cash and card are handed back at once (`state: "succeeded"`); an online payment's refund is `pending` until the provider confirms; a failed online refund settled by a manager is handed back in cash. The order's payment status follows: `refund_pending` while a refund is owed, `partially_refunded`, `refunded`. Every refund is logged with who asked, who recorded it and the amount.
+
+The online seams are executable by the service role only, for the payment Edge Functions (Checkout SDK, dynamic VietQR) after they verified the caller or the provider's signature: `checkout_payment_start(p_user, p_order, p_method, p_idempotency_key)` opens a pending attempt of the full total for the customer's own order awaiting payment (the same key answers the same attempt; one pending at a time; at most three failed), `checkout_payment_confirm(p_provider, p_provider_ref, p_payment, p_amount, p_success, p_reason)` settles it (unique on the provider's transaction id; another amount fails it; money arriving for a cancelled order is kept as a due refund), `checkout_payments_pending(p_older_than_minutes, p_limit)` lists the attempts to ask the provider about again, and `checkout_refund_confirm(p_refund, p_success, p_provider_ref, p_reason)` settles an online refund.
+
+Tests: pgTAP `269_order_payments.sql` (and the order suites, whose payments now go through these functions), rows in `120`, `121` and `47`.
+
+The stamp card (step 5, migration `stamp_cards`, native-till.md section 10). Stamps are earned when an order of a customer's Zalo account completes (one per drink), a reward is issued for every `stamps_per_reward` stamps (9 by default), `use_reward` spends it at placement (above), a cancellation gives it back and a succeeded refund takes the order's stamps back in proportion. No client writes a card, a reward or the ledger.
+
+#### `public.customer_stamp_card`
+
+```sql
+public.customer_stamp_card()
+returns jsonb
+```
+
+- **Status:** built (step 5).
+- **Who may call:** a customer session (visitor or member); `42501` otherwise.
+- **Notes:** the card at the brand of the session's app: `{enabled, stamps, stamps_per_reward, reward_name, total_earned, rewards: [{id, issued_at}], history: [{kind, delta, balance_after, at, order_no}]}` (the available rewards, oldest first; the last 20 entries, newest first); an empty card before the first stamp.
+
+Tests: pgTAP `270_stamp_cards.sql`, rows in `120`, `121`, `03` and `47`.
+
+The requests inbox (step 7, migration `store_requests`, native-till.md section 12). A request is `{request_id (UUID), store (store code), kind ("booking", "workshop", "hold", "application"), name (1–60), phone, party_size (a booking: 1–30), at (an ISO instant with its offset, 30 minutes to 60 days ahead; required for a booking, a workshop and a hold), subject (1–100: the workshop, item or position; required but for a booking), note (1–500, one line)}`; any other key or type is `22023`. Submissions answer `{state: "submitted" | "refused", refusal, replayed, request}` with refusals `request_conflict`, `store_unknown`, `kind_not_offered`, `rate_limited` (with `retry_at`), `too_many_open_requests` (3 new ones), `name_invalid`, `phone_invalid`, `party_size_invalid`, `time_invalid`, `subject_invalid`, `note_invalid`; a request as the customer sees it is `{id, kind, store, status, party_size, requested_for, subject, note, created_at, answered_at, answer_message, cancelled_at, cancelled_by, version, contact_name}`, never the phone.
+
+#### `public.customer_submit_request`
+
+```sql
+public.customer_submit_request(p_request jsonb)
+returns jsonb
+```
+
+- **Status:** built (step 7).
+- **Who may call:** a customer session (visitor or member) of the store's brand (`42501` without one; a store of another brand is `store_unknown`).
+- **Notes:** the booking screen of the customer app (C08). The same request id again is a replay; 5 calls a day per customer, 100 per store.
+
+#### `public.web_submit_request`
+
+```sql
+public.web_submit_request(p_brand uuid, p_client_key text, p_request jsonb)
+returns jsonb
+```
+
+- **Status:** built (step 7); its Edge Function is not built yet.
+- **Who may call:** the service role only, from the website's Edge Function.
+- **Notes:** `p_brand` is the brand of the site (`22023` unknown); `p_client_key` an opaque key of 16–200 characters the function derives for the visitor, of which only the SHA-256 is kept; 3 calls an hour per client key, 100 per store.
+
+#### `public.customer_requests` and `public.customer_cancel_request`
+
+```sql
+public.customer_requests()
+returns jsonb
+public.customer_cancel_request(p_request uuid)
+returns jsonb
+```
+
+- **Status:** built (step 7).
+- **Who may call:** a customer session.
+- **Notes:** `{requests: [...]}`, the customer's own from the app, newest first (at most 50). Cancelling a new or confirmed one answers `{state: "cancelled" | "refused", refusal, replayed, request}`: `unknown_request` for another customer's or an unknown id, `not_allowed` once declined, a second cancel a replay.
+
+#### `public.manager_requests`
+
+```sql
+public.manager_requests(p_store uuid, p_status text default null, p_limit integer default 50)
+returns jsonb
+```
+
+- **Status:** built (step 7).
+- **Who may call:** an owner or manager whose scope holds the store (`42501` otherwise).
+- **Notes:** the inbox (S10): `{requests, new, overdue}`, new requests first, each with `channel`, `contact_name`, `contact_phone`, `answered_by`, `answer_due_at` and `overdue` (new and past `request_answer_minutes`). A status other than the four or a limit outside 1–200 is `22023`.
+
+#### `public.manager_answer_request`
+
+```sql
+public.manager_answer_request(p_request uuid, p_status text, p_message text, p_expected_version integer)
+returns jsonb
+```
+
+- **Status:** built (step 7).
+- **Who may call:** an owner or manager of the request's store (`42501` otherwise, the same for an unknown id).
+- **Notes:** `confirmed`, `declined` or `cancelled` for a new request, `cancelled` for a confirmed one; declining and cancelling need a message (1–500). Answers `{state: "answered" | "conflict" | "refused", refusal, replayed, request}`: the same answer again is a replay, another version a conflict, any other move `not_allowed`. Records who answered, when and the message.
+
+Tests: pgTAP `272_store_requests.sql`, rows in `120`, `121`, `03`, `47` and `170`.
+
+Shifts (step 8, migration `staff_shifts`, native-till.md section 12). A shift as its person sees it is `{id, store_id, business_date, clock_in_at, clock_out_at, hours, opening_cash, counted_cash, status, closed_at, close_note, version}`, with `expected_cash` and `cash_difference` once counted (the count is blind); a manager also sees `user_id`, `name` (the roster's), `closed_by` and the expected cash at any time.
+
+#### `public.staff_clock_in`, `public.staff_clock_out` and `public.staff_my_shift`
+
+```sql
+public.staff_clock_in(p_store uuid, p_counter_token text, p_opening_cash numeric default 0)
+returns jsonb
+public.staff_clock_out(p_counted_cash numeric)
+returns jsonb
+public.staff_my_shift(p_month date default null)
+returns jsonb
+```
+
+- **Status:** built (step 8).
+- **Who may call:** clocking in, an owner, manager or staff member whose scope holds the store; clocking out and one's own shift, any member (`42501` otherwise).
+- **Notes:** "Vào ca" answers `{state: "clocked_in" | "refused", refusal, shift}` with refusals `counter_qr_invalid` (5 misses of a person and 20 of a store in 15 minutes, then `rate_limited` with `retry_at`) and `already_clocked_in` (a shift not closed, also one awaiting confirmation); a malformed code or a fraction of a dong is `22023`. "Ra ca" answers `{state: "closed" | "awaiting_confirmation" | "refused", refusal, shift}`: closed when the count equals the opening cash plus the cash the person recorded less the cash they handed back during the shift, awaiting a manager otherwise; counting again while it waits keeps the first clock-out time; `not_clocked_in` without a shift. `staff_my_shift` gives `{shift, recent, months}`: the shift not closed, the last 10 and the worked days of the month per store.
+
+#### `public.manager_counter_qr`, `public.manager_confirm_shift` and `public.manager_close_shift`
+
+```sql
+public.manager_counter_qr(p_store uuid, p_rotate boolean default false)
+returns jsonb
+public.manager_confirm_shift(p_shift uuid, p_note text)
+returns jsonb
+public.manager_close_shift(p_shift uuid, p_clock_out_at timestamptz, p_counted_cash numeric, p_note text)
+returns jsonb
+```
+
+- **Status:** built (step 8).
+- **Who may call:** an owner or manager whose scope holds the store (`42501` otherwise, the same for an unknown shift).
+- **Notes:** the counter code `{store_id, version, token, rotated}` to print (rotating retires the printed one). Confirming a difference needs a note (1–200) and closes the shift with who and when (`own_shift` for one's own, `not_awaiting_confirmation` for an open one, a replay once closed). Closing a forgotten shift takes the clock-out time (after the clock-in, not in the future: `clock_out_invalid`), the count and a note (`not_open`, `own_shift`).
+
+#### `public.manager_shifts`, `public.manager_worked_days` and `public.manager_day_reconciliation`
+
+```sql
+public.manager_shifts(p_store uuid, p_from date, p_to date)
+returns jsonb
+public.manager_worked_days(p_store uuid, p_month date)
+returns jsonb
+public.manager_day_reconciliation(p_store uuid, p_date date)
+returns jsonb
+```
+
+- **Status:** built (step 8).
+- **Who may call:** an owner or manager whose scope holds the store (`42501` otherwise).
+- **Notes:** the shifts between two business dates (at most 63 days, `22023` otherwise) with the counts still open and awaiting confirmation. The worked days of the month of a date (S11): `{month, standard_days, standard_day_hours, people: [{user_id, name, hours, worked_days, days: [{date, hours, days}], open_shifts}]}`, a day being its recorded hours over the hours per day, at most 1. The day's reconciliation (acceptance criterion 6): `{revenue, by_method, online_confirmed, card, cash: {invoiced, expected, counted, difference}, shifts_open, shifts_awaiting_confirmation, paid_not_completed, difference, matched}`.
+
+Tests: pgTAP `273_staff_shifts.sql`, rows in `120`, `121`, `03`, `47` and `170`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -2905,7 +3069,7 @@ Every table in `public` has RLS enabled, and `anon` holds no privilege on any ta
 
 | Relation | Purpose | Who reads | Client writes | Read by a client today |
 |---|---|---|---|---|
-| `invoices` | one row per POS sale: business date, sale time, status (`completed`, `edited`, `voided`), amounts, discounts, customer | data roles, stores in scope | none | web app (Hôm nay) |
+| `invoices` | one row per POS sale, and one per completed native order under the tenant's `native` POS account (external id `native-<order id>`, no receipt number; native-till.md section 11): business date, sale time, status (`completed`, `edited`, `voided`), amounts, discounts, customer | data roles, stores in scope | none | web app (Hôm nay) |
 | `invoice_lines` | lines of each invoice: `item`, `modifier`, `service`, `package` or `other` | data roles, stores in scope | none | web app (Hôm nay) |
 | `invoice_payments` | tenders of each invoice | data roles, stores in scope | none | web app (Hôm nay) |
 | `invoice_events` | voids, edits, removed lines and reissues | data roles, stores in scope | none | none |
@@ -3049,6 +3213,11 @@ Built locally (migration `native_catalogue`, pgTAP `260` and `261`); empty until
 | `table_calls` | "Gọi nhân viên" calls and who answered them | owners, managers and viewers, stores in scope | none (`customer_call_staff`, `counter_ack_call`) | none |
 | `orders`, `order_lines`, `order_events` | native orders, their lines with the prices they were sold at, and the append-only log of every step with its actor and amount | owners, managers and viewers, stores in scope | none (the customer and counter functions) | none |
 | `customer_order_blocks` | customers blocked from ordering after three suspected pranks | owners and managers, stores in scope | owners and managers in scope delete a block to lift it | none |
+| `order_payments`, `order_refunds` | every payment of an order (counter cash and card, online attempts) and every refund, with who recorded it | owners, managers and viewers, stores in scope | none (the counter and checkout functions) | none |
+| `stamp_card_settings` | a brand's stamp card: on or off, stamps per reward (2–30, 9 by default), the reward's name | owners, managers and viewers of the tenant | owners and managers of the whole brand (`enabled`, `stamps_per_reward`, `reward_name`) | none |
+| `stamp_cards`, `stamp_rewards`, `stamp_entries` | the stamp card of a customer's Zalo account at a brand, its rewards and its append-only ledger | owners, managers and viewers of the tenant | none (the ledger functions) | none |
+| `store_requests` | the requests inbox: bookings, workshop sign-ups, holds and job applications from the website and the app, with the contact typed and the answer | owners and managers, stores in scope | none (the request functions) | none |
+| `staff_shifts` | the shifts worked at a native store's counter: clock-in and clock-out, opening, expected and counted cash, the difference and who confirmed it | owners and managers, stores in scope; each person their own | none (the shift functions) | none |
 
 ## 5. Edge Function endpoints
 

@@ -56,6 +56,6 @@ jobs:
       - name: plpgsql lint of public and app (fail on errors)
         run: pnpm exec supabase db lint --schema public,app --level error --fail-on error
       - name: Security pgTAP files
-        run: pnpm exec supabase test db supabase/tests/120_security_function_matrix.sql supabase/tests/121_security_table_matrix.sql supabase/tests/122_security_session_spoofing.sql supabase/tests/123_security_input_abuse.sql supabase/tests/124_security_privacy.sql supabase/tests/125_security_rate_limits.sql supabase/tests/262_table_qr_and_calls.sql supabase/tests/268_order_idor.sql
+        run: pnpm exec supabase test db supabase/tests/120_security_function_matrix.sql supabase/tests/121_security_table_matrix.sql supabase/tests/122_security_session_spoofing.sql supabase/tests/123_security_input_abuse.sql supabase/tests/124_security_privacy.sql supabase/tests/125_security_rate_limits.sql supabase/tests/262_table_qr_and_calls.sql supabase/tests/268_order_idor.sql supabase/tests/272_store_requests.sql
       - if: always()
         run: pnpm exec supabase stop --no-backup

@@ -334,6 +334,31 @@ insert into public.order_lines (tenant_id, store_id, order_id, line_no, item_nam
 select o.tenant_id, o.store_id, o.id, 1, 'Cà phê', 1, 29000, 29000, true from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
 insert into public.order_events (tenant_id, store_id, order_id, kind, action, to_state, actor_kind, occurred_at)
 select o.tenant_id, o.store_id, o.id, 'status', 'placed', 'accepted', 'customer', now() from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.order_payments (tenant_id, store_id, order_id, method, amount, status, requested_at, settled_at)
+select o.tenant_id, o.store_id, o.id, 'cash', 29000, 'succeeded', now(), now() from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.order_refunds (tenant_id, store_id, order_id, method, amount, status, reason, requested_at)
+select o.tenant_id, o.store_id, o.id, 'cash', 1000, 'due', 'synthetic', now() from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.stamp_card_settings (brand_id, tenant_id)
+select b.id, b.tenant_id from public.brands b cross join fx where b.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.stamp_cards (tenant_id, brand_id, customer_login_id, stamps, total_earned)
+select l.tenant_id, a.brand_id, l.id, 0, 9 from app.customer_logins l join public.zalo_apps a on a.id = l.zalo_app_id cross join fx
+where l.user_id in (fx.customer_u, fx.customer_b_u);
+insert into public.stamp_rewards (tenant_id, brand_id, card_id, status, stamps, issued_at)
+select c.tenant_id, c.brand_id, c.id, 'available', 9, now() from public.stamp_cards c cross join fx where c.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.stamp_entries (tenant_id, brand_id, card_id, reward_id, kind, delta, balance_after, actor_kind, occurred_at)
+select r.tenant_id, r.brand_id, r.card_id, r.id, 'reward_issued', -9, 0, 'system', now() from public.stamp_rewards r cross join fx where r.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.store_requests (tenant_id, store_id, kind, channel, customer_login_id, client_request_id, request_hash, contact_name, contact_phone,
+  party_size, requested_for, created_at)
+select s.tenant_id, s.id, 'booking', 'app', l.id, gen_random_uuid(), repeat('b', 64), 'Khách', '+84' || '900012101', 2, now() + interval '1 day', now()
+from public.stores s
+cross join fx
+left join app.customer_logins l on l.user_id = case when s.tenant_id = fx.tenant_a then fx.customer_u else fx.customer_b_u end
+where s.id in (fx.store_a1, fx.store_a2, fx.store_b1);
+insert into public.staff_shifts (tenant_id, store_id, user_id, business_date, clock_in_at, clock_out_at, expected_cash, counted_cash, cash_difference, status, closed_at)
+select s.tenant_id, s.id, case when s.tenant_id = fx.tenant_a then fx.owner_u else fx.owner_b_u end, current_date, now() - interval '2 hours', now() - interval '1 hour',
+  0, 0, 0, 'closed', now()
+from public.stores s cross join fx
+where s.id in (fx.store_a1, fx.store_a2, fx.store_b1);
 insert into public.customer_order_blocks (tenant_id, store_id, customer_login_id, blocked_until, reason)
 select o.tenant_id, o.store_id, o.customer_login_id, now() + interval '1 day', 'suspected_prank' from public.orders o cross join fx
 where o.tenant_id in (fx.tenant_a, fx.tenant_b) and o.customer_login_id is not null;
@@ -409,7 +434,18 @@ insert into tables_in_scope (tbl, readers, scoped, own, writers) values
   ('orders', 'omv', true, null, '{}'),
   ('order_lines', 'omv', true, null, '{}'),
   ('order_events', 'omv', true, null, '{}'),
-  ('customer_order_blocks', 'om', true, null, '{owner,owner_a1,manager,manager_a1}');
+  ('customer_order_blocks', 'om', true, null, '{owner,owner_a1,manager,manager_a1}'),
+  ('order_payments', 'omv', true, null, '{}'),
+  ('order_refunds', 'omv', true, null, '{}'),
+  -- ADR-061 step 5: the stamp card; a brand's settings are written by its owners and managers, the rest only by the ledger functions.
+  ('stamp_card_settings', 'omv', false, null, '{owner,manager}'),
+  ('stamp_cards', 'omv', false, null, '{}'),
+  ('stamp_rewards', 'omv', false, null, '{}'),
+  ('stamp_entries', 'omv', false, null, '{}'),
+  -- Native till step 7: the requests carry the contacts customers typed, so only owners and managers of the store read them.
+  ('store_requests', 'om', true, null, '{}'),
+  -- Native till step 8: shifts are read by the store's owners and managers and by their person (the fixture's are the owners').
+  ('staff_shifts', 'om', true, null, '{}');
 
 create function pg_temp.signature_sql(p_table text, p_filter text default 'true')
 returns text
@@ -523,7 +559,7 @@ create temp table tables_found as
 select c.relname::text as tbl
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public' and c.relkind in ('r', 'p', 'v')
-  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_|^menu_|ordering|order|store_tables|item_option|table_calls)';
+  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_|^menu_|ordering|order|store_tables|item_option|table_calls|^stamp_|store_requests|staff_shifts)';
 
 select plan((select count(*)::integer from read_cells) + (select count(*)::integer from write_cells) + 4);
 

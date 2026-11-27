@@ -200,9 +200,23 @@ begin
 end;
 $$;
 create function pg_temp.order_of(p_answer jsonb) returns uuid language sql immutable as $$ select (p_answer -> 'order' ->> 'id')::uuid $$;
+-- "Đã thu" in cash at the counter of A1 by its staff member, for the order's total and current version.
 create function pg_temp.pay(p_order uuid, p_at timestamptz default null) returns jsonb language sql as $$
-  select app.order_payment_succeeded(p_order, (select o.total from public.orders o where o.id = p_order), 'staff', (select staff_u from fx),
-    coalesce(p_at, (select noon from fx) + interval '30 seconds'));
+  select pg_temp.call((select staff_u from fx), format($q$select app.counter_record_payment(%L, 'cash', %s, %s, %L)$q$, p_order,
+    (select o.total from public.orders o where o.id = p_order), (select o.version from public.orders o where o.id = p_order),
+    coalesce(p_at, (select noon from fx) + interval '30 seconds')));
+$$;
+-- The online seams as the Edge Functions call them: an attempt for the order's customer, then the provider's answer.
+create function pg_temp.start_online(p_order uuid, p_key text, p_at timestamptz default null) returns jsonb language sql as $$
+  select app.checkout_payment_start((select l.user_id from app.customer_logins l join public.orders o on o.customer_login_id = l.id where o.id = p_order),
+    p_order, (select o.payment_method from public.orders o where o.id = p_order), p_key, coalesce(p_at, (select noon from fx) + interval '1 minute'));
+$$;
+create function pg_temp.confirm_online(p_payment uuid, p_amount numeric, p_ok boolean, p_ref text, p_at timestamptz default null) returns jsonb language sql as $$
+  select app.checkout_payment_confirm((select p.provider from public.order_payments p where p.id = p_payment), p_ref, p_payment, p_amount, p_ok, null,
+    coalesce(p_at, (select noon from fx) + interval '1 minute'));
+$$;
+create function pg_temp.pay_online(p_order uuid, p_amount numeric, p_ok boolean, p_ref text, p_at timestamptz default null) returns jsonb language sql as $$
+  select pg_temp.confirm_online((pg_temp.start_online(p_order, 'key-' || p_ref, p_at) ->> 'payment_id')::uuid, p_amount, p_ok, p_ref, p_at);
 $$;
 -- A milk tea M with pearls and normal sugar (40,000) and a coffee (29,000): 69,000.
 create function pg_temp.basket() returns jsonb language sql stable as $$

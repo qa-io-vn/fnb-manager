@@ -571,6 +571,74 @@ insert into matrix (fn, label, statement, expect) values
 ('customer_orders', 'customer_orders of the session only',
   $$select jsonb_array_length(public.customer_orders(null) -> 'orders')$$,
   '{"*": "DENY", "customer": "^ok:0$", "visitor": "^ok:0$", "customer_b": "^ok:0$"}'),
+-- ADR-061 step 5: the stamp card of the customer's Zalo account, read only through this RPC by a customer session.
+('customer_stamp_card', 'customer_stamp_card of the session only',
+  $$select public.customer_stamp_card() ->> 'stamps'$$,
+  '{"*": "DENY", "customer": "^ok:0$", "visitor": "^ok:0$", "customer_b": "^ok:0$"}'),
+-- Native till step 7: the requests inbox. The app's submission and the customer's own list for a customer session
+-- (a store of another brand is store_unknown); the website's for the service role only; the inbox for owners and
+-- managers of the store.
+('customer_submit_request', 'customer_submit_request at a store of no brand',
+  $$select public.customer_submit_request(jsonb_build_object('request_id', gen_random_uuid(), 'store', 'sz-9', 'kind', 'booking', 'name', 'Khách', 'phone', '0901234567', 'party_size', 2, 'at', '2030-01-01T19:00:00+07:00')) ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:store_unknown$", "visitor": "^ok:store_unknown$", "customer_b": "^ok:store_unknown$"}'),
+('customer_requests', 'customer_requests of the session only',
+  $$select jsonb_array_length(public.customer_requests() -> 'requests')$$,
+  '{"*": "DENY", "customer": "^ok:0$", "visitor": "^ok:0$", "customer_b": "^ok:0$"}'),
+('customer_cancel_request', 'customer_cancel_request of an unknown request',
+  $$select public.customer_cancel_request('aaaaaaaa-aaaa-4aaa-8aaa-000000012091') ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:unknown_request$", "visitor": "^ok:unknown_request$", "customer_b": "^ok:unknown_request$"}'),
+('web_submit_request', 'web_submit_request of an unknown brand',
+  $$select public.web_submit_request('aaaaaaaa-aaaa-4aaa-8aaa-000000012090', 'synthetic-client-key-120', jsonb_build_object('store', 'sa-1')) ->> 'refusal'$$,
+  '{"*": "DENY", "service": "BAD"}'),
+('manager_requests', 'manager_requests at A1',
+  $$select jsonb_array_length(public.manager_requests('{store_a1}', null, 50) -> 'requests')$$,
+  '{"*": "DENY", "owner": "^ok:0$", "owner_a1": "^ok:0$", "manager": "^ok:0$", "manager_a1": "^ok:0$"}'),
+('manager_requests', 'manager_requests at A2',
+  $$select jsonb_array_length(public.manager_requests('{store_a2}', null, 50) -> 'requests')$$,
+  '{"*": "DENY", "owner": "^ok:0$", "manager": "^ok:0$"}'),
+('manager_answer_request', 'manager_answer_request of an unknown request',
+  $$select public.manager_answer_request('aaaaaaaa-aaaa-4aaa-8aaa-000000012091', 'confirmed', null, 1)::text$$,
+  '{"*": "DENY"}'),
+-- Native till step 8: shifts. Clocking in for members of the store (a wrong counter code answers as such); clocking
+-- out and one's own shift for every member; the counter code, the shifts, the worked days and the day's
+-- reconciliation for owners and managers of the store; confirming and closing a shift for owners and managers of its
+-- store (an unknown shift is 42501 for everyone).
+('staff_clock_in', 'staff_clock_in at A1 with a wrong code',
+  $$select public.staff_clock_in('{store_a1}', 'wrong-code-120', 0) ->> 'refusal'$$,
+  '{"*":"DENY","owner":"^ok:counter_qr_invalid$","owner_a1":"^ok:counter_qr_invalid$","manager":"^ok:counter_qr_invalid$","manager_a1":"^ok:counter_qr_invalid$","staff":"^ok:counter_qr_invalid$"}'),
+('staff_clock_out', 'staff_clock_out without a shift',
+  $$select public.staff_clock_out(0) ->> 'refusal'$$,
+  '{"*":"DENY","owner":"^ok:not_clocked_in$","owner_a1":"^ok:not_clocked_in$","manager":"^ok:not_clocked_in$","manager_a1":"^ok:not_clocked_in$","viewer":"^ok:not_clocked_in$","staff":"^ok:not_clocked_in$","staff_a2":"^ok:not_clocked_in$","publisher":"^ok:not_clocked_in$","owner_b":"^ok:not_clocked_in$"}'),
+('staff_my_shift', 'staff_my_shift without a shift',
+  $$select (public.staff_my_shift(null) -> 'shift')::text$$,
+  '{"*":"DENY","owner":"^ok:null$","owner_a1":"^ok:null$","manager":"^ok:null$","manager_a1":"^ok:null$","viewer":"^ok:null$","staff":"^ok:null$","staff_a2":"^ok:null$","publisher":"^ok:null$","owner_b":"^ok:null$"}'),
+('manager_counter_qr', 'manager_counter_qr at A1',
+  $$select public.manager_counter_qr('{store_a1}', false) ->> 'version'$$,
+  '{"*":"DENY","owner":"^ok:1$","owner_a1":"^ok:1$","manager":"^ok:1$","manager_a1":"^ok:1$"}'),
+('manager_counter_qr', 'manager_counter_qr at A2',
+  $$select public.manager_counter_qr('{store_a2}', false) ->> 'version'$$,
+  '{"*":"DENY","owner":"^ok:1$","manager":"^ok:1$"}'),
+('manager_confirm_shift', 'manager_confirm_shift of an unknown shift',
+  $$select public.manager_confirm_shift('aaaaaaaa-aaaa-4aaa-8aaa-000000012089', 'synthetic')::text$$,
+  '{"*": "DENY"}'),
+('manager_close_shift', 'manager_close_shift of an unknown shift',
+  $$select public.manager_close_shift('aaaaaaaa-aaaa-4aaa-8aaa-000000012089', now(), 0, 'synthetic')::text$$,
+  '{"*": "DENY"}'),
+('manager_shifts', 'manager_shifts at A1',
+  $$select jsonb_array_length(public.manager_shifts('{store_a1}', current_date - 7, current_date) -> 'shifts')$$,
+  '{"*":"DENY","owner":"^ok:0$","owner_a1":"^ok:0$","manager":"^ok:0$","manager_a1":"^ok:0$"}'),
+('manager_shifts', 'manager_shifts at A2',
+  $$select jsonb_array_length(public.manager_shifts('{store_a2}', current_date - 7, current_date) -> 'shifts')$$,
+  '{"*":"DENY","owner":"^ok:0$","manager":"^ok:0$"}'),
+('manager_worked_days', 'manager_worked_days at A1',
+  $$select jsonb_array_length(public.manager_worked_days('{store_a1}', current_date) -> 'people')$$,
+  '{"*":"DENY","owner":"^ok:0$","owner_a1":"^ok:0$","manager":"^ok:0$","manager_a1":"^ok:0$"}'),
+('manager_day_reconciliation', 'manager_day_reconciliation at A1',
+  $$select public.manager_day_reconciliation('{store_a1}', current_date) ->> 'revenue'$$,
+  '{"*":"DENY","owner":"^ok:0$","owner_a1":"^ok:0$","manager":"^ok:0$","manager_a1":"^ok:0$"}'),
+('manager_day_reconciliation', 'manager_day_reconciliation at A2',
+  $$select public.manager_day_reconciliation('{store_a2}', current_date) ->> 'revenue'$$,
+  '{"*":"DENY","owner":"^ok:0$","manager":"^ok:0$"}'),
 ('counter_board', 'counter_board at A1',
   $$select jsonb_array_length(public.counter_board('{store_a1}', 0) -> 'orders')$$,
   '{"*": "DENY", "owner": "^ok:0$", "owner_a1": "^ok:0$", "manager": "^ok:0$", "manager_a1": "^ok:0$", "staff": "^ok:0$"}'),
@@ -583,6 +651,29 @@ insert into matrix (fn, label, statement, expect) values
 ('counter_order_act', 'counter_order_act on an unknown order',
   $$select public.counter_order_act('aaaaaaaa-aaaa-4aaa-8aaa-000000012096', 'start', 1, null)::text$$,
   '{"*": "DENY"}'),
+-- ADR-062 step 4: payments and refunds. The counter's for staff of the order's store (an unknown order is 42501 for
+-- everyone); the online seams only for the service role, called by the payment Edge Functions after they verified.
+('counter_record_payment', 'counter_record_payment of an unknown order',
+  $$select public.counter_record_payment('aaaaaaaa-aaaa-4aaa-8aaa-000000012095', 'cash', 1, 1)::text$$,
+  '{"*": "DENY"}'),
+('counter_void_payment', 'counter_void_payment of an unknown payment',
+  $$select public.counter_void_payment('aaaaaaaa-aaaa-4aaa-8aaa-000000012094', 'synthetic')::text$$,
+  '{"*": "DENY"}'),
+('counter_refund', 'counter_refund of an unknown order',
+  $$select public.counter_refund('aaaaaaaa-aaaa-4aaa-8aaa-000000012095', 1, 'synthetic')::text$$,
+  '{"*": "DENY"}'),
+('checkout_payment_start', 'checkout_payment_start',
+  $$select public.checkout_payment_start('{customer_2_u}'::uuid, 'aaaaaaaa-aaaa-4aaa-8aaa-000000012095', 'vietqr', 'synthetic-key-120') ->> 'refusal'$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('checkout_payment_confirm', 'checkout_payment_confirm',
+  $$select public.checkout_payment_confirm('vietqr', 'synthetic-ref-120', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012093', 1, true) ->> 'refusal'$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('checkout_payments_pending', 'checkout_payments_pending',
+  $$select count(*) from public.checkout_payments_pending(20, 10)$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('checkout_refund_confirm', 'checkout_refund_confirm',
+  $$select public.checkout_refund_confirm('aaaaaaaa-aaaa-4aaa-8aaa-000000012092', true, 'synthetic-ref-120') ->> 'refusal'$$,
+  '{"*": "DENY", "service": "GATE"}'),
 ('counter_create_order', 'counter_create_order at A1, an ipos store',
   $$select public.counter_create_order('{store_a1}', jsonb_build_object('request_id', gen_random_uuid(), 'type', 'takeaway', 'lines', jsonb_build_array(jsonb_build_object('size', gen_random_uuid(), 'qty', 1)))) ->> 'refusal'$$,
   '{"*": "DENY", "owner": "^ok:not_native$", "owner_a1": "^ok:not_native$", "manager": "^ok:not_native$", "manager_a1": "^ok:not_native$", "staff": "^ok:not_native$"}');
@@ -606,7 +697,7 @@ where n.nspname = 'public'
   and d.objid is null
   and p.prorettype <> 'trigger'::regtype
   and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('service_role', p.oid, 'execute'))
-  and p.proname ~ '(customer|loyalty|coupon|redemption|redeem|dsr|member|notification|bot|muted|oa_|_oa|zalo|phone|voucher|claim|checkin|^staff_|consent|^bill_|^counter_|import_menu|till_mode|table_qr|order|ordering|sold_out|checkout)';
+  and p.proname ~ '(customer|loyalty|coupon|redemption|redeem|dsr|member|notification|bot|muted|oa_|_oa|zalo|phone|voucher|claim|checkin|^staff_|consent|^bill_|^counter_|import_menu|till_mode|table_qr|order|ordering|sold_out|checkout|^manager_|^web_)';
 
 select plan((select count(*)::integer from cells) + 4);
 
