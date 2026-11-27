@@ -1,4 +1,11 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { emitMockOpenApp } from "@fnb/zalo-mini/testing/mock-sdk";
+import {
+	act,
+	fireEvent,
+	screen,
+	waitFor,
+	within,
+} from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { DEMO_FOREIGN_ORDER_ID, DEMO_ITEMS } from "../demo/ordering-fixtures";
 import { renderOrderingApp } from "../test/render-ordering";
@@ -187,6 +194,21 @@ describe("ordering at a table", () => {
 });
 
 describe("refusals and states", () => {
+	it("takes the table of a QR scanned while the app is open (OpenApp), and the next table replaces it", async () => {
+		renderOrderingApp();
+		await screen.findByTestId("home");
+		act(() => emitMockOpenApp("/?store=mau-1&src=table&t=demo-table-3"));
+		expect(await screen.findByTestId("table-banner")).toHaveTextContent(
+			"Gọi món cho Bàn 3 · Sân",
+		);
+		act(() => emitMockOpenApp("/?store=mau-1&src=table&t=demo-table-12"));
+		await waitFor(() =>
+			expect(screen.getByTestId("table-banner")).toHaveTextContent(
+				"Gọi món cho Bàn 12 · Tầng 1",
+			),
+		);
+	});
+
 	it("shows no table for a forged token, and never a label from the address", async () => {
 		await openMenu("?store=mau-1&src=table&t=forged-token");
 		expect(await screen.findByTestId("table-refused")).toHaveAttribute(

@@ -83,11 +83,16 @@ export function StoreLinkProvider({
 	const pathRef = useRef(pathFor);
 	pathRef.current = pathFor;
 
+	// the launch's own link opens its screen once; a link that comes later through OpenApp is opened by its handler
 	useEffect(() => {
-		if (opened.current || link === null) return;
+		if (opened.current) return;
 		opened.current = true;
-		navigate(pathRef.current?.(link, launch) ?? `/cua-hang/${link.store}`);
-	}, [link, navigate, launch]);
+		const atLaunch = storeLinkFrom(launch.params);
+		if (atLaunch === null) return;
+		navigate(
+			pathRef.current?.(atLaunch, launch) ?? `/cua-hang/${atLaunch.store}`,
+		);
+	}, [navigate, launch]);
 
 	useEffect(() => {
 		const onOpen = (data: unknown) => {
