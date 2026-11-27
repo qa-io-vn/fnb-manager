@@ -2928,6 +2928,67 @@ returns jsonb
 
 Tests: pgTAP `270_stamp_cards.sql`, rows in `120`, `121`, `03` and `47`.
 
+The requests inbox (step 7, migration `store_requests`, native-till.md section 12). A request is `{request_id (UUID), store (store code), kind ("booking", "workshop", "hold", "application"), name (1–60), phone, party_size (a booking: 1–30), at (an ISO instant with its offset, 30 minutes to 60 days ahead; required for a booking, a workshop and a hold), subject (1–100: the workshop, item or position; required but for a booking), note (1–500, one line)}`; any other key or type is `22023`. Submissions answer `{state: "submitted" | "refused", refusal, replayed, request}` with refusals `request_conflict`, `store_unknown`, `kind_not_offered`, `rate_limited` (with `retry_at`), `too_many_open_requests` (3 new ones), `name_invalid`, `phone_invalid`, `party_size_invalid`, `time_invalid`, `subject_invalid`, `note_invalid`; a request as the customer sees it is `{id, kind, store, status, party_size, requested_for, subject, note, created_at, answered_at, answer_message, cancelled_at, cancelled_by, version, contact_name}`, never the phone.
+
+#### `public.customer_submit_request`
+
+```sql
+public.customer_submit_request(p_request jsonb)
+returns jsonb
+```
+
+- **Status:** built (step 7).
+- **Who may call:** a customer session (visitor or member) of the store's brand (`42501` without one; a store of another brand is `store_unknown`).
+- **Notes:** the booking screen of the customer app (C08). The same request id again is a replay; 5 calls a day per customer, 100 per store.
+
+#### `public.web_submit_request`
+
+```sql
+public.web_submit_request(p_brand uuid, p_client_key text, p_request jsonb)
+returns jsonb
+```
+
+- **Status:** built (step 7); its Edge Function is not built yet.
+- **Who may call:** the service role only, from the website's Edge Function.
+- **Notes:** `p_brand` is the brand of the site (`22023` unknown); `p_client_key` an opaque key of 16–200 characters the function derives for the visitor, of which only the SHA-256 is kept; 3 calls an hour per client key, 100 per store.
+
+#### `public.customer_requests` and `public.customer_cancel_request`
+
+```sql
+public.customer_requests()
+returns jsonb
+public.customer_cancel_request(p_request uuid)
+returns jsonb
+```
+
+- **Status:** built (step 7).
+- **Who may call:** a customer session.
+- **Notes:** `{requests: [...]}`, the customer's own from the app, newest first (at most 50). Cancelling a new or confirmed one answers `{state: "cancelled" | "refused", refusal, replayed, request}`: `unknown_request` for another customer's or an unknown id, `not_allowed` once declined, a second cancel a replay.
+
+#### `public.manager_requests`
+
+```sql
+public.manager_requests(p_store uuid, p_status text default null, p_limit integer default 50)
+returns jsonb
+```
+
+- **Status:** built (step 7).
+- **Who may call:** an owner or manager whose scope holds the store (`42501` otherwise).
+- **Notes:** the inbox (S10): `{requests, new, overdue}`, new requests first, each with `channel`, `contact_name`, `contact_phone`, `answered_by`, `answer_due_at` and `overdue` (new and past `request_answer_minutes`). A status other than the four or a limit outside 1–200 is `22023`.
+
+#### `public.manager_answer_request`
+
+```sql
+public.manager_answer_request(p_request uuid, p_status text, p_message text, p_expected_version integer)
+returns jsonb
+```
+
+- **Status:** built (step 7).
+- **Who may call:** an owner or manager of the request's store (`42501` otherwise, the same for an unknown id).
+- **Notes:** `confirmed`, `declined` or `cancelled` for a new request, `cancelled` for a confirmed one; declining and cancelling need a message (1–500). Answers `{state: "answered" | "conflict" | "refused", refusal, replayed, request}`: the same answer again is a replay, another version a conflict, any other move `not_allowed`. Records who answered, when and the message.
+
+Tests: pgTAP `272_store_requests.sql`, rows in `120`, `121`, `03`, `47` and `170`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -3106,6 +3167,7 @@ Built locally (migration `native_catalogue`, pgTAP `260` and `261`); empty until
 | `order_payments`, `order_refunds` | every payment of an order (counter cash and card, online attempts) and every refund, with who recorded it | owners, managers and viewers, stores in scope | none (the counter and checkout functions) | none |
 | `stamp_card_settings` | a brand's stamp card: on or off, stamps per reward (2–30, 9 by default), the reward's name | owners, managers and viewers of the tenant | owners and managers of the whole brand (`enabled`, `stamps_per_reward`, `reward_name`) | none |
 | `stamp_cards`, `stamp_rewards`, `stamp_entries` | the stamp card of a customer's Zalo account at a brand, its rewards and its append-only ledger | owners, managers and viewers of the tenant | none (the ledger functions) | none |
+| `store_requests` | the requests inbox: bookings, workshop sign-ups, holds and job applications from the website and the app, with the contact typed and the answer | owners and managers, stores in scope | none (the request functions) | none |
 
 ## 5. Edge Function endpoints
 

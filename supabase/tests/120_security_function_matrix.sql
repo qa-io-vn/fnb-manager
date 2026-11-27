@@ -575,6 +575,30 @@ insert into matrix (fn, label, statement, expect) values
 ('customer_stamp_card', 'customer_stamp_card of the session only',
   $$select public.customer_stamp_card() ->> 'stamps'$$,
   '{"*": "DENY", "customer": "^ok:0$", "visitor": "^ok:0$", "customer_b": "^ok:0$"}'),
+-- Native till step 7: the requests inbox. The app's submission and the customer's own list for a customer session
+-- (a store of another brand is store_unknown); the website's for the service role only; the inbox for owners and
+-- managers of the store.
+('customer_submit_request', 'customer_submit_request at a store of no brand',
+  $$select public.customer_submit_request(jsonb_build_object('request_id', gen_random_uuid(), 'store', 'sz-9', 'kind', 'booking', 'name', 'Khách', 'phone', '0901234567', 'party_size', 2, 'at', '2030-01-01T19:00:00+07:00')) ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:store_unknown$", "visitor": "^ok:store_unknown$", "customer_b": "^ok:store_unknown$"}'),
+('customer_requests', 'customer_requests of the session only',
+  $$select jsonb_array_length(public.customer_requests() -> 'requests')$$,
+  '{"*": "DENY", "customer": "^ok:0$", "visitor": "^ok:0$", "customer_b": "^ok:0$"}'),
+('customer_cancel_request', 'customer_cancel_request of an unknown request',
+  $$select public.customer_cancel_request('aaaaaaaa-aaaa-4aaa-8aaa-000000012091') ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:unknown_request$", "visitor": "^ok:unknown_request$", "customer_b": "^ok:unknown_request$"}'),
+('web_submit_request', 'web_submit_request of an unknown brand',
+  $$select public.web_submit_request('aaaaaaaa-aaaa-4aaa-8aaa-000000012090', 'synthetic-client-key-120', jsonb_build_object('store', 'sa-1')) ->> 'refusal'$$,
+  '{"*": "DENY", "service": "BAD"}'),
+('manager_requests', 'manager_requests at A1',
+  $$select jsonb_array_length(public.manager_requests('{store_a1}', null, 50) -> 'requests')$$,
+  '{"*": "DENY", "owner": "^ok:0$", "owner_a1": "^ok:0$", "manager": "^ok:0$", "manager_a1": "^ok:0$"}'),
+('manager_requests', 'manager_requests at A2',
+  $$select jsonb_array_length(public.manager_requests('{store_a2}', null, 50) -> 'requests')$$,
+  '{"*": "DENY", "owner": "^ok:0$", "manager": "^ok:0$"}'),
+('manager_answer_request', 'manager_answer_request of an unknown request',
+  $$select public.manager_answer_request('aaaaaaaa-aaaa-4aaa-8aaa-000000012091', 'confirmed', null, 1)::text$$,
+  '{"*": "DENY"}'),
 ('counter_board', 'counter_board at A1',
   $$select jsonb_array_length(public.counter_board('{store_a1}', 0) -> 'orders')$$,
   '{"*": "DENY", "owner": "^ok:0$", "owner_a1": "^ok:0$", "manager": "^ok:0$", "manager_a1": "^ok:0$", "staff": "^ok:0$"}'),
@@ -633,7 +657,7 @@ where n.nspname = 'public'
   and d.objid is null
   and p.prorettype <> 'trigger'::regtype
   and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('service_role', p.oid, 'execute'))
-  and p.proname ~ '(customer|loyalty|coupon|redemption|redeem|dsr|member|notification|bot|muted|oa_|_oa|zalo|phone|voucher|claim|checkin|^staff_|consent|^bill_|^counter_|import_menu|till_mode|table_qr|order|ordering|sold_out|checkout)';
+  and p.proname ~ '(customer|loyalty|coupon|redemption|redeem|dsr|member|notification|bot|muted|oa_|_oa|zalo|phone|voucher|claim|checkin|^staff_|consent|^bill_|^counter_|import_menu|till_mode|table_qr|order|ordering|sold_out|checkout|^manager_|^web_)';
 
 select plan((select count(*)::integer from cells) + 4);
 
