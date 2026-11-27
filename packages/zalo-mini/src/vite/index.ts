@@ -96,12 +96,22 @@ export interface MiniAppSettings {
 	readonly standInAccess?: LocalAccess;
 	readonly brand: string;
 	readonly appConfigPath: string;
+	/**
+	 * Ordering with prices (VITE_ORDERING=on): for the builds testers open (Development and Testing) until the Checkout
+	 * SDK is integrated (ADR-058, ADR-062). Absent, the build has no ordering screen and shows no price.
+	 */
+	readonly ordering?: true;
 }
+
+export const ORDERING_FLAGS = ["off", "on"] as const;
+export type OrderingFlag = (typeof ORDERING_FLAGS)[number];
 
 export interface MiniAppPluginOptions {
 	readonly kind: MiniAppKind;
 	readonly appRoot: string;
 	readonly developmentOnlyMarkers?: readonly string[];
+	/** Strings only the ordering screens hold: a build without VITE_ORDERING=on that contains one fails. */
+	readonly orderingOnlyMarkers?: readonly string[];
 }
 
 function pick<T extends string>(
@@ -142,6 +152,12 @@ export function miniAppSettings(
 		"VITE_ZALO_SESSION",
 	);
 	const brand = env.VITE_BRAND_KEY?.trim() || "";
+	const ordering = pick(
+		ORDERING_FLAGS,
+		env.VITE_ORDERING,
+		"off",
+		"VITE_ORDERING",
+	);
 	if (runtime === "zalo") {
 		const missing = [
 			"VITE_BRAND_KEY",
@@ -168,6 +184,7 @@ export function miniAppSettings(
 		...(guarded ? { standInAccess: localAccess(env) } : {}),
 		brand: brand || SYNTHETIC_BRAND,
 		appConfigPath: resolve(appRoot, env.MINI_APP_CONFIG || "app-config.json"),
+		...(ordering === "on" ? { ordering: true as const } : {}),
 	};
 }
 
@@ -336,6 +353,23 @@ export function developmentOnlyLeaks(
 	bundle: Readonly<Record<string, OutputContentLike>>,
 ): string[] {
 	if (stage !== "testing") return [];
+	return markersIn(markers, bundle);
+}
+
+/** The ordering markers a build without VITE_ORDERING=on still holds (none may: such a build shows no price). */
+export function orderingLeaks(
+	ordering: boolean,
+	markers: readonly string[],
+	bundle: Readonly<Record<string, OutputContentLike>>,
+): string[] {
+	if (ordering) return [];
+	return markersIn(markers, bundle);
+}
+
+function markersIn(
+	markers: readonly string[],
+	bundle: Readonly<Record<string, OutputContentLike>>,
+): string[] {
 	return Object.values(bundle).flatMap((output) => {
 		const content =
 			output.code ??
@@ -482,6 +516,9 @@ export function miniApp(options: MiniAppPluginOptions): Plugin[] {
 					"import.meta.env.VITE_MINI_APP_STAGE": JSON.stringify(settings.stage),
 					"import.meta.env.VITE_BRAND_KEY": JSON.stringify(settings.brand),
 					"import.meta.env.VITE_ZALO_SESSION": JSON.stringify(settings.session),
+					"import.meta.env.VITE_ORDERING": JSON.stringify(
+						settings.ordering === true ? "on" : "off",
+					),
 					"import.meta.env.VITE_ZALO_MOCK_ACCESS_TOKEN": JSON.stringify(
 						local?.accessToken ?? "",
 					),
@@ -548,6 +585,16 @@ export function miniApp(options: MiniAppPluginOptions): Plugin[] {
 			if (leaks.length > 0) {
 				this.error(
 					`a Testing build must not contain Development-only screens: ${leaks.join(", ")}`,
+				);
+			}
+			const ordering = orderingLeaks(
+				current().settings.ordering === true,
+				options.orderingOnlyMarkers ?? [],
+				bundle,
+			);
+			if (ordering.length > 0) {
+				this.error(
+					`a build without VITE_ORDERING=on must not contain the ordering screens: ${ordering.join(", ")}`,
 				);
 			}
 		},

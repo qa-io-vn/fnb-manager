@@ -12,6 +12,7 @@ import {
 	localSessionProxy,
 	MOCK_SDK_PATH,
 	miniAppSettings,
+	orderingLeaks,
 } from "../../src/vite/index";
 
 const appRoot = mkdtempSync(join(tmpdir(), "fnb-mini-plugin-"));
@@ -241,6 +242,50 @@ describe("Development-only screens", () => {
 		expect(
 			developmentOnlyLeaks("development", ["phone-probe"], bundle),
 		).toEqual([]);
+	});
+});
+
+describe("the ordering flag (ADR-058: prices and orders only for testers until the Checkout SDK)", () => {
+	const bundle = {
+		"assets/index.module.js": {
+			fileName: "assets/index.module.js",
+			code: "home",
+		},
+		"assets/menu.module.js": {
+			fileName: "assets/menu.module.js",
+			code: 'data-testid="ordering-menu"',
+		},
+	};
+
+	it("is off unless VITE_ORDERING=on, in every stage", () => {
+		expect(miniAppSettings({}, "build", appRoot).ordering).toBeUndefined();
+		expect(
+			miniAppSettings({ VITE_ORDERING: "off" }, "serve", appRoot).ordering,
+		).toBeUndefined();
+		expect(
+			miniAppSettings({ VITE_ORDERING: "on" }, "build", appRoot).ordering,
+		).toBe(true);
+		expect(
+			miniAppSettings(
+				{ VITE_ORDERING: "on", VITE_MINI_APP_STAGE: "development" },
+				"build",
+				appRoot,
+			).ordering,
+		).toBe(true);
+	});
+
+	it("refuses a value that is neither on nor off", () => {
+		expect(() =>
+			miniAppSettings({ VITE_ORDERING: "yes" }, "build", appRoot),
+		).toThrow("VITE_ORDERING must be one of off, on");
+	});
+
+	it("fails a build without the flag that still holds an ordering screen, and lets one with the flag hold it", () => {
+		expect(orderingLeaks(false, ["ordering-menu"], bundle)).toEqual([
+			"assets/menu.module.js contains ordering-menu",
+		]);
+		expect(orderingLeaks(true, ["ordering-menu"], bundle)).toEqual([]);
+		expect(orderingLeaks(false, [], bundle)).toEqual([]);
 	});
 });
 

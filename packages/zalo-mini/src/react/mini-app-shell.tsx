@@ -222,7 +222,11 @@ function Frame({
 	const shellBottom = `calc(${showTabs ? TAB_BAR_CSS : "0px"} + ${stripHeight}px)`;
 	const barsBottom = `calc(${shellBottom} + ${registry.padding}px)`;
 	const clearBottom = `calc(${shellBottom} + ${registry.all}px)`;
-	const bars = (showTabs ? 1 : 0) + (showStrip ? 1 : 0) + registry.count;
+	// a strip whose content draws nothing (no order in progress) takes no room and is not counted
+	const bars =
+		(showTabs ? 1 : 0) +
+		(showStrip && stripHeight > 0 ? 1 : 0) +
+		registry.count;
 	useLayoutEffect(() => {
 		const root = document.documentElement;
 		root.style.setProperty("--shell-bottom", shellBottom);

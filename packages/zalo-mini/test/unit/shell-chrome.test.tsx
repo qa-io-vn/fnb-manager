@@ -152,6 +152,17 @@ describe("a tab route", () => {
 		show();
 		expect(screen.queryByTestId("above-tabs")).toBeNull();
 	});
+
+	it("does not count a strip whose content draws nothing (no order in progress), so a cart bar can take its place", () => {
+		giveHeights({ strip: 0, cart: 56 });
+		const error = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => undefined);
+		show({ strip: true });
+		expect(shell().getAttribute("data-bottom-bars")).toBe("1");
+		expect(root().getPropertyValue("--shell-bottom")).not.toContain("56px");
+		expect(error).not.toHaveBeenCalled();
+	});
 });
 
 describe("a flow route", () => {
