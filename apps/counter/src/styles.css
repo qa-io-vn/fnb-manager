@@ -20,16 +20,13 @@ button {
 	touch-action: manipulation;
 }
 
-/* the 80 mm ticket: only the ticket is printed, at the printer's width (ADR-066) */
+/* the 80 mm ticket (ADR-066): while a ticket prints, only the ticket is on paper, at the printer's width; any other
+   page (the QR codes) prints without the bars */
 .print-only {
 	display: none;
 }
 
 @media print {
-	@page {
-		size: 80mm auto;
-		margin: 3mm;
-	}
 	html,
 	body,
 	#root {
@@ -37,7 +34,23 @@ button {
 		background: #fff;
 		color: #000;
 	}
-	.print-only {
+	.app-shell main {
+		overflow: visible;
+	}
+	body.printing-ticket .app-shell {
+		display: none;
+	}
+	body.printing-ticket .print-only {
 		display: block;
+	}
+}
+
+@page {
+	margin: 8mm;
+}
+
+@media print {
+	body.printing-ticket {
+		width: 80mm;
 	}
 }

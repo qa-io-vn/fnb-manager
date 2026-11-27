@@ -5,7 +5,12 @@ import { CreateOrderPage } from "./create/create-order-page";
 import { useMember, useSession } from "./lib/session";
 import { clockOf } from "./lib/time";
 import { ManagerHome } from "./manager/manager-home";
+import { MenuEditorPage } from "./manager/menu-page";
+import { OverviewPage } from "./manager/overview-page";
+import { QrPage } from "./manager/qr-page";
+import { RequestsPage } from "./manager/requests-page";
 import { ManagerShiftsPage } from "./manager/shifts-page";
+import { StaffPage } from "./manager/staff-page";
 import { SoldOutPage } from "./menu/sold-out-page";
 import { BoardProvider, useBoard } from "./orders/board-context";
 import { laneOrders } from "./orders/board-model";
@@ -207,6 +212,11 @@ function Frame({ manager }: { readonly manager: boolean }) {
 				<Route path="/ca" element={<ShiftPage />} />
 				<Route path="/quan-ly" element={manage(<ManagerHome />)} />
 				<Route path="/quan-ly/ca-lam" element={manage(<ManagerShiftsPage />)} />
+				<Route path="/quan-ly/tong-quan" element={manage(<OverviewPage />)} />
+				<Route path="/quan-ly/thuc-don" element={manage(<MenuEditorPage />)} />
+				<Route path="/quan-ly/yeu-cau" element={manage(<RequestsPage />)} />
+				<Route path="/quan-ly/nhan-su" element={manage(<StaffPage />)} />
+				<Route path="/quan-ly/ma-qr" element={manage(<QrPage />)} />
 				<Route path="/quan-ly/*" element={manage(<ManagerHome />)} />
 				<Route path="*" element={<Navigate to="/don" replace />} />
 			</Routes>

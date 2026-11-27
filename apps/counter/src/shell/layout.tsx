@@ -33,7 +33,7 @@ function Rail({ items }: { readonly items: readonly NavItem[] }) {
 	return (
 		<nav
 			aria-label={t("nav.label")}
-			className="hidden w-[72px] shrink-0 flex-col items-stretch gap-1 border-r border-line bg-surface-raised py-3 md:flex xl:w-[88px]"
+			className="hidden w-[72px] shrink-0 flex-col print:hidden items-stretch gap-1 border-r border-line bg-surface-raised py-3 md:flex xl:w-[88px]"
 		>
 			{items.map((item) => (
 				<NavLink
@@ -65,7 +65,7 @@ function BottomTabs({ items }: { readonly items: readonly NavItem[] }) {
 	return (
 		<nav
 			aria-label={t("nav.label")}
-			className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-surface-raised pb-[env(safe-area-inset-bottom)] md:hidden"
+			className="fixed inset-x-0 bottom-0 z-40 flex print:hidden border-t border-line bg-surface-raised pb-[env(safe-area-inset-bottom)] md:hidden"
 		>
 			{items.map((item) => (
 				<NavLink
@@ -102,7 +102,7 @@ export function AppShell({
 	readonly children: ReactNode;
 }) {
 	return (
-		<div className="flex h-dvh flex-col bg-surface text-ink print:hidden">
+		<div className="app-shell flex h-dvh flex-col bg-surface text-ink print:h-auto">
 			{topBar}
 			{banner}
 			<div className="flex min-h-0 flex-1">

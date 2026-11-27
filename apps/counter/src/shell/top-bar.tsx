@@ -114,7 +114,7 @@ export function TopBar({
 }) {
 	const { t } = useI18n();
 	return (
-		<header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-line bg-surface-raised px-4 md:px-5">
+		<header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-line bg-surface-raised px-4 md:px-5 print:hidden">
 			<Mark />
 			<span className="kicker hidden text-highlight sm:inline">
 				{t("app.kicker")}

@@ -78,6 +78,12 @@ export async function signIn(page: Page, person: SeededPerson): Promise<void> {
 	});
 	await page.goto("/");
 	await page.getByTestId("sign-in-zalo").click();
+	// a member of several stores (the owner) first chooses the store of the device: store A
+	const picker = page.getByTestId("store-picker");
+	await expect(page.getByTestId("account").or(picker)).toBeVisible();
+	if (await picker.isVisible()) {
+		await picker.getByRole("button", { name: "Cửa hàng mẫu A" }).click();
+	}
 	await expect(page.getByTestId("account")).toBeVisible();
 }
 

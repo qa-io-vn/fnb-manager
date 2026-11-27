@@ -43,9 +43,14 @@ export function PrinterProvider({
 			kind: "browser",
 			async print(next) {
 				setTicket(next);
-				// let React draw the ticket before the dialog opens
+				// let React draw the ticket before the dialog opens; only the ticket prints while the class is on
 				await new Promise((resolve) => setTimeout(resolve, 50));
+				document.body.classList.add("printing-ticket");
+				const done = () => document.body.classList.remove("printing-ticket");
+				window.addEventListener("afterprint", done, { once: true });
 				window.print();
+				// a print dialog that blocks returns after printing; one that does not fires afterprint
+				setTimeout(done, 1_000);
 			},
 		}),
 		[],
