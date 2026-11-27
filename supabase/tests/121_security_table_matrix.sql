@@ -349,6 +349,23 @@ select p.tenant_id, p.id, now(), '{}'::jsonb from public.payment_providers p cro
 insert into public.payment_exceptions (tenant_id, store_id, provider_id, method, provider_ref, amount, reason, source, received_at)
 select p.tenant_id, p.store_id, p.id, 'vietqr', 'mock:matrix-' || p.store_id, 1000, 'unknown_reference', 'webhook', now()
 from public.payment_providers p cross join fx where p.store_id in (fx.store_a1, fx.store_a2, fx.store_b1);
+-- E-invoices (ADR-069): a provider per store, the change log of the providers at A1 and B1, a sale invoice and a company
+-- invoice request per order, a saved company per customer login; written only by the server's functions.
+insert into public.einvoice_providers (tenant_id, brand_id, store_id, adapter, mode, secret_name, settings)
+select s.tenant_id, b.id, s.id, 'mock', 'sandbox', 'EINVOICE_KEY_BRAND_1',
+  '{"seller_tax_code": "0312345678", "template": "2", "series": "C26MAA", "vat_rate": "none"}'::jsonb
+from public.stores s join public.brands b on s.id = any (b.store_ids) cross join fx where s.id in (fx.store_a1, fx.store_a2, fx.store_b1);
+insert into public.einvoice_provider_changes (tenant_id, provider_id, changed_at, after)
+select p.tenant_id, p.id, now(), '{}'::jsonb from public.einvoice_providers p cross join fx where p.store_id in (fx.store_a1, fx.store_b1);
+insert into public.e_invoices (tenant_id, store_id, order_id, provider_id, kind, state, reason, queued_at)
+select o.tenant_id, o.store_id, o.id, p.id, 'sale', 'queued', 'paid', now()
+from public.orders o join public.einvoice_providers p on p.store_id = o.store_id cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.invoice_requests (tenant_id, store_id, order_id, source, customer_login_id, client_request_id, request_hash, tax_code, company_name, address, email, requested_at)
+select o.tenant_id, o.store_id, o.id, 'app', o.customer_login_id, gen_random_uuid(), repeat('c', 64), '0312345678', 'Công ty mẫu', 'Địa chỉ mẫu', 'hd@example.com', now()
+from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.saved_companies (tenant_id, customer_login_id, tax_code, company_name, address, email, created_at, updated_at)
+select l.tenant_id, l.id, '0312345678', 'Công ty mẫu', 'Địa chỉ mẫu', 'hd@example.com', now(), now() from app.customer_logins l cross join fx
+where l.user_id in (fx.customer_u, fx.customer_b_u);
 insert into public.stamp_card_settings (brand_id, tenant_id)
 select b.id, b.tenant_id from public.brands b cross join fx where b.tenant_id in (fx.tenant_a, fx.tenant_b);
 insert into public.stamp_cards (tenant_id, brand_id, customer_login_id, stamps, total_earned)
@@ -461,7 +478,15 @@ insert into tables_in_scope (tbl, readers, scoped, own, writers) values
   -- providers they read (it has no store of its own).
   ('payment_providers', 'om', true, null, '{}'),
   ('payment_provider_changes', 'om', false, null, '{}'),
-  ('payment_exceptions', 'om', true, null, '{}');
+  ('payment_exceptions', 'om', true, null, '{}'),
+  -- E-invoices: the provider rows and their log for owners and managers; the invoices (no buyer data on them) for
+  -- owners, managers and viewers; the company requests (the buyer's data) for owners and managers of the store; the
+  -- saved companies only for the customer who saved them (own: no member reads them).
+  ('einvoice_providers', 'om', true, null, '{}'),
+  ('einvoice_provider_changes', 'om', false, null, '{}'),
+  ('e_invoices', 'omv', true, null, '{}'),
+  ('invoice_requests', 'om', true, null, '{}'),
+  ('saved_companies', 'own', false, 'customer_login_id in (select l.id from app.customer_logins l where l.customer_id = {cust})', '{}');
 
 create function pg_temp.signature_sql(p_table text, p_filter text default 'true')
 returns text
@@ -539,6 +564,7 @@ begin
     when 'omv' then p_caller in ('owner', 'owner_a1', 'manager', 'manager_a1', 'viewer', 'owner_b')
     when 'om' then p_caller in ('owner', 'owner_a1', 'manager', 'manager_a1', 'owner_b')
     when 'om_all' then p_caller in ('owner', 'manager', 'owner_b')
+    when 'own' then false
   end;
   if not v_reads then
     return '^ok:a=0 a2=0 b=0$';
@@ -575,7 +601,7 @@ create temp table tables_found as
 select c.relname::text as tbl
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public' and c.relkind in ('r', 'p', 'v')
-  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_|^menu_|ordering|order|store_tables|item_option|table_calls|^stamp_|store_requests|staff_shifts|^payment_providers$|^payment_provider_changes$|^payment_exceptions$)';
+  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_|^menu_|ordering|order|store_tables|item_option|table_calls|^stamp_|store_requests|staff_shifts|^payment_providers$|^payment_provider_changes$|^payment_exceptions$|^einvoice_provider|^e_invoices$|^invoice_requests$|^saved_companies$)';
 
 select plan((select count(*)::integer from read_cells) + (select count(*)::integer from write_cells) + 4);
 

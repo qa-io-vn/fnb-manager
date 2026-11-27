@@ -345,6 +345,12 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Switch an online payment provider on or off, change its account (ADR-067) | when the scope holds every store of the brand (`checkout_set_provider`, logged with before and after) | no | no | no | no |
 | Read payment providers, their change log and the manager queue of money not applied (ADR-068) | scope (brand-wide rows: every store) | scope (the same) | no (`counter_payment_methods` gives the store's methods) | no | no |
 | Resolve an entry of the manager queue | scope | scope | no | no | no |
+| Switch the e-invoice provider on or off, change the seller's settings (ADR-069) | when the scope holds every store of the brand (`einvoice_set_provider`, logged with before and after) | no | no | no | no |
+| Read the e-invoice records of orders | scope | scope | no (`counter_order_einvoice` gives an order's pill to staff of its store) | scope | no (`customer_invoice_status` for their own order) |
+| Read company invoice requests (the buyer's tax code, name, address, email) and the failing invoices; retry one | scope | scope | the request of an order of its store, through `counter_order_einvoice` | no | own requests only (`customer_invoice_status`) |
+| Ask for a company invoice (ADR-070) | for a counter order of the store (`counter_request_invoice`) | the same | the same | no | own paid order inside the window, once, 10 calls an hour (`customer_request_invoice`) |
+| Read or delete saved companies | no | no | no | no | own only (row-level security, `customer_saved_companies`, `customer_delete_saved_company`) |
+| Issue, replace, adjust or cancel an e-invoice; queue one | no client: the triggers on an order's money queue them, `einvoice-job` with its ticket sends them, every result under the document's claim | | | | |
 | Open, link or settle an online payment attempt | no client: `checkout-order` for the session's own order (or, VietQR only, a counter order of the staff member's store), the webhooks after verifying Zalo's MAC or the bank service's key, the payment job with its ticket | | | | |
 | Read shifts and worked days; print the counter code; confirm a cash difference or close a forgotten shift (never one's own); the day's reconciliation | scope | scope | own shifts and days only | no | no |
 | Write an order, a line or an event directly | no | no | no | no | no |

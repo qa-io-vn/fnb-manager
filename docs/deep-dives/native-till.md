@@ -143,7 +143,7 @@ Order numbers count from 1 per store and business date in `app.order_counters`, 
 
 ## 7. E-invoices (first release)
 
-Every order whose payment succeeds (and every counter sale) queues one `einvoice_requests` row (`order_id`, `kind` `cash_register` or `company`, buyer tax code, name and address for a company invoice, `status`, `attempts`, `provider_ref`, `issued_at`, `error_code`). A worker in the `notify` dispatcher's cycle sends it through an `EinvoiceProvider` adapter (`issue`, `query`, `cancel`) with a mock first; failures retry with back-off and alert the owner after the last attempt; a refund issues the provider's adjustment or cancellation. The provider is not chosen yet; the adapter keeps the choice out of the order code. Customers ask for a company invoice on the order screen with a tax code (validated: 10 or 13 digits with the dash form).
+Every order whose payment succeeds, at the counter or online, gets its sale invoice "made from a cash register", issued by the server through a provider adapter with a mock first, retried with back-off and alerting after the last attempt; a refund or an undone payment is corrected at the provider; a customer may ask for a company invoice with a tax code, which replaces the sale invoice. Built 2026-11-28 (ADR-069, ADR-070): section 17 is the design. Deviations from this first sketch: the records are `e_invoices` (one per document: sale, company replacement, adjustment, cancellation) and `invoice_requests` (the company's data, once), not one `einvoice_requests` table; the worker is its own Edge Function `einvoice-job` woken by a minute job, not the `notify` dispatcher; the adapter has six operations (`issue`, `query`, `replace`, `adjust`, `cancel`, `lookup`).
 
 ## 8. The counter web app
 
@@ -217,4 +217,76 @@ What the customer app and the counter app found missing on the server, built in 
 7. **The website's forms.** The Edge Function `web-requests` (api.md section 5): CORS and the brand from `WEB_REQUEST_ORIGINS`, strict fields, a honeypot, a 3-second fill time, a 4 KiB body, an opaque client key, then `web_submit_request`. The database now refuses a booking or a hold outside the opening hours or on a closed day (`time_outside_hours`), from the app as well.
 8. **The inbox's proposals and readings (M01).** `manager_answer_request(..., p_proposed_for)` proposes another time (the clock stops; the customer sees it; confirming moves the booking there), and `manager_request_read` records the first owner or manager who opened a request; the inbox counts the unread ones.
 
-Left for later: the manager PIN (D3); only owners adding or locking a manager (D10, the owner's decision); a shift for cash refunds (a cash refund is still attributed to whoever records it, on shift or not); requiring a shift to key a counter order (Q01-I8 reads so; the payment is where the drawer is touched, so the order is left open to managers); takeaway slots (C17) and company invoices (C18), which wait for phase 2 and the e-invoice provider.
+Left for later: the manager PIN (D3); only owners adding or locking a manager (D10, the owner's decision); a shift for cash refunds (a cash refund is still attributed to whoever records it, on shift or not); requiring a shift to key a counter order (Q01-I8 reads so; the payment is where the drawer is touched, so the order is left open to managers); takeaway slots (C17), which wait for phase 2. Company invoices (C18) were built with the e-invoices (section 17); their screens are wired separately.
+
+## 17. E-invoices and company invoices (built 2026-11-28)
+
+ADR-069 and ADR-070; migrations `einvoices` (20261128500000) and `einvoice_foreign_key_indexes` (20261128510000); `packages/einvoice`; the Edge Function `einvoice-job`. The owner's plan puts e-invoices in the first release: "mỗi đơn thu tiền xong, máy chủ tự xuất hóa đơn qua API của nhà cung cấp hóa đơn", of the kind made from a cash register. The provider is not chosen; the mock runs everything locally and in the e2e runs.
+
+### 17.1 The provider row
+
+`einvoice_providers`, per brand, or per store for a store that invoices under a tax code of its own (the most specific row decides): `adapter` (`mock` until a provider is chosen), `mode` `off | sandbox | live` (the mock never live), `secret_name` (`EINVOICE_KEY_<NAME>`, the Edge Function secret with the credentials; a name shaped like a value is refused by a CHECK), `settings` `{seller_tax_code, template, series, vat_rate}`: template `1` (VAT invoice, a rate of 0, 5, 8 or 10) or `2` (a household business's sales invoice, `none`), the six-character series of a cash register (`C` or `K`, the year, `M`, two characters). Written only by `einvoice_set_provider` (an owner with every store of the brand), each change logged with before and after in `einvoice_provider_changes` (append-only). A store is "e-invoicing on" while its row's mode is not `off`.
+
+### 17.2 The documents and their states
+
+`e_invoices`, one row per document the provider is asked to make:
+
+| Kind | Made when | Amount | Ends |
+|---|---|---|---|
+| `sale` | the order's payment status becomes paid at a store whose provider is on | what the order holds when the job takes it (paid less refunded) | `issued`, then `adjusted`, `replaced` or `cancelled` |
+| `replacement` | a company invoice request (section 17.5) | the same, once the sale invoice is issued | `issued`, then `adjusted` or `cancelled` |
+| `adjustment` | a refund succeeds (or a payment is undone) and the provider holds an amount that may differ | what the order holds less what the provider holds, fixed when taken | `issued` or `cancelled` (nothing to change) |
+| `cancellation` | the same, when the order holds nothing | minus what the provider holds; the provider may answer `unsupported` and the job adjusts to zero | `issued` or `cancelled` |
+
+```mermaid
+stateDiagram-v2
+    [*] --> queued: paid / request / refund
+    queued --> issuing: the job takes it (5-minute claim, an attempt)
+    issuing --> issued: the provider made it (or had made it: asked first)
+    issuing --> failed: an error class
+    failed --> issuing: after 1, 2, 4 … 60 minutes (10 attempts a round)
+    failed --> queued: a manager retries a given-up document
+    issuing --> issuing: the claim lapsed, another run takes it
+    queued --> cancelled: never sent, nothing owed any more
+    issuing --> cancelled: asked again, never made, nothing to send
+    issued --> replaced: a company invoice is issued (sale only)
+    issued --> adjusted: an adjustment is issued
+    issued --> cancelled: a cancellation is issued
+```
+
+Every attempt after the first asks the provider for the document by our id before making it, and every result is recorded only under the claim it was given, so a lost answer or two overlapping runs never make a second invoice. A failure is kept as its class (`timeout`, `unavailable`, `rate_limited`, `rejected_auth`, `not_configured`, `unknown` are retried; `rejected_data`, `rejected_duplicate`, `unsupported` give up at once); giving up raises `einvoice_failed` (owners and managers, count-only facts, an hour's cool-down). No buyer data is on a document.
+
+### 17.3 Queueing: one reconciliation per order
+
+Triggers on `orders.payment_status` and on a succeeded `order_refunds` row call `app.einvoice_reconcile` (serialised per order by an advisory lock): a paid order without a live sale invoice gets one (only while its store's provider is on: orders paid while e-invoicing is off are not invoiced by the server); when the order holds nothing, documents that never reached the provider (no attempt yet) are cancelled here, with their company request; when a document is or may be at the provider and what the provider holds may differ from what the order holds, one correction is queued (at most one waits per order). A sale invoice waits while its order is cancelled and its refund is still owed (the refund settles it). A correction waits until nothing else of its order is on its way, then the job computes it; one with nothing to change is settled without a call.
+
+### 17.4 The job
+
+`einvoice-tick` (pg_cron, `app.enable_einvoice_jobs(url, schedule)`, off after the migration) posts a single-use ticket to `einvoice-job` while work waits (`app.einvoice_work_where`, the same rule as the work list). The function claims the ticket (`einvoice_job_claim`), takes up to 10 documents (`einvoice_job_work`: sale invoices first, then company invoices, then corrections; each under a 5-minute claim with its amount fixed), runs each through `runWorkItem` of `@fnb/einvoice` and reports `einvoice_job_result`, then sends the company invoice emails through the mailer (`EINVOICE_MAILER=mock`; no real email provider yet), within 25 seconds. The log holds counts and classes only.
+
+### 17.5 Company invoices (C18, Q01)
+
+`customer_request_invoice` and `counter_request_invoice` check a company again whatever the screen did (ADR-070): the tax code trimmed to `^\d{10}(-\d{3})?$` (13 bare digits hyphenated), the name 1–200 and the address 1–300 characters on one line without control characters or `< > { }`, an email of at most 254 characters; one request per order, idempotent per request id; the caller's own paid order (another customer's answers `unknown_order`), not refunded, inside the window (the payment's local date plus `store_ordering_settings.company_invoice_days`, 7 by default: day 7 yes, day 8 no); 10 calls an hour per customer. The request (`invoice_requests`: the buyer's data once, `received → issuing → issued → emailed | failed | cancelled`) queues a `replacement` that waits for the sale invoice and replaces it, the sale invoice becoming `replaced` in the same step. "Lưu công ty này cho lần sau" keeps up to 10 `saved_companies` per login, read by that customer alone (row-level security), deleted with the account; the customer's export holds both.
+
+### 17.6 What the apps read
+
+- **The counter's pill** (`counter_order_einvoice`): `pending` "Đang xuất…", `issued` "Đã xuất" (with the number and the lookup address), `retrying` "Chưa xuất được. Hệ thống tự thử lại, đơn vẫn hoàn tất.", `failed` (given up: a manager retries), `cancelled`, `off`, `none`; with the company request.
+- **The customer** (`customer_invoice_status`): whether a company invoice can be asked now and why not, the last day, the request and the order's invoice; `customer_saved_companies`, `customer_delete_saved_company`.
+- **The managers** (`manager_einvoices`, `manager_retry_einvoice`): the failing documents with their error class and attempts, the counts, and a retry.
+
+### 17.7 Security and privacy
+
+The job's functions are the service role's alone; the counter's are staff of the store; the managers' are owners and managers of the store; `e_invoices` is read by owners, managers and viewers (no buyer data on it), `invoice_requests` by owners and managers, `saved_companies` by its customer only; nothing is written directly. The provider's credentials live in an `EINVOICE_KEY_` secret, redacted from every log. A buyer's data is checked twice (the database, then the adapter before sending), refused rather than escaped when it carries markup or a line break, and escaped again in the email.
+
+### 17.8 Tests
+
+pgTAP `291_einvoices` (the foreign keys' indexes, the provider row, queueing at the counter and online, the states, claims and back-off, giving up and the alert, corrections, the pill and grants) and `292_company_invoices` (every field's classes and boundaries, the decision table of refusals, the window, idempotency, IDOR, the limit, saved companies, the replacement and the email, the counter's row, deletion and export); rows in `03`, `26`, `31`, `47`, `120`, `121`, `170`, `280`; `einvoice:unit/checks`, `mock`, `work`; `einvoice:integration/parallel-work` (gated: ten runs taking work at once, ten results of one document at once) and `job-e2e` (gated: the database and the job's code end to end with the mock: a lost answer recovered, a company invoice replacing the sale invoice and emailed, a refund adjusting it); Deno `einvoice-job`.
+
+### 17.9 Open questions for the owner, the accountant and the provider
+
+1. Which provider (EasyInvoice publishes the most; MISA's pages could not be read automatically; Viettel, VNPT and BKAV need their partner documents). ADR-069 lists what each needs.
+2. Whether an order a stamp reward made free (total 0) needs an invoice of zero value; the server issues none today.
+3. A refund after the company invoice: an adjustment of the company invoice is queued (as for a sale invoice); a company invoice asked for after a refund is refused (`refunded`).
+4. Whether a full refund is cancelled at the provider (where it still can) or always adjusted to zero; the job asks to cancel and adjusts when the provider refuses.
+5. The window (7 days) and replace rather than adjust for a company invoice (decision D5 of the missing-screens design).
+6. Orders paid while e-invoicing is off are not invoiced later by the server.

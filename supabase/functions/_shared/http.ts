@@ -16,6 +16,8 @@ const SECRET_NAME_PATTERN = /^[A-Z][A-Z0-9_]{1,80}$/;
 const ZALO_VARIABLE_PATTERN = /^ZALO_[A-Z0-9_]{1,60}$/;
 // the bank services' webhook keys (ADR-067); the Checkout SDK's private keys are ZALO_CHECKOUT_KEY_ secrets already
 const PAYMENT_VARIABLE_PATTERN = /^PAYMENT_[A-Z0-9_]{1,60}$/;
+// the e-invoice providers' credentials (ADR-069); EINVOICE_MOCK and EINVOICE_MAILER are switches, not secrets
+const EINVOICE_VARIABLE_PATTERN = /^EINVOICE_KEY_[A-Z0-9_]{1,60}$/;
 const BASE_URL_PATTERN = /_BASE_URL$/;
 const ZALO_NOT_SECRET: ReadonlySet<string> = new Set([
 	"ZALO_INTEGRATION",
@@ -117,11 +119,20 @@ export function paymentSecretVariables(
 		.sort();
 }
 
+export function einvoiceSecretVariables(
+	environment: FunctionEnvironment,
+): string[] {
+	return Object.keys(environment)
+		.filter((name) => EINVOICE_VARIABLE_PATTERN.test(name))
+		.sort();
+}
+
 export function secretValues(environment: FunctionEnvironment): string[] {
 	const values = [
 		...[
 			...zaloSecretVariables(environment),
 			...paymentSecretVariables(environment),
+			...einvoiceSecretVariables(environment),
 			...PLAIN_SECRET_VARIABLES,
 		].map((name) => environment[name] ?? ""),
 		...DATABASE_VARIABLES.flatMap((name) => {

@@ -331,7 +331,7 @@ create temp table ex as select pg_temp.export((select cust1_u from fx)) as j;
 grant select on ex to authenticated;
 select is(
   (select string_agg(k, ',' order by k collate "C") from jsonb_object_keys((select j from ex)) k),
-  'attached_orders,consents,counts,customer,deletion_request,generated_at,login,memberships,not_kept,order_blocks,orders,requests,staff_calls,stamp_card',
+  'attached_orders,consents,counts,customer,deletion_request,generated_at,invoice_requests,login,memberships,not_kept,order_blocks,orders,requests,saved_companies,staff_calls,stamp_card',
   'the export names every kind of data held'
 );
 select is(

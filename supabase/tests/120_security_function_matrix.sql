@@ -759,6 +759,46 @@ insert into matrix (fn, label, statement, expect) values
   '{"*": "DENY", "service": "GATE"}'),
 ('checkout_job_note', 'checkout_job_note',
   $$select public.checkout_job_note(jsonb_build_object('kind', 'requery', 'payment_id', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012092')) ->> 'state'$$,
+  '{"*": "DENY", "service": "GATE"}'),
+-- E-invoices (ADR-069): an owner with every store of the brand sets the provider; a customer session reads and asks for
+-- its own orders (an unknown order answers unknown_order) and keeps its saved companies; staff, managers and owners of
+-- the store key a company and read the pill (an unknown order is 42501 for everyone); owners and managers of the store
+-- read the failing list (an unknown invoice is 42501 for everyone); the job functions only for the service role.
+('einvoice_set_provider', 'einvoice_set_provider of brand A, switched off',
+  $$select public.einvoice_set_provider(jsonb_build_object('brand', '{brand_a}'::uuid, 'adapter', 'mock', 'mode', 'off', 'secret_name', 'EINVOICE_KEY_BRAND_1', 'settings', jsonb_build_object('seller_tax_code', '0312345678', 'template', '2', 'series', 'C26MAA', 'vat_rate', 'none'))) ->> 'state'$$,
+  '{"*": "DENY", "owner": "^ok:saved$"}'),
+('customer_invoice_status', 'customer_invoice_status of an unknown order',
+  $$select public.customer_invoice_status('aaaaaaaa-aaaa-4aaa-8aaa-000000012097') ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:unknown_order$", "visitor": "^ok:unknown_order$", "customer_b": "^ok:unknown_order$"}'),
+('customer_request_invoice', 'customer_request_invoice of an unknown order',
+  $$select public.customer_request_invoice(jsonb_build_object('request_id', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012098', 'order', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012097', 'company', jsonb_build_object('tax_code', '0312345678', 'company_name', 'Công ty mẫu', 'address', 'Địa chỉ mẫu', 'email', 'hd@example.com'))) ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:unknown_order$", "visitor": "^ok:unknown_order$", "customer_b": "^ok:unknown_order$"}'),
+('customer_saved_companies', 'customer_saved_companies of the session',
+  $$select jsonb_array_length(public.customer_saved_companies() -> 'companies')$$,
+  '{"*": "DENY", "customer": "^ok:0$", "visitor": "^ok:0$", "customer_b": "^ok:0$"}'),
+('customer_delete_saved_company', 'customer_delete_saved_company of an unknown company',
+  $$select public.customer_delete_saved_company('aaaaaaaa-aaaa-4aaa-8aaa-000000012098') ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:unknown_company$", "visitor": "^ok:unknown_company$", "customer_b": "^ok:unknown_company$"}'),
+('counter_request_invoice', 'counter_request_invoice of an unknown order',
+  $$select public.counter_request_invoice('aaaaaaaa-aaaa-4aaa-8aaa-000000012097', jsonb_build_object('request_id', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012098', 'company', jsonb_build_object('tax_code', '0312345678')))::text$$,
+  '{"*": "DENY"}'),
+('counter_order_einvoice', 'counter_order_einvoice of an unknown order',
+  $$select public.counter_order_einvoice('aaaaaaaa-aaaa-4aaa-8aaa-000000012097')::text$$,
+  '{"*": "DENY"}'),
+('manager_einvoices', 'manager_einvoices at A1',
+  $$select public.manager_einvoices('{store_a1}', 'failing', 50) ->> 'failing'$$,
+  '{"*": "DENY", "owner": "^ok:0$", "owner_a1": "^ok:0$", "manager": "^ok:0$", "manager_a1": "^ok:0$"}'),
+('manager_retry_einvoice', 'manager_retry_einvoice of an unknown invoice',
+  $$select public.manager_retry_einvoice('aaaaaaaa-aaaa-4aaa-8aaa-000000012099')::text$$,
+  '{"*": "DENY"}'),
+('einvoice_job_claim', 'einvoice_job_claim of an unknown ticket',
+  $$select public.einvoice_job_claim('aaaaaaaa-aaaa-4aaa-8aaa-000000012099')::text$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('einvoice_job_work', 'einvoice_job_work',
+  $$select jsonb_array_length(public.einvoice_job_work(1) -> 'invoices')$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('einvoice_job_result', 'einvoice_job_result of an unknown invoice',
+  $$select public.einvoice_job_result(jsonb_build_object('invoice_id', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012099', 'claim', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012099', 'outcome', 'failed', 'error_class', 'timeout')) ->> 'state'$$,
   '{"*": "DENY", "service": "GATE"}');
 
 insert into ph select 'customer_2_u', customer_2_u::text from fx;
@@ -780,7 +820,7 @@ where n.nspname = 'public'
   and d.objid is null
   and p.prorettype <> 'trigger'::regtype
   and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('service_role', p.oid, 'execute'))
-  and p.proname ~ '(customer|loyalty|coupon|redemption|redeem|dsr|member|notification|bot|muted|oa_|_oa|zalo|phone|voucher|claim|checkin|^staff_|consent|^bill_|^counter_|import_menu|till_mode|table_qr|order|ordering|sold_out|checkout|^manager_|^web_)';
+  and p.proname ~ '(customer|loyalty|coupon|redemption|redeem|dsr|member|notification|bot|muted|oa_|_oa|zalo|phone|voucher|claim|checkin|^staff_|consent|^bill_|^counter_|import_menu|till_mode|table_qr|order|ordering|sold_out|checkout|^manager_|^web_|einvoice)';
 
 select plan((select count(*)::integer from cells) + 4);
 

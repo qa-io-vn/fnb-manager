@@ -498,6 +498,14 @@ verify_jwt = false
 import_map = "./functions/payments-job/deno.json"
 entrypoint = "./functions/payments-job/index.ts"
 
+# E-invoices (ADR-069): the minute job einvoice-tick posts a single-use ticket; EINVOICE_MOCK=on lets the mock provider
+# run (local and e2e only), EINVOICE_MAILER=mock the mock mailer; a provider's key is the EINVOICE_KEY_ secret its row names.
+[functions.einvoice-job]
+enabled = true
+verify_jwt = false
+import_map = "./functions/einvoice-job/deno.json"
+entrypoint = "./functions/einvoice-job/index.ts"
+
 # The website's forms (native-till.md section 12): public, no login; CORS and the brand come from WEB_REQUEST_ORIGINS,
 # the client key from WEB_REQUEST_KEY.
 [functions.web-requests]

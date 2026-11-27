@@ -512,6 +512,29 @@ Deno.test("every log line of a request passes the redactor", async () => {
 	}
 });
 
+Deno.test("the e-invoice providers' EINVOICE_KEY_ credentials are redacted; the mock and mailer switches are not secrets", () => {
+	const environment: FunctionEnvironment = {
+		EINVOICE_KEY_BRAND_1: "synthetic-einvoice-key-redacted",
+		EINVOICE_MOCK: "on",
+		EINVOICE_MAILER: "mock",
+	};
+	const values = secretValues(environment);
+	assert(
+		values.includes("synthetic-einvoice-key-redacted"),
+		"the provider's key is a secret",
+	);
+	assert(
+		!values.includes("on") && !values.includes("mock"),
+		"the switches are not",
+	);
+	assert(
+		!functionRedactor(environment)(
+			"key synthetic-einvoice-key-redacted here",
+		).includes("synthetic-einvoice-key-redacted"),
+		"the log never holds it",
+	);
+});
+
 Deno.test("the bank services' PAYMENT_ keys are redacted like the Zalo secrets; the mock switch is not a secret", () => {
 	const environment: FunctionEnvironment = {
 		PAYMENT_BANK_BRAND_1: "synthetic-bank-key-redacted",

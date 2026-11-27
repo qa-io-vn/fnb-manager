@@ -806,6 +806,26 @@ Customers pay with e-wallets through Zalo's Checkout SDK and by bank transfer to
 
 **Problems.** `not_configured` from `checkout-order`: the secret the row names is not set. Zalo's callbacks answered `-1`: the key differs from the console's, or the callback is for another Mini App; the function's log names the refusal (`signature`, `wrong_app`). Callbacks from an address outside Zalo's two documented ones are logged in observe mode; once the real addresses are seen, set `CHECKOUT_WEBHOOK_IP_MODE=enforce` (and `CHECKOUT_WEBHOOK_IPS` if Zalo announces others). Bank posts answered 401: the service's key and the secret differ.
 
+### 4.25 Switching on e-invoices (ADR-069, ADR-070)
+
+Every paid order of a native store gets its invoice "made from a cash register" from the server, and a customer may ask for a company invoice in the app (C18) or at the counter (Q01). Nothing is issued until the brand's provider row is on. The provider is not chosen yet: only the mock adapter exists, for local runs and the e2e tests.
+
+**The owner's paperwork first:** choose the provider (ADR-069 lists what EasyInvoice, MISA, Viettel, VNPT and BKAV publish; ask each for its partner API document for cash-register invoices, its sandbox and its price); register the use of e-invoices made from a cash register with the tax authority (form 01/ĐKTĐ-HĐĐT through the provider), which fixes the series (six characters, the fourth `M`, such as `C26MAA`) and the template (`2` for a household business's sales invoice, `1` for a VAT invoice); ask the accountant about the open questions of native-till.md section 17.9. A real provider then needs its adapter in `packages/einvoice` (one file and its tests) and its name added to the database's list, in a migration.
+
+**Switching it on:**
+
+1. Store the provider's credentials as the Edge Function secret `EINVOICE_KEY_<NAME>` (Supabase dashboard → Edge Functions → Secrets; `<NAME>` such as the brand key in capitals). For the mock locally: any random value, and `EINVOICE_MOCK=on` in the function's environment (never on the cloud project).
+2. As an owner with every store of the brand, from the SQL editor or the CLI signed in as that owner: `select public.einvoice_set_provider('{"brand": "<brand id>", "adapter": "<adapter>", "mode": "sandbox", "secret_name": "EINVOICE_KEY_BRAND_1", "settings": {"seller_tax_code": "<10 digits>", "template": "2", "series": "C26MAA", "vat_rate": "none"}}');` Add `"store": "<store id>"` for a store that invoices under its own tax code. Every change is logged (`einvoice_provider_changes`).
+3. The job, as `postgres`: `select app.enable_einvoice_jobs('https://<project ref>.supabase.co/functions/v1/einvoice-job');` schedules `einvoice-tick` every minute; `app.disable_einvoice_jobs()` removes it.
+4. Test in sandbox: pay a small counter order and watch the counter's pill go from "Đang xuất…" to "Đã xuất" within a minute or two; ask for a company invoice for it and see the sale invoice replaced; refund part of it and see the adjustment.
+5. Then `"mode": "live"` with the live credentials.
+
+**The company invoice window:** `store_ordering_settings.company_invoice_days` (7 by default, 1 to 30), set by the store's owners and managers.
+
+**Every day:** a manager looks at the failing invoices (`manager_einvoices`; the alert `einvoice_failed` comes when one is given up). A `rejected_data` failure means the provider refused the data (a company's tax code it does not know, a setting): correct it, then `manager_retry_einvoice`. `rejected_auth` or `not_configured`: the credentials or the secret; the job keeps retrying for about four hours, then gives up. A company invoice email that fails five times shows in the list's count; the provider's portal can resend it.
+
+**Switching off:** the same call with `"mode": "off"`. Orders paid while it is off are not invoiced by the server later (issue them in the provider's portal); documents already queued wait until it is on again.
+
 ## 5. Maintenance calendar
 
 | When | Task | Who | How |

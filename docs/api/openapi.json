@@ -3355,6 +3355,266 @@
 			],
 			"type": "object"
 		},
+		"e_invoices": {
+			"description": "the e-invoices of native orders (ADR-069), one row per document the provider is asked to make: the sale invoice of a paid order made from a cash register, the company invoice that replaces it (C18), and the adjustment or cancellation a refund or an undone payment needs. State: queued -> issuing -> issued | failed (retried with back-off, then given up for a person) ; a sale becomes replaced or adjusted, any document cancelled. Holds the provider's reference, number, lookup code and URL, the tax authority's code, the attempts and the last error class, never the buyer's data (that stays on invoice_requests); written only by security definer functions",
+			"properties": {
+				"action": {
+					"format": "text",
+					"type": "string"
+				},
+				"amount": {
+					"description": "for a sale or a company invoice its total, what the order held when the job took it (the provider's figure once issued); for a correction the change it made, negative for a refund",
+					"format": "numeric",
+					"type": "number"
+				},
+				"attempts": {
+					"default": 0,
+					"description": "every attempt ever made; an attempt after the first asks the provider for the document by its id before making it again, so a lost answer never makes a second invoice",
+					"format": "int32",
+					"type": "integer"
+				},
+				"cancel_reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"claim_token": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"claimed_until": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"gave_up_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"invoice_no": {
+					"format": "text",
+					"type": "string"
+				},
+				"invoice_series": {
+					"format": "text",
+					"type": "string"
+				},
+				"issued_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"kind": {
+					"format": "text",
+					"type": "string"
+				},
+				"last_attempt_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"last_error_class": {
+					"format": "text",
+					"type": "string"
+				},
+				"lookup_code": {
+					"format": "text",
+					"type": "string"
+				},
+				"lookup_url": {
+					"format": "text",
+					"type": "string"
+				},
+				"mode": {
+					"format": "text",
+					"type": "string"
+				},
+				"next_attempt_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"order_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"original_id": {
+					"description": "the document a company invoice replaced, or an adjustment or cancellation acted on, set when the job takes it\n\nNote:\nThis is a Foreign Key to `e_invoices.id`.<fk table='e_invoices' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"provider_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"provider_ref": {
+					"format": "text",
+					"type": "string"
+				},
+				"queued_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"reason": {
+					"format": "text",
+					"type": "string"
+				},
+				"request_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"round_attempts": {
+					"default": 0,
+					"description": "the attempts since the last manager retry, which drive the back-off (1, 2, 4 … minutes, at most an hour) and the give-up after 10",
+					"format": "int32",
+					"type": "integer"
+				},
+				"settled_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"state": {
+					"default": "queued",
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tax_authority_code": {
+					"format": "text",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"order_id",
+				"provider_id",
+				"kind",
+				"state",
+				"reason",
+				"attempts",
+				"round_attempts",
+				"queued_at"
+			],
+			"type": "object"
+		},
+		"einvoice_provider_changes": {
+			"description": "the append-only log of every e-invoice provider change with who, when, before and after (a changed seller tax code or series changes every invoice that follows); no role changes or deletes a row",
+			"properties": {
+				"after": {
+					"format": "jsonb"
+				},
+				"before": {
+					"format": "jsonb"
+				},
+				"changed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"changed_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "int64",
+					"type": "integer"
+				},
+				"provider_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": ["id", "tenant_id", "provider_id", "changed_at", "after"],
+			"type": "object"
+		},
+		"einvoice_providers": {
+			"description": "the e-invoice provider a brand (or one of its stores, when it invoices under a tax code of its own) switched on (ADR-069): the adapter, the mode (off, sandbox, live), the name of the Edge Function secret with its key (never the key) and the seller's public settings; the most specific row decides; written only by einvoice_set_provider (an owner with every store of the brand), read by its owners and managers",
+			"properties": {
+				"adapter": {
+					"format": "text",
+					"type": "string"
+				},
+				"brand_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"created_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"created_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"mode": {
+					"default": "off",
+					"format": "text",
+					"type": "string"
+				},
+				"secret_name": {
+					"description": "the Edge Function secret with the provider's credentials: EINVOICE_KEY_<NAME>",
+					"format": "text",
+					"type": "string"
+				},
+				"settings": {
+					"description": "public settings: seller_tax_code, template (1 or 2), series (an invoice made from a cash register: the fourth character is M) and vat_rate (none for a sales invoice)",
+					"format": "jsonb"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"default": "now()",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"updated_by": {
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"brand_id",
+				"adapter",
+				"mode",
+				"secret_name",
+				"settings",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"gmf_groups": {
 			"description": "the OA's staff groups (Quản lý nhóm): the group id and the stores it serves",
 			"properties": {
@@ -3945,6 +4205,125 @@
 				"business_date",
 				"amount",
 				"fee_amount"
+			],
+			"type": "object"
+		},
+		"invoice_requests": {
+			"description": "a company invoice asked for an order (C18 in the app, Q01 at the counter): one per order, the buyer's tax code, name, address and email as the invoice needs them (kept with the invoice for the legal period, without the customer link once the login is deleted), the status received -> issuing -> issued -> emailed | failed | cancelled, and the email's attempts; written only by security definer functions; read by the store's owners and managers",
+			"properties": {
+				"address": {
+					"format": "text",
+					"type": "string"
+				},
+				"client_request_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"closed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"company_name": {
+					"format": "text",
+					"type": "string"
+				},
+				"customer_login_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"einvoice_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"email": {
+					"format": "text",
+					"type": "string"
+				},
+				"email_attempts": {
+					"default": 0,
+					"format": "int32",
+					"type": "integer"
+				},
+				"email_claimed_until": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"email_error_class": {
+					"format": "text",
+					"type": "string"
+				},
+				"email_next_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"emailed_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"issued_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"order_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"request_hash": {
+					"format": "text",
+					"type": "string"
+				},
+				"requested_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"requested_by": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"source": {
+					"format": "text",
+					"type": "string"
+				},
+				"status": {
+					"default": "received",
+					"format": "text",
+					"type": "string"
+				},
+				"store_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"tax_code": {
+					"format": "text",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"store_id",
+				"order_id",
+				"source",
+				"client_request_id",
+				"request_hash",
+				"tax_code",
+				"company_name",
+				"address",
+				"email",
+				"status",
+				"email_attempts",
+				"requested_at"
 			],
 			"type": "object"
 		},
@@ -8642,6 +9021,62 @@
 			],
 			"type": "object"
 		},
+		"saved_companies": {
+			"description": "the companies a customer saved for their next company invoice (\"Lưu công ty này cho lần sau\", C18): at most 10 per login, readable only by that customer (row-level security), written only by customer_request_invoice and customer_delete_saved_company, deleted with the login (customer_delete_account)",
+			"properties": {
+				"address": {
+					"format": "text",
+					"type": "string"
+				},
+				"company_name": {
+					"format": "text",
+					"type": "string"
+				},
+				"created_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"customer_login_id": {
+					"format": "uuid",
+					"type": "string"
+				},
+				"email": {
+					"format": "text",
+					"type": "string"
+				},
+				"id": {
+					"default": "gen_random_uuid()",
+					"description": "Note:\nThis is a Primary Key.<pk/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"tax_code": {
+					"format": "text",
+					"type": "string"
+				},
+				"tenant_id": {
+					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
+					"format": "uuid",
+					"type": "string"
+				},
+				"updated_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"tenant_id",
+				"customer_login_id",
+				"tax_code",
+				"company_name",
+				"address",
+				"email",
+				"created_at",
+				"updated_at"
+			],
+			"type": "object"
+		},
 		"shift_handovers": {
 			"description": "handover notes (FR-STF-17): from shift Ca {from_shift} to Ca {to_shift} of a store's business date, written by created_by and acknowledged by a manager of the store who is not the writer; the writer edits the note until it is acknowledged; the note is free text that no message or log ever carries",
 			"properties": {
@@ -9450,6 +9885,12 @@
 		"store_ordering_settings": {
 			"description": "one row per store that has till or ordering settings (native-till.md section 2); a store without a row is an ipos store that takes no order",
 			"properties": {
+				"company_invoice_days": {
+					"default": 7,
+					"description": "a customer may ask for a company invoice (C18) until this many days after the payment, counted in the store's local dates: day 7 yes, day 8 no by default",
+					"format": "int32",
+					"type": "integer"
+				},
 				"counter_qr_version": {
 					"default": 1,
 					"description": "the version of the store's counter QR code staff scan to clock in; moved only by manager_counter_qr with rotate, which retires the printed code",
@@ -9610,7 +10051,8 @@
 				"request_answer_minutes",
 				"counter_qr_version",
 				"standard_day_hours",
-				"standard_month_days"
+				"standard_month_days",
+				"company_invoice_days"
 			],
 			"type": "object"
 		},
@@ -11283,6 +11725,33 @@
 				"$ref": "#/definitions/dim_calendar"
 			}
 		},
+		"body.e_invoices": {
+			"description": "e_invoices",
+			"in": "body",
+			"name": "e_invoices",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/e_invoices"
+			}
+		},
+		"body.einvoice_provider_changes": {
+			"description": "einvoice_provider_changes",
+			"in": "body",
+			"name": "einvoice_provider_changes",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/einvoice_provider_changes"
+			}
+		},
+		"body.einvoice_providers": {
+			"description": "einvoice_providers",
+			"in": "body",
+			"name": "einvoice_providers",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/einvoice_providers"
+			}
+		},
 		"body.gmf_groups": {
 			"description": "gmf_groups",
 			"in": "body",
@@ -11344,6 +11813,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/invoice_payments"
+			}
+		},
+		"body.invoice_requests": {
+			"description": "invoice_requests",
+			"in": "body",
+			"name": "invoice_requests",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/invoice_requests"
 			}
 		},
 		"body.invoices": {
@@ -11830,6 +12308,15 @@
 			"required": false,
 			"schema": {
 				"$ref": "#/definitions/report_settings"
+			}
+		},
+		"body.saved_companies": {
+			"description": "saved_companies",
+			"in": "body",
+			"name": "saved_companies",
+			"required": false,
+			"schema": {
+				"$ref": "#/definitions/saved_companies"
 			}
 		},
 		"body.shift_handovers": {
@@ -15547,6 +16034,312 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.e_invoices.action": {
+			"in": "query",
+			"name": "action",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.amount": {
+			"description": "for a sale or a company invoice its total, what the order held when the job took it (the provider's figure once issued); for a correction the change it made, negative for a refund",
+			"in": "query",
+			"name": "amount",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.attempts": {
+			"description": "every attempt ever made; an attempt after the first asks the provider for the document by its id before making it again, so a lost answer never makes a second invoice",
+			"in": "query",
+			"name": "attempts",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.cancel_reason": {
+			"in": "query",
+			"name": "cancel_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.claim_token": {
+			"in": "query",
+			"name": "claim_token",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.claimed_until": {
+			"in": "query",
+			"name": "claimed_until",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.gave_up_at": {
+			"in": "query",
+			"name": "gave_up_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.invoice_no": {
+			"in": "query",
+			"name": "invoice_no",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.invoice_series": {
+			"in": "query",
+			"name": "invoice_series",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.issued_at": {
+			"in": "query",
+			"name": "issued_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.kind": {
+			"in": "query",
+			"name": "kind",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.last_attempt_at": {
+			"in": "query",
+			"name": "last_attempt_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.last_error_class": {
+			"in": "query",
+			"name": "last_error_class",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.lookup_code": {
+			"in": "query",
+			"name": "lookup_code",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.lookup_url": {
+			"in": "query",
+			"name": "lookup_url",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.mode": {
+			"in": "query",
+			"name": "mode",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.next_attempt_at": {
+			"in": "query",
+			"name": "next_attempt_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.order_id": {
+			"in": "query",
+			"name": "order_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.original_id": {
+			"description": "the document a company invoice replaced, or an adjustment or cancellation acted on, set when the job takes it",
+			"in": "query",
+			"name": "original_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.provider_id": {
+			"in": "query",
+			"name": "provider_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.provider_ref": {
+			"in": "query",
+			"name": "provider_ref",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.queued_at": {
+			"in": "query",
+			"name": "queued_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.reason": {
+			"in": "query",
+			"name": "reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.request_id": {
+			"in": "query",
+			"name": "request_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.round_attempts": {
+			"description": "the attempts since the last manager retry, which drive the back-off (1, 2, 4 … minutes, at most an hour) and the give-up after 10",
+			"in": "query",
+			"name": "round_attempts",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.settled_at": {
+			"in": "query",
+			"name": "settled_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.state": {
+			"in": "query",
+			"name": "state",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.tax_authority_code": {
+			"in": "query",
+			"name": "tax_authority_code",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.e_invoices.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_provider_changes.after": {
+			"in": "query",
+			"name": "after",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_provider_changes.before": {
+			"in": "query",
+			"name": "before",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_provider_changes.changed_at": {
+			"in": "query",
+			"name": "changed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_provider_changes.changed_by": {
+			"in": "query",
+			"name": "changed_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_provider_changes.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_provider_changes.provider_id": {
+			"in": "query",
+			"name": "provider_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_provider_changes.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_providers.adapter": {
+			"in": "query",
+			"name": "adapter",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_providers.brand_id": {
+			"in": "query",
+			"name": "brand_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_providers.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_providers.created_by": {
+			"in": "query",
+			"name": "created_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_providers.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_providers.mode": {
+			"in": "query",
+			"name": "mode",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_providers.secret_name": {
+			"description": "the Edge Function secret with the provider's credentials: EINVOICE_KEY_<NAME>",
+			"in": "query",
+			"name": "secret_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_providers.settings": {
+			"description": "public settings: seller_tax_code, template (1 or 2), series (an invoice made from a cash register: the fourth character is M) and vat_rate (none for a sales invoice)",
+			"in": "query",
+			"name": "settings",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_providers.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_providers.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_providers.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.einvoice_providers.updated_by": {
+			"in": "query",
+			"name": "updated_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.gmf_groups.created_at": {
 			"in": "query",
 			"name": "created_at",
@@ -16168,6 +16961,144 @@
 			"type": "string"
 		},
 		"rowFilter.invoice_payments.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.address": {
+			"in": "query",
+			"name": "address",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.client_request_id": {
+			"in": "query",
+			"name": "client_request_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.closed_at": {
+			"in": "query",
+			"name": "closed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.company_name": {
+			"in": "query",
+			"name": "company_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.customer_login_id": {
+			"in": "query",
+			"name": "customer_login_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.einvoice_id": {
+			"in": "query",
+			"name": "einvoice_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.email": {
+			"in": "query",
+			"name": "email",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.email_attempts": {
+			"in": "query",
+			"name": "email_attempts",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.email_claimed_until": {
+			"in": "query",
+			"name": "email_claimed_until",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.email_error_class": {
+			"in": "query",
+			"name": "email_error_class",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.email_next_at": {
+			"in": "query",
+			"name": "email_next_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.emailed_at": {
+			"in": "query",
+			"name": "emailed_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.issued_at": {
+			"in": "query",
+			"name": "issued_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.order_id": {
+			"in": "query",
+			"name": "order_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.request_hash": {
+			"in": "query",
+			"name": "request_hash",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.requested_at": {
+			"in": "query",
+			"name": "requested_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.requested_by": {
+			"in": "query",
+			"name": "requested_by",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.source": {
+			"in": "query",
+			"name": "source",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.status": {
+			"in": "query",
+			"name": "status",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.store_id": {
+			"in": "query",
+			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.tax_code": {
+			"in": "query",
+			"name": "tax_code",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.invoice_requests.tenant_id": {
 			"in": "query",
 			"name": "tenant_id",
 			"required": false,
@@ -21034,6 +21965,60 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.saved_companies.address": {
+			"in": "query",
+			"name": "address",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.saved_companies.company_name": {
+			"in": "query",
+			"name": "company_name",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.saved_companies.created_at": {
+			"in": "query",
+			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.saved_companies.customer_login_id": {
+			"in": "query",
+			"name": "customer_login_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.saved_companies.email": {
+			"in": "query",
+			"name": "email",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.saved_companies.id": {
+			"in": "query",
+			"name": "id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.saved_companies.tax_code": {
+			"in": "query",
+			"name": "tax_code",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.saved_companies.tenant_id": {
+			"in": "query",
+			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.saved_companies.updated_at": {
+			"in": "query",
+			"name": "updated_at",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.shift_handovers.acknowledged_at": {
 			"in": "query",
 			"name": "acknowledged_at",
@@ -21872,6 +22857,13 @@
 		"rowFilter.store_items.tenant_id": {
 			"in": "query",
 			"name": "tenant_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_ordering_settings.company_invoice_days": {
+			"description": "a customer may ask for a company invoice (C18) until this many days after the payment, counted in the store's local dates: day 7 yes, day 8 no by default",
+			"in": "query",
+			"name": "company_invoice_days",
 			"required": false,
 			"type": "string"
 		},
@@ -32328,6 +33320,738 @@
 				"tags": ["dim_calendar"]
 			}
 		},
+		"/e_invoices": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.provider_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.original_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.action"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.provider_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.invoice_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.invoice_series"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.lookup_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.lookup_url"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.tax_authority_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.attempts"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.round_attempts"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.last_error_class"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.last_attempt_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.next_attempt_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.gave_up_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.claim_token"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.claimed_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.queued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.issued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.settled_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.cancel_reason"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the e-invoices of native orders (ADR-069), one row per document the provider is asked to make: the sale invoice of a paid order made from a cash register, the company invoice that replaces it (C18), and the adjustment or cancellation a refund or an undone payment needs. State: queued -> issuing -> issued | failed (retried with back-off, then given up for a person) ; a sale becomes replaced or adjusted, any document cancelled. Holds the provider's reference, number, lookup code and URL, the tax authority's code, the attempts and the last error class, never the buyer's data (that stays on invoice_requests); written only by security definer functions",
+				"tags": ["e_invoices"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.provider_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.original_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.action"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.provider_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.invoice_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.invoice_series"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.lookup_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.lookup_url"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.tax_authority_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.attempts"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.round_attempts"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.last_error_class"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.last_attempt_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.next_attempt_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.gave_up_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.claim_token"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.claimed_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.queued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.issued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.settled_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.cancel_reason"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/e_invoices"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the e-invoices of native orders (ADR-069), one row per document the provider is asked to make: the sale invoice of a paid order made from a cash register, the company invoice that replaces it (C18), and the adjustment or cancellation a refund or an undone payment needs. State: queued -> issuing -> issued | failed (retried with back-off, then given up for a person) ; a sale becomes replaced or adjusted, any document cancelled. Holds the provider's reference, number, lookup code and URL, the tax authority's code, the attempts and the last error class, never the buyer's data (that stays on invoice_requests); written only by security definer functions",
+				"tags": ["e_invoices"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.provider_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.kind"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.state"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.original_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.action"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.amount"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.provider_ref"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.invoice_no"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.invoice_series"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.lookup_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.lookup_url"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.tax_authority_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.attempts"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.round_attempts"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.last_error_class"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.last_attempt_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.next_attempt_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.gave_up_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.claim_token"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.claimed_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.queued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.issued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.settled_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.e_invoices.cancel_reason"
+					},
+					{
+						"$ref": "#/parameters/body.e_invoices"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the e-invoices of native orders (ADR-069), one row per document the provider is asked to make: the sale invoice of a paid order made from a cash register, the company invoice that replaces it (C18), and the adjustment or cancellation a refund or an undone payment needs. State: queued -> issuing -> issued | failed (retried with back-off, then given up for a person) ; a sale becomes replaced or adjusted, any document cancelled. Holds the provider's reference, number, lookup code and URL, the tax authority's code, the attempts and the last error class, never the buyer's data (that stays on invoice_requests); written only by security definer functions",
+				"tags": ["e_invoices"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.e_invoices"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the e-invoices of native orders (ADR-069), one row per document the provider is asked to make: the sale invoice of a paid order made from a cash register, the company invoice that replaces it (C18), and the adjustment or cancellation a refund or an undone payment needs. State: queued -> issuing -> issued | failed (retried with back-off, then given up for a person) ; a sale becomes replaced or adjusted, any document cancelled. Holds the provider's reference, number, lookup code and URL, the tax authority's code, the attempts and the last error class, never the buyer's data (that stays on invoice_requests); written only by security definer functions",
+				"tags": ["e_invoices"]
+			}
+		},
+		"/einvoice_provider_changes": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.provider_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.changed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.changed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.before"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.after"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the append-only log of every e-invoice provider change with who, when, before and after (a changed seller tax code or series changes every invoice that follows); no role changes or deletes a row",
+				"tags": ["einvoice_provider_changes"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.provider_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.changed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.changed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.before"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.after"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/einvoice_provider_changes"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the append-only log of every e-invoice provider change with who, when, before and after (a changed seller tax code or series changes every invoice that follows); no role changes or deletes a row",
+				"tags": ["einvoice_provider_changes"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.provider_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.changed_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.changed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.before"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_provider_changes.after"
+					},
+					{
+						"$ref": "#/parameters/body.einvoice_provider_changes"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the append-only log of every e-invoice provider change with who, when, before and after (a changed seller tax code or series changes every invoice that follows); no role changes or deletes a row",
+				"tags": ["einvoice_provider_changes"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.einvoice_provider_changes"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the append-only log of every e-invoice provider change with who, when, before and after (a changed seller tax code or series changes every invoice that follows); no role changes or deletes a row",
+				"tags": ["einvoice_provider_changes"]
+			}
+		},
+		"/einvoice_providers": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.adapter"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.secret_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.settings"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the e-invoice provider a brand (or one of its stores, when it invoices under a tax code of its own) switched on (ADR-069): the adapter, the mode (off, sandbox, live), the name of the Edge Function secret with its key (never the key) and the seller's public settings; the most specific row decides; written only by einvoice_set_provider (an owner with every store of the brand), read by its owners and managers",
+				"tags": ["einvoice_providers"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.adapter"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.secret_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.settings"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/einvoice_providers"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the e-invoice provider a brand (or one of its stores, when it invoices under a tax code of its own) switched on (ADR-069): the adapter, the mode (off, sandbox, live), the name of the Edge Function secret with its key (never the key) and the seller's public settings; the most specific row decides; written only by einvoice_set_provider (an owner with every store of the brand), read by its owners and managers",
+				"tags": ["einvoice_providers"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.brand_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.adapter"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.mode"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.secret_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.settings"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.created_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.updated_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.einvoice_providers.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.einvoice_providers"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the e-invoice provider a brand (or one of its stores, when it invoices under a tax code of its own) switched on (ADR-069): the adapter, the mode (off, sandbox, live), the name of the Edge Function secret with its key (never the key) and the seller's public settings; the most specific row decides; written only by einvoice_set_provider (an owner with every store of the brand), read by its owners and managers",
+				"tags": ["einvoice_providers"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.einvoice_providers"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the e-invoice provider a brand (or one of its stores, when it invoices under a tax code of its own) switched on (ADR-069): the adapter, the mode (off, sandbox, live), the name of the Edge Function secret with its key (never the key) and the seller's public settings; the most specific row decides; written only by einvoice_set_provider (an owner with every store of the brand), read by its owners and managers",
+				"tags": ["einvoice_providers"]
+			}
+		},
 		"/gmf_groups": {
 			"delete": {
 				"parameters": [
@@ -33895,6 +35619,307 @@
 					}
 				},
 				"tags": ["invoice_payments"]
+			}
+		},
+		"/invoice_requests": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.requested_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.client_request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.request_hash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.tax_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.company_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.address"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.einvoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email_attempts"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email_error_class"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email_next_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email_claimed_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.requested_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.issued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.emailed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.closed_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a company invoice asked for an order (C18 in the app, Q01 at the counter): one per order, the buyer's tax code, name, address and email as the invoice needs them (kept with the invoice for the legal period, without the customer link once the login is deleted), the status received -> issuing -> issued -> emailed | failed | cancelled, and the email's attempts; written only by security definer functions; read by the store's owners and managers",
+				"tags": ["invoice_requests"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.requested_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.client_request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.request_hash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.tax_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.company_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.address"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.einvoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email_attempts"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email_error_class"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email_next_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email_claimed_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.requested_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.issued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.emailed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.closed_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/invoice_requests"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "a company invoice asked for an order (C18 in the app, Q01 at the counter): one per order, the buyer's tax code, name, address and email as the invoice needs them (kept with the invoice for the legal period, without the customer link once the login is deleted), the status received -> issuing -> issued -> emailed | failed | cancelled, and the email's attempts; written only by security definer functions; read by the store's owners and managers",
+				"tags": ["invoice_requests"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.store_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.order_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.source"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.requested_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.client_request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.request_hash"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.tax_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.company_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.address"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.status"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.einvoice_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email_attempts"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email_error_class"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email_next_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.email_claimed_until"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.requested_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.issued_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.emailed_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.invoice_requests.closed_at"
+					},
+					{
+						"$ref": "#/parameters/body.invoice_requests"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "a company invoice asked for an order (C18 in the app, Q01 at the counter): one per order, the buyer's tax code, name, address and email as the invoice needs them (kept with the invoice for the legal period, without the customer link once the login is deleted), the status received -> issuing -> issued -> emailed | failed | cancelled, and the email's attempts; written only by security definer functions; read by the store's owners and managers",
+				"tags": ["invoice_requests"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.invoice_requests"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "a company invoice asked for an order (C18 in the app, Q01 at the counter): one per order, the buyer's tax code, name, address and email as the invoice needs them (kept with the invoice for the legal period, without the customer link once the login is deleted), the status received -> issuing -> issued -> emailed | failed | cancelled, and the email's attempts; written only by security definer functions; read by the store's owners and managers",
+				"tags": ["invoice_requests"]
 			}
 		},
 		"/invoices": {
@@ -47763,6 +49788,66 @@
 				"tags": ["(rpc) counter_order_act"]
 			}
 		},
+		"/rpc/counter_order_einvoice": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_order",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app (Q01): app.counter_order_einvoice",
+				"tags": ["(rpc) counter_order_einvoice"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app (Q01): app.counter_order_einvoice",
+							"properties": {
+								"p_order": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_order"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app (Q01): app.counter_order_einvoice",
+				"tags": ["(rpc) counter_order_einvoice"]
+			}
+		},
 		"/rpc/counter_payment_methods": {
 			"get": {
 				"parameters": [
@@ -47920,6 +50005,46 @@
 				},
 				"summary": "RPC for the counter web app: app.counter_refund at the current time",
 				"tags": ["(rpc) counter_refund"]
+			}
+		},
+		"/rpc/counter_request_invoice": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app (Q01): app.counter_request_invoice at the current time",
+							"properties": {
+								"p_order": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_request": {
+									"format": "jsonb"
+								}
+							},
+							"required": ["p_order", "p_request"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app (Q01): app.counter_request_invoice at the current time",
+				"tags": ["(rpc) counter_request_invoice"]
 			}
 		},
 		"/rpc/counter_set_pause": {
@@ -48499,6 +50624,43 @@
 				"tags": ["(rpc) customer_delete_account"]
 			}
 		},
+		"/rpc/customer_delete_saved_company": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C18, C19): app.customer_delete_saved_company",
+							"properties": {
+								"p_company": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_company"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C18, C19): app.customer_delete_saved_company",
+				"tags": ["(rpc) customer_delete_saved_company"]
+			}
+		},
 		"/rpc/customer_dispute_bill": {
 			"post": {
 				"parameters": [
@@ -48608,6 +50770,66 @@
 				},
 				"summary": "RPC for the customer Mini App: app.customer_home",
 				"tags": ["(rpc) customer_home"]
+			}
+		},
+		"/rpc/customer_invoice_status": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_order",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C18, C14): app.customer_invoice_status at the current time",
+				"tags": ["(rpc) customer_invoice_status"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C18, C14): app.customer_invoice_status at the current time",
+							"properties": {
+								"p_order": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_order"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C18, C14): app.customer_invoice_status at the current time",
+				"tags": ["(rpc) customer_invoice_status"]
 			}
 		},
 		"/rpc/customer_member_code": {
@@ -49133,6 +51355,42 @@
 				"tags": ["(rpc) customer_request_deletion"]
 			}
 		},
+		"/rpc/customer_request_invoice": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C18): app.customer_request_invoice at the current time",
+							"properties": {
+								"p_request": {
+									"format": "jsonb"
+								}
+							},
+							"required": ["p_request"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C18): app.customer_request_invoice at the current time",
+				"tags": ["(rpc) customer_request_invoice"]
+			}
+		},
 		"/rpc/customer_requests": {
 			"get": {
 				"produces": [
@@ -49175,6 +51433,50 @@
 				},
 				"summary": "RPC for the customer Mini App: app.customer_requests at the current time",
 				"tags": ["(rpc) customer_requests"]
+			}
+		},
+		"/rpc/customer_saved_companies": {
+			"get": {
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C18): app.customer_saved_companies",
+				"tags": ["(rpc) customer_saved_companies"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C18): app.customer_saved_companies",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C18): app.customer_saved_companies",
+				"tags": ["(rpc) customer_saved_companies"]
 			}
 		},
 		"/rpc/customer_stamp_card": {
@@ -50459,6 +52761,42 @@
 				},
 				"summary": "per channel kind and message class the policy in force for the tenant, read as the caller under row-level security: the tenant override when the caller can read it, else the global row, with its source (global or tenant), id and note",
 				"tags": ["(rpc) effective_channel_policies"]
+			}
+		},
+		"/rpc/einvoice_set_provider": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for owners: app.einvoice_set_provider at the current time",
+							"properties": {
+								"p_request": {
+									"format": "jsonb"
+								}
+							},
+							"required": ["p_request"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners: app.einvoice_set_provider at the current time",
+				"tags": ["(rpc) einvoice_set_provider"]
 			}
 		},
 		"/rpc/export_control_totals": {
@@ -52468,6 +54806,88 @@
 				"tags": ["(rpc) manager_dismiss_blocked_signin"]
 			}
 		},
+		"/rpc/manager_einvoices": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_store",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"format": "text",
+						"in": "query",
+						"name": "p_filter",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"format": "int32",
+						"in": "query",
+						"name": "p_limit",
+						"required": false,
+						"type": "integer"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners and managers: app.manager_einvoices",
+				"tags": ["(rpc) manager_einvoices"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for owners and managers: app.manager_einvoices",
+							"properties": {
+								"p_filter": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_limit": {
+									"format": "int32",
+									"type": "integer"
+								},
+								"p_store": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_store"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners and managers: app.manager_einvoices",
+				"tags": ["(rpc) manager_einvoices"]
+			}
+		},
 		"/rpc/manager_payment_exceptions": {
 			"get": {
 				"parameters": [
@@ -52712,6 +55132,43 @@
 				},
 				"summary": "RPC for owners and managers: app.manager_resolve_payment_exception at the current time",
 				"tags": ["(rpc) manager_resolve_payment_exception"]
+			}
+		},
+		"/rpc/manager_retry_einvoice": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for owners and managers: app.manager_retry_einvoice at the current time",
+							"properties": {
+								"p_invoice": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_invoice"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for owners and managers: app.manager_retry_einvoice at the current time",
+				"tags": ["(rpc) manager_retry_einvoice"]
 			}
 		},
 		"/rpc/manager_shifts": {
@@ -59021,6 +61478,181 @@
 				"tags": ["(rpc) write_handover"]
 			}
 		},
+		"/saved_companies": {
+			"delete": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.tax_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.company_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.address"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.email"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.updated_at"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the companies a customer saved for their next company invoice (\"Lưu công ty này cho lần sau\", C18): at most 10 per login, readable only by that customer (row-level security), written only by customer_request_invoice and customer_delete_saved_company, deleted with the login (customer_delete_account)",
+				"tags": ["saved_companies"]
+			},
+			"get": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.tax_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.company_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.address"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.email"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.updated_at"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/order"
+					},
+					{
+						"$ref": "#/parameters/range"
+					},
+					{
+						"$ref": "#/parameters/rangeUnit"
+					},
+					{
+						"$ref": "#/parameters/offset"
+					},
+					{
+						"$ref": "#/parameters/limit"
+					},
+					{
+						"$ref": "#/parameters/preferCount"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "OK",
+						"schema": {
+							"items": {
+								"$ref": "#/definitions/saved_companies"
+							},
+							"type": "array"
+						}
+					},
+					"206": {
+						"description": "Partial Content"
+					}
+				},
+				"summary": "the companies a customer saved for their next company invoice (\"Lưu công ty này cho lần sau\", C18): at most 10 per login, readable only by that customer (row-level security), written only by customer_request_invoice and customer_delete_saved_company, deleted with the login (customer_delete_account)",
+				"tags": ["saved_companies"]
+			},
+			"patch": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.tenant_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.customer_login_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.tax_code"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.company_name"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.address"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.email"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.created_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.saved_companies.updated_at"
+					},
+					{
+						"$ref": "#/parameters/body.saved_companies"
+					},
+					{
+						"$ref": "#/parameters/preferReturn"
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "No Content"
+					}
+				},
+				"summary": "the companies a customer saved for their next company invoice (\"Lưu công ty này cho lần sau\", C18): at most 10 per login, readable only by that customer (row-level security), written only by customer_request_invoice and customer_delete_saved_company, deleted with the login (customer_delete_account)",
+				"tags": ["saved_companies"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"$ref": "#/parameters/body.saved_companies"
+					},
+					{
+						"$ref": "#/parameters/select"
+					},
+					{
+						"$ref": "#/parameters/preferPost"
+					}
+				],
+				"responses": {
+					"201": {
+						"description": "Created"
+					}
+				},
+				"summary": "the companies a customer saved for their next company invoice (\"Lưu công ty này cho lần sau\", C18): at most 10 per login, readable only by that customer (row-level security), written only by customer_request_invoice and customer_delete_saved_company, deleted with the login (customer_delete_account)",
+				"tags": ["saved_companies"]
+			}
+		},
 		"/shift_handovers": {
 			"delete": {
 				"parameters": [
@@ -61364,6 +63996,9 @@
 						"$ref": "#/parameters/rowFilter.store_ordering_settings.standard_month_days"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.company_invoice_days"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -61451,6 +64086,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.store_ordering_settings.standard_month_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.company_invoice_days"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -61567,6 +64205,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.store_ordering_settings.standard_month_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.company_invoice_days"
 					},
 					{
 						"$ref": "#/parameters/body.store_ordering_settings"
