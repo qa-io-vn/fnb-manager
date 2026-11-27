@@ -63,7 +63,7 @@ Layout: a top bar (the brand, "Quầy", the shift, the sound, the network, the p
 - An order accepted longer ago than the store's `late_order_minutes` is drawn red with "Chờ lâu · N phút" (the database's `late` flag).
 - A failed poll keeps every order shown and says "Mất mạng"; the first answer after it says how many orders arrived meanwhile. Actions are not queued offline. A refused poll (42501: the person was locked or lost the store) signs the person out at once.
 - Two devices on one order: each action names the version it saw; the stale one gets `conflict` with the current order, which the screen shows with a toast. The same step twice is a replay.
-- Completing an unpaid order is refused by the database (`payment_required`) and the screen says why; "Thu tiền" opens the payment dialog. Cash needs the cashier's open shift (the drawer is compared with the cash they recorded).
+- Completing an unpaid order is refused by the database (`payment_required`) and the screen says why; "Thu tiền" opens the payment dialog. Cash and card need the cashier's open shift at the store (the drawer is compared with the cash they recorded); the database refuses a payment without one (`shift_required`, "Bạn chưa vào ca ở quầy này"), owners and managers included.
 
 ## 4. Shifts
 

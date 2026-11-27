@@ -2885,7 +2885,7 @@ returns jsonb
 
 - **Status:** built (step 4).
 - **Who may call:** an owner, manager or staff member whose scope holds the order's store (`42501` otherwise, the same for an unknown order).
-- **Notes:** "Đã thu": `cash` or `card` for the order's full total, naming the version seen. Answers `{state: "paid" | "conflict" | "refused", refusal, replayed, payment_id, order}`: the same payment again is a replay; `already_paid`, `order_cancelled`, `not_payable`, `amount_differs` (with `total`) and `conflict` change nothing. An order still waiting for its online payment is accepted when the customer pays at the counter instead. A counter order can be completed only once paid.
+- **Notes:** "Đã thu": `cash` or `card` for the order's full total, naming the version seen. Answers `{state: "paid" | "conflict" | "refused", refusal, replayed, payment_id, order}`: the same payment again is a replay; `already_paid`, `order_cancelled`, `not_payable`, `amount_differs` (with `total`) and `conflict` change nothing. `shift_required` (migration `counter_payment_needs_shift`, after the order's own refusals) when the caller has no open shift at the order's store that began by then: cash and card are taken only by a person on shift there, so the drawer a clock-out counts holds every cash payment; owners and managers are not exempt, and a trigger on `order_payments` refuses a staff-recorded cash or card row without such a shift (`42501`, hint `shift_required`). An order still waiting for its online payment is accepted when the customer pays at the counter instead. A counter order can be completed only once paid.
 
 #### `public.counter_void_payment`
 

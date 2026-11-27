@@ -329,7 +329,7 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Read native orders, their lines and events | scope | scope | no (`counter_board`, `counter_order` for its store) | scope | no |
 | Move an order through its lifecycle, key an order at the counter | scope | scope | scope (the `counter_*` functions) | no | no |
 | Mark an order paid | no client: only the counter's payment record and the verified provider confirmation through the server-side seam | | | | |
-| Record a cash or card payment; undo it within 10 minutes | scope | scope | scope (own payments within 10 minutes; later a manager) | no | no |
+| Record a cash or card payment; undo it within 10 minutes | scope, on an open shift at the store | scope, on an open shift at the store | scope, on an open shift at the store (own payments within 10 minutes; later a manager) | no | no |
 | Refund an order | scope | scope | only the due refund of a cancelled paid order, in full | no | no |
 | Confirm an online payment or refund | no client: the service role only, through the payment Edge Functions after they verified the provider | | | | |
 | Read the stamp cards, rewards and ledger | tenant | tenant | no | tenant | own card only (`customer_stamp_card`) |
