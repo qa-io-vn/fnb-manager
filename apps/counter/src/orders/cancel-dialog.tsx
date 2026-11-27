@@ -1,8 +1,10 @@
 import { formatVnd } from "@fnb/zalo-mini/format";
 import { useI18n } from "@fnb/zalo-mini/i18n";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { RpcError } from "../lib/rpc";
 import { isManager, useMember, useSession } from "../lib/session";
+import { useShift } from "../shift/shift-context";
 import { Dialog } from "../ui/dialog";
 import { LockIcon, TrashIcon } from "../ui/icons";
 import { button, field, PlainNote } from "../ui/kit";
@@ -186,7 +188,12 @@ export function CancelDialog({
 	);
 }
 
-/** A refund by an owner or manager (a completed order, a part), or the due refund of a cancelled paid order. */
+/**
+ * A refund by an owner or manager (a completed order, a part), or the due refund of a cancelled paid order. A refund
+ * settled in cash needs the person's open shift at the order's store (counter_refund's shift_required, native-till.md
+ * 18.3): the refusal is worded with "Vào ca", as the payment dialog does, and the shift is read again. The submit stays
+ * open, so a refund after clocking in on another device is one tap; the server decides again.
+ */
 export function RefundDialog({
 	order,
 	onClose,
@@ -198,11 +205,18 @@ export function RefundDialog({
 }) {
 	const { t } = useI18n();
 	const { client } = useSession();
+	const { refresh } = useShift();
+	const navigate = useNavigate();
 	const max = refundable(order);
 	const [amount, setAmount] = useState(String(max));
 	const [reason, setReason] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
+	const [shiftRefused, setShiftRefused] = useState(false);
+	const goToShift = () => {
+		onClose();
+		navigate("/ca");
+	};
 	const value = /^\d{1,9}$/.test(amount.replace(/[.\s]/g, ""))
 		? Number(amount.replace(/[.\s]/g, ""))
 		: null;
@@ -212,8 +226,15 @@ export function RefundDialog({
 		if (value === null) return;
 		setBusy(true);
 		setMessage(null);
+		setShiftRefused(false);
 		try {
 			const answer = await refund(client, order.id, value, reason.trim());
+			if (answer.state === "refused" && answer.refusal === "shift_required") {
+				// a cash refund off shift: nothing was refunded; the way forward is to clock in at this counter
+				setShiftRefused(true);
+				void refresh();
+				return;
+			}
 			if (answer.state === "refused") {
 				setMessage(
 					answer.refusal === "amount_over_refundable"
@@ -283,6 +304,25 @@ export function RefundDialog({
 						data-testid="refund-reason"
 					/>
 				</label>
+				{shiftRefused ? (
+					<div
+						className="flex flex-wrap items-center gap-3 rounded-card-xl bg-warning-soft px-4 py-3"
+						role="alert"
+						data-testid="refund-need-shift"
+					>
+						<p className="min-w-0 flex-1 text-body text-ink">
+							{t("refund.refusal.shift_required")}
+						</p>
+						<button
+							type="button"
+							className={button.secondary}
+							onClick={goToShift}
+							data-testid="refund-go-shift"
+						>
+							{t("pay.goToShift")}
+						</button>
+					</div>
+				) : null}
 				{message === null ? null : (
 					<PlainNote tone="negative">{message}</PlainNote>
 				)}
