@@ -1,6 +1,6 @@
 import type { CustomerStore } from "@fnb/zalo-mini/loyalty";
 import { useI18n } from "@fnb/zalo-mini/react";
-import { useId } from "react";
+import { type ReactNode, useId } from "react";
 import { useCustomerData } from "../data/customer-data";
 import { shownTime } from "../data/dates";
 import { useStoreLink } from "../data/store-link";
@@ -63,7 +63,21 @@ export function StorePicker({
 	);
 }
 
-function CodeCard({ store }: { readonly store: string }) {
+/** What a build may add under a live code (the ordering build's C20: enlarge it, a brightness hint, the stamps). */
+export type CodeExtras = (code: {
+	readonly code: string;
+	readonly qrPayload: string;
+	readonly storeName: string;
+	readonly expired: boolean;
+}) => ReactNode;
+
+function CodeCard({
+	store,
+	extras,
+}: {
+	readonly store: string;
+	readonly extras?: CodeExtras;
+}) {
 	const { t } = useI18n();
 	const { code, loading, failure, now, retry } = useMemberCode(store);
 	if (code === null) {
@@ -72,7 +86,7 @@ function CodeCard({ store }: { readonly store: string }) {
 	}
 	const status = codeStatus(code, now);
 	const expired = status === "expired";
-	return (
+	const card = (
 		<Card testId="code-card">
 			<div className="flex flex-col items-center gap-3">
 				<QrCode
@@ -133,9 +147,27 @@ function CodeCard({ store }: { readonly store: string }) {
 			</div>
 		</Card>
 	);
+	if (extras === undefined) return card;
+	return (
+		<>
+			{card}
+			{extras({
+				code: code.code,
+				qrPayload: code.qrPayload,
+				storeName: code.storeName,
+				expired,
+			})}
+		</>
+	);
 }
 
-function MemberCodeView() {
+export function MemberCodeView({
+	extras,
+	after,
+}: {
+	readonly extras?: CodeExtras;
+	readonly after?: ReactNode;
+} = {}) {
 	const { t } = useI18n();
 	const { home, reloadHome } = useCustomerData();
 	const { currentStore, chooseStore } = useStoreLink();
@@ -165,8 +197,13 @@ function MemberCodeView() {
 					{t("code.pickFirst")}
 				</p>
 			) : (
-				<CodeCard key={store} store={store} />
+				<CodeCard
+					key={store}
+					store={store}
+					{...(extras === undefined ? {} : { extras })}
+				/>
 			)}
+			{after}
 		</Screen>
 	);
 }

@@ -271,6 +271,31 @@ describe("the local zalo-session's environment", () => {
 		});
 	});
 
+	it("passes the ordering build flag on to the app, and only to the app", () => {
+		const withFlag = { ...OUTSIDE_ENV, VITE_ORDERING: "on" };
+		expect(
+			staffAppEnvironment(withFlag, {
+				brand: "brand-1",
+				publishableKey: stack.publishableKey,
+				functionUrl: "http://127.0.0.1:40124",
+				phoneFunctionUrl: "http://127.0.0.1:40125",
+				accessToken: "mock-zalo-access-synthetic",
+				appConfigPath: null,
+				access: null,
+			}).VITE_ORDERING,
+		).toBe("on");
+		expect(
+			sessionFunctionEnvironment(withFlag, {
+				stack,
+				tenantId: TENANT,
+				graphBaseUrl: "http://127.0.0.1:40123",
+				secretName: "ZALO_APP_SECRET_BRAND_1",
+				appSecret: "local-synthetic-secret",
+				port: 40124,
+			}).VITE_ORDERING,
+		).toBeUndefined();
+	});
+
 	it("runs the unmodified zalo-phone next to zalo-session", () => {
 		const paths = localLoopPaths(findRepositoryRoot());
 		expect(paths.phoneFunctionDir).toBe(

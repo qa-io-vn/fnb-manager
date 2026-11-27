@@ -37,6 +37,10 @@
 			"types": "./src/loyalty/index.ts",
 			"import": "./src/loyalty/index.ts"
 		},
+		"./ordering": {
+			"types": "./src/ordering/index.ts",
+			"import": "./src/ordering/index.ts"
+		},
 		"./listing": {
 			"types": "./src/listing/index.ts",
 			"import": "./src/listing/index.ts"

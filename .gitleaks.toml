@@ -36,3 +36,10 @@ targetRules = ["generic-api-key"]
 regexes = [
 	'''sb_publishable_syntheticKey123''',
 ]
+
+[[allowlists]]
+description = "The deliberately forged table tokens of the customer ordering tests, which the server must refuse (ADR-060)"
+targetRules = ["generic-api-key"]
+regexes = [
+	'''Ban12-forged''',
+]

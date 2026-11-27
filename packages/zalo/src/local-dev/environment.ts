@@ -154,6 +154,14 @@ export function passthroughEnvironment(
 	return kept;
 }
 
+/** The ordering build flag (VITE_ORDERING=on) passed on to a Mini App's dev server, and nothing else of it. */
+export const ORDERING_VARIABLE = "VITE_ORDERING";
+
+function orderingFlag(environment: ZaloEnvironment): Record<string, string> {
+	const flag = environment[ORDERING_VARIABLE]?.trim() ?? "";
+	return flag === "" ? {} : { [ORDERING_VARIABLE]: flag };
+}
+
 export interface SessionFunctionInput {
 	readonly stack: LocalStack;
 	readonly tenantId: string;
@@ -207,6 +215,7 @@ export function staffAppEnvironment(
 ): Record<string, string> {
 	return {
 		...passthroughEnvironment(environment),
+		...orderingFlag(environment),
 		VITE_ZALO_RUNTIME: "browser",
 		VITE_ZALO_SESSION: "local",
 		VITE_BRAND_KEY: input.brand,
@@ -246,6 +255,7 @@ export function customerDemoEnvironment(
 ): Record<string, string> {
 	return {
 		...passthroughEnvironment(environment),
+		...orderingFlag(environment),
 		VITE_ZALO_RUNTIME: "browser",
 		VITE_ZALO_SESSION: "stand-in",
 		VITE_BRAND_KEY: input.brand,

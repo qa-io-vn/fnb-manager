@@ -11,6 +11,12 @@ export default defineConfig({
 		...miniApp({
 			kind: "customer",
 			developmentOnlyMarkers: ["phone-probe", "kit-probe"],
+			// test ids only the ordering screens hold: a build without VITE_ORDERING=on that holds one fails
+			orderingOnlyMarkers: [
+				"ordering-menu",
+				"checkout-submit",
+				"active-order-strip",
+			],
 			appRoot: fileURLToPath(new URL(".", import.meta.url)),
 		}),
 	],

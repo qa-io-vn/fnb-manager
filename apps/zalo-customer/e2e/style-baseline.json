@@ -1274,6 +1274,40 @@
 			"23": 4,
 			"35": 1,
 			"36": 3
+		},
+		"phone-light > ordering-off.spec.ts > without the ordering flag a table's QR opens the store page and nothing can be ordered > #1": {
+			"0": 20,
+			"1": 1,
+			"2": 1,
+			"3": 2,
+			"4": 1,
+			"5": 5,
+			"6": 1,
+			"7": 3,
+			"8": 3,
+			"14": 4,
+			"16": 4,
+			"20": 1,
+			"23": 4
+		},
+		"phone-light > ordering-off.spec.ts > without the ordering flag a table's QR opens the store page and nothing can be ordered > #2": {
+			"0": 8,
+			"2": 1,
+			"3": 3,
+			"4": 1,
+			"5": 15,
+			"6": 2,
+			"7": 3,
+			"8": 4,
+			"14": 18,
+			"15": 1,
+			"16": 4,
+			"17": 1,
+			"18": 1,
+			"19": 1,
+			"20": 1,
+			"22": 2,
+			"23": 4
 		}
 	}
 }
