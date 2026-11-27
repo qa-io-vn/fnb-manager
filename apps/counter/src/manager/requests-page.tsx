@@ -17,15 +17,18 @@ import {
 	countByKind,
 	inbox,
 	inboxOrder,
-	isOpen,
+	inOpenTab,
+	isAcceptedUnseen,
 	isUnread,
 	markRead,
 	minutesLeft,
 	needsMessage,
+	needsReading,
 	proposalProblem,
 	REQUEST_KINDS,
 	replyText,
 	type StoreRequest,
+	unreadCount,
 	vietnamInstant,
 } from "./requests";
 
@@ -89,11 +92,12 @@ function RequestDialog({
 		(!needsMessage(answer) || message.trim() !== "");
 	const choices = answersFor(request);
 
-	// M01: opening a request records the first reader (the unread mark goes); later openings change nothing
+	// M01: opening a request records the first reader (the unread mark goes), and the first opening after a customer
+	// accepted the time proposed clears the inbox's flag; later openings change nothing
 	const done = useRef(onDone);
 	done.current = onDone;
 	useEffect(() => {
-		if (!isUnread(request)) return;
+		if (!needsReading(request)) return;
 		markRead(client, request.id).then(
 			() => done.current(),
 			() => undefined,
@@ -202,6 +206,17 @@ function RequestDialog({
 						{request.note}
 					</p>
 				)}
+				{request.status === "confirmed" &&
+				typeof request.customer_accepted_at === "string" ? (
+					<p
+						className="rounded-card-xl bg-positive-soft p-3 text-body"
+						data-testid="request-customer-accepted"
+					>
+						{t("requests.customerAccepted", {
+							time: dayAndClock(request.customer_accepted_at),
+						})}
+					</p>
+				) : null}
 				{sent !== null ? (
 					<section className="flex flex-col gap-2" data-testid="reply-text">
 						<h3 className="font-extrabold">{t("requests.reply")}</h3>
@@ -230,7 +245,11 @@ function RequestDialog({
 					<>
 						{request.status === "proposed" ? (
 							<PlainNote tone="warning" testId="request-awaiting-customer">
-								{t("requests.awaitingCustomer")}
+								{t(
+									request.channel === "app"
+										? "requests.awaitingCustomerApp"
+										: "requests.awaitingCustomer",
+								)}
 							</PlainNote>
 						) : null}
 						<div className="flex flex-wrap gap-2">
@@ -355,6 +374,8 @@ function rowState(
 		return left < 0
 			? { text: t("requests.late", { minutes: -left }), late: true }
 			: { text: t("requests.left", { minutes: left }), late: false };
+	if (isAcceptedUnseen(request))
+		return { text: t("requests.acceptedRow"), late: false };
 	return { text: t(`requests.status.${request.status}`), late: false };
 }
 
@@ -369,13 +390,18 @@ export function RequestsPage() {
 	const [chosen, setChosen] = useState<StoreRequest | null>(null);
 	const box = useInbox();
 	const all = box.data?.requests ?? [];
-	const counts = countByKind(all.filter((request) => isOpen(request) === open));
+	const counts = countByKind(
+		all.filter((request) => inOpenTab(request) === open),
+	);
 	const shown = inboxOrder(
 		all.filter(
 			(request) =>
-				(kind === "all" || request.kind === kind) && isOpen(request) === open,
+				(kind === "all" || request.kind === kind) &&
+				inOpenTab(request) === open,
 		),
 	);
+	const unread = unreadCount(box.data);
+	const accepted = box.data?.accepted_unseen ?? 0;
 	return (
 		<div className="mx-auto flex max-w-4xl flex-col gap-4">
 			<PageTitle>{t("requests.title")}</PageTitle>
@@ -388,11 +414,16 @@ export function RequestsPage() {
 							{t("requests.new", { count: box.data.new })}
 						</StatusPill>
 						<StatusPill
-							tone={box.data.unread > 0 ? "warning" : "neutral"}
+							tone={unread > 0 ? "warning" : "neutral"}
 							testId="requests-unread"
 						>
-							{t("requests.unread", { count: box.data.unread })}
+							{t("requests.unread", { count: unread })}
 						</StatusPill>
+						{accepted > 0 ? (
+							<StatusPill tone="positive" testId="requests-accepted">
+								{t("requests.accepted", { count: accepted })}
+							</StatusPill>
+						) : null}
 						<StatusPill tone={box.data.overdue > 0 ? "negative" : "neutral"}>
 							{t("requests.overdue", { count: box.data.overdue })}
 						</StatusPill>
@@ -432,7 +463,8 @@ export function RequestsPage() {
 						<ul className="flex flex-col gap-2">
 							{shown.map((request) => {
 								const state = rowState(request, now, t);
-								const unread = isUnread(request);
+								const unseen = isUnread(request);
+								const acceptedUnseen = isAcceptedUnseen(request);
 								return (
 									<li key={request.id}>
 										<button
@@ -441,15 +473,26 @@ export function RequestsPage() {
 											className={`${card} flex w-full flex-wrap items-center gap-2 p-4 text-left focus-visible:outline-2 focus-visible:outline-focus`}
 											data-testid="request-row"
 											data-status={request.status}
-											data-unread={unread}
+											data-unread={unseen}
+											data-accepted-unseen={acceptedUnseen}
 										>
-											{unread ? (
+											{unseen ? (
 												<span
 													className="size-2.5 shrink-0 rounded-full bg-accent"
 													data-testid="request-unread"
 												>
 													<span className="sr-only">
 														{t("requests.unreadMark")}
+													</span>
+												</span>
+											) : null}
+											{acceptedUnseen ? (
+												<span
+													className="size-2.5 shrink-0 rounded-full bg-positive"
+													data-testid="request-accepted-unseen"
+												>
+													<span className="sr-only">
+														{t("requests.acceptedMark")}
 													</span>
 												</span>
 											) : null}

@@ -3,6 +3,7 @@ import { StatusPill } from "@fnb/zalo-mini/ui-kit";
 import { Link } from "react-router-dom";
 import { card, PageTitle } from "../ui/kit";
 import { useEInvoiceAttention } from "./einvoices-page";
+import { unreadCount } from "./requests";
 import { useInbox } from "./requests-page";
 
 export const MANAGER_SECTIONS = [
@@ -16,12 +17,12 @@ export const MANAGER_SECTIONS = [
 ] as const;
 
 /**
- * Quản lý: the manager's sections, on the tablet and on the phone; the inbox says how many are unread (M01) and the
- * e-invoices how many failed (ADR-069).
+ * Quản lý: the manager's sections, on the tablet and on the phone; the inbox says how many are unread (M01: the new
+ * requests nobody opened and the customers' acceptances nobody saw) and the e-invoices how many failed (ADR-069).
  */
 export function ManagerHome() {
 	const { t } = useI18n();
-	const unread = useInbox().data?.unread ?? 0;
+	const unread = unreadCount(useInbox().data);
 	const failing = useEInvoiceAttention(true);
 	return (
 		<div className="mx-auto flex max-w-5xl flex-col gap-4">

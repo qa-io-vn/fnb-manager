@@ -32,6 +32,12 @@ export interface StoreRequest {
 	/** who first opened it and when (manager_request_read); null while nobody has */
 	readonly read_at?: string | null;
 	readonly read_by?: string | null;
+	/** when the customer accepted the time proposed in the app (customer_accept_proposal), null otherwise */
+	readonly customer_accepted_at?: string | null;
+	/** the customer accepted and no owner or manager opened or answered it since (migration customer_accept_proposal) */
+	readonly accepted_unseen?: boolean;
+	readonly accept_seen_at?: string | null;
+	readonly accept_seen_by?: string | null;
 }
 
 export interface Inbox {
@@ -39,6 +45,8 @@ export interface Inbox {
 	readonly new: number;
 	/** the new requests nobody opened yet */
 	readonly unread: number;
+	/** the requests a customer accepted that no owner or manager opened or answered since */
+	readonly accepted_unseen?: number;
 	readonly overdue: number;
 }
 
@@ -99,9 +107,46 @@ export function isUnread(request: StoreRequest): boolean {
 	);
 }
 
+/**
+ * Whether the customer accepted the time proposed in the app and no owner or manager has opened or answered the request
+ * since (the inbox's own flag, so the first reading of the contact is kept): the row's "accepted" mark. Only a
+ * confirmed request carries it; the server's flag is the truth.
+ */
+export function isAcceptedUnseen(request: StoreRequest): boolean {
+	return request.accepted_unseen === true && request.status === "confirmed";
+}
+
+/** Whether opening the request records something: the first reading of a new one, or seeing a customer's acceptance. */
+export function needsReading(request: StoreRequest): boolean {
+	return isUnread(request) || isAcceptedUnseen(request);
+}
+
+/**
+ * What the inbox counts as not yet read, on the manager's tab, on Quản lý and in the inbox: the new requests nobody
+ * opened and the acceptances nobody saw (each request once: a new request is never an accepted one).
+ */
+export function unreadCount(
+	box: Pick<Inbox, "unread" | "accepted_unseen"> | undefined,
+): number {
+	if (box === undefined) return 0;
+	const accepted = box.accepted_unseen ?? 0;
+	return (
+		(Number.isSafeInteger(box.unread) && box.unread > 0 ? box.unread : 0) +
+		(Number.isSafeInteger(accepted) && accepted > 0 ? accepted : 0)
+	);
+}
+
 /** Still waiting on the store: new, or another time proposed and the customer's answer awaited. */
 export function isOpen(request: StoreRequest): boolean {
 	return request.status === "new" || request.status === "proposed";
+}
+
+/**
+ * The "Chưa xử lý" tab: the open requests, and a customer's acceptance until an owner or manager has seen it (then
+ * it moves to "Đã xử lý" with the other confirmed ones).
+ */
+export function inOpenTab(request: StoreRequest): boolean {
+	return isOpen(request) || isAcceptedUnseen(request);
 }
 
 /** The answers offered for a request in its state (the database decides again; any other move is not_allowed). */
@@ -173,10 +218,19 @@ export function minutesLeft(request: StoreRequest, now: number): number | null {
 	return minutes >= 0 ? Math.floor(minutes) : -Math.ceil(-minutes);
 }
 
-/** New ones first (the most urgent first), then the proposals awaiting the customer, then the others newest first. */
+/**
+ * New ones first (the most urgent first), then the customers' acceptances nobody saw yet (as manager_requests lists
+ * them), then the proposals awaiting the customer, then the others; each group but the new ones newest first.
+ */
 export function inboxOrder(requests: readonly StoreRequest[]): StoreRequest[] {
 	const rank = (request: StoreRequest) =>
-		request.status === "new" ? 0 : request.status === "proposed" ? 1 : 2;
+		request.status === "new"
+			? 0
+			: isAcceptedUnseen(request)
+				? 1
+				: request.status === "proposed"
+					? 2
+					: 3;
 	return [...requests].sort((a, b) => {
 		if (rank(a) !== rank(b)) return rank(a) - rank(b);
 		if (a.status === "new")

@@ -9,6 +9,7 @@ import { ManagerHome } from "./manager/manager-home";
 import { MenuEditorPage } from "./manager/menu-page";
 import { OverviewPage } from "./manager/overview-page";
 import { QrPage } from "./manager/qr-page";
+import { unreadCount } from "./manager/requests";
 import { RequestsPage, useInbox } from "./manager/requests-page";
 import { ManagerShiftsPage } from "./manager/shifts-page";
 import { StaffPage } from "./manager/staff-page";
@@ -157,8 +158,9 @@ function Frame({ manager }: { readonly manager: boolean }) {
 	const { member } = useMember();
 	const { signOut } = useSession();
 	const { state } = useBoard();
-	// M01: the new requests nobody opened yet, on the manager's tab (staff never ask: the database refuses them)
-	const unread = useInbox(manager).data?.unread ?? 0;
+	// M01: the new requests nobody opened yet and the customers' acceptances nobody saw, on the manager's tab (staff
+	// never ask: the database refuses them)
+	const unread = unreadCount(useInbox(manager).data);
 	// e-invoices that failed and wait for a manager (manager_einvoices; staff never ask: the database refuses them)
 	const failingInvoices = useEInvoiceAttention(manager);
 	const items: NavItem[] = [
