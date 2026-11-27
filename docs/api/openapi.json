@@ -9304,6 +9304,7 @@
 				},
 				"prep_minutes": {
 					"default": 10,
+					"description": "the store's preparation time in minutes (0 to 120, 10 by default): the earliest takeaway pick-up after placement, and the time after acceptance (or after staff start it) at which an order is estimated ready (ready_estimate_at)",
 					"format": "int32",
 					"type": "integer"
 				},
@@ -21447,6 +21448,7 @@
 			"type": "string"
 		},
 		"rowFilter.store_ordering_settings.prep_minutes": {
+			"description": "the store's preparation time in minutes (0 to 120, 10 by default): the earliest takeaway pick-up after placement, and the time after acceptance (or after staff start it) at which an order is estimated ready (ready_estimate_at)",
 			"in": "query",
 			"name": "prep_minutes",
 			"required": false,
