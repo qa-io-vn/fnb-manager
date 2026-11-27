@@ -26,6 +26,9 @@ type TillMethod =
 	| "setOrdering"
 	| "addRequest"
 	| "proposeRequest"
+	| "confirmRequest"
+	| "requestStatus"
+	| "acceptances"
 	| "attachToCard"
 	| "stampCodes";
 
@@ -580,5 +583,84 @@ test("the customer's request with another time proposed by the store, cancelled 
 	await page.getByTestId("my-request-confirm-cancel").click();
 	await expect(card.getByTestId("my-request-status")).toHaveText("Đã hủy");
 	await expect(card.getByTestId("my-request-cancel")).toHaveCount(0);
+	await checkOrderingScreen(page);
+});
+
+test("the customer accepts the time the store proposed: confirmed at the new time (new → proposed → confirmed)", async ({
+	page,
+}) => {
+	await openMenu(page);
+	await till(page, "addRequest");
+	await till(page, "proposeRequest");
+	await openMe(page, "requests");
+	const card = page.getByTestId("my-request");
+	const accept = card.getByTestId("my-request-accept");
+	await expect(accept).toHaveText("Đồng ý giờ mới");
+	await checkOrderingScreen(page);
+	await accept.click();
+	await expect(page.getByTestId("my-requests-done")).toContainText(
+		"Đã đồng ý giờ mới. Quán giữ chỗ cho bạn lúc 19:30",
+	);
+	await expect(card.getByTestId("my-request-status")).toHaveText("Đã nhận");
+	await expect(card.getByTestId("my-request-asked")).toContainText(
+		"Giờ hẹn: 19:30",
+	);
+	await expect(card.getByTestId("my-request-accepted")).toHaveText(
+		"Bạn đã đồng ý giờ quán đề xuất.",
+	);
+	await expect(card.getByTestId("my-request-accept")).toHaveCount(0);
+	expect(await till(page, "requestStatus")).toBe("confirmed");
+	expect(await till(page, "acceptances")).toBe(1);
+	await checkOrderingScreen(page);
+});
+
+test("a double tap on Đồng ý giờ mới, and a lost answer then a second tap, are one acceptance each", async ({
+	page,
+}) => {
+	await openMenu(page, `${TABLE}&answerDelay=800`);
+	await till(page, "addRequest");
+	await till(page, "proposeRequest");
+	await openMe(page, "requests");
+	await page.getByTestId("my-request-accept").dblclick();
+	await expect(page.getByTestId("my-requests-done")).toBeVisible();
+	await expect(page.getByTestId("my-requests-problem")).toHaveCount(0);
+	expect(await till(page, "acceptances")).toBe(1);
+
+	await openMenu(page, `${TABLE}&net=lost-once`);
+	await till(page, "addRequest");
+	await till(page, "proposeRequest");
+	await openMe(page, "requests");
+	await page.getByTestId("my-request-accept").click();
+	await expect(page.getByTestId("my-requests-problem")).toContainText(
+		"quán chỉ ghi nhận một lần",
+	);
+	expect(await till(page, "requestStatus")).toBe("confirmed");
+	await page.getByTestId("my-request-accept").click();
+	await expect(page.getByTestId("my-requests-done")).toBeVisible();
+	await expect(page.getByTestId("my-requests-problem")).toHaveCount(0);
+	expect(await till(page, "acceptances")).toBe(1);
+	await checkOrderingScreen(page);
+});
+
+test("Đồng ý giờ mới after the store confirmed meanwhile is worded, and the card reads the new state", async ({
+	page,
+}) => {
+	await openMenu(page);
+	await till(page, "addRequest");
+	await till(page, "proposeRequest", undefined, "<b>Giờ đó kín</b> bàn");
+	await openMe(page, "requests");
+	const card = page.getByTestId("my-request");
+	// the store's message is shown as text, never as markup
+	await expect(card.getByTestId("my-request-proposed")).toContainText(
+		"<b>Giờ đó kín</b> bàn",
+	);
+	await expect(card.locator("b")).toHaveCount(0);
+	await till(page, "confirmRequest");
+	await card.getByTestId("my-request-accept").click();
+	await expect(page.getByTestId("my-requests-problem")).toContainText(
+		"Yêu cầu này không còn chờ bạn trả lời.",
+	);
+	await expect(card.getByTestId("my-request-status")).toHaveText("Đã nhận");
+	expect(await till(page, "acceptances")).toBe(0);
 	await checkOrderingScreen(page);
 });

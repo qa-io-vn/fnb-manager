@@ -19,9 +19,11 @@ import {
 	DIFFERENCE_REASON_LABEL,
 	dayReconciliation,
 	managerShifts,
+	mayReadReconciliation,
 	type Shift,
 	workedDays,
 } from "../shift/api";
+import { ReconciliationDialog } from "../shift/reconciliation";
 import { Dialog } from "../ui/dialog";
 import { button, card, field, Loading, PageTitle, PlainNote } from "../ui/kit";
 import { useToast } from "../ui/toast";
@@ -290,14 +292,18 @@ function ShiftRow({
 	shift,
 	onConfirm,
 	onClose,
+	onReconcile,
 }: {
 	readonly shift: Shift;
 	readonly onConfirm: () => void;
 	readonly onClose: () => void;
+	readonly onReconcile: () => void;
 }) {
 	const { t } = useI18n();
 	const { userId } = useMember();
 	const own = shift.user_id === userId;
+	// another person's shift at any time (an open one: the figures so far); one's own only once counted (blind count)
+	const reconcilable = mayReadReconciliation(shift, userId);
 	const difference = differenceOf(shift.cash_difference ?? 0);
 	return (
 		<li
@@ -357,6 +363,20 @@ function ShiftRow({
 			{shift.status === "open" && !own ? (
 				<button type="button" className={button.secondary} onClick={onClose}>
 					{t("managerShifts.close")}
+				</button>
+			) : null}
+			{reconcilable ? (
+				<button
+					type="button"
+					className={button.secondary}
+					onClick={onReconcile}
+					aria-label={t("shift.recon.openLabelOf", {
+						name: shift.name ?? t("managerShifts.someone"),
+						when: dayAndClock(shift.clock_in_at),
+					})}
+					data-testid="shift-reconciliation-open"
+				>
+					{t("shift.recon.open")}
 				</button>
 			) : null}
 		</li>
@@ -498,8 +518,10 @@ export function ManagerShiftsPage() {
 	const { client } = useSession();
 	const { store } = useStore();
 	const [date, setDate] = useState(() => vietnamDate(Date.now()));
+	const { userId } = useMember();
 	const [confirming, setConfirming] = useState<Shift | null>(null);
 	const [closing, setClosing] = useState<Shift | null>(null);
+	const [reconciling, setReconciling] = useState<Shift | null>(null);
 	const shifts = useQuery({
 		queryKey: ["manager-shifts", "list", store.id, date],
 		queryFn: () => managerShifts(client, store.id, addDays(date, -6), date),
@@ -553,6 +575,7 @@ export function ManagerShiftsPage() {
 									shift={shift}
 									onConfirm={() => setConfirming(shift)}
 									onClose={() => setClosing(shift)}
+									onReconcile={() => setReconciling(shift)}
 								/>
 							))}
 						</ul>
@@ -568,6 +591,14 @@ export function ManagerShiftsPage() {
 			)}
 			{closing === null ? null : (
 				<CloseDialog shift={closing} onClose={() => setClosing(null)} />
+			)}
+			{reconciling === null ? null : (
+				<ReconciliationDialog
+					shift={reconciling}
+					userId={userId}
+					name={reconciling.name ?? t("managerShifts.someone")}
+					onClose={() => setReconciling(null)}
+				/>
 			)}
 		</div>
 	);

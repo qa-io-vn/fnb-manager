@@ -1,7 +1,7 @@
 import { formatVnd } from "@fnb/zalo-mini/format";
 import { useI18n } from "@fnb/zalo-mini/i18n";
 import { ChipGroup, PriceText, StatusPill } from "@fnb/zalo-mini/ui-kit";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { type Counts, countTotal, differenceOf } from "../lib/cash";
 import { RpcError } from "../lib/rpc";
@@ -20,6 +20,7 @@ import {
 	DIFFERENCE_REASON_LABEL,
 	type DifferenceReason,
 	isDifferenceReason,
+	mayReadReconciliation,
 	REASON_NOTE_MAX,
 	reasonNoteProblem,
 	type Shift,
@@ -27,6 +28,7 @@ import {
 } from "./api";
 import { CashCounter } from "./cash-counter";
 import { QrScanButton } from "./qr-scan";
+import { ReconciliationDialog, ReconciliationPanel } from "./reconciliation";
 import { useShift } from "./shift-context";
 
 function refusalKey(answer: ClockAnswer): string | null {
@@ -166,7 +168,13 @@ function DifferenceBox({ shift }: { readonly shift: Shift }) {
  * sent with the same count again (staff_clock_out with p_reason and p_note). The manager reads it beside the numbers
  * and still confirms from their own device. The expected cash was shown only after the count, so the count stays blind.
  */
-function ReasonStep({ shift }: { readonly shift: Shift }) {
+function ReasonStep({
+	shift,
+	onClosed,
+}: {
+	readonly shift: Shift;
+	readonly onClosed: (id: string) => void;
+}) {
 	const { t } = useI18n();
 	const { client } = useSession();
 	const { refresh } = useShift();
@@ -190,6 +198,7 @@ function ReasonStep({ shift }: { readonly shift: Shift }) {
 				setMessage(t(`shift.refusal.${answer.refusal}`));
 			} else if (answer.state === "closed") {
 				show(t("shift.closed"));
+				onClosed(answer.shift.id);
 			} else {
 				show(t("shift.reasonSent"));
 			}
@@ -294,7 +303,13 @@ function ReasonGiven({ shift }: { readonly shift: Shift }) {
 	);
 }
 
-function OpenShift({ shift }: { readonly shift: Shift }) {
+function OpenShift({
+	shift,
+	onClosed,
+}: {
+	readonly shift: Shift;
+	readonly onClosed: (id: string) => void;
+}) {
 	const { t } = useI18n();
 	const { client } = useSession();
 	const { store } = useStore();
@@ -318,6 +333,7 @@ function OpenShift({ shift }: { readonly shift: Shift }) {
 			} else if (answer.state === "closed") {
 				show(t("shift.closed"));
 				setCounting(false);
+				onClosed(answer.shift.id);
 			} else {
 				setCounting(false);
 			}
@@ -361,9 +377,14 @@ function OpenShift({ shift }: { readonly shift: Shift }) {
 			</p>
 			{awaiting ? (
 				<>
-					<DifferenceBox shift={shift} />
+					{/* the count is recorded: "Đối chiếu" may be read now (never while the shift is open) */}
+					<ReconciliationPanel
+						shift={shift}
+						userId={null}
+						fallback={<DifferenceBox shift={shift} />}
+					/>
 					{stage === "reason_required" && !counting ? (
-						<ReasonStep shift={shift} />
+						<ReasonStep shift={shift} onClosed={onClosed} />
 					) : (
 						<ReasonGiven shift={shift} />
 					)}
@@ -424,6 +445,8 @@ function MonthAndRecent() {
 	const { t } = useI18n();
 	const { data } = useShift();
 	const { store } = useStore();
+	// "Đối chiếu" of a past shift: offered only once its count is recorded (never for the open one)
+	const [reading, setReading] = useState<Shift | null>(null);
 	if (data === null) return null;
 	const month =
 		data.months.find((entry) => entry.store_id === store.id) ?? data.months[0];
@@ -471,10 +494,69 @@ function MonthAndRecent() {
 									{t(`shift.status.${shift.status}`)}
 								</StatusPill>
 							</span>
+							{mayReadReconciliation(shift, null) ? (
+								<button
+									type="button"
+									className={`${button.quiet} min-h-11`}
+									onClick={() => setReading(shift)}
+									aria-label={t("shift.recon.openLabel", {
+										when: dayAndClock(shift.clock_in_at),
+									})}
+									data-testid="recent-reconciliation"
+								>
+									{t("shift.recon.open")}
+								</button>
+							) : null}
 						</li>
 					))}
 				</ul>
 			)}
+			{reading === null ? null : (
+				<ReconciliationDialog
+					shift={reading}
+					userId={null}
+					onClose={() => setReading(null)}
+				/>
+			)}
+		</section>
+	);
+}
+
+/**
+ * The shift just closed (a matching count, or a manager's confirmation seen here): its "Đối chiếu" stays on the page
+ * until the person dismisses it, as the design's summary after "Ra ca".
+ */
+function ClosedShift({
+	id,
+	onDismiss,
+}: {
+	readonly id: string;
+	readonly onDismiss: () => void;
+}) {
+	const { t } = useI18n();
+	return (
+		<section
+			className={`${card} flex flex-col gap-4 p-5`}
+			aria-labelledby="closed-shift-title"
+			data-testid="closed-shift"
+		>
+			<div className="flex flex-wrap items-center gap-3">
+				<h2 id="closed-shift-title" className="flex-1 text-xl font-extrabold">
+					{t("shift.recon.closedTitle")}
+				</h2>
+				<button
+					type="button"
+					className={button.secondary}
+					onClick={onDismiss}
+					data-testid="closed-shift-dismiss"
+				>
+					{t("shift.recon.dismiss")}
+				</button>
+			</div>
+			<ReconciliationPanel
+				shift={{ id, status: "closed", version: 0 }}
+				userId={null}
+			/>
 		</section>
 	);
 }
@@ -483,6 +565,21 @@ function MonthAndRecent() {
 export function ShiftPage() {
 	const { t } = useI18n();
 	const { data, current, error } = useShift();
+	// the shift that closed on this page, whose "Đối chiếu" is shown until dismissed
+	const [closed, setClosed] = useState<string | null>(null);
+	// a difference a manager confirmed while the page was open closes the shift too: its breakdown is shown the same way
+	const before = useRef<Shift | null>(null);
+	useEffect(() => {
+		const previous = before.current;
+		before.current = current;
+		if (
+			previous !== null &&
+			previous.status === "awaiting_confirmation" &&
+			(current === null || current.id !== previous.id)
+		)
+			setClosed(previous.id);
+		if (current !== null) setClosed(null);
+	}, [current]);
 	return (
 		<div className="mx-auto flex max-w-5xl flex-col gap-4">
 			<PageTitle>{t("nav.shift")}</PageTitle>
@@ -496,11 +593,17 @@ export function ShiftPage() {
 			) : (
 				<div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
 					{current === null ? (
-						<ClockIn />
+						<div className="flex min-w-0 flex-col gap-4">
+							{closed === null ? null : (
+								<ClosedShift id={closed} onDismiss={() => setClosed(null)} />
+							)}
+							<ClockIn />
+						</div>
 					) : (
 						<OpenShift
 							key={`${current.id}-${current.version}`}
 							shift={current}
+							onClosed={setClosed}
 						/>
 					)}
 					<MonthAndRecent />

@@ -82,8 +82,17 @@ export interface DemoTill extends DemoInvoiceTill {
 	expirePayment(orderId?: string): string;
 	/** the customer's booking for tomorrow 19:00, as the booking form sends it; answers its id */
 	addRequest(): string;
-	/** the store proposes another time (30 minutes later) for a request (the latest when no id is given) */
-	proposeRequest(requestId?: string): string;
+	/**
+	 * the store proposes another time (30 minutes later) for a request (the latest when no id is given), with its
+	 * message (a default one when none is given)
+	 */
+	proposeRequest(requestId?: string, message?: string): string;
+	/** the store confirms a request itself, as a manager does on the customer's word (the latest when no id is given) */
+	confirmRequest(requestId?: string): string;
+	/** a request's status (the latest request's when no id is given), or null */
+	requestStatus(requestId?: string): string | null;
+	/** how many times the customer accepted a proposal (a replay is not one) */
+	acceptances(): number;
 	/** the counter attaches a counter order with this many drinks to the customer's card (C20 frame 5) */
 	attachToCard(stamps: number): void;
 	/** how many member codes the customer was issued */
@@ -212,6 +221,7 @@ interface DemoRequest {
 	answer_message: string | null;
 	cancelled_at: string | null;
 	cancelled_by: string | null;
+	customer_accepted_at: string | null;
 	version: number;
 	readonly contact_name: string;
 }
@@ -379,6 +389,9 @@ export function createOrderingWorld(
 		order_no: string | null;
 	}[] = [];
 	const requests: DemoRequest[] = [];
+	// the customer's acceptances by the app's request id (customer_accept_proposal is idempotent per id)
+	const acceptedBy = new Map<string, string>();
+	let acceptanceCount = 0;
 	const attached: {
 		order_no: string;
 		store_name: string;
@@ -1023,12 +1036,13 @@ export function createOrderingWorld(
 				answer_message: null,
 				cancelled_at: null,
 				cancelled_by: null,
+				customer_accepted_at: null,
 				version: 1,
 				contact_name: "Khách Mẫu",
 			});
 			return id;
 		},
-		proposeRequest(requestId) {
+		proposeRequest(requestId, message) {
 			const request =
 				requestId === undefined
 					? requests[requests.length - 1]
@@ -1040,9 +1054,32 @@ export function createOrderingWorld(
 			).toISOString();
 			request.answered_at = iso();
 			request.answer_message =
-				"Giờ đó đã kín bàn, quán còn chỗ muộn hơn 30 phút.";
+				message ?? "Giờ đó đã kín bàn, quán còn chỗ muộn hơn 30 phút.";
 			request.version += 1;
 			return request.status;
+		},
+		confirmRequest(requestId) {
+			const request =
+				requestId === undefined
+					? requests[requests.length - 1]
+					: requests.find((entry) => entry.id === requestId);
+			if (request === undefined) throw new Error("no such request");
+			if (request.status === "proposed" && request.proposed_for !== null)
+				request.requested_for = request.proposed_for;
+			request.status = "confirmed";
+			request.answered_at = iso();
+			request.version += 1;
+			return request.status;
+		},
+		requestStatus(requestId) {
+			const request =
+				requestId === undefined
+					? requests[requests.length - 1]
+					: requests.find((entry) => entry.id === requestId);
+			return request?.status ?? null;
+		},
+		acceptances() {
+			return acceptanceCount;
 		},
 		attachToCard(count) {
 			numbers += 1;
@@ -1333,6 +1370,46 @@ export function createOrderingWorld(
 		return { state: "cancelled", refusal: null, replayed: false, request };
 	};
 
+	// "Đồng ý giờ mới" as app.customer_accept_proposal answers it, in its order: both ids required (22023); the app's
+	// id used on another request is request_conflict; another customer's or an unknown request is unknown_request; the
+	// same id again is a replay of the request as it is now; only a proposed request (not_allowed) whose time is still
+	// ahead (proposal_expired at that instant) is confirmed at the time proposed.
+	const acceptProposal = (id: unknown, attemptId: unknown) => {
+		if (
+			typeof id !== "string" ||
+			!UUID.test(id) ||
+			typeof attemptId !== "string" ||
+			!UUID.test(attemptId)
+		)
+			invalidRequest();
+		const refused = (refusal: string, request: DemoRequest | null) => ({
+			state: "refused",
+			refusal,
+			replayed: false,
+			request,
+		});
+		const earlier = acceptedBy.get(attemptId);
+		if (earlier !== undefined && earlier !== id)
+			return refused("request_conflict", null);
+		const request = requests.find((entry) => entry.id === id);
+		if (request === undefined) return refused("unknown_request", null);
+		if (earlier === id)
+			return { state: "accepted", refusal: null, replayed: true, request };
+		if (request.status !== "proposed") return refused("not_allowed", request);
+		if (
+			request.proposed_for === null ||
+			Date.parse(request.proposed_for) <= now()
+		)
+			return refused("proposal_expired", request);
+		request.status = "confirmed";
+		request.requested_for = request.proposed_for;
+		request.customer_accepted_at = iso();
+		request.version += 1;
+		acceptedBy.set(attemptId, id);
+		acceptanceCount += 1;
+		return { state: "accepted", refusal: null, replayed: false, request };
+	};
+
 	const answer = (
 		fn: string,
 		args: Readonly<Record<string, unknown>>,
@@ -1460,6 +1537,8 @@ export function createOrderingWorld(
 				return { requests: [...requests].reverse() };
 			case ACCOUNT_FUNCTIONS.cancelRequest:
 				return cancelRequest(args.p_request);
+			case ACCOUNT_FUNCTIONS.acceptProposal:
+				return acceptProposal(args.p_request, args.p_request_id);
 			default:
 				return invoices.answer(fn, args);
 		}
@@ -1643,6 +1722,7 @@ export function createOrderingWorld(
 			ACCOUNT_FUNCTIONS.stampCode,
 			ACCOUNT_FUNCTIONS.deleteAccount,
 			ACCOUNT_FUNCTIONS.cancelRequest,
+			ACCOUNT_FUNCTIONS.acceptProposal,
 			...invoices.changingFunctions,
 		],
 	};

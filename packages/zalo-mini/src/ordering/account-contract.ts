@@ -1,7 +1,8 @@
 // The wire contract of the customer's own account functions of the native till (docs/api.md, native-till.md 16.5, 16.6,
-// 16.8): the stamp card's member code (C20), deleting a login that never joined and the copy of its data (C19), and
-// the customer's requests with a time the store proposed. Snake case is the wire; the readers return camel case and
-// refuse anything malformed. The member code is a credential for 10 minutes: a reader never logs it.
+// 16.8, 18.2): the stamp card's member code (C20), deleting a login that never joined and the copy of its data (C19),
+// and the customer's requests with a time the store proposed, which the customer accepts or cancels. Snake case is the
+// wire; the readers return camel case and refuse anything malformed. The member code is a credential for 10 minutes: a
+// reader never logs it.
 
 export const ACCOUNT_FUNCTIONS = {
 	stampCode: "customer_stamp_code",
@@ -9,6 +10,7 @@ export const ACCOUNT_FUNCTIONS = {
 	exportData: "customer_export_data",
 	requests: "customer_requests",
 	cancelRequest: "customer_cancel_request",
+	acceptProposal: "customer_accept_proposal",
 } as const;
 
 /** The QR payload of a member code: `fnb-stamp:1:` and 22 characters of a 128-bit random token. */
@@ -84,9 +86,29 @@ export interface CustomerRequest {
 	readonly answerMessage: string | null;
 	readonly cancelledAt: string | null;
 	readonly cancelledBy: string | null;
+	/** when the customer accepted the time proposed (customer_accept_proposal); null otherwise */
+	readonly customerAcceptedAt: string | null;
 	readonly version: number;
 	readonly contactName: string | null;
 }
+
+/**
+ * "Đồng ý giờ mới" (customer_accept_proposal): the request confirmed at the time proposed, or a refusal with the
+ * request as it is now when the server names it (proposal_expired, not_allowed; null for unknown_request and
+ * request_conflict).
+ */
+export type AcceptProposalAnswer =
+	| {
+			readonly state: "accepted";
+			readonly replayed: boolean;
+			readonly request: CustomerRequest;
+	  }
+	| {
+			readonly state: "refused";
+			/** proposal_expired, not_allowed, unknown_request, request_conflict, or another the app words generally */
+			readonly refusal: string;
+			readonly request: CustomerRequest | null;
+	  };
 
 export type CancelRequestAnswer =
 	| {
@@ -260,6 +282,10 @@ export function readCustomerRequest(value: unknown): CustomerRequest {
 		answerMessage: optionalText(row.answer_message, "answer message"),
 		cancelledAt: optionalInstant(row.cancelled_at, "request cancelled"),
 		cancelledBy: optionalText(row.cancelled_by, "request cancelled by"),
+		customerAcceptedAt: optionalInstant(
+			row.customer_accepted_at,
+			"request accepted",
+		),
 		version: count(row.version, "request version"),
 		contactName: optionalText(row.contact_name, "contact name"),
 	};
@@ -293,6 +319,27 @@ export function readCancelRequestAnswer(value: unknown): CancelRequestAnswer {
 					: readCustomerRequest(row.request),
 		};
 	return invalid("cancellation state");
+}
+
+export function readAcceptProposalAnswer(value: unknown): AcceptProposalAnswer {
+	const row = record(value, "acceptance answer");
+	// a replay answers the request as it is now, which a manager may have cancelled since: its status is the server's
+	if (row.state === "accepted")
+		return {
+			state: "accepted",
+			replayed: row.replayed === true,
+			request: readCustomerRequest(row.request),
+		};
+	if (row.state === "refused")
+		return {
+			state: "refused",
+			refusal: code(row.refusal, "acceptance refusal"),
+			request:
+				row.request === null || row.request === undefined
+					? null
+					: readCustomerRequest(row.request),
+		};
+	return invalid("acceptance state");
 }
 
 function json(value: unknown, depth: number): JsonValue {
@@ -332,4 +379,14 @@ export function readDataExport(value: unknown): DataExport {
 export function requestIdArgs(id: string): Readonly<Record<string, unknown>> {
 	if (!REQUEST_ID_PATTERN.test(id)) throw new Error("a request id is a UUID");
 	return { p_request: id };
+}
+
+/** The acceptance's arguments: the request and the app's own id of this acceptance (one per attempt), both UUIDs. */
+export function acceptProposalArgs(
+	id: string,
+	attemptId: string,
+): Readonly<Record<string, unknown>> {
+	if (!REQUEST_ID_PATTERN.test(id) || !REQUEST_ID_PATTERN.test(attemptId))
+		throw new Error("a request and its acceptance are named by UUIDs");
+	return { p_request: id, p_request_id: attemptId };
 }

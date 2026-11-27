@@ -73,6 +73,7 @@ describe("the sold-out list", () => {
 		sold_out_until: null,
 		sizes: [],
 		option_group_ids: [],
+		counts_for_stamps: true,
 	});
 
 	it("finds names without accents or case", () => {

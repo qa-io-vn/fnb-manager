@@ -1,6 +1,8 @@
 import type { RestClient } from "../data/rest-client";
 import {
 	ACCOUNT_FUNCTIONS,
+	acceptProposalArgs,
+	readAcceptProposalAnswer,
 	readCancelRequestAnswer,
 	readCustomerRequests,
 	readDataExport,
@@ -107,6 +109,14 @@ export function createRestOrderingClient(rest: RestClient): OrderingClient {
 		async cancelRequest(id) {
 			return readCancelRequestAnswer(
 				await rest.rpc(ACCOUNT_FUNCTIONS.cancelRequest, requestIdArgs(id)),
+			);
+		},
+		async acceptProposal(id, attemptId) {
+			return readAcceptProposalAnswer(
+				await rest.rpc(
+					ACCOUNT_FUNCTIONS.acceptProposal,
+					acceptProposalArgs(id, attemptId),
+				),
 			);
 		},
 		async invoiceStatus(orderId) {
