@@ -2965,6 +2965,32 @@ returns jsonb
 
 Tests: pgTAP `279_stamp_member_codes.sql`, rows in `120`, `47` and `170`.
 
+A customer's own data (C19; migration `customer_account_deletion`; personal-data law 91/2025/QH15, docs/deep-dives/vietnam-legal-requirements.md section 1).
+
+#### `public.customer_delete_account`
+
+```sql
+public.customer_delete_account(p_confirm boolean)
+returns jsonb
+```
+
+- **Status:** built (2026-11-28).
+- **Who may call:** a customer session (`42501` otherwise, also after the deletion, so a replay with the old token does nothing); `p_confirm` must be `true` (`22023` otherwise).
+- **Notes:** "Xóa tài khoản" for a customer who never joined with a phone, at once. Refused while an order of theirs is open (`open_orders`, with `orders`) or a refund is owed to them (`refund_pending`); a joined customer answers `member_request` and uses `customer_request_deletion`, which an owner completes with `dsr_delete`. Otherwise it answers `{state: "deleted", deleted: true, deleted_at, counts}` after, in one transaction: the stamp card with its rewards and ledger, the member codes, the requests (they carry the contact typed), the ordering blocks, the login and its Auth user with every session are deleted; the notes the customer typed on their orders and lines are cleared; their orders, the counter orders attached to their card and their staff calls lose the link; the orders, payments, refunds, order events and the store's invoices stay as the money records the law keeps (the events keep the deleted login's id, which then names nobody). A keyed hash of the Zalo App and user id (HMAC-SHA-256 under the tenant's key) with the time and the counts is kept as the proof (`app.customer_login_erasures`, read by no API role). The same Zalo account signing in again is a new customer with no stamps.
+
+#### `public.customer_export_data`
+
+```sql
+public.customer_export_data()
+returns jsonb
+```
+
+- **Status:** built (2026-11-28).
+- **Who may call:** a customer session (`42501` otherwise).
+- **Notes:** "Tải bản sao dữ liệu": one JSON of everything held about the caller's login: `{generated_at, login: {zalo_user_id, brand, created_at, joined}, customer (a joined customer's name, phone and dates, else null), memberships, consents, stamp_card: {stamps, total_earned, created_at, rewards, entries}, orders (each as `customer_order` shows it, with the store's name and the money), attached_orders, requests (with the phone typed), staff_calls, order_blocks, deletion_request, not_kept, counts}`, nothing of anyone else. Each export is recorded with its counts only, never its content (`app.customer_data_exports`, ADR-054).
+
+Tests: pgTAP `280_customer_account_deletion.sql`, rows in `120` and `47`.
+
 The requests inbox (step 7, migration `store_requests`, native-till.md section 12). A request is `{request_id (UUID), store (store code), kind ("booking", "workshop", "hold", "application"), name (1–60), phone, party_size (a booking: 1–30), at (an ISO instant with its offset, 30 minutes to 60 days ahead; required for a booking, a workshop and a hold), subject (1–100: the workshop, item or position; required but for a booking), note (1–500, one line)}`; any other key or type is `22023`. Submissions answer `{state: "submitted" | "refused", refusal, replayed, request}` with refusals `request_conflict`, `store_unknown`, `kind_not_offered`, `rate_limited` (with `retry_at`), `too_many_open_requests` (3 new ones), `name_invalid`, `phone_invalid`, `party_size_invalid`, `time_invalid`, `subject_invalid`, `note_invalid`; a request as the customer sees it is `{id, kind, store, status, party_size, requested_for, subject, note, created_at, answered_at, answer_message, cancelled_at, cancelled_by, version, contact_name}`, never the phone.
 
 #### `public.customer_submit_request`

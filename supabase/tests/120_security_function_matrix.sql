@@ -705,6 +705,14 @@ insert into matrix (fn, label, statement, expect) values
 ('counter_attach_member', 'counter_attach_member of an unknown order',
   $$select public.counter_attach_member('aaaaaaaa-aaaa-4aaa-8aaa-000000012096', '12345674', 1)::text$$,
   '{"*": "DENY"}'),
+-- Native till hardening (C19): deleting a never-joined login and exporting one's data, for a customer session only
+-- (the matrix asks without the confirmation, so nothing is deleted: 22023 for every customer session).
+('customer_delete_account', 'customer_delete_account without the confirmation',
+  $$select public.customer_delete_account(false)::text$$,
+  '{"*": "DENY", "customer": "BAD", "visitor": "BAD", "customer_b": "BAD"}'),
+('customer_export_data', 'customer_export_data of the session',
+  $$select (public.customer_export_data() ? 'orders')::text$$,
+  '{"*": "DENY", "customer": "^ok:true$", "visitor": "^ok:true$", "customer_b": "^ok:true$"}'),
 ('manager_approve_blocked_signin', 'manager_approve_blocked_signin of an unknown request',
   $$select public.manager_approve_blocked_signin('aaaaaaaa-aaaa-4aaa-8aaa-000000012094', 1, 'Synthetic', 'staff', null)::text$$,
   '{"*": "DENY"}');

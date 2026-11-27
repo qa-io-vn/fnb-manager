@@ -47240,6 +47240,43 @@
 				"tags": ["(rpc) customer_coupons"]
 			}
 		},
+		"/rpc/customer_delete_account": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C19): app.customer_delete_account at the current time",
+							"properties": {
+								"p_confirm": {
+									"format": "boolean",
+									"type": "boolean"
+								}
+							},
+							"required": ["p_confirm"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C19): app.customer_delete_account at the current time",
+				"tags": ["(rpc) customer_delete_account"]
+			}
+		},
 		"/rpc/customer_dispute_bill": {
 			"post": {
 				"parameters": [
@@ -47275,6 +47312,36 @@
 				},
 				"summary": "RPC: app.customer_dispute_bill at now()",
 				"tags": ["(rpc) customer_dispute_bill"]
+			}
+		},
+		"/rpc/customer_export_data": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C19): app.customer_export_data at the current time",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C19): app.customer_export_data at the current time",
+				"tags": ["(rpc) customer_export_data"]
 			}
 		},
 		"/rpc/customer_home": {
