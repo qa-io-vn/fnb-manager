@@ -2,7 +2,9 @@ import {
 	type CanonicalCatalog,
 	type CanonicalItem,
 	type CanonicalModifier,
+	type CanonicalOptionGroup,
 	classifyPaymentKind,
+	OPTION_GROUP_MAX_SELECT,
 	parseSizeSuffix,
 } from "@fnb/core";
 import type { Item } from "../schemas/master-data.js";
@@ -94,6 +96,75 @@ function toModifiers(
 	return [...modifiers.values()];
 }
 
+function clampSelect(value: number, low: number): number {
+	return Math.min(OPTION_GROUP_MAX_SELECT, Math.max(low, Math.trunc(value)));
+}
+
+function selectCount(
+	value: number | null | undefined,
+	fallback: number,
+): number {
+	return value !== null && value !== undefined && Number.isFinite(value)
+		? value
+		: fallback;
+}
+
+function distinctIds(ids: readonly (string | null | undefined)[]): string[] {
+	const seen = new Set<string>();
+	for (const id of ids) {
+		const trimmed = id?.trim();
+		if (trimmed) {
+			seen.add(trimmed);
+		}
+	}
+	return [...seen];
+}
+
+/**
+ * One option group per customization and position in its LstItem_Options (ADR-058 phase 3). Unlike the
+ * modifiers, every option is kept, priced or not: an option's online price is the POS price of its item. The
+ * limits are clamped to 0..20 (min) and 1..20 (max), and max is raised to min when the POS gives less.
+ */
+export function toOptionGroups(data: MasterData): CanonicalOptionGroup[] {
+	const groups = new Map<string, CanonicalOptionGroup>();
+	for (const customization of data.customizations) {
+		const appliesTo = distinctIds(customization.list_item ?? []);
+		const options = customization.data?.LstItem_Options ?? [];
+		options.forEach((option, position) => {
+			const externalId = `${customization.id}:${position}`;
+			if (groups.has(externalId)) {
+				return;
+			}
+			const optionItemExternalIds = distinctIds(option.LstItem_Id ?? []);
+			const minSelect = clampSelect(selectCount(option.Min_Permitted, 0), 0);
+			const maxSelect = Math.max(
+				minSelect,
+				clampSelect(
+					selectCount(option.Max_Permitted, optionItemExternalIds.length),
+					1,
+				),
+			);
+			groups.set(externalId, {
+				externalId,
+				name:
+					option.Name?.trim() || customization.name.trim() || customization.id,
+				minSelect,
+				maxSelect,
+				optionItemExternalIds,
+				appliesToItemExternalIds: appliesTo,
+				active: isActive(customization),
+				raw: {
+					customizationUid: customization.id,
+					customizationName: customization.name,
+					position,
+					option,
+				},
+			});
+		});
+	}
+	return [...groups.values()];
+}
+
 function isDeliverySource(
 	source: { source_id: string; source_name: string },
 	options: ResolvedIposOptions,
@@ -121,6 +192,7 @@ export function toCanonicalCatalog(
 			name: itemClass.item_class_name,
 		})),
 		modifiers: toModifiers(data, index),
+		optionGroups: toOptionGroups(data),
 		paymentMethods: data.paymentMethods.map((method) => ({
 			externalId: method.payment_method_id,
 			name: method.payment_method_name,

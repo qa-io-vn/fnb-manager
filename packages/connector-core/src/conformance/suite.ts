@@ -33,6 +33,8 @@ import {
 	checkModifiers,
 	checkNetComponents,
 	checkNetTotals,
+	checkOptionGroupReferences,
+	checkOptionGroups,
 	checkPaginationCompleteness,
 	checkPayments,
 	checkSaleSchemas,
@@ -53,6 +55,12 @@ export interface ConformanceOptions {
 	boundaryMarginMinutes?: number;
 	expectFullyPaid?: boolean;
 	expectAdjustments?: boolean;
+	/**
+	 * Whether every option and target of the catalogue's option groups is an item of the same catalogue and
+	 * every required group can be satisfied (default true); a POS whose customizations name items of other
+	 * stores sets it false.
+	 */
+	expectOptionGroupReferences?: boolean;
 	timeoutMs?: number;
 }
 
@@ -114,6 +122,8 @@ export function runConnectorConformanceSuite(
 		options.boundaryMarginMinutes ?? DEFAULT_BOUNDARY_MARGIN_MINUTES;
 	const expectFullyPaid = options.expectFullyPaid ?? false;
 	const expectAdjustments = options.expectAdjustments ?? true;
+	const expectOptionGroupReferences =
+		options.expectOptionGroupReferences ?? true;
 
 	describe(`${name} conformance`, () => {
 		const connector = factory();
@@ -196,6 +206,13 @@ export function runConnectorConformanceSuite(
 			expect(result.success, result.error?.message).toBe(true);
 			if (capabilities.lines) {
 				expect(state().catalog.items.length).toBeGreaterThan(0);
+			}
+		});
+
+		it("maps option groups, when it maps them, with unique ids, limits within 0..20 and no repeated option or target", () => {
+			expectClean(checkOptionGroups(state().catalog));
+			if (expectOptionGroupReferences) {
+				expectClean(checkOptionGroupReferences(state().catalog));
 			}
 		});
 

@@ -390,6 +390,37 @@ export interface DeviceRow {
 	raw: JsonValue | null;
 }
 
+export interface OptionGroupRow {
+	external_id: string;
+	name: string;
+	min_select: number;
+	max_select: number;
+	active: boolean;
+	raw: JsonValue | null;
+}
+
+export interface OptionGroupOptionRow {
+	group_external_id: string;
+	item_external_id: string;
+	sort_order: number;
+}
+
+export interface OptionGroupTargetRow {
+	group_external_id: string;
+	item_external_id: string;
+}
+
+/**
+ * The option groups of one POS account (ADR-058 phase 3), written together: the groups are upserted like the
+ * other catalogue tables (a group the POS no longer lists turns inactive), while the account's options and
+ * targets are replaced as a whole.
+ */
+export interface OptionGroupWrite {
+	groups: OptionGroupRow[];
+	options: OptionGroupOptionRow[];
+	targets: OptionGroupTargetRow[];
+}
+
 export interface CatalogWrite {
 	tenant_id: string;
 	pos_account_id: string;
@@ -403,6 +434,8 @@ export interface CatalogWrite {
 	payment_methods: PaymentMethodRow[] | null;
 	promotions: PromotionRow[] | null;
 	devices: DeviceRow[] | null;
+	/** null when the connector maps no option groups: the option-group tables are then left as they are. */
+	option_groups: OptionGroupWrite | null;
 }
 
 export interface TokenRecord {

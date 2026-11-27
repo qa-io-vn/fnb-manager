@@ -2,6 +2,8 @@
 
 As of 2026-11-26 · design for implementation, phase by phase · decision record [ADR-058](../decisions.md#adr-058--online-ordering-server-priced-orders-one-status-machine-in-sql-pay-at-the-counter-through-the-checkout-sdk-first-staff-key-orders-into-the-till-delivery-last) (proposed)
 
+> **Amended on 2026-11-27.** The owner made the platform the till of stores that switch to it. [native-till.md](native-till.md) (ADR-060 to ADR-065) replaces this document's price rule (sections 3.1 and 3.5), its status machine (5.4), the till hand-off and matching (7.5) and the payment flow (6); sections 2, 4, 7.1 to 7.3, 10 and 12 still apply where native-till.md does not say otherwise. The first build of this design is parked on the local branch `parked/ordering-pos-priced-menu`.
+
 ## Purpose
 
 This document designs online ordering in the customer Mini App: the Zalo rules that apply, the online menu derived from the POS catalogue, table QR codes, orders and their status machine, payment at the counter and through Zalo's Checkout SDK, the staff order queue and the hand-off to the till, delivery, customer notifications, security and privacy, test design and a phased plan. Screens and visual identity are designed separately; this document owns the back end, the flows, the rules and the security, and names screens only by what they must show and do. It is generic: brands are `brand-1`, stores `sa-1`, and every value is synthetic.

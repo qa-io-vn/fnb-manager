@@ -2614,6 +2614,266 @@ returns TABLE(store_id uuid, business_date date, staff_user_id uuid, staff_name 
 
 Tests: pgTAP `120_security_function_matrix.sql`, `121_security_table_matrix.sql` and `222_bill_state_transitions.sql`.
 
+### 3.27 The native till (ADR-060 to ADR-065)
+
+A store whose till mode is `native` sells from a menu its brand owns and takes orders in this platform ([deep-dives/native-till.md](deep-dives/native-till.md)). The functions below are `security definer` RPCs for `authenticated` only, thin wrappers over an `app.*` core run at `now()` that checks the caller itself. `customer_*` functions need a customer session (visitor or member) of the store's brand: a store of another brand or a malformed code is `22023`, as for the other customer functions. `counter_*` functions are for owners, managers and staff whose scope holds the store (`42501` otherwise, the same for a store that does not exist), the server side of the counter web app (ADR-064). Prices in answers are whole đồng as integers.
+
+Owners and managers whose scope holds every store of a brand write the menu tables directly under RLS (section 4); the price log is written by triggers.
+
+#### `public.customer_menu`
+
+```sql
+public.customer_menu(p_store_code text, p_order_type text DEFAULT NULL::text)
+returns jsonb
+```
+
+- **Status:** built (step 1, migration `native_catalogue`).
+- **Who may call:** a customer session of the store's brand.
+- **Notes:** `{store: {code, name, address, opening_hours}, order_type, ordering, menu_version, currency, categories: [{id, name, items: [{id, name, description, photo_path, labels, order_types, counts_for_stamps, sizes: [{id, label, price, is_default}], option_group_ids}]}], option_groups: [{id, name, min_select, max_select, options: [{id, name, price_delta, is_default}]}], unavailable_items: [item id]}`. Only items on sale in a visible category, not restricted, with an active size, offered at the store, not sold out and offered for `p_order_type` (`table` or `takeaway`; null for both) are listed; `unavailable_items` names the items on sale that are not, so a basket can warn. `ordering` is the store's ordering state: `{accepting, reason, till_mode, order_types, payment_methods, opens_at, closes_at, last_order_at, paused_until, closure_reason, closure_ends_on}` with `reason` one of `ordering_off`, `hours_unknown`, `closed_today`, `paused`, `closed_now`, `last_orders_passed`, `no_staff_online`, `busy`. An `ipos` store answers no item.
+
+#### `public.customer_menu_version`
+
+```sql
+public.customer_menu_version(p_store_code text)
+returns jsonb
+```
+
+- **Status:** built (step 1).
+- **Who may call:** a customer session of the store's brand.
+- **Notes:** `{menu_version, ordering, unavailable_items}`, about 200 bytes, for a poll every 3 seconds while the menu or the basket is open: a new version means "read the menu again"; an item switched sold out at the counter is in `unavailable_items` from the next poll (acceptance criterion 2, within 5 seconds).
+
+#### `public.counter_menu`
+
+```sql
+public.counter_menu(p_store uuid)
+returns jsonb
+```
+
+- **Status:** built (step 1).
+- **Who may call:** an owner, manager or staff member whose scope holds the store.
+- **Notes:** `{store_id, business_date, day_ends_at, ordering, items: [{id, brand_id, category, name, order_types, available, sold_out_until, sizes, option_group_ids}], option_groups}`: every item on sale of the brands covering the store, for the counter's order form and its sold-out switches.
+
+#### `public.counter_set_sold_out`
+
+```sql
+public.counter_set_sold_out(p_store uuid, p_item uuid, p_sold_out boolean, p_until timestamp with time zone DEFAULT NULL::timestamp with time zone)
+returns jsonb
+```
+
+- **Status:** built (step 1).
+- **Who may call:** an owner, manager or staff member whose scope holds the store.
+- **Notes:** switches an item sold out until `p_until` (within 7 days; by default the end of the business day) or available again (`p_sold_out` false, no time). Answers `{item_id, sold_out, sold_out_until, menu_version}`; the change moves the menu version and records who set it. `22023` for an item that is not on the store's menu or a time out of bounds.
+
+#### `public.counter_set_pause`
+
+```sql
+public.counter_set_pause(p_store uuid, p_minutes integer, p_reason text DEFAULT NULL::text)
+returns jsonb
+```
+
+- **Status:** built (step 1).
+- **Who may call:** an owner, manager or staff member whose scope holds the store; staff up to 60 minutes (`42501` beyond), owners and managers up to 1,440.
+- **Notes:** holds new orders for `p_minutes` (0 resumes) with an optional reason of at most 80 characters on one line; orders already in the queue are not affected. Answers `{paused_until, paused_reason, ordering}`. `22023` for a store without ordering settings, a negative or too long pause, or a bad reason.
+
+#### `public.set_store_till_mode`
+
+```sql
+public.set_store_till_mode(p_store uuid, p_mode text)
+returns jsonb
+```
+
+- **Status:** built (step 1).
+- **Who may call:** an owner with every store of the tenant.
+- **Notes:** `ipos` or `native`; creates the store's `store_ordering_settings` row when it has none (ordering still off). Answers `{store_id, till_mode, ordering_enabled}`. The column is not writable by any other path.
+
+#### `public.import_menu_from_pos`
+
+```sql
+public.import_menu_from_pos(p_brand uuid, p_store uuid)
+returns jsonb
+```
+
+- **Status:** built (step 1).
+- **Who may call:** an owner whose scope holds every store of the brand.
+- **Notes:** the one-time import of the brand's empty menu from the POS catalogue of one of its stores (ADR-060): a category per POS item type, an item per POS base name with a size per POS size at the store's list price (else the item's), the POS option groups targeting those items with their option items' prices, alcohol and beer restricted and hidden. Answers `{state: "imported", counts: {categories, items, sizes, restricted, option_groups, options}, menu_version}`, or `{state: "refused", refusal: "already_imported" | "menu_not_empty"}`. `22023` for a store that is not the brand's.
+
+Tests: pgTAP `260_native_catalogue.sql`, `261_ordering_state.sql`, `120_security_function_matrix.sql` and `121_security_table_matrix.sql`.
+
+Tables and staff calls (step 2, migration `tables_and_calls`): a table QR carries `https://zalo.me/s/<customer Mini App id>/?store=<store link key>&src=table&t=<token>`, where the token is the first 16 bytes of HMAC-SHA-256(tenant key, `table:<id>:<version>`) in base64url (22 characters); only its SHA-256 is stored and no API role reads the key.
+
+#### `public.customer_table`
+
+```sql
+public.customer_table(p_store_code text, p_table_token text)
+returns jsonb
+```
+
+- **Status:** built (step 2).
+- **Who may call:** a customer session of the store's brand.
+- **Notes:** `{state: "ok", table: {label, area}}` for the active table whose current token it is, else `{state: "refused", refusal: "table_unknown"}` for every miss alike (unknown, rotated, inactive, another store's or tenant's token) or `{state: "refused", refusal: "rate_limited", retry_at}` once the caller made 10 misses, or the store 50, in 15 minutes (a 15-minute lock and the `code_guessing_lockout` alert). `22023` for a malformed token (1 to 64 URL-safe characters) or a store not of the brand. The app keeps the token for the session and sends it again with the order.
+
+#### `public.customer_call_staff`
+
+```sql
+public.customer_call_staff(p_store_code text, p_table_token text)
+returns jsonb
+```
+
+- **Status:** built (step 2).
+- **Who may call:** a customer session of the store's brand.
+- **Notes:** "Gọi nhân viên": `{state: "calling", called_at, replayed}`; a table has at most one open call, so a repeat answers the open one (`replayed: true`). A new call counts against the customer and the store (6 and 120 in 15 minutes, then `rate_limited` with `retry_at`); the token is resolved as `customer_table` does, with the same refusals.
+
+#### `public.table_qr_links`
+
+```sql
+public.table_qr_links(p_store uuid)
+returns jsonb
+```
+
+- **Status:** built (step 2).
+- **Who may call:** an owner or manager whose scope holds the store.
+- **Notes:** `{store_code, mini_app_id, missing, tables: [{id, label, area, sort_order, active, qr_version, token, link}]}` for printing the cards; `token` and `link` are null for an inactive table, and `link` is null with `missing` `customer_mini_app` or `store_code` when the store cannot be linked.
+
+#### `public.rotate_table_qr`
+
+```sql
+public.rotate_table_qr(p_table uuid)
+returns jsonb
+```
+
+- **Status:** built (step 2).
+- **Who may call:** an owner or manager whose scope holds the table's store (`42501` otherwise, the same for an unknown table).
+- **Notes:** moves the table's QR version, which refuses the printed card at once, and answers `{id, qr_version, token, link}`. `22023` for an inactive table (reactivating a table also issues a new version).
+
+#### `public.counter_table_map`
+
+```sql
+public.counter_table_map(p_store uuid)
+returns jsonb
+```
+
+- **Status:** built (step 2; open orders from step 3).
+- **Who may call:** an owner, manager or staff member whose scope holds the store.
+- **Notes:** `{store_id, tables: [{id, label, area, sort_order, call: null | {id, called_at, waiting_seconds}, open_orders}]}`: the active tables by area with their open call, for the counter's table map.
+
+#### `public.counter_ack_call`
+
+```sql
+public.counter_ack_call(p_call uuid)
+returns jsonb
+```
+
+- **Status:** built (step 2).
+- **Who may call:** an owner, manager or staff member whose scope holds the call's store (`42501` otherwise, the same for an unknown call).
+- **Notes:** "Tới ngay": `{state: "acknowledged", acknowledged_at, acknowledged_by, replayed}`; a call already answered is a replay.
+
+Tests: pgTAP `262_table_qr_and_calls.sql`, `170_code_guessing_limits.sql`, `120_security_function_matrix.sql` and `121_security_table_matrix.sql`.
+
+Orders (step 3, migration `native_orders`, ADR-061). An order's lifecycle is `awaiting_payment` → `accepted` → `preparing` → `ready` (takeaway) or `serving` (table) → `completed`, with `cancelled` only from `awaiting_payment` or `accepted`; its payment status (`unpaid`, `paid`, `refund_pending`, `refunded`, `partially_refunded`) moves apart. An order answer is `{id, order_no, display_no, business_date, source, type, table: {id (counter only), label}, pickup_at, status, payment_status, payment_method, version, subtotal, discount_amount, total, note, placed_at, payment_due_at, accepted_at, preparing_at, done_at, completed_at, paid_at, cancelled_at, cancel_reason, late (counter only), lines: [{line_no, item_id, size_id, item_name, size_label, quantity, unit_price, options: [{group_id, group, option_id, name, price}], options_amount, line_total, counts_for_stamps, note}]}`. Business refusals are answers (`state: "refused"` with `refusal`), never errors; malformed input is `22023` and a wrong caller `42501`. Only the server marks an order paid: the counter's payment record (step 4) and the verified provider confirmation share the internal seam `app.order_payment_succeeded`, which no client may execute.
+
+#### `public.customer_place_order`
+
+```sql
+public.customer_place_order(p_request jsonb)
+returns jsonb
+```
+
+- **Status:** built (step 3).
+- **Who may call:** a customer session (visitor or member) of the store's brand.
+- **Notes:** `p_request` is `{request_id (UUID), store (link key), type ("table" or "takeaway"), table_token (table orders), pickup_at (takeaway, optional ISO instant), lines: [{size (UUID), qty (1–20), options: [option UUID, at most 10, none twice], note (≤ 100)}] (1–30 lines), note (≤ 200), payment ("counter", "zalo_checkout" or "vietqr"), expected_total (whole đồng the app showed), menu_version (optional)}`; any other key, `__proto__` included, is `22023`. The database prices every line from the menu and writes nothing until every check passes. Answers `{state: "placed" | "awaiting_payment" | "refused", refusal, replayed, order}`: a counter order is placed at once, accepted with its number and payment `unpaid`; an online one awaits its payment until `payment_due_at` without a number. Refusals: the ordering state's reason (`ordering_off`, `hours_unknown`, `closed_today`, `paused`, `closed_now`, `last_orders_passed`, `no_staff_online`, `busy`), `blocked`, `rate_limited` (20 calls of a customer and 200 of a store in 15 minutes; with `retry_at`), `too_many_open_orders` (3), `table_unknown`, `table_not_for_takeaway`, `pickup_time_invalid` (before the preparation time, outside the opening hours or on another business day), `payment_not_allowed` (a method the store has not switched on; takeaway is prepaid online), `item_unavailable` (with `unavailable_items`), `option_invalid` (with the line numbers), `amount_over_limit`, `price_changed` (with the server's `total`, `lines` and `menu_version`), `request_conflict`. A repeat of the same `request_id` with the same request answers the first order with `replayed: true`, also under parallel calls.
+
+#### `public.customer_check_cart`
+
+```sql
+public.customer_check_cart(p_request jsonb)
+returns jsonb
+```
+
+- **Status:** built (step 3).
+- **Who may call:** a customer session of the store's brand.
+- **Notes:** the same request as `customer_place_order` (`request_id`, `payment` and `expected_total` optional), priced without writing anything, for the confirmation step: `{state: "ok" | "refused", refusal, unavailable_items, bad_lines, lines, total, menu_version, ordering}`.
+
+#### `public.customer_cancel_order`
+
+```sql
+public.customer_cancel_order(p_order uuid)
+returns jsonb
+```
+
+- **Status:** built (step 3).
+- **Who may call:** a customer session.
+- **Notes:** cancels the caller's own order while it awaits its online payment, or is accepted and still unpaid: `{state: "cancelled", replayed, order}`; a paid accepted order answers `contact_store`, a started one `not_allowed`; another login's order or an unknown id answers `unknown_order`, identically.
+
+#### `public.customer_order`
+
+```sql
+public.customer_order(p_order uuid)
+returns jsonb
+```
+
+- **Status:** built (step 3).
+- **Who may call:** a customer session.
+- **Notes:** `{state: "ok", order}` with `order.timeline: [{kind, action, from, to, actor, reason_code, amount, at}]` (no staff identity), polled every 3 seconds while the order screen is open; another login's order answers exactly as an unknown id: `{state: "refused", refusal: "unknown_order", order: null}`.
+
+#### `public.customer_orders`
+
+```sql
+public.customer_orders(p_before timestamp with time zone DEFAULT NULL::timestamp with time zone)
+returns jsonb
+```
+
+- **Status:** built (step 3).
+- **Who may call:** a customer session.
+- **Notes:** the caller's orders, newest first, 20 a page: `{orders: [{id, display_no, store_name, type, table_label, status, payment_status, total, placed_at, items}], next_before}`.
+
+#### `public.counter_board`
+
+```sql
+public.counter_board(p_store uuid, p_cursor bigint DEFAULT 0)
+returns jsonb
+```
+
+- **Status:** built (step 3).
+- **Who may call:** an owner, manager or staff member whose scope holds the store.
+- **Notes:** the counter's queue, polled every 2 seconds: `{store_id, business_date, ordering, cursor, counts: {accepted, preparing, ready, serving, unpaid, completed_today, cancelled_today}, orders: [order with lines and late], calls: [{id, table_id, label, area, called_at}]}`. `orders` holds the orders changed since `p_cursor` among the open ones and the business day's closed ones (never one still awaiting its online payment; at most 200, oldest change first); pass the answered `cursor` next time (0 for everything). Every call records the device's presence, without which the store stops taking orders after 180 seconds when presence is required.
+
+#### `public.counter_order`
+
+```sql
+public.counter_order(p_order uuid)
+returns jsonb
+```
+
+- **Status:** built (step 3).
+- **Who may call:** an owner, manager or staff member whose scope holds the order's store (`42501` otherwise, the same for an unknown order).
+- **Notes:** the order with its lines and `timeline` naming who did what.
+
+#### `public.counter_order_act`
+
+```sql
+public.counter_order_act(p_order uuid, p_action text, p_expected_version integer, p_reason text DEFAULT NULL::text)
+returns jsonb
+```
+
+- **Status:** built (step 3).
+- **Who may call:** an owner, manager or staff member whose scope holds the order's store (`42501` otherwise, the same for an unknown order).
+- **Notes:** `start` ("Bắt đầu pha": accepted → preparing; a takeaway order must be paid), `done` (preparing → `ready` for takeaway, `serving` for a table: "Xong, mang ra"), `complete` (ready or serving → completed, only when paid), `cancel` (awaiting_payment or accepted → cancelled; `p_reason` is a code, `customer_request`, `item_unavailable`, `store_busy`, `closing_soon`, `payment_not_received`, `suspected_prank`, or `other:<text>`; a paid order's refund becomes due). Answers `{state: "ok" | "conflict" | "refused", refusal, replayed, order}` (and `customer_blocked` after a third `suspected_prank` of the same customer in 7 days). The same target again is a replay without a second event; a version other than the order's is `conflict` with the current order; anything outside the lifecycle is refused as data (`not_allowed`, `already_cancelled`, `already_completed`, `payment_required`) and changes nothing.
+
+#### `public.counter_create_order`
+
+```sql
+public.counter_create_order(p_store uuid, p_request jsonb)
+returns jsonb
+```
+
+- **Status:** built (step 3).
+- **Who may call:** an owner, manager or staff member whose scope holds the store.
+- **Notes:** an order keyed at the counter for a customer without the app: `{request_id, type, table_id (table orders), lines, note, expected_total (optional)}`, priced from the menu, accepted at once with its number, payment `unpaid` and `source: "counter"`. Idempotent per staff member and `request_id`. Refusals: `not_native`, `table_unknown`, `table_not_for_takeaway`, `item_unavailable`, `option_invalid`, `price_changed`, `request_conflict`.
+
+The minute job `app.ordering_tick` (pg_cron `ordering-tick`, created off; `app.enable_ordering_tick()` turns it on) cancels the orders whose online payment window passed and prunes stale presence. `set_store_till_mode` refuses to switch a store back to `ipos` while it has open orders.
+
+Tests: pgTAP `263_orders.sql`, `265_order_pricing.sql`, `266_order_state_transitions.sql`, `267_order_idempotency.sql`, `268_order_idor.sql`, rows in `120` and `121`; `jobs:integration/ordering-concurrency`; `core:unit/order-lifecycle`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -2771,6 +3031,24 @@ Built locally (migrations `loyalty_programmes` to `loyalty_jobs`, pgTAP `60` to 
 | `loyalty_refusals` | why an invoice did not earn, for the shift anomaly report | owners, managers and viewers, stores in scope | none | none |
 | `loyalty_queue` | check-ins and claims with two candidate invoices, waiting for a manager | owners and managers, stores in scope | none ([`resolve_loyalty_queue_item`](#publicresolve_loyalty_queue_item)) | none |
 | `loyalty_liability_daily` | the nightly points liability, breakage and deferred revenue per programme and day | owners, managers and viewers of the tenant | none | none |
+
+### The native till (ADR-060)
+
+Built locally (migration `native_catalogue`, pgTAP `260` and `261`); empty until a store switches to `native` and its brand's menu is made or imported.
+
+| Relation | Purpose | Who reads | Client writes | Read by a client today |
+|---|---|---|---|---|
+| `store_ordering_settings` | a store's till mode and ordering settings | owners, managers and viewers, stores in scope | owners and managers in scope, every column but `till_mode`, `payment_methods` and the pause | none |
+| `ordering_closures` | business dates without orders | owners, managers and viewers, stores in scope | owners and managers in scope | none |
+| `menu_categories`, `menu_items`, `menu_item_sizes`, `menu_option_groups`, `menu_options`, `menu_item_option_groups` | a native brand's menu with its prices | owners, managers and viewers of the tenant | owners and managers whose scope holds every store of the brand (not the import provenance or the author columns) | none (the counter app later) |
+| `menu_store_items` | per-store offered switch and sold-out time | owners, managers and viewers, stores in scope | owners and managers in scope (`offered`, `sold_out_until`); staff through `counter_set_sold_out` | none |
+| `menu_price_changes` | the append-only price log | owners, managers and viewers of the tenant | none (triggers) | none |
+| `menu_imports` | the one-time import of a brand's menu | owners, managers and viewers of the tenant | none | none |
+| `item_option_groups`, `item_option_group_options`, `item_option_group_targets` | the POS option groups, written by the master-data run | data roles of the tenant | none | none |
+| `store_tables` | a store's tables: label, area, order, active, QR version and issue time | owners, managers and viewers, stores in scope; the token hash `qr_token_sha256` by nobody | owners and managers in scope (`label`, `area`, `sort_order`, `active`) | none |
+| `table_calls` | "Gọi nhân viên" calls and who answered them | owners, managers and viewers, stores in scope | none (`customer_call_staff`, `counter_ack_call`) | none |
+| `orders`, `order_lines`, `order_events` | native orders, their lines with the prices they were sold at, and the append-only log of every step with its actor and amount | owners, managers and viewers, stores in scope | none (the customer and counter functions) | none |
+| `customer_order_blocks` | customers blocked from ordering after three suspected pranks | owners and managers, stores in scope | owners and managers in scope delete a block to lift it | none |
 
 ## 5. Edge Function endpoints
 

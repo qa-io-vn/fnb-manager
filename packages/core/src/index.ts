@@ -104,6 +104,26 @@ export {
 	sumMoney,
 } from "./rules/money.js";
 export {
+	type ActionOutcome,
+	actionTarget,
+	availableCounterActions,
+	CANCEL_REASONS,
+	type CancelReason,
+	COUNTER_ACTIONS,
+	type CounterAction,
+	type CustomerCancelOutcome,
+	counterAction,
+	customerCancel,
+	isTerminal,
+	type NativeOrderType,
+	ORDER_STATUSES,
+	type OrderPaymentStatus,
+	type OrderSnapshot,
+	type OrderStatus,
+	orderDisplayNumber,
+	PAYMENT_STATUSES,
+} from "./rules/order-lifecycle.js";
+export {
 	classifyPaymentKind,
 	DEFAULT_PAYMENT_KIND_RULES,
 	type PaymentKindOptions,
@@ -153,6 +173,7 @@ export {
 	type CanonicalItemClass,
 	type CanonicalItemType,
 	type CanonicalModifier,
+	type CanonicalOptionGroup,
 	type CanonicalPackage,
 	type CanonicalPaymentMethod,
 	type CanonicalPromotion,
@@ -162,10 +183,12 @@ export {
 	canonicalItemSchema,
 	canonicalItemTypeSchema,
 	canonicalModifierSchema,
+	canonicalOptionGroupSchema,
 	canonicalPackageSchema,
 	canonicalPaymentMethodSchema,
 	canonicalPromotionSchema,
 	canonicalSourceSchema,
+	OPTION_GROUP_MAX_SELECT,
 } from "./schemas/catalog.js";
 export { type IsoDate, isoDate } from "./schemas/common.js";
 export {

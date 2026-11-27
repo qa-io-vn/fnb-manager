@@ -6,6 +6,8 @@ import type {
 	InvoicePaymentRow,
 	InvoiceRow,
 	JsonValue,
+	OptionGroupOptionRow,
+	OptionGroupTargetRow,
 	ReceiptNumbersResetValue,
 	RunFinish,
 	RunStart,
@@ -87,12 +89,19 @@ export interface StoredCatalogRow {
 	values: Record<string, JsonValue>;
 }
 
+/** The options and targets of one account's option groups, replaced as a whole by every catalogue write. */
+export interface StoredOptionGroupLinks {
+	options: OptionGroupOptionRow[];
+	targets: OptionGroupTargetRow[];
+}
+
 export interface MemoryTables {
 	tenants: MemoryTenant[];
 	accounts: StoredAccount[];
 	tokens: Map<string, TokenRecord>;
 	stores: StoredStore[];
 	catalog: Map<string, StoredCatalogRow[]>;
+	optionGroupLinks: Map<string, StoredOptionGroupLinks>;
 	invoices: StoredInvoice[];
 	lines: StoredLine[];
 	payments: StoredPayment[];
@@ -115,13 +124,21 @@ export const MEMORY_CATALOG_TABLES = [
 	"devices",
 ] as const;
 
+export const OPTION_GROUP_TABLE = "item_option_groups";
+
 export function emptyTables(): MemoryTables {
 	return {
 		tenants: [],
 		accounts: [],
 		tokens: new Map(),
 		stores: [],
-		catalog: new Map(MEMORY_CATALOG_TABLES.map((table) => [table, []])),
+		catalog: new Map(
+			[...MEMORY_CATALOG_TABLES, OPTION_GROUP_TABLE].map((table) => [
+				table,
+				[],
+			]),
+		),
+		optionGroupLinks: new Map(),
 		invoices: [],
 		lines: [],
 		payments: [],

@@ -13,6 +13,8 @@ export {
 	checkModifiers,
 	checkNetComponents,
 	checkNetTotals,
+	checkOptionGroupReferences,
+	checkOptionGroups,
 	checkPaginationCompleteness,
 	checkPayments,
 	checkSaleSchemas,

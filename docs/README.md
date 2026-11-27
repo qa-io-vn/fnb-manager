@@ -74,7 +74,8 @@ Every public document of the repository, grouped by the reader who needs it, wit
 | [deep-dives/zalo-mini-app-platform.md](deep-dives/zalo-mini-app-platform.md) | The Zalo Mini App platform: SDK, permissions, review and limits |
 | [deep-dives/zalo-oa-and-messaging.md](deep-dives/zalo-oa-and-messaging.md) | The Zalo Official Account and its messaging rules |
 | [deep-dives/zalo-design-and-review-standards.md](deep-dives/zalo-design-and-review-standards.md) | Zalo's Mini App design, review and Official Account content rules |
-| [deep-dives/online-ordering.md](deep-dives/online-ordering.md) | Design: online ordering in the customer Mini App, the Checkout SDK, the staff order queue and the till hand-off |
+| [deep-dives/online-ordering.md](deep-dives/online-ordering.md) | Design: online ordering in the customer Mini App, the Checkout SDK, the staff order queue and the till hand-off (amended by native-till.md) |
+| [deep-dives/native-till.md](deep-dives/native-till.md) | Architecture: the native till mode, the owned menu and price log, tables and staff calls, the order lifecycle, payments, e-invoices, the counter web app and stamps (ADR-060 to ADR-065) |
 
 Each workspace package and app has its README: what it holds, what it exports and how to test it.
 
