@@ -46,7 +46,7 @@ describe.skipIf(!ENABLED)("parallel settlements", () => {
 			await tx`insert into public.tenants (id, slug, name) values (${TENANT}, 'payments-it-29501', 'Payments IT')`;
 			await tx`insert into public.pos_accounts (id, tenant_id, connector, account_key, display_name) values (${ACCOUNT}, ${TENANT}, 'mock', 'payments-it-29501', 'Synthetic')`;
 			await tx`insert into public.stores (id, tenant_id, pos_account_id, external_id, code, name) values (${STORE}, ${TENANT}, ${ACCOUNT}, 'pit-1', 'pit-1', 'Synthetic store')`;
-			await tx`insert into public.brands (id, tenant_id, brand_key, display_name, store_ids) values (${BRAND}, ${TENANT}, 'brand-1', 'Synthetic brand', ${sql.array([STORE])}::uuid[])`;
+			await tx`insert into public.brands (id, tenant_id, brand_key, display_name, store_ids) values (${BRAND}, ${TENANT}, 'brand-1', 'Synthetic brand', ${[STORE]}::uuid[])`;
 			await tx`insert into public.payment_providers (id, tenant_id, brand_id, method, adapter, mode, secret_name, settings)
 				values (${PROVIDER}, ${TENANT}, ${BRAND}, 'vietqr', 'mock', 'sandbox', 'PAYMENT_BANK_IT',
 				${sql.json({ bank_bin: "970400", bank_name: "Ngân hàng mẫu", account_number: "0123456789", account_name: "CUA HANG MAU", reference_prefix: "FNB" })})`;
