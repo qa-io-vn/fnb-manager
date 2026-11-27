@@ -32,7 +32,12 @@ const SIZES = [
 	},
 ] as const;
 
-export function KitScreen() {
+/** The kit screen; `actionBar` false leaves out the sticky action bar, so a tab route with the strip shows exactly two bars. */
+export function KitScreen({
+	actionBar = true,
+}: {
+	readonly actionBar?: boolean;
+} = {}) {
 	const [chip, setChip] = useState("one");
 	const [size, setSize] = useState<"m" | "l" | null>("m");
 	const [extras, setExtras] = useState<readonly string[]>(["foam"]);
@@ -152,18 +157,20 @@ export function KitScreen() {
 
 			<Card testId="kit-bars">
 				<h2 className="text-lg font-bold text-ink">Thanh thao tác</h2>
-				<StickyActionBar testId="kit-action-bar">
-					<Stepper
-						value={quantity}
-						max={20}
-						onChange={setQuantity}
-						decreaseLabel="Bớt một"
-						increaseLabel="Thêm một"
-					/>
-					<button type="button" className={`${kitButton.primary} flex-1`}>
-						Thêm vào giỏ
-					</button>
-				</StickyActionBar>
+				{actionBar ? (
+					<StickyActionBar testId="kit-action-bar">
+						<Stepper
+							value={quantity}
+							max={20}
+							onChange={setQuantity}
+							decreaseLabel="Bớt một"
+							increaseLabel="Thêm một"
+						/>
+						<button type="button" className={`${kitButton.primary} flex-1`}>
+							Thêm vào giỏ
+						</button>
+					</StickyActionBar>
+				) : null}
 				<button
 					type="button"
 					className={kitButton.secondary}
@@ -181,5 +188,23 @@ export function KitScreen() {
 				) : null}
 			</Card>
 		</Screen>
+	);
+}
+
+/** A strip above the tab bar for the route chrome checks (Development builds with ?strip=1): an order in progress, sample words. */
+export function KitStrip() {
+	return (
+		<div
+			data-testid="kit-strip"
+			className="mx-3 mb-2 flex min-h-12 items-center justify-between gap-3 rounded-card-xl bg-inverse px-4 text-body text-inverse-ink"
+		>
+			<span>Đơn mẫu · Đang làm</span>
+			<button
+				type="button"
+				className="min-h-11 min-w-11 font-bold text-inverse-ink underline"
+			>
+				Xem
+			</button>
+		</div>
 	);
 }

@@ -11,6 +11,16 @@ export {
 	miniAppEnvironment,
 } from "./boot";
 export {
+	BAR_SELECTOR,
+	clearHeightOf,
+	FloatingBar,
+	type FloatingBarProps,
+	focusScrollDelta,
+	MAX_BOTTOM_BARS,
+	scrollContainerOf,
+	useBottomBar,
+} from "./bottom-bars";
+export {
 	applyBrandTheme,
 	BRAND_THEME_STYLE_ID,
 	BrandBanner,
@@ -39,6 +49,7 @@ export {
 } from "./data-endpoint";
 export { I18nProvider, type I18nProviderProps, useI18n } from "./i18n";
 export {
+	MAX_BADGE,
 	MAX_TABS,
 	MiniApp,
 	type MiniAppGate,
@@ -46,6 +57,9 @@ export {
 	type MiniAppRoute,
 	type MiniAppTab,
 	PlainState,
+	ROUTE_CHROMES,
+	type RouteChrome,
+	routeAt,
 	shellProblems,
 } from "./mini-app-shell";
 export {

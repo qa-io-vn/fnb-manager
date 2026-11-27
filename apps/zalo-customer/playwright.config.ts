@@ -54,7 +54,7 @@ export default defineConfig({
 		},
 		{
 			name: "b3-320-light",
-			testMatch: /design-brand3\.spec\.ts/,
+			testMatch: /(design-brand3|chrome)\.spec\.ts/,
 			use: {
 				...phone,
 				...brand3,
@@ -64,17 +64,17 @@ export default defineConfig({
 		},
 		{
 			name: "b3-360-light",
-			testMatch: /design-brand3\.spec\.ts/,
+			testMatch: /(design-brand3|chrome)\.spec\.ts/,
 			use: { ...phone, ...brand3, colorScheme: "light" },
 		},
 		{
 			name: "b3-360-dark",
-			testMatch: /design-brand3\.spec\.ts/,
+			testMatch: /(design-brand3|chrome)\.spec\.ts/,
 			use: { ...phone, ...brand3, colorScheme: "dark" },
 		},
 		{
 			name: "b3-412-dark",
-			testMatch: /design-brand3\.spec\.ts/,
+			testMatch: /(design-brand3|chrome)\.spec\.ts/,
 			use: {
 				...phone,
 				...brand3,
@@ -85,7 +85,7 @@ export default defineConfig({
 		{
 			// the owner's phone is an iPhone: brand-3 on WebKit as well
 			name: "b3-webkit",
-			testMatch: /design-brand3\.spec\.ts/,
+			testMatch: /(design-brand3|chrome)\.spec\.ts/,
 			use: { ...devices["iPhone 14"], ...brand3, colorScheme: "light" },
 		},
 		{

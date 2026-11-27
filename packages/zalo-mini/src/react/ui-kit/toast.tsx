@@ -31,7 +31,7 @@ export function Toast({
 			role="status"
 			aria-live="polite"
 			data-testid={testId}
-			className="pointer-events-none fixed inset-x-4 bottom-[calc(var(--bottom-bars,0px)+0.75rem)] z-[1050] flex justify-center"
+			className="pointer-events-none fixed inset-x-4 bottom-[calc(var(--bottom-clear,0px)+0.75rem)] z-[1050] flex justify-center"
 		>
 			<p className="rounded-card-xl bg-inverse px-4 py-3 text-body text-inverse-ink shadow-card">
 				{message}

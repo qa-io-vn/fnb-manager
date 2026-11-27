@@ -399,6 +399,6 @@ describe("Toast", () => {
 		);
 		expect(container.querySelector("b")).toBeNull();
 		expect(screen.getByText("<b>hi</b>")).toBeTruthy();
-		expect(screen.getByTestId("toast").className).toContain("--bottom-bars");
+		expect(screen.getByTestId("toast").className).toContain("--bottom-clear");
 	});
 });

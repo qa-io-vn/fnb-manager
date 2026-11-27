@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { type ReactNode, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { getAccessToken, getSystemInfo, nativeStorage } from "zmp-sdk";
 import type { MiniAppBuildConfig } from "../app-config/index";
@@ -98,6 +98,8 @@ export interface BootOptions {
 	readonly standInMember: MemberProfile;
 	readonly onboarding?: boolean;
 	readonly gate?: MiniAppGate;
+	/** A strip above the tab bar on tab routes (see MiniApp). */
+	readonly aboveTabs?: ReactNode;
 }
 
 export function bootMiniApp(options: BootOptions): void {
@@ -124,6 +126,9 @@ export function bootMiniApp(options: BootOptions): void {
 				}
 				dataEndpoint={environment.dataEndpoint}
 				{...(options.gate === undefined ? {} : { gate: options.gate })}
+				{...(options.aboveTabs === undefined
+					? {}
+					: { aboveTabs: options.aboveTabs })}
 			/>
 		</StrictMode>,
 	);

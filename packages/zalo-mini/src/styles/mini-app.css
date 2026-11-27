@@ -63,6 +63,15 @@
 	--color-highlight: var(--brand-highlight, var(--accent));
 }
 
+/*
+ * a focused control is scrolled clear of every bar at the bottom (the shell sets --bottom-clear from the bars on screen);
+ * ZaUI makes the body the scroller, so the body carries the padding as well as the document
+ */
+html,
+body {
+	scroll-padding-bottom: var(--bottom-clear, 0px);
+}
+
 html,
 body {
 	margin: 0;

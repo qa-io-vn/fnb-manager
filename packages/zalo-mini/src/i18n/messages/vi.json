@@ -31,5 +31,6 @@
 	"popup.close": "Đóng",
 	"price.spoken": "{amount} đồng",
 	"price.spokenPlus": "cộng {amount} đồng",
-	"price.spokenMinus": "trừ {amount} đồng"
+	"price.spokenMinus": "trừ {amount} đồng",
+	"shell.tabBadge": "{count} mới"
 }

@@ -69,9 +69,27 @@ function developmentRoutes(): readonly MiniAppRoute[] {
 				</Suspense>
 			),
 		},
-		// the design kit on one screen: opened with ?route=/kit in a Development build
+		// the design kit on one screen: opened with ?route=/kit in a Development build; /kit-flow is the same screen as a
+		// flow route (no tab bar) and /kit-tabs a tab route without the sticky action bar, which the route chrome checks use
 		{
 			path: "/kit",
+			element: (
+				<Suspense fallback={null}>
+					<KitScreen />
+				</Suspense>
+			),
+		},
+		{
+			path: "/kit-tabs",
+			element: (
+				<Suspense fallback={null}>
+					<KitScreen actionBar={false} />
+				</Suspense>
+			),
+		},
+		{
+			path: "/kit-flow",
+			chrome: "flow",
 			element: (
 				<Suspense fallback={null}>
 					<KitScreen />
@@ -118,11 +136,49 @@ export const routes: readonly MiniAppRoute[] = [
 	...developmentRoutes(),
 ];
 
+// Development builds only: ?badge=3 puts a count on the account tab and ?strip=1 shows a strip above the tab bar, so the
+// route chrome (the badge, two bars at the bottom) can be looked at before any screen needs them
+function developmentBadge(): (() => number | null) | null {
+	if (import.meta.env.VITE_MINI_APP_STAGE !== "development") return null;
+	return () => {
+		const count = Number(
+			new URLSearchParams(window.location.search).get("badge"),
+		);
+		return Number.isFinite(count) && count > 0 ? count : null;
+	};
+}
+
+const badge = developmentBadge();
+
 export const tabs: readonly MiniAppTab[] = [
 	{ path: "/", labelKey: "tab.home", icon: <HomeIcon /> },
 	{ path: "/the-thanh-vien", labelKey: "tab.card", icon: <CardIcon /> },
-	{ path: "/tai-khoan", labelKey: "tab.account", icon: <AccountIcon /> },
+	{
+		path: "/tai-khoan",
+		labelKey: "tab.account",
+		icon: <AccountIcon />,
+		...(badge === null ? {} : { badge }),
+	},
 ];
+
+function developmentStrip(): ReactNode {
+	if (import.meta.env.VITE_MINI_APP_STAGE !== "development") return null;
+	if (new URLSearchParams(window.location.search).get("strip") !== "1")
+		return null;
+	const KitStrip = lazy(() =>
+		import("./probe/kit-probe").then((module) => ({
+			default: module.KitStrip,
+		})),
+	);
+	return (
+		<Suspense fallback={null}>
+			<KitStrip />
+		</Suspense>
+	);
+}
+
+/** The strip above the tab bar: none in a Testing or Zalo build, and in a Development build only with ?strip=1. */
+export const aboveTabs: ReactNode = developmentStrip();
 
 export function CustomerGate({ children }: { readonly children: ReactNode }) {
 	return (

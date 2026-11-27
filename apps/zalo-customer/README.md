@@ -102,6 +102,8 @@ pnpm --filter @fnb/zalo-customer dev        # browser mode on http://127.0.0.1:5
 pnpm --filter @fnb/zalo-customer build      # vite build (Testing stage), then the size budgets
 pnpm --filter @fnb/zalo-customer test       # Vitest with jsdom
 pnpm --filter @fnb/zalo-customer test:e2e   # Playwright on 5752 (plus E2E_PORT_OFFSET)
+# A Development build (pnpm ... dev, or the brand-2 and brand-3 e2e builds) also opens a screen straight away with ?route=/kit (the design kit),
+# /kit-tabs and /kit-flow, shows a strip above the tab bar with ?strip=1 and a count on the account tab with ?badge=3
 ZALO_LOCAL_DEV=1 pnpm --filter @fnb/zalo-customer test:e2e:local   # the loyalty loop on loyalty-sim, local stack required
 pnpm --filter @fnb/zalo-customer standees --brand brand-1 --pdf   # one printable standee per store, outside the repository
 pnpm --filter @fnb/zalo-mini listing                             # the listing assets of the synthetic brands
@@ -203,6 +205,8 @@ A build for the Zalo runtime needs `VITE_ZALO_RUNTIME=zalo`, `VITE_BRAND_KEY`, `
 | `src/demo/world.test.ts` | the demo source through the real session client and REST client: visitor and member answers, the join and its refusals, codes per store and minute, claims and the daily limit, marketing and deletion with its deadlines in the wallet, a request before a restart and one after a refusal |
 | `src/i18n/catalog.test.ts` | every Vietnamese key has an English message with the same placeholders; the registry's spelling; no price in any message; the ticket's wording |
 | `src/probe/probe.test.tsx` | the Development-only phone-consent probe |
+| `src/styles.test.ts` | the shell's style sheet as this app's Tailwind build reads it: a utility for every optional theme role, the defaults of the roles, and every shape and size utility (`rounded-card`, `border-field`, `text-body` and the others) falling back to exactly what the literal class it replaced gave |
+| `e2e/design-brand3.spec.ts`, `e2e/chrome.spec.ts`, `e2e/design-checks.spec.ts` | the synthetic brand-3 in the `b3-*` projects (320, 360 and 412 px, light and dark, WebKit) on a Development build: its colours, shape and 15 px body on the home, the design kit screen, the route chrome (two bars at the bottom, a flow route, a count on a tab, tabbing through a page without a control under a bar) and the design checks of the brand handbook on pages made for them |
 | `e2e/browse.spec.ts` | in `phone-light` and `phone-dark` at 360 × 800 px: the home with only `getAccessToken` called and only `fnb.customer-session` in Native Storage, a store's QR link, a standee link in capitals, a standee made for the test build opening its store, the Privacy and Terms popups, every visitor screen, a lost connection, English |
 | `e2e/join.spec.ts` | refusing the phone permission and browsing on; browse → join (unticked consents) → follow OA → wallet → receipt claim pending; the marketing consent stopped with "Dừng nhận tin"; a visitor's claim through joining |
 | `e2e/wallet.spec.ts` | with a fixed clock: the wallet states; the member code bound to the linked store and refreshed after 60 seconds; a claim validated, matched and the day's limit; the receipt-day warning at `mau-2` (daily) following the number and the date, a matched and a pending claim sent past it, English, none at `mau-1` (yearly) |

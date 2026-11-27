@@ -31,5 +31,6 @@
 	"popup.close": "Close",
 	"price.spoken": "{amount} dong",
 	"price.spokenPlus": "plus {amount} dong",
-	"price.spokenMinus": "minus {amount} dong"
+	"price.spokenMinus": "minus {amount} dong",
+	"shell.tabBadge": "{count} new"
 }

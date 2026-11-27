@@ -348,6 +348,8 @@ test.describe("the design kit screen", () => {
 		page,
 	}) => {
 		const colours = await palette(page);
+		// the clock stands still from here, so the four seconds are the test's to spend, not the machine's
+		await page.clock.pauseAt(new Date("2026-11-19T10:10:00+07:00"));
 		await page.getByTestId("kit-toast-open").click();
 		const toast = page.getByTestId("kit-toast");
 		await expect(toast).toHaveText("Đã thêm một mục.");
