@@ -253,6 +253,8 @@ export interface TimelineEvent {
 }
 
 export interface OrderPayment {
+	/** the payment's id (an online attempt's is the one checkout-order answered), when the answer gives it */
+	readonly id: string | null;
 	readonly method: string;
 	readonly amount: number;
 	readonly status: string;
@@ -774,6 +776,7 @@ function readMoney(value: unknown): OrderMoney | null {
 		payments: optionalList(row.payments, "payments").map((entry) => {
 			const payment = record(entry, "payment");
 			return {
+				id: optionalId(payment.id, "payment id"),
 				method: text(payment.method, "payment method"),
 				amount: amount(payment.amount, "payment amount"),
 				status: text(payment.status, "payment status"),
