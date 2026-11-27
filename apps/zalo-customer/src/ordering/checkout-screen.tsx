@@ -17,15 +17,17 @@ import { useOnline } from "../data/offline";
 import { useLegalPopup } from "../legal/legal-popups";
 import { Loading } from "../ui";
 import { requestLines } from "./cart";
-import { ONLINE_PAYMENT_READY } from "./flag";
+import { methodSelectable, ONLINE_PAYMENT_ENABLED } from "./flag";
 import { refusalBacksToCart, refusalKey } from "./order-view";
 import { basketSignature, useOrdering } from "./ordering-data";
 import { FlowBack, kicker, Panel, Problem } from "./parts";
 
 // C05 Xác nhận đơn (design spec 6.2). The server prices the basket first (customer_check_cart) and the button shows
-// its total; "Đặt món" sends customer_place_order with a request_id made once for this basket and this total, so a
-// double tap or a retry after a lost answer gives one order (criterion 3). Paying at the counter is the only method
-// that works; the two online methods the owner drew are shown, disabled, until their providers exist.
+// its total; "Đặt món" sends customer_place_order with a request_id made once for this basket, this total and this way
+// to pay, so a double tap or a retry after a lost answer gives one order (criterion 3). Paying at the counter always
+// works; "Ví ZaloPay" and "Chuyển khoản QR" can be chosen only in a build with VITE_ONLINE_PAYMENT=on and where the
+// store offers them (its ordering state's payment_methods), otherwise they are shown disabled with a note. An order
+// paid online waits for its payment (awaiting_payment) and goes to the payment step; the app sends no price.
 
 type Check =
 	| { readonly status: "checking" }
@@ -79,6 +81,7 @@ export function CheckoutScreen() {
 	} = useOrdering();
 	const { open, popup } = useLegalPopup();
 	const [check, setCheck] = useState<Check>({ status: "checking" });
+	const [chosen, setChosen] = useState<PaymentMethod>("counter");
 	const [sending, setSending] = useState(false);
 	const [problem, setProblem] = useState<CheckoutProblem | null>(null);
 	const problemRef = useRef<HTMLDivElement>(null);
@@ -133,6 +136,21 @@ export function CheckoutScreen() {
 		check.status === "ready" && check.check.state === "ok"
 			? check.check.total
 			: null;
+	// the ways the store offers now: the cart check's answer, else the menu's (both carry the ordering state)
+	const offered =
+		check.status === "ready"
+			? check.check.ordering.paymentMethods
+			: menu.status === "ready"
+				? menu.data.ordering.paymentMethods
+				: [];
+	// a way that stops being offered falls back to the counter
+	const method: PaymentMethod = methodSelectable(
+		chosen,
+		offered,
+		ONLINE_PAYMENT_ENABLED,
+	)
+		? chosen
+		: "counter";
 	const canSend =
 		total !== null &&
 		tableToken !== null &&
@@ -144,14 +162,20 @@ export function CheckoutScreen() {
 		if (client === null || total === null || tableToken === null || sending)
 			return;
 		const request = placement(
-			basketSignature(cart, { store, table: tableToken, total, menuVersion }),
+			basketSignature(cart, {
+				store,
+				table: tableToken,
+				total,
+				menuVersion,
+				payment: method,
+			}),
 			(requestId) => ({
 				request_id: requestId,
 				store,
 				type: "table",
 				table_token: tableToken,
 				lines: requestLines(cart),
-				payment: "counter",
+				payment: method,
 				expected_total: total,
 				...(menuVersion === null ? {} : { menu_version: menuVersion }),
 			}),
@@ -163,7 +187,13 @@ export function CheckoutScreen() {
 				setSending(false);
 				settlePlacement(answer);
 				if (answer.state !== "refused" && answer.order !== null) {
-					navigate(`/don/${answer.order.id}`, { replace: true });
+					// an order paid online waits for its payment: the payment step opens it
+					navigate(
+						answer.order.status === "awaiting_payment"
+							? `/tra-tien/${answer.order.id}`
+							: `/don/${answer.order.id}`,
+						{ replace: true },
+					);
 					return;
 				}
 				setProblem({ kind: "refused", answer });
@@ -263,34 +293,40 @@ export function CheckoutScreen() {
 				</fieldset>
 				<fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
 					<legend className={`${kicker} pb-2`}>{t("checkout.payment")}</legend>
-					{METHODS.map(({ method, title, sub }) => {
-						const ready = method === "counter" || ONLINE_PAYMENT_READY;
-						const id = `${paymentId}-${method}`;
+					{METHODS.map(({ method: way, title, sub }) => {
+						const ready = methodSelectable(
+							way,
+							offered,
+							ONLINE_PAYMENT_ENABLED,
+						);
+						const selected = way === method;
+						const id = `${paymentId}-${way}`;
 						return (
 							<label
-								key={method}
+								key={way}
 								htmlFor={id}
-								className={`relative flex min-h-16 items-start gap-3 rounded-card border-field p-4 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${ready ? "cursor-pointer border-accent bg-surface-raised" : "border-line bg-surface-sunken"}`}
+								className={`relative flex min-h-16 items-start gap-3 rounded-card border-field p-4 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${ready ? `cursor-pointer bg-surface-raised ${selected ? "border-accent" : "border-line-strong"}` : "border-line bg-surface-sunken"}`}
 								data-testid="payment-method"
-								data-method={method}
+								data-method={way}
 								data-ready={ready}
+								data-selected={selected}
 							>
 								<input
 									id={id}
 									type="radio"
 									name="payment"
-									value={method}
-									checked={method === "counter"}
-									disabled={!ready}
-									onChange={() => undefined}
+									value={way}
+									checked={selected}
+									disabled={!ready || sending}
+									onChange={() => setChosen(way)}
 									aria-describedby={ready ? undefined : `${id}-note`}
 									className="absolute inset-0 m-0 size-full cursor-pointer appearance-none rounded-card opacity-0 disabled:cursor-default"
 								/>
 								<span
 									aria-hidden="true"
-									className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 ${method === "counter" ? "border-accent" : "border-line-strong"}`}
+									className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 ${selected ? "border-accent" : "border-line-strong"}`}
 								>
-									{method === "counter" ? (
+									{selected ? (
 										<span className="size-3 rounded-full bg-accent" />
 									) : null}
 								</span>

@@ -26,6 +26,8 @@ export const POLL_MS = 2_000;
 
 interface BoardValue {
 	readonly state: BoardState;
+	/** the online methods whose provider is on for the store (counter_payment_methods), whether or not it takes app orders */
+	readonly onlineMethods: readonly string[];
 	readonly soundOn: boolean;
 	unlockSound(): Promise<void>;
 	/** a call this device just answered */
@@ -49,7 +51,31 @@ export function BoardProvider({ children }: { readonly children: ReactNode }) {
 	const [state, setState] = useState<BoardState>(EMPTY_BOARD);
 	const held = useRef<BoardState>(EMPTY_BOARD);
 	const [soundOn, setSoundOn] = useState(false);
+	const [onlineMethods, setOnlineMethods] = useState<readonly string[]>([]);
 	const chime = useRef(new Chime());
+
+	// asked once per store: a provider is switched on by the owner, rarely, and a refusal (a provider turned off since)
+	// hides the tab in the dialog anyway
+	useEffect(() => {
+		setOnlineMethods([]);
+		let live = true;
+		rpc<{ readonly methods?: unknown }>(client, "counter_payment_methods", {
+			p_store: store.id,
+		}).then(
+			(answer) => {
+				if (live && Array.isArray(answer?.methods))
+					setOnlineMethods(
+						answer.methods.filter(
+							(method): method is string => typeof method === "string",
+						),
+					);
+			},
+			() => undefined,
+		);
+		return () => {
+			live = false;
+		};
+	}, [client, store.id]);
 	const running = useRef(false);
 	const commit = useCallback((next: BoardState) => {
 		held.current = next;
@@ -96,6 +122,7 @@ export function BoardProvider({ children }: { readonly children: ReactNode }) {
 	const value = useMemo<BoardValue>(
 		() => ({
 			state,
+			onlineMethods,
 			soundOn,
 			async unlockSound() {
 				setSoundOn(await chime.current.unlock());
@@ -114,7 +141,7 @@ export function BoardProvider({ children }: { readonly children: ReactNode }) {
 				commit(dismissResynced(held.current));
 			},
 		}),
-		[state, soundOn, poll, commit],
+		[state, onlineMethods, soundOn, poll, commit],
 	);
 	return (
 		<BoardContext.Provider value={value}>{children}</BoardContext.Provider>
@@ -125,4 +152,17 @@ export function useBoard(): BoardValue {
 	const value = useContext(BoardContext);
 	if (value === null) throw new Error("useBoard needs a BoardProvider");
 	return value;
+}
+
+/**
+ * Whether the store takes a VietQR: counter_payment_methods lists it (its provider is on, whether or not the store
+ * takes orders in the app), or the ordering state of the last board answer does. False before either answers or
+ * outside a board.
+ */
+export function useBoardOffersVietQr(): boolean {
+	const value = useContext(BoardContext);
+	return (
+		value?.onlineMethods.includes("vietqr") === true ||
+		value?.state.ordering?.payment_methods?.includes("vietqr") === true
+	);
 }

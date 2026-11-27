@@ -38,6 +38,12 @@
 		"../../../packages/core/src/schemas/sale.js": "../../../packages/core/src/schemas/sale.ts",
 		"../../../packages/core/src/schemas/shift.js": "../../../packages/core/src/schemas/shift.ts",
 		"../../../packages/core/src/schemas/store.js": "../../../packages/core/src/schemas/store.ts",
+		"../../../packages/payments/src/bank.js": "../../../packages/payments/src/bank.ts",
+		"../../../packages/payments/src/crypto.js": "../../../packages/payments/src/crypto.ts",
+		"../../../packages/payments/src/provider.js": "../../../packages/payments/src/provider.ts",
+		"../../../packages/payments/src/types.js": "../../../packages/payments/src/types.ts",
+		"../../../packages/payments/src/vietqr.js": "../../../packages/payments/src/vietqr.ts",
+		"../../../packages/payments/src/zalo-checkout.js": "../../../packages/payments/src/zalo-checkout.ts",
 		"../../../packages/sync/src/digest.js": "../../../packages/sync/src/digest.ts",
 		"../../../packages/sync/src/engine/adjustment-status.js": "../../../packages/sync/src/engine/adjustment-status.ts",
 		"../../../packages/sync/src/engine/change-detection.js": "../../../packages/sync/src/engine/change-detection.ts",
@@ -85,9 +91,21 @@
 		"../../../packages/sync/src/repository.js": "../../../packages/sync/src/repository.ts",
 		"../../../packages/sync/src/rows.js": "../../../packages/sync/src/rows.ts",
 		"../../../packages/sync/src/store-lock.js": "../../../packages/sync/src/store-lock.ts",
+		"../../../packages/zalo/src/backend.js": "../../../packages/zalo/src/backend.ts",
+		"../../../packages/zalo/src/function.js": "../../../packages/zalo/src/function.ts",
+		"../../../packages/zalo/src/graph.js": "../../../packages/zalo/src/graph.ts",
+		"../../../packages/zalo/src/http.js": "../../../packages/zalo/src/http.ts",
+		"../../../packages/zalo/src/proof.js": "../../../packages/zalo/src/proof.ts",
+		"../../../packages/zalo/src/refusal.js": "../../../packages/zalo/src/refusal.ts",
+		"../../../packages/zalo/src/relay.js": "../../../packages/zalo/src/relay.ts",
+		"../../../packages/zalo/src/session.js": "../../../packages/zalo/src/session.ts",
+		"../../../packages/zalo/src/settings.js": "../../../packages/zalo/src/settings.ts",
+		"../../../packages/zalo/src/web-login.js": "../../../packages/zalo/src/web-login.ts",
 		"@fnb/connector-core": "../../../packages/connector-core/src/index.ts",
 		"@fnb/core": "../../../packages/core/src/index.ts",
+		"@fnb/payments": "../../../packages/payments/src/index.ts",
 		"@fnb/sync": "../../../packages/sync/src/index.ts",
+		"@fnb/zalo": "../../../packages/zalo/src/index.ts",
 		"zod": "npm:zod@4.6.7"
 	},
 	"scopes": {
@@ -144,6 +162,14 @@
 			"./common.js": "../../../packages/core/src/schemas/common.ts",
 			"./enums.js": "../../../packages/core/src/schemas/enums.ts",
 			"./iso-date-pattern.js": "../../../packages/core/src/schemas/iso-date-pattern.ts"
+		},
+		"../../../packages/payments/src/": {
+			"./bank.js": "../../../packages/payments/src/bank.ts",
+			"./crypto.js": "../../../packages/payments/src/crypto.ts",
+			"./provider.js": "../../../packages/payments/src/provider.ts",
+			"./types.js": "../../../packages/payments/src/types.ts",
+			"./vietqr.js": "../../../packages/payments/src/vietqr.ts",
+			"./zalo-checkout.js": "../../../packages/payments/src/zalo-checkout.ts"
 		},
 		"../../../packages/sync/src/": {
 			"./digest.js": "../../../packages/sync/src/digest.ts",
@@ -240,6 +266,18 @@
 			"../numeric.js": "../../../packages/sync/src/numeric.ts",
 			"../rows.js": "../../../packages/sync/src/rows.ts",
 			"./event-index.js": "../../../packages/sync/src/plan/event-index.ts"
+		},
+		"../../../packages/zalo/src/": {
+			"./backend.js": "../../../packages/zalo/src/backend.ts",
+			"./function.js": "../../../packages/zalo/src/function.ts",
+			"./graph.js": "../../../packages/zalo/src/graph.ts",
+			"./http.js": "../../../packages/zalo/src/http.ts",
+			"./proof.js": "../../../packages/zalo/src/proof.ts",
+			"./refusal.js": "../../../packages/zalo/src/refusal.ts",
+			"./relay.js": "../../../packages/zalo/src/relay.ts",
+			"./session.js": "../../../packages/zalo/src/session.ts",
+			"./settings.js": "../../../packages/zalo/src/settings.ts",
+			"./web-login.js": "../../../packages/zalo/src/web-login.ts"
 		}
 	}
 }

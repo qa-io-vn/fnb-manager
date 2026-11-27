@@ -88,6 +88,14 @@ export interface DemoExtension {
 	answer(fn: string, args: Readonly<Record<string, unknown>>): unknown;
 	/** its functions that change something (the network fault switches apply to them) */
 	readonly changingFunctions: readonly string[];
+	/**
+	 * The answer of one of its Edge Functions (POST /functions/v1/<name> with a JSON body) as a status and a JSON body,
+	 * or undefined for any other: the ordering build's stand-in checkout-order. Every call to one changes something.
+	 */
+	call?(
+		name: string,
+		body: unknown,
+	): { readonly status: number; readonly body: unknown } | undefined;
 }
 
 export type DemoSessionRefusal = "never" | "once" | "always";
@@ -120,6 +128,11 @@ export interface DemoSettings {
 	readonly bills: number;
 	/** the reason the ordering store holds orders from the start (`?ordering=paused` and so on); null takes orders */
 	readonly orderingReason: string | null;
+	/**
+	 * The ordering store offers the two online ways to pay besides the counter (`?payments=online`), as a store whose
+	 * providers are configured does; otherwise the counter only, and checkout-order answers provider_off.
+	 */
+	readonly onlinePayments: boolean;
 }
 
 export const DEMO_DEFAULTS: DemoSettings = {
@@ -139,6 +152,7 @@ export const DEMO_DEFAULTS: DemoSettings = {
 	staffMode: false,
 	bills: 0,
 	orderingReason: null,
+	onlinePayments: false,
 };
 
 const MAX_DEMO_DELAY_MS = 10_000;
@@ -198,6 +212,7 @@ export function demoSettingsFrom(search: string): DemoSettings {
 		orderingReason:
 			DEMO_ORDERING_REASONS.find((name) => name === params.get("ordering")) ??
 			null,
+		onlinePayments: params.get("payments") === "online",
 	};
 }
 
@@ -292,6 +307,11 @@ function browserOffline(): boolean {
 export interface DemoWorld {
 	readonly settings: DemoSettings;
 	readonly sessionFetch: typeof fetch;
+	/**
+	 * The Edge Functions an extension answers (POST <anything>/functions/v1/<name>), at the wire level: the session's
+	 * bearer token checked as the Data API checks it, the same faults and delays, JSON answers with their status.
+	 */
+	readonly functionFetch: typeof fetch;
 	rest(accessToken: string): RestClient;
 	joined(): boolean;
 	marketing(): boolean;
@@ -1410,9 +1430,54 @@ export function createDemoWorld(
 		}
 	};
 
+	const functionFetch: typeof fetch = async (input, init) => {
+		await pause();
+		if (offline || (strict && browserOffline()))
+			throw new TypeError("demo network failure");
+		const url =
+			typeof input === "string"
+				? input
+				: input instanceof URL
+					? input.href
+					: input.url;
+		const name = /\/functions\/v1\/([a-z0-9-]{1,63})$/.exec(url)?.[1];
+		const headers = new Headers(init?.headers);
+		const bearer = /^Bearer (.+)$/.exec(headers.get("Authorization") ?? "");
+		if (init?.method !== "POST")
+			return json({ error: "method_not_allowed", request_id: "demo" }, 405);
+		if (bearer === null || !tokens.has(bearer[1] ?? ""))
+			return json({ error: "unauthorized", request_id: "demo" }, 401);
+		let body: unknown = null;
+		try {
+			body = typeof init.body === "string" ? JSON.parse(init.body) : null;
+		} catch {
+			return json({ error: "invalid_request", request_id: "demo" }, 400);
+		}
+		if (settings.network === "error-once" && !faultSpent) {
+			faultSpent = true;
+			return json({ error: "internal_error", request_id: "demo" }, 500);
+		}
+		const reply =
+			name === undefined ? undefined : extension?.call?.(name, body);
+		if (reply === undefined)
+			return json({ error: "not_found", request_id: "demo" }, 404);
+		const copy = JSON.parse(JSON.stringify(reply.body));
+		if (settings.answerDelayMs > 0)
+			await new Promise((resolve) =>
+				setTimeout(resolve, settings.answerDelayMs),
+			);
+		if (strict && browserOffline()) throw new TypeError("demo network failure");
+		if (settings.network === "lost-once" && !faultSpent) {
+			faultSpent = true;
+			throw new TypeError("demo network failure");
+		}
+		return json(copy, reply.status);
+	};
+
 	return {
 		settings,
 		sessionFetch,
+		functionFetch,
 		rest(accessToken) {
 			const check = (): boolean => {
 				if (offline || (strict && browserOffline())) throw new RestError(0);

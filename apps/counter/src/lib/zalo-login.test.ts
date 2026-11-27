@@ -20,6 +20,7 @@ const ENV: CounterEnvironment = {
 	supabaseUrl: "http://127.0.0.1:54321",
 	publishableKey: "sb_publishable_synthetic",
 	sessionUrl: "http://127.0.0.1:5767",
+	checkoutUrl: "http://127.0.0.1:54321/functions/v1/checkout-order",
 	brand: "brand-1",
 };
 

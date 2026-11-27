@@ -472,6 +472,32 @@ verify_jwt = false
 import_map = "./functions/counter-session/deno.json"
 entrypoint = "./functions/counter-session/index.ts"
 
+# Online payment (ADR-067, ADR-068): the apps open attempts with their session; Zalo, the bank service and the
+# minute job post without one and are verified by MAC, signature or key, or by a single-use ticket.
+[functions.checkout-order]
+enabled = true
+verify_jwt = true
+import_map = "./functions/checkout-order/deno.json"
+entrypoint = "./functions/checkout-order/index.ts"
+
+[functions.checkout-webhook]
+enabled = true
+verify_jwt = false
+import_map = "./functions/checkout-webhook/deno.json"
+entrypoint = "./functions/checkout-webhook/index.ts"
+
+[functions.bank-webhook]
+enabled = true
+verify_jwt = false
+import_map = "./functions/bank-webhook/deno.json"
+entrypoint = "./functions/bank-webhook/index.ts"
+
+[functions.payments-job]
+enabled = true
+verify_jwt = false
+import_map = "./functions/payments-job/deno.json"
+entrypoint = "./functions/payments-job/index.ts"
+
 # The website's forms (native-till.md section 12): public, no login; CORS and the brand come from WEB_REQUEST_ORIGINS,
 # the client key from WEB_REQUEST_KEY.
 [functions.web-requests]

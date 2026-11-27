@@ -27,6 +27,11 @@ const brand3 = { baseURL: `http://127.0.0.1:${brand3Port}/` } as const;
 const orderingPort = 5766 + portOffset;
 const orderingOutDir = `node_modules/.cache/e2e-ordering-dist-${portOffset}`;
 const ordering = { baseURL: `http://127.0.0.1:${orderingPort}/` } as const;
+// Paying online runs on a fifth build: the ordering build with VITE_ONLINE_PAYMENT=on, so the fourth stays the
+// regression of a tester build without it (the online ways to pay disabled even where the store offers them).
+const paymentPort = 5770 + portOffset;
+const paymentOutDir = `node_modules/.cache/e2e-payment-dist-${portOffset}`;
+const payment = { baseURL: `http://127.0.0.1:${paymentPort}/` } as const;
 const phone = {
 	viewport: MINI_APP_VIEWPORT,
 	deviceScaleFactor: 2,
@@ -129,6 +134,22 @@ export default defineConfig({
 			use: { ...devices["iPhone 14"], ...ordering, colorScheme: "light" },
 		},
 		{
+			name: "payment-light",
+			testMatch: /ordering-payment\.spec\.ts/,
+			use: { ...phone, ...payment, colorScheme: "light" },
+		},
+		{
+			name: "payment-dark",
+			testMatch: /ordering-payment\.spec\.ts/,
+			use: { ...phone, ...payment, colorScheme: "dark" },
+		},
+		{
+			// the owner's phone is an iPhone: paying online on WebKit as well
+			name: "payment-webkit",
+			testMatch: /ordering-payment\.spec\.ts/,
+			use: { ...devices["iPhone 14"], ...payment, colorScheme: "light" },
+		},
+		{
 			name: "budget",
 			testMatch: /budget\.spec\.ts/,
 			use: { ...phone, colorScheme: "light" },
@@ -207,6 +228,18 @@ export default defineConfig({
 				VITE_ZALO_RUNTIME: "browser",
 				VITE_MINI_APP_STAGE: "development",
 				VITE_ORDERING: "on",
+			},
+		},
+		{
+			command: `vite build --outDir ${paymentOutDir} --emptyOutDir && vite preview --outDir ${paymentOutDir} --host 127.0.0.1 --port ${paymentPort} --strictPort`,
+			url: `http://127.0.0.1:${paymentPort}/`,
+			reuseExistingServer: false,
+			timeout: 120_000,
+			env: {
+				VITE_ZALO_RUNTIME: "browser",
+				VITE_MINI_APP_STAGE: "development",
+				VITE_ORDERING: "on",
+				VITE_ONLINE_PAYMENT: "on",
 			},
 		},
 	],

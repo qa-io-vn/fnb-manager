@@ -38,6 +38,7 @@ describe("the environment", () => {
 			supabaseUrl: "https://x.example.com",
 			publishableKey: "k",
 			sessionUrl: "https://x.example.com/functions/v1/counter-session",
+			checkoutUrl: "https://x.example.com/functions/v1/checkout-order",
 			brand: "brand-2",
 		});
 		expect(
@@ -51,6 +52,19 @@ describe("the environment", () => {
 				"brand-1",
 			)?.sessionUrl,
 		).toBe("http://127.0.0.1:5767");
+	});
+
+	it("names the payment function under the API by default and keeps an explicit one", () => {
+		expect(
+			counterEnvironment(
+				{
+					VITE_SUPABASE_URL: "https://x.example.com",
+					VITE_SUPABASE_PUBLISHABLE_KEY: "k",
+					VITE_CHECKOUT_ORDER_URL: " http://127.0.0.1:5768 ",
+				},
+				"brand-1",
+			)?.checkoutUrl,
+		).toBe("http://127.0.0.1:5768");
 	});
 });
 

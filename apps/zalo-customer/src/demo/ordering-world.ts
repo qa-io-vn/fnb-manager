@@ -1,21 +1,28 @@
 import { RestError } from "@fnb/zalo-mini";
 import { REFUSAL_INVALID } from "@fnb/zalo-mini/loyalty";
 import {
+	CHECKOUT_ORDER_FUNCTION,
+	IDEMPOTENCY_KEY_PATTERN,
+	isOnlineMethod,
 	LINE_NOTE_MAX,
 	MAX_CART_LINES,
 	MAX_LINE_OPTIONS,
 	MAX_LINE_QUANTITY,
 	ORDER_NOTE_MAX,
 	ORDERING_FUNCTIONS,
+	PLATFORM_ORDER_ID_PATTERN,
 	TABLE_TOKEN_PATTERN,
+	vietQrPayload,
 } from "@fnb/zalo-mini/ordering";
 import { isoDateIn } from "../data/dates";
 import { hasForbiddenCharacter } from "../ordering/cart";
 import {
+	DEMO_BANK,
 	DEMO_CATEGORY_NAMES,
 	DEMO_FOREIGN_ORDER_ID,
 	DEMO_OPTION_GROUPS,
 	DEMO_ORDERING_STORE,
+	DEMO_PAYMENT_WINDOW_MS,
 	DEMO_ROTATED_TABLE_TOKEN,
 	DEMO_TABLES,
 	type DemoItem,
@@ -28,10 +35,17 @@ import type { DemoExtension } from "./world";
 // price from the menu only, the request_id replay, one call open per table, the refusals and their order, the
 // lifecycle and the payment status apart. A test drives the counter's side through the till (DemoTill), as the
 // counter web app does on the real stack.
+//
+// With `?payments=online` the store offers the two online ways to pay as well, and the world stands in for the Edge
+// Function checkout-order (start and link, with the server's answers and refusals) and, through the till, for the
+// gateway and the bank: only they move an order to paid, never the app.
 
 export type DemoTillAction = "pay" | "start" | "done" | "complete" | "cancel";
 
-/** The counter's side of the demo, for tests: what staff do at the till. */
+/** What the stand-in bank did with a transfer: matched and paid, held for a manager (another amount), or unknown. */
+export type DemoTransferOutcome = "paid" | "held" | "unknown";
+
+/** The counter's side of the demo, for tests: what staff do at the till, and the gateway and the bank. */
 export interface DemoTill {
 	/** switch an item sold out (true) or back on sale; moves the menu version */
 	soldOut(itemId: string, on: boolean): void;
@@ -47,6 +61,23 @@ export interface DemoTill {
 	openCalls(): number;
 	/** "Tới ngay": closes the open calls */
 	ackCalls(): void;
+	/** the id of the customer's latest order, or null */
+	latestOrder(): string | null;
+	/** an order's status (the latest order's when no id is given), or null */
+	status(orderId?: string): string | null;
+	/** how many online payment attempts an order has (the latest order's when no id is given) */
+	attempts(orderId?: string): number;
+	/** the reference of an order's latest attempt (the latest order's when no id is given), or null */
+	reference(orderId?: string): string | null;
+	/**
+	 * The wallet's gateway reports the order's pending Checkout attempt (the latest order's when no id is given): paid
+	 * moves the order to accepted with a number, failed fails the attempt and leaves the order waiting for payment.
+	 */
+	walletResult(orderId: string | undefined, result: "paid" | "failed"): string;
+	/** the bank reports a transfer: the exact amount with the reference pays the order; any other amount is held */
+	bankTransfer(reference: string, amount: number): DemoTransferOutcome;
+	/** the payment window passes: an order still waiting is cancelled with payment_timeout */
+	expirePayment(orderId?: string): string;
 }
 
 interface DemoLine {
@@ -85,9 +116,11 @@ interface DemoOrder {
 	readonly owner: "me" | "someone";
 	readonly requestId: string;
 	readonly hash: string;
-	readonly orderNo: number;
+	/** given when the order is accepted: an unpaid online attempt never takes a number */
+	orderNo: number | null;
 	readonly type: "table" | "takeaway";
 	readonly tableLabel: string | null;
+	readonly paymentMethod: "counter" | "zalo_checkout" | "vietqr";
 	status: string;
 	paymentStatus: string;
 	version: number;
@@ -95,6 +128,7 @@ interface DemoOrder {
 	readonly total: number;
 	readonly note: string | null;
 	readonly placedAt: string;
+	paymentDueAt: string | null;
 	acceptedAt: string | null;
 	preparingAt: string | null;
 	doneAt: string | null;
@@ -107,9 +141,25 @@ interface DemoOrder {
 	stampsCounted: boolean;
 }
 
+/** A payment record: the counter's cash, or an online attempt with its reference, keys and Zalo order id. */
+interface DemoPayment {
+	readonly id: string;
+	readonly orderId: string;
+	readonly method: "cash" | "zalo_checkout" | "vietqr";
+	readonly amount: number;
+	status: "pending" | "succeeded" | "failed";
+	readonly requestedAt: string;
+	settledAt: string | null;
+	readonly reference: string | null;
+	readonly expiresAt: string | null;
+	readonly keys: string[];
+	platformOrderId: string | null;
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TABLE_MISSES_ALLOWED = 10;
 const MAX_OPEN_ORDERS = 3;
+const MAX_FAILED_ATTEMPTS = 3;
 const STAMPS_PER_REWARD = 9;
 const REWARD_NAME = "Ly miễn phí";
 
@@ -127,6 +177,16 @@ function canonical(value: unknown): string {
 			.join(",")}}`;
 	}
 	return JSON.stringify(value);
+}
+
+/** 32 bits of FNV-1a over a text, from a seed: the demo's stand-in for a signature (no key, nothing secret). */
+function fnv(text: string, seed: number): string {
+	let hash = (2166136261 ^ seed) >>> 0;
+	for (let index = 0; index < text.length; index += 1) {
+		hash ^= text.charCodeAt(index);
+		hash = Math.imul(hash, 16777619) >>> 0;
+	}
+	return hash.toString(16).padStart(8, "0");
 }
 
 function textOk(value: unknown, max: number): boolean {
@@ -240,15 +300,18 @@ export interface OrderingWorld extends DemoExtension {
 export function createOrderingWorld(
 	now: () => number,
 	initialReason: string | null,
+	onlinePayments = false,
 ): OrderingWorld {
 	const items = demoMenuItems();
 	const soldOut = new Set<string>();
 	let version = 1;
 	let reason: string | null = initialReason;
 	let orderCount = 0;
+	let numbers = 0;
 	let placements = 0;
 	let tableMisses = 0;
 	const orders: DemoOrder[] = [];
+	const payments: DemoPayment[] = [];
 	const calls = new Map<string, string>();
 	let stamps = 0;
 	let totalEarned = 0;
@@ -260,9 +323,13 @@ export function createOrderingWorld(
 		at: string;
 		order_no: string | null;
 	}[] = [];
+	const methods = onlinePayments
+		? ["counter", "zalo_checkout", "vietqr"]
+		: ["counter"];
 
 	const iso = () => new Date(now()).toISOString();
-	const displayNo = (no: number) => `#${String(no).padStart(3, "0")}`;
+	const displayNo = (no: number | null) =>
+		no === null ? null : `#${String(no).padStart(3, "0")}`;
 
 	// another customer's order, which this customer's session must never read
 	orders.push({
@@ -273,6 +340,7 @@ export function createOrderingWorld(
 		orderNo: 1,
 		type: "table",
 		tableLabel: "Bàn 3",
+		paymentMethod: "counter",
 		status: "accepted",
 		paymentStatus: "unpaid",
 		version: 1,
@@ -280,6 +348,7 @@ export function createOrderingWorld(
 		total: 29000,
 		note: null,
 		placedAt: new Date(now() - 600_000).toISOString(),
+		paymentDueAt: null,
 		acceptedAt: new Date(now() - 600_000).toISOString(),
 		preparingAt: null,
 		doneAt: null,
@@ -292,6 +361,7 @@ export function createOrderingWorld(
 		stampsCounted: false,
 	});
 	orderCount = 1;
+	numbers = 1;
 
 	const orderingState = (type: string | null) => {
 		const accepting = reason === null;
@@ -312,7 +382,7 @@ export function createOrderingWorld(
 					: null,
 			till_mode: "native",
 			order_types: ["table"],
-			payment_methods: ["counter"],
+			payment_methods: methods,
 			opens_at: opensAt,
 			closes_at: null,
 			last_order_at: null,
@@ -495,6 +565,9 @@ export function createOrderingWorld(
 		} as const;
 	};
 
+	const paymentsOf = (order: DemoOrder) =>
+		payments.filter((payment) => payment.orderId === order.id);
+
 	const orderJson = (order: DemoOrder, withTimeline: boolean) => ({
 		id: order.id,
 		order_no: order.orderNo,
@@ -507,14 +580,14 @@ export function createOrderingWorld(
 		pickup_at: null,
 		status: order.status,
 		payment_status: order.paymentStatus,
-		payment_method: "counter",
+		payment_method: order.paymentMethod,
 		version: order.version,
 		subtotal: order.subtotal,
 		discount_amount: 0,
 		total: order.total,
 		note: order.note,
 		placed_at: order.placedAt,
-		payment_due_at: null,
+		payment_due_at: order.paymentDueAt,
 		accepted_at: order.acceptedAt,
 		preparing_at: order.preparingAt,
 		done_at: order.doneAt,
@@ -528,22 +601,18 @@ export function createOrderingWorld(
 			? {
 					timeline: order.events,
 					money: {
-						paid: order.paymentStatus === "paid" ? order.total : 0,
+						paid: order.paymentStatus === "unpaid" ? 0 : order.total,
 						refunded: 0,
-						refund_open: 0,
-						payments:
-							order.paidAt === null
-								? []
-								: [
-										{
-											id: null,
-											method: "cash",
-											amount: order.total,
-											status: "succeeded",
-											settled_at: order.paidAt,
-											recorded_by: null,
-										},
-									],
+						refund_open:
+							order.paymentStatus === "refund_pending" ? order.total : 0,
+						payments: paymentsOf(order).map((payment) => ({
+							id: payment.id,
+							method: payment.method,
+							amount: payment.amount,
+							status: payment.status,
+							settled_at: payment.settledAt,
+							recorded_by: null,
+						})),
 						refunds: [],
 					},
 				}
@@ -569,6 +638,13 @@ export function createOrderingWorld(
 		"serving",
 	];
 
+	const placeState = (order: DemoOrder) =>
+		order.status === "awaiting_payment"
+			? "awaiting_payment"
+			: order.status === "cancelled"
+				? "cancelled"
+				: "placed";
+
 	const place = (args: Readonly<Record<string, unknown>>) => {
 		const request = checkShape(args.p_request, true);
 		const hash = canonical(request);
@@ -578,7 +654,7 @@ export function createOrderingWorld(
 		if (replay !== undefined) {
 			if (replay.hash !== hash) return refused("request_conflict");
 			return {
-				state: "placed",
+				state: placeState(replay),
 				refusal: null,
 				replayed: true,
 				order: orderJson(replay, false),
@@ -608,7 +684,8 @@ export function createOrderingWorld(
 		} else if (typeof request.table_token === "string") {
 			return refused("table_not_for_takeaway");
 		}
-		if (request.payment !== "counter" || request.type === "takeaway")
+		const payment = String(request.payment);
+		if (!methods.includes(payment) || request.type === "takeaway")
 			return refused("payment_not_allowed");
 		const priced = priceLines(request.lines as Record<string, unknown>[]);
 		if (!priced.ok) {
@@ -625,22 +702,28 @@ export function createOrderingWorld(
 		placements += 1;
 		orderCount += 1;
 		const at = iso();
+		const online = payment !== "counter";
+		if (!online) numbers += 1;
 		const order: DemoOrder = {
 			id: `99999999-0000-4000-8000-${String(orderCount).padStart(12, "0")}`,
 			owner: "me",
 			requestId: String(request.request_id),
 			hash,
-			orderNo: orderCount,
+			orderNo: online ? null : numbers,
 			type: "table",
 			tableLabel: table?.label ?? null,
-			status: "accepted",
+			paymentMethod: payment as DemoOrder["paymentMethod"],
+			status: online ? "awaiting_payment" : "accepted",
 			paymentStatus: "unpaid",
 			version: 1,
 			subtotal: priced.subtotal,
 			total: priced.subtotal,
 			note: noteOf(request.note),
 			placedAt: at,
-			acceptedAt: at,
+			paymentDueAt: online
+				? new Date(now() + DEMO_PAYMENT_WINDOW_MS).toISOString()
+				: null,
+			acceptedAt: online ? null : at,
 			preparingAt: null,
 			doneAt: null,
 			completedAt: null,
@@ -653,7 +736,7 @@ export function createOrderingWorld(
 					kind: "status",
 					action: "placed",
 					from: null,
-					to: "accepted",
+					to: online ? "awaiting_payment" : "accepted",
 					at,
 					reason_code: null,
 					amount: priced.subtotal,
@@ -663,7 +746,7 @@ export function createOrderingWorld(
 		};
 		orders.push(order);
 		return {
-			state: "placed",
+			state: placeState(order),
 			refusal: null,
 			replayed: false,
 			order: orderJson(order, false),
@@ -727,7 +810,12 @@ export function createOrderingWorld(
 		}
 	};
 
-	const move = (order: DemoOrder, to: string, action: string) => {
+	const move = (
+		order: DemoOrder,
+		to: string,
+		action: string,
+		reasonCode: string | null = null,
+	) => {
 		const at = iso();
 		order.events.push({
 			kind: "status",
@@ -735,13 +823,104 @@ export function createOrderingWorld(
 			from: order.status,
 			to,
 			at,
-			reason_code: null,
+			reason_code: reasonCode,
 			amount: null,
 		});
 		order.status = to;
 		order.version += 1;
 		return at;
 	};
+
+	const newPayment = (
+		order: DemoOrder,
+		method: DemoPayment["method"],
+		status: DemoPayment["status"],
+		key: string | null,
+	): DemoPayment => {
+		const count = payments.length + 1;
+		const online = method !== "cash";
+		const payment: DemoPayment = {
+			id: `77777777-0000-4000-8000-${String(count).padStart(12, "0")}`,
+			orderId: order.id,
+			method,
+			amount: order.total,
+			status,
+			requestedAt: iso(),
+			settledAt: status === "succeeded" ? iso() : null,
+			reference: online
+				? `FNB${(count * 7_919 + 1_000_003).toString(36).toUpperCase().padStart(8, "0")}`
+				: null,
+			expiresAt: online ? order.paymentDueAt : null,
+			keys: key === null ? [] : [key],
+			platformOrderId: null,
+		};
+		payments.push(payment);
+		return payment;
+	};
+
+	const markPaid = (order: DemoOrder, at: string) => {
+		order.paymentStatus = "paid";
+		order.paidAt = at;
+		order.version += 1;
+		order.events.push({
+			kind: "payment",
+			action: "paid",
+			from: "unpaid",
+			to: "paid",
+			at,
+			reason_code: null,
+			amount: order.total,
+		});
+	};
+
+	// the verified notification of the gateway or the bank: the only way an online attempt pays an order (T3)
+	const settle = (payment: DemoPayment, success: boolean) => {
+		const order = orders.find((entry) => entry.id === payment.orderId);
+		if (order === undefined || payment.status !== "pending") return;
+		const at = iso();
+		payment.settledAt = at;
+		if (!success) {
+			payment.status = "failed";
+			order.version += 1;
+			order.events.push({
+				kind: "payment",
+				action: "failed",
+				from: null,
+				to: null,
+				at,
+				reason_code: "provider_failed",
+				amount: payment.amount,
+			});
+			return;
+		}
+		payment.status = "succeeded";
+		if (order.status === "cancelled") {
+			// money after a cancellation is kept as a refund to make
+			order.paymentStatus = "refund_pending";
+			order.version += 1;
+			return;
+		}
+		markPaid(order, at);
+		if (order.status === "awaiting_payment") {
+			numbers += 1;
+			order.orderNo = numbers;
+			order.acceptedAt = move(order, "accepted", "payment_confirmed");
+			order.paymentDueAt = null;
+		}
+	};
+
+	const failPending = (order: DemoOrder) => {
+		for (const payment of paymentsOf(order))
+			if (payment.status === "pending") {
+				payment.status = "failed";
+				payment.settledAt = iso();
+			}
+	};
+
+	const target = (orderId?: string) =>
+		orderId === undefined
+			? [...orders].reverse().find((entry) => entry.owner === "me")
+			: orders.find((entry) => entry.id === orderId);
 
 	const till: DemoTill = {
 		soldOut(itemId, on) {
@@ -759,28 +938,19 @@ export function createOrderingWorld(
 			version += 1;
 		},
 		act(action, orderId) {
-			const order =
-				orderId === undefined
-					? [...orders].reverse().find((entry) => entry.owner === "me")
-					: orders.find((entry) => entry.id === orderId);
+			const order = target(orderId);
 			if (order === undefined) throw new Error("no such order");
 			const at = iso();
 			switch (action) {
 				case "pay":
-					if (order.paymentStatus !== "unpaid" || order.status === "cancelled")
+					if (
+						order.paymentStatus !== "unpaid" ||
+						order.status === "cancelled" ||
+						order.status === "awaiting_payment"
+					)
 						break;
-					order.paymentStatus = "paid";
-					order.paidAt = at;
-					order.version += 1;
-					order.events.push({
-						kind: "payment",
-						action: "paid",
-						from: "unpaid",
-						to: "paid",
-						at,
-						reason_code: null,
-						amount: order.total,
-					});
+					newPayment(order, "cash", "succeeded", null);
+					markPaid(order, at);
 					break;
 				case "start":
 					if (order.status !== "accepted") break;
@@ -811,6 +981,7 @@ export function createOrderingWorld(
 						break;
 					order.cancelledAt = move(order, "cancelled", "cancel");
 					order.cancelReason = "store_busy";
+					failPending(order);
 					break;
 			}
 			return order.status;
@@ -818,6 +989,58 @@ export function createOrderingWorld(
 		placements: () => placements,
 		openCalls: () => calls.size,
 		ackCalls: () => calls.clear(),
+		latestOrder: () => target()?.id ?? null,
+		status: (orderId) => target(orderId)?.status ?? null,
+		attempts(orderId) {
+			const order = target(orderId);
+			return order === undefined
+				? 0
+				: paymentsOf(order).filter((payment) => payment.method !== "cash")
+						.length;
+		},
+		reference(orderId) {
+			const order = target(orderId);
+			if (order === undefined) return null;
+			const online = paymentsOf(order).filter(
+				(payment) => payment.reference !== null,
+			);
+			return online[online.length - 1]?.reference ?? null;
+		},
+		walletResult(orderId, result) {
+			const order = target(orderId);
+			if (order === undefined) throw new Error("no such order");
+			const attempt = paymentsOf(order)
+				.reverse()
+				.find(
+					(payment) =>
+						payment.method === "zalo_checkout" && payment.status === "pending",
+				);
+			if (attempt !== undefined) settle(attempt, result === "paid");
+			return order.status;
+		},
+		bankTransfer(reference, amount) {
+			const attempt = payments.find(
+				(payment) =>
+					payment.method === "vietqr" &&
+					payment.status === "pending" &&
+					payment.reference?.toUpperCase() === reference.trim().toUpperCase(),
+			);
+			if (attempt === undefined) return "unknown";
+			// another amount goes to a manager's queue: nothing changes for the order
+			if (amount !== attempt.amount) return "held";
+			settle(attempt, true);
+			return "paid";
+		},
+		expirePayment(orderId) {
+			const order = target(orderId);
+			if (order === undefined) throw new Error("no such order");
+			if (order.status !== "awaiting_payment") return order.status;
+			order.cancelledAt = move(order, "cancelled", "expire", "payment_timeout");
+			order.cancelReason = "payment_timeout";
+			order.paymentDueAt = null;
+			failPending(order);
+			return order.status;
+		},
 	};
 
 	const answer = (
@@ -902,7 +1125,12 @@ export function createOrderingWorld(
 						replayed: true,
 						order: orderJson(order, false),
 					};
-				if (!(order.status === "accepted" && order.paymentStatus === "unpaid"))
+				if (
+					!(
+						order.status === "awaiting_payment" ||
+						(order.status === "accepted" && order.paymentStatus === "unpaid")
+					)
+				)
 					return {
 						state: "refused",
 						refusal:
@@ -911,6 +1139,8 @@ export function createOrderingWorld(
 					};
 				order.cancelledAt = move(order, "cancelled", "cancel");
 				order.cancelReason = "customer_cancelled";
+				order.paymentDueAt = null;
+				failPending(order);
 				return {
 					state: "cancelled",
 					refusal: null,
@@ -933,8 +1163,176 @@ export function createOrderingWorld(
 		}
 	};
 
+	// the stand-in of the Edge Function checkout-order: the server's answers and refusals, in the server's order
+	const startRefused = (refusal: string) => ({
+		status: 200,
+		body: { state: "refused", refusal, replayed: false, payment: null },
+	});
+
+	const attemptJson = (order: DemoOrder, payment: DemoPayment) => {
+		const wallet = payment.method === "zalo_checkout";
+		const reference = payment.reference ?? "";
+		const extradata = JSON.stringify({
+			o: order.id,
+			s: DEMO_ORDERING_STORE,
+			v: 1,
+		});
+		const item = order.lines.map((line) => ({
+			id: line.item_id,
+			amount: line.line_total,
+		}));
+		const desc = "Cửa hàng Mẫu 1 - Đơn trực tuyến";
+		const signed = canonical({ amount: payment.amount, desc, extradata, item });
+		return {
+			id: payment.id,
+			order_id: order.id,
+			method: payment.method,
+			amount: payment.amount,
+			reference,
+			expires_at: payment.expiresAt,
+			mode: "sandbox",
+			checkout: wallet
+				? {
+						amount: payment.amount,
+						desc,
+						item,
+						extradata,
+						method: null,
+						mac: [0, 1, 2, 3, 4, 5, 6, 7]
+							.map((seed) => fnv(signed, seed))
+							.join(""),
+					}
+				: null,
+			qr: wallet
+				? null
+				: {
+						payload: vietQrPayload({
+							bankBin: DEMO_BANK.bin,
+							accountNumber: DEMO_BANK.accountNumber,
+							amount: payment.amount,
+							reference,
+						}),
+						bank_bin: DEMO_BANK.bin,
+						bank_name: DEMO_BANK.name,
+						account_number: DEMO_BANK.accountNumber,
+						account_name: DEMO_BANK.accountName,
+						amount: payment.amount,
+						reference,
+						popup_method: "BANK_SANDBOX",
+					},
+		};
+	};
+
+	const pendingAnswer = (
+		order: DemoOrder,
+		payment: DemoPayment,
+		replayed: boolean,
+	) => ({
+		status: 200,
+		body: {
+			state: "pending",
+			refusal: null,
+			replayed,
+			payment: attemptJson(order, payment),
+		},
+	});
+
+	const invalid = () => ({
+		status: 400,
+		body: { error: "invalid_request", request_id: "demo" },
+	});
+
+	const startPayment = (body: Readonly<Record<string, unknown>>) => {
+		const allowed = ["action", "order_id", "method", "idempotency_key", "for"];
+		if (Object.keys(body).some((key) => !allowed.includes(key)))
+			return invalid();
+		const method = String(body.method);
+		const key = body.idempotency_key;
+		if (
+			typeof body.order_id !== "string" ||
+			!UUID.test(body.order_id) ||
+			!isOnlineMethod(method) ||
+			typeof key !== "string" ||
+			!IDEMPOTENCY_KEY_PATTERN.test(key) ||
+			(body.for !== undefined && body.for !== "counter")
+		)
+			return invalid();
+		const order = mine(body.order_id);
+		if (order === null) return startRefused("unknown_order");
+		// the customer's session never starts the counter's attempt
+		if (body.for === "counter") return startRefused("not_payable");
+		if (!onlinePayments) return startRefused("provider_off");
+		if (order.status === "cancelled") return startRefused("order_cancelled");
+		if (order.paymentStatus !== "unpaid") return startRefused("already_paid");
+		if (order.status !== "awaiting_payment")
+			return startRefused("not_awaiting_payment");
+		if (order.paymentMethod !== method) return startRefused("method_differs");
+		const attempts = paymentsOf(order);
+		const replay = attempts.find((payment) => payment.keys.includes(key));
+		if (replay !== undefined) return pendingAnswer(order, replay, true);
+		const pending = attempts.find((payment) => payment.status === "pending");
+		if (pending !== undefined) {
+			pending.keys.push(key);
+			return pendingAnswer(order, pending, false);
+		}
+		if (
+			attempts.filter((payment) => payment.status === "failed").length >=
+			MAX_FAILED_ATTEMPTS
+		)
+			return startRefused("too_many_attempts");
+		order.version += 1;
+		return pendingAnswer(
+			order,
+			newPayment(order, method, "pending", key),
+			false,
+		);
+	};
+
+	const linkPayment = (body: Readonly<Record<string, unknown>>) => {
+		const allowed = ["action", "order_id", "payment_id", "platform_order_id"];
+		if (Object.keys(body).some((key) => !allowed.includes(key)))
+			return invalid();
+		if (
+			typeof body.order_id !== "string" ||
+			!UUID.test(body.order_id) ||
+			typeof body.payment_id !== "string" ||
+			!UUID.test(body.payment_id) ||
+			typeof body.platform_order_id !== "string" ||
+			!PLATFORM_ORDER_ID_PATTERN.test(body.platform_order_id)
+		)
+			return invalid();
+		const order = mine(body.order_id);
+		const payment =
+			order === null
+				? undefined
+				: paymentsOf(order).find((entry) => entry.id === body.payment_id);
+		if (payment === undefined || payment.method === "cash")
+			return {
+				status: 200,
+				body: { state: "refused", refusal: "unknown_payment" },
+			};
+		if (payment.status !== "pending")
+			return {
+				status: 200,
+				body: { state: "refused", refusal: "not_pending" },
+			};
+		payment.platformOrderId = body.platform_order_id;
+		return { status: 200, body: { state: "linked", refusal: null } };
+	};
+
+	const call = (name: string, body: unknown) => {
+		if (name !== CHECKOUT_ORDER_FUNCTION) return undefined;
+		if (typeof body !== "object" || body === null || Array.isArray(body))
+			return invalid();
+		const row = body as Readonly<Record<string, unknown>>;
+		if (row.action === "start") return startPayment(row);
+		if (row.action === "link") return linkPayment(row);
+		return invalid();
+	};
+
 	return {
 		answer,
+		call,
 		till,
 		changingFunctions: [
 			ORDERING_FUNCTIONS.placeOrder,

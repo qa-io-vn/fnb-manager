@@ -3165,6 +3165,67 @@ returns jsonb
 - **Who may call:** an owner or manager of the request's tenant, adding within their own store scope (the rules of `add_staff`, section 3.11: `staff` or `manager`, never `owner`, `22023`; stores outside the scope `42501`).
 - **Notes:** "Thêm vào danh sách": adds the person to the roster as `invited` and answers `{state: "approved", request, roster_id, pairing_code, pairing_code_minutes: 10}`, the one-time code of `issue_pairing_code` the person types at their next sign-in (with the staff notice); `conflict` for another version, `not_pending` once decided.
 
+### 3.29 Online payment (ADR-067, ADR-068)
+
+Migration `online_payments` adds the providers a brand (or a store, for a VietQR account of its own) switches on, the provider side of each online attempt, the one settlement of verified provider news, the manager queue for money that is never applied, and the payment job. The Edge Functions are in section 5 (`checkout-order`, `checkout-webhook`, `bank-webhook`, `payments-job`); the provider adapters are `packages/payments`. Tests: pgTAP `290_online_payments.sql`, rows in `03`, `47`, `120`, `121`.
+
+Eight functions are for the payment Edge Functions only: the service role may execute them, `authenticated` and `anon` get `42501`, and they are not part of this page's check. Each takes or answers JSON:
+
+- `checkout_begin(p_request jsonb)`: `{user_id, order_id, method, idempotency_key, for}` (`for` `customer` or `counter`; the counter takes `vietqr` only) → `{state: "pending", replayed, resumed, payment: {id, order_id, method, amount, reference, expires_at, mode, platform_order_id}, provider: {id, brand_id, store_id, method, adapter, mode, secret_name, settings, app_id}, order: {store_name, lines: [{id, amount}]}}` or `{state: "refused", refusal, payment: null}` with `unknown_order` (not the caller's order, or not a store the staff member works at), `order_cancelled`, `already_paid`, `provider_off`, `not_awaiting_payment`, `method_differs`, `too_many_attempts`, `attempt_pending`, `not_payable`, `not_pending`. The same key answers the same attempt; a pending attempt of the method is resumed under a new key with its reference; a new attempt expires with the order's payment window (the store's window at the counter). `22023` for a malformed request.
+- `checkout_link(p_request jsonb)`: `{user_id, order_id, payment_id, platform_order_id, for}` → `{state: "linked" | "refused", refusal}` (`unknown_payment`, `not_pending`): Zalo's order id of `createOrder` or of the bank-transfer popup, kept while the attempt is pending.
+- `checkout_provider(p_provider uuid)`: a provider row by its id (the last segment of the `bank-webhook` URL), off rows included, or null.
+- `checkout_app_provider(p_app_id text)`: the Checkout SDK row of the brand whose customer Mini App has this id, or null (none, or two tenants with the same id).
+- `checkout_settle(p_request jsonb)`: `{provider_id, provider_ref, amount, success, reason?, reference?, candidates?, platform_order_id?, payment_id?, source: "webhook" | "requery"}` → `{outcome: "confirmed" | "failed" | "exception" | "replayed" | "ignored" | "refused", reason?, refund_due?, payment_id?, order_id?, order_status?, exception_id?}`. The rules are ADR-068's: unique per provider transaction (serialised), the attempt by payment id, exact reference or exactly one candidate of the same provider; the exact amount of a pending attempt in time for an unpaid order pays and accepts it; another amount (`amount_differs`), an expired or settled attempt or a VietQR after its window or for a cancelled order (`late`), a paid order (`duplicate`), a reference nobody issued (`unknown_reference`) go to the manager queue; a transfer without a reference is ignored.
+- `checkout_job_claim(p_ticket uuid)` → boolean: claims a ticket of the minute job once.
+- `checkout_job_work(p_limit integer DEFAULT 20)` → `{requery: [{payment_id, reference, amount, platform_order_id, provider}], refunds: [{refund_id, amount, provider_ref, provider_refund_id, description, provider}], reports: [{payment_id, platform_order_id, provider}]}`; it first moves the due wallet refunds of cancelled orders to `pending` (an event by the system).
+- `checkout_job_note(p_request jsonb)`: `{kind: "requery", payment_id}`, `{kind: "refund", refund_id, provider_refund_id?, error?}` (next try after 5 minutes times the tries, at most 2 hours, 20 tries) or `{kind: "report", payment_id, ok, error?}` (5 tries) → `{state: "noted"}`.
+
+Refunds are settled with `checkout_refund_confirm` (section 3.27). The minute job is `app.checkout_tick` (expires attempts; while enabled, posts one ticket at a time to `payments-job`), scheduled by `app.enable_checkout_jobs(<payments-job URL or null>, <cron>)` and removed by `app.disable_checkout_jobs()`, for `postgres` only.
+
+#### `public.checkout_set_provider`
+
+```sql
+public.checkout_set_provider(p_request jsonb)
+returns jsonb
+```
+
+- **Status:** built (migration `online_payments`).
+- **Who may call:** an owner whose scope holds every store of the brand (`42501` otherwise, a manager or a store-limited owner included).
+- **Notes:** `{brand, store?, method: "zalo_checkout" | "vietqr", adapter?, mode: "off" | "sandbox" | "live", secret_name, settings}`; the Checkout SDK is per brand (`adapter` `zalo_checkout`, `secret_name` `ZALO_CHECKOUT_KEY_<BRAND>`, `settings` `{wallet_method?}` one of `ZALOPAY`, `MOMO`, `VNPAY`, `ATM`, `CC`, `PAYME_CC`, `PAYME_ATM`); a VietQR per brand or per store (`adapter` `sepay` or `mock`, `secret_name` `PAYMENT_BANK_<NAME>`, `settings` `{bank_bin, bank_name, account_number, account_name, reference_prefix}`, the account name in capitals without accents as banks print it, the prefix 2–4 capitals); a mock never live; any other setting `22023`. Answers `{state: "saved" | "unchanged", provider, webhook_path}` (`bank-webhook/<id>` for a VietQR). Each change is logged in `payment_provider_changes` with before and after; the stores' `payment_methods` follow at once (each online method exactly while its provider is on).
+
+#### `public.counter_payment_methods`
+
+```sql
+public.counter_payment_methods(p_store uuid)
+returns jsonb
+```
+
+- **Status:** built (migration `online_payments`).
+- **Who may call:** an owner, manager or staff member of the store (`42501` otherwise).
+- **Notes:** `{methods: ["zalo_checkout"?, "vietqr"?], vietqr_mode}`: the online methods whose provider is on at the store, whether or not it takes orders in the app; the counter shows its VietQR tab with it.
+
+#### `public.manager_payment_exceptions`
+
+```sql
+public.manager_payment_exceptions(p_store uuid, p_status text DEFAULT 'open'::text, p_limit integer DEFAULT 50)
+returns jsonb
+```
+
+- **Status:** built (migration `online_payments`).
+- **Who may call:** an owner or manager of the store (`42501` otherwise); exceptions of a brand-wide account only for those with every store.
+- **Notes:** `{open, exceptions: [{id, reason, method, amount, expected_amount, reference, order_id, order_no, source, received_at, status, resolved_at, resolved_by, resolution_note}]}`, newest first, at most 200; `p_status` `open`, `refunded`, `dismissed` or null for all (`22023` otherwise). Holds no payer name or account.
+
+#### `public.manager_resolve_payment_exception`
+
+```sql
+public.manager_resolve_payment_exception(p_exception uuid, p_resolution text, p_note text)
+returns jsonb
+```
+
+- **Status:** built (migration `online_payments`).
+- **Who may call:** an owner or manager of the exception's store (`42501` otherwise, the same for an unknown id).
+- **Notes:** `refunded` (handed back outside the app) or `dismissed`, with a note of 1–200 characters on one line (`22023`); `{state, replayed, refusal}`, the same resolution again a replay, another one `already_resolved`; logged on the order with who and the amount.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -3345,6 +3406,9 @@ Built locally (migration `native_catalogue`, pgTAP `260` and `261`); empty until
 | `stamp_cards`, `stamp_rewards`, `stamp_entries` | the stamp card of a customer's Zalo account at a brand, its rewards and its append-only ledger | owners, managers and viewers of the tenant | none (the ledger functions) | none |
 | `store_requests` | the requests inbox: bookings, workshop sign-ups, holds and job applications from the website and the app, with the contact typed and the answer | owners and managers, stores in scope | none (the request functions) | none |
 | `staff_shifts` | the shifts worked at a native store's counter: clock-in and clock-out, opening, expected and counted cash, the difference and who confirmed it | owners and managers, stores in scope; each person their own | none (the shift functions) | none |
+| `payment_providers` | the online payment providers of a brand or store: method, adapter, mode, the name of the secret with the key, public settings (ADR-067) | owners and managers, stores in scope (a brand-wide row: those with every store) | none (`checkout_set_provider`) | none |
+| `payment_provider_changes` | the append-only log of every provider change with who, when, before and after | owners and managers who read the provider | none | none |
+| `payment_exceptions` | money a verified provider reported that was not applied (partial, late, duplicate, unknown reference) and its resolution (ADR-068) | owners and managers, stores in scope | none (the manager queue functions) | none |
 
 ## 5. Edge Function endpoints
 
@@ -3578,6 +3642,54 @@ Built against the mock (ADR-066; Deno 11 tests in `handler.test.ts`; the counter
 | 502 / 503 | `zalo_unavailable` / `backend_unavailable` | Zalo or the database did not answer |
 
 Log lines name the outcome only (`authorise address issued`, `refused the state (expired)`, `unpaired; recorded for the managers`, `session minted: staff, 1 stores`), never a code, a verifier, a token, a ticket, the Zalo id or the name.
+
+### `checkout-order`
+
+Built against fakes (ADR-067; Deno 8 tests). The customer app's payment step and the counter's VietQR tab call it.
+
+- **URL:** `<SUPABASE_URL>/functions/v1/checkout-order`. **Method:** `POST`; `OPTIONS` answers the preflight of the Mini App's origins, the origins of `COUNTER_REDIRECT_URIS`, and a loopback origin only with `ZALO_LOCAL_DEV=1`.
+- **Authorization:** the caller's Supabase session (`verify_jwt = true`, and the function asks Supabase Auth again); the user comes from the session, never from the body.
+- **Configuration:** the secrets the provider rows name (`ZALO_CHECKOUT_KEY_<BRAND>`, `PAYMENT_BANK_<NAME>`); `PAYMENTS_MOCK=on` lets the mock bank run (local and tests only).
+- **Bodies** (at most 4 KB, no other field):
+  - `{"action": "start", "order_id", "method": "zalo_checkout" | "vietqr", "idempotency_key", "for"?: "customer" | "counter"}` → `{"state": "pending", "refusal": null, "replayed", "payment": {"id", "order_id", "method", "amount", "reference", "expires_at", "mode", "checkout", "qr"}}`: `checkout` `{amount, desc, item, extradata, method, mac}` for a wallet (passed to `CheckoutSDK.createOrder` as received; the MAC is made here with the brand's private key), `qr` `{payload, bank_bin, bank_name, account_number, account_name, amount, reference, popup_method}` for a VietQR; or `{"state": "refused", "refusal", "replayed": false, "payment": null}` with the refusals of `checkout_begin`.
+  - `{"action": "link", "order_id", "payment_id", "platform_order_id"}` → `{"state": "linked" | "refused", "refusal"}`.
+
+| Status | Body | When |
+|---|---|---|
+| 200 | as above | started, resumed, refused or linked |
+| 400 | `invalid_request`, `invalid_json` | a malformed body, an unknown field, a wallet for the counter |
+| 401 | `unauthorized` | no session, or one Supabase does not know |
+| 405, 413 | `method_not_allowed`, `body_too_large` | |
+| 500 | `not_configured` | a provider row naming an unset secret, a mock where mocks are off, a row out of shape |
+| 503 | `backend_unavailable` | the database did not answer |
+
+Log lines name the action, the method and the outcome only, never a key, a session or a MAC.
+
+### `checkout-webhook`
+
+Built against fakes (ADR-068; Deno 7 tests). Zalo's Checkout SDK posts its callback and notify here.
+
+- **URL:** `<SUPABASE_URL>/functions/v1/checkout-webhook/callback` (the Callback URL of the Mini App's Checkout settings) and `/checkout-webhook/notify` (the Notify URL). **Method:** `POST`; any other path is 404.
+- **Authorization:** none at the gateway (`verify_jwt = false`); `mac` and `overallMac` under the brand's private key (both required for a callback), the brand found by `data.appId`.
+- **Configuration:** `ZALO_CHECKOUT_KEY_<BRAND>`; `CHECKOUT_WEBHOOK_IPS` (comma separated; default Zalo's `118.102.2.29` and `49.213.78.2`), `CHECKOUT_WEBHOOK_IP_MODE` (`observe` by default: an unlisted address is logged and the MACs decide; `enforce`: refused), `CHECKOUT_WEBHOOK_PROXY_HOPS` (0 to 5).
+- **Answers** (Zalo's format, `{returnCode, returnMessage}`): `1` handled (applied, failed, kept for a manager or ignored), `2` a transaction already handled, `-1` refused (an unverified or malformed body, an unknown app, an unlisted address in enforce mode, any notify: cash and bank transfer are not offered in the sheet), `0` with HTTP 500 when the database could not be reached (the job asks Zalo again).
+
+### `bank-webhook`
+
+Built against fakes (ADR-068; Deno 6 tests). The service that watches a store's account posts each transfer here.
+
+- **URL:** `<SUPABASE_URL>/functions/v1/bank-webhook/<provider id>` (the `webhook_path` of `checkout_set_provider`). **Method:** `POST`.
+- **Authorization:** none at the gateway (`verify_jwt = false`); the row's adapter proves the post with the row's secret: `sepay` an `Authorization: Apikey <key>` header, `mock` `x-mock-signature: t=<ms>,v1=<hex HMAC-SHA256 of "<t>.<body>">` within five minutes (with `PAYMENTS_MOCK=on` only).
+- **Answers** (the service's format): 2xx when handled (`{"success": true}` for SePay, `{"ok": true}` for the mock), 401 when unverified, 404 for an unknown provider, 500 when the database could not be reached (so the service sends it again). Each incoming transfer goes to `checkout_settle` with the reference-shaped words of its text; money out is ignored.
+
+### `payments-job`
+
+Built against fakes (ADR-068; Deno 6 tests). The minute job `checkout-tick` posts here.
+
+- **URL:** `<SUPABASE_URL>/functions/v1/payments-job`. **Method:** `POST` `{"ticket": "<uuid>"}`.
+- **Authorization:** none at the gateway (`verify_jwt = false`); the single-use ticket, claimed with `checkout_job_claim` (401 `ticket_refused` otherwise).
+- **Configuration:** the Checkout keys; `ZALO_RELAY_KEY` for the relay of ADR-057, which carries exactly Zalo's four payment calls; `ZALO_PAYMENT_BASE_URL` (a loopback mock) only with `ZALO_LOCAL_DEV=1`, `ZALO_INTEGRATION=1` or `PAYMENTS_MOCK=on`.
+- **Work:** re-queries (`getOrderStatus`; an answer naming another reference is not applied), wallet refunds (`createRefund`, then `getRefundStatus`, settled with `checkout_refund_confirm`), reports of paid bank-transfer popups (`purchase-payment`), within 25 seconds; answers the counts `{requeried, settled, refunds_sent, refunds_settled, reported, errors}`.
 
 ### `web-requests`
 

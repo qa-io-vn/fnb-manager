@@ -2,7 +2,8 @@ import type { Plugin } from "vite";
 
 /**
  * The content security policy of a counter build, written into index.html as a meta element (ADR-066): scripts only
- * from the app itself, network calls only to the app, the Supabase API and the sign-in function, images from the app,
+ * from the app itself, network calls only to the app, the Supabase API, the sign-in function and the payment function
+ * (when one is served on an address of its own), images from the app,
  * data and blob addresses (QR codes, menu photos through the Supabase origin), no plugins, no other base, forms only
  * to the app. Styles allow inline attributes and the brand's style element (the theme is applied at start-up). A
  * dev server is left without it, because Vite's own client injects inline scripts.
@@ -49,6 +50,7 @@ export function counterCsp(): Plugin {
 			policy = contentSecurityPolicy([
 				originOf(env.VITE_SUPABASE_URL),
 				originOf(env.VITE_COUNTER_SESSION_URL),
+				originOf(env.VITE_CHECKOUT_ORDER_URL),
 			]);
 		},
 		transformIndexHtml: {

@@ -80,7 +80,10 @@ describe("demo settings", () => {
 			staffMode: false,
 			bills: 0,
 			orderingReason: null,
+			onlinePayments: false,
 		});
+		expect(demoSettingsFrom("?payments=online").onlinePayments).toBe(true);
+		expect(demoSettingsFrom("?payments=all").onlinePayments).toBe(false);
 		expect(demoSettingsFrom("?ordering=paused").orderingReason).toBe("paused");
 		expect(demoSettingsFrom("?ordering=banana").orderingReason).toBeNull();
 		expect(demoSettingsFrom("?net=lost-once&answerDelay=50000")).toMatchObject({

@@ -204,6 +204,31 @@ test("an item sold out at the counter while it is in the basket is flagged withi
 	await expect(page.locator(`[data-item-id="${BLACK_COFFEE}"]`)).toHaveCount(0);
 });
 
+test("without VITE_ONLINE_PAYMENT the online ways to pay stay disabled even where the store offers them", async ({
+	page,
+}) => {
+	await openMenu(page, `${TABLE}&payments=online`);
+	await addBlackCoffee(page);
+	await page.getByTestId("cart-bar").getByRole("button").click();
+	await page.getByTestId("cart-continue").click();
+	await expect(page.getByTestId("checkout-submit")).toBeEnabled();
+	await expect(
+		page.locator("[data-testid=payment-method][data-ready=false]"),
+	).toHaveCount(2);
+	await expect(page.getByTestId("payment-not-ready")).toHaveCount(2);
+	await expect(
+		page.locator(
+			"[data-testid=payment-method][data-method=counter][data-selected=true]",
+		),
+	).toHaveCount(1);
+	await page.getByTestId("checkout-submit").click();
+	await expect(page.getByTestId("order")).toHaveAttribute(
+		"data-status",
+		"accepted",
+	);
+	expect(await till(page, "placements")).toBe(1);
+});
+
 test("a double tap on Đặt món makes one order (criterion 3)", async ({
 	page,
 }) => {

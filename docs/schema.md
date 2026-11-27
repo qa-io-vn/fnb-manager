@@ -2150,6 +2150,15 @@ Per brand: `menu_categories` (name 1–40, order, visible), `menu_items` (catego
 - `order_refunds`: `order_id`, `payment_id`, `method`, `amount`, `status` (`due`, `pending`, `succeeded`, `failed`), `reason`, `provider_ref`, `requested_by`, `requested_at`, `recorded_by`, `settled_at`.
 - `app.order_money(order)` gives what was paid, refunded and is still owed (due, pending or failed refunds); `app.order_settle_payment_status` derives the order's payment status from it. `app.order_payment_succeeded` now requires a succeeded payment record of the amount. `app.order_move` opens a due refund when a paid order is cancelled and runs `app.order_after_completion` on completion; succeeded refunds run `app.order_after_refund` (steps 5 and 6 fill both hooks).
 
+### Online payment (migration `online_payments`, ADR-067, ADR-068)
+
+- `payment_providers`: `brand_id`, `store_id` (null for the whole brand; the Checkout SDK is per brand), `method` (`zalo_checkout`, `vietqr`), `adapter` (`zalo_checkout`, `sepay`, `mock`), `mode` (`off`, `sandbox`, `live`; a mock never live), `secret_name` (`ZALO_CHECKOUT_KEY_…` or `PAYMENT_BANK_…`, a CHECK refusing a pasted value), `settings` (public: a forced wallet; bank BIN, bank name, account number, account name, reference prefix), created and updated by and at; unique per brand, method and store. Written only by `checkout_set_provider`.
+- `payment_provider_changes` (append-only for every role): `provider_id`, `changed_by`, `changed_at`, `before`, `after`.
+- `payment_exceptions`: `store_id`, `provider_id`, `method`, `provider_ref` (unique per provider), `amount`, `expected_amount`, `reason` (`amount_differs`, `late`, `duplicate`, `unknown_reference`), `reference`, `payment_id`, `order_id`, `source` (`webhook`, `requery`), `received_at`, `status` (`open`, `refunded`, `dismissed`), `resolved_by`, `resolved_at`, `resolution_note`. No payer name or account.
+- `app.payment_attempts` (closed to every API role), one per online `order_payments` row: `provider_id`, `adapter`, `mode`, `reference` (unique: a prefix and 8 characters of 2-9 and A-Z without I and O), `actor` (`customer`, `staff`), `started_by`, `expires_at`, `platform_order_id` (Zalo's order id once linked), the report to Zalo (`platform_reported_at`, attempts, error), `requery_count`, `last_requery_at`.
+- `app.refund_attempts` (closed): per online refund the job sends, the provider's refund id, attempts, last error, next try. `app.checkout_job_settings` and `app.checkout_job_tickets` drive the minute job `checkout-tick`.
+- A trigger on `store_ordering_settings` offers the online methods whose providers are on to a new settings row; `checkout_set_provider` keeps every store's `payment_methods` in step.
+
 ### The stamp card (step 5, migration `stamp_cards`)
 
 - `stamp_card_settings` (primary key `brand_id`): `tenant_id`, `enabled`, `stamps_per_reward` (2–30, default 9), `reward_name`, created and updated by and at.

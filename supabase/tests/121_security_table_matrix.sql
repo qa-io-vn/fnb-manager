@@ -338,6 +338,17 @@ insert into public.order_payments (tenant_id, store_id, order_id, method, amount
 select o.tenant_id, o.store_id, o.id, 'cash', 29000, 'succeeded', now(), now() from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
 insert into public.order_refunds (tenant_id, store_id, order_id, method, amount, status, reason, requested_at)
 select o.tenant_id, o.store_id, o.id, 'cash', 1000, 'due', 'synthetic', now() from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
+-- Online payment (ADR-067, ADR-068): a VietQR provider per store, the change log of the providers at A1 and B1 (its readers
+-- see a change through its provider), a payment exception per store; written only by the server's functions.
+insert into public.payment_providers (tenant_id, brand_id, store_id, method, adapter, mode, secret_name, settings)
+select s.tenant_id, b.id, s.id, 'vietqr', 'mock', 'sandbox', 'PAYMENT_BANK_BRAND_1',
+  '{"bank_bin": "970400", "bank_name": "Ngân hàng mẫu", "account_number": "0123456789", "account_name": "CUA HANG MAU", "reference_prefix": "FNB"}'::jsonb
+from public.stores s join public.brands b on s.id = any (b.store_ids) cross join fx where s.id in (fx.store_a1, fx.store_a2, fx.store_b1);
+insert into public.payment_provider_changes (tenant_id, provider_id, changed_at, after)
+select p.tenant_id, p.id, now(), '{}'::jsonb from public.payment_providers p cross join fx where p.store_id in (fx.store_a1, fx.store_b1);
+insert into public.payment_exceptions (tenant_id, store_id, provider_id, method, provider_ref, amount, reason, source, received_at)
+select p.tenant_id, p.store_id, p.id, 'vietqr', 'mock:matrix-' || p.store_id, 1000, 'unknown_reference', 'webhook', now()
+from public.payment_providers p cross join fx where p.store_id in (fx.store_a1, fx.store_a2, fx.store_b1);
 insert into public.stamp_card_settings (brand_id, tenant_id)
 select b.id, b.tenant_id from public.brands b cross join fx where b.tenant_id in (fx.tenant_a, fx.tenant_b);
 insert into public.stamp_cards (tenant_id, brand_id, customer_login_id, stamps, total_earned)
@@ -445,7 +456,12 @@ insert into tables_in_scope (tbl, readers, scoped, own, writers) values
   -- Native till step 7: the requests carry the contacts customers typed, so only owners and managers of the store read them.
   ('store_requests', 'om', true, null, '{}'),
   -- Native till step 8: shifts are read by the store's owners and managers and by their person (the fixture's are the owners').
-  ('staff_shifts', 'om', true, null, '{}');
+  ('staff_shifts', 'om', true, null, '{}'),
+  -- Online payment: the providers and the manager queue for owners and managers of the store; the change log of the
+  -- providers they read (it has no store of its own).
+  ('payment_providers', 'om', true, null, '{}'),
+  ('payment_provider_changes', 'om', false, null, '{}'),
+  ('payment_exceptions', 'om', true, null, '{}');
 
 create function pg_temp.signature_sql(p_table text, p_filter text default 'true')
 returns text
@@ -559,7 +575,7 @@ create temp table tables_found as
 select c.relname::text as tbl
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public' and c.relkind in ('r', 'p', 'v')
-  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_|^menu_|ordering|order|store_tables|item_option|table_calls|^stamp_|store_requests|staff_shifts)';
+  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_|^menu_|ordering|order|store_tables|item_option|table_calls|^stamp_|store_requests|staff_shifts|^payment_providers$|^payment_provider_changes$|^payment_exceptions$)';
 
 select plan((select count(*)::integer from read_cells) + (select count(*)::integer from write_cells) + 4);
 

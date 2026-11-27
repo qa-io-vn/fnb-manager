@@ -43,6 +43,10 @@ const PaymentScreen = lazyScreen(
 	() => import("./payment-screen"),
 	(m) => m.PaymentScreen,
 );
+const PayScreen = lazyScreen(
+	() => import("./pay-screen"),
+	(m) => m.PayScreen,
+);
 const StampCardScreen = lazyScreen(
 	() => import("./stamp-card-screen"),
 	(m) => m.StampCardScreen,
@@ -103,6 +107,7 @@ export const orderingRoutes: readonly MiniAppRoute[] = [
 	{ path: "/dat-mon", chrome: "flow", element: <CheckoutScreen /> },
 	{ path: "/don/:id", activeTab: null, element: <OrderScreen /> },
 	{ path: "/don-hang", activeTab: null, element: <OrdersScreen /> },
+	{ path: "/tra-tien/:id", chrome: "flow", element: <PayScreen /> },
 	{ path: "/thanh-toan/:id", chrome: "flow", element: <PaymentScreen /> },
 	{ path: "/du-lieu", chrome: "flow", element: <DataPolicyScreen /> },
 	{ path: "/ma-thanh-vien", activeTab: null, element: <MemberCodeScreen /> },
