@@ -2957,6 +2957,9 @@ returns jsonb
 ```sql
 public.customer_requests()
 returns jsonb
+```
+
+```sql
 public.customer_cancel_request(p_request uuid)
 returns jsonb
 ```
@@ -2996,8 +2999,14 @@ Shifts (step 8, migration `staff_shifts`, native-till.md section 12). A shift as
 ```sql
 public.staff_clock_in(p_store uuid, p_counter_token text, p_opening_cash numeric default 0)
 returns jsonb
+```
+
+```sql
 public.staff_clock_out(p_counted_cash numeric)
 returns jsonb
+```
+
+```sql
 public.staff_my_shift(p_month date default null)
 returns jsonb
 ```
@@ -3011,8 +3020,14 @@ returns jsonb
 ```sql
 public.manager_counter_qr(p_store uuid, p_rotate boolean default false)
 returns jsonb
+```
+
+```sql
 public.manager_confirm_shift(p_shift uuid, p_note text)
 returns jsonb
+```
+
+```sql
 public.manager_close_shift(p_shift uuid, p_clock_out_at timestamptz, p_counted_cash numeric, p_note text)
 returns jsonb
 ```
@@ -3026,8 +3041,14 @@ returns jsonb
 ```sql
 public.manager_shifts(p_store uuid, p_from date, p_to date)
 returns jsonb
+```
+
+```sql
 public.manager_worked_days(p_store uuid, p_month date)
 returns jsonb
+```
+
+```sql
 public.manager_day_reconciliation(p_store uuid, p_date date)
 returns jsonb
 ```
