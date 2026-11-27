@@ -79,7 +79,10 @@ describe("demo settings", () => {
 			answerDelayMs: 0,
 			staffMode: false,
 			bills: 0,
+			orderingReason: null,
 		});
+		expect(demoSettingsFrom("?ordering=paused").orderingReason).toBe("paused");
+		expect(demoSettingsFrom("?ordering=banana").orderingReason).toBeNull();
 		expect(demoSettingsFrom("?net=lost-once&answerDelay=50000")).toMatchObject({
 			network: "lost-once",
 			answerDelayMs: 10_000,
