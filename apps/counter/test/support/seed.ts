@@ -326,7 +326,8 @@ export async function dropCounterTenant(
 	]);
 	for (const id of ids) {
 		await deleteLogin(stack, id);
-	}
+	}	// customers made directly in auth.users (and anything the admin API kept) go by their synthetic address
+	await sql`delete from auth.users where email like ${`${seeded.slug}-%@example.com`}`;
 }
 
 /** A customer of the tenant (a Zalo login of the customer Mini App), for placing orders as the app does. */
