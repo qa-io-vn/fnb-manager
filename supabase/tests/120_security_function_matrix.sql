@@ -693,7 +693,46 @@ insert into matrix (fn, label, statement, expect) values
   '{"*": "DENY"}'),
 ('manager_approve_blocked_signin', 'manager_approve_blocked_signin of an unknown request',
   $$select public.manager_approve_blocked_signin('aaaaaaaa-aaaa-4aaa-8aaa-000000012094', 1, 'Synthetic', 'staff', null)::text$$,
-  '{"*": "DENY"}');
+  '{"*": "DENY"}'),
+-- Online payment (ADR-067, ADR-068): an owner with every store of the brand sets its providers; staff of a store read the
+-- counter's methods; owners and managers of the store read and resolve the manager queue (an unknown exception is 42501
+-- for everyone); the attempt, link, provider, settlement and job functions only for the service role.
+('checkout_set_provider', 'checkout_set_provider of brand A, switched off',
+  $$select public.checkout_set_provider(jsonb_build_object('brand', '{brand_a}'::uuid, 'method', 'vietqr', 'adapter', 'mock', 'mode', 'off', 'secret_name', 'PAYMENT_BANK_BRAND_1', 'settings', jsonb_build_object('bank_bin', '970400', 'bank_name', 'Ngân hàng mẫu', 'account_number', '0123456789', 'account_name', 'CUA HANG MAU', 'reference_prefix', 'FNB'))) ->> 'state'$$,
+  '{"*": "DENY", "owner": "^ok:saved$"}'),
+('counter_payment_methods', 'counter_payment_methods at A1',
+  $$select jsonb_array_length(public.counter_payment_methods('{store_a1}') -> 'methods')$$,
+  '{"*": "DENY", "owner": "^ok:0$", "owner_a1": "^ok:0$", "manager": "^ok:0$", "manager_a1": "^ok:0$", "staff": "^ok:0$"}'),
+('manager_payment_exceptions', 'manager_payment_exceptions at A1',
+  $$select public.manager_payment_exceptions('{store_a1}', 'open', 50) ->> 'open'$$,
+  '{"*": "DENY", "owner": "^ok:0$", "owner_a1": "^ok:0$", "manager": "^ok:0$", "manager_a1": "^ok:0$"}'),
+('manager_resolve_payment_exception', 'manager_resolve_payment_exception of an unknown exception',
+  $$select public.manager_resolve_payment_exception('aaaaaaaa-aaaa-4aaa-8aaa-000000012092', 'dismissed', 'synthetic')::text$$,
+  '{"*": "DENY"}'),
+('checkout_begin', 'checkout_begin',
+  $$select public.checkout_begin(jsonb_build_object('user_id', '{customer_2_u}', 'order_id', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012095', 'method', 'vietqr', 'idempotency_key', 'synthetic-key-120')) ->> 'refusal'$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('checkout_link', 'checkout_link',
+  $$select public.checkout_link(jsonb_build_object('user_id', '{customer_2_u}', 'order_id', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012095', 'payment_id', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012093', 'platform_order_id', 'synthetic-120')) ->> 'refusal'$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('checkout_provider', 'checkout_provider',
+  $$select public.checkout_provider('aaaaaaaa-aaaa-4aaa-8aaa-000000012092')::text$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('checkout_app_provider', 'checkout_app_provider',
+  $$select public.checkout_app_provider('synthetic-matrix-app-a')::text$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('checkout_settle', 'checkout_settle of an unknown provider',
+  $$select public.checkout_settle(jsonb_build_object('provider_id', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012092', 'provider_ref', 'synthetic-ref-120', 'amount', 1, 'success', true)) ->> 'outcome'$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('checkout_job_claim', 'checkout_job_claim of an unknown ticket',
+  $$select public.checkout_job_claim('aaaaaaaa-aaaa-4aaa-8aaa-000000012092')::text$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('checkout_job_work', 'checkout_job_work',
+  $$select jsonb_array_length(public.checkout_job_work(1) -> 'requery')$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('checkout_job_note', 'checkout_job_note',
+  $$select public.checkout_job_note(jsonb_build_object('kind', 'requery', 'payment_id', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012092')) ->> 'state'$$,
+  '{"*": "DENY", "service": "GATE"}');
 
 insert into ph select 'customer_2_u', customer_2_u::text from fx;
 
