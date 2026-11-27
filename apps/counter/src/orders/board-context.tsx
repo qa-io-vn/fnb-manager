@@ -28,6 +28,8 @@ interface BoardValue {
 	readonly state: BoardState;
 	readonly soundOn: boolean;
 	unlockSound(): Promise<void>;
+	/** a call this device just answered */
+	removeCall(id: string): void;
 	/** an order this device just changed */
 	update(order: Order): void;
 	refresh(): Promise<void>;
@@ -64,7 +66,7 @@ export function BoardProvider({ children }: { readonly children: ReactNode }) {
 			});
 			const next = applyBoard(held.current, answer, Date.now());
 			commit(next);
-			if (next.fresh.length > 0) chime.current.play();
+			if (next.fresh.length + next.freshCalls.length > 0) chime.current.play();
 		} catch (error) {
 			if (error instanceof RpcError && error.forbidden) {
 				void signOut("locked");
@@ -97,6 +99,12 @@ export function BoardProvider({ children }: { readonly children: ReactNode }) {
 			soundOn,
 			async unlockSound() {
 				setSoundOn(await chime.current.unlock());
+			},
+			removeCall(id) {
+				commit({
+					...held.current,
+					calls: held.current.calls.filter((call) => call.id !== id),
+				});
 			},
 			update(order) {
 				commit(boardOrder(held.current, order));

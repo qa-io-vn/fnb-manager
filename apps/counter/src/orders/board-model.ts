@@ -28,6 +28,8 @@ export interface BoardState {
 	readonly offlineSince: number | null;
 	/** orders new to this device since the last answer: the chime rings for these */
 	readonly fresh: readonly string[];
+	/** staff calls new to this device since the last answer: the chime rings for these too */
+	readonly freshCalls: readonly string[];
 	/** after a failure, how many new orders the catch-up answer brought (shown once) */
 	readonly resynced: number | null;
 }
@@ -44,6 +46,7 @@ export const EMPTY_BOARD: BoardState = {
 	offline: false,
 	offlineSince: null,
 	fresh: [],
+	freshCalls: [],
 	resynced: null,
 };
 
@@ -92,6 +95,12 @@ export function applyBoard(
 				orders.delete(id);
 		}
 	}
+	const knownCalls = new Set(state.calls.map((call) => call.id));
+	const freshCalls = state.loaded
+		? answer.calls
+				.filter((call) => !knownCalls.has(call.id))
+				.map((call) => call.id)
+		: [];
 	return {
 		cursor: Math.max(state.cursor, answer.cursor),
 		orders,
@@ -104,6 +113,7 @@ export function applyBoard(
 		offline: false,
 		offlineSince: null,
 		fresh,
+		freshCalls,
 		resynced: state.offline ? fresh.length : state.resynced,
 	};
 }
@@ -115,6 +125,7 @@ export function boardFailed(state: BoardState, now: number): BoardState {
 		offline: true,
 		offlineSince: state.offlineSince ?? now,
 		fresh: [],
+		freshCalls: [],
 	};
 }
 

@@ -5,6 +5,7 @@ import { useMember, useSession } from "./lib/session";
 import { clockOf } from "./lib/time";
 import { ManagerHome } from "./manager/manager-home";
 import { ManagerShiftsPage } from "./manager/shifts-page";
+import { SoldOutPage } from "./menu/sold-out-page";
 import { BoardProvider, useBoard } from "./orders/board-context";
 import { laneOrders } from "./orders/board-model";
 import { OrderDetailPage } from "./orders/order-detail";
@@ -14,6 +15,7 @@ import { AppShell, type NavItem } from "./shell/layout";
 import { StatusChip, TopBar } from "./shell/top-bar";
 import { ShiftProvider, useShift } from "./shift/shift-context";
 import { ShiftPage } from "./shift/shift-page";
+import { TablesPage } from "./tables/tables-page";
 import {
 	BellIcon,
 	BellOffIcon,
@@ -165,6 +167,7 @@ function Frame({ manager }: { readonly manager: boolean }) {
 			label: t("nav.tables"),
 			icon: <TableIcon />,
 			testId: "tables",
+			badge: state.calls.length,
 		},
 		{ to: "/mon", label: t("nav.menu"), icon: <CupIcon />, testId: "menu" },
 		{ to: "/ca", label: t("nav.shift"), icon: <ClockIcon />, testId: "shift" },
@@ -205,8 +208,8 @@ function Frame({ manager }: { readonly manager: boolean }) {
 					path="/tao-don"
 					element={<Placeholder title={t("queue.newOrder")} />}
 				/>
-				<Route path="/ban" element={<Placeholder title={t("nav.tables")} />} />
-				<Route path="/mon" element={<Placeholder title={t("nav.menu")} />} />
+				<Route path="/ban" element={<TablesPage />} />
+				<Route path="/mon" element={<SoldOutPage />} />
 				<Route path="/ca" element={<ShiftPage />} />
 				<Route path="/quan-ly" element={manage(<ManagerHome />)} />
 				<Route path="/quan-ly/ca-lam" element={manage(<ManagerShiftsPage />)} />
