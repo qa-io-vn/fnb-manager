@@ -10,6 +10,17 @@ import {
 
 export interface FakeBrandApp extends BrandApp {
 	readonly brandKey: string;
+	/** the public Zalo App id the counter's web login names (counter_session_app); a synthetic one by default */
+	readonly externalId?: string;
+}
+
+/** A Zalo identity the roster refused at the counter's web login (counter_record_blocked_signin). */
+export interface FakeBlockedSignin {
+	readonly zaloAppId: string;
+	readonly zaloUserId: string;
+	readonly displayName: string | null;
+	readonly device: string | null;
+	readonly attempts: number;
 }
 
 export interface FakeMember {
@@ -121,6 +132,8 @@ export interface FakeBackend extends SupabaseBackend {
 	setRelay(url: string | null): void;
 	/** The last stored relay announcement. */
 	relay(): { readonly url: string; readonly at: string } | null;
+	/** The identities recorded as blocked at the counter's web login. */
+	blockedSignins(): readonly FakeBlockedSignin[];
 }
 
 interface PairingCode {
@@ -142,6 +155,7 @@ export function createFakeBackend(): FakeBackend {
 	const apps: FakeBrandApp[] = [];
 	const members = new Map<string, FakeMember>();
 	const identities = new Map<string, FakeIdentity>();
+	const blocked = new Map<string, FakeBlockedSignin>();
 	const codes = new Map<string, { zaloAppId: string; userId: string }>();
 	const notices = new Map<string, StaffNotice>();
 	const texts = new Map<string, readonly LegalText[]>();
@@ -610,6 +624,42 @@ export function createFakeBackend(): FakeBackend {
 						status: app.status,
 					}));
 			}
+			if (name === "counter_session_app") {
+				return apps
+					.filter(
+						(app) =>
+							app.brandKey === args.p_brand_key &&
+							(args.p_tenant_id === null || app.tenantId === args.p_tenant_id),
+					)
+					.slice(0, 2)
+					.map((app) => ({
+						tenant_id: app.tenantId,
+						tenant_slug: app.tenantSlug,
+						zalo_app_id: app.zaloAppId,
+						external_id: app.externalId ?? "synthetic-zalo-app",
+						secret_name: app.secretName,
+						status: app.status,
+					}));
+			}
+			if (name === "counter_record_blocked_signin") {
+				const appId = textArg(args.p_zalo_app_id) ?? "";
+				const userId = textArg(args.p_zalo_user_id) ?? "";
+				const bound = identities.get(identityKey(appId, userId));
+				if (bound !== undefined && members.has(bound.userId)) {
+					return { recorded: false };
+				}
+				const key = identityKey(appId, userId);
+				const before = blocked.get(key);
+				blocked.set(key, {
+					zaloAppId: appId,
+					zaloUserId: userId,
+					displayName:
+						textArg(args.p_display_name) ?? before?.displayName ?? null,
+					device: textArg(args.p_device) ?? before?.device ?? null,
+					attempts: (before?.attempts ?? 0) + 1,
+				});
+				return { recorded: true };
+			}
 			if (name === "zalo_session_sign_in") {
 				return signIn(args);
 			}
@@ -836,6 +886,9 @@ export function createFakeBackend(): FakeBackend {
 		},
 		relay() {
 			return relay;
+		},
+		blockedSignins() {
+			return [...blocked.values()];
 		},
 	};
 }

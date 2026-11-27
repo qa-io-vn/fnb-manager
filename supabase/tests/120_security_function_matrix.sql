@@ -676,7 +676,24 @@ insert into matrix (fn, label, statement, expect) values
   '{"*": "DENY", "service": "GATE"}'),
 ('counter_create_order', 'counter_create_order at A1, an ipos store',
   $$select public.counter_create_order('{store_a1}', jsonb_build_object('request_id', gen_random_uuid(), 'type', 'takeaway', 'lines', jsonb_build_array(jsonb_build_object('size', gen_random_uuid(), 'qty', 1)))) ->> 'refusal'$$,
-  '{"*": "DENY", "owner": "^ok:not_native$", "owner_a1": "^ok:not_native$", "manager": "^ok:not_native$", "manager_a1": "^ok:not_native$", "staff": "^ok:not_native$"}');
+  '{"*": "DENY", "owner": "^ok:not_native$", "owner_a1": "^ok:not_native$", "manager": "^ok:not_native$", "manager_a1": "^ok:not_native$", "staff": "^ok:not_native$"}'),
+-- The counter web app (ADR-066): the brand's Zalo App and the blocked sign-ins are for the counter-session function
+-- only; owners and managers of the tenant read and answer the blocked sign-ins (an unknown request is 42501 for all).
+('counter_session_app', 'counter_session_app',
+  $$select public.counter_session_app('brand-1', '{tenant_a}'::uuid)::text$$,
+  '{"*": "DENY", "service": "GATE"}'),
+('counter_record_blocked_signin', 'counter_record_blocked_signin of an unknown app',
+  $$select public.counter_record_blocked_signin('aaaaaaaa-aaaa-4aaa-8aaa-000000012093', 'synthetic-user-120', null, null)::text$$,
+  '{"*": "DENY", "service": "BAD"}'),
+('manager_blocked_signins', 'manager_blocked_signins of tenant A',
+  $$select jsonb_array_length(public.manager_blocked_signins('{tenant_a}') -> 'requests')$$,
+  '{"*": "DENY", "owner": "^ok:0$", "owner_a1": "^ok:0$", "manager": "^ok:0$", "manager_a1": "^ok:0$"}'),
+('manager_dismiss_blocked_signin', 'manager_dismiss_blocked_signin of an unknown request',
+  $$select public.manager_dismiss_blocked_signin('aaaaaaaa-aaaa-4aaa-8aaa-000000012094', 1)::text$$,
+  '{"*": "DENY"}'),
+('manager_approve_blocked_signin', 'manager_approve_blocked_signin of an unknown request',
+  $$select public.manager_approve_blocked_signin('aaaaaaaa-aaaa-4aaa-8aaa-000000012094', 1, 'Synthetic', 'staff', null)::text$$,
+  '{"*": "DENY"}');
 
 insert into ph select 'customer_2_u', customer_2_u::text from fx;
 

@@ -113,6 +113,7 @@
 		"../../../packages/zalo/src/testing/fake-backend.js": "../../../packages/zalo/src/testing/fake-backend.ts",
 		"../../../packages/zalo/src/testing/mock-zalo.js": "../../../packages/zalo/src/testing/mock-zalo.ts",
 		"../../../packages/zalo/src/testing/relay-network.js": "../../../packages/zalo/src/testing/relay-network.ts",
+		"../../../packages/zalo/src/web-login.js": "../../../packages/zalo/src/web-login.ts",
 		"@fnb/connector-core": "../../../packages/connector-core/src/index.ts",
 		"@fnb/core": "../../../packages/core/src/index.ts",
 		"@fnb/sync": "../../../packages/sync/src/index.ts",
@@ -302,7 +303,8 @@
 			"./refusal.js": "../../../packages/zalo/src/refusal.ts",
 			"./relay.js": "../../../packages/zalo/src/relay.ts",
 			"./session.js": "../../../packages/zalo/src/session.ts",
-			"./settings.js": "../../../packages/zalo/src/settings.ts"
+			"./settings.js": "../../../packages/zalo/src/settings.ts",
+			"./web-login.js": "../../../packages/zalo/src/web-login.ts"
 		},
 		"../../../packages/zalo/src/oa/": {
 			"../graph.js": "../../../packages/zalo/src/graph.ts",

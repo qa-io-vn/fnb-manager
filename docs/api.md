@@ -3038,6 +3038,65 @@ returns jsonb
 
 Tests: pgTAP `273_staff_shifts.sql`, rows in `120`, `121`, `03`, `47` and `170`.
 
+### 3.28 The counter web app's sign-in (ADR-066)
+
+The counter web app (ADR-064) signs people in with Zalo's web login through the Edge Function `counter-session` (section 5), which maps the Zalo identity to a member with the same `zalo_session_sign_in` and `zalo_session_pair` as the staff Mini App. Migration `counter_sign_in` adds what is new: the brand's Zalo App with its public id for the function, and the people Zalo verified but the roster refused (acceptance criterion 5), which owners and managers read and answer in Quản lý → Nhân sự (screen M02). The table `app.blocked_signins` is read by no API role; the Zalo user id never leaves the database. Tests: pgTAP `274_counter_sign_in.sql`, rows in `120` and `47`.
+
+#### `public.counter_session_app`
+
+```sql
+public.counter_session_app(p_brand_key text, p_tenant_id uuid DEFAULT NULL::uuid)
+returns TABLE(tenant_id uuid, tenant_slug text, zalo_app_id uuid, external_id text, secret_name text, status text)
+```
+
+- **Status:** built (migration `counter_sign_in`).
+- **Who may call:** the service role only (the `counter-session` Edge Function).
+- **Notes:** the Zalo App of a brand key as `zalo_session_app` answers it, with `external_id`, the public Zalo App id the authorise address and the token exchange name; two rows when the key is shared by two tenants (the function then refuses it as ambiguous).
+
+#### `public.counter_record_blocked_signin`
+
+```sql
+public.counter_record_blocked_signin(p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text DEFAULT NULL::text, p_device text DEFAULT NULL::text)
+returns jsonb
+```
+
+- **Status:** built (migration `counter_sign_in`).
+- **Who may call:** the service role only (the `counter-session` Edge Function, after Zalo verified the person and the roster refused them).
+- **Notes:** `{recorded}`: one row per Zalo identity counting the attempts, with the Zalo name and a short device line (at most 60 characters, else dropped); a dismissed or approved row is pending again at a new attempt. Nothing for an identity bound to a member of the tenant. Rows older than 30 days are removed and a tenant keeps at most 200 (`recorded: false` beyond; the sign-in is refused all the same). `22023` for an unknown app or a malformed user id.
+
+#### `public.manager_blocked_signins`
+
+```sql
+public.manager_blocked_signins(p_tenant uuid)
+returns jsonb
+```
+
+- **Status:** built (migration `counter_sign_in`).
+- **Who may call:** an owner or manager of the tenant, whatever their store scope (`42501` otherwise).
+- **Notes:** `{requests: [{id, display_name, device, attempts, first_at, last_at, status, decided_at, roster_id, version}]}`: the pending people seen in the last 7 days, newest first; never the Zalo user id.
+
+#### `public.manager_dismiss_blocked_signin`
+
+```sql
+public.manager_dismiss_blocked_signin(p_request uuid, p_expected_version integer)
+returns jsonb
+```
+
+- **Status:** built (migration `counter_sign_in`).
+- **Who may call:** an owner or manager of the request's tenant (`42501` otherwise, the same for an unknown id).
+- **Notes:** "Từ chối": `{state: "dismissed" | "conflict" | "refused", refusal, replayed, request}` with who and when; a repeat is a replay, another version a conflict, an approved row `not_pending`.
+
+#### `public.manager_approve_blocked_signin`
+
+```sql
+public.manager_approve_blocked_signin(p_request uuid, p_expected_version integer, p_display_name text, p_role tenant_role, p_store_ids uuid[])
+returns jsonb
+```
+
+- **Status:** built (migration `counter_sign_in`).
+- **Who may call:** an owner or manager of the request's tenant, adding within their own store scope (the rules of `add_staff`, section 3.11: `staff` or `manager`, never `owner`, `22023`; stores outside the scope `42501`).
+- **Notes:** "Thêm vào danh sách": adds the person to the roster as `invited` and answers `{state: "approved", request, roster_id, pairing_code, pairing_code_minutes: 10}`, the one-time code of `issue_pairing_code` the person types at their next sign-in (with the staff notice); `conflict` for another version, `not_pending` once decided.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -3422,6 +3481,35 @@ Built locally against synthetic payloads (#243; Deno 12 tests in `handler.test.t
 | 500 | `internal_error`, `not_configured` | the database failed, or no database URL |
 
 The wrong path, a malformed body, an amount out of range and a refused address write nothing; every other decision writes one `app.voucher_callback_log` row (time, store, outcome, discount, latency). Log lines carry the outcome, whether a discount was given and the duration; the path segment, the code, the sale reference and a member phone are added to the redactor first.
+
+### `counter-session`
+
+Built against the mock (ADR-066; Deno 11 tests in `handler.test.ts`; the counter app's Playwright suite signs in through it on the local stack). The counter web app (`apps/counter`) reads every answer below.
+
+- **URL:** `<SUPABASE_URL>/functions/v1/counter-session`. **Method:** `POST`; `OPTIONS` answers the preflight of an allowed origin: the origins of `COUNTER_REDIRECT_URIS`, and a loopback origin only with `ZALO_LOCAL_DEV=1`.
+- **Authorization:** none at the gateway (`verify_jwt = false`); the sealed state, Zalo's authorisation code with the PKCE verifier, or the sealed ticket is the credential.
+- **Configuration:** `COUNTER_REDIRECT_URIS`, the exact https addresses the counter app comes back to after Zalo (comma separated, registered as the Zalo App's callback); the brand's App secret as for `zalo-session`; `ZALO_RELAY_KEY` for the relay; `ZALO_OAUTH_BASE_URL` (a loopback mock) only with `ZALO_LOCAL_DEV=1` or `ZALO_INTEGRATION=1`.
+- **Bodies:**
+  - `{"action": "start", "brand", "redirect_uri", "code_challenge"}` (the S256 challenge of a verifier the browser keeps) → `{"status": "authorize", "authorize_url", "state"}`: Zalo's `/v4/permission` page with the app id, the address, the challenge and a state sealed with AES-GCM under a key derived from the App secret, binding the challenge, the address and ten minutes.
+  - `{"action": "callback", "brand", "redirect_uri", "code", "state", "code_verifier"}`: the state must open, not be expired, name the same address and the verifier's challenge; then the code is exchanged at `oauth.zaloapp.com/v4/access_token` with the App secret and the verifier and the person read from `GET /v2.0/me` (both through the relay of ADR-057 when a relay is set: the relay carries this one POST with exactly four form fields), and `zalo_session_sign_in` decides.
+  - `{"action": "pair", "brand", "ticket", "pairing_code"?, "notice"?}`: the ticket of an `unpaired` or `notice_required` answer with a pairing code and/or the staff notice acceptance, through `zalo_session_pair` as `zalo-session` does (a fresh login when the database asks for one).
+
+| Status | Body | When |
+|---|---|---|
+| 200 | `{"status": "authorize", "authorize_url", "state"}` | start |
+| 200 | `{"status": "bound", "access_token", "refresh_token", "expires_at", "member": {"display_name", "role", "stores", "store_ids", "tenant_id"}}` | an owner, manager or staff member of the brand's tenant; `store_ids` the brand's stores in their scope |
+| 200 | `{"status": "unpaired", "ticket", "ticket_expires_at", "reason"?, "retry_after"?, "notice"?, "contact"?}` | the roster does not know the person: no session; the person is recorded for the managers (`counter_record_blocked_signin`); the ticket (ten minutes) lets them type a pairing code |
+| 200 | `{"status": "notice_required", "ticket", "ticket_expires_at", "notice"?, "contact"?}` | a person on the roster whose staff notice consent is missing or outdated |
+| 400 | `invalid_action`, `invalid_request`, `invalid_brand`, `invalid_redirect`, `invalid_challenge`, `invalid_code`, `invalid_state`, `invalid_verifier`, `invalid_ticket`, `invalid_pairing_code`, `invalid_notice` | a malformed body (an unknown field included) |
+| 401 | `state_refused` | a forged, expired or swapped state, another address or another verifier; Zalo is not asked |
+| 401 | `zalo_code_refused`, `zalo_token_refused` | Zalo refused the code (used, expired, wrong verifier) or the token |
+| 401 | `ticket_refused` | a forged or expired ticket, or one of another app |
+| 403 | `redirect_not_allowed`, `role_not_allowed`, `app_disabled` | an address not on the list; a viewer or publisher; a disabled app |
+| 404 | `unknown_brand` | no Zalo App for the brand key |
+| 500 | `not_configured`, `session_unavailable` | as for `zalo-session`; an OAuth override outside the local stack |
+| 502 / 503 | `zalo_unavailable` / `backend_unavailable` | Zalo or the database did not answer |
+
+Log lines name the outcome only (`authorise address issued`, `refused the state (expired)`, `unpaired; recorded for the managers`, `session minted: staff, 1 stores`), never a code, a verifier, a token, a ticket, the Zalo id or the name.
 
 ### `notify`
 

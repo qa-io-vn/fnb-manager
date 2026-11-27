@@ -117,6 +117,7 @@
 		"../../../packages/zalo/src/tokens/postgres-store.js": "../../../packages/zalo/src/tokens/postgres-store.ts",
 		"../../../packages/zalo/src/tokens/settings.js": "../../../packages/zalo/src/tokens/settings.ts",
 		"../../../packages/zalo/src/tokens/store.js": "../../../packages/zalo/src/tokens/store.ts",
+		"../../../packages/zalo/src/web-login.js": "../../../packages/zalo/src/web-login.ts",
 		"@fnb/connector-core": "../../../packages/connector-core/src/index.ts",
 		"@fnb/core": "../../../packages/core/src/index.ts",
 		"@fnb/sync": "../../../packages/sync/src/index.ts",
@@ -307,7 +308,8 @@
 			"./refusal.js": "../../../packages/zalo/src/refusal.ts",
 			"./relay.js": "../../../packages/zalo/src/relay.ts",
 			"./session.js": "../../../packages/zalo/src/session.ts",
-			"./settings.js": "../../../packages/zalo/src/settings.ts"
+			"./settings.js": "../../../packages/zalo/src/settings.ts",
+			"./web-login.js": "../../../packages/zalo/src/web-login.ts"
 		},
 		"../../../packages/zalo/src/oa/": {
 			"../http.js": "../../../packages/zalo/src/http.ts",

@@ -38,6 +38,46 @@ const TOP_LEVEL_LABEL = /^[a-z]{2,63}$/;
 export const RELAY_GRAPH_PATHS = ["/v2.0/me", "/v2.0/me/info"] as const;
 export type RelayGraphPath = (typeof RELAY_GRAPH_PATHS)[number];
 
+/**
+ * The web login's token exchange (ADR-066): the counter web app signs people in with Zalo's OAuth v4, and its
+ * function exchanges the authorisation code at oauth.zaloapp.com, which may refuse servers outside Vietnam as the
+ * Graph does. The relay carries exactly that POST: the App secret in its one header and a form of exactly four fields
+ * for an authorisation code with its PKCE verifier; never a refresh, never another path.
+ */
+export const ZALO_OAUTH_ORIGIN = "https://oauth.zaloapp.com";
+export const RELAY_WEB_LOGIN_PATH = "/v4/access_token";
+export const WEB_LOGIN_FORM_FIELDS = [
+	"app_id",
+	"code",
+	"code_verifier",
+	"grant_type",
+] as const;
+export const WEB_LOGIN_FORM_MAX_LENGTH = 4096;
+export type RelayCallPath = RelayGraphPath | typeof RELAY_WEB_LOGIN_PATH;
+const FORM_CONTENT_TYPE = "application/x-www-form-urlencoded";
+
+/** Whether a form body is exactly an authorisation-code exchange with PKCE: four known fields, each once and well formed. */
+export function webLoginFormValid(body: unknown): body is string {
+	if (typeof body !== "string" || body.length > WEB_LOGIN_FORM_MAX_LENGTH) {
+		return false;
+	}
+	const form = new URLSearchParams(body);
+	const keys = [...form.keys()];
+	if (
+		keys.length !== WEB_LOGIN_FORM_FIELDS.length ||
+		new Set(keys).size !== keys.length ||
+		!WEB_LOGIN_FORM_FIELDS.every((field) => form.has(field))
+	) {
+		return false;
+	}
+	return (
+		form.get("grant_type") === "authorization_code" &&
+		/^[A-Za-z0-9_-]{1,64}$/.test(form.get("app_id") ?? "") &&
+		/^[\x21-\x7e]{1,2048}$/.test(form.get("code") ?? "") &&
+		/^[A-Za-z0-9._~-]{43,128}$/.test(form.get("code_verifier") ?? "")
+	);
+}
+
 const ALLOWED_HEADERS: Readonly<Record<RelayGraphPath, readonly string[]>> = {
 	"/v2.0/me": ["access_token", "appsecret_proof"],
 	"/v2.0/me/info": ["access_token", "code", "secret_key"],
@@ -196,9 +236,67 @@ export async function open(
 }
 
 export interface GraphCall {
-	readonly path: RelayGraphPath;
+	readonly path: RelayCallPath;
 	readonly query: string;
 	readonly headers: Readonly<Record<string, string>>;
+	/** the form of the web login's token exchange; a Graph call has none */
+	readonly body?: string;
+}
+
+/** Where the relay sends a call it accepted: the Graph for a Graph path, Zalo's OAuth host for the token exchange. */
+export function relayTargetOf(call: GraphCall): {
+	readonly url: string;
+	readonly method: "GET" | "POST";
+	readonly headers: Readonly<Record<string, string>>;
+	readonly body?: string;
+} {
+	if (call.path === RELAY_WEB_LOGIN_PATH) {
+		return {
+			url: `${ZALO_OAUTH_ORIGIN}${RELAY_WEB_LOGIN_PATH}`,
+			method: "POST",
+			headers: { ...call.headers, "content-type": FORM_CONTENT_TYPE },
+			...(call.body === undefined ? {} : { body: call.body }),
+		};
+	}
+	return {
+		url: `${ZALO_GRAPH_ORIGIN}${call.path}${call.query === "" ? "" : `?${call.query}`}`,
+		method: "GET",
+		headers: call.headers,
+	};
+}
+
+function webLoginCallOf(parsed: URL, init: ZaloRequestInit): GraphCall | null {
+	if (
+		parsed.pathname !== RELAY_WEB_LOGIN_PATH ||
+		parsed.search !== "" ||
+		init.method !== "POST" ||
+		!webLoginFormValid(init.body)
+	) {
+		return null;
+	}
+	let secret: string | undefined;
+	for (const [name, value] of Object.entries(init.headers)) {
+		const lower = name.toLowerCase();
+		if (lower === "content-type") {
+			if (value.toLowerCase() !== FORM_CONTENT_TYPE) {
+				return null;
+			}
+			continue;
+		}
+		if (lower !== "secret_key" || headerValueProblem(value)) {
+			return null;
+		}
+		secret = value;
+	}
+	if (secret === undefined) {
+		return null;
+	}
+	return {
+		path: RELAY_WEB_LOGIN_PATH,
+		query: "",
+		headers: { secret_key: secret },
+		body: init.body,
+	};
 }
 
 export interface RelayRequest extends GraphCall {
@@ -249,11 +347,14 @@ export function graphCallOf(
 	} catch {
 		return null;
 	}
+	if (parsed.username !== "" || parsed.password !== "" || parsed.hash !== "") {
+		return null;
+	}
+	if (parsed.origin === ZALO_OAUTH_ORIGIN) {
+		return webLoginCallOf(parsed, init);
+	}
 	if (
 		parsed.origin !== ZALO_GRAPH_ORIGIN ||
-		parsed.username !== "" ||
-		parsed.password !== "" ||
-		parsed.hash !== "" ||
 		init.method !== "GET" ||
 		init.body !== undefined ||
 		!isGraphPath(parsed.pathname)
@@ -287,7 +388,7 @@ export function validateRelayRequest(
 	if (!isRecord(value)) {
 		throw new RelayError("invalid", "the request is not an object");
 	}
-	const { id, at, path, query, headers } = value;
+	const { id, at, path, query, headers, body } = value;
 	if (typeof id !== "string" || !UUID_PATTERN.test(id)) {
 		throw new RelayError("invalid", "the request id is not a lower-case uuid");
 	}
@@ -299,6 +400,32 @@ export function validateRelayRequest(
 			"stale",
 			"the request is older or newer than a minute",
 		);
+	}
+	if (path === RELAY_WEB_LOGIN_PATH) {
+		if (query !== "") {
+			throw new RelayError("not_allowed", "the relay carries no such query");
+		}
+		if (
+			!isRecord(headers) ||
+			Object.keys(headers).length !== 1 ||
+			headerValueProblem(headers.secret_key)
+		) {
+			throw new RelayError("not_allowed", "the relay carries no such header");
+		}
+		if (!webLoginFormValid(body)) {
+			throw new RelayError("not_allowed", "the relay carries no such form");
+		}
+		return {
+			id,
+			at,
+			path,
+			query: "",
+			headers: { secret_key: headers.secret_key as string },
+			body,
+		};
+	}
+	if (body !== undefined) {
+		throw new RelayError("not_allowed", "a Graph call carries no body");
 	}
 	if (!isGraphPath(path)) {
 		throw new RelayError("not_allowed", "the relay carries no such path");
