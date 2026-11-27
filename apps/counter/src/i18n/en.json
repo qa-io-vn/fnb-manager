@@ -537,6 +537,7 @@
 	"member.ticketTitle": "Stamp card",
 	"member.ticketLead": "Customer has the app? Scan the code to add stamps.",
 	"member.remove": "Remove card",
+	"member.ticketEarn": "This order adds {count} stamps when it is completed.",
 	"member.refusal.code_mistyped": "The number is not right. Check the 8 digits.",
 	"member.refusal.code_unknown": "The code is wrong or expired. Ask the customer to open the member code again.",
 	"member.refusal.rate_limited": "Too many wrong codes. Try again at {time}.",

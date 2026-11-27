@@ -17,6 +17,15 @@ export interface CounterMenuItem {
 		readonly is_default: boolean;
 	}[];
 	readonly option_group_ids: readonly string[];
+	/** whether a unit of it earns a stamp when an order of a member completes (migration counter_menu_stamp_flag) */
+	readonly counts_for_stamps: boolean;
+}
+
+/** A brand's stamp card as counter_menu answers it: on or off, and how many stamps make a reward. */
+export interface StampCardSetting {
+	readonly brand_id: string;
+	readonly enabled: boolean;
+	readonly stamps_per_reward: number;
 }
 
 export interface OptionGroup {
@@ -43,6 +52,8 @@ export interface CounterMenu {
 	};
 	readonly items: readonly CounterMenuItem[];
 	readonly option_groups: readonly OptionGroup[];
+	/** the stamp card of each brand covering the store */
+	readonly stamp_cards: readonly StampCardSetting[];
 }
 
 export const counterMenu = (client: SupabaseClient, store: string) =>

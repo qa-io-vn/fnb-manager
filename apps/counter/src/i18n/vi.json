@@ -537,6 +537,7 @@
 	"member.ticketTitle": "Thẻ thành viên",
 	"member.ticketLead": "Khách có ứng dụng? Quét mã để cộng dấu.",
 	"member.remove": "Bỏ thẻ",
+	"member.ticketEarn": "Đơn này cộng thêm {count} dấu khi hoàn thành.",
 	"member.refusal.code_mistyped": "Số chưa đúng. Kiểm tra lại 8 số.",
 	"member.refusal.code_unknown": "Mã không đúng hoặc đã hết hạn. Nhờ khách mở lại Mã thành viên.",
 	"member.refusal.rate_limited": "Nhập sai nhiều lần. Thử lại lúc {time}.",

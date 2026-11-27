@@ -21,7 +21,7 @@ import {
 	requestCompanyInvoice,
 } from "../orders/einvoice";
 import { CompanyDialog, EInvoiceCard } from "../orders/einvoice-ui";
-import { attachMember, shortName } from "../orders/member";
+import { attachMember, shortName, ticketStamps } from "../orders/member";
 import { MemberDialog, type PickedMember } from "../orders/member-dialog";
 import { PaymentDialog } from "../orders/payment-dialog";
 import type { Order } from "../orders/types";
@@ -438,6 +438,13 @@ export function CreateOrderPage() {
 		}
 	};
 	const memberName = member === null ? null : shortName(member.member.name);
+	// Q01: the stamps this ticket earns its member when the order completes (the server's rule; none while the brand's
+	// card is off or nothing on the ticket counts)
+	const stamps = ticketStamps(
+		draft.lines,
+		menu.data?.items ?? [],
+		menu.data?.stamp_cards ?? [],
+	);
 	return (
 		<div className="flex flex-col gap-4 lg:h-full">
 			<div className="flex flex-wrap items-center gap-3">
@@ -598,16 +605,26 @@ export function CreateOrderPage() {
 									</span>
 								</>
 							) : (
-								<span className="font-bold" data-testid="ticket-member-name">
-									{memberName === null
-										? t("member.foundNoName")
-										: t("member.found", { name: memberName })}{" "}
-									·{" "}
-									{t("member.stamps", {
-										stamps: member.member.stamps,
-										total: member.member.stamps_per_reward,
-									})}
-								</span>
+								<>
+									<span
+										className="block font-bold"
+										data-testid="ticket-member-name"
+									>
+										{memberName === null
+											? t("member.foundNoName")
+											: t("member.found", { name: memberName })}{" "}
+										·{" "}
+										{t("member.stamps", {
+											stamps: member.member.stamps,
+											total: member.member.stamps_per_reward,
+										})}
+									</span>
+									{stamps === null ? null : (
+										<span data-testid="ticket-member-earn">
+											{t("member.ticketEarn", { count: stamps })}
+										</span>
+									)}
+								</>
 							)}
 						</span>
 						{member === null ? (
@@ -744,6 +761,7 @@ export function CreateOrderPage() {
 				<MemberDialog
 					store={store.id}
 					order={null}
+					drinks={stamps ?? 0}
 					onClose={() => setMemberOpen(false)}
 					onPicked={(picked) => {
 						setMember(picked);

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { rpc } from "../lib/rpc";
+import type { CounterMenuItem, StampCardSetting } from "../menu/menu-api";
 import type { Order } from "./types";
 
 // The stamp card's member code at the counter (Q01 "Quét mã thành viên", C20; native-till.md 16.5): the customer shows a
@@ -183,4 +184,39 @@ export function stampUnits(order: Pick<Order, "lines">): number {
 		(sum, line) => sum + (line.counts_for_stamps ? line.quantity : 0),
 		0,
 	);
+}
+
+/**
+ * The stamps a ticket keyed for a member will earn when its order completes, by the server's rule
+ * (app.stamps_on_completion, native-till.md 18.1): one per unit of the lines whose item counts for stamps, at the
+ * order's brand, which counter_create_order takes from the first line. Null when the ticket says nothing: no line,
+ * the brand's card off or not answered, or no unit that counts. An item the menu no longer lists does not count (the
+ * server refuses it anyway).
+ */
+export function ticketStamps(
+	lines: readonly { readonly itemId: string; readonly qty: number }[],
+	items: readonly Pick<
+		CounterMenuItem,
+		"id" | "brand_id" | "counts_for_stamps"
+	>[],
+	cards: readonly StampCardSetting[],
+): number | null {
+	const first = lines[0];
+	if (first === undefined) return null;
+	const byId = new Map(items.map((item) => [item.id, item]));
+	const brand = byId.get(first.itemId)?.brand_id;
+	if (brand === undefined) return null;
+	const card = cards.find((candidate) => candidate.brand_id === brand);
+	if (card === undefined || card.enabled !== true) return null;
+	const units = lines.reduce((sum, line) => {
+		const item = byId.get(line.itemId);
+		return item !== undefined &&
+			item.brand_id === brand &&
+			item.counts_for_stamps === true &&
+			Number.isSafeInteger(line.qty) &&
+			line.qty > 0
+			? sum + line.qty
+			: sum;
+	}, 0);
+	return units > 0 ? units : null;
 }
