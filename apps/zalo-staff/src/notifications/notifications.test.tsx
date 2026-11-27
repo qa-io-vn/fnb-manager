@@ -416,6 +416,9 @@ describe("Nhận thông báo", () => {
 		]);
 		expect(boxes.every((box) => (box as HTMLInputElement).checked)).toBe(true);
 		const checklist = within(group).getByTestId("mute-checklist_unfinished");
+		// the switches stay disabled until the member's rules have loaded; on a loaded CI runner that can follow the
+		// first paint, and a click on a disabled checkbox does nothing
+		await waitFor(() => expect(checklist).toBeEnabled());
 		fireEvent.click(checklist);
 		expect(checklist).not.toBeChecked();
 		await waitFor(() =>

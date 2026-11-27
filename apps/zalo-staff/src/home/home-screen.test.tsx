@@ -426,7 +426,9 @@ describe("the staff home's loading and errors", () => {
 		act(() => {
 			for (const refuse of refusals) refuse(new RestError(401));
 		});
-		await vi.waitFor(() => expect(connects).toBe(2));
+		// the second sign-in follows the refusal through a few promise turns; a loaded CI runner can take longer
+		// than vi.waitFor's 1-second default
+		await vi.waitFor(() => expect(connects).toBe(2), { timeout: 5_000 });
 		await ready();
 		expect(screen.getByTestId("home-net-revenue")).toBeInTheDocument();
 		expect(loads).toBeGreaterThan(refusals.length);
