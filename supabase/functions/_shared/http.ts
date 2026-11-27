@@ -14,6 +14,8 @@ export const REQUEST_ID_HEADER = "x-request-id";
 const ERROR_CODE_PATTERN = /^[a-z][a-z0-9_]{0,40}$/;
 const SECRET_NAME_PATTERN = /^[A-Z][A-Z0-9_]{1,80}$/;
 const ZALO_VARIABLE_PATTERN = /^ZALO_[A-Z0-9_]{1,60}$/;
+// the bank services' webhook keys (ADR-067); the Checkout SDK's private keys are ZALO_CHECKOUT_KEY_ secrets already
+const PAYMENT_VARIABLE_PATTERN = /^PAYMENT_[A-Z0-9_]{1,60}$/;
 const BASE_URL_PATTERN = /_BASE_URL$/;
 const ZALO_NOT_SECRET: ReadonlySet<string> = new Set([
 	"ZALO_INTEGRATION",
@@ -107,11 +109,21 @@ function dictionarySecrets(value: string): string[] {
 	}
 }
 
+export function paymentSecretVariables(
+	environment: FunctionEnvironment,
+): string[] {
+	return Object.keys(environment)
+		.filter((name) => PAYMENT_VARIABLE_PATTERN.test(name))
+		.sort();
+}
+
 export function secretValues(environment: FunctionEnvironment): string[] {
 	const values = [
-		...[...zaloSecretVariables(environment), ...PLAIN_SECRET_VARIABLES].map(
-			(name) => environment[name] ?? "",
-		),
+		...[
+			...zaloSecretVariables(environment),
+			...paymentSecretVariables(environment),
+			...PLAIN_SECRET_VARIABLES,
+		].map((name) => environment[name] ?? ""),
 		...DATABASE_VARIABLES.flatMap((name) => {
 			const value = environment[name];
 			return value ? databaseUrlSecrets(value) : [];

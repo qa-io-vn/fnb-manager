@@ -511,3 +511,28 @@ Deno.test("every log line of a request passes the redactor", async () => {
 		assertNoSecret(line, "log line");
 	}
 });
+
+Deno.test("the bank services' PAYMENT_ keys are redacted like the Zalo secrets; the mock switch is not a secret", () => {
+	const environment: FunctionEnvironment = {
+		PAYMENT_BANK_BRAND_1: "synthetic-bank-key-redacted",
+		PAYMENTS_MOCK: "on",
+		ZALO_CHECKOUT_KEY_BRAND_1: "synthetic-checkout-key-redacted",
+	};
+	const values = secretValues(environment);
+	assert(
+		values.includes("synthetic-bank-key-redacted"),
+		"the bank key is a secret",
+	);
+	assert(
+		values.includes("synthetic-checkout-key-redacted"),
+		"the Checkout key is a secret",
+	);
+	assert(!values.includes("on"), "the mock switch is not");
+	const redact = functionRedactor(environment);
+	assert(
+		!redact("key synthetic-bank-key-redacted here").includes(
+			"synthetic-bank-key-redacted",
+		),
+		"the log never holds it",
+	);
+});
