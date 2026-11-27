@@ -67,6 +67,29 @@ export const DEMO_NETWORKS = [
 ] as const;
 export type DemoNetwork = (typeof DEMO_NETWORKS)[number];
 
+/** The reasons a native store holds orders (app.ordering_state), for `?ordering=` in the address. */
+export const DEMO_ORDERING_REASONS = [
+	"ordering_off",
+	"hours_unknown",
+	"closed_today",
+	"paused",
+	"closed_now",
+	"last_orders_passed",
+	"no_staff_online",
+	"busy",
+] as const;
+
+/**
+ * More functions the demo world answers, added by a build that has them (the ordering build adds the native till's
+ * customer functions), so the loyalty build carries none of their code.
+ */
+export interface DemoExtension {
+	/** the answer of one of its functions, or undefined for any other */
+	answer(fn: string, args: Readonly<Record<string, unknown>>): unknown;
+	/** its functions that change something (the network fault switches apply to them) */
+	readonly changingFunctions: readonly string[];
+}
+
 export type DemoSessionRefusal = "never" | "once" | "always";
 
 export interface DemoSettings {
@@ -95,6 +118,8 @@ export interface DemoSettings {
 	readonly staffMode: boolean;
 	/** how many staff-recorded bills wait for the member's blind total (`?bill=1` to 3, members only) */
 	readonly bills: number;
+	/** the reason the ordering store holds orders from the start (`?ordering=paused` and so on); null takes orders */
+	readonly orderingReason: string | null;
 }
 
 export const DEMO_DEFAULTS: DemoSettings = {
@@ -113,6 +138,7 @@ export const DEMO_DEFAULTS: DemoSettings = {
 	answerDelayMs: 0,
 	staffMode: false,
 	bills: 0,
+	orderingReason: null,
 };
 
 const MAX_DEMO_DELAY_MS = 10_000;
@@ -169,6 +195,9 @@ export function demoSettingsFrom(search: string): DemoSettings {
 				: 0,
 		staffMode: params.get("staff") === "1" || bills > 0,
 		bills,
+		orderingReason:
+			DEMO_ORDERING_REASONS.find((name) => name === params.get("ordering")) ??
+			null,
 	};
 }
 
@@ -268,6 +297,10 @@ export interface DemoWorld {
 	marketing(): boolean;
 	deletionRequested(): boolean;
 	setOffline(offline: boolean): void;
+	/** adds the functions of an extension (once; a second call replaces the first) */
+	extend(extension: DemoExtension): void;
+	/** the world's clock */
+	now(): number;
 }
 
 const HOUR_MS = 3_600_000;
@@ -366,6 +399,7 @@ export function createDemoWorld(
 	let offline = false;
 	let faultSpent = false;
 	const strict = settings.network !== "none";
+	let extension: DemoExtension | null = null;
 	const entries: Entry[] = [];
 	const claims: Claim[] = [];
 	const vouchers: DemoVoucher[] = [];
@@ -1337,6 +1371,8 @@ export function createDemoWorld(
 		args: Readonly<Record<string, unknown>>,
 		member: boolean,
 	): unknown => {
+		const extended = extension?.answer(fn, args);
+		if (extended !== undefined) return extended;
 		if (fn === CUSTOMER_FUNCTIONS.home) return home();
 		if (!member) throw new RestError(403, REFUSAL_NOT_MEMBER);
 		switch (fn) {
@@ -1393,7 +1429,9 @@ export function createDemoWorld(
 				async rpc(fn, args = {}) {
 					await pause();
 					const member = check();
-					const changes = CHANGING_FUNCTIONS.has(fn);
+					const changes =
+						CHANGING_FUNCTIONS.has(fn) ||
+						(extension?.changingFunctions.includes(fn) ?? false);
 					if (settings.network === "error-once" && changes && !faultSpent) {
 						faultSpent = true;
 						throw new RestError(500, "XX000");
@@ -1413,6 +1451,10 @@ export function createDemoWorld(
 			};
 		},
 		joined: () => joined,
+		extend(next) {
+			extension = next;
+		},
+		now,
 		setOffline(value) {
 			offline = value;
 		},

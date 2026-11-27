@@ -22,6 +22,11 @@ const designOutDir = `node_modules/.cache/e2e-design-dist-${portOffset}`;
 const brand3Port = 5762 + portOffset;
 const brand3OutDir = `node_modules/.cache/e2e-brand3-dist-${portOffset}`;
 const brand3 = { baseURL: `http://127.0.0.1:${brand3Port}/` } as const;
+// The ordering checks run on a fourth build: VITE_ORDERING=on (the tester builds of ADR-058), as a Development build so
+// that a screen a customer reaches only by a link (another customer's order) can be opened with ?route=.
+const orderingPort = 5766 + portOffset;
+const orderingOutDir = `node_modules/.cache/e2e-ordering-dist-${portOffset}`;
+const ordering = { baseURL: `http://127.0.0.1:${orderingPort}/` } as const;
 const phone = {
 	viewport: MINI_APP_VIEWPORT,
 	deviceScaleFactor: 2,
@@ -91,21 +96,37 @@ export default defineConfig({
 		{
 			name: "phone-light",
 			testMatch:
-				/(account|bills|browse|join|wallet|network|lazy-screens)\.spec\.ts/,
+				/(account|bills|browse|join|wallet|network|lazy-screens|ordering-off)\.spec\.ts/,
 			use: { ...phone, colorScheme: "light" },
 		},
 		{
 			name: "phone-dark",
 			testMatch:
-				/(account|bills|browse|join|wallet|network|lazy-screens)\.spec\.ts/,
+				/(account|bills|browse|join|wallet|network|lazy-screens|ordering-off)\.spec\.ts/,
 			use: { ...phone, colorScheme: "dark" },
 		},
 		{
 			// WebKit as an iPhone, light mode only to keep CI time down (test-gaps G-35)
 			name: "phone-webkit",
 			testMatch:
-				/(account|bills|browse|join|wallet|network|lazy-screens).spec.ts/,
+				/(account|bills|browse|join|wallet|network|lazy-screens|ordering-off).spec.ts/,
 			use: { ...devices["iPhone 14"], colorScheme: "light" },
+		},
+		{
+			name: "ordering-light",
+			testMatch: /ordering\.spec\.ts/,
+			use: { ...phone, ...ordering, colorScheme: "light" },
+		},
+		{
+			name: "ordering-dark",
+			testMatch: /ordering\.spec\.ts/,
+			use: { ...phone, ...ordering, colorScheme: "dark" },
+		},
+		{
+			// the owner's phone is an iPhone: the ordering screens on WebKit as well
+			name: "ordering-webkit",
+			testMatch: /ordering\.spec\.ts/,
+			use: { ...devices["iPhone 14"], ...ordering, colorScheme: "light" },
 		},
 		{
 			name: "budget",
@@ -175,6 +196,17 @@ export default defineConfig({
 				VITE_ZALO_RUNTIME: "browser",
 				VITE_MINI_APP_STAGE: "development",
 				VITE_BRAND_KEY: "brand-3",
+			},
+		},
+		{
+			command: `vite build --outDir ${orderingOutDir} --emptyOutDir && vite preview --outDir ${orderingOutDir} --host 127.0.0.1 --port ${orderingPort} --strictPort`,
+			url: `http://127.0.0.1:${orderingPort}/`,
+			reuseExistingServer: false,
+			timeout: 120_000,
+			env: {
+				VITE_ZALO_RUNTIME: "browser",
+				VITE_MINI_APP_STAGE: "development",
+				VITE_ORDERING: "on",
 			},
 		},
 	],

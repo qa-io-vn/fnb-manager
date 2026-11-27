@@ -26,15 +26,23 @@ export {
 	storeLinkFromPath,
 } from "./link";
 
+/** The last link the app was opened with: the launch's route params, or what OpenApp handed over, numbered. */
+export interface LinkOpening {
+	readonly data: unknown;
+	readonly serial: number;
+}
+
 interface StoreLinkValue {
 	readonly currentStore: string | null;
 	readonly source: LinkSource | null;
+	readonly opening: LinkOpening | null;
 	chooseStore(store: string): void;
 }
 
 const StoreLinkContext = createContext<StoreLinkValue>({
 	currentStore: null,
 	source: null,
+	opening: null,
 	chooseStore: () => undefined,
 });
 
@@ -52,21 +60,39 @@ function readRouteParams(): Record<string, string> {
 
 export function StoreLinkProvider({
 	children,
+	pathFor,
 }: {
 	readonly children: ReactNode;
+	/**
+	 * Where a link opens: the store page unless this names another screen for it (the ordering build opens a table's
+	 * QR on the menu). It gets the link and what it came with: the launch's route params as `params`, or OpenApp's data.
+	 */
+	readonly pathFor?: (link: StoreLink, data: unknown) => string | null;
 }) {
 	const navigate = useNavigate();
+	const [launch] = useState(() => ({ params: readRouteParams() }));
 	const [link, setLink] = useState<StoreLink | null>(() =>
-		storeLinkFrom(readRouteParams()),
+		storeLinkFrom(launch.params),
 	);
+	const [opening, setOpening] = useState<LinkOpening | null>(() => ({
+		data: launch,
+		serial: 0,
+	}));
 	const [chosen, setChosen] = useState<string | null>(null);
 	const opened = useRef(false);
+	const pathRef = useRef(pathFor);
+	pathRef.current = pathFor;
 
+	// the launch's own link opens its screen once; a link that comes later through OpenApp is opened by its handler
 	useEffect(() => {
-		if (opened.current || link === null) return;
+		if (opened.current) return;
 		opened.current = true;
-		navigate(`/cua-hang/${link.store}`);
-	}, [link, navigate]);
+		const atLaunch = storeLinkFrom(launch.params);
+		if (atLaunch === null) return;
+		navigate(
+			pathRef.current?.(atLaunch, launch) ?? `/cua-hang/${atLaunch.store}`,
+		);
+	}, [navigate, launch]);
 
 	useEffect(() => {
 		const onOpen = (data: unknown) => {
@@ -74,7 +100,11 @@ export function StoreLinkProvider({
 			if (found === null) return;
 			setLink(found);
 			setChosen(null);
-			navigate(`/cua-hang/${found.store}`);
+			setOpening((previous) => ({
+				data,
+				serial: (previous?.serial ?? 0) + 1,
+			}));
+			navigate(pathRef.current?.(found, data) ?? `/cua-hang/${found.store}`);
 		};
 		events.on(EventName.OpenApp, onOpen);
 		return () => {
@@ -87,9 +117,10 @@ export function StoreLinkProvider({
 		() => ({
 			currentStore: chosen ?? link?.store ?? null,
 			source: link?.source ?? null,
+			opening,
 			chooseStore,
 		}),
-		[chosen, link, chooseStore],
+		[chosen, link, opening, chooseStore],
 	);
 	return (
 		<StoreLinkContext.Provider value={value}>

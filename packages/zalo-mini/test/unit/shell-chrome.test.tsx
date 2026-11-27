@@ -152,6 +152,54 @@ describe("a tab route", () => {
 		show();
 		expect(screen.queryByTestId("above-tabs")).toBeNull();
 	});
+
+	it("does not count a strip whose content draws nothing (no order in progress), so a cart bar can take its place", () => {
+		giveHeights({ strip: 0, cart: 56 });
+		const error = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => undefined);
+		show({ strip: true });
+		expect(shell().getAttribute("data-bottom-bars")).toBe("1");
+		expect(root().getPropertyValue("--shell-bottom")).not.toContain("56px");
+		expect(error).not.toHaveBeenCalled();
+	});
+});
+
+describe("the active tab of a route that is not a tab", () => {
+	const routes = (activeTab?: string | null): readonly MiniAppRoute[] => [
+		{ path: "/", element: <p>home</p> },
+		{ path: "/b", element: <p>tab b</p> },
+		{
+			path: "/order",
+			element: <p>an order</p>,
+			...(activeTab === undefined ? {} : { activeTab }),
+		},
+	];
+	const active = () =>
+		document
+			.querySelector(".zaui-bottom-navigation-item-active")
+			?.textContent?.trim();
+
+	it("is the first tab by default, as before", () => {
+		show({ start: "/order", routes: routes() });
+		expect(active()).toBe(sharedCatalogs.vi["shell.plainState"]);
+	});
+
+	// with no tab active, every tab (the first one too) changes the screen when chosen: ZaUI calls back only for a
+	// tab that is not the active one
+	it("is none when the route says null", () => {
+		show({ start: "/order", routes: routes(null) });
+		expect(screen.getByText("an order")).toBeTruthy();
+		expect(active()).toBeUndefined();
+	});
+
+	it("is the tab the route names, and a name that is not a tab is refused", () => {
+		show({ start: "/order", routes: routes("/b") });
+		expect(active()).toBe(sharedCatalogs.vi["shell.mainNavigation"]);
+		expect(shellProblems(routes("/nowhere"), TABS)).toEqual([
+			"the route /order names the active tab /nowhere, which is not a tab",
+		]);
+	});
 });
 
 describe("a flow route", () => {
