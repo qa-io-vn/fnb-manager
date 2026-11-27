@@ -1380,7 +1380,7 @@ returns void
 
 - **Status:** built (phase 14a, #211).
 - **Who may call:** as `add_staff`, for a row whose every store is in the caller's scope.
-- **Notes:** changes the name, role and stores; on an active row the membership follows at once.
+- **Notes:** changes the name, role and stores; on an active row the membership follows at once. Nobody changes the role or the stores of their own entry (`42501` with the hint `own_entry`; the name may change) or of the tenant's only owner (`42501`, hint `last_owner`); the same stores in another order are no change (migration `staff_lock_guards`, pgTAP `275_staff_lock_guards`).
 
 #### `public.deactivate_staff`
 
@@ -1391,7 +1391,7 @@ returns void
 
 - **Status:** built (phase 14a, #211).
 - **Who may call:** as `update_staff`.
-- **Notes:** marks the row `inactive` and removes the membership, the person's notification destinations and binding codes, their Zalo identities in the tenant and their Auth sessions and refresh tokens; the phone is cleared. Calling it twice does nothing more. Removing a membership by any other path also deactivates the roster row.
+- **Notes:** marks the row `inactive` and removes the membership, the person's notification destinations and binding codes, their Zalo identities in the tenant and their Auth sessions and refresh tokens; the phone is cleared. Calling it twice does nothing more. Removing a membership by any other path also deactivates the roster row. Nobody locks their own entry (`42501` with the hint `own_entry`), and the entry of the tenant's only owner is never locked (`42501`, hint `last_owner`); the scope checks come first (migration `staff_lock_guards`, M02).
 
 #### `public.reactivate_staff`
 
