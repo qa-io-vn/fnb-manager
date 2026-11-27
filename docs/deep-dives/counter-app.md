@@ -75,7 +75,7 @@ Clocking in takes the counter's code (the printed QR holds the app's address wit
 
 ## 6. Decisions and deviations from the designs (recorded 2026-11-28)
 
-1. The count at clock-out is blind (the database's rule), so Q02's "Đối chiếu" column before the count is shown only after it; the cashier's reason for a difference is chosen by the confirming manager and stored in the close note: the database has no field for the cashier's own reason.
+1. The count at clock-out is blind (the database's rule), so Q02's "Đối chiếu" column before the count is shown only after it; the cashier's reason for a difference is chosen by the confirming manager and stored in the close note: the database has no field for the cashier's own reason. Since migration `shift_difference_reason` (2026-11-28) it has one: the clock-out answer says `reason_required`, and the cashier counts again with the reason and a note (`staff_clock_out(p_counted_cash, p_reason, p_note)`), which the manager then reads beside the numbers; the screen does not ask for it yet.
 2. The manager PIN at the counter (Q02, decision D3) is not built: the database has no PIN; the manager confirms from their own device.
 3. VietQR, the wallet, the member scan (C20), the company invoice and the e-invoice status of Q01 wait for the providers and their functions; the payment dialog offers cash and card.
 4. A counter order enters the queue when it is created (the database accepts it at once, unpaid) and is paid right after; closing the payment dialog leaves it in the queue as "Chưa thu tiền" (Q01 drew payment before the queue).

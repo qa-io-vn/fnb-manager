@@ -8782,6 +8782,21 @@
 					"format": "timestamp with time zone",
 					"type": "string"
 				},
+				"difference_note": {
+					"description": "the counting person's note with the reason (1 to 200 characters on one line)",
+					"format": "text",
+					"type": "string"
+				},
+				"difference_reason": {
+					"description": "the counting person's reason for a cash difference (Q02): wrong_change (Trả nhầm tiền thừa), unrecorded_order (Quên ghi đơn), petty_cash (Chi tiền lặt vặt) or unknown (Chưa rõ nguyên nhân); set only by staff_clock_out on a shift whose count differs, cleared when a recount matches",
+					"format": "text",
+					"type": "string"
+				},
+				"difference_reason_at": {
+					"description": "when the person gave the reason",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
 				"expected_cash": {
 					"format": "numeric",
 					"type": "number"
@@ -20898,6 +20913,27 @@
 		"rowFilter.staff_shifts.created_at": {
 			"in": "query",
 			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.difference_note": {
+			"description": "the counting person's note with the reason (1 to 200 characters on one line)",
+			"in": "query",
+			"name": "difference_note",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.difference_reason": {
+			"description": "the counting person's reason for a cash difference (Q02): wrong_change (Trả nhầm tiền thừa), unrecorded_order (Quên ghi đơn), petty_cash (Chi tiền lặt vặt) or unknown (Chưa rõ nguyên nhân); set only by staff_clock_out on a shift whose count differs, cleared when a recount matches",
+			"in": "query",
+			"name": "difference_reason",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.staff_shifts.difference_reason_at": {
+			"description": "when the person gave the reason",
+			"in": "query",
+			"name": "difference_reason_at",
 			"required": false,
 			"type": "string"
 		},
@@ -55553,11 +55589,19 @@
 						"name": "args",
 						"required": true,
 						"schema": {
-							"description": "RPC for the counter web app (\"Ra ca\"): app.staff_clock_out at the current time",
+							"description": "RPC for the counter web app (\"Ra ca\", Q02): app.staff_clock_out at the current time, with the person's reason and note for a difference",
 							"properties": {
 								"p_counted_cash": {
 									"format": "numeric",
 									"type": "number"
+								},
+								"p_note": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_reason": {
+									"format": "text",
+									"type": "string"
 								}
 							},
 							"required": ["p_counted_cash"],
@@ -55578,7 +55622,7 @@
 						"description": "OK"
 					}
 				},
-				"summary": "RPC for the counter web app (\"Ra ca\"): app.staff_clock_out at the current time",
+				"summary": "RPC for the counter web app (\"Ra ca\", Q02): app.staff_clock_out at the current time, with the person's reason and note for a difference",
 				"tags": ["(rpc) staff_clock_out"]
 			}
 		},
@@ -58269,6 +58313,15 @@
 						"$ref": "#/parameters/rowFilter.staff_shifts.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_reason_at"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -58335,6 +58388,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.staff_shifts.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_reason_at"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -58430,6 +58492,15 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.staff_shifts.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_reason"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_note"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.staff_shifts.difference_reason_at"
 					},
 					{
 						"$ref": "#/parameters/body.staff_shifts"

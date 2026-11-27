@@ -2180,6 +2180,7 @@ Per brand: `menu_categories` (name 1–40, order, visible), `menu_items` (catego
 
 - `app.roster_lock_guard(roster row)` (migration `staff_lock_guards`): `deactivate_staff` and `update_staff` (a change of role or stores) refuse one's own entry and the tenant's only owner (`42501`, hints `own_entry`, `last_owner`).
 - `app.counter_shift_open(store, user, at)` and the trigger `order_payments_need_shift` (before insert on `order_payments`, `app.order_payments_need_shift()`; migration `counter_payment_needs_shift`): a cash or card payment recorded by a person needs that person's open shift at the store, begun by the payment; `counter_record_payment` answers `shift_required` first, the trigger refuses any other writer (`42501`, hint `shift_required`); rows without a recorder are not checked.
+- `staff_shifts` gains `difference_reason` (`wrong_change`, `unrecorded_order`, `petty_cash`, `unknown`), `difference_note` (1–200) and `difference_reason_at`, all three set together and only on a shift that was counted with a difference (CHECK `staff_shifts_difference_reason_fields_check`); written only by `app.staff_clock_out(counted, at, reason, note)` (migration `shift_difference_reason`), cleared by a matching recount.
 
 ## Row-level security
 

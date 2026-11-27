@@ -2985,7 +2985,7 @@ returns jsonb
 
 Tests: pgTAP `272_store_requests.sql`, rows in `120`, `121`, `03`, `47` and `170`.
 
-Shifts (step 8, migration `staff_shifts`, native-till.md section 12). A shift as its person sees it is `{id, store_id, business_date, clock_in_at, clock_out_at, hours, opening_cash, counted_cash, status, closed_at, close_note, version}`, with `expected_cash` and `cash_difference` once counted (the count is blind); a manager also sees `user_id`, `name` (the roster's), `closed_by` and the expected cash at any time.
+Shifts (step 8, migration `staff_shifts`, native-till.md section 12). A shift as its person sees it is `{id, store_id, business_date, clock_in_at, clock_out_at, hours, opening_cash, counted_cash, status, closed_at, close_note, difference_reason, difference_note, version}`, with `expected_cash` and `cash_difference` once counted (the count is blind); a manager also sees `user_id`, `name` (the roster's), `closed_by` and the expected cash at any time.
 
 #### `public.staff_clock_in`, `public.staff_clock_out` and `public.staff_my_shift`
 
@@ -2995,7 +2995,7 @@ returns jsonb
 ```
 
 ```sql
-public.staff_clock_out(p_counted_cash numeric)
+public.staff_clock_out(p_counted_cash numeric, p_reason text DEFAULT NULL::text, p_note text DEFAULT NULL::text)
 returns jsonb
 ```
 
@@ -3006,7 +3006,7 @@ returns jsonb
 
 - **Status:** built (step 8).
 - **Who may call:** clocking in, an owner, manager or staff member whose scope holds the store; clocking out and one's own shift, any member (`42501` otherwise).
-- **Notes:** "Vào ca" answers `{state: "clocked_in" | "refused", refusal, shift}` with refusals `counter_qr_invalid` (5 misses of a person and 20 of a store in 15 minutes, then `rate_limited` with `retry_at`) and `already_clocked_in` (a shift not closed, also one awaiting confirmation); a malformed code or a fraction of a dong is `22023`. "Ra ca" answers `{state: "closed" | "awaiting_confirmation" | "refused", refusal, shift}`: closed when the count equals the opening cash plus the cash the person recorded less the cash they handed back during the shift, awaiting a manager otherwise; counting again while it waits keeps the first clock-out time; `not_clocked_in` without a shift. `staff_my_shift` gives `{shift, recent, months}`: the shift not closed, the last 10 and the worked days of the month per store.
+- **Notes:** "Vào ca" answers `{state: "clocked_in" | "refused", refusal, shift}` with refusals `counter_qr_invalid` (5 misses of a person and 20 of a store in 15 minutes, then `rate_limited` with `retry_at`) and `already_clocked_in` (a shift not closed, also one awaiting confirmation); a malformed code or a fraction of a dong is `22023`. "Ra ca" answers `{state: "closed" | "awaiting_confirmation" | "refused", refusal, shift}`: closed when the count equals the opening cash plus the cash the person recorded less the cash they handed back during the shift, awaiting a manager otherwise; counting again while it waits keeps the first clock-out time; `not_clocked_in` without a shift. The answer carries `reason_required`, true while a difference has no reason of the person's (Q02, migration `shift_difference_reason`): they count again with `p_reason` (`wrong_change`, `unrecorded_order`, `petty_cash` or `unknown`) and `p_note` (1–200 characters on one line; a reason without a note, a note without a reason or another reason is `22023`), which the shift then shows to them and to the manager as `difference_reason` and `difference_note`; a later reason replaces it, a recount without one keeps it, and a recount that matches closes the shift and clears it. The manager still confirms a difference with their own note and never on their own shift; the manager PIN at the counter (Q02, decision D3) is not built. `staff_my_shift` gives `{shift, recent, months}`: the shift not closed, the last 10 and the worked days of the month per store.
 
 #### `public.manager_counter_qr`, `public.manager_confirm_shift` and `public.manager_close_shift`
 
