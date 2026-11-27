@@ -2943,14 +2943,7 @@ returns jsonb
 
 #### `public.web_submit_request`
 
-```sql
-public.web_submit_request(p_brand uuid, p_client_key text, p_request jsonb)
-returns jsonb
-```
-
-- **Status:** built (step 7); its Edge Function is not built yet.
-- **Who may call:** the service role only, from the website's Edge Function.
-- **Notes:** `p_brand` is the brand of the site (`22023` unknown); `p_client_key` an opaque key of 16–200 characters the function derives for the visitor, of which only the SHA-256 is kept; 3 calls an hour per client key, 100 per store.
+Built (step 7); its Edge Function is not built yet. The service role only may execute it, from the website's Edge Function, so it is not part of this page's check: `web_submit_request(p_brand uuid, p_client_key text, p_request jsonb)` returns jsonb. `p_brand` is the brand of the site (`22023` unknown); `p_client_key` an opaque key of 16–200 characters the function derives for the visitor, of which only the SHA-256 is kept; 3 calls an hour per client key, 100 per store.
 
 #### `public.customer_requests` and `public.customer_cancel_request`
 
@@ -2971,7 +2964,7 @@ returns jsonb
 #### `public.manager_requests`
 
 ```sql
-public.manager_requests(p_store uuid, p_status text default null, p_limit integer default 50)
+public.manager_requests(p_store uuid, p_status text DEFAULT NULL::text, p_limit integer DEFAULT 50)
 returns jsonb
 ```
 
@@ -2997,7 +2990,7 @@ Shifts (step 8, migration `staff_shifts`, native-till.md section 12). A shift as
 #### `public.staff_clock_in`, `public.staff_clock_out` and `public.staff_my_shift`
 
 ```sql
-public.staff_clock_in(p_store uuid, p_counter_token text, p_opening_cash numeric default 0)
+public.staff_clock_in(p_store uuid, p_counter_token text, p_opening_cash numeric DEFAULT 0)
 returns jsonb
 ```
 
@@ -3007,7 +3000,7 @@ returns jsonb
 ```
 
 ```sql
-public.staff_my_shift(p_month date default null)
+public.staff_my_shift(p_month date DEFAULT NULL::date)
 returns jsonb
 ```
 
@@ -3018,7 +3011,7 @@ returns jsonb
 #### `public.manager_counter_qr`, `public.manager_confirm_shift` and `public.manager_close_shift`
 
 ```sql
-public.manager_counter_qr(p_store uuid, p_rotate boolean default false)
+public.manager_counter_qr(p_store uuid, p_rotate boolean DEFAULT false)
 returns jsonb
 ```
 
@@ -3028,7 +3021,7 @@ returns jsonb
 ```
 
 ```sql
-public.manager_close_shift(p_shift uuid, p_clock_out_at timestamptz, p_counted_cash numeric, p_note text)
+public.manager_close_shift(p_shift uuid, p_clock_out_at timestamp with time zone, p_counted_cash numeric, p_note text)
 returns jsonb
 ```
 
@@ -3063,27 +3056,7 @@ Tests: pgTAP `273_staff_shifts.sql`, rows in `120`, `121`, `03`, `47` and `170`.
 
 The counter web app (ADR-064) signs people in with Zalo's web login through the Edge Function `counter-session` (section 5), which maps the Zalo identity to a member with the same `zalo_session_sign_in` and `zalo_session_pair` as the staff Mini App. Migration `counter_sign_in` adds what is new: the brand's Zalo App with its public id for the function, and the people Zalo verified but the roster refused (acceptance criterion 5), which owners and managers read and answer in Quản lý → Nhân sự (screen M02). The table `app.blocked_signins` is read by no API role; the Zalo user id never leaves the database. Tests: pgTAP `274_counter_sign_in.sql`, rows in `120` and `47`.
 
-#### `public.counter_session_app`
-
-```sql
-public.counter_session_app(p_brand_key text, p_tenant_id uuid DEFAULT NULL::uuid)
-returns TABLE(tenant_id uuid, tenant_slug text, zalo_app_id uuid, external_id text, secret_name text, status text)
-```
-
-- **Status:** built (migration `counter_sign_in`).
-- **Who may call:** the service role only (the `counter-session` Edge Function).
-- **Notes:** the Zalo App of a brand key as `zalo_session_app` answers it, with `external_id`, the public Zalo App id the authorise address and the token exchange name; two rows when the key is shared by two tenants (the function then refuses it as ambiguous).
-
-#### `public.counter_record_blocked_signin`
-
-```sql
-public.counter_record_blocked_signin(p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text DEFAULT NULL::text, p_device text DEFAULT NULL::text)
-returns jsonb
-```
-
-- **Status:** built (migration `counter_sign_in`).
-- **Who may call:** the service role only (the `counter-session` Edge Function, after Zalo verified the person and the roster refused them).
-- **Notes:** `{recorded}`: one row per Zalo identity counting the attempts, with the Zalo name and a short device line (at most 60 characters, else dropped); a dismissed or approved row is pending again at a new attempt. Nothing for an identity bound to a member of the tenant. Rows older than 30 days are removed and a tenant keeps at most 200 (`recorded: false` beyond; the sign-in is refused all the same). `22023` for an unknown app or a malformed user id.
+Two functions are for the `counter-session` Edge Function only: the service role may execute them, `authenticated` and `anon` get `42501`, and like the Zalo sign-in RPCs of section 3.10 they are not part of this page's check. `counter_session_app(p_brand_key text, p_tenant_id uuid DEFAULT NULL::uuid)` answers the Zalo App of a brand key as `zalo_session_app` does, with `external_id`, the public Zalo App id the authorise address and the token exchange name (two rows when the key is shared by two tenants; the function then refuses it as ambiguous). `counter_record_blocked_signin(p_zalo_app_id uuid, p_zalo_user_id text, p_display_name text DEFAULT NULL::text, p_device text DEFAULT NULL::text)` answers `{recorded}` after Zalo verified a person the roster refused: one row per Zalo identity counting the attempts, with the Zalo name and a short device line (at most 60 characters, else dropped); a dismissed or approved row is pending again at a new attempt; nothing for an identity bound to a member of the tenant; rows older than 30 days are removed and a tenant keeps at most 200 (`recorded: false` beyond; the sign-in is refused all the same); `22023` for an unknown app or a malformed user id.
 
 #### `public.manager_blocked_signins`
 
