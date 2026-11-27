@@ -98,6 +98,7 @@ export {
 } from "./lock-key.js";
 export {
 	mapCatalog,
+	mapOptionGroups,
 	mergeCatalogs,
 	resolvePaymentKind,
 } from "./mapping/catalog.js";

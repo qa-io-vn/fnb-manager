@@ -64,6 +64,7 @@ export const REBUILT_PARTS = [
 	"login and stores: rebuilt from the stores and the company and brand ids of the shift payloads; user and company names are left out",
 	"sale lines and payments: each stored payload is merged back onto its invoice payload, which restores the fields the sync left out because they equal the invoice's",
 	"voided invoices are left out of the sale report, as iPOS no longer lists them",
+	"customizations: rebuilt from the stored option groups (each group keeps its iPOS option, position and customization) with their targets as list_item when the account has any, else from the zero-priced modifiers without targets",
 ];
 
 function isRow(value: unknown): value is SnapshotRow {
@@ -321,6 +322,87 @@ async function coverageOf(
 	return { from: row?.from ?? null, to: row?.to ?? null };
 }
 
+interface StoredCustomization {
+	name: string | null;
+	active: boolean;
+	targets: Set<string>;
+	options: Map<number, SnapshotRow>;
+}
+
+/**
+ * The account's customizations as iPOS would list them, rebuilt from the stored option groups (ADR-058 phase 3):
+ * each group's raw keeps the customization id and name, the option's position and the iPOS option itself, and its
+ * targets give list_item. Null when the database has no option-group tables or the account no group, so the
+ * caller falls back to the modifiers.
+ */
+async function customizationsFromOptionGroups(
+	sql: Sql,
+	accountId: string,
+): Promise<SnapshotRow[] | null> {
+	const [present] = await sql<{ ready: boolean }[]>`
+		select to_regclass('public.item_option_groups') is not null
+			and to_regclass('public.item_option_group_targets') is not null as ready
+	`;
+	if (!present?.ready) {
+		return null;
+	}
+	const groups = await sql<
+		{ active: boolean; raw: unknown; targets: string[] }[]
+	>`
+		select g.active, g.raw,
+			coalesce(
+				(select array_agg(t.item_external_id order by t.item_external_id)
+				 from public.item_option_group_targets t
+				 where t.pos_account_id = g.pos_account_id and t.group_external_id = g.external_id),
+				'{}'::text[]
+			) as targets
+		from public.item_option_groups g
+		where g.pos_account_id = ${accountId}
+		order by g.external_id
+	`;
+	const customizations = new Map<string, StoredCustomization>();
+	for (const group of groups) {
+		const raw = isRow(group.raw) ? group.raw : null;
+		const uid = text(raw?.customizationUid);
+		const position = raw?.position;
+		if (
+			!raw ||
+			!uid ||
+			typeof position !== "number" ||
+			!Number.isInteger(position) ||
+			!isRow(raw.option)
+		) {
+			continue;
+		}
+		const entry = customizations.get(uid) ?? {
+			name: text(raw.customizationName),
+			active: group.active,
+			targets: new Set<string>(),
+			options: new Map<number, SnapshotRow>(),
+		};
+		entry.active ||= group.active;
+		for (const target of group.targets) {
+			entry.targets.add(target);
+		}
+		entry.options.set(position, raw.option);
+		customizations.set(uid, entry);
+	}
+	if (customizations.size === 0) {
+		return null;
+	}
+	return [...customizations].map(([uid, entry]) => ({
+		id: uid,
+		name: entry.name ?? text(entry.options.get(0)?.Name) ?? uid,
+		active: entry.active ? 1 : 0,
+		list_item: [...entry.targets].sort(),
+		data: {
+			LstItem_Options: [...entry.options]
+				.sort(([left], [right]) => left - right)
+				.map(([, option]) => option),
+		},
+	}));
+}
+
 interface MasterRows {
 	items: SnapshotRow[];
 	itemTypes: SnapshotRow[];
@@ -370,6 +452,7 @@ async function masterRows(
 			.map((row) => row.raw)
 			.filter(isRow);
 	const typeId = (externalId: string) => typeUids.get(externalId) ?? externalId;
+	const fromOptionGroups = await customizationsFromOptionGroups(sql, accountId);
 	const customizations = new Map<string, SnapshotRow[]>();
 	for (const raw of await raws("customizations")) {
 		const uid = text(raw.customizationUid);
@@ -433,13 +516,15 @@ async function masterRows(
 		})),
 		promotions: await raws("promotions"),
 		packages: await raws("packages"),
-		customizations: [...customizations].map(([uid, options]) => ({
-			id: uid,
-			name: text(options[0]?.Name) ?? uid,
-			active: 1,
-			list_item: [],
-			data: { LstItem_Options: options },
-		})),
+		customizations:
+			fromOptionGroups ??
+			[...customizations].map(([uid, options]) => ({
+				id: uid,
+				name: text(options[0]?.Name) ?? uid,
+				active: 1,
+				list_item: [],
+				data: { LstItem_Options: options },
+			})),
 	};
 }
 

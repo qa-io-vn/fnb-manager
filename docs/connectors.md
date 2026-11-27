@@ -58,6 +58,10 @@ For each sale:
 - the catalog and the sales agree on what a modifier is: a line that references a catalog item with `isModifier: true` (or an id listed in `catalog.modifiers`) has `lineKind: "modifier"`, and a `modifier` line never references a catalog item with `isModifier: false`
 - `vatAmount` is only VAT added on top of the prices; VAT already included in prices stays inside the amounts
 
+### Option groups
+
+`CanonicalCatalog.optionGroups` is optional. A connector that leaves it out does not map option groups, and the sync then leaves the option-group tables of the account as they are; a connector that sets it (even to `[]`) makes them equal to it on every master-data run. Each group is `{externalId, name, minSelect (0–20), maxSelect (1–20, at least minSelect), optionItemExternalIds, appliesToItemExternalIds, active, raw}`; options and targets are POS item ids, each named once per group; a group carries no money (an option's price is the POS price of its item). The groups feed the one-time import of a store's menu into the native catalogue (ADR-060), nothing else. `modifiers` stays as it was: the zero-priced customisation items only. The iPOS adapter gives one group per customization and position in its `LstItem_Options` (`<customization id>:<position>`, limits from `Min_Permitted` and `Max_Permitted` clamped, a missing maximum read as the number of options, targets from `list_item`, priced and zero-priced options alike); the mock lists a required sugar group (1..1), an optional ice group (0..1) and a milk-tea topping group (0..3) with priced toppings and a free one.
+
 Control totals (`CanonicalDailyTotal`) count and sum the sales the connector emits for that business date, excluding sales with `status: "voided"`.
 
 ### Adjustments
@@ -150,6 +154,7 @@ It authenticates, discovers a store, fetches the catalog, fetches the window twi
 | the descriptor has an id, a label and a boolean for every capability; its credentials schema rejects `{}` | – | always |
 | the store, the catalog, every sale, shift, adjustment and control total match the canonical zod schemas; sale and line ids are unique | `schema`, `unique-ids` | always (shifts, adjustments and control totals only when declared) |
 | the catalog lists at least one item | – | `lines` |
+| option groups (when the catalog has `optionGroups`): unique group ids; 0 ≤ min ≤ max ≤ 20 and max ≥ 1; no option or target named twice in a group; with `expectOptionGroupReferences` (default true) every option and target is an item of the catalog and an active required group offers at least `minSelect` options | `option-group-unique`, `option-group-limits`, `option-group-ids`, `option-group-catalog`, `option-group-satisfiable` | always |
 | the window emits at least one sale | – | always |
 | external ids, amounts, line ids and payments (count, method, amount) are identical across the two runs | `stable-ids` | always |
 | every sale's `businessDate` is inside the window and equals the date derived from `soldAt` in the store's timezone and day start | `business-date` | always |

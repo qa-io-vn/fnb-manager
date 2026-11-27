@@ -178,6 +178,8 @@ select 'store_a1', store_a1::text from fx union all
 select 'store_a2', store_a2::text from fx union all
 select 'store_b1', store_b1::text from fx union all
 select 'app_a', app_a::text from fx union all
+select 'brand_a', brand_a::text from fx union all
+select 'brand_b', brand_b::text from fx union all
 select 'hold_code', (select code from public.redemptions where id = (select id from ids where name = 'redemption'))
 union all
 select name, id::text from ids;
@@ -497,7 +499,42 @@ insert into matrix (fn, label, statement, expect) values
   '{"*": "DENY", "service": "GATE"}'),
 ('zalo_relay_current', 'zalo_relay_current',
   $$select coalesce(public.zalo_relay_current(), 'none')$$,
-  '{"*": "DENY", "service": "GATE"}');
+  '{"*": "DENY", "service": "GATE"}'),
+-- ADR-060: the native till's menu. Customer reads for the session's brand (another brand's store is 22023); the
+-- counter for owners, managers and staff of the store; the till mode and the import for owners with every store.
+('customer_menu', 'customer_menu at A1',
+  $$select (public.customer_menu('sa-1') ? 'categories')::text$$,
+  '{"*": "DENY", "customer": "^ok:true$", "visitor": "^ok:true$", "customer_b": "BAD"}'),
+('customer_menu_version', 'customer_menu_version at A1',
+  $$select (public.customer_menu_version('sa-1') ? 'menu_version')::text$$,
+  '{"*": "DENY", "customer": "^ok:true$", "visitor": "^ok:true$", "customer_b": "BAD"}'),
+('counter_menu', 'counter_menu at A1',
+  $$select jsonb_array_length(public.counter_menu('{store_a1}') -> 'items')$$,
+  '{"*": "DENY", "owner": "^ok:0$", "owner_a1": "^ok:0$", "manager": "^ok:0$", "manager_a1": "^ok:0$", "staff": "^ok:0$"}'),
+('counter_menu', 'counter_menu at A2',
+  $$select jsonb_array_length(public.counter_menu('{store_a2}') -> 'items')$$,
+  '{"*": "DENY", "owner": "^ok:0$", "manager": "^ok:0$", "staff_a2": "^ok:0$"}'),
+('counter_set_sold_out', 'counter_set_sold_out of an item not on the menu at A1',
+  $$select public.counter_set_sold_out('{store_a1}', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012099', true)::text$$,
+  '{"*": "DENY", "owner": "BAD", "owner_a1": "BAD", "manager": "BAD", "manager_a1": "BAD", "staff": "BAD"}'),
+('counter_set_pause', 'counter_set_pause at A1 without settings',
+  $$select public.counter_set_pause('{store_a1}', 15, null)::text$$,
+  '{"*": "DENY", "owner": "BAD", "owner_a1": "BAD", "manager": "BAD", "manager_a1": "BAD", "staff": "BAD"}'),
+('counter_set_pause', 'counter_set_pause for 90 minutes at A1',
+  $$select public.counter_set_pause('{store_a1}', 90, null)::text$$,
+  '{"*": "DENY", "owner": "BAD", "owner_a1": "BAD", "manager": "BAD", "manager_a1": "BAD"}'),
+('set_store_till_mode', 'set_store_till_mode of A1',
+  $$select public.set_store_till_mode('{store_a1}', 'native') ->> 'till_mode'$$,
+  '{"*": "DENY", "owner": "^ok:native$"}'),
+('set_store_till_mode', 'set_store_till_mode of B1',
+  $$select public.set_store_till_mode('{store_b1}', 'native') ->> 'till_mode'$$,
+  '{"*": "DENY", "owner_b": "^ok:native$"}'),
+('import_menu_from_pos', 'import_menu_from_pos of brand A from A1',
+  $$select public.import_menu_from_pos('{brand_a}', '{store_a1}') ->> 'state'$$,
+  '{"*": "DENY", "owner": "^ok:imported$"}'),
+('import_menu_from_pos', 'import_menu_from_pos of brand B from B1',
+  $$select public.import_menu_from_pos('{brand_b}', '{store_b1}') ->> 'state'$$,
+  '{"*": "DENY", "owner_b": "^ok:imported$"}');
 
 insert into ph select 'customer_2_u', customer_2_u::text from fx;
 
@@ -518,7 +555,7 @@ where n.nspname = 'public'
   and d.objid is null
   and p.prorettype <> 'trigger'::regtype
   and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('service_role', p.oid, 'execute'))
-  and p.proname ~ '(customer|loyalty|coupon|redemption|redeem|dsr|member|notification|bot|muted|oa_|_oa|zalo|phone|voucher|claim|checkin|^staff_|consent|^bill_)';
+  and p.proname ~ '(customer|loyalty|coupon|redemption|redeem|dsr|member|notification|bot|muted|oa_|_oa|zalo|phone|voucher|claim|checkin|^staff_|consent|^bill_|^counter_|import_menu|till_mode|table_qr|order|ordering|sold_out|checkout)';
 
 select plan((select count(*)::integer from cells) + 4);
 

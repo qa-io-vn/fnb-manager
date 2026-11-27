@@ -3,6 +3,7 @@ import type {
 	CanonicalItem,
 	CanonicalItemType,
 	CanonicalModifier,
+	CanonicalOptionGroup,
 	PaymentKind,
 } from "@fnb/core";
 import { roundMoney } from "@fnb/core";
@@ -402,6 +403,52 @@ function simpleItem(
 	};
 }
 
+const MILK_TEA_CATEGORY = "Trà sữa";
+const TOPPING_GROUP_MAX = 3;
+
+/**
+ * The mock's option groups (ADR-058 phase 3), deterministic and built only from items of the catalogue: the
+ * sugar group is required (exactly one, like a size), the ice group optional (at most one), both on every drink;
+ * the topping group of the milk teas takes up to three of four priced toppings and one zero-priced free topping.
+ */
+function buildOptionGroups(
+	modifierGroups: readonly ModifierGroup[],
+	toppings: readonly MenuItem[],
+	freeToppings: readonly MenuItem[],
+	drinks: readonly MenuItem[],
+): CanonicalOptionGroup[] {
+	const drinkIds = drinks.map((drink) => drink.externalId);
+	const modifierLimits = [
+		{ minSelect: 1, maxSelect: 1 },
+		{ minSelect: 0, maxSelect: 1 },
+	];
+	const fromModifiers = modifierGroups.map((group, index) => ({
+		externalId: `${group.externalId}:0`,
+		name: group.name,
+		...(modifierLimits[index] ?? { minSelect: 0, maxSelect: 1 }),
+		optionItemExternalIds: group.options.map((option) => option.externalId),
+		appliesToItemExternalIds: drinkIds,
+		active: true,
+		raw: null,
+	}));
+	const toppingGroup: CanonicalOptionGroup = {
+		externalId: `CUST-${pad(modifierGroups.length + 1)}:0`,
+		name: TOPPING_CATEGORY,
+		minSelect: 0,
+		maxSelect: TOPPING_GROUP_MAX,
+		optionItemExternalIds: [
+			...toppings.slice(0, 4).map((topping) => topping.externalId),
+			...freeToppings.slice(0, 1).map((topping) => topping.externalId),
+		],
+		appliesToItemExternalIds: drinks
+			.filter((drink) => drink.itemTypeName === MILK_TEA_CATEGORY)
+			.map((drink) => drink.externalId),
+		active: true,
+		raw: null,
+	};
+	return [...fromModifiers, toppingGroup];
+}
+
 export function buildMenu(): Menu {
 	const itemTypes = buildItemTypes();
 	const drinks: MenuItem[] = [];
@@ -477,6 +524,12 @@ export function buildMenu(): Menu {
 		appliesToItemExternalIds: drinks.map((drink) => drink.externalId),
 		raw: { options: group.options.map((option) => option.externalId) },
 	}));
+	const optionGroups = buildOptionGroups(
+		modifierGroups,
+		toppings,
+		freeToppings,
+		drinks,
+	);
 	const paymentMethods: {
 		externalId: string;
 		name: string;
@@ -494,6 +547,7 @@ export function buildMenu(): Menu {
 			{ externalId: "CLASS-02", name: FOOD_CLASS },
 		],
 		modifiers,
+		optionGroups,
 		paymentMethods,
 		sources: [
 			{ externalId: "SRC-01", name: "TẠI CHỖ", isDelivery: false },

@@ -2614,6 +2614,91 @@ returns TABLE(store_id uuid, business_date date, staff_user_id uuid, staff_name 
 
 Tests: pgTAP `120_security_function_matrix.sql`, `121_security_table_matrix.sql` and `222_bill_state_transitions.sql`.
 
+### 3.27 The native till (ADR-060 to ADR-065)
+
+A store whose till mode is `native` sells from a menu its brand owns and takes orders in this platform ([deep-dives/native-till.md](deep-dives/native-till.md)). The functions below are `security definer` RPCs for `authenticated` only, thin wrappers over an `app.*` core run at `now()` that checks the caller itself. `customer_*` functions need a customer session (visitor or member) of the store's brand: a store of another brand or a malformed code is `22023`, as for the other customer functions. `counter_*` functions are for owners, managers and staff whose scope holds the store (`42501` otherwise, the same for a store that does not exist), the server side of the counter web app (ADR-064). Prices in answers are whole đồng as integers.
+
+Owners and managers whose scope holds every store of a brand write the menu tables directly under RLS (section 4); the price log is written by triggers.
+
+#### `public.customer_menu`
+
+```sql
+public.customer_menu(p_store_code text, p_order_type text DEFAULT NULL::text)
+returns jsonb
+```
+
+- **Status:** built (step 1, migration `native_catalogue`).
+- **Who may call:** a customer session of the store's brand.
+- **Notes:** `{store: {code, name, address, opening_hours}, order_type, ordering, menu_version, currency, categories: [{id, name, items: [{id, name, description, photo_path, labels, order_types, counts_for_stamps, sizes: [{id, label, price, is_default}], option_group_ids}]}], option_groups: [{id, name, min_select, max_select, options: [{id, name, price_delta, is_default}]}], unavailable_items: [item id]}`. Only items on sale in a visible category, not restricted, with an active size, offered at the store, not sold out and offered for `p_order_type` (`table` or `takeaway`; null for both) are listed; `unavailable_items` names the items on sale that are not, so a basket can warn. `ordering` is the store's ordering state: `{accepting, reason, till_mode, order_types, payment_methods, opens_at, closes_at, last_order_at, paused_until, closure_reason, closure_ends_on}` with `reason` one of `ordering_off`, `hours_unknown`, `closed_today`, `paused`, `closed_now`, `last_orders_passed`, `no_staff_online`, `busy`. An `ipos` store answers no item.
+
+#### `public.customer_menu_version`
+
+```sql
+public.customer_menu_version(p_store_code text)
+returns jsonb
+```
+
+- **Status:** built (step 1).
+- **Who may call:** a customer session of the store's brand.
+- **Notes:** `{menu_version, ordering, unavailable_items}`, about 200 bytes, for a poll every 3 seconds while the menu or the basket is open: a new version means "read the menu again"; an item switched sold out at the counter is in `unavailable_items` from the next poll (acceptance criterion 2, within 5 seconds).
+
+#### `public.counter_menu`
+
+```sql
+public.counter_menu(p_store uuid)
+returns jsonb
+```
+
+- **Status:** built (step 1).
+- **Who may call:** an owner, manager or staff member whose scope holds the store.
+- **Notes:** `{store_id, business_date, day_ends_at, ordering, items: [{id, brand_id, category, name, order_types, available, sold_out_until, sizes, option_group_ids}], option_groups}`: every item on sale of the brands covering the store, for the counter's order form and its sold-out switches.
+
+#### `public.counter_set_sold_out`
+
+```sql
+public.counter_set_sold_out(p_store uuid, p_item uuid, p_sold_out boolean, p_until timestamp with time zone DEFAULT NULL::timestamp with time zone)
+returns jsonb
+```
+
+- **Status:** built (step 1).
+- **Who may call:** an owner, manager or staff member whose scope holds the store.
+- **Notes:** switches an item sold out until `p_until` (within 7 days; by default the end of the business day) or available again (`p_sold_out` false, no time). Answers `{item_id, sold_out, sold_out_until, menu_version}`; the change moves the menu version and records who set it. `22023` for an item that is not on the store's menu or a time out of bounds.
+
+#### `public.counter_set_pause`
+
+```sql
+public.counter_set_pause(p_store uuid, p_minutes integer, p_reason text DEFAULT NULL::text)
+returns jsonb
+```
+
+- **Status:** built (step 1).
+- **Who may call:** an owner, manager or staff member whose scope holds the store; staff up to 60 minutes (`42501` beyond), owners and managers up to 1,440.
+- **Notes:** holds new orders for `p_minutes` (0 resumes) with an optional reason of at most 80 characters on one line; orders already in the queue are not affected. Answers `{paused_until, paused_reason, ordering}`. `22023` for a store without ordering settings, a negative or too long pause, or a bad reason.
+
+#### `public.set_store_till_mode`
+
+```sql
+public.set_store_till_mode(p_store uuid, p_mode text)
+returns jsonb
+```
+
+- **Status:** built (step 1).
+- **Who may call:** an owner with every store of the tenant.
+- **Notes:** `ipos` or `native`; creates the store's `store_ordering_settings` row when it has none (ordering still off). Answers `{store_id, till_mode, ordering_enabled}`. The column is not writable by any other path.
+
+#### `public.import_menu_from_pos`
+
+```sql
+public.import_menu_from_pos(p_brand uuid, p_store uuid)
+returns jsonb
+```
+
+- **Status:** built (step 1).
+- **Who may call:** an owner whose scope holds every store of the brand.
+- **Notes:** the one-time import of the brand's empty menu from the POS catalogue of one of its stores (ADR-060): a category per POS item type, an item per POS base name with a size per POS size at the store's list price (else the item's), the POS option groups targeting those items with their option items' prices, alcohol and beer restricted and hidden. Answers `{state: "imported", counts: {categories, items, sizes, restricted, option_groups, options}, menu_version}`, or `{state: "refused", refusal: "already_imported" | "menu_not_empty"}`. `22023` for a store that is not the brand's.
+
+Tests: pgTAP `260_native_catalogue.sql`, `261_ordering_state.sql`, `120_security_function_matrix.sql` and `121_security_table_matrix.sql`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -2771,6 +2856,20 @@ Built locally (migrations `loyalty_programmes` to `loyalty_jobs`, pgTAP `60` to 
 | `loyalty_refusals` | why an invoice did not earn, for the shift anomaly report | owners, managers and viewers, stores in scope | none | none |
 | `loyalty_queue` | check-ins and claims with two candidate invoices, waiting for a manager | owners and managers, stores in scope | none ([`resolve_loyalty_queue_item`](#publicresolve_loyalty_queue_item)) | none |
 | `loyalty_liability_daily` | the nightly points liability, breakage and deferred revenue per programme and day | owners, managers and viewers of the tenant | none | none |
+
+### The native till (ADR-060)
+
+Built locally (migration `native_catalogue`, pgTAP `260` and `261`); empty until a store switches to `native` and its brand's menu is made or imported.
+
+| Relation | Purpose | Who reads | Client writes | Read by a client today |
+|---|---|---|---|---|
+| `store_ordering_settings` | a store's till mode and ordering settings | owners, managers and viewers, stores in scope | owners and managers in scope, every column but `till_mode`, `payment_methods` and the pause | none |
+| `ordering_closures` | business dates without orders | owners, managers and viewers, stores in scope | owners and managers in scope | none |
+| `menu_categories`, `menu_items`, `menu_item_sizes`, `menu_option_groups`, `menu_options`, `menu_item_option_groups` | a native brand's menu with its prices | owners, managers and viewers of the tenant | owners and managers whose scope holds every store of the brand (not the import provenance or the author columns) | none (the counter app later) |
+| `menu_store_items` | per-store offered switch and sold-out time | owners, managers and viewers, stores in scope | owners and managers in scope (`offered`, `sold_out_until`); staff through `counter_set_sold_out` | none |
+| `menu_price_changes` | the append-only price log | owners, managers and viewers of the tenant | none (triggers) | none |
+| `menu_imports` | the one-time import of a brand's menu | owners, managers and viewers of the tenant | none | none |
+| `item_option_groups`, `item_option_group_options`, `item_option_group_targets` | the POS option groups, written by the master-data run | data roles of the tenant | none | none |
 
 ## 5. Edge Function endpoints
 

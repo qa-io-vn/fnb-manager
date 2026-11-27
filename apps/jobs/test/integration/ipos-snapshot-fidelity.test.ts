@@ -5,7 +5,9 @@ import {
 } from "@fnb/connector-ipos/snapshot";
 import { connectAccount, type IposSnapshots } from "@fnb/runner";
 import {
+	mapOptionGroups,
 	mapSale,
+	mergeCatalogs,
 	type StoreRecord,
 	salePayloadRecord,
 	toCanonicalStore,
@@ -42,6 +44,28 @@ async function liveTenantId(): Promise<string | null> {
 }
 
 const tenantId = await liveTenantId();
+
+async function storedOptionGroupCount(): Promise<number> {
+	if (!DATABASE_URL || tenantId === null) {
+		return 0;
+	}
+	const sql = createPostgresClient(DATABASE_URL);
+	try {
+		const [row] = await sql<{ groups: number }[]>`
+			select case when to_regclass('public.item_option_groups') is null then 0
+				else (select count(*)::int from public.item_option_groups where tenant_id = ${tenantId}::uuid)
+			end as groups
+		`;
+		return row?.groups ?? 0;
+	} catch {
+		return 0;
+	} finally {
+		await sql.end({ timeout: 5 });
+	}
+}
+
+// ADR-058 phase 3: the option groups are compared once a master-data run has stored some for the tenant.
+const optionGroupsStored = (await storedOptionGroupCount()) > 0;
 
 function stable(value: unknown): string {
 	if (value === null || typeof value !== "object") {
@@ -335,5 +359,99 @@ describe.skipIf(tenantId === null)(
 			});
 			console.log(`compared counts: ${JSON.stringify(counts)}`);
 		}, 600_000);
+
+		it.skipIf(!optionGroupsStored)(
+			"replays every stored option group with its limits, options and targets",
+			async () => {
+				const sql = createPostgresClient(DATABASE_URL ?? "");
+				const network = vi.spyOn(globalThis, "fetch");
+				const counts = { groups: 0, options: 0, targets: 0 };
+				const differences = { groups: 0, options: 0, targets: 0 };
+				try {
+					for (const account of await iposAccountsOf(sql, tenantId ?? "")) {
+						const stored = {
+							groups: await sql<{ key: string }[]>`
+								select concat_ws(E'\\n', external_id, name, min_select, max_select, active) as key
+								from public.item_option_groups where pos_account_id = ${account.id}
+							`,
+							options: await sql<{ key: string }[]>`
+								select concat_ws(E'\\n', group_external_id, item_external_id, sort_order) as key
+								from public.item_option_group_options where pos_account_id = ${account.id}
+							`,
+							targets: await sql<{ key: string }[]>`
+								select concat_ws(E'\\n', group_external_id, item_external_id) as key
+								from public.item_option_group_targets where pos_account_id = ${account.id}
+							`,
+						};
+						if (stored.groups.length === 0) {
+							continue;
+						}
+						const built = await snapshotFromDatabase(sql, account);
+						const storage = createMemorySnapshotStorage();
+						await writeSnapshot(storage, built.content, { origin: "database" });
+						const session = await connectAccount(
+							{
+								key: account.account_key,
+								connector: "ipos-fabi",
+								email: "snapshot@example.com",
+								password: "never-sent",
+							},
+							{ IPOS_REAL_API: "off" },
+							{
+								snapshots: {
+									open: () => storage,
+									recordTo: () => null,
+									warn: () => undefined,
+								},
+							},
+						);
+						const catalogs = [];
+						for (const store of await session.connector.discoverStores()) {
+							catalogs.push(await session.connector.fetchCatalog(store));
+						}
+						const replayed = mapOptionGroups(
+							mergeCatalogs(catalogs).optionGroups ?? [],
+						);
+						const keys = {
+							groups: replayed.groups.map((group) =>
+								[
+									group.external_id,
+									group.name,
+									group.min_select,
+									group.max_select,
+									group.active,
+								].join("\n"),
+							),
+							options: replayed.options.map((option) =>
+								[
+									option.group_external_id,
+									option.item_external_id,
+									option.sort_order,
+								].join("\n"),
+							),
+							targets: replayed.targets.map((target) =>
+								[target.group_external_id, target.item_external_id].join("\n"),
+							),
+						};
+						for (const part of ["groups", "options", "targets"] as const) {
+							// concat_ws writes a boolean as true or false, as String() does.
+							const expected = new Set(stored[part].map((row) => row.key));
+							const actual = new Set(keys[part]);
+							counts[part] += expected.size;
+							differences[part] +=
+								[...expected].filter((key) => !actual.has(key)).length +
+								[...actual].filter((key) => !expected.has(key)).length;
+						}
+					}
+				} finally {
+					await sql.end({ timeout: 5 });
+				}
+				expect(network).not.toHaveBeenCalled();
+				expect(counts.groups).toBeGreaterThan(0);
+				expect(differences).toEqual({ groups: 0, options: 0, targets: 0 });
+				console.log(`compared option-group counts: ${JSON.stringify(counts)}`);
+			},
+			600_000,
+		);
 	},
 );

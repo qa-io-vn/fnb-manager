@@ -38,6 +38,7 @@ import {
 	type MemoryTables,
 	type MemoryTenant,
 	type StoredCatalogRow,
+	type StoredOptionGroupLinks,
 } from "./tables.js";
 
 export type MemoryOperation = keyof SyncRepository;
@@ -109,6 +110,10 @@ export class InMemorySyncRepository implements SyncRepository {
 
 	catalogRows(table: string): StoredCatalogRow[] {
 		return catalog.catalogRows(this.state, table);
+	}
+
+	optionGroupLinks(accountId: string): StoredOptionGroupLinks {
+		return structuredClone(catalog.optionGroupLinks(this.state, accountId));
 	}
 
 	async findAccounts(

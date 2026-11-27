@@ -2,6 +2,7 @@ import {
 	type CanonicalCatalog,
 	type CanonicalItem,
 	type CanonicalItemClass,
+	type CanonicalOptionGroup,
 	type CanonicalPaymentMethod,
 	classifyPaymentKind,
 	type PaymentKind,
@@ -13,6 +14,7 @@ import type {
 	CatalogEntryRow,
 	CatalogWrite,
 	ItemRow,
+	OptionGroupWrite,
 	PaymentMethodRow,
 } from "../rows.js";
 import { textOrNull } from "./text.js";
@@ -44,10 +46,82 @@ function mergeByExternalId<T extends { externalId: string }>(
 	);
 }
 
+/**
+ * The option groups of several stores' catalogues of one account: absent when no catalogue maps them; a group
+ * listed by several stores keeps the first store's options and limits and gains every store's targets.
+ */
+function mergeOptionGroups(
+	catalogs: readonly CanonicalCatalog[],
+): CanonicalOptionGroup[] | undefined {
+	const lists = catalogs.flatMap((catalog) =>
+		catalog.optionGroups === undefined ? [] : [catalog.optionGroups],
+	);
+	if (lists.length === 0) {
+		return undefined;
+	}
+	const merged = new Map<string, CanonicalOptionGroup>();
+	for (const list of lists) {
+		for (const group of list) {
+			const existing = merged.get(group.externalId);
+			merged.set(
+				group.externalId,
+				existing
+					? {
+							...existing,
+							appliesToItemExternalIds: [
+								...new Set([
+									...existing.appliesToItemExternalIds,
+									...group.appliesToItemExternalIds,
+								]),
+							],
+						}
+					: group,
+			);
+		}
+	}
+	return [...merged.values()].sort((left, right) =>
+		left.externalId < right.externalId
+			? -1
+			: left.externalId > right.externalId
+				? 1
+				: 0,
+	);
+}
+
+export function mapOptionGroups(
+	groups: readonly CanonicalOptionGroup[],
+): OptionGroupWrite {
+	return {
+		groups: groups.map((group) => ({
+			external_id: group.externalId,
+			name: group.name,
+			min_select: group.minSelect,
+			max_select: group.maxSelect,
+			active: group.active,
+			raw: toJson(group.raw),
+		})),
+		options: groups.flatMap((group) =>
+			group.optionItemExternalIds.map((itemId, index) => ({
+				group_external_id: group.externalId,
+				item_external_id: itemId,
+				sort_order: index,
+			})),
+		),
+		targets: groups.flatMap((group) =>
+			group.appliesToItemExternalIds.map((itemId) => ({
+				group_external_id: group.externalId,
+				item_external_id: itemId,
+			})),
+		),
+	};
+}
+
 export function mergeCatalogs(
 	catalogs: readonly CanonicalCatalog[],
 ): CanonicalCatalog {
+	const optionGroups = mergeOptionGroups(catalogs);
 	return {
+		...(optionGroups === undefined ? {} : { optionGroups }),
 		items: mergeByExternalId(catalogs.map((catalog) => catalog.items)),
 		itemTypes: mergeByExternalId(catalogs.map((catalog) => catalog.itemTypes)),
 		itemClasses: mergeByExternalId(
@@ -166,5 +240,9 @@ export function mapCatalog(
 			raw: toJson(promotion.raw),
 		})),
 		devices: null,
+		option_groups:
+			catalog.optionGroups === undefined
+				? null
+				: mapOptionGroups(catalog.optionGroups),
 	};
 }

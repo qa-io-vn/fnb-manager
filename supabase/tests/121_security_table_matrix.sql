@@ -273,6 +273,48 @@ insert into public.oa_users (tenant_id, oa_id, oa_user_id, following, followed_a
 select tenant_a, oa_a, 'syn-oa-user-121', true, now() - interval '2 days', (select id from ids where name = 'c_a1'), now() - interval '1 day' from fx;
 insert into public.zalo_identities (tenant_id, zalo_app_id, zalo_user_id, user_id, display_name)
 select tenant_a, app_a, 'syn-zalo-121-staff', staff_u, 'Nhân viên' from fx;
+-- ADR-060: the native till's tables, with rows in both tenants and at both A stores.
+insert into public.item_option_groups (tenant_id, pos_account_id, external_id, name)
+select tenant_a, account_a, 'SM121-G', 'Topping' from fx union all
+select tenant_b, account_b, 'SM121-G', 'Topping' from fx;
+insert into public.item_option_group_options (tenant_id, pos_account_id, group_external_id, item_external_id)
+select tenant_a, account_a, 'SM121-G', 'SM121-OPT' from fx union all
+select tenant_b, account_b, 'SM121-G', 'SM121-OPT' from fx;
+insert into public.item_option_group_targets (tenant_id, pos_account_id, group_external_id, item_external_id)
+select tenant_a, account_a, 'SM121-G', 'SM121-ITEM' from fx union all
+select tenant_b, account_b, 'SM121-G', 'SM121-ITEM' from fx;
+insert into public.store_ordering_settings (store_id, tenant_id, till_mode, ordering_enabled)
+select store_a1, tenant_a, 'native', true from fx union all
+select store_a2, tenant_a, 'ipos', false from fx union all
+select store_b1, tenant_b, 'native', true from fx;
+insert into public.ordering_closures (tenant_id, store_id, starts_on, ends_on, reason)
+select tenant_a, store_a1, date '2027-01-01', date '2027-01-02', 'Nghỉ' from fx union all
+select tenant_a, store_a2, date '2027-01-01', date '2027-01-02', 'Nghỉ' from fx union all
+select tenant_b, store_b1, date '2027-01-01', date '2027-01-02', 'Nghỉ' from fx;
+insert into public.menu_categories (tenant_id, brand_id, name)
+select tenant_a, brand_a, 'Đồ uống' from fx union all
+select tenant_b, brand_b, 'Đồ uống' from fx;
+insert into public.menu_items (tenant_id, brand_id, category_id, name)
+select c.tenant_id, c.brand_id, c.id, 'Cà phê' from public.menu_categories c cross join fx where c.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.menu_item_sizes (tenant_id, brand_id, item_id, price, is_default)
+select i.tenant_id, i.brand_id, i.id, 29000, true from public.menu_items i cross join fx where i.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.menu_option_groups (tenant_id, brand_id, name)
+select tenant_a, brand_a, 'Đá' from fx union all
+select tenant_b, brand_b, 'Đá' from fx;
+insert into public.menu_options (tenant_id, brand_id, group_id, name)
+select g.tenant_id, g.brand_id, g.id, 'Ít đá' from public.menu_option_groups g cross join fx where g.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.menu_item_option_groups (tenant_id, brand_id, item_id, group_id)
+select i.tenant_id, i.brand_id, i.id, g.id from public.menu_items i join public.menu_option_groups g on g.brand_id = i.brand_id cross join fx where i.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.menu_store_items (tenant_id, store_id, item_id, offered)
+select i.tenant_id, s.store_id, i.id, true
+from public.menu_items i
+cross join fx
+cross join lateral (values (fx.store_a1), (fx.store_a2), (fx.store_b1)) as s (store_id)
+join public.brands b on b.id = i.brand_id and s.store_id = any (b.store_ids)
+where i.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.menu_imports (brand_id, tenant_id, store_id, pos_account_id, counts)
+select brand_a, tenant_a, store_a1, account_a, '{}'::jsonb from fx union all
+select brand_b, tenant_b, store_b1, account_b, '{}'::jsonb from fx;
 
 -- Who reads what (docs/security.md 5.3, docs/api.md section 4). Reader groups:
 --   data: owner, owner_a1, manager, manager_a1, viewer, staff, staff_a2 (and owner_b in tenant B)
@@ -324,7 +366,22 @@ insert into tables_in_scope (tbl, readers, scoped, own, writers) values
   ('loyalty_counter_codes', 'nobody', false, null, '{}'),
   ('bill_captures', 'omv', true, null, '{}'),
   ('bill_confirmations', 'om', false, null, '{}'),
-  ('bill_audits', 'om', true, null, '{}');
+  ('bill_audits', 'om', true, null, '{}'),
+  -- ADR-060: the native till (docs/security.md 5.3).
+  ('item_option_groups', 'data', false, null, '{}'),
+  ('item_option_group_options', 'data', false, null, '{}'),
+  ('item_option_group_targets', 'data', false, null, '{}'),
+  ('store_ordering_settings', 'omv', true, null, '{owner,owner_a1,manager,manager_a1}'),
+  ('ordering_closures', 'omv', true, null, '{owner,owner_a1,manager,manager_a1}'),
+  ('menu_categories', 'omv', false, null, '{owner,manager}'),
+  ('menu_items', 'omv', false, null, '{owner,manager}'),
+  ('menu_item_sizes', 'omv', false, null, '{owner,manager}'),
+  ('menu_option_groups', 'omv', false, null, '{owner,manager}'),
+  ('menu_options', 'omv', false, null, '{owner,manager}'),
+  ('menu_item_option_groups', 'omv', false, null, '{owner,manager}'),
+  ('menu_store_items', 'omv', true, null, '{owner,owner_a1,manager,manager_a1}'),
+  ('menu_price_changes', 'omv', false, null, '{}'),
+  ('menu_imports', 'omv', false, null, '{}');
 
 create function pg_temp.signature_sql(p_table text, p_filter text default 'true')
 returns text
@@ -438,7 +495,7 @@ create temp table tables_found as
 select c.relname::text as tbl
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public' and c.relkind in ('r', 'p', 'v')
-  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_)';
+  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_|^menu_|ordering|order|store_tables|item_option|table_calls)';
 
 select plan((select count(*)::integer from read_cells) + (select count(*)::integer from write_cells) + 4);
 

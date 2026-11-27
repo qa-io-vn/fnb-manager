@@ -153,6 +153,7 @@ export {
 	type CanonicalItemClass,
 	type CanonicalItemType,
 	type CanonicalModifier,
+	type CanonicalOptionGroup,
 	type CanonicalPackage,
 	type CanonicalPaymentMethod,
 	type CanonicalPromotion,
@@ -162,10 +163,12 @@ export {
 	canonicalItemSchema,
 	canonicalItemTypeSchema,
 	canonicalModifierSchema,
+	canonicalOptionGroupSchema,
 	canonicalPackageSchema,
 	canonicalPaymentMethodSchema,
 	canonicalPromotionSchema,
 	canonicalSourceSchema,
+	OPTION_GROUP_MAX_SELECT,
 } from "./schemas/catalog.js";
 export { type IsoDate, isoDate } from "./schemas/common.js";
 export {

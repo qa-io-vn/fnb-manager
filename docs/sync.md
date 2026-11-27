@@ -202,6 +202,10 @@ A successful sync for this purpose is a `succeeded` run of the store's account t
 
 Every run that wrote sales ends with `app.reconcile_loyalty` over its business days (the runner's `reconcileLoyaltySafely`; `fnb loyalty reconcile` and `fnb loyalty nightly` run the same step), which does nothing for a tenant without an active programme. Its rail part (phase 16b, [schema.md](schema.md#till-side-rails-phase-16b)) first recognises what each synced invoice carries of the store's rail (`app.recognise_rail_events`: member phone, pool or redemption code, callback sale, discount entry, 0-price line, CRM promotion line; count `rail_evidence`), so a rail switch needs no code change, then confirms answered callback sales (`callback_confirmed`, `callback_earned`) and marks the pool codes found on invoices as used (`pool_codes_used`). The run report and the log line carry these counts only.
 
+### POS option groups
+
+The master-data run writes the POS option groups next to the rest of the catalogue (the source of the one-time menu import of a native store, ADR-060): `item_option_groups` upserted like the other catalogue tables (a group the POS no longer lists turns inactive), and the account's `item_option_group_options` and `item_option_group_targets` deleted and written again in the same transaction. A catalogue without `optionGroups` leaves the three tables as they are, and so does a database without them, so the rest of the catalogue still syncs before the migration.
+
 ## Real or fake iPOS
 
 `IPOS_REAL_API` decides what an `ipos-fabi` account talks to. It is read in one place, `iposApiMode` in `@fnb/runner`, and applied inside `connectAccount`, so the CLI and the Edge Function follow it alike; `mock` accounts ignore it.

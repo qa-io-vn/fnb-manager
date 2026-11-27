@@ -18,6 +18,7 @@ import {
 	expectedNetFromLines,
 	MILLISECONDS_PER_MINUTE,
 	moneyEquals,
+	OPTION_GROUP_MAX_SELECT,
 	paymentTotal,
 	roundMoney,
 	sumMoney,
@@ -344,6 +345,109 @@ export function checkModifierPresence(
 				),
 			]
 		: [];
+}
+
+function repeatedIds(ids: readonly string[]): string[] {
+	const seen = new Set<string>();
+	const repeated = new Set<string>();
+	for (const id of ids) {
+		if (seen.has(id)) {
+			repeated.add(id);
+		}
+		seen.add(id);
+	}
+	return [...repeated];
+}
+
+/**
+ * The shape rules of the catalogue's option groups (ADR-058 phase 3), for a connector that maps them (an absent
+ * optionGroups means the connector does not, and nothing is checked): unique group ids, 0 <= minSelect <=
+ * maxSelect <= 20 with maxSelect >= 1, and no option or target named twice in one group.
+ */
+export function checkOptionGroups(catalog: CanonicalCatalog): Violation[] {
+	const groups = catalog.optionGroups;
+	if (groups === undefined) {
+		return [];
+	}
+	const violations: Violation[] = repeatedIds(
+		groups.map((group) => group.externalId),
+	).map((id) =>
+		violation("option-group-unique", `option group ${id} is listed twice`),
+	);
+	for (const group of groups) {
+		const { minSelect, maxSelect } = group;
+		const inBounds =
+			Number.isInteger(minSelect) &&
+			Number.isInteger(maxSelect) &&
+			minSelect >= 0 &&
+			maxSelect >= 1 &&
+			maxSelect <= OPTION_GROUP_MAX_SELECT &&
+			minSelect <= maxSelect;
+		if (!inBounds) {
+			violations.push(
+				violation(
+					"option-group-limits",
+					`option group ${group.externalId} has limits ${minSelect}..${maxSelect}; they must satisfy 0 <= min <= max <= ${OPTION_GROUP_MAX_SELECT} and max >= 1`,
+				),
+			);
+		}
+		for (const [list, ids] of [
+			["option", group.optionItemExternalIds],
+			["target", group.appliesToItemExternalIds],
+		] as const) {
+			for (const id of repeatedIds(ids)) {
+				violations.push(
+					violation(
+						"option-group-ids",
+						`option group ${group.externalId} names ${list} item ${id} twice`,
+					),
+				);
+			}
+		}
+	}
+	return violations;
+}
+
+/**
+ * The data rules of the option groups, for a connector whose catalogue is self-contained: every option and
+ * target is an item of the same catalogue, and an active required group (minSelect >= 1) offers at least
+ * minSelect options, so an item it targets can be ordered at all.
+ */
+export function checkOptionGroupReferences(
+	catalog: CanonicalCatalog,
+): Violation[] {
+	const groups = catalog.optionGroups;
+	if (groups === undefined) {
+		return [];
+	}
+	const itemIds = new Set(catalog.items.map((item) => item.externalId));
+	const violations: Violation[] = [];
+	for (const group of groups) {
+		for (const [list, ids] of [
+			["option", group.optionItemExternalIds],
+			["target", group.appliesToItemExternalIds],
+		] as const) {
+			for (const id of ids) {
+				if (!itemIds.has(id)) {
+					violations.push(
+						violation(
+							"option-group-catalog",
+							`option group ${group.externalId} names ${list} item ${id}, which the catalog does not list`,
+						),
+					);
+				}
+			}
+		}
+		if (group.active && group.optionItemExternalIds.length < group.minSelect) {
+			violations.push(
+				violation(
+					"option-group-satisfiable",
+					`option group ${group.externalId} requires ${group.minSelect} option(s) but offers ${group.optionItemExternalIds.length}`,
+				),
+			);
+		}
+	}
+	return violations;
 }
 
 export function checkPayments(

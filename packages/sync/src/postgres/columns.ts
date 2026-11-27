@@ -6,6 +6,9 @@ import type {
 	InvoicePaymentRow,
 	InvoiceRow,
 	ItemRow,
+	OptionGroupOptionRow,
+	OptionGroupRow,
+	OptionGroupTargetRow,
 	PackageRow,
 	PaymentMethodRow,
 	PromotionRow,
@@ -228,6 +231,26 @@ export type CatalogTable = keyof typeof CATALOG_COLUMNS;
 export const CATALOG_TABLES = Object.keys(
 	CATALOG_COLUMNS,
 ).sort() as CatalogTable[];
+
+export const OPTION_GROUP_COLUMNS = columnsOf<OptionGroupRow>()([
+	"external_id",
+	"name",
+	"min_select",
+	"max_select",
+	"active",
+	"raw",
+]);
+
+export const OPTION_GROUP_OPTION_COLUMNS = columnsOf<OptionGroupOptionRow>()([
+	"group_external_id",
+	"item_external_id",
+	"sort_order",
+]);
+
+export const OPTION_GROUP_TARGET_COLUMNS = columnsOf<OptionGroupTargetRow>()([
+	"group_external_id",
+	"item_external_id",
+]);
 
 export const DATE_COLUMNS: ReadonlySet<string> = new Set(["business_date"]);
 
