@@ -149,6 +149,136 @@ export const clockIn = (
 		p_opening_cash: openingCash,
 	});
 
+/** A number of orders and their total in đồng. */
+export interface CountTotal {
+	readonly count: number;
+	readonly total: number;
+}
+
+/**
+ * Q02 "Đối chiếu" (staff_shift_reconciliation, native-till.md 18.4): what the drawer should hold and why, the count and
+ * the difference, and what was taken that is not in the drawer.
+ */
+export interface ShiftReconciliation {
+	readonly from: string;
+	readonly until: string;
+	/** whether the drawer was counted (false only for another person's open shift, read by a manager) */
+	readonly counted: boolean;
+	readonly opening_cash: number;
+	readonly cash_sales: CountTotal;
+	readonly cash_refunds: CountTotal;
+	/** none are recorded yet: always 0 */
+	readonly paid_outs: CountTotal;
+	/** once counted, the figure the count was compared with; for an open shift, the figures so far */
+	readonly expected_cash: number;
+	readonly counted_cash: number | null;
+	readonly cash_difference: number | null;
+	/** null while the shift is open */
+	readonly matched: boolean | null;
+	readonly not_in_drawer: {
+		readonly card: CountTotal;
+		readonly card_refunds: CountTotal;
+		readonly vietqr: CountTotal;
+		readonly zalo_checkout: CountTotal;
+	};
+}
+
+export type ReconciliationAnswer =
+	| {
+			readonly state: "ok";
+			readonly refusal: null;
+			readonly shift: Shift;
+			readonly reconciliation: ShiftReconciliation;
+	  }
+	| {
+			/** the person's own shift is still open: the count stays blind, no expected figure in the answer */
+			readonly state: "refused";
+			readonly refusal: "count_required";
+			readonly shift: Shift;
+			readonly reconciliation: null;
+	  };
+
+/**
+ * Whether a screen may ask for a shift's reconciliation: the person's own shift only once their count is recorded (it
+ * is no longer open), so no expected figure is ever fetched before the count; another person's shift (a manager's
+ * screen, the database decides who) at any time. A shift without user_id is the caller's own (staff_my_shift).
+ */
+export function mayReadReconciliation(
+	shift: Pick<Shift, "status" | "user_id">,
+	userId: string | null,
+): boolean {
+	const own = shift.user_id === undefined || shift.user_id === userId;
+	return own ? shift.status !== "open" : true;
+}
+
+export const shiftReconciliation = (client: SupabaseClient, shift: string) =>
+	rpc<ReconciliationAnswer>(client, "staff_shift_reconciliation", {
+		p_shift: shift,
+	});
+
+/** One line of the breakdown: what it is, how many orders (none for the opening cash) and its signed amount. */
+export interface ReconciliationLine {
+	readonly key:
+		| "opening"
+		| "cashSales"
+		| "cashRefunds"
+		| "paidOuts"
+		| "card"
+		| "cardRefunds"
+		| "vietqr"
+		| "zaloCheckout";
+	readonly count: number | null;
+	readonly amount: number;
+}
+
+const NONE: CountTotal = { count: 0, total: 0 };
+
+/** Money going out, as a negative amount (0 stays 0, never −0). */
+function out(total: number): number {
+	return total === 0 ? 0 : -total;
+}
+
+/** The drawer's lines as the design lists them: the opening cash, the cash sales in, the cash refunds and paid-outs out. */
+export function drawerLines(value: ShiftReconciliation): ReconciliationLine[] {
+	return [
+		{ key: "opening", count: null, amount: value.opening_cash },
+		{
+			key: "cashSales",
+			count: value.cash_sales.count,
+			amount: value.cash_sales.total,
+		},
+		{
+			key: "cashRefunds",
+			count: value.cash_refunds.count,
+			amount: out(value.cash_refunds.total),
+		},
+		{
+			key: "paidOuts",
+			count: value.paid_outs.count,
+			amount: out(value.paid_outs.total),
+		},
+	];
+}
+
+/** What was taken that is not in the drawer: card in and card refunds out, VietQR and the Zalo wallet. */
+export function outsideLines(value: ShiftReconciliation): ReconciliationLine[] {
+	const outside = value.not_in_drawer;
+	const card = outside.card ?? NONE;
+	const cardRefunds = outside.card_refunds ?? NONE;
+	const vietqr = outside.vietqr ?? NONE;
+	const zalo = outside.zalo_checkout ?? NONE;
+	return [
+		{ key: "card", count: card.count, amount: card.total },
+		{
+			key: "cardRefunds",
+			count: cardRefunds.count,
+			amount: out(cardRefunds.total),
+		},
+		{ key: "vietqr", count: vietqr.count, amount: vietqr.total },
+		{ key: "zaloCheckout", count: zalo.count, amount: zalo.total },
+	];
+}
+
 /**
  * "Ra ca": the blind count, and with a reason and its note when the count differed: the person counts again with them
  * (staff_clock_out(p_counted_cash, p_reason, p_note)); the clock-out time stays the first one.
