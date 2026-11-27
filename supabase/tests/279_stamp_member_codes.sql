@@ -323,8 +323,11 @@ begin
 end;
 $$;
 create function pg_temp.card(p_user uuid) returns jsonb language sql as $$ select pg_temp.call(p_user, 'select app.customer_stamp_card()') $$;
+-- The staff member who takes the cash and the manager who hands it back are on shift at A1 (migrations
+-- counter_payment_needs_shift and cash_refund_needs_shift).
 insert into public.staff_shifts (tenant_id, store_id, user_id, business_date, clock_in_at, opening_cash)
-select tenant_a, store_a1, staff_u, date '2026-11-25', pg_temp.at('2026-11-25 07:00'), 0 from fx;
+select tenant_a, store_a1, staff_u, date '2026-11-25', pg_temp.at('2026-11-25 07:00'), 0 from fx union all
+select tenant_a, store_a1, manager_u, date '2026-11-25', pg_temp.at('2026-11-25 07:00'), 0 from fx;
 
 -- 1. The customer's code -------------------------------------------------------------------------------------------
 select is(

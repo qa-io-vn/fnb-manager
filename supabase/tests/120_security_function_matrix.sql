@@ -723,6 +723,11 @@ insert into matrix (fn, label, statement, expect) values
 ('customer_accept_proposal', 'customer_accept_proposal of an unknown request',
   $$select public.customer_accept_proposal('aaaaaaaa-aaaa-4aaa-8aaa-000000012091', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012092') ->> 'refusal'$$,
   '{"*": "DENY", "customer": "^ok:unknown_request$", "visitor": "^ok:unknown_request$", "customer_b": "^ok:unknown_request$"}'),
+-- Phase 1 gaps (Q02): a shift's reconciliation is for its person after the count and for owners and managers of its
+-- store (an unknown shift is 42501 for everyone).
+('staff_shift_reconciliation', 'staff_shift_reconciliation of an unknown shift',
+  $$select public.staff_shift_reconciliation('aaaaaaaa-aaaa-4aaa-8aaa-000000012093')::text$$,
+  '{"*": "DENY"}'),
 ('manager_approve_blocked_signin', 'manager_approve_blocked_signin of an unknown request',
   $$select public.manager_approve_blocked_signin('aaaaaaaa-aaaa-4aaa-8aaa-000000012094', 1, 'Synthetic', 'staff', null)::text$$,
   '{"*": "DENY"}'),

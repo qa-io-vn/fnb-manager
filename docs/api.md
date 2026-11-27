@@ -2907,11 +2907,11 @@ returns jsonb
 
 - **Status:** built (step 4).
 - **Who may call:** staff of the order's store settle the due refund of a cancelled paid order in full; every other refund (a completed order, a partial amount, an online refund the provider failed) needs an owner or manager of the store (`manager_required`).
-- **Notes:** at most what was paid less earlier refunds (`amount_over_refundable` with `refundable`), with a reason. Cash and card are handed back at once (`state: "succeeded"`); an online payment's refund is `pending` until the provider confirms; a failed online refund settled by a manager is handed back in cash. The order's payment status follows: `refund_pending` while a refund is owed, `partially_refunded`, `refunded`. Every refund is logged with who asked, who recorded it and the amount.
+- **Notes:** at most what was paid less earlier refunds (`amount_over_refundable` with `refundable`), with a reason. Cash and card are handed back at once (`state: "succeeded"`); an online payment's refund is `pending` until the provider confirms; a failed online refund settled by a manager is handed back in cash. The order's payment status follows: `refund_pending` while a refund is owed, `partially_refunded`, `refunded`. Every refund is logged with who asked, who recorded it and the amount. `shift_required` (migration `cash_refund_needs_shift`, 2026-11-28; after the order's own refusals `not_refundable`, `amount_over_refundable` and `manager_required`, nothing written) when the refund would be settled in cash (the order was paid in cash, or a manager settles a failed online refund) and the caller has no open shift at the order's store that began by then: cash is handed back only by a person on shift there, so it leaves a drawer a clock-out counts; owners and managers are not exempt, and a trigger on `order_refunds` refuses a cash refund recorded by a person without such a shift whoever writes it (`42501`, hint `shift_required`). Card refunds (on the terminal) and online refunds (through the provider) need no shift.
 
 The online seams are executable by the service role only, for the payment Edge Functions (Checkout SDK, dynamic VietQR) after they verified the caller or the provider's signature: `checkout_payment_start(p_user, p_order, p_method, p_idempotency_key)` opens a pending attempt of the full total for the customer's own order awaiting payment (the same key answers the same attempt; one pending at a time; at most three failed), `checkout_payment_confirm(p_provider, p_provider_ref, p_payment, p_amount, p_success, p_reason)` settles it (unique on the provider's transaction id; another amount fails it; money arriving for a cancelled order is kept as a due refund), `checkout_payments_pending(p_older_than_minutes, p_limit)` lists the attempts to ask the provider about again, and `checkout_refund_confirm(p_refund, p_success, p_provider_ref, p_reason)` settles an online refund.
 
-Tests: pgTAP `269_order_payments.sql` (and the order suites, whose payments now go through these functions), rows in `120`, `121` and `47`.
+Tests: pgTAP `269_order_payments.sql` (and the order suites, whose payments now go through these functions), `276_counter_payment_shift.sql`, `295_cash_refund_shift.sql`, rows in `120`, `121` and `47`.
 
 The stamp card (step 5, migration `stamp_cards`, native-till.md section 10). Stamps are earned when an order of a customer's Zalo account completes (one per drink), a reward is issued for every `stamps_per_reward` stamps (9 by default), `use_reward` spends it at placement (above), a cancellation gives it back and a succeeded refund takes the order's stamps back in proportion. No client writes a card, a reward or the ledger.
 
@@ -2963,7 +2963,9 @@ returns jsonb
 - **Who may call:** an owner, manager or staff member whose scope holds the order's store (`42501` otherwise, the same for an unknown order).
 - **Notes:** "Gắn vào đơn": attaches the holder of a live code of the order's brand to an order keyed at the counter, with the version seen. Answers `{state: "attached", replayed, stamps, stamps_earned_now, member, order}`: `stamps` the drinks that will earn when the order completes (or earned now, `stamps_earned_now: true`, when it was completed in the last 30 minutes); the same holder again is a replay. Refusals: `has_customer` (an order of the app already belongs to its customer), `code_mistyped`, `code_unknown` and `rate_limited` (as for the lookup, the same counts), `already_attached` (another holder), `conflict` (with the order), `not_attachable` (cancelled or refunded), `too_late` (more than 30 minutes after completion), `stamps_off`. The attach is an order event (`kind: "member"`, `action: "member_attached"`, the staff member), the counter's order answers carry `member_attached`, and the holder sees the order on their card (`customer_stamp_card`'s `attached`); they cannot read, cancel or pay it. A refund of the order takes its stamps back as for an app order; deleting the holder's login removes the link.
 
-Tests: pgTAP `279_stamp_member_codes.sql`, rows in `120`, `47` and `170`.
+Expired codes are purged by the hourly pg_cron job `stamp-codes-purge` (migration `member_code_purge`, 2026-11-28): `app.purge_stamp_member_codes(at, limit)`, which no API role may run, deletes the codes that expired more than a day ago (at most 20,000 a run, oldest first); the counted misses and locks are kept, and a purged code looks up as the same `code_unknown` miss as an expired one.
+
+Tests: pgTAP `279_stamp_member_codes.sql`, `297_member_code_purge.sql`, rows in `120`, `47` and `170`.
 
 A customer's own data (C19; migration `customer_account_deletion`; personal-data law 91/2025/QH15, docs/deep-dives/vietnam-legal-requirements.md section 1).
 
@@ -3135,7 +3137,18 @@ returns jsonb
 - **Who may call:** an owner or manager whose scope holds the store (`42501` otherwise).
 - **Notes:** the shifts between two business dates (at most 63 days, `22023` otherwise) with the counts still open and awaiting confirmation. The worked days of the month of a date (S11): `{month, standard_days, standard_day_hours, people: [{user_id, name, hours, worked_days, days: [{date, hours, days}], open_shifts}]}`, a day being its recorded hours over the hours per day, at most 1. The day's reconciliation (acceptance criterion 6): `{revenue, by_method, online_confirmed, card, cash: {invoiced, expected, counted, difference}, shifts_open, shifts_awaiting_confirmation, paid_not_completed, difference, matched}`.
 
-Tests: pgTAP `273_staff_shifts.sql`, rows in `120`, `121`, `03`, `47` and `170`.
+#### `public.staff_shift_reconciliation`
+
+```sql
+public.staff_shift_reconciliation(p_shift uuid)
+returns jsonb
+```
+
+- **Status:** built (2026-11-28, migration `shift_reconciliation`).
+- **Who may call:** the shift's person once their count is recorded (whatever their role); an owner or manager whose scope holds the shift's store, for another person's shift at any time (`42501` for anyone else and for an unknown shift; `22023` without an id).
+- **Notes:** "Đối chiếu" (Q02 frame 1). Answers `{state: "ok", refusal: null, shift, reconciliation: {from, until, counted, opening_cash, cash_sales: {count, total}, cash_refunds: {count, total}, paid_outs: {count, total}, expected_cash, counted_cash, cash_difference, matched, not_in_drawer: {card: {count, total}, card_refunds: {count, total}, vietqr: {count, total}, zalo_checkout: {count, total}}}}`: between the clock-in and the clock-out (or now for a shift still open), the cash payments and cash refunds the person recorded (a count of orders and the total; undone payments left out), the paid-outs (none are recorded yet: always 0), the expected cash (once counted, the figure the count was compared with; for an open shift the opening cash plus the sales less the refunds so far), the count, the difference, `matched` (null while open), and what is not in the drawer: the card payments and card refunds the person recorded and the store's VietQR and Zalo wallet payments settled in the window (reconciled with the provider in `manager_day_reconciliation`). `shift` is the shift as the caller may see it (`staff_my_shift`'s shape for its person, `manager_shifts`' for a manager reading another's). The count stays blind: while the person's own shift is open the answer is `{state: "refused", refusal: "count_required", shift, reconciliation: null}` with no expected figure in it, for a manager on their own shift too.
+
+Tests: pgTAP `273_staff_shifts.sql`, `296_shift_reconciliation.sql`, rows in `120`, `121`, `03`, `47` and `170`.
 
 ### 3.28 The counter web app's sign-in (ADR-066)
 

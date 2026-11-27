@@ -60506,6 +60506,66 @@
 				"tags": ["(rpc) staff_reverse_bill"]
 			}
 		},
+		"/rpc/staff_shift_reconciliation": {
+			"get": {
+				"parameters": [
+					{
+						"format": "uuid",
+						"in": "query",
+						"name": "p_shift",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app (Q02 \"Đối chiếu\") and the manager app: app.staff_shift_reconciliation at the current time",
+				"tags": ["(rpc) staff_shift_reconciliation"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the counter web app (Q02 \"Đối chiếu\") and the manager app: app.staff_shift_reconciliation at the current time",
+							"properties": {
+								"p_shift": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_shift"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the counter web app (Q02 \"Đối chiếu\") and the manager app: app.staff_shift_reconciliation at the current time",
+				"tags": ["(rpc) staff_shift_reconciliation"]
+			}
+		},
 		"/rpc/staff_submit_bill": {
 			"post": {
 				"parameters": [
