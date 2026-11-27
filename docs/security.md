@@ -334,6 +334,7 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Read the stamp cards, rewards and ledger | tenant | tenant | no | tenant | own card only (`customer_stamp_card`) |
 | Set the brand's stamp card (on or off, stamps per reward, the reward's name) | brand | brand | no | no | no |
 | Earn, use, return or take back stamps and rewards | no client: only completion, placement with `use_reward`, cancellation and succeeded refunds, through the ledger functions | | | | |
+| Write a native order's invoice, its lines, payments and events, or refresh the aggregates of its date | no client: only the order hooks on completion and succeeded refunds, and the minute job | | | | |
 | Write an order, a line or an event directly | no | no | no | no | no |
 | Lift a customer's ordering block | scope (delete) | scope (delete) | no | no | no |
 | Read the OA webhook's events (`oa_events`), the binding codes, the pairing codes and wrong-code counts, a staff member's phone, the POS or Zalo token caches, the payload documents or anything in `app` | no | no | no | no | no |

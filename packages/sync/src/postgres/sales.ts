@@ -73,6 +73,9 @@ function groupBy<T>(
 	return groups;
 }
 
+// Every query below that reads or changes a store's invoices keeps to the invoices of the store's own POS account:
+// a store on the native till also holds the invoices of its native orders under the tenant's native account
+// (supabase migration native_sales_facts), which the POS never reports and the sync must neither compare nor touch.
 export async function loadStoreWindow(
 	sql: ISql,
 	storeId: string,
@@ -84,6 +87,7 @@ export async function loadStoreWindow(
 			select i.id, i.status::text as status, ${sql.unsafe(selectList("i", INVOICE_DIGEST_COLUMNS))}
 			from public.invoices i
 			where i.store_id = ${storeId}
+				and i.pos_account_id = (select s.pos_account_id from public.stores s where s.id = ${storeId})
 				and (i.business_date between ${range.from}::date and ${range.to}::date
 					or i.external_id = any(${[...referencedExternalIds]}::text[]))
 			order by i.external_id
@@ -224,6 +228,7 @@ async function changeStatuses(
 			update public.invoices
 			set status = ${first.status}::public.invoice_status, synced_at = now()
 			where store_id = ${storeId}
+				and pos_account_id = (select s.pos_account_id from public.stores s where s.id = ${storeId})
 				and external_id = any(${group.map((change) => change.external_id)}::text[])
 				and status = any(${first.from}::public.invoice_status[])
 		`;
@@ -245,7 +250,9 @@ async function insertEvents(
 	];
 	const invoices = await sql<{ id: string; external_id: string }[]>`
 		select id, external_id from public.invoices
-		where store_id = ${storeId} and external_id = any(${externalIds}::text[])
+		where store_id = ${storeId}
+			and pos_account_id = (select s.pos_account_id from public.stores s where s.id = ${storeId})
+			and external_id = any(${externalIds}::text[])
 	`;
 	const idByExternal = new Map(
 		invoices.map((row) => [row.external_id, row.id]),
@@ -310,6 +317,7 @@ export async function localDayTotals(
 			coalesce(sum(net_amount), 0)::text as net_amount
 		from public.invoices
 		where store_id = ${storeId}
+			and pos_account_id = (select s.pos_account_id from public.stores s where s.id = ${storeId})
 			and business_date between ${range.from}::date and ${range.to}::date
 			and status <> 'voided'
 		group by business_date
@@ -331,6 +339,7 @@ export async function shiftPaymentTotals(
 		from public.invoices i
 		join public.invoice_payments p on p.invoice_id = i.id
 		where i.store_id = ${storeId}
+			and i.pos_account_id = (select s.pos_account_id from public.stores s where s.id = ${storeId})
 			and i.status <> 'voided'
 			and i.shift_external_id = any(${[...shiftExternalIds]}::text[])
 			and i.business_date between ${range.from}::date - 1 and ${range.to}::date + 1

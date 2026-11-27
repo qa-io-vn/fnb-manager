@@ -2959,7 +2959,7 @@ Every table in `public` has RLS enabled, and `anon` holds no privilege on any ta
 
 | Relation | Purpose | Who reads | Client writes | Read by a client today |
 |---|---|---|---|---|
-| `invoices` | one row per POS sale: business date, sale time, status (`completed`, `edited`, `voided`), amounts, discounts, customer | data roles, stores in scope | none | web app (Hôm nay) |
+| `invoices` | one row per POS sale, and one per completed native order under the tenant's `native` POS account (external id `native-<order id>`, no receipt number; native-till.md section 11): business date, sale time, status (`completed`, `edited`, `voided`), amounts, discounts, customer | data roles, stores in scope | none | web app (Hôm nay) |
 | `invoice_lines` | lines of each invoice: `item`, `modifier`, `service`, `package` or `other` | data roles, stores in scope | none | web app (Hôm nay) |
 | `invoice_payments` | tenders of each invoice | data roles, stores in scope | none | web app (Hôm nay) |
 | `invoice_events` | voids, edits, removed lines and reissues | data roles, stores in scope | none | none |
