@@ -14,6 +14,7 @@ import {
 	isLate,
 	isTerminal,
 	orderStage,
+	readyLine,
 	timelineSteps,
 } from "./order-view";
 import { useOrdering } from "./ordering-data";
@@ -99,6 +100,7 @@ function StatusCard({
 	const stage = orderStage(order);
 	const number = order.displayNo ?? "";
 	const eta = etaMinutes(order, now);
+	const ready = readyLine(order, now);
 	const headline =
 		stage === "serving"
 			? order.tableLabel === null
@@ -130,9 +132,20 @@ function StatusCard({
 				<p className="text-[13px] text-ink" data-testid="order-unpaid">
 					{t("order.line.unpaid")}
 				</p>
-			) : (stage === "accepted" || stage === "preparing") && eta !== null ? (
-				<p className="text-[13px] text-ink" data-testid="order-eta">
-					{t("order.line.eta", { minutes: eta })}
+			) : (stage === "accepted" || stage === "preparing") &&
+				ready !== null &&
+				eta !== null ? (
+				<p
+					className="text-[13px] text-ink"
+					data-testid="order-eta"
+					data-ready={ready.kind}
+				>
+					{ready.kind === "at"
+						? t("order.line.readyAt", {
+								time: clock(ready.at),
+								minutes: eta,
+							})
+						: t("order.line.readySoon")}
 				</p>
 			) : stage === "completed" ? (
 				<p className="text-[15px] text-ink" data-testid="order-thanks">

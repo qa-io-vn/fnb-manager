@@ -1,6 +1,44 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { rpc } from "../lib/rpc";
 
+/** The counting person's reason for a cash difference (Q02; staff_clock_out's p_reason). */
+export const DIFFERENCE_REASON_CODES = [
+	"wrong_change",
+	"unrecorded_order",
+	"petty_cash",
+	"unknown",
+] as const;
+export type DifferenceReason = (typeof DIFFERENCE_REASON_CODES)[number];
+
+/** The words of each reason (the catalog's shift.reason.* keys, which the manager's confirmation uses as well). */
+export const DIFFERENCE_REASON_LABEL: Readonly<
+	Record<DifferenceReason, string>
+> = {
+	wrong_change: "shift.reason.wrongChange",
+	unrecorded_order: "shift.reason.forgotOrder",
+	petty_cash: "shift.reason.pettyCash",
+	unknown: "shift.reason.unknown",
+};
+
+/** The most characters of the note that goes with a reason (the database's bound). */
+export const REASON_NOTE_MAX = 200;
+
+/** Why a reason's note cannot be sent: empty, longer than 200 characters, or more than one line; null when it can. */
+export function reasonNoteProblem(
+	note: string,
+): "required" | "too_long" | "one_line" | null {
+	const trimmed = note.trim();
+	if (trimmed === "") return "required";
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what the database refuses
+	if (/[\u0000-\u001f\u007f]/.test(trimmed)) return "one_line";
+	if ([...trimmed].length > REASON_NOTE_MAX) return "too_long";
+	return null;
+}
+
+export function isDifferenceReason(value: unknown): value is DifferenceReason {
+	return (DIFFERENCE_REASON_CODES as readonly unknown[]).includes(value);
+}
+
 /** A shift as the database answers it (native-till.md section 12); the expected cash only once counted. */
 export interface Shift {
 	readonly id: string;
@@ -14,6 +52,9 @@ export interface Shift {
 	readonly status: "open" | "awaiting_confirmation" | "closed";
 	readonly closed_at: string | null;
 	readonly close_note: string | null;
+	/** the counting person's reason for a difference and its note (Q02), null until given */
+	readonly difference_reason?: DifferenceReason | null;
+	readonly difference_note?: string | null;
 	readonly version: number;
 	readonly expected_cash?: number | null;
 	readonly cash_difference?: number | null;
@@ -52,6 +93,8 @@ export type ClockAnswer =
 	| {
 			readonly state: "clocked_in" | "closed" | "awaiting_confirmation";
 			readonly refusal: null;
+			/** clock-out only: the count differs and the person has not given a reason yet */
+			readonly reason_required?: boolean;
 			readonly shift: Shift;
 	  }
 	| {
@@ -106,8 +149,65 @@ export const clockIn = (
 		p_opening_cash: openingCash,
 	});
 
-export const clockOut = (client: SupabaseClient, counted: number) =>
-	rpc<ClockAnswer>(client, "staff_clock_out", { p_counted_cash: counted });
+/**
+ * "Ra ca": the blind count, and with a reason and its note when the count differed: the person counts again with them
+ * (staff_clock_out(p_counted_cash, p_reason, p_note)); the clock-out time stays the first one.
+ */
+export const clockOut = (
+	client: SupabaseClient,
+	counted: number,
+	reason: {
+		readonly code: DifferenceReason;
+		readonly note: string;
+	} | null = null,
+) =>
+	rpc<ClockAnswer>(client, "staff_clock_out", {
+		p_counted_cash: counted,
+		p_reason: reason === null ? null : reason.code,
+		p_note: reason === null ? null : reason.note.trim(),
+	});
+
+/** Whether the person may take cash or card at a store: their shift is open there (the database's shift_required). */
+export function onShiftAt(shift: Shift | null, storeId: string): boolean {
+	return (
+		shift !== null && shift.status === "open" && shift.store_id === storeId
+	);
+}
+
+/** Where the person's shift stands on the Ca làm page (Q02's states). */
+export type ShiftStage =
+	| "clock_in"
+	| "open"
+	| "reason_required"
+	| "awaiting_manager";
+
+/**
+ * The stage of a shift: none or closed → clock in; open → open (the count is blind); awaiting a manager without the
+ * person's reason → the reason step; with it → waiting for the manager. A recount that matches closes it.
+ */
+export function shiftStage(shift: Shift | null): ShiftStage {
+	if (shift === null || shift.status === "closed") return "clock_in";
+	if (shift.status === "open") return "open";
+	return shift.difference_reason === null ||
+		shift.difference_reason === undefined
+		? "reason_required"
+		: "awaiting_manager";
+}
+
+/** The stage a clock-out answer leads to (a refusal keeps the stage the screen was in). */
+export function stageAfterClockOut(
+	answer: ClockAnswer,
+	before: ShiftStage,
+): ShiftStage {
+	if (answer.state === "refused")
+		return answer.refusal === "not_clocked_in" ? "clock_in" : before;
+	if (answer.state === "closed") return "clock_in";
+	if (answer.state === "awaiting_confirmation")
+		return answer.reason_required === true
+			? "reason_required"
+			: shiftStage(answer.shift);
+	return shiftStage(answer.shift);
+}
 
 export const managerShifts = (
 	client: SupabaseClient,

@@ -1,3 +1,4 @@
+export * from "./account-contract";
 export * from "./contract";
 export {
 	createPaymentClient,

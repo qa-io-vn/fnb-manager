@@ -337,11 +337,15 @@ describe("the shell of the ordering build", () => {
 });
 
 describe("the data screen (C19)", () => {
-	it("tells a visitor to ask at the counter, and lets a member send the deletion request", async () => {
+	it("offers a visitor the deletion at once, behind the confirmation", async () => {
 		renderOrderingApp({ search: "?route=/du-lieu" });
 		expect(await screen.findByTestId("data-summary")).toBeInTheDocument();
 		fireEvent.click(screen.getByTestId("data-delete"));
-		expect(await screen.findByTestId("data-visitor")).toBeInTheDocument();
+		fireEvent.click(await screen.findByTestId("data-continue"));
+		expect(await screen.findByTestId("data-confirm")).toHaveTextContent(
+			"Quán xóa ngay dữ liệu của bạn",
+		);
+		expect(screen.getByTestId("data-confirm-delete")).toBeDisabled();
 	});
 
 	it("sends a member's deletion request after the confirmation", async () => {

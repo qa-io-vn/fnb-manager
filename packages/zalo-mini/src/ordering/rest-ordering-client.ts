@@ -1,5 +1,14 @@
 import type { RestClient } from "../data/rest-client";
 import {
+	ACCOUNT_FUNCTIONS,
+	readCancelRequestAnswer,
+	readCustomerRequests,
+	readDataExport,
+	readDeleteAccountAnswer,
+	readStampCodeAnswer,
+	requestIdArgs,
+} from "./account-contract";
+import {
 	menuArgs,
 	ORDERING_FUNCTIONS,
 	type OrderingClient,
@@ -70,6 +79,25 @@ export function createRestOrderingClient(rest: RestClient): OrderingClient {
 		},
 		async stampCard() {
 			return readStampCard(await rest.rpc(ORDERING_FUNCTIONS.stampCard));
+		},
+		async stampCode() {
+			return readStampCodeAnswer(await rest.rpc(ACCOUNT_FUNCTIONS.stampCode));
+		},
+		async deleteAccount() {
+			return readDeleteAccountAnswer(
+				await rest.rpc(ACCOUNT_FUNCTIONS.deleteAccount, { p_confirm: true }),
+			);
+		},
+		async exportData() {
+			return readDataExport(await rest.rpc(ACCOUNT_FUNCTIONS.exportData));
+		},
+		async requests() {
+			return readCustomerRequests(await rest.rpc(ACCOUNT_FUNCTIONS.requests));
+		},
+		async cancelRequest(id) {
+			return readCancelRequestAnswer(
+				await rest.rpc(ACCOUNT_FUNCTIONS.cancelRequest, requestIdArgs(id)),
+			);
 		},
 	};
 }

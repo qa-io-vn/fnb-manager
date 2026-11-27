@@ -4,6 +4,13 @@
 // order: the server does, and the app only shows what it answered.
 
 import { type OpeningHours, readOpeningHours } from "../loyalty/contract";
+import type {
+	CancelRequestAnswer,
+	CustomerRequest,
+	DataExport,
+	DeleteAccountAnswer,
+	StampCodeAnswer,
+} from "./account-contract";
 
 export const ORDERING_FUNCTIONS = {
 	menu: "customer_menu",
@@ -384,6 +391,8 @@ export interface OrderSummary {
 	readonly total: number;
 	readonly placedAt: string;
 	readonly items: number;
+	/** when the order should be ready (accepted or started plus the store's preparation time); null otherwise */
+	readonly readyEstimateAt: string | null;
 }
 
 export interface OrderList {
@@ -412,6 +421,17 @@ export interface NativeStampCard {
 	readonly totalEarned: number;
 	readonly rewards: readonly StampReward[];
 	readonly history: readonly StampEntry[];
+	/** counter orders attached to the card in the last 7 days (C20 frame 5), newest first */
+	readonly attached: readonly AttachedOrder[];
+}
+
+/** A counter order the counter attached to the card with the member code: its drinks earn when it completes. */
+export interface AttachedOrder {
+	readonly orderNo: string | null;
+	readonly storeName: string;
+	readonly status: OrderStatus;
+	readonly attachedAt: string;
+	readonly stamps: number;
 }
 
 export interface OrderingClient {
@@ -425,6 +445,15 @@ export interface OrderingClient {
 	orders(before: string | null): Promise<OrderList>;
 	cancelOrder(id: string): Promise<CancelAnswer>;
 	stampCard(): Promise<NativeStampCard>;
+	/** C20: a new member code of the stamp card (revokes the last one) */
+	stampCode(): Promise<StampCodeAnswer>;
+	/** C19: deletes a login that never joined with a phone, at once */
+	deleteAccount(): Promise<DeleteAccountAnswer>;
+	/** C19: one JSON of everything held about the login */
+	exportData(): Promise<DataExport>;
+	/** the customer's own requests (bookings, holds…) with a time the store proposed */
+	requests(): Promise<{ readonly requests: readonly CustomerRequest[] }>;
+	cancelRequest(id: string): Promise<CancelRequestAnswer>;
 }
 
 type Row = Readonly<Record<string, unknown>>;
@@ -918,6 +947,10 @@ function readOrderSummary(value: unknown): OrderSummary {
 		total: amount(row.total, "total"),
 		placedAt: instant(row.placed_at, "placed_at"),
 		items: amount(row.items, "item count"),
+		readyEstimateAt: optionalInstant(
+			row.ready_estimate_at,
+			"ready_estimate_at",
+		),
 	};
 }
 
@@ -954,6 +987,16 @@ export function readStampCard(value: unknown): NativeStampCard {
 				balanceAfter: signed(item.balance_after, "stamp balance"),
 				at: instant(item.at, "stamp entry time"),
 				orderNo: optionalText(item.order_no, "stamp entry order"),
+			};
+		}),
+		attached: optionalList(row.attached, "attached orders").map((entry) => {
+			const item = record(entry, "attached order");
+			return {
+				orderNo: optionalText(item.order_no, "attached order number"),
+				storeName: text(item.store_name, "attached order store"),
+				status: oneOf(ORDER_STATUSES, item.status, "attached order status"),
+				attachedAt: instant(item.attached_at, "attached time"),
+				stamps: amount(item.stamps, "attached order stamps"),
 			};
 		}),
 	};
