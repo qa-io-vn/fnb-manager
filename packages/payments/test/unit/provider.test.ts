@@ -62,11 +62,13 @@ describe("readProviderConfig", () => {
 
 	it("reads a valid row", () => {
 		expect(readProviderConfig(row)).toEqual(vietqr);
+		// a row switched off still verifies the notifications of attempts opened before
+		expect(readProviderConfig({ ...row, mode: "off" })?.mode).toBe("off");
 	});
 
-	it("refuses an off mode, another method, a secret name of another family or one shaped like a value", () => {
+	it("refuses an unknown mode, another method, a secret name of another family or one shaped like a value", () => {
 		for (const overrides of [
-			{ mode: "off" },
+			{ mode: "paused" },
 			{ method: "cash" },
 			{ secret_name: "SUPABASE_SERVICE_ROLE_KEY" },
 			{ secret_name: "ZALO_CHECKOUT_KEY_BRAND_1" },

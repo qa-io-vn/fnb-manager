@@ -1,11 +1,11 @@
 import { bankAdapterFor } from "./bank.js";
 import {
+	type ConfigMode,
 	isRecord,
 	type PaymentFetch,
 	type PaymentMethod,
 	type PaymentProvider,
 	ProviderConfigError,
-	type ProviderMode,
 	type StatusAnswer,
 } from "./types.js";
 import {
@@ -33,7 +33,7 @@ export interface ProviderConfig {
 	readonly id: string;
 	readonly method: PaymentMethod;
 	readonly adapter: string;
-	readonly mode: ProviderMode;
+	readonly mode: ConfigMode;
 	readonly secretName: string;
 	readonly settings: Readonly<Record<string, unknown>>;
 	/** the customer Mini App's id, for the Checkout SDK */
@@ -67,7 +67,7 @@ export function readProviderConfig(value: unknown): ProviderConfig | null {
 		!UUID_PATTERN.test(id) ||
 		(method !== "zalo_checkout" && method !== "vietqr") ||
 		typeof adapter !== "string" ||
-		(mode !== "sandbox" && mode !== "live") ||
+		(mode !== "sandbox" && mode !== "live" && mode !== "off") ||
 		typeof secretName !== "string" ||
 		!SECRET_NAME_PATTERNS[method].test(secretName) ||
 		!isRecord(settings) ||

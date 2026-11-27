@@ -8,6 +8,8 @@
 
 export type PaymentMethod = "zalo_checkout" | "vietqr";
 export type ProviderMode = "sandbox" | "live";
+/** A row's mode: off rows still verify the notifications of attempts opened before the switch-off. */
+export type ConfigMode = ProviderMode | "off";
 
 /** A fetch the Zalo calls go through: the relay of ADR-057 wraps it in the cloud, a fake replaces it in tests. */
 export interface PaymentRequestInit {
@@ -156,7 +158,7 @@ export interface PaymentProvider {
 	/** the adapter: zalo_checkout, sepay, mock */
 	readonly adapter: string;
 	readonly method: PaymentMethod;
-	readonly mode: ProviderMode;
+	readonly mode: ConfigMode;
 	createPayment(attempt: PaymentAttempt): Promise<CreatedPayment>;
 	verifyNotification(request: NotificationRequest): Promise<NotificationResult>;
 	reply(outcome: NotificationOutcome): NotificationReply;

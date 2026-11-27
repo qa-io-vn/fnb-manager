@@ -53,8 +53,170 @@ export const WEB_LOGIN_FORM_FIELDS = [
 	"grant_type",
 ] as const;
 export const WEB_LOGIN_FORM_MAX_LENGTH = 4096;
-export type RelayCallPath = RelayGraphPath | typeof RELAY_WEB_LOGIN_PATH;
 const FORM_CONTENT_TYPE = "application/x-www-form-urlencoded";
+
+/**
+ * Zalo's Checkout SDK server APIs (ADR-067): payment-mini.zalo.me may refuse servers outside Vietnam as the Graph
+ * does, so the payments job asks an order's status, sends and follows a refund and reports a paid bank-transfer popup
+ * through the relay. It carries exactly those four calls with their fixed fields: two GETs with a query of three
+ * fields and two POSTs with a JSON body of four or five; every field is shaped (ids, a 64-hex MAC, a whole amount, a
+ * one-line description); no header but the JSON content type of a POST; no other path. The Checkout private key never
+ * travels: each call carries only a MAC over its fields.
+ */
+export const ZALO_PAYMENT_ORIGIN = "https://payment-mini.zalo.me";
+export const PAYMENT_STATUS_PATH = "/api/transaction/get-status";
+export const PAYMENT_REFUND_STATUS_PATH = "/api/refund";
+export const PAYMENT_REFUND_PATH = "/api/refund/create";
+const PURCHASE_PATH_PATTERN =
+	/^\/api\/transaction\/([A-Za-z0-9_-]{1,64})\/purchase-payment$/;
+export type PaymentCallPath = `/api/${string}`;
+export type RelayCallPath =
+	| RelayGraphPath
+	| typeof RELAY_WEB_LOGIN_PATH
+	| PaymentCallPath;
+const JSON_CONTENT_TYPE = "application/json";
+const PAYMENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const PAYMENT_REF = /^[A-Za-z0-9_.:-]{1,64}$/;
+const PAYMENT_MAC = /^[0-9a-f]{64}$/;
+export const PAYMENT_BODY_MAX_LENGTH = 1024;
+export const PAYMENT_QUERY_MAX_LENGTH = 512;
+const PAYMENT_MAX_AMOUNT = 100_000_000;
+
+function exactKeys(
+	keys: readonly string[],
+	expected: readonly string[],
+): boolean {
+	return (
+		keys.length === expected.length &&
+		new Set(keys).size === keys.length &&
+		expected.every((key) => keys.includes(key))
+	);
+}
+
+export function isPaymentPath(path: unknown): path is PaymentCallPath {
+	return (
+		typeof path === "string" &&
+		(path === PAYMENT_STATUS_PATH ||
+			path === PAYMENT_REFUND_STATUS_PATH ||
+			path === PAYMENT_REFUND_PATH ||
+			PURCHASE_PATH_PATTERN.test(path))
+	);
+}
+
+/** Whether a query and body are exactly the payment call of this path (its method follows from the path). */
+export function paymentCallValid(
+	path: string,
+	query: string,
+	body: string | undefined,
+): boolean {
+	if (path === PAYMENT_STATUS_PATH || path === PAYMENT_REFUND_STATUS_PATH) {
+		if (body !== undefined || query.length > PAYMENT_QUERY_MAX_LENGTH) {
+			return false;
+		}
+		const form = new URLSearchParams(query);
+		const idKey = path === PAYMENT_STATUS_PATH ? "orderId" : "refundId";
+		return (
+			exactKeys([...form.keys()], ["appId", idKey, "mac"]) &&
+			PAYMENT_ID.test(form.get("appId") ?? "") &&
+			(path === PAYMENT_STATUS_PATH ? PAYMENT_ID : PAYMENT_REF).test(
+				form.get(idKey) ?? "",
+			) &&
+			PAYMENT_MAC.test(form.get("mac") ?? "")
+		);
+	}
+	const purchase = PURCHASE_PATH_PATTERN.exec(path);
+	if (
+		(path !== PAYMENT_REFUND_PATH && purchase === null) ||
+		query !== "" ||
+		typeof body !== "string" ||
+		body.length > PAYMENT_BODY_MAX_LENGTH
+	) {
+		return false;
+	}
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(body);
+	} catch {
+		return false;
+	}
+	if (!isRecord(parsed)) {
+		return false;
+	}
+	if (purchase !== null) {
+		return (
+			exactKeys(Object.keys(parsed), [
+				"appId",
+				"orderId",
+				"resultCode",
+				"mac",
+			]) &&
+			parsed.appId === purchase[1] &&
+			typeof parsed.orderId === "string" &&
+			PAYMENT_ID.test(parsed.orderId) &&
+			(parsed.resultCode === 1 ||
+				parsed.resultCode === 0 ||
+				parsed.resultCode === -1) &&
+			typeof parsed.mac === "string" &&
+			PAYMENT_MAC.test(parsed.mac)
+		);
+	}
+	return (
+		exactKeys(Object.keys(parsed), [
+			"appId",
+			"transId",
+			"amount",
+			"description",
+			"mac",
+		]) &&
+		typeof parsed.appId === "string" &&
+		PAYMENT_ID.test(parsed.appId) &&
+		typeof parsed.transId === "string" &&
+		PAYMENT_REF.test(parsed.transId) &&
+		typeof parsed.amount === "number" &&
+		Number.isSafeInteger(parsed.amount) &&
+		parsed.amount > 0 &&
+		parsed.amount <= PAYMENT_MAX_AMOUNT &&
+		typeof parsed.description === "string" &&
+		parsed.description.length <= 100 &&
+		!hasControlCharacter(parsed.description) &&
+		typeof parsed.mac === "string" &&
+		PAYMENT_MAC.test(parsed.mac)
+	);
+}
+
+function isPaymentGet(path: string): boolean {
+	return path === PAYMENT_STATUS_PATH || path === PAYMENT_REFUND_STATUS_PATH;
+}
+
+function paymentCallOf(parsed: URL, init: ZaloRequestInit): GraphCall | null {
+	const path = parsed.pathname;
+	if (!isPaymentPath(path)) {
+		return null;
+	}
+	const get = isPaymentGet(path);
+	if (init.method !== (get ? "GET" : "POST")) {
+		return null;
+	}
+	for (const [name, value] of Object.entries(init.headers)) {
+		if (
+			get ||
+			name.toLowerCase() !== "content-type" ||
+			value.toLowerCase() !== JSON_CONTENT_TYPE
+		) {
+			return null;
+		}
+	}
+	const query = parsed.search.replace(/^\?/, "");
+	if (!paymentCallValid(path, query, init.body)) {
+		return null;
+	}
+	return {
+		path,
+		query,
+		headers: {},
+		...(init.body === undefined ? {} : { body: init.body }),
+	};
+}
 
 /** Whether a form body is exactly an authorisation-code exchange with PKCE: four known fields, each once and well formed. */
 export function webLoginFormValid(body: unknown): body is string {
@@ -250,6 +412,15 @@ export function relayTargetOf(call: GraphCall): {
 	readonly headers: Readonly<Record<string, string>>;
 	readonly body?: string;
 } {
+	if (isPaymentPath(call.path)) {
+		const get = isPaymentGet(call.path);
+		return {
+			url: `${ZALO_PAYMENT_ORIGIN}${call.path}${call.query === "" ? "" : `?${call.query}`}`,
+			method: get ? "GET" : "POST",
+			headers: get ? {} : { "content-type": JSON_CONTENT_TYPE },
+			...(call.body === undefined ? {} : { body: call.body }),
+		};
+	}
 	if (call.path === RELAY_WEB_LOGIN_PATH) {
 		return {
 			url: `${ZALO_OAUTH_ORIGIN}${RELAY_WEB_LOGIN_PATH}`,
@@ -353,6 +524,9 @@ export function graphCallOf(
 	if (parsed.origin === ZALO_OAUTH_ORIGIN) {
 		return webLoginCallOf(parsed, init);
 	}
+	if (parsed.origin === ZALO_PAYMENT_ORIGIN) {
+		return paymentCallOf(parsed, init);
+	}
 	if (
 		parsed.origin !== ZALO_GRAPH_ORIGIN ||
 		init.method !== "GET" ||
@@ -422,6 +596,29 @@ export function validateRelayRequest(
 			query: "",
 			headers: { secret_key: headers.secret_key as string },
 			body,
+		};
+	}
+	if (isPaymentPath(path)) {
+		if (!isRecord(headers) || Object.keys(headers).length !== 0) {
+			throw new RelayError("not_allowed", "the relay carries no such header");
+		}
+		if (
+			typeof query !== "string" ||
+			(body !== undefined && typeof body !== "string") ||
+			!paymentCallValid(path, query, body as string | undefined)
+		) {
+			throw new RelayError(
+				"not_allowed",
+				"the relay carries no such payment call",
+			);
+		}
+		return {
+			id,
+			at,
+			path,
+			query,
+			headers: {},
+			...(body === undefined ? {} : { body: body as string }),
 		};
 	}
 	if (body !== undefined) {
