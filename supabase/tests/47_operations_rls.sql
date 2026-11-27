@@ -558,7 +558,7 @@ select is(
         'public.checkout_set_provider', 'public.counter_ack_call', 'public.counter_attach_member', 'public.counter_board', 'public.counter_create_order',
         'public.counter_member_lookup', 'public.counter_menu', 'public.counter_order', 'public.counter_order_act', 'public.counter_order_einvoice',
         'public.counter_payment_methods', 'public.counter_record_payment', 'public.counter_refund', 'public.counter_request_invoice', 'public.counter_set_pause',
-        'public.counter_set_sold_out', 'public.counter_table_map', 'public.counter_void_payment', 'public.customer_call_staff', 'public.customer_cancel_order',
+        'public.counter_set_sold_out', 'public.counter_table_map', 'public.counter_void_payment', 'public.customer_accept_proposal', 'public.customer_call_staff', 'public.customer_cancel_order',
         'public.customer_cancel_request', 'public.customer_check_cart', 'public.customer_confirm_bill', 'public.customer_coupons', 'public.customer_delete_account',
         'public.customer_delete_saved_company', 'public.customer_dispute_bill', 'public.customer_export_data', 'public.customer_home', 'public.customer_invoice_status',
         'public.customer_member_code', 'public.customer_menu', 'public.customer_menu_version', 'public.customer_order', 'public.customer_orders',
@@ -577,7 +577,7 @@ select is(
         'public.staff_bill_queue', 'public.staff_clock_in', 'public.staff_clock_out', 'public.staff_close_bill_audit', 'public.staff_confirm_redemption',
         'public.staff_counter_claims', 'public.staff_counter_code', 'public.staff_decide_bill', 'public.staff_decide_loyalty_request', 'public.staff_loyalty_queue',
         'public.staff_member_lookup', 'public.staff_my_loyalty_requests', 'public.staff_my_shift', 'public.staff_recent_bills', 'public.staff_record_checkin',
-        'public.staff_request', 'public.staff_reverse_bill', 'public.staff_submit_bill', 'public.staff_verify_redemption', 'public.staff_void_redemption',
+        'public.staff_request', 'public.staff_reverse_bill', 'public.staff_shift_reconciliation', 'public.staff_submit_bill', 'public.staff_verify_redemption', 'public.staff_void_redemption',
         'public.start_bot_link', 'public.start_channel_link', 'public.stop_my_notifications', 'public.table_qr_links', 'public.update_destination'],
   'the only security definer functions a member may call are the membership helpers, the roster, pairing, staff notice and phone functions, settings and legal functions, today_store_totals, the phase 14b checklist editor, acknowledgement, reopening, photo retention and photo policy functions, the phase 15 announcement and request writers, the member''s own notification settings, the Settings → Cảnh báo functions and resend, the loyalty and customer-session membership helpers, the loyalty queue resolution, the customer and staff loyalty RPCs, the masked member reads of Khách hàng, the owner''s data-subject deletion and the strategy plan publisher with its two scope helpers, so no other function reads revenue past RLS'
 );

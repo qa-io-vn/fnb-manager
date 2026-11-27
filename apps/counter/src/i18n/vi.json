@@ -283,6 +283,7 @@
 	"refund.pending": "Đã gửi hoàn {amount} qua cổng thanh toán; chờ cổng trả kết quả.",
 	"refund.refusal.manager_required": "Chỉ quản lý hoàn được khoản này.",
 	"refund.refusal.not_refundable": "Đơn này không có khoản nào để hoàn.",
+	"refund.refusal.shift_required": "Bạn chưa vào ca ở quầy này. Vào ca rồi hoàn tiền mặt.",
 	"refund.refusal.failed": "Chưa hoàn được. Thử lại.",
 	"audit.staff": "Nhân viên",
 	"print.ticket": "In phiếu",

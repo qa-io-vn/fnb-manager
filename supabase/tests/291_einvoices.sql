@@ -93,9 +93,12 @@ select pg_temp.id('cf'), tenant_a, brand_a, pg_temp.id('item_cf'), null, 29000, 
 insert into public.store_tables (id, tenant_id, store_id, label, area)
 select pg_temp.id('table_a1'), tenant_a, store_a1, 'Bàn 1', 'Tầng 1' from fx union all
 select pg_temp.id('table_a2'), tenant_a, store_a2, 'Bàn 2', 'Tầng 1' from fx;
+-- Cash is taken and handed back only on a shift at the store (migrations counter_payment_needs_shift and
+-- cash_refund_needs_shift): the staff of both stores and the manager who refunds at A1 are clocked in.
 insert into public.staff_shifts (tenant_id, store_id, user_id, business_date, clock_in_at, status)
 select tenant_a, store_a1, staff_u, date '2026-11-25', timestamptz '2026-11-25 06:00+07', 'open' from fx union all
-select tenant_a, store_a2, staff_a2_u, date '2026-11-25', timestamptz '2026-11-25 06:00+07', 'open' from fx;
+select tenant_a, store_a2, staff_a2_u, date '2026-11-25', timestamptz '2026-11-25 06:00+07', 'open' from fx union all
+select tenant_a, store_a1, manager_u, date '2026-11-25', timestamptz '2026-11-25 06:00+07', 'open' from fx;
 
 -- Helpers: a caller's claims for one statement (JSON, or {"error": SQLSTATE}); Vietnam time; orders and payments.
 create function pg_temp.call(p_user uuid, p_sql text) returns jsonb language plpgsql as $$

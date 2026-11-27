@@ -202,7 +202,7 @@ select is(
   'Topping 0-2: Trân châu=5000,Thạch=0', 'the POS option group targeting an imported item becomes a group whose options cost their POS price'
 );
 select is(
-  (select string_agg(i.name, ',') from public.menu_item_option_groups l join public.menu_items i on i.id = l.item_id),
+  (select string_agg(i.name, ',') from public.menu_item_option_groups l join public.menu_items i on i.id = l.item_id where i.tenant_id = (select tenant_a from fx)),
   'Trà sữa', 'the group is linked to the items it targets'
 );
 select is((select counts ->> 'items' from public.menu_imports where brand_id = (select brand_a from fx)) || '/' || (select imported_by::text from public.menu_imports where brand_id = (select brand_a from fx)), '4/' || (select owner_u from fx)::text, 'the import is recorded with who ran it');

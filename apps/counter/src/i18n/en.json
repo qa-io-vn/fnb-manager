@@ -283,6 +283,7 @@
 	"refund.pending": "{amount} sent back through the gateway; waiting for its answer.",
 	"refund.refusal.manager_required": "Only a manager can make this refund.",
 	"refund.refusal.not_refundable": "Nothing to refund on this order.",
+	"refund.refusal.shift_required": "You are not on shift at this counter. Clock in, then refund the cash.",
 	"refund.refusal.failed": "Not refunded. Try again.",
 	"audit.staff": "Staff",
 	"print.ticket": "Print the ticket",
