@@ -107,6 +107,28 @@ export function etaMinutes(order: Order, now: number): number | null {
 	return Math.max(1, Math.ceil(left / 60_000));
 }
 
+export type ReadyLine =
+	| { readonly kind: "at"; readonly at: string }
+	| { readonly kind: "soon" };
+
+/**
+ * "Dự kiến xong lúc HH:MM" (C06, C14) from the server's ready_estimate_at: shown while the order is accepted or being
+ * made; once the estimate has passed it says the order is nearly done (the late line takes over five minutes later);
+ * nothing without an estimate or in any other state.
+ */
+export function readyLine(
+	order: Pick<Order, "status" | "readyEstimateAt">,
+	now: number,
+): ReadyLine | null {
+	if (order.status !== "accepted" && order.status !== "preparing") return null;
+	if (order.readyEstimateAt === null) return null;
+	const at = Date.parse(order.readyEstimateAt);
+	if (!Number.isFinite(at)) return null;
+	return now < at
+		? { kind: "at", at: order.readyEstimateAt }
+		: { kind: "soon" };
+}
+
 export const LATE_AFTER_MS = 5 * 60_000;
 
 /** An order still being made five minutes after its estimate (the "late" line, no character on it). */

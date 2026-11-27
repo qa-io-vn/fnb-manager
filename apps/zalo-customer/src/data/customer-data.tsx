@@ -47,6 +47,8 @@ export interface CustomerDataValue {
 	retrySession(): void;
 	recover(error: unknown): Failure;
 	join(request: JoinRequest): Promise<JoinResult>;
+	/** after the login was deleted (C19): forget its session; the app signs in again as a new visitor */
+	startOver(): void;
 }
 
 const CustomerDataContext = createContext<CustomerDataValue | null>(null);
@@ -168,6 +170,7 @@ export function CustomerDataProvider({
 			retrySession: retry,
 			recover,
 			join,
+			startOver: renewOnce,
 		}),
 		[
 			state,
@@ -180,6 +183,7 @@ export function CustomerDataProvider({
 			retry,
 			recover,
 			join,
+			renewOnce,
 		],
 	);
 	return (

@@ -1,6 +1,7 @@
 import { RestError } from "@fnb/zalo-mini";
 import { REFUSAL_INVALID } from "@fnb/zalo-mini/loyalty";
 import {
+	ACCOUNT_FUNCTIONS,
 	CHECKOUT_ORDER_FUNCTION,
 	IDEMPOTENCY_KEY_PATTERN,
 	isOnlineMethod,
@@ -78,6 +79,14 @@ export interface DemoTill {
 	bankTransfer(reference: string, amount: number): DemoTransferOutcome;
 	/** the payment window passes: an order still waiting is cancelled with payment_timeout */
 	expirePayment(orderId?: string): string;
+	/** the customer's booking for tomorrow 19:00, as the booking form sends it; answers its id */
+	addRequest(): string;
+	/** the store proposes another time (30 minutes later) for a request (the latest when no id is given) */
+	proposeRequest(requestId?: string): string;
+	/** the counter attaches a counter order with this many drinks to the customer's card (C20 frame 5) */
+	attachToCard(stamps: number): void;
+	/** how many member codes the customer was issued */
+	stampCodes(): number;
 }
 
 interface DemoLine {
@@ -162,6 +171,49 @@ const MAX_OPEN_ORDERS = 3;
 const MAX_FAILED_ATTEMPTS = 3;
 const STAMPS_PER_REWARD = 9;
 const REWARD_NAME = "Ly miễn phí";
+/** How long the store takes to prepare an order in the demo (the store's prep_minutes, 10 by default). */
+const DEMO_PREP_MS = 10 * 60_000;
+const STAMP_CODE_LIMIT = 30;
+
+/** The Luhn check digit of a string of digits (the 8th digit of a member number checks the first seven). */
+function luhn(digits: string): number {
+	let sum = 0;
+	for (let index = 0; index < digits.length; index += 1) {
+		const digit = Number(digits[digits.length - 1 - index]);
+		const doubled = index % 2 === 0 ? digit * 2 : digit;
+		sum += doubled > 9 ? doubled - 9 : doubled;
+	}
+	return (10 - (sum % 10)) % 10;
+}
+
+function randomToken(): string {
+	const bytes = new Uint8Array(16);
+	crypto.getRandomValues(bytes);
+	return btoa(String.fromCharCode(...bytes))
+		.replace(/\+/g, "-")
+		.replace(/\//g, "_")
+		.replace(/=+$/, "");
+}
+
+/** A request as its customer sees it (customer_requests), never the phone. */
+interface DemoRequest {
+	readonly id: string;
+	readonly kind: "booking";
+	readonly store: string;
+	status: "new" | "proposed" | "confirmed" | "declined" | "cancelled";
+	readonly party_size: number;
+	requested_for: string;
+	proposed_for: string | null;
+	readonly subject: null;
+	readonly note: string | null;
+	readonly created_at: string;
+	answered_at: string | null;
+	answer_message: string | null;
+	cancelled_at: string | null;
+	cancelled_by: string | null;
+	version: number;
+	readonly contact_name: string;
+}
 
 function invalidRequest(): never {
 	throw new RestError(400, REFUSAL_INVALID);
@@ -301,6 +353,7 @@ export function createOrderingWorld(
 	now: () => number,
 	initialReason: string | null,
 	onlinePayments = false,
+	member = false,
 ): OrderingWorld {
 	const items = demoMenuItems();
 	const soldOut = new Set<string>();
@@ -323,6 +376,15 @@ export function createOrderingWorld(
 		at: string;
 		order_no: string | null;
 	}[] = [];
+	const requests: DemoRequest[] = [];
+	const attached: {
+		order_no: string;
+		store_name: string;
+		status: string;
+		attached_at: string;
+		stamps: number;
+	}[] = [];
+	let stampCodesIssued = 0;
 	const methods = onlinePayments
 		? ["counter", "zalo_checkout", "vietqr"]
 		: ["counter"];
@@ -568,6 +630,18 @@ export function createOrderingWorld(
 	const paymentsOf = (order: DemoOrder) =>
 		payments.filter((payment) => payment.orderId === order.id);
 
+	const readyEstimate = (order: DemoOrder): string | null => {
+		const from =
+			order.status === "preparing"
+				? order.preparingAt
+				: order.status === "accepted"
+					? order.acceptedAt
+					: null;
+		return from === null
+			? null
+			: new Date(Date.parse(from) + DEMO_PREP_MS).toISOString();
+	};
+
 	const orderJson = (order: DemoOrder, withTimeline: boolean) => ({
 		id: order.id,
 		order_no: order.orderNo,
@@ -595,6 +669,7 @@ export function createOrderingWorld(
 		paid_at: order.paidAt,
 		cancelled_at: order.cancelledAt,
 		cancel_reason: order.cancelReason,
+		ready_estimate_at: readyEstimate(order),
 		late: false,
 		lines: order.lines,
 		...(withTimeline
@@ -923,6 +998,59 @@ export function createOrderingWorld(
 			: orders.find((entry) => entry.id === orderId);
 
 	const till: DemoTill = {
+		addRequest() {
+			const tomorrow = isoDateIn(now() + 24 * 3_600_000);
+			const id = crypto.randomUUID();
+			requests.push({
+				id,
+				kind: "booking",
+				store: DEMO_ORDERING_STORE,
+				status: "new",
+				party_size: 4,
+				requested_for: new Date(`${tomorrow}T19:00:00+07:00`).toISOString(),
+				proposed_for: null,
+				subject: null,
+				note: null,
+				created_at: iso(),
+				answered_at: null,
+				answer_message: null,
+				cancelled_at: null,
+				cancelled_by: null,
+				version: 1,
+				contact_name: "Khách Mẫu",
+			});
+			return id;
+		},
+		proposeRequest(requestId) {
+			const request =
+				requestId === undefined
+					? requests[requests.length - 1]
+					: requests.find((entry) => entry.id === requestId);
+			if (request === undefined) throw new Error("no such request");
+			request.status = "proposed";
+			request.proposed_for = new Date(
+				Date.parse(request.requested_for) + 30 * 60_000,
+			).toISOString();
+			request.answered_at = iso();
+			request.answer_message =
+				"Giờ đó đã kín bàn, quán còn chỗ muộn hơn 30 phút.";
+			request.version += 1;
+			return request.status;
+		},
+		attachToCard(count) {
+			numbers += 1;
+			attached.unshift({
+				order_no: displayNo(numbers) ?? "",
+				store_name: "Cửa hàng Mẫu 1",
+				status: "accepted",
+				attached_at: iso(),
+				stamps: count,
+			});
+		},
+		stampCodes() {
+			return stampCodesIssued;
+		},
+
 		soldOut(itemId, on) {
 			if (on) soldOut.add(itemId);
 			else soldOut.delete(itemId);
@@ -1043,6 +1171,155 @@ export function createOrderingWorld(
 		},
 	};
 
+	// the customer's own account (C19, C20) and requests, as the database answers them (docs/api.md)
+	const stampCode = () => {
+		if (stampCodesIssued >= STAMP_CODE_LIMIT)
+			return {
+				state: "refused",
+				refusal: "rate_limited",
+				retry_at: new Date(now() + 15 * 60_000).toISOString(),
+				code: null,
+			};
+		stampCodesIssued += 1;
+		const seven = String(crypto.getRandomValues(new Uint32Array(1))[0] ?? 0)
+			.padStart(7, "0")
+			.slice(-7);
+		const number = `${seven}${luhn(seven)}`;
+		const issued = now();
+		return {
+			state: "issued",
+			refusal: null,
+			code: {
+				qr_payload: `fnb-stamp:1:${randomToken()}`,
+				number,
+				display_number: `${number.slice(0, 4)} ${number.slice(4)}`,
+				issued_at: new Date(issued).toISOString(),
+				refresh_at: new Date(issued + 9 * 60_000).toISOString(),
+				expires_at: new Date(issued + 10 * 60_000).toISOString(),
+			},
+		};
+	};
+
+	const deleteAccount = (args: Readonly<Record<string, unknown>>) => {
+		if (args.p_confirm !== true) invalidRequest();
+		if (member)
+			return { state: "refused", refusal: "member_request", deleted: false };
+		const mineNow = orders.filter((order) => order.owner === "me");
+		const open = mineNow.filter((order) => openStatuses.includes(order.status));
+		if (open.length > 0)
+			return {
+				state: "refused",
+				refusal: "open_orders",
+				deleted: false,
+				orders: open.length,
+			};
+		const owed = mineNow.filter(
+			(order) => order.paymentStatus === "refund_pending",
+		);
+		if (owed.length > 0)
+			return {
+				state: "refused",
+				refusal: "refund_pending",
+				deleted: false,
+				orders: owed.length,
+			};
+		// the orders stay as money records without the link; the card, the requests and the attachments go
+		for (const order of mineNow)
+			(order as { owner: "me" | "someone" }).owner = "someone";
+		stamps = 0;
+		totalEarned = 0;
+		rewards.length = 0;
+		history.length = 0;
+		requests.length = 0;
+		attached.length = 0;
+		return {
+			state: "deleted",
+			refusal: null,
+			deleted: true,
+			deleted_at: iso(),
+			counts: { orders: mineNow.length },
+		};
+	};
+
+	const exportData = () => {
+		const mineNow = orders.filter((order) => order.owner === "me");
+		const since = new Date(now() - 30 * 86_400_000).toISOString();
+		return {
+			generated_at: iso(),
+			login: {
+				zalo_user_id: "demo-zalo-user",
+				brand: "Thương hiệu mẫu",
+				created_at: since,
+				joined: member,
+			},
+			customer: member
+				? {
+						name: "Khách Mẫu",
+						phone: "0900000000",
+						first_seen_at: since,
+						last_seen_at: iso(),
+					}
+				: null,
+			memberships: [],
+			consents: [],
+			stamp_card: {
+				stamps,
+				total_earned: totalEarned,
+				created_at: since,
+				rewards,
+				entries: history,
+			},
+			orders: mineNow.map((order) => ({
+				...orderJson(order, false),
+				store_name: "Cửa hàng Mẫu 1",
+			})),
+			attached_orders: attached,
+			requests: requests.map((request) => ({
+				...request,
+				contact_phone: "0900000000",
+			})),
+			staff_calls: [],
+			order_blocks: [],
+			deletion_request: null,
+			not_kept: ["location", "contacts", "zalo_messages", "card_numbers"],
+			counts: {
+				orders: mineNow.length,
+				attached_orders: attached.length,
+				requests: requests.length,
+				staff_calls: 0,
+				stamp_entries: history.length,
+				memberships: 0,
+				consents: 0,
+			},
+		};
+	};
+
+	const cancelRequest = (id: unknown) => {
+		if (typeof id !== "string" || !UUID.test(id)) invalidRequest();
+		const request = requests.find((entry) => entry.id === id);
+		if (request === undefined)
+			return {
+				state: "refused",
+				refusal: "unknown_request",
+				replayed: false,
+				request: null,
+			};
+		if (request.status === "cancelled")
+			return { state: "cancelled", refusal: null, replayed: true, request };
+		if (request.status === "declined")
+			return {
+				state: "refused",
+				refusal: "not_allowed",
+				replayed: false,
+				request,
+			};
+		request.status = "cancelled";
+		request.cancelled_at = iso();
+		request.cancelled_by = "customer";
+		request.version += 1;
+		return { state: "cancelled", refusal: null, replayed: false, request };
+	};
+
 	const answer = (
 		fn: string,
 		args: Readonly<Record<string, unknown>>,
@@ -1111,6 +1388,7 @@ export function createOrderingWorld(
 							total: order.total,
 							placed_at: order.placedAt,
 							items: order.lines.reduce((sum, line) => sum + line.quantity, 0),
+							ready_estimate_at: readyEstimate(order),
 						})),
 					next_before: null,
 				};
@@ -1157,7 +1435,18 @@ export function createOrderingWorld(
 					total_earned: totalEarned,
 					rewards,
 					history: history.slice(0, 20),
+					attached,
 				};
+			case ACCOUNT_FUNCTIONS.stampCode:
+				return stampCode();
+			case ACCOUNT_FUNCTIONS.deleteAccount:
+				return deleteAccount(args);
+			case ACCOUNT_FUNCTIONS.exportData:
+				return exportData();
+			case ACCOUNT_FUNCTIONS.requests:
+				return { requests: [...requests].reverse() };
+			case ACCOUNT_FUNCTIONS.cancelRequest:
+				return cancelRequest(args.p_request);
 			default:
 				return undefined;
 		}
@@ -1338,6 +1627,9 @@ export function createOrderingWorld(
 			ORDERING_FUNCTIONS.placeOrder,
 			ORDERING_FUNCTIONS.cancelOrder,
 			ORDERING_FUNCTIONS.callStaff,
+			ACCOUNT_FUNCTIONS.stampCode,
+			ACCOUNT_FUNCTIONS.deleteAccount,
+			ACCOUNT_FUNCTIONS.cancelRequest,
 		],
 	};
 }
