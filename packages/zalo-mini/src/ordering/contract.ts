@@ -5,6 +5,7 @@
 
 import { type OpeningHours, readOpeningHours } from "../loyalty/contract";
 import type {
+	AcceptProposalAnswer,
 	CancelRequestAnswer,
 	CustomerRequest,
 	DataExport,
@@ -461,6 +462,11 @@ export interface OrderingClient {
 	/** the customer's own requests (bookings, holds…) with a time the store proposed */
 	requests(): Promise<{ readonly requests: readonly CustomerRequest[] }>;
 	cancelRequest(id: string): Promise<CancelRequestAnswer>;
+	/**
+	 * "Đồng ý giờ mới": accepts the time the store proposed for the customer's own request; attemptId is the app's id of
+	 * this acceptance (one per attempt: a double tap or a retry after a lost answer is one acceptance)
+	 */
+	acceptProposal(id: string, attemptId: string): Promise<AcceptProposalAnswer>;
 	/** C18 and C14: whether a company invoice can be asked for the order now, the request and the e-invoice */
 	invoiceStatus(orderId: string): Promise<InvoiceStatus>;
 	/** C18: asks for a company invoice (one request id per attempt: a retry or a double tap makes one request) */
