@@ -233,6 +233,8 @@ test("criterion 4: a manager refunds a completed order and its stamp goes back; 
 	});
 	expect(staffTry).toBe("manager_required");
 
+	// a cash refund now needs the refunder's open shift at the store (the database answers shift_required otherwise)
+	await openShiftFor(db, seeded, seeded.people.manager.id);
 	const context = await browser.newContext({
 		viewport: { width: 1280, height: 800 },
 	});

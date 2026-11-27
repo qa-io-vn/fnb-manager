@@ -1,5 +1,6 @@
 import { formatVnd, formatVndDelta } from "@fnb/zalo-mini/format";
 import { useI18n } from "@fnb/zalo-mini/i18n";
+import type { Company } from "@fnb/zalo-mini/ordering";
 import { ChipGroup, PriceText, Stepper } from "@fnb/zalo-mini/ui-kit";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -14,6 +15,12 @@ import {
 	type OptionGroup,
 } from "../menu/menu-api";
 import { useBoard } from "../orders/board-context";
+import {
+	counterRefusalKey,
+	EMPTY_INPUT,
+	requestCompanyInvoice,
+} from "../orders/einvoice";
+import { CompanyDialog, EInvoiceCard } from "../orders/einvoice-ui";
 import { attachMember, shortName } from "../orders/member";
 import { MemberDialog, type PickedMember } from "../orders/member-dialog";
 import { PaymentDialog } from "../orders/payment-dialog";
@@ -281,6 +288,11 @@ export function CreateOrderPage() {
 	// the stamp card picked for this ticket: in memory only, attached once the order is created
 	const [member, setMember] = useState<PickedMember | null>(null);
 	const [memberOpen, setMemberOpen] = useState(false);
+	// the company asked for this ticket (Q01's company row): in memory only, checked, sent once the order is paid
+	const [company, setCompany] = useState<Company | null>(null);
+	const [companyOpen, setCompanyOpen] = useState(false);
+	// moved once the company request of the paid order is answered: the paid state reads the e-invoice again
+	const [companySent, setCompanySent] = useState(0);
 	const menu = useQuery({
 		queryKey: ["counter-menu", store.id],
 		queryFn: () => counterMenu(client, store.id),
@@ -398,6 +410,32 @@ export function CreateOrderPage() {
 		setDone(null);
 		setMessage(null);
 		setMember(null);
+		setCompany(null);
+	};
+	/**
+	 * The company held for the ticket goes once the order is paid (counter_request_invoice wants a paid order); a
+	 * refusal is said, and the order detail's company row can send it again.
+	 */
+	const sendCompany = async (paid: Order, held: Company) => {
+		try {
+			const answer = await requestCompanyInvoice(
+				client,
+				paid.id,
+				crypto.randomUUID(),
+				held,
+			);
+			show(
+				answer.state === "received"
+					? t("company.sent", { order: paid.display_no ?? "" })
+					: t("company.afterPayFailed", {
+							reason: t(counterRefusalKey(answer.refusal)),
+						}),
+			);
+		} catch {
+			show(t("company.afterPayFailed", { reason: t("common.failed") }));
+		} finally {
+			setCompanySent((count) => count + 1);
+		}
 	};
 	const memberName = member === null ? null : shortName(member.member.name);
 	return (
@@ -592,6 +630,52 @@ export function CreateOrderPage() {
 							</button>
 						)}
 					</div>
+					<div
+						className="flex min-h-14 items-center gap-2 rounded-control bg-surface-sunken px-3 py-2"
+						data-testid="ticket-company"
+					>
+						<span className="min-w-0 flex-1 text-sm">
+							{company === null ? (
+								<>
+									<span className="block font-bold">
+										{t("company.ticketTitle")}
+									</span>
+									<span className="text-ink-muted">
+										{t("company.ticketLead")}
+									</span>
+								</>
+							) : (
+								<span
+									className="font-bold break-words"
+									data-testid="ticket-company-name"
+								>
+									{t("einvoice.companyFor", {
+										company: company.companyName,
+										taxCode: company.taxCode,
+									})}
+								</span>
+							)}
+						</span>
+						<button
+							type="button"
+							className={`${button.secondary} min-h-12`}
+							onClick={() => setCompanyOpen(true)}
+							data-testid="ticket-company-open"
+						>
+							{company === null ? t("company.open") : t("company.edit")}
+						</button>
+						{company === null ? null : (
+							<button
+								type="button"
+								className={`${button.quiet} min-h-12`}
+								onClick={() => setCompany(null)}
+								aria-label={t("company.removeLabel")}
+								data-testid="ticket-company-remove"
+							>
+								{t("company.remove")}
+							</button>
+						)}
+					</div>
 					<input
 						className={field}
 						maxLength={200}
@@ -645,6 +729,17 @@ export function CreateOrderPage() {
 					}}
 				/>
 			)}
+			{companyOpen ? (
+				<CompanyDialog
+					orderNo=""
+					initial={company ?? EMPTY_INPUT}
+					onClose={() => setCompanyOpen(false)}
+					onHold={(held) => {
+						setCompany(held);
+						setCompanyOpen(false);
+					}}
+				/>
+			) : null}
 			{memberOpen ? (
 				<MemberDialog
 					store={store.id}
@@ -669,6 +764,7 @@ export function CreateOrderPage() {
 						update(paid);
 						setDone(paid);
 						void printer.print(paid);
+						if (company !== null) void sendCompany(paid, company);
 					}}
 				/>
 			)}
@@ -704,6 +800,14 @@ export function CreateOrderPage() {
 					<p className="text-body">
 						{t("create.doneBody", { amount: formatVnd(done.total) })}
 					</p>
+					<div className="mt-3">
+						<EInvoiceCard
+							order={done}
+							companyRow={false}
+							refresh={companySent}
+							testId="create-done-einvoice"
+						/>
+					</div>
 				</Dialog>
 			)}
 		</div>

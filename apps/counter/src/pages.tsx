@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { CreateOrderPage } from "./create/create-order-page";
 import { useMember, useSession } from "./lib/session";
 import { clockOf } from "./lib/time";
+import { EInvoicesPage, useEInvoiceAttention } from "./manager/einvoices-page";
 import { ManagerHome } from "./manager/manager-home";
 import { MenuEditorPage } from "./manager/menu-page";
 import { OverviewPage } from "./manager/overview-page";
@@ -158,6 +159,8 @@ function Frame({ manager }: { readonly manager: boolean }) {
 	const { state } = useBoard();
 	// M01: the new requests nobody opened yet, on the manager's tab (staff never ask: the database refuses them)
 	const unread = useInbox(manager).data?.unread ?? 0;
+	// e-invoices that failed and wait for a manager (manager_einvoices; staff never ask: the database refuses them)
+	const failingInvoices = useEInvoiceAttention(manager);
 	const items: NavItem[] = [
 		{
 			to: "/don",
@@ -182,7 +185,7 @@ function Frame({ manager }: { readonly manager: boolean }) {
 						label: t("nav.manager"),
 						icon: <ChartIcon />,
 						testId: "manager",
-						badge: unread,
+						badge: unread + failingInvoices,
 					},
 				]
 			: []),
@@ -220,6 +223,10 @@ function Frame({ manager }: { readonly manager: boolean }) {
 				<Route path="/quan-ly/yeu-cau" element={manage(<RequestsPage />)} />
 				<Route path="/quan-ly/nhan-su" element={manage(<StaffPage />)} />
 				<Route path="/quan-ly/ma-qr" element={manage(<QrPage />)} />
+				<Route
+					path="/quan-ly/hoa-don-dien-tu"
+					element={manage(<EInvoicesPage />)}
+				/>
 				<Route path="/quan-ly/*" element={manage(<ManagerHome />)} />
 				<Route path="*" element={<Navigate to="/don" replace />} />
 			</Routes>
