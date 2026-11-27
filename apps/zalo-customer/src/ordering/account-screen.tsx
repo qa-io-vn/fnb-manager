@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { SettingsScreen } from "../settings/settings-screen";
 import {
+	BuildingIcon,
 	ChevronRight,
 	ClockIcon,
 	ListIcon,
@@ -67,6 +68,13 @@ export function OrderingAccountScreen() {
 						sub={t("me.codeSub")}
 						to="/ma-thanh-vien"
 						row="code"
+					/>
+					<Row
+						icon={<BuildingIcon />}
+						title={t("me.company")}
+						sub={t("me.companySub")}
+						to="/hoa-don-cong-ty"
+						row="company"
 					/>
 					<Row
 						icon={<ClockIcon />}

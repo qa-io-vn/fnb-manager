@@ -68,6 +68,9 @@ export const PlusIcon = () => <Icon path="M12 5v14M5 12h14" />;
 export const ChevronRight = () => (
 	<Icon path="M9.5 5.5L16 12l-6.5 6.5" size={20} />
 );
+export const BuildingIcon = () => (
+	<Icon path="M4.5 20V5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v15M13.5 9h5a1 1 0 0 1 1 1v10M3 20h18M8 8h2M8 12h2M8 16h2M16.5 13h.01M16.5 16.5h.01" />
+);
 
 export const kicker =
 	"text-xs font-bold tracking-[0.12em] text-highlight uppercase";

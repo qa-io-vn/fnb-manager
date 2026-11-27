@@ -133,6 +133,11 @@ export interface DemoSettings {
 	 * providers are configured does; otherwise the counter only, and checkout-order answers provider_off.
 	 */
 	readonly onlinePayments: boolean;
+	/**
+	 * The ordering store's e-invoice provider is off (`?einvoice=off`): no e-invoice is made and a company invoice
+	 * cannot be asked (einvoice_off); on by default, as the mock provider is on the local stack's test tenants.
+	 */
+	readonly einvoiceOff: boolean;
 }
 
 export const DEMO_DEFAULTS: DemoSettings = {
@@ -153,6 +158,7 @@ export const DEMO_DEFAULTS: DemoSettings = {
 	bills: 0,
 	orderingReason: null,
 	onlinePayments: false,
+	einvoiceOff: false,
 };
 
 const MAX_DEMO_DELAY_MS = 10_000;
@@ -213,6 +219,7 @@ export function demoSettingsFrom(search: string): DemoSettings {
 			DEMO_ORDERING_REASONS.find((name) => name === params.get("ordering")) ??
 			null,
 		onlinePayments: params.get("payments") === "online",
+		einvoiceOff: params.get("einvoice") === "off",
 	};
 }
 

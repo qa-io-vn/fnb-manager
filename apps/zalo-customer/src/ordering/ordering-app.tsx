@@ -67,6 +67,14 @@ const MemberCodeScreen = lazyScreen(
 	() => import("./member-code-screen"),
 	(m) => m.OrderingMemberCodeScreen,
 );
+const CompanyInvoiceScreen = lazyScreen(
+	() => import("./company-invoice-screen"),
+	(m) => m.CompanyInvoiceScreen,
+);
+const CompanyHubScreen = lazyScreen(
+	() => import("./saved-companies"),
+	(m) => m.CompanyHubScreen,
+);
 const WalletScreen = lazyScreen(
 	() => import("../wallet/wallet-screen"),
 	(m) => m.WalletScreen,
@@ -114,6 +122,12 @@ export const orderingRoutes: readonly MiniAppRoute[] = [
 	{ path: "/tra-tien/:id", chrome: "flow", element: <PayScreen /> },
 	{ path: "/thanh-toan/:id", chrome: "flow", element: <PaymentScreen /> },
 	{ path: "/du-lieu", chrome: "flow", element: <DataPolicyScreen /> },
+	{
+		path: "/hoa-don-cong-ty/:id",
+		chrome: "flow",
+		element: <CompanyInvoiceScreen />,
+	},
+	{ path: "/hoa-don-cong-ty", activeTab: null, element: <CompanyHubScreen /> },
 	{ path: "/ma-thanh-vien", activeTab: null, element: <MemberCodeScreen /> },
 	{ path: "/yeu-cau-cua-ban", activeTab: null, element: <MyRequestsScreen /> },
 	{ path: "/the-thanh-vien/diem", activeTab: null, element: <WalletScreen /> },

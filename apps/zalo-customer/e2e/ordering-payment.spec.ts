@@ -107,6 +107,23 @@ test("pays with the wallet: the server accepts the order with a number once the 
 	await checkOrderingScreen(page);
 });
 
+test("C18-E3: the order a payment just paid offers the company invoice, which opens its form", async ({
+	page,
+}) => {
+	await toCheckout(page);
+	await placeWith(page, "zalo_checkout");
+	await page.getByTestId("stand-in-pay").click();
+	await expectAccepted(page);
+	await expect(page.getByTestId("order-invoice-ask")).toBeVisible(POLLED);
+	await checkOrderingScreen(page);
+	await page.getByTestId("order-invoice-ask").click();
+	await expect(page.getByTestId("company-invoice-form")).toBeVisible();
+	await expect(page.getByTestId("invoice-order")).toContainText(
+		"Đã thanh toán",
+	);
+	await checkOrderingScreen(page);
+});
+
 test("a failed wallet payment shows C11; Thử lại opens a new attempt that pays", async ({
 	page,
 }) => {

@@ -20,12 +20,45 @@ export const EXPORT_SECTIONS = [
 	"orders",
 	"attached_orders",
 	"requests",
+	"invoice_requests",
+	"saved_companies",
 	"staff_calls",
 	"order_blocks",
 	"deletion_request",
 	"not_kept",
 	"counts",
 ] as const;
+
+/**
+ * The fields of the company invoice sections in words (C18's data: the company invoice requests and the saved
+ * companies); a key not listed is shown as it is. The values stay as the database answered them.
+ */
+export const COMPANY_EXPORT_FIELDS: Readonly<
+	Record<string, readonly string[]>
+> = {
+	invoice_requests: [
+		"id",
+		"order_id",
+		"source",
+		"status",
+		"tax_code",
+		"company_name",
+		"address",
+		"email",
+		"requested_at",
+		"issued_at",
+		"emailed_at",
+		"invoice",
+	],
+	saved_companies: [
+		"id",
+		"tax_code",
+		"company_name",
+		"address",
+		"email",
+		"updated_at",
+	],
+};
 
 /** The whole copy as one indented JSON text, for the clipboard. */
 export function exportText(data: DataExport): string {
@@ -44,9 +77,12 @@ export function plainValue(value: JsonValue): string | null {
 function Value({
 	value,
 	depth,
+	section,
 }: {
 	readonly value: JsonValue;
 	readonly depth: number;
+	/** the section whose fields have words (the company invoice sections), at its first two levels */
+	readonly section?: string | undefined;
 }): ReactNode {
 	const { t } = useI18n();
 	const plain = plainValue(value);
@@ -61,7 +97,7 @@ function Value({
 					// the copy is read only and in the answer's order, so the position is its key
 					// biome-ignore lint/suspicious/noArrayIndexKey: a read-only list in a fixed order
 					<li key={index}>
-						<Value value={entry} depth={depth + 1} />
+						<Value value={entry} depth={depth + 1} section={section} />
 					</li>
 				))}
 			</ol>
@@ -70,15 +106,26 @@ function Value({
 	const entries = Object.entries(value as Record<string, JsonValue>);
 	if (entries.length === 0)
 		return <span className="text-ink-muted">{t("dataExport.empty")}</span>;
+	const named =
+		section === undefined ? [] : (COMPANY_EXPORT_FIELDS[section] ?? []);
 	return (
 		<dl
 			className={`grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-3 gap-y-1 ${depth > 0 ? "rounded-tile bg-surface-sunken p-2" : ""}`}
 		>
 			{entries.map(([key, entry]) => (
 				<div key={key} className="contents">
-					<dt className="font-mono text-[12px] text-ink-muted break-all">
-						{key}
-					</dt>
+					{named.includes(key) ? (
+						<dt
+							className="text-[12px] font-bold text-ink-muted break-words"
+							data-field={key}
+						>
+							{t(`dataExport.field.${key}`)}
+						</dt>
+					) : (
+						<dt className="font-mono text-[12px] text-ink-muted break-all">
+							{key}
+						</dt>
+					)}
 					<dd className="min-w-0 text-[13px] text-ink">
 						<Value value={entry} depth={depth + 1} />
 					</dd>
@@ -104,7 +151,13 @@ export function ExportView({ data }: { readonly data: DataExport }) {
 							? t(`dataExport.section.${section.key}`)
 							: section.key}
 					</h3>
-					<Value value={section.value} depth={0} />
+					<Value
+						value={section.value}
+						depth={0}
+						section={
+							section.key in COMPANY_EXPORT_FIELDS ? section.key : undefined
+						}
+					/>
 				</Panel>
 			))}
 		</div>

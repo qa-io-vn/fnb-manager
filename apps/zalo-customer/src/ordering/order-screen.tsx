@@ -7,6 +7,7 @@ import { useCustomerData } from "../data/customer-data";
 import { useNow } from "../data/use-now";
 import { Failed, Loading } from "../ui";
 import { ONLINE_PAYMENT_ENABLED } from "./flag";
+import { InvoiceEntryCard } from "./invoice-entry";
 import {
 	callWaiting,
 	canCancel,
@@ -511,6 +512,7 @@ export function OrderScreen() {
 			<CancelControl order={order} onCancelled={replace} />
 			<Steps order={order} />
 			<Lines order={order} />
+			<InvoiceEntryCard order={order} />
 			<Actions order={order} now={now} />
 		</section>
 	);

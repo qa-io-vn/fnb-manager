@@ -22,6 +22,7 @@ import {
 	ShieldIcon,
 	TrashIcon,
 } from "./parts";
+import { SavedCompaniesPanel } from "./saved-companies";
 import { useStampCard } from "./stamp-card";
 import { forgetStampCode } from "./stamp-code";
 
@@ -33,7 +34,7 @@ import { forgetStampCode } from "./stamp-code";
 
 type Step = "summary" | "export" | "delete" | "deleted";
 
-const SUMMARY = ["name", "phone", "orders", "stamps"] as const;
+const SUMMARY = ["name", "phone", "orders", "stamps", "company"] as const;
 
 function Summary() {
 	const { t } = useI18n();
@@ -333,9 +334,11 @@ function DeleteStep({
 			<Panel testId="data-will-delete">
 				<h2 className={kicker}>{t("data.willDelete")}</h2>
 				<ul className="flex list-disc flex-col gap-1 pl-5 text-body text-ink">
-					{(["name", "phone", "stamps", "consents"] as const).map((item) => (
-						<li key={item}>{t(`data.delete.${item}`)}</li>
-					))}
+					{(["name", "phone", "stamps", "companies", "consents"] as const).map(
+						(item) => (
+							<li key={item}>{t(`data.delete.${item}`)}</li>
+						),
+					)}
 				</ul>
 			</Panel>
 			<Panel testId="data-will-keep">
@@ -523,6 +526,7 @@ export function DataPolicyScreen() {
 					<p className="text-body text-ink">{t("data.intro")}</p>
 					<Summary />
 					<Notice testId="data-not-stored">{t("data.notStored")}</Notice>
+					<SavedCompaniesPanel />
 					<Rights
 						onDelete={() => setStep("delete")}
 						onExport={() => setStep("export")}
