@@ -7,6 +7,7 @@ import {
 	expect,
 	expectNoHorizontalScroll,
 	nav,
+	openShiftFor,
 	refusalOf,
 	signIn,
 	test,
@@ -175,6 +176,7 @@ test("the day's overview counts a completed order and its items", async ({
 	db,
 }) => {
 	await clearQueue(db, seeded);
+	await openShiftFor(db, seeded, seeded.people.staff.id);
 	await asMember(db, seeded.people.staff.id, async (tx) => {
 		const [created] = await tx<
 			{ r: { order: { id: string; version: number } } }[]

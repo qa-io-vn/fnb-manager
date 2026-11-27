@@ -292,7 +292,7 @@ select ok(
   not has_function_privilege('anon', 'public.staff_clock_in(uuid, text, numeric)', 'execute')
   and not has_function_privilege('anon', 'public.manager_worked_days(uuid, date)', 'execute')
   and not has_function_privilege('service_role', 'public.manager_confirm_shift(uuid, text)', 'execute')
-  and has_function_privilege('authenticated', 'public.staff_clock_out(numeric)', 'execute')
+  and has_function_privilege('authenticated', 'public.staff_clock_out(numeric, text, text)', 'execute')
   and not has_function_privilege('authenticated', 'app.shift_cash_flow(public.staff_shifts, timestamptz)', 'execute'),
   'the shift functions are for signed-in members; their helpers are internal'
 );

@@ -197,6 +197,15 @@ describe.skipIf(stack === null)(
 				"counter_create_order",
 				{ p_store: seeded.storeA, p_request: requestOf(draft) },
 			);
+			const refused = await recordPayment(client, created.order, "card");
+			expect(refused).toMatchObject({
+				state: "refused",
+				refusal: "shift_required",
+			});
+			await sql`
+				insert into public.staff_shifts (tenant_id, store_id, user_id, business_date, clock_in_at, opening_cash)
+				values (${seeded.tenantId}, ${seeded.storeA}, ${seeded.people.staff2.id},
+					(now() at time zone 'Asia/Ho_Chi_Minh')::date, now() - interval '1 minute', 0)`;
 			const paid = await recordPayment(client, created.order, "card");
 			const started = await act(client, paid.order, "start");
 			expect(started.state).toBe("ok");
