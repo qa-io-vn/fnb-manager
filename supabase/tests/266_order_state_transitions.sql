@@ -202,9 +202,23 @@ begin
 end;
 $$;
 create function pg_temp.order_of(p_answer jsonb) returns uuid language sql immutable as $$ select (p_answer -> 'order' ->> 'id')::uuid $$;
+-- "Đã thu" in cash at the counter of A1 by its staff member, for the order's total and current version.
 create function pg_temp.pay(p_order uuid, p_at timestamptz default null) returns jsonb language sql as $$
-  select app.order_payment_succeeded(p_order, (select o.total from public.orders o where o.id = p_order), 'staff', (select staff_u from fx),
-    coalesce(p_at, (select noon from fx) + interval '30 seconds'));
+  select pg_temp.call((select staff_u from fx), format($q$select app.counter_record_payment(%L, 'cash', %s, %s, %L)$q$, p_order,
+    (select o.total from public.orders o where o.id = p_order), (select o.version from public.orders o where o.id = p_order),
+    coalesce(p_at, (select noon from fx) + interval '30 seconds')));
+$$;
+-- The online seams as the Edge Functions call them: an attempt for the order's customer, then the provider's answer.
+create function pg_temp.start_online(p_order uuid, p_key text, p_at timestamptz default null) returns jsonb language sql as $$
+  select app.checkout_payment_start((select l.user_id from app.customer_logins l join public.orders o on o.customer_login_id = l.id where o.id = p_order),
+    p_order, (select o.payment_method from public.orders o where o.id = p_order), p_key, coalesce(p_at, (select noon from fx) + interval '1 minute'));
+$$;
+create function pg_temp.confirm_online(p_payment uuid, p_amount numeric, p_ok boolean, p_ref text, p_at timestamptz default null) returns jsonb language sql as $$
+  select app.checkout_payment_confirm((select p.provider from public.order_payments p where p.id = p_payment), p_ref, p_payment, p_amount, p_ok, null,
+    coalesce(p_at, (select noon from fx) + interval '1 minute'));
+$$;
+create function pg_temp.pay_online(p_order uuid, p_amount numeric, p_ok boolean, p_ref text, p_at timestamptz default null) returns jsonb language sql as $$
+  select pg_temp.confirm_online((pg_temp.start_online(p_order, 'key-' || p_ref, p_at) ->> 'payment_id')::uuid, p_amount, p_ok, p_ref, p_at);
 $$;
 -- A milk tea M with pearls and normal sugar (40,000) and a coffee (29,000): 69,000.
 create function pg_temp.basket() returns jsonb language sql stable as $$
@@ -256,7 +270,7 @@ select is(pg_temp.st('online'), 'awaiting_payment/unpaid/v1', 'T1: an online ord
 select is((pg_temp.act((select staff_u from fx), pg_temp.o('online'), 'start') ->> 'refusal'), 'not_allowed', 'staff cannot start an order awaiting its payment');
 select is((pg_temp.act((select staff_u from fx), pg_temp.o('online'), 'complete') ->> 'refusal'), 'not_allowed', 'nor complete it');
 select is((pg_temp.act((select staff_u from fx), pg_temp.o('online'), 'done') ->> 'refusal'), 'not_allowed', 'nor finish it');
-select is((app.order_payment_succeeded(pg_temp.o('online'), 40000, 'provider', null, (select noon from fx) + interval '2 minutes') ->> 'status'), 'accepted', 'T3: only the server''s confirmation accepts it');
+select is((pg_temp.pay_online(pg_temp.o('online'), 40000, true, 'ref-266-1', (select noon from fx) + interval '2 minutes') ->> 'order_status'), 'accepted', 'T3: only the server''s confirmation accepts it');
 select is((pg_temp.act((select staff_u from fx), pg_temp.o('online'), 'start') ->> 'state'), 'ok', 'a paid takeaway order is started');
 
 -- 3. Cancellations: T4 and T10 -------------------------------------------------------------------------------------
@@ -278,7 +292,7 @@ select is(
   (select string_agg(action || ':' || to_state || coalesce(':' || amount::bigint, ''), ',' order by id) from public.order_events where order_id = pg_temp.o('paid_cancel') and id > (select min(id) from public.order_events where order_id = pg_temp.o('paid_cancel'))),
   'paid:paid:29000,cancel:cancelled:29000,refund_due:refund_pending:29000', 'every cancel and refund is logged with the amount'
 );
-select is((pg_temp.pay(pg_temp.o('paid_cancel')) ->> 'refusal'), 'not_payable', 'a cancelled order is not paid again');
+select is((pg_temp.pay(pg_temp.o('paid_cancel')) ->> 'refusal'), 'order_cancelled', 'a cancelled order is not paid again');
 
 -- 4. Every action that is not in the lifecycle is refused as data ------------------------------------------------
 select is(coalesce(pg_temp.act((select staff_u from fx), pg_temp.o(v.name), v.action, case when v.action = 'cancel' then 'customer_request' end) ->> 'refusal', 'replayed:' || (pg_temp.act((select staff_u from fx), pg_temp.o(v.name), v.action, case when v.action = 'cancel' then 'customer_request' end) ->> 'replayed')), v.expected,

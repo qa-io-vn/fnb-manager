@@ -334,6 +334,10 @@ insert into public.order_lines (tenant_id, store_id, order_id, line_no, item_nam
 select o.tenant_id, o.store_id, o.id, 1, 'Cà phê', 1, 29000, 29000, true from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
 insert into public.order_events (tenant_id, store_id, order_id, kind, action, to_state, actor_kind, occurred_at)
 select o.tenant_id, o.store_id, o.id, 'status', 'placed', 'accepted', 'customer', now() from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.order_payments (tenant_id, store_id, order_id, method, amount, status, requested_at, settled_at)
+select o.tenant_id, o.store_id, o.id, 'cash', 29000, 'succeeded', now(), now() from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
+insert into public.order_refunds (tenant_id, store_id, order_id, method, amount, status, reason, requested_at)
+select o.tenant_id, o.store_id, o.id, 'cash', 1000, 'due', 'synthetic', now() from public.orders o cross join fx where o.tenant_id in (fx.tenant_a, fx.tenant_b);
 insert into public.customer_order_blocks (tenant_id, store_id, customer_login_id, blocked_until, reason)
 select o.tenant_id, o.store_id, o.customer_login_id, now() + interval '1 day', 'suspected_prank' from public.orders o cross join fx
 where o.tenant_id in (fx.tenant_a, fx.tenant_b) and o.customer_login_id is not null;
@@ -409,7 +413,9 @@ insert into tables_in_scope (tbl, readers, scoped, own, writers) values
   ('orders', 'omv', true, null, '{}'),
   ('order_lines', 'omv', true, null, '{}'),
   ('order_events', 'omv', true, null, '{}'),
-  ('customer_order_blocks', 'om', true, null, '{owner,owner_a1,manager,manager_a1}');
+  ('customer_order_blocks', 'om', true, null, '{owner,owner_a1,manager,manager_a1}'),
+  ('order_payments', 'omv', true, null, '{}'),
+  ('order_refunds', 'omv', true, null, '{}');
 
 create function pg_temp.signature_sql(p_table text, p_filter text default 'true')
 returns text

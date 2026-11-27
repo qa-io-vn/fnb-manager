@@ -2874,6 +2874,45 @@ The minute job `app.ordering_tick` (pg_cron `ordering-tick`, created off; `app.e
 
 Tests: pgTAP `263_orders.sql`, `265_order_pricing.sql`, `266_order_state_transitions.sql`, `267_order_idempotency.sql`, `268_order_idor.sql`, rows in `120` and `121`; `jobs:integration/ordering-concurrency`; `core:unit/order-lifecycle`.
 
+Payments and refunds (step 4, migration `order_payments`, ADR-062). Every payment is an `order_payments` row and every refund an `order_refunds` row; both are written only by the functions below and shown in `counter_order` and `customer_order` as `money: {paid, refunded, refund_open, payments: [{id, method, amount, status, settled_at, recorded_by (counter only)}], refunds: [{id, method, amount, status, reason (counter only), requested_at, settled_at, recorded_by (counter only)}]}`. Nothing is marked paid without a payment record (the internal seam refuses).
+
+#### `public.counter_record_payment`
+
+```sql
+public.counter_record_payment(p_order uuid, p_method text, p_amount numeric, p_expected_version integer)
+returns jsonb
+```
+
+- **Status:** built (step 4).
+- **Who may call:** an owner, manager or staff member whose scope holds the order's store (`42501` otherwise, the same for an unknown order).
+- **Notes:** "Đã thu": `cash` or `card` for the order's full total, naming the version seen. Answers `{state: "paid" | "conflict" | "refused", refusal, replayed, payment_id, order}`: the same payment again is a replay; `already_paid`, `order_cancelled`, `not_payable`, `amount_differs` (with `total`) and `conflict` change nothing. An order still waiting for its online payment is accepted when the customer pays at the counter instead. A counter order can be completed only once paid.
+
+#### `public.counter_void_payment`
+
+```sql
+public.counter_void_payment(p_payment uuid, p_reason text)
+returns jsonb
+```
+
+- **Status:** built (step 4).
+- **Who may call:** staff of the payment's store: the member who recorded it within 10 minutes, an owner or manager of the store at any time (`manager_required` otherwise).
+- **Notes:** undoes a cash or card payment recorded by mistake, with a reason (1–200 characters); the order is unpaid again and the undo is logged with who, why and the amount. Refused as data after completion (`order_completed`: refund instead), once a refund exists (`has_refunds`) and for an online payment (`not_voidable`).
+
+#### `public.counter_refund`
+
+```sql
+public.counter_refund(p_order uuid, p_amount numeric, p_reason text)
+returns jsonb
+```
+
+- **Status:** built (step 4).
+- **Who may call:** staff of the order's store settle the due refund of a cancelled paid order in full; every other refund (a completed order, a partial amount, an online refund the provider failed) needs an owner or manager of the store (`manager_required`).
+- **Notes:** at most what was paid less earlier refunds (`amount_over_refundable` with `refundable`), with a reason. Cash and card are handed back at once (`state: "succeeded"`); an online payment's refund is `pending` until the provider confirms; a failed online refund settled by a manager is handed back in cash. The order's payment status follows: `refund_pending` while a refund is owed, `partially_refunded`, `refunded`. Every refund is logged with who asked, who recorded it and the amount.
+
+The online seams are executable by the service role only, for the payment Edge Functions (Checkout SDK, dynamic VietQR) after they verified the caller or the provider's signature: `checkout_payment_start(p_user, p_order, p_method, p_idempotency_key)` opens a pending attempt of the full total for the customer's own order awaiting payment (the same key answers the same attempt; one pending at a time; at most three failed), `checkout_payment_confirm(p_provider, p_provider_ref, p_payment, p_amount, p_success, p_reason)` settles it (unique on the provider's transaction id; another amount fails it; money arriving for a cancelled order is kept as a due refund), `checkout_payments_pending(p_older_than_minutes, p_limit)` lists the attempts to ask the provider about again, and `checkout_refund_confirm(p_refund, p_success, p_provider_ref, p_reason)` settles an online refund.
+
+Tests: pgTAP `269_order_payments.sql` (and the order suites, whose payments now go through these functions), rows in `120`, `121` and `47`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -3049,6 +3088,7 @@ Built locally (migration `native_catalogue`, pgTAP `260` and `261`); empty until
 | `table_calls` | "Gọi nhân viên" calls and who answered them | owners, managers and viewers, stores in scope | none (`customer_call_staff`, `counter_ack_call`) | none |
 | `orders`, `order_lines`, `order_events` | native orders, their lines with the prices they were sold at, and the append-only log of every step with its actor and amount | owners, managers and viewers, stores in scope | none (the customer and counter functions) | none |
 | `customer_order_blocks` | customers blocked from ordering after three suspected pranks | owners and managers, stores in scope | owners and managers in scope delete a block to lift it | none |
+| `order_payments`, `order_refunds` | every payment of an order (counter cash and card, online attempts) and every refund, with who recorded it | owners, managers and viewers, stores in scope | none (the counter and checkout functions) | none |
 
 ## 5. Edge Function endpoints
 

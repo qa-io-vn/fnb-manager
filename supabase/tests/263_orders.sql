@@ -8,7 +8,7 @@
 -- the 20th and 21st call, the payment window at 14:59 and 15:00), state transitions T1 to T4, error guessing (a customer
 -- as the payer of record, a payment after the window, another store's table at the counter).
 begin;
-select plan(103);
+select plan(105);
 
 -- The shared fixture of the native-order suites (263 to 268): two tenants; a native store A1 open all day taking table
 -- and takeaway orders paid at the counter or by VietQR, a native store A2 taking table orders at the counter, and B1 of
@@ -205,9 +205,23 @@ begin
 end;
 $$;
 create function pg_temp.order_of(p_answer jsonb) returns uuid language sql immutable as $$ select (p_answer -> 'order' ->> 'id')::uuid $$;
+-- "Đã thu" in cash at the counter of A1 by its staff member, for the order's total and current version.
 create function pg_temp.pay(p_order uuid, p_at timestamptz default null) returns jsonb language sql as $$
-  select app.order_payment_succeeded(p_order, (select o.total from public.orders o where o.id = p_order), 'staff', (select staff_u from fx),
-    coalesce(p_at, (select noon from fx) + interval '30 seconds'));
+  select pg_temp.call((select staff_u from fx), format($q$select app.counter_record_payment(%L, 'cash', %s, %s, %L)$q$, p_order,
+    (select o.total from public.orders o where o.id = p_order), (select o.version from public.orders o where o.id = p_order),
+    coalesce(p_at, (select noon from fx) + interval '30 seconds')));
+$$;
+-- The online seams as the Edge Functions call them: an attempt for the order's customer, then the provider's answer.
+create function pg_temp.start_online(p_order uuid, p_key text, p_at timestamptz default null) returns jsonb language sql as $$
+  select app.checkout_payment_start((select l.user_id from app.customer_logins l join public.orders o on o.customer_login_id = l.id where o.id = p_order),
+    p_order, (select o.payment_method from public.orders o where o.id = p_order), p_key, coalesce(p_at, (select noon from fx) + interval '1 minute'));
+$$;
+create function pg_temp.confirm_online(p_payment uuid, p_amount numeric, p_ok boolean, p_ref text, p_at timestamptz default null) returns jsonb language sql as $$
+  select app.checkout_payment_confirm((select p.provider from public.order_payments p where p.id = p_payment), p_ref, p_payment, p_amount, p_ok, null,
+    coalesce(p_at, (select noon from fx) + interval '1 minute'));
+$$;
+create function pg_temp.pay_online(p_order uuid, p_amount numeric, p_ok boolean, p_ref text, p_at timestamptz default null) returns jsonb language sql as $$
+  select pg_temp.confirm_online((pg_temp.start_online(p_order, 'key-' || p_ref, p_at) ->> 'payment_id')::uuid, p_amount, p_ok, p_ref, p_at);
 $$;
 -- A milk tea M with pearls and normal sugar (40,000) and a coffee (29,000): 69,000.
 create function pg_temp.basket() returns jsonb language sql stable as $$
@@ -259,16 +273,17 @@ select ok(
   and not has_function_privilege('service_role', 'app.order_payment_succeeded(uuid, numeric, text, uuid, timestamptz)', 'execute'),
   'no client can mark an order paid: the payment seam is the server''s'
 );
-select is(app.order_payment_succeeded(pg_temp.order_of((select r from o3)), 39999, 'provider', null, (select noon from fx) + interval '1 minute') ->> 'refusal', 'amount_differs', 'a notification of another amount is refused');
+select is(pg_temp.pay_online(pg_temp.order_of((select r from o3)), 39999, true, 'ref-263-1') ->> 'refusal', 'amount_differs', 'a provider notification of another amount is refused');
 select is((select status::text || '/' || payment_status::text from public.orders where id = pg_temp.order_of((select r from o3))), 'awaiting_payment/unpaid', 'and changes nothing');
-select is(app.order_payment_succeeded(pg_temp.order_of((select r from o3)), 40000, 'provider', null, (select noon from fx) + interval '1 minute') ->> 'state', 'paid', 'a verified payment of the full amount is recorded');
+select is(pg_temp.pay_online(pg_temp.order_of((select r from o3)), 40000, true, 'ref-263-2') ->> 'state', 'succeeded', 'a verified payment of the full amount is recorded');
 select is((select status::text || '/' || payment_status::text || '/' || order_no from public.orders where id = pg_temp.order_of((select r from o3))), 'accepted/paid/3', 'and the server alone accepts the order with the next number');
-select is(app.order_payment_succeeded(pg_temp.order_of((select r from o3)), 40000, 'provider', null, (select noon from fx) + interval '2 minutes') ->> 'replayed', 'true', 'a repeated confirmation is a replay');
+select is(app.checkout_payment_confirm('vietqr', 'ref-263-2', gen_random_uuid(), 40000, true, null, (select noon from fx) + interval '2 minutes') ->> 'replayed', 'true', 'a repeated notification of the same transaction is a replay');
 select is(
   (select string_agg(action || ':' || to_state || ':' || actor_kind || coalesce(':' || amount::bigint, ''), ',' order by id) from public.order_events where order_id = pg_temp.order_of((select r from o3))),
-  'placed:awaiting_payment:customer:40000,paid:paid:provider:40000,payment_confirmed:accepted:provider', 'the timeline holds the placement, the payment with its amount and the acceptance'
+  'placed:awaiting_payment:customer:40000,payment_started:unpaid:customer:40000,payment_failed:unpaid:provider:39999,payment_started:unpaid:customer:40000,paid:paid:provider:40000,payment_confirmed:accepted:provider', 'the timeline holds the placement, both attempts, the payment with its amount and the acceptance'
 );
 select throws_ok($$select app.order_payment_succeeded('aaaaaaaa-aaaa-4aaa-8aaa-000000026399', 1, 'customer', null, now())$$, '22023', null, 'a customer can never be the payer of record');
+select throws_ok(format($$select app.order_payment_succeeded(%L, 69000, 'staff', null, now())$$, pg_temp.order_of((select r from o1))), '22023', null, 'nothing is marked paid without a payment record backing it');
 
 -- 3. Refusals as data, nothing written --------------------------------------------------------------------------
 create temp table before_refusals as select count(*) as n from public.orders where tenant_id = (select tenant_a from fx);
@@ -381,10 +396,12 @@ select is((pg_temp.call((select cust1_u from fx), format($$select app.customer_c
 -- 7. The minute job: online payments that never came --------------------------------------------------------------
 create temp table o9 as
 select pg_temp.place((select cust5_u from fx), pg_temp.req(jsonb_build_array(pg_temp.line('ta')), 40000, jsonb_build_object('type', 'takeaway', 'table_token', null, 'payment', 'vietqr'))) as r;
+create temp table o9_attempt as select pg_temp.start_online(pg_temp.order_of((select r from o9)), 'key-263-9', (select noon from fx) + interval '5 minutes') as a;
 select is((app.ordering_tick((select noon from fx) + interval '14 minutes 59 seconds') ->> 'payment_timeouts')::int, 0, 'payment boundary: at 14:59 the order still waits');
 select is((app.ordering_tick((select noon from fx) + interval '15 minutes') ->> 'payment_timeouts')::int >= 1, true, 'payment boundary: at 15:00 the job cancels it');
 select is((select status::text || '/' || cancel_reason || '/' || cancel_actor || '/' || coalesce(order_no::text, 'none') from public.orders where id = pg_temp.order_of((select r from o9))), 'cancelled/payment_timeout/system/none', 'cancelled by the system, without a number');
-select is(app.order_payment_succeeded(pg_temp.order_of((select r from o9)), 40000, 'provider', null, (select noon from fx) + interval '16 minutes') ->> 'refusal', 'order_cancelled', 'a payment arriving after the window is refused (to be refunded)');
+select is(pg_temp.confirm_online(((select a from o9_attempt) ->> 'payment_id')::uuid, 40000, true, 'ref-263-9', (select noon from fx) + interval '16 minutes') ->> 'refund_due', 'true', 'a payment arriving after the window is kept as a due refund');
+select is((select payment_status::text || '/' || (select string_agg(status || ':' || amount::bigint, ',') from public.order_refunds r where r.order_id = o.id) from public.orders o where o.id = pg_temp.order_of((select r from o9))), 'refund_pending/due:40000', 'the cancelled order shows the refund it owes');
 select ok(not exists (select 1 from cron.job where jobname = 'ordering-tick'), 'the minute job is created off');
 
 -- 8. The counter's queue, busy and the table map ------------------------------------------------------------------
