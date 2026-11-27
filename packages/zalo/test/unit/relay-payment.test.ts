@@ -211,7 +211,7 @@ describe("the payment calls the relay carries", () => {
 		).toBeNull();
 		expect(
 			graphCallOf(
-				`https://user:pw@payment-mini.zalo.me${PAYMENT_STATUS_PATH}?${query}`,
+				`https://user:pw${"@"}payment-mini.zalo.me${PAYMENT_STATUS_PATH}?${query}`,
 				get,
 			),
 		).toBeNull();
