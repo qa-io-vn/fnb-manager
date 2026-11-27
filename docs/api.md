@@ -2989,6 +2989,55 @@ returns jsonb
 
 Tests: pgTAP `272_store_requests.sql`, rows in `120`, `121`, `03`, `47` and `170`.
 
+Shifts (step 8, migration `staff_shifts`, native-till.md section 12). A shift as its person sees it is `{id, store_id, business_date, clock_in_at, clock_out_at, hours, opening_cash, counted_cash, status, closed_at, close_note, version}`, with `expected_cash` and `cash_difference` once counted (the count is blind); a manager also sees `user_id`, `name` (the roster's), `closed_by` and the expected cash at any time.
+
+#### `public.staff_clock_in`, `public.staff_clock_out` and `public.staff_my_shift`
+
+```sql
+public.staff_clock_in(p_store uuid, p_counter_token text, p_opening_cash numeric default 0)
+returns jsonb
+public.staff_clock_out(p_counted_cash numeric)
+returns jsonb
+public.staff_my_shift(p_month date default null)
+returns jsonb
+```
+
+- **Status:** built (step 8).
+- **Who may call:** clocking in, an owner, manager or staff member whose scope holds the store; clocking out and one's own shift, any member (`42501` otherwise).
+- **Notes:** "Vào ca" answers `{state: "clocked_in" | "refused", refusal, shift}` with refusals `counter_qr_invalid` (5 misses of a person and 20 of a store in 15 minutes, then `rate_limited` with `retry_at`) and `already_clocked_in` (a shift not closed, also one awaiting confirmation); a malformed code or a fraction of a dong is `22023`. "Ra ca" answers `{state: "closed" | "awaiting_confirmation" | "refused", refusal, shift}`: closed when the count equals the opening cash plus the cash the person recorded less the cash they handed back during the shift, awaiting a manager otherwise; counting again while it waits keeps the first clock-out time; `not_clocked_in` without a shift. `staff_my_shift` gives `{shift, recent, months}`: the shift not closed, the last 10 and the worked days of the month per store.
+
+#### `public.manager_counter_qr`, `public.manager_confirm_shift` and `public.manager_close_shift`
+
+```sql
+public.manager_counter_qr(p_store uuid, p_rotate boolean default false)
+returns jsonb
+public.manager_confirm_shift(p_shift uuid, p_note text)
+returns jsonb
+public.manager_close_shift(p_shift uuid, p_clock_out_at timestamptz, p_counted_cash numeric, p_note text)
+returns jsonb
+```
+
+- **Status:** built (step 8).
+- **Who may call:** an owner or manager whose scope holds the store (`42501` otherwise, the same for an unknown shift).
+- **Notes:** the counter code `{store_id, version, token, rotated}` to print (rotating retires the printed one). Confirming a difference needs a note (1–200) and closes the shift with who and when (`own_shift` for one's own, `not_awaiting_confirmation` for an open one, a replay once closed). Closing a forgotten shift takes the clock-out time (after the clock-in, not in the future: `clock_out_invalid`), the count and a note (`not_open`, `own_shift`).
+
+#### `public.manager_shifts`, `public.manager_worked_days` and `public.manager_day_reconciliation`
+
+```sql
+public.manager_shifts(p_store uuid, p_from date, p_to date)
+returns jsonb
+public.manager_worked_days(p_store uuid, p_month date)
+returns jsonb
+public.manager_day_reconciliation(p_store uuid, p_date date)
+returns jsonb
+```
+
+- **Status:** built (step 8).
+- **Who may call:** an owner or manager whose scope holds the store (`42501` otherwise).
+- **Notes:** the shifts between two business dates (at most 63 days, `22023` otherwise) with the counts still open and awaiting confirmation. The worked days of the month of a date (S11): `{month, standard_days, standard_day_hours, people: [{user_id, name, hours, worked_days, days: [{date, hours, days}], open_shifts}]}`, a day being its recorded hours over the hours per day, at most 1. The day's reconciliation (acceptance criterion 6): `{revenue, by_method, online_confirmed, card, cash: {invoiced, expected, counted, difference}, shifts_open, shifts_awaiting_confirmation, paid_not_completed, difference, matched}`.
+
+Tests: pgTAP `273_staff_shifts.sql`, rows in `120`, `121`, `03`, `47` and `170`.
+
 ## 4. Tables and views
 
 Every table in `public` has RLS enabled, and `anon` holds no privilege on any table or view. `authenticated` reads through the policies below, which [`schema.md`](schema.md#row-level-security) defines exactly. A future table created by a migration starts read-only for `authenticated` and invisible to `anon` (default privileges), but it still needs RLS and its policies: `supabase/tests/03_rls_enabled.sql` fails on a `public` table without RLS and pins the table count and the tables that carry write policies. "Data roles" are `owner`, `manager`, `staff` and `viewer`. "In scope" means a store within the member's store scope.
@@ -3168,6 +3217,7 @@ Built locally (migration `native_catalogue`, pgTAP `260` and `261`); empty until
 | `stamp_card_settings` | a brand's stamp card: on or off, stamps per reward (2–30, 9 by default), the reward's name | owners, managers and viewers of the tenant | owners and managers of the whole brand (`enabled`, `stamps_per_reward`, `reward_name`) | none |
 | `stamp_cards`, `stamp_rewards`, `stamp_entries` | the stamp card of a customer's Zalo account at a brand, its rewards and its append-only ledger | owners, managers and viewers of the tenant | none (the ledger functions) | none |
 | `store_requests` | the requests inbox: bookings, workshop sign-ups, holds and job applications from the website and the app, with the contact typed and the answer | owners and managers, stores in scope | none (the request functions) | none |
+| `staff_shifts` | the shifts worked at a native store's counter: clock-in and clock-out, opening, expected and counted cash, the difference and who confirmed it | owners and managers, stores in scope; each person their own | none (the shift functions) | none |
 
 ## 5. Edge Function endpoints
 

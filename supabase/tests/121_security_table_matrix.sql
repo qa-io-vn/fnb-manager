@@ -354,6 +354,11 @@ from public.stores s
 cross join fx
 left join app.customer_logins l on l.user_id = case when s.tenant_id = fx.tenant_a then fx.customer_u else fx.customer_b_u end
 where s.id in (fx.store_a1, fx.store_a2, fx.store_b1);
+insert into public.staff_shifts (tenant_id, store_id, user_id, business_date, clock_in_at, clock_out_at, expected_cash, counted_cash, cash_difference, status, closed_at)
+select s.tenant_id, s.id, case when s.tenant_id = fx.tenant_a then fx.owner_u else fx.owner_b_u end, current_date, now() - interval '2 hours', now() - interval '1 hour',
+  0, 0, 0, 'closed', now()
+from public.stores s cross join fx
+where s.id in (fx.store_a1, fx.store_a2, fx.store_b1);
 insert into public.customer_order_blocks (tenant_id, store_id, customer_login_id, blocked_until, reason)
 select o.tenant_id, o.store_id, o.customer_login_id, now() + interval '1 day', 'suspected_prank' from public.orders o cross join fx
 where o.tenant_id in (fx.tenant_a, fx.tenant_b) and o.customer_login_id is not null;
@@ -438,7 +443,9 @@ insert into tables_in_scope (tbl, readers, scoped, own, writers) values
   ('stamp_rewards', 'omv', false, null, '{}'),
   ('stamp_entries', 'omv', false, null, '{}'),
   -- Native till step 7: the requests carry the contacts customers typed, so only owners and managers of the store read them.
-  ('store_requests', 'om', true, null, '{}');
+  ('store_requests', 'om', true, null, '{}'),
+  -- Native till step 8: shifts are read by the store's owners and managers and by their person (the fixture's are the owners').
+  ('staff_shifts', 'om', true, null, '{}');
 
 create function pg_temp.signature_sql(p_table text, p_filter text default 'true')
 returns text
@@ -552,7 +559,7 @@ create temp table tables_found as
 select c.relname::text as tbl
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public' and c.relkind in ('r', 'p', 'v')
-  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_|^menu_|ordering|order|store_tables|item_option|table_calls|^stamp_|store_requests)';
+  and c.relname ~ '(loyalty|coupon|membership|stamps|checkin|claim|redemption|customer|consent|data_subject|outbound|notification|^oa|zalo|mini_app|brand|zbs|^bill_|^menu_|ordering|order|store_tables|item_option|table_calls|^stamp_|store_requests|staff_shifts)';
 
 select plan((select count(*)::integer from read_cells) + (select count(*)::integer from write_cells) + 4);
 

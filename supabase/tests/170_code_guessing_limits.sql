@@ -133,8 +133,8 @@ select plan(42);
 -- The policies and the grants.
 select is(
   (select string_agg(endpoint || ':' || counts || ':' || caller_max || ':' || scope_max || ':' || window_length || ':' || lockout, ', ' order by endpoint) from app.code_attempt_policies),
-  'customer_call_staff:calls:6:120:00:15:00:00:15:00, customer_counter_claim:misses:5:50:00:15:00:00:15:00, customer_place_order:calls:20:200:00:15:00:00:15:00, customer_redeem:calls:10:100:00:15:00:00:15:00, customer_table:misses:10:50:00:15:00:00:15:00, loyalty_member_lookup:misses:10:30:00:15:00:00:15:00, request_app:calls:5:100:1 day:01:00:00, request_website:calls:3:100:01:00:00:01:00:00, staff_member_lookup:misses:10:30:00:15:00:00:15:00, staff_submit_bill:misses:5:20:00:15:00:00:15:00, staff_verify_redemption:misses:5:20:00:15:00:00:15:00',
-  'eleven endpoints with their limits (the native till''s table lookup, staff calls, order placement and the requests of the app and the website added)'
+  'customer_call_staff:calls:6:120:00:15:00:00:15:00, customer_counter_claim:misses:5:50:00:15:00:00:15:00, customer_place_order:calls:20:200:00:15:00:00:15:00, customer_redeem:calls:10:100:00:15:00:00:15:00, customer_table:misses:10:50:00:15:00:00:15:00, loyalty_member_lookup:misses:10:30:00:15:00:00:15:00, request_app:calls:5:100:1 day:01:00:00, request_website:calls:3:100:01:00:00:01:00:00, staff_clock_in:misses:5:20:00:15:00:00:15:00, staff_member_lookup:misses:10:30:00:15:00:00:15:00, staff_submit_bill:misses:5:20:00:15:00:00:15:00, staff_verify_redemption:misses:5:20:00:15:00:00:15:00',
+  'twelve endpoints with their limits (the native till''s table lookup, staff calls, order placement, the requests of the app and the website and the counter clock-in added)'
 );
 select is(
   (select count(*)::integer from (values ('anon'), ('authenticated')) r (role)
