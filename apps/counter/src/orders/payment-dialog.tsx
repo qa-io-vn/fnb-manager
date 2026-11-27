@@ -10,14 +10,18 @@ import { Dialog } from "../ui/dialog";
 import { button, field, PlainNote } from "../ui/kit";
 import { useToast } from "../ui/toast";
 import { recordPayment } from "./api";
+import { useBoardOffersVietQr } from "./board-context";
 import type { Order } from "./types";
+import { VietQrPanel } from "./vietqr-panel";
 
-type Method = "cash" | "card";
+type Method = "cash" | "card" | "vietqr";
 
 /**
  * "Thu tiền" (Q01 frames 4 and the card tab): cash with the amount given and the change, or a card taken on the
  * separate terminal and confirmed here. The server records the full total; the client never sends a price. Cash needs
- * the cashier's open shift, because the drawer count compares with the cash they recorded.
+ * the cashier's open shift, because the drawer count compares with the cash they recorded. Where the store takes a
+ * VietQR (its ordering state lists it), a third tab shows the order's QR and waits for the bank: the server marks the
+ * order paid when the transfer arrives, and nothing is recorded by hand.
  */
 export function PaymentDialog({
 	order,
@@ -38,12 +42,16 @@ export function PaymentDialog({
 	const [given, setGiven] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
+	// the provider answered provider_off: the tab goes for this dialog, whatever the last board said
+	const [qrOff, setQrOff] = useState(false);
+	const offersQr = useBoardOffersVietQr() && !qrOff;
 	const tendered = parseAmount(given);
 	const change =
 		tendered === null || given === "" ? null : changeDue(order.total, tendered);
 	const onShift = current !== null && current.status === "open";
 	const ready = method === "card" || (change !== null && onShift);
 	const submit = async () => {
+		if (method === "vietqr") return;
 		setBusy(true);
 		setMessage(null);
 		try {
@@ -97,25 +105,54 @@ export function PaymentDialog({
 			busy={busy}
 			testId="payment-dialog"
 			footer={
-				<button
-					type="button"
-					className={`${button.primary} w-full sm:w-auto`}
-					disabled={!ready || busy}
-					onClick={() => void submit()}
-					data-testid="pay-submit"
-				>
-					{method === "cash"
-						? t("pay.cashDone", { amount: formatVnd(order.total) })
-						: t("pay.cardDone", { amount: formatVnd(order.total) })}
-				</button>
+				method === "vietqr" ? (
+					<button
+						type="button"
+						className={`${button.secondary} w-full sm:w-auto`}
+						onClick={onClose}
+						data-testid="pay-qr-close"
+					>
+						{t("pay.qr.close")}
+					</button>
+				) : (
+					<button
+						type="button"
+						className={`${button.primary} w-full sm:w-auto`}
+						disabled={!ready || busy}
+						onClick={() => void submit()}
+						data-testid="pay-submit"
+					>
+						{method === "cash"
+							? t("pay.cashDone", { amount: formatVnd(order.total) })
+							: t("pay.cardDone", { amount: formatVnd(order.total) })}
+					</button>
+				)
 			}
 		>
 			<div className="flex flex-col gap-4">
 				<div role="tablist" aria-label={t("pay.method")} className="flex gap-2">
 					{tab("cash")}
 					{tab("card")}
+					{offersQr ? tab("vietqr") : null}
 				</div>
-				{method === "cash" ? (
+				{qrOff ? (
+					<PlainNote tone="warning" testId="pay-qr-off">
+						{t("pay.qr.off")}
+					</PlainNote>
+				) : null}
+				{method === "vietqr" ? (
+					<VietQrPanel
+						order={seen}
+						onPaid={(paid) => {
+							show(t("pay.done", { amount: formatVnd(paid.total) }));
+							onPaid(paid);
+						}}
+						onUnavailable={() => {
+							setQrOff(true);
+							setMethod("cash");
+						}}
+					/>
+				) : method === "cash" ? (
 					<>
 						{onShift ? null : (
 							<PlainNote tone="warning">{t("pay.needShift")}</PlainNote>

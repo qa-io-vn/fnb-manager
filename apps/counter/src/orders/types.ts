@@ -111,6 +111,8 @@ export interface Ordering {
 	readonly accepting: boolean;
 	readonly reason: string | null;
 	readonly paused_until?: string | null;
+	/** the ways customers may pay (app.ordering_state): an online one only when its provider is configured */
+	readonly payment_methods?: readonly string[];
 }
 
 export interface BoardCall {

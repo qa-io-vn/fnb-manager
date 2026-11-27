@@ -126,3 +126,12 @@ export function useBoard(): BoardValue {
 	if (value === null) throw new Error("useBoard needs a BoardProvider");
 	return value;
 }
+
+/**
+ * Whether the store takes a VietQR: the ordering state of the last board answer lists it (the server lists an online
+ * method only when its provider is configured). False before the first answer or outside a board.
+ */
+export function useBoardOffersVietQr(): boolean {
+	const value = useContext(BoardContext);
+	return value?.state.ordering?.payment_methods?.includes("vietqr") === true;
+}
