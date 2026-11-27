@@ -2991,7 +2991,7 @@ returns jsonb
 
 Tests: pgTAP `280_customer_account_deletion.sql`, rows in `120` and `47`.
 
-The requests inbox (step 7, migration `store_requests`, native-till.md section 12). A request is `{request_id (UUID), store (store code), kind ("booking", "workshop", "hold", "application"), name (1–60), phone, party_size (a booking: 1–30), at (an ISO instant with its offset, 30 minutes to 60 days ahead; required for a booking, a workshop and a hold), subject (1–100: the workshop, item or position; required but for a booking), note (1–500, one line)}`; any other key or type is `22023`. Submissions answer `{state: "submitted" | "refused", refusal, replayed, request}` with refusals `request_conflict`, `store_unknown`, `kind_not_offered`, `rate_limited` (with `retry_at`), `too_many_open_requests` (3 new ones), `name_invalid`, `phone_invalid`, `party_size_invalid`, `time_invalid`, `subject_invalid`, `note_invalid`; a request as the customer sees it is `{id, kind, store, status, party_size, requested_for, subject, note, created_at, answered_at, answer_message, cancelled_at, cancelled_by, version, contact_name}`, never the phone.
+The requests inbox (step 7, migration `store_requests`, native-till.md section 12). A request is `{request_id (UUID), store (store code), kind ("booking", "workshop", "hold", "application"), name (1–60), phone, party_size (a booking: 1–30), at (an ISO instant with its offset, 30 minutes to 60 days ahead; required for a booking, a workshop and a hold), subject (1–100: the workshop, item or position; required but for a booking), note (1–500, one line)}`; any other key or type is `22023`. Submissions answer `{state: "submitted" | "refused", refusal, replayed, request}` with refusals `request_conflict`, `store_unknown`, `kind_not_offered`, `rate_limited` (with `retry_at`), `too_many_open_requests` (3 new ones), `name_invalid`, `phone_invalid`, `party_size_invalid`, `time_invalid`, `time_outside_hours` (a booking or a hold outside the store's opening hours or on a day an ordering closure covers; a store without hours is not checked; migration `web_request_hours`), `subject_invalid`, `note_invalid`; a request as the customer sees it is `{id, kind, store, status, party_size, requested_for, subject, note, created_at, answered_at, answer_message, cancelled_at, cancelled_by, version, contact_name}`, never the phone.
 
 #### `public.customer_submit_request`
 
@@ -3006,7 +3006,7 @@ returns jsonb
 
 #### `public.web_submit_request`
 
-Built (step 7); its Edge Function is not built yet. The service role only may execute it, from the website's Edge Function, so it is not part of this page's check: `web_submit_request(p_brand uuid, p_client_key text, p_request jsonb)` returns jsonb. `p_brand` is the brand of the site (`22023` unknown); `p_client_key` an opaque key of 16–200 characters the function derives for the visitor, of which only the SHA-256 is kept; 3 calls an hour per client key, 100 per store.
+Built (step 7); called by the Edge Function `web-requests` (section 5), which the website's forms post to. The service role only may execute it, so it is not part of this page's check: `web_submit_request(p_brand uuid, p_client_key text, p_request jsonb)` returns jsonb. `p_brand` is the brand of the site (`22023` unknown); `p_client_key` an opaque key of 16–200 characters the function derives for the visitor, of which only the SHA-256 is kept; 3 calls an hour per client key, 100 per store.
 
 #### `public.customer_requests` and `public.customer_cancel_request`
 
@@ -3567,6 +3567,48 @@ Built against the mock (ADR-066; Deno 11 tests in `handler.test.ts`; the counter
 | 502 / 503 | `zalo_unavailable` / `backend_unavailable` | Zalo or the database did not answer |
 
 Log lines name the outcome only (`authorise address issued`, `refused the state (expired)`, `unpaired; recorded for the managers`, `session minted: staff, 1 stores`), never a code, a verifier, a token, a ticket, the Zalo id or the name.
+
+### `web-requests`
+
+Built (native-till.md section 12; Deno 12 tests in `handler.test.ts` against a fake database; pgTAP `281_web_request_hours.sql` for the database's side). The café website's forms post here without a login: a booking now, a workshop sign-up, a hold of an item and a job application through the same contract, each taken only where the store switched the kind on (`store_ordering_settings.request_kinds`). No third-party service is called.
+
+- **URL:** `<SUPABASE_URL>/functions/v1/web-requests`. **Method:** `POST` with `Content-Type: application/json` (so the browser sends a preflight); `OPTIONS` answers the preflight of an allowed origin only.
+- **Authorization:** none at the gateway (`verify_jwt = false`) and none from the site: no `apikey` or `Authorization` header is needed. The origin decides the brand.
+- **Configuration:** `WEB_REQUEST_ORIGINS`, the website's exact https origins, each with the brand its requests belong to, comma separated: `https://www.example.com=<brand uuid>,https://example.com=<brand uuid>` (an http origin, an origin without a brand id or anything else is ignored; a loopback origin only with `ZALO_LOCAL_DEV=1`); `WEB_REQUEST_KEY`, a random secret (at least 32 characters) under which the function derives the client key; the service key as for every function.
+- **Body** (at most 4,096 bytes; exactly these fields, any other one, `__proto__` included, is `invalid_request`):
+
+| Field | Kind | Rule |
+|---|---|---|
+| `kind` | all | `booking`, `workshop`, `hold` or `application` |
+| `store` | all | the store's customer code (as in the customer app's links), 1–40 of `A-Z a-z 0-9 _ -` |
+| `request_id` | all | a UUID the page makes once per form; sending it again is a replay, never a second request |
+| `name` | all | 1–60 characters, no control character |
+| `phone` | all | a Vietnamese number: `0`, `84` or `+84`, then 9 or 10 digits starting 2, 3, 5, 7, 8 or 9; spaces, dots, dashes and brackets are ignored |
+| `date`, `time` | booking, workshop, hold (an application may leave both out) | a real `YYYY-MM-DD` and `HH:MM` (00:00–23:59), read in Vietnam time; the database wants 30 minutes to 60 days ahead and, for a booking or a hold, inside the store's opening hours on a day it is open |
+| `guests` | booking only | a whole number 1–20 |
+| `subject` | workshop, hold, application (optional for a booking) | 1–100: which workshop, which item, which position |
+| `note` | optional | up to 500 characters on one line |
+| `website` | all | the honeypot: a hidden field the page leaves empty |
+| `elapsed_ms` | all | whole milliseconds since the form was shown, 0 to 86,400,000 |
+
+- **Abuse defences:** a filled honeypot or `elapsed_ms` under 3,000 answers exactly like a success and stores nothing; the client key is HMAC-SHA-256 under `WEB_REQUEST_KEY` of the caller's address (`x-forwarded-for`) and user agent, so neither reaches the database, which keeps the SHA-256 of the key for its limits (3 requests an hour per client, 100 an hour per store, 3 new requests per client) and the replay; no answer repeats what was sent.
+
+| Status | Body | When |
+|---|---|---|
+| 200 | `{"state": "submitted", "replayed": false}` | the request is in the store's inbox (also the answer to a honeypot or a form sent too fast) |
+| 200 | `{"state": "submitted", "replayed": true}` | the same `request_id` with the same fields again |
+| 400 | `{"error": "invalid_field", "field": "<name>"}` | the first field that fails its rule, named, never echoed |
+| 400 | `invalid_request`, `invalid_json`, `invalid_body` (as `{"error": …}`) | an unknown field, a body that is not a JSON object, or not UTF-8 |
+| 403 | `{"error": "origin_not_allowed"}` | an origin not in `WEB_REQUEST_ORIGINS`, or none; no CORS header |
+| 405 | `method_not_allowed` | any method but `POST` and `OPTIONS` |
+| 413 | `body_too_large` | more than 4,096 bytes |
+| 415 | `unsupported_media_type` | not `application/json` |
+| 422 | `{"state": "refused", "refusal": "<code>"}` | `store_unknown`, `kind_not_offered`, `too_many_open_requests`, `name_invalid`, `phone_invalid`, `party_size_invalid`, `time_invalid`, `time_outside_hours`, `subject_invalid`, `note_invalid`, `request_conflict` (the `request_id` was used with other fields) |
+| 429 | `{"state": "refused", "refusal": "rate_limited"}` with `Retry-After` (seconds) | the client's or the store's hourly limit |
+| 500 | `not_configured` | `WEB_REQUEST_KEY` or the service key missing |
+| 502 / 503 | `unexpected_answer` / `backend_unavailable` | the database answered something unknown, or did not answer |
+
+Every answer carries `x-request-id`; an error body also `request_id`. Log lines name the outcome only (`submitted booking`, `refused: time_outside_hours`, `refused: invalid_field phone`, `dropped: honeypot or too fast`), never a name, a phone, an address or the key.
 
 ### `notify`
 
