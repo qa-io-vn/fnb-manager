@@ -16,6 +16,7 @@ import {
 import {
 	closeForgottenShift,
 	confirmShift,
+	DIFFERENCE_REASON_LABEL,
 	dayReconciliation,
 	managerShifts,
 	type Shift,
@@ -31,6 +32,24 @@ export const DIFFERENCE_REASONS = [
 	"pettyCash",
 	"unknown",
 ] as const;
+
+/** The manager's reason chip that matches the counting person's reason (Q02), to start the confirmation from it. */
+export function managerReasonOf(
+	shift: Pick<Shift, "difference_reason">,
+): (typeof DIFFERENCE_REASONS)[number] | "" {
+	switch (shift.difference_reason) {
+		case "wrong_change":
+			return "wrongChange";
+		case "unrecorded_order":
+			return "forgotOrder";
+		case "petty_cash":
+			return "pettyCash";
+		case "unknown":
+			return "unknown";
+		default:
+			return "";
+	}
+}
 
 /** The note of a confirmation: the reason in words, then the manager's note, at most 200 characters. */
 export function confirmationNote(reasonText: string, note: string): string {
@@ -50,11 +69,15 @@ function ConfirmDialog({
 	const { client } = useSession();
 	const { show } = useToast();
 	const queries = useQueryClient();
-	const [reason, setReason] = useState<string>("");
+	const [reason, setReason] = useState<string>(() => managerReasonOf(shift));
 	const [note, setNote] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
 	const difference = differenceOf(shift.cash_difference ?? 0);
+	const cashierReason =
+		shift.difference_reason === null || shift.difference_reason === undefined
+			? null
+			: shift.difference_reason;
 	const ready =
 		reason !== "" && (reason !== "unknown" || note.trim().length >= 5);
 	const submit = async () => {
@@ -127,6 +150,15 @@ function ConfirmDialog({
 					<PriceText amount={shift.expected_cash ?? 0} tone="ink" /> ·{" "}
 					{t("shift.counted")}{" "}
 					<PriceText amount={shift.counted_cash ?? 0} tone="ink" />
+				</p>
+				<p
+					className="rounded-card-xl bg-surface-sunken p-3 text-body"
+					data-testid="cashier-reason-shown"
+				>
+					<span className="font-bold">{t("managerShifts.cashierReason")}</span>{" "}
+					{cashierReason === null
+						? t("managerShifts.noCashierReason")
+						: `${t(DIFFERENCE_REASON_LABEL[cashierReason])}${shift.difference_note === null || shift.difference_note === undefined ? "" : ` · ${shift.difference_note}`}`}
 				</p>
 				<ChipGroup
 					label={t("managerShifts.reason")}

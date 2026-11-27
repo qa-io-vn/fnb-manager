@@ -89,8 +89,12 @@ vi.mock("../lib/session", () => ({
 	useSession: () => ({ client: session.client, environment: ENV }),
 }));
 vi.mock("../shift/shift-context", () => ({
-	useShift: () => ({ current: null }),
+	useShift: () => ({ current: null, refresh: async () => undefined }),
 }));
+vi.mock("../lib/store", () => ({
+	useStore: () => ({ store: { id: "store-a", name: "Cửa hàng mẫu A" } }),
+}));
+vi.mock("react-router-dom", () => ({ useNavigate: () => () => undefined }));
 vi.mock("../ui/toast", () => ({
 	useToast: () => ({ show: (text: string) => state.toasts.push(text) }),
 }));

@@ -157,11 +157,12 @@ describe.skipIf(!ENABLED)("digests and alerts on the local stack", () => {
 		});
 	}, 600_000);
 
+	// Deleting the fixture tenant cascades through 70 days of sales; on a slow runner that passed vitest's default 10 s.
 	afterAll(async () => {
 		await fixture?.cleanup();
 		await mock?.close();
 		await sql?.end({ timeout: 5 });
-	});
+	}, 120_000);
 
 	it("three nights", async () => {
 		const nights = [1, 2, 3].map((offset) => shiftIsoDate(today, offset));

@@ -439,3 +439,75 @@ export async function callStaff(
 		await tx`select app.customer_call_staff(${seeded.storeCodeA}, ${token}, now())`;
 	});
 }
+
+/** Runs a database call as a customer of the tenant's app, as PostgREST would (the customer's claims, one transaction). */
+export async function asCustomer<T>(
+	sql: Sql,
+	seeded: SeededTenant,
+	customer: string,
+	run: (tx: Sql) => Promise<T>,
+): Promise<T> {
+	return (await sql.begin(async (tx) => {
+		await tx`select set_config('request.jwt.claims', ${JSON.stringify({
+			sub: customer,
+			role: "authenticated",
+			app_metadata: { kind: "customer", tenant_id: seeded.tenantId },
+		})}, true)`;
+		return await run(tx as unknown as Sql);
+	})) as T;
+}
+
+/** A customer who joined with a phone: a synthetic customer record linked to a new login of the app. */
+export async function seedJoinedCustomer(
+	sql: Sql,
+	seeded: SeededTenant,
+	name: string,
+	phone: string,
+): Promise<string> {
+	const login = await seedCustomer(sql, seeded);
+	const customerId = randomUUID();
+	await sql`insert into public.customers (id, tenant_id, name, phone) values (${customerId}, ${seeded.tenantId}, ${name}, ${phone})`;
+	await sql`update app.customer_logins set customer_id = ${customerId} where user_id = ${login}`;
+	return login;
+}
+
+/** A new member code of the customer's stamp card, as the app's C20 asks it (customer_stamp_code). */
+export async function issueStampCode(
+	sql: Sql,
+	seeded: SeededTenant,
+	customer: string,
+): Promise<unknown> {
+	return await asCustomer(sql, seeded, customer, async (tx) => {
+		const [row] = await tx<
+			{ r: unknown }[]
+		>`select public.customer_stamp_code() as r`;
+		return row?.r;
+	});
+}
+
+/** A booking the customer asks for at store A, at a given instant (customer_submit_request). */
+export async function submitBooking(
+	sql: Sql,
+	seeded: SeededTenant,
+	customer: string,
+	at: string,
+): Promise<{ readonly id: string; readonly version: number }> {
+	return await asCustomer(sql, seeded, customer, async (tx) => {
+		const [row] = await tx<
+			{ r: { state: string; request: { id: string; version: number } } }[]
+		>`select public.customer_submit_request(${tx.json({
+			request_id: randomUUID(),
+			store: seeded.storeCodeA,
+			kind: "booking",
+			name: "Khách Mẫu",
+			phone: "0900000001",
+			party_size: 4,
+			at,
+		} as never)}) as r`;
+		if (row?.r.state !== "submitted")
+			throw new Error(
+				`the booking was not submitted: ${JSON.stringify(row?.r)}`,
+			);
+		return row.r.request;
+	});
+}

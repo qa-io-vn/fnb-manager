@@ -2,9 +2,12 @@ import { formatVnd } from "@fnb/zalo-mini/format";
 import { useI18n } from "@fnb/zalo-mini/i18n";
 import { PriceText } from "@fnb/zalo-mini/ui-kit";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { changeDue, parseAmount, quickAmounts } from "../lib/cash";
 import { RpcError } from "../lib/rpc";
 import { useSession } from "../lib/session";
+import { useStore } from "../lib/store";
+import { onShiftAt } from "../shift/api";
 import { useShift } from "../shift/shift-context";
 import { Dialog } from "../ui/dialog";
 import { button, field, PlainNote } from "../ui/kit";
@@ -34,7 +37,9 @@ export function PaymentDialog({
 }) {
 	const { t } = useI18n();
 	const { client } = useSession();
-	const { current } = useShift();
+	const { current, refresh } = useShift();
+	const { store } = useStore();
+	const navigate = useNavigate();
 	// the payment names the version seen when the dialog opened
 	const [seen] = useState(order);
 	const { show } = useToast();
@@ -48,8 +53,15 @@ export function PaymentDialog({
 	const tendered = parseAmount(given);
 	const change =
 		tendered === null || given === "" ? null : changeDue(order.total, tendered);
-	const onShift = current !== null && current.status === "open";
-	const ready = method === "card" || (change !== null && onShift);
+	// cash and card are taken only by a person on shift at this store (the database's shift_required; Q01-I8, Q02)
+	const onShift = onShiftAt(current, store.id);
+	const [shiftRefused, setShiftRefused] = useState(false);
+	const needsShift = method !== "vietqr" && (!onShift || shiftRefused);
+	const ready = !needsShift && (method === "card" || change !== null);
+	const goToShift = () => {
+		onClose();
+		navigate("/ca");
+	};
 	const submit = async () => {
 		if (method === "vietqr") return;
 		setBusy(true);
@@ -60,6 +72,11 @@ export function PaymentDialog({
 				show(t("pay.done", { amount: formatVnd(order.total) }));
 				onPaid(answer.order);
 				return;
+			}
+			if (answer.refusal === "shift_required") {
+				// the shift closed elsewhere (another device, a manager): say so and read the shift again
+				setShiftRefused(true);
+				void refresh();
 			}
 			setMessage(
 				t(
@@ -140,6 +157,25 @@ export function PaymentDialog({
 						{t("pay.qr.off")}
 					</PlainNote>
 				) : null}
+				{needsShift ? (
+					<div
+						className="flex flex-wrap items-center gap-3 rounded-card-xl bg-warning-soft px-4 py-3"
+						role="alert"
+						data-testid="pay-need-shift"
+					>
+						<p className="min-w-0 flex-1 text-body text-ink">
+							{t(shiftRefused ? "pay.refusal.shift_required" : "pay.needShift")}
+						</p>
+						<button
+							type="button"
+							className={button.secondary}
+							onClick={goToShift}
+							data-testid="pay-go-shift"
+						>
+							{t("pay.goToShift")}
+						</button>
+					</div>
+				) : null}
 				{method === "vietqr" ? (
 					<VietQrPanel
 						order={seen}
@@ -154,9 +190,6 @@ export function PaymentDialog({
 					/>
 				) : method === "cash" ? (
 					<>
-						{onShift ? null : (
-							<PlainNote tone="warning">{t("pay.needShift")}</PlainNote>
-						)}
 						<label className="flex flex-col gap-1">
 							<span className="font-bold">{t("pay.given")}</span>
 							<input
@@ -204,7 +237,7 @@ export function PaymentDialog({
 				) : (
 					<p className="text-body">{t("pay.cardLead")}</p>
 				)}
-				{message === null ? null : (
+				{message === null || shiftRefused ? null : (
 					<PlainNote tone="negative" testId="pay-message">
 						{message}
 					</PlainNote>

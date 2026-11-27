@@ -14,6 +14,8 @@ import {
 	type OptionGroup,
 } from "../menu/menu-api";
 import { useBoard } from "../orders/board-context";
+import { attachMember, shortName } from "../orders/member";
+import { MemberDialog, type PickedMember } from "../orders/member-dialog";
 import { PaymentDialog } from "../orders/payment-dialog";
 import type { Order } from "../orders/types";
 import { usePrinter } from "../print/printer";
@@ -276,6 +278,9 @@ export function CreateOrderPage() {
 	const [done, setDone] = useState<Order | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
+	// the stamp card picked for this ticket: in memory only, attached once the order is created
+	const [member, setMember] = useState<PickedMember | null>(null);
+	const [memberOpen, setMemberOpen] = useState(false);
 	const menu = useQuery({
 		queryKey: ["counter-menu", store.id],
 		queryFn: () => counterMenu(client, store.id),
@@ -325,6 +330,37 @@ export function CreateOrderPage() {
 		);
 	};
 	const total = draftTotal(draft);
+	/**
+	 * The card picked for the ticket is attached once the order exists (counter_attach_member with its version); a
+	 * refusal (the code expired meanwhile) is said, and the payment goes on with the order as it is.
+	 */
+	const withMember = async (order: Order): Promise<Order> => {
+		if (member === null) return order;
+		try {
+			const answer = await attachMember(client, order, member.code);
+			if (answer.state === "attached") {
+				update(answer.order);
+				show(
+					t("member.attachedToast", {
+						order: answer.order.display_no ?? "",
+						count: answer.stamps ?? 0,
+					}),
+				);
+				return answer.order;
+			}
+			show(
+				t("member.attachLater", {
+					reason: t(`member.refusal.${answer.refusal ?? "failed"}`),
+				}),
+			);
+			return answer.order;
+		} catch {
+			show(t("member.attachLater", { reason: t("common.failed") }));
+			return order;
+		} finally {
+			setMember(null);
+		}
+	};
 	const submit = async () => {
 		setBusy(true);
 		setMessage(null);
@@ -335,7 +371,7 @@ export function CreateOrderPage() {
 			});
 			if (answer.state === "placed" && answer.order !== undefined) {
 				update(answer.order);
-				setPaying(answer.order);
+				setPaying(await withMember(answer.order));
 			} else if (answer.refusal === "price_changed") {
 				setMessage(
 					t("create.priceChanged", { amount: formatVnd(answer.total ?? 0) }),
@@ -361,7 +397,9 @@ export function CreateOrderPage() {
 		setDraft(emptyDraft(crypto.randomUUID()));
 		setDone(null);
 		setMessage(null);
+		setMember(null);
 	};
+	const memberName = member === null ? null : shortName(member.member.name);
 	return (
 		<div className="flex flex-col gap-4 lg:h-full">
 			<div className="flex flex-wrap items-center gap-3">
@@ -507,6 +545,53 @@ export function CreateOrderPage() {
 							))
 						)}
 					</ul>
+					<div
+						className="flex min-h-14 items-center gap-2 rounded-control bg-surface-sunken px-3 py-2"
+						data-testid="ticket-member"
+					>
+						<span className="min-w-0 flex-1 text-sm">
+							{member === null ? (
+								<>
+									<span className="block font-bold">
+										{t("member.ticketTitle")}
+									</span>
+									<span className="text-ink-muted">
+										{t("member.ticketLead")}
+									</span>
+								</>
+							) : (
+								<span className="font-bold" data-testid="ticket-member-name">
+									{memberName === null
+										? t("member.foundNoName")
+										: t("member.found", { name: memberName })}{" "}
+									·{" "}
+									{t("member.stamps", {
+										stamps: member.member.stamps,
+										total: member.member.stamps_per_reward,
+									})}
+								</span>
+							)}
+						</span>
+						{member === null ? (
+							<button
+								type="button"
+								className={`${button.secondary} min-h-12`}
+								onClick={() => setMemberOpen(true)}
+								data-testid="ticket-member-scan"
+							>
+								{t("member.scanShort")}
+							</button>
+						) : (
+							<button
+								type="button"
+								className={`${button.quiet} min-h-12`}
+								onClick={() => setMember(null)}
+								data-testid="ticket-member-remove"
+							>
+								{t("member.remove")}
+							</button>
+						)}
+					</div>
 					<input
 						className={field}
 						maxLength={200}
@@ -560,6 +645,17 @@ export function CreateOrderPage() {
 					}}
 				/>
 			)}
+			{memberOpen ? (
+				<MemberDialog
+					store={store.id}
+					order={null}
+					onClose={() => setMemberOpen(false)}
+					onPicked={(picked) => {
+						setMember(picked);
+						setMemberOpen(false);
+					}}
+				/>
+			) : null}
 			{paying === null ? null : (
 				<PaymentDialog
 					order={paying}

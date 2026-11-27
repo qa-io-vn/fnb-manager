@@ -11,9 +11,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCustomerData } from "../data/customer-data";
 import { isoDateIn, shownDate } from "../data/dates";
+import { useNow } from "../data/use-now";
 import { Failed, Loading } from "../ui";
+import { readyLine } from "./order-view";
 import { useOrdering } from "./ordering-data";
-import { ChevronRight } from "./parts";
+import { ChevronRight, clock } from "./parts";
 
 // C14 Đơn đã đặt (design spec 6.2), reached from Tôi → Lịch sử đơn: the customer's orders, newest first, 20 a page,
 // filtered by how they were served; each opens C06. "Đặt lại" is the owner's phase 2 and is not here.
@@ -35,13 +37,20 @@ function statusOf(order: OrderSummary): {
 	return { key: `orders.state.${order.status}`, tone: "badge" };
 }
 
-function OrderCard({ order }: { readonly order: OrderSummary }) {
+function OrderCard({
+	order,
+	now,
+}: {
+	readonly order: OrderSummary;
+	readonly now: number;
+}) {
 	const { t } = useI18n();
 	const navigate = useNavigate();
 	const day = isoDateIn(Date.parse(order.placedAt));
 	const date =
 		day === isoDateIn(Date.now()) ? t("orders.today") : shownDate(day);
 	const status = statusOf(order);
+	const ready = readyLine(order, now);
 	return (
 		<li>
 			<button
@@ -65,6 +74,17 @@ function OrderCard({ order }: { readonly order: OrderSummary }) {
 						{order.displayNo ?? ""} ·{" "}
 						{t("orders.items", { count: order.items })}
 					</span>
+					{ready === null ? null : (
+						<span
+							className="text-[13px] text-ink"
+							data-testid="order-row-ready"
+							data-ready={ready.kind}
+						>
+							{ready.kind === "at"
+								? t("orders.readyAt", { time: clock(ready.at) })
+								: t("order.line.readySoon")}
+						</span>
+					)}
 					<PriceText
 						amount={order.total}
 						size="list"
@@ -86,6 +106,7 @@ export function OrdersScreen() {
 	const [more, setMore] = useState<readonly OrderSummary[]>([]);
 	const [next, setNext] = useState<string | null | undefined>(undefined);
 	const [loadingMore, setLoadingMore] = useState(false);
+	const now = useNow(30_000);
 	useEffect(() => {
 		reloadOrders();
 	}, [reloadOrders]);
@@ -151,7 +172,7 @@ export function OrdersScreen() {
 			) : (
 				<ul className="flex flex-col gap-2 px-4">
 					{shown.map((order) => (
-						<OrderCard key={order.id} order={order} />
+						<OrderCard key={order.id} order={order} now={now} />
 					))}
 				</ul>
 			)}

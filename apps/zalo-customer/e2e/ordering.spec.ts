@@ -23,7 +23,11 @@ type TillMethod =
 	| "soldOut"
 	| "placements"
 	| "openCalls"
-	| "setOrdering";
+	| "setOrdering"
+	| "addRequest"
+	| "proposeRequest"
+	| "attachToCard"
+	| "stampCodes";
 
 async function till(
 	page: Page,
@@ -397,7 +401,7 @@ test("Tôi leads to the order history, the member code and the data screen, and 
 	await addBlackCoffee(page);
 	await placeOrder(page);
 	await page.getByRole("navigation").getByText("Tôi", { exact: true }).click();
-	await expect(page.getByTestId("account-row")).toHaveCount(3);
+	await expect(page.getByTestId("account-row")).toHaveCount(4);
 	await checkOrderingScreen(page);
 	await page.locator("[data-testid=account-row][data-row=orders]").click();
 	await expect(page.getByTestId("order-row")).toHaveCount(1);
@@ -426,7 +430,7 @@ test("the member code can be enlarged on a white screen and shows the stamp card
 		.getByText("Tích điểm", { exact: true })
 		.click();
 	await page.getByTestId("wallet-code").click();
-	await expect(page.getByTestId("member-code")).toHaveText(/^\d{6}$/);
+	await expect(page.getByTestId("stamp-number")).toHaveText(/^\d{4} \d{4}$/);
 	await expect(page.getByTestId("code-brightness")).toBeVisible();
 	await expect(page.getByTestId("code-stamps")).toContainText("0/9 dấu");
 	await checkOrderingScreen(page);
@@ -436,4 +440,144 @@ test("the member code can be enlarged on a white screen and shows the stamp card
 	).toBeVisible();
 	await page.getByTestId("code-shrink").click();
 	await expect(page.getByTestId("code-enlarged")).toHaveCount(0);
+});
+
+async function openMe(page: Page, row: string): Promise<void> {
+	await page.getByRole("navigation").getByText("Tôi", { exact: true }).click();
+	await page.locator(`[data-testid=account-row][data-row=${row}]`).click();
+}
+
+test("C20: a visitor's member code refreshes at 09:00, stays offline until it expires at 10:00, then a new one comes back online", async ({
+	page,
+	context,
+}) => {
+	await page.clock.install();
+	await page.goto("./?store=mau-1&src=qr");
+	await page
+		.getByRole("navigation")
+		.getByText("Tích điểm", { exact: true })
+		.click();
+	await page.getByTestId("wallet-code").click();
+	const number = page.getByTestId("stamp-number");
+	await expect(number).toHaveText(/^\d{4} \d{4}$/);
+	const first = (await number.textContent()) ?? "";
+	await expect(page.getByTestId("code-countdown")).toHaveText(
+		/Mã làm mới sau 0[89]:\d\d/,
+	);
+	await checkOrderingScreen(page);
+	expect(page.url()).not.toContain(first.replace(" ", ""));
+	expect(await page.content()).not.toContain("fnb-stamp:");
+	// BVA: at the refresh time the app asks for a new code by itself
+	await page.clock.fastForward("09:01");
+	await expect(number).not.toHaveText(first);
+	expect(await till(page, "stampCodes")).toBe(2);
+	// offline: the code shown keeps working until its expiry, and says until when
+	await context.setOffline(true);
+	await expect(page.getByTestId("code-offline")).toContainText(
+		"Mã đã lưu vẫn dùng được đến",
+	);
+	await expect(page.getByTestId("code-refresh")).toBeDisabled();
+	await page.clock.fastForward("10:01");
+	await expect(page.getByTestId("code-expired")).toHaveText(
+		"Mã đã hết hạn. Lấy mã mới để quầy quét.",
+	);
+	await expect(page.getByTestId("stamp-qr")).toHaveCount(0);
+	await context.setOffline(false);
+	await page.evaluate(() => window.dispatchEvent(new Event("online")));
+	await expect(number).toHaveText(/^\d{4} \d{4}$/);
+	expect(await till(page, "stampCodes")).toBe(3);
+});
+
+test("C20: the counter's attach shows on the code screen at once, with the stamps it will earn", async ({
+	page,
+}) => {
+	await page.goto("./?route=/ma-thanh-vien");
+	await expect(page.getByTestId("stamp-number")).toBeVisible();
+	await till(page, "attachToCard", 3);
+	await expect(page.getByTestId("code-attached")).toContainText(
+		"Đơn xong thì 3 dấu vào thẻ.",
+		{ timeout: 15_000 },
+	);
+	await checkOrderingScreen(page);
+});
+
+test("C19: a visitor reads the copy of their data and deletes the login at once; markup in the data stays text", async ({
+	page,
+}) => {
+	await openMenu(page);
+	await page
+		.getByRole("button", { name: /^Cà phê đen/ })
+		.first()
+		.click();
+	await page.getByTestId("item-note").fill('<img src=x onerror="alert(1)">');
+	await page.getByTestId("item-add").click();
+	await placeOrder(page);
+	await till(page, "act", "pay");
+	await till(page, "act", "start");
+	await till(page, "act", "done");
+	await till(page, "act", "complete");
+	await openMe(page, "data");
+	await page.getByTestId("data-export").click();
+	await expect(page.getByTestId("data-export-how")).toBeVisible();
+	await page.getByTestId("data-export-load").click();
+	const view = page.getByTestId("data-export-view");
+	await expect(view).toContainText("Tài khoản Zalo");
+	await expect(view).toContainText('<img src=x onerror="alert(1)">');
+	await expect(view.locator("img")).toHaveCount(0);
+	await checkOrderingScreen(page);
+	await page.getByTestId("data-export-copy").click();
+	await expect(page.getByTestId("data-export-copied")).toBeVisible();
+	await page.getByRole("button", { name: "Về Dữ liệu của bạn" }).click();
+	await page.getByTestId("data-delete").click();
+	await page.getByTestId("data-continue").click();
+	await expect(page.getByTestId("data-confirm-delete")).toBeDisabled();
+	await page.getByTestId("data-confirm-check").click();
+	await page.getByTestId("data-confirm-delete").click();
+	await expect(page.getByTestId("data-deleted")).toContainText(
+		"Đã xóa tài khoản",
+	);
+	await checkOrderingScreen(page);
+	await page.getByTestId("data-deleted-menu").click();
+	await expect(page.getByTestId("ordering-menu")).toBeVisible();
+});
+
+test("C06 and C14: the order says when it should be ready once accepted and paid, and so does the history", async ({
+	page,
+}) => {
+	await openMenu(page);
+	await addBlackCoffee(page);
+	await placeOrder(page);
+	await expect(page.getByTestId("order-eta")).toHaveCount(0);
+	await till(page, "act", "pay");
+	await expect(page.getByTestId("order-eta")).toHaveText(
+		/Dự kiến xong lúc \d\d:\d\d, khoảng 10 phút nữa/,
+		{ timeout: 10_000 },
+	);
+	await checkOrderingScreen(page);
+	await openMe(page, "orders");
+	await expect(page.getByTestId("order-row-ready")).toHaveText(
+		/Dự kiến xong lúc \d\d:\d\d/,
+	);
+});
+
+test("the customer's request with another time proposed by the store, cancelled (new → proposed → cancelled)", async ({
+	page,
+}) => {
+	await openMenu(page);
+	await till(page, "addRequest");
+	await till(page, "proposeRequest");
+	await openMe(page, "requests");
+	const card = page.getByTestId("my-request");
+	await expect(card.getByTestId("my-request-status")).toHaveText(
+		"Quán đề xuất giờ khác",
+	);
+	await expect(card.getByTestId("my-request-proposed")).toContainText(
+		"Quán đề xuất: 19:30",
+	);
+	await checkOrderingScreen(page);
+	await card.getByTestId("my-request-cancel").click();
+	await page.getByTestId("my-request-confirm-cancel").click();
+	await expect(card.getByTestId("my-request-status")).toHaveText("Đã hủy");
+	await expect(card.getByTestId("my-request-cancel")).toHaveCount(0);
+	await checkOrderingScreen(page);
 });

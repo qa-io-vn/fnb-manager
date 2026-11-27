@@ -2,7 +2,13 @@ import { useI18n } from "@fnb/zalo-mini/react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { SettingsScreen } from "../settings/settings-screen";
-import { ChevronRight, ListIcon, ScanIcon, ShieldIcon } from "./parts";
+import {
+	ChevronRight,
+	ClockIcon,
+	ListIcon,
+	ScanIcon,
+	ShieldIcon,
+} from "./parts";
 
 // C08 Tôi of the ordering build (design spec 6.2 and the missing-screens addendum): the rows that lead to the order
 // history (C14), the member code (C20) and the customer's data (C19), above the account settings that exist
@@ -61,6 +67,13 @@ export function OrderingAccountScreen() {
 						sub={t("me.codeSub")}
 						to="/ma-thanh-vien"
 						row="code"
+					/>
+					<Row
+						icon={<ClockIcon />}
+						title={t("me.requests")}
+						sub={t("me.requestsSub")}
+						to="/yeu-cau-cua-ban"
+						row="requests"
 					/>
 					<Row
 						icon={<ShieldIcon />}

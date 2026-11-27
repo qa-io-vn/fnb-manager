@@ -59,6 +59,10 @@ const DataPolicyScreen = lazyScreen(
 	() => import("./data-policy-screen"),
 	(m) => m.DataPolicyScreen,
 );
+const MyRequestsScreen = lazyScreen(
+	() => import("./requests-screen"),
+	(m) => m.MyRequestsScreen,
+);
 const MemberCodeScreen = lazyScreen(
 	() => import("./member-code-screen"),
 	(m) => m.OrderingMemberCodeScreen,
@@ -111,6 +115,7 @@ export const orderingRoutes: readonly MiniAppRoute[] = [
 	{ path: "/thanh-toan/:id", chrome: "flow", element: <PaymentScreen /> },
 	{ path: "/du-lieu", chrome: "flow", element: <DataPolicyScreen /> },
 	{ path: "/ma-thanh-vien", activeTab: null, element: <MemberCodeScreen /> },
+	{ path: "/yeu-cau-cua-ban", activeTab: null, element: <MyRequestsScreen /> },
 	{ path: "/the-thanh-vien/diem", activeTab: null, element: <WalletScreen /> },
 	// the loyalty routes the ordering build keeps as they are (the store page, joining, claims, rewards, vouchers)
 	{ path: "/cua-hang/:code", activeTab: null, element: <StoreScreen /> },
