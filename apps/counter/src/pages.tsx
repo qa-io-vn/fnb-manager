@@ -1,9 +1,14 @@
 import { useI18n } from "@fnb/zalo-mini/i18n";
 import { type ReactNode, useEffect, useState } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { useMember, useSession } from "./lib/session";
+import { clockOf } from "./lib/time";
+import { ManagerHome } from "./manager/manager-home";
+import { ManagerShiftsPage } from "./manager/shifts-page";
 import { AppShell, type NavItem } from "./shell/layout";
 import { StatusChip, TopBar } from "./shell/top-bar";
+import { ShiftProvider, useShift } from "./shift/shift-context";
+import { ShiftPage } from "./shift/shift-page";
 import {
 	ChartIcon,
 	ClockIcon,
@@ -51,6 +56,48 @@ function ConnectionChip() {
 	);
 }
 
+function ShiftChip() {
+	const { t } = useI18n();
+	const navigate = useNavigate();
+	const { data, current } = useShift();
+	if (data === null) return null;
+	const go = () => navigate("/ca");
+	if (current === null) {
+		return (
+			<StatusChip
+				tone="warning"
+				icon={<ClockIcon size={18} />}
+				onClick={go}
+				label={t("status.noShift")}
+				testId="shift-chip"
+			>
+				{t("status.noShift")}
+			</StatusChip>
+		);
+	}
+	return current.status === "open" ? (
+		<StatusChip
+			tone="positive"
+			icon={<ClockIcon size={18} />}
+			onClick={go}
+			label={t("status.shiftSince", { time: clockOf(current.clock_in_at) })}
+			testId="shift-chip"
+		>
+			{t("status.shiftSince", { time: clockOf(current.clock_in_at) })}
+		</StatusChip>
+	) : (
+		<StatusChip
+			tone="warning"
+			icon={<ClockIcon size={18} />}
+			onClick={go}
+			label={t("shift.status.awaiting_confirmation")}
+			testId="shift-chip"
+		>
+			{t("shift.status.awaiting_confirmation")}
+		</StatusChip>
+	);
+}
+
 function Placeholder({ title }: { readonly title: string }) {
 	return <PageTitle>{title}</PageTitle>;
 }
@@ -69,7 +116,7 @@ export function ManagersOnly() {
 	);
 }
 
-export function CounterPages({ manager }: { readonly manager: boolean }) {
+function Frame({ manager }: { readonly manager: boolean }) {
 	const { t } = useI18n();
 	const { member } = useMember();
 	const { signOut } = useSession();
@@ -106,7 +153,12 @@ export function CounterPages({ manager }: { readonly manager: boolean }) {
 			topBar={
 				<TopBar
 					member={member}
-					pills={<ConnectionChip />}
+					pills={
+						<>
+							<ShiftChip />
+							<ConnectionChip />
+						</>
+					}
 					onSignOut={() => void signOut()}
 				/>
 			}
@@ -116,13 +168,20 @@ export function CounterPages({ manager }: { readonly manager: boolean }) {
 				<Route path="/don" element={<Placeholder title={t("nav.orders")} />} />
 				<Route path="/ban" element={<Placeholder title={t("nav.tables")} />} />
 				<Route path="/mon" element={<Placeholder title={t("nav.menu")} />} />
-				<Route path="/ca" element={<Placeholder title={t("nav.shift")} />} />
-				<Route
-					path="/quan-ly/*"
-					element={manage(<Placeholder title={t("nav.manager")} />)}
-				/>
+				<Route path="/ca" element={<ShiftPage />} />
+				<Route path="/quan-ly" element={manage(<ManagerHome />)} />
+				<Route path="/quan-ly/ca-lam" element={manage(<ManagerShiftsPage />)} />
+				<Route path="/quan-ly/*" element={manage(<ManagerHome />)} />
 				<Route path="*" element={<Navigate to="/don" replace />} />
 			</Routes>
 		</AppShell>
+	);
+}
+
+export function CounterPages({ manager }: { readonly manager: boolean }) {
+	return (
+		<ShiftProvider>
+			<Frame manager={manager} />
+		</ShiftProvider>
 	);
 }

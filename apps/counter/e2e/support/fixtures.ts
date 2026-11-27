@@ -72,6 +72,11 @@ export async function chooseZaloPerson(
 export async function signIn(page: Page, person: SeededPerson): Promise<void> {
 	await chooseZaloPerson(page, person);
 	await page.goto("/");
+	await page.evaluate(() => {
+		window.localStorage.clear();
+		window.sessionStorage.clear();
+	});
+	await page.goto("/");
 	await page.getByTestId("sign-in-zalo").click();
 	await expect(page.getByTestId("account")).toBeVisible();
 }
@@ -93,4 +98,29 @@ export async function expectNoHorizontalScroll(page: Page): Promise<void> {
 			document.documentElement.clientWidth,
 	);
 	expect(overflow).toBeLessThanOrEqual(1);
+}
+
+/** Runs a database function as a signed-in member, as PostgREST would (claims of the person, inside a transaction). */
+export async function asMember<T>(
+	db: Sql,
+	userId: string,
+	run: (tx: Sql) => Promise<T>,
+): Promise<T> {
+	return (await db.begin(async (tx) => {
+		await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: userId, role: "authenticated" })}, true)`;
+		return await run(tx as unknown as Sql);
+	})) as T;
+}
+
+/** The store's counter QR code, as a manager prints it. */
+export async function counterToken(
+	db: Sql,
+	seeded: SeededTenant,
+): Promise<string> {
+	return await asMember(db, seeded.people.manager.id, async (tx) => {
+		const [row] = await tx<
+			{ token: string }[]
+		>`select app.manager_counter_qr(${seeded.storeA}::uuid, false) ->> 'token' as token`;
+		return row?.token ?? "";
+	});
 }
