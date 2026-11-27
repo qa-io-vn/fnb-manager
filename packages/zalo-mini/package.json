@@ -17,6 +17,18 @@
 			"types": "./src/format/index.ts",
 			"import": "./src/format/index.ts"
 		},
+		"./ui-kit": {
+			"types": "./src/react/ui-kit/index.ts",
+			"import": "./src/react/ui-kit/index.ts"
+		},
+		"./i18n": {
+			"types": "./src/react/i18n.tsx",
+			"import": "./src/react/i18n.tsx"
+		},
+		"./i18n/translate": {
+			"types": "./src/i18n/translate.ts",
+			"import": "./src/i18n/translate.ts"
+		},
 		"./app-config": {
 			"types": "./src/app-config/index.ts",
 			"import": "./src/app-config/index.ts"

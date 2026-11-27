@@ -1,0 +1,43 @@
+@import "tailwindcss";
+@import "@fnb/design-tokens/tokens.css";
+@import "@fnb/zalo-mini/styles.css";
+
+@source "../../../packages/zalo-mini/src/react/ui-kit";
+
+html,
+body,
+#root {
+	height: 100%;
+}
+
+body {
+	overscroll-behavior: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+button {
+	cursor: pointer;
+	touch-action: manipulation;
+}
+
+/* the 80 mm ticket: only the ticket is printed, at the printer's width (ADR-066) */
+.print-only {
+	display: none;
+}
+
+@media print {
+	@page {
+		size: 80mm auto;
+		margin: 3mm;
+	}
+	html,
+	body,
+	#root {
+		height: auto;
+		background: #fff;
+		color: #000;
+	}
+	.print-only {
+		display: block;
+	}
+}
