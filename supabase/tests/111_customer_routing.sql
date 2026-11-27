@@ -15,7 +15,13 @@ select
   '99999999-9999-4999-8999-000000011102'::uuid as member_b,
   '99999999-9999-4999-8999-000000011103'::uuid as member_c,
   'aaaaaaaa-aaaa-4aaa-8aaa-000000011101'::uuid as programme_t,
-  ((((now() at time zone 'Asia/Ho_Chi_Minh')::date + 1) + time '12:00') at time zone 'Asia/Ho_Chi_Minh') as noon;
+  -- the scenario runs from noon to noon + 8 days and counts a monthly allowance, so it must stay inside one
+  -- calendar month: tomorrow when that leaves room, otherwise the 2nd of next month
+  ((case
+      when extract(day from (now() at time zone 'Asia/Ho_Chi_Minh')::date + 1) <= 20
+        then (now() at time zone 'Asia/Ho_Chi_Minh')::date + 1
+      else (date_trunc('month', (now() at time zone 'Asia/Ho_Chi_Minh')::date) + interval '1 month 1 day')::date
+    end + time '12:00') at time zone 'Asia/Ho_Chi_Minh') as noon;
 
 insert into public.tenants (id, slug, name, country_code)
 select tenant_t, 'customer-routing-t', 'Customer routing T', 'VN' from fx;
