@@ -558,7 +558,7 @@ select is(
         'public.checkout_set_provider', 'public.counter_ack_call', 'public.counter_attach_member', 'public.counter_board', 'public.counter_create_order',
         'public.counter_member_lookup', 'public.counter_menu', 'public.counter_order', 'public.counter_order_act', 'public.counter_order_einvoice',
         'public.counter_payment_methods', 'public.counter_record_payment', 'public.counter_refund', 'public.counter_request_invoice', 'public.counter_set_pause',
-        'public.counter_set_sold_out', 'public.counter_table_map', 'public.counter_void_payment', 'public.customer_call_staff', 'public.customer_cancel_order',
+        'public.counter_set_sold_out', 'public.counter_table_map', 'public.counter_void_payment', 'public.customer_accept_proposal', 'public.customer_call_staff', 'public.customer_cancel_order',
         'public.customer_cancel_request', 'public.customer_check_cart', 'public.customer_confirm_bill', 'public.customer_coupons', 'public.customer_delete_account',
         'public.customer_delete_saved_company', 'public.customer_dispute_bill', 'public.customer_export_data', 'public.customer_home', 'public.customer_invoice_status',
         'public.customer_member_code', 'public.customer_menu', 'public.customer_menu_version', 'public.customer_order', 'public.customer_orders',

@@ -718,6 +718,11 @@ insert into matrix (fn, label, statement, expect) values
 ('manager_request_read', 'manager_request_read of an unknown request',
   $$select public.manager_request_read('aaaaaaaa-aaaa-4aaa-8aaa-000000012091')::text$$,
   '{"*": "DENY"}'),
+-- Phase 1 gaps (M01, C08): the customer accepts a time proposed for their own request (an unknown request answers
+-- unknown_request to every customer session, 42501 to everyone else).
+('customer_accept_proposal', 'customer_accept_proposal of an unknown request',
+  $$select public.customer_accept_proposal('aaaaaaaa-aaaa-4aaa-8aaa-000000012091', 'aaaaaaaa-aaaa-4aaa-8aaa-000000012092') ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:unknown_request$", "visitor": "^ok:unknown_request$", "customer_b": "^ok:unknown_request$"}'),
 ('manager_approve_blocked_signin', 'manager_approve_blocked_signin of an unknown request',
   $$select public.manager_approve_blocked_signin('aaaaaaaa-aaaa-4aaa-8aaa-000000012094', 1, 'Synthetic', 'staff', null)::text$$,
   '{"*": "DENY"}'),

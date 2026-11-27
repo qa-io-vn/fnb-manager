@@ -358,6 +358,7 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Look up a stamp card's member code and attach its holder to a counter order | scope | scope | scope | no | own code only (`customer_stamp_code`) |
 | Delete one's own account (never joined with a phone) and export one's own data | no | no | no | no | own (`customer_delete_account`, `customer_export_data`) |
 | Propose another time for a request; record its reading | scope | scope | no | no | cancel a proposed request of their own |
+| Accept the time proposed for a request (the inbox flags it until an owner or manager opens it) | no | no | no | no | own proposed request while the time is ahead, idempotent per request id (`customer_accept_proposal`); another customer's answers as an unknown id |
 | Read the OA webhook's events (`oa_events`), the binding codes, the pairing codes and wrong-code counts, a staff member's phone, the POS or Zalo token caches, the payload documents or anything in `app` | no | no | no | no | no |
 
 Destinations are created, linked and withdrawn through `security definer` functions and the CLI, not by direct writes.

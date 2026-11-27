@@ -73,7 +73,7 @@ Owners and managers whose scope holds every store of the brand write the menu di
 
 - `customer_menu(p_store_code, p_order_type)`: the store, its ordering state, the menu version, the visible categories with their orderable items (sizes with prices, option group ids, labels, photo, description) and the option groups; items sold out or not offered at the store are left out, and their ids are listed in `unavailable_items` so a basket can say which of its items just went.
 - `customer_menu_version(p_store_code)`: the menu version, `unavailable_items` and the ordering state in about 200 bytes. The app calls it every 3 seconds while the menu or the basket is open, so an item switched sold out at the counter disappears within 5 seconds (acceptance criterion 2).
-- `counter_menu(p_store)`: every item of the store with its sold-out state, for the counter's order form and toggles.
+- `counter_menu(p_store)`: every item of the store with its sold-out state and whether it earns a stamp, and the stamp card of each brand, for the counter's order form, its ticket and toggles (section 18).
 
 ## 4. Tables, QR codes and staff calls
 
@@ -290,3 +290,10 @@ pgTAP `291_einvoices` (the foreign keys' indexes, the provider row, queueing at 
 4. Whether a full refund is cancelled at the provider (where it still can) or always adjusted to zero; the job asks to cancel and adjusts when the provider refuses.
 5. The window (7 days) and replace rather than adjust for a company invoice (decision D5 of the missing-screens design).
 6. Orders paid while e-invoicing is off are not invoiced later by the server.
+
+## 18. Phase 1 gaps closed on the server (built 2026-11-28)
+
+What the counter and customer screens of phase 1 still needed from the server, in migrations 20261128600000 onwards:
+
+1. **The stamp flag on the counter's menu (Q01).** `counter_menu` answers `counts_for_stamps` on every item (the flag `order_lines.counts_for_stamps` copies at placement) and `stamp_cards: [{brand_id, enabled, stamps_per_reward}]` for the brands of the store, so the ticket of an order keyed for a member says how many stamps it will earn: the sum of the quantities of its flagged lines, nothing while the brand's card is off. The customer menu already had the flag. The answer only gained fields (migration `counter_menu_stamp_flag`; pgTAP `293_counter_menu_stamps`).
+2. **The customer accepts a time proposed (M01, C08).** `customer_accept_proposal(p_request, p_request_id)`: the customer of an app request accepts the time an owner or manager proposed, only while the request is `proposed` and the time is still ahead (`proposal_expired` from that instant), idempotent per the app's request id (a replay answers the acceptance, the id on another request is `request_conflict`); another customer's request answers as an unknown id. It ends as the manager's confirm ends (`confirmed`, moved to the time proposed, the proposal kept, the version moved on) and records `customer_accepted_at`; the manager's answer stays as the proposal left it. **Decision:** the inbox shows it with a flag of its own, `accepted_unseen` (counted, listed right after the new requests) until an owner or manager opens or answers it, which records `accept_seen_by` and `accept_seen_at`; marking the request unread again was not chosen because it would erase who first read the contact (M01-S6). The opening hours are not checked again at acceptance (migration `customer_accept_proposal`; pgTAP `294_customer_accept_proposal`).

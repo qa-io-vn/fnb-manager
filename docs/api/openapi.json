@@ -10059,6 +10059,21 @@
 		"store_requests": {
 			"description": "the requests inbox (native-till.md section 12): bookings, workshop sign-ups, holds of an item and job applications sent from the website (by a service-role Edge Function, with the SHA-256 of its client key) or the customer app (with the customer's login), each once per request id; the contact typed, the time asked for, then the answer of an owner or manager (confirmed, declined, cancelled with who, when and the message) or the customer's cancellation; read only by the store's owners and managers; deleted with the customer's account, purged 180 days after its date",
 			"properties": {
+				"accept_request_id": {
+					"description": "the request id the customer's app sent with the acceptance: the same id again answers the same acceptance, another request with it is request_conflict",
+					"format": "uuid",
+					"type": "string"
+				},
+				"accept_seen_at": {
+					"description": "when an owner or manager first opened or answered the request after the customer accepted; null while the inbox flags it (accepted_unseen)",
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"accept_seen_by": {
+					"description": "who first opened or answered it after the acceptance",
+					"format": "uuid",
+					"type": "string"
+				},
 				"answer_message": {
 					"format": "text",
 					"type": "string"
@@ -10100,6 +10115,11 @@
 					"type": "string"
 				},
 				"created_at": {
+					"format": "timestamp with time zone",
+					"type": "string"
+				},
+				"customer_accepted_at": {
+					"description": "when the customer accepted the time proposed (customer_accept_proposal); null when a manager confirmed it or nothing was accepted",
 					"format": "timestamp with time zone",
 					"type": "string"
 				},
@@ -23028,6 +23048,27 @@
 			"required": false,
 			"type": "string"
 		},
+		"rowFilter.store_requests.accept_request_id": {
+			"description": "the request id the customer's app sent with the acceptance: the same id again answers the same acceptance, another request with it is request_conflict",
+			"in": "query",
+			"name": "accept_request_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.accept_seen_at": {
+			"description": "when an owner or manager first opened or answered the request after the customer accepted; null while the inbox flags it (accepted_unseen)",
+			"in": "query",
+			"name": "accept_seen_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.accept_seen_by": {
+			"description": "who first opened or answered it after the acceptance",
+			"in": "query",
+			"name": "accept_seen_by",
+			"required": false,
+			"type": "string"
+		},
 		"rowFilter.store_requests.answer_message": {
 			"in": "query",
 			"name": "answer_message",
@@ -23091,6 +23132,13 @@
 		"rowFilter.store_requests.created_at": {
 			"in": "query",
 			"name": "created_at",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_requests.customer_accepted_at": {
+			"description": "when the customer accepted the time proposed (customer_accept_proposal); null when a manager confirmed it or nothing was accepted",
+			"in": "query",
+			"name": "customer_accepted_at",
 			"required": false,
 			"type": "string"
 		},
@@ -50313,6 +50361,47 @@
 				"tags": ["(rpc) coupon_discount_days"]
 			}
 		},
+		"/rpc/customer_accept_proposal": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C08): app.customer_accept_proposal at the current time",
+							"properties": {
+								"p_request": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_request_id": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": ["p_request", "p_request_id"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C08): app.customer_accept_proposal at the current time",
+				"tags": ["(rpc) customer_accept_proposal"]
+			}
+		},
 		"/rpc/customer_call_staff": {
 			"post": {
 				"parameters": [
@@ -64330,6 +64419,18 @@
 						"$ref": "#/parameters/rowFilter.store_requests.read_by"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.store_requests.customer_accepted_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.accept_request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.accept_seen_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.accept_seen_by"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -64423,6 +64524,18 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.store_requests.read_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.customer_accepted_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.accept_request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.accept_seen_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.accept_seen_by"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -64545,6 +64658,18 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.store_requests.read_by"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.customer_accepted_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.accept_request_id"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.accept_seen_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_requests.accept_seen_by"
 					},
 					{
 						"$ref": "#/parameters/body.store_requests"
