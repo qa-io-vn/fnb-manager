@@ -241,6 +241,16 @@ test("criterion 4: a manager refunds a completed order and its stamp goes back; 
 	await manager.goto(`/#/don/${placed.id}`);
 	await manager.getByTestId("open-refund").click();
 	await manager.getByTestId("refund-reason").fill("Pha sai, khách không nhận");
+	// a cash refund needs the manager on shift at the store (native-till.md 18): refused in words, nothing refunded
+	await manager.getByTestId("refund-submit").click();
+	await expect(manager.getByTestId("refund-dialog")).toContainText(
+		"Bạn chưa vào ca ở quầy này",
+	);
+	const [stillPaid] = await db<
+		{ payment_status: string }[]
+	>`select payment_status from public.orders where id = ${placed.id}`;
+	expect(stillPaid?.payment_status).toBe("paid");
+	await openShiftFor(db, seeded, seeded.people.manager.id);
 	await manager.getByTestId("refund-submit").click();
 	await expect(manager.getByTestId("payment-status")).toContainText(
 		"Đã hoàn tiền",
