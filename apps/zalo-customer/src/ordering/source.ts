@@ -7,6 +7,7 @@ import {
 	type PaymentClient,
 } from "@fnb/zalo-mini/ordering";
 import { demoWorld } from "../data/source";
+import { DEMO_POLICY_VERSION } from "../demo/fixtures";
 import {
 	createOrderingWorld,
 	type DemoTill,
@@ -51,6 +52,12 @@ export function demoOrderingWorld(
 		world.settings.member,
 		!world.settings.einvoiceOff,
 		world.settings.takeaway,
+		{
+			joined: () => world.joined(),
+			marketing: () => world.marketing(),
+			setMarketing: (on) => world.setMarketing(on),
+			policyVersion: DEMO_POLICY_VERSION,
+		},
 	);
 	world.extend(ordering);
 	attached.set(world, ordering);

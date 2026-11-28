@@ -4,6 +4,7 @@ import { useCustomerData } from "../data/customer-data";
 import { LegalButtons } from "../legal/legal-popups";
 import { Failed } from "../ui";
 import { ONLINE_PAYMENT_ENABLED } from "./flag";
+import { PageActions } from "./inbox-bell";
 import { closedKind } from "./order-view";
 import { useOrdering } from "./ordering-data";
 import {
@@ -22,7 +23,8 @@ import { preOrderOpen } from "./takeaway";
 // scanned QR, two tiles (order at the table, or scan its code; takeaway "Mang đi · Hẹn giờ lấy" where the store offers
 // it to a build that pays online (D7, C17), else the menu), the stamp card's progress and the shop's legal texts. No
 // price on this screen. The points programme stays reachable from Tích điểm. Closed (C15), a store that books the next
-// morning offers "Hẹn lấy món sáng mai" first.
+// morning offers "Hẹn lấy món sáng mai" first. Above the hero, PageActions holds the bell with the unread count, which
+// opens C12.
 
 function Hero() {
 	const { t } = useI18n();
@@ -219,7 +221,8 @@ export function OrderingHomeScreen() {
 		menu.status === "ready" &&
 		preOrderOpen(menu.data.ordering, ONLINE_PAYMENT_ENABLED);
 	return (
-		<section className="flex flex-col gap-4 px-4 py-5" data-testid="home">
+		<section className="flex flex-col gap-4 px-4 pt-1 pb-5" data-testid="home">
+			<PageActions />
 			<Hero />
 			{home.status === "failed" ? (
 				<Failed

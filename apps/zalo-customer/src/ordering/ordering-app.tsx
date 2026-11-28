@@ -75,6 +75,10 @@ const CompanyInvoiceScreen = lazyScreen(
 	() => import("./company-invoice-screen"),
 	(m) => m.CompanyInvoiceScreen,
 );
+const InboxScreen = lazyScreen(
+	() => import("./inbox-screen"),
+	(m) => m.InboxScreen,
+);
 const CompanyHubScreen = lazyScreen(
 	() => import("./saved-companies"),
 	(m) => m.CompanyHubScreen,
@@ -126,6 +130,8 @@ export const orderingRoutes: readonly MiniAppRoute[] = [
 	{ path: "/gio-lay/:id", chrome: "flow", element: <PickupScreen /> },
 	{ path: "/don/:id", activeTab: null, element: <OrderScreen /> },
 	{ path: "/don-hang", activeTab: null, element: <OrdersScreen /> },
+	// C12: the customer's notifications, with the tabs and none of them active
+	{ path: "/thong-bao", activeTab: null, element: <InboxScreen /> },
 	{ path: "/tra-tien/:id", chrome: "flow", element: <PayScreen /> },
 	{ path: "/thanh-toan/:id", chrome: "flow", element: <PaymentScreen /> },
 	{ path: "/du-lieu", chrome: "flow", element: <DataPolicyScreen /> },

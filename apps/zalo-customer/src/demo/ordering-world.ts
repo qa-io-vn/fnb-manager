@@ -4,6 +4,7 @@ import {
 	ACCOUNT_FUNCTIONS,
 	CHECKOUT_ORDER_FUNCTION,
 	IDEMPOTENCY_KEY_PATTERN,
+	INBOX_FUNCTIONS,
 	isOnlineMethod,
 	LINE_NOTE_MAX,
 	MAX_CART_LINES,
@@ -17,6 +18,12 @@ import {
 } from "@fnb/zalo-mini/ordering";
 import { isoDateIn } from "../data/dates";
 import { hasForbiddenCharacter } from "../ordering/cart";
+import { DEMO_POLICY_VERSION } from "./fixtures";
+import {
+	createInboxWorld,
+	type DemoInboxConsent,
+	type DemoInboxOrder,
+} from "./inbox-world";
 import { createInvoiceWorld, type DemoInvoiceTill } from "./invoice-world";
 import {
 	DEMO_BANK,
@@ -77,8 +84,11 @@ export interface DemoPastOrder {
 	readonly type?: "table" | "takeaway";
 	/** placed this many days ago, 1 by default */
 	readonly daysAgo?: number;
-	/** completed and paid by default; cancelled unpaid, or cancelled and refunded */
-	readonly status?: "completed" | "cancelled" | "refunded";
+	/**
+	 * completed and paid by default; cancelled unpaid, or cancelled and refunded; accepted: still open at the counter,
+	 * unpaid and not started (the till moves it on, as for an order placed in the app)
+	 */
+	readonly status?: "completed" | "cancelled" | "refunded" | "accepted";
 	/** the store's name in the history (another store's order), the demo store's by default */
 	readonly storeName?: string;
 	readonly lines: readonly DemoPastLine[];
@@ -162,6 +172,13 @@ export interface DemoTill extends DemoInvoiceTill {
 	setPrepMinutes(minutes: number): void;
 	/** C17: an order's pick-up time (the latest order's when no id is given), or null */
 	pickupOf(orderId?: string): string | null;
+	/**
+	 * C12: a campaign's offer in the customer's inbox (GA-066), written as the server does only for a member who gave
+	 * the marketing consent; answers whether it was written
+	 */
+	offer(title: string, line: string): boolean;
+	/** C12: the kinds of the customer's inbox items, newest first */
+	inbox(): readonly string[];
 }
 
 interface DemoLine {
@@ -436,6 +453,12 @@ export function createOrderingWorld(
 	member = false,
 	einvoiceOn = true,
 	takeawayOn = false,
+	consent: DemoInboxConsent = {
+		joined: () => member,
+		marketing: () => false,
+		setMarketing: () => undefined,
+		policyVersion: DEMO_POLICY_VERSION,
+	},
 ): OrderingWorld {
 	const items = demoMenuItems();
 	// this world's own option groups: the till takes options off and makes a group required
@@ -487,6 +510,41 @@ export function createOrderingWorld(
 	const iso = () => new Date(now()).toISOString();
 	const displayNo = (no: number | null) =>
 		no === null ? null : `#${String(no).padStart(3, "0")}`;
+
+	// C12: the inbox the server's triggers write, read with the order as it is now (the customer's own orders only)
+	const inboxOrder = (id: string): DemoInboxOrder | null => {
+		const order = orders.find(
+			(entry) => entry.id === id && entry.owner === "me",
+		);
+		if (order === undefined) return null;
+		return {
+			display_no: displayNo(order.orderNo),
+			type: order.type,
+			table_label: order.tableLabel,
+			status: order.status,
+			payment_status: order.paymentStatus,
+			total: order.total,
+			pickup_at: order.pickupAt ?? null,
+			cancel_reason: order.cancelReason,
+			first_item: order.lines[0]?.item_name ?? null,
+			items: order.lines.reduce((sum, line) => sum + line.quantity, 0),
+		};
+	};
+	const inbox = createInboxWorld(now, consent, inboxOrder, REWARD_NAME);
+	// a cancellation by the shop or the system: the item names the reason and, for a paid order, the refund due
+	const noticeCancel = (order: DemoOrder, refundDue: number | null) => {
+		if (order.owner !== "me") return;
+		inbox.add({
+			kind: "order_cancelled",
+			key: `order:${order.id}:cancelled`,
+			orderId: order.id,
+			params: {
+				reason: order.cancelReason,
+				refund_due: refundDue,
+				by: order.cancelReason === "payment_timeout" ? "system" : "staff",
+			},
+		});
+	};
 
 	// another customer's order, which this customer's session must never read
 	orders.push({
@@ -1184,6 +1242,32 @@ export function createOrderingWorld(
 			.filter((line) => line.counts_for_stamps)
 			.reduce((sum, line) => sum + line.quantity, 0);
 		if (earned === 0) return;
+		// C12: stamps added, or a card complete when they make a reward (the server's stamp trigger)
+		const after = stamps + earned;
+		if (order.owner === "me")
+			inbox.add(
+				after >= STAMPS_PER_REWARD
+					? {
+							kind: "reward",
+							key: `stamp:${order.id}`,
+							params: {
+								added: earned,
+								rewards: Math.floor(after / STAMPS_PER_REWARD),
+								stamps: after % STAMPS_PER_REWARD,
+								per: STAMPS_PER_REWARD,
+							},
+						}
+					: {
+							kind: "stamp",
+							key: `stamp:${order.id}`,
+							params: {
+								added: earned,
+								stamps: after,
+								left: STAMPS_PER_REWARD - after,
+								per: STAMPS_PER_REWARD,
+							},
+						},
+			);
 		stamps += earned;
 		totalEarned += earned;
 		const at = iso();
@@ -1228,6 +1312,14 @@ export function createOrderingWorld(
 		});
 		order.status = to;
 		order.version += 1;
+		// C12: ready for takeaway or brought to the table, in the app only
+		if ((to === "ready" || to === "serving") && order.owner === "me")
+			inbox.add({
+				kind: "order_ready",
+				key: `order:${order.id}:ready`,
+				orderId: order.id,
+				params: { order_type: order.type },
+			});
 		return at;
 	};
 
@@ -1272,6 +1364,13 @@ export function createOrderingWorld(
 			amount: order.total,
 		});
 		invoices.paid(order);
+		if (order.owner === "me" && order.total > 0)
+			inbox.add({
+				kind: "order_receipt",
+				key: `order:${order.id}:paid`,
+				orderId: order.id,
+				params: { amount: order.total },
+			});
 	};
 
 	// the verified notification of the gateway or the bank: the only way an online attempt pays an order (T3)
@@ -1418,6 +1517,12 @@ export function createOrderingWorld(
 		pickupOf(orderId) {
 			return target(orderId)?.pickupAt ?? null;
 		},
+		offer(title, line) {
+			return inbox.offer(title, line);
+		},
+		inbox() {
+			return inbox.items().map((item) => item.kind);
+		},
 
 		soldOut(itemId, on) {
 			if (on) soldOut.add(itemId);
@@ -1477,6 +1582,10 @@ export function createOrderingWorld(
 						break;
 					order.cancelledAt = move(order, "cancelled", "cancel");
 					order.cancelReason = "store_busy";
+					noticeCancel(
+						order,
+						order.paymentStatus === "paid" ? order.total : null,
+					);
 					failPending(order);
 					break;
 				case "refund":
@@ -1489,6 +1598,7 @@ export function createOrderingWorld(
 						break;
 					order.cancelledAt = move(order, "cancelled", "cancel");
 					order.cancelReason = "store_busy";
+					noticeCancel(order, order.total);
 					order.paymentStatus = "refunded";
 					order.version += 1;
 					order.events.push({
@@ -1500,6 +1610,17 @@ export function createOrderingWorld(
 						reason_code: null,
 						amount: order.total,
 					});
+					if (order.owner === "me")
+						inbox.add({
+							kind: "order_refunded",
+							key: `order:${order.id}:refund:${order.events.length}`,
+							orderId: order.id,
+							params: {
+								amount: order.total,
+								method: "cash",
+								refunded_on: isoDateIn(now()),
+							},
+						});
 					break;
 			}
 			return order.status;
@@ -1599,7 +1720,10 @@ export function createOrderingWorld(
 				type: takeaway ? "takeaway" : "table",
 				tableLabel: takeaway ? null : "Bàn 12",
 				paymentMethod: "counter",
-				status: status === "completed" ? "completed" : "cancelled",
+				status:
+					status === "completed" || status === "accepted"
+						? status
+						: "cancelled",
 				paymentStatus:
 					status === "completed"
 						? "paid"
@@ -1616,12 +1740,15 @@ export function createOrderingWorld(
 				preparingAt: status === "completed" ? placedAt : null,
 				doneAt: status === "completed" ? placedAt : null,
 				completedAt: status === "completed" ? placedAt : null,
-				paidAt: status === "cancelled" ? null : placedAt,
-				cancelledAt: status === "completed" ? null : placedAt,
-				cancelReason: status === "completed" ? null : "store_busy",
+				paidAt:
+					status === "cancelled" || status === "accepted" ? null : placedAt,
+				cancelledAt:
+					status === "completed" || status === "accepted" ? null : placedAt,
+				cancelReason:
+					status === "completed" || status === "accepted" ? null : "store_busy",
 				lines,
 				events: [],
-				stampsCounted: true,
+				stampsCounted: status !== "accepted",
 				...(past.storeName === undefined ? {} : { storeName: past.storeName }),
 			};
 			orders.push(order);
@@ -1678,6 +1805,7 @@ export function createOrderingWorld(
 			if (order.status !== "awaiting_payment") return order.status;
 			order.cancelledAt = move(order, "cancelled", "expire", "payment_timeout");
 			order.cancelReason = "payment_timeout";
+			noticeCancel(order, null);
 			order.paymentDueAt = null;
 			failPending(order);
 			return order.status;
@@ -1745,6 +1873,7 @@ export function createOrderingWorld(
 		history.length = 0;
 		requests.length = 0;
 		attached.length = 0;
+		inbox.clear();
 		invoices.accountDeleted();
 		return {
 			state: "deleted",
@@ -1797,9 +1926,11 @@ export function createOrderingWorld(
 			saved_companies: invoiceSections.saved_companies,
 			staff_calls: [],
 			order_blocks: [],
+			inbox: inbox.exportSection(),
 			deletion_request: null,
 			not_kept: ["location", "contacts", "zalo_messages", "card_numbers"],
 			counts: {
+				inbox: inbox.exportSection().length,
 				orders: mineNow.length,
 				attached_orders: attached.length,
 				requests: requests.length,
@@ -2016,6 +2147,11 @@ export function createOrderingWorld(
 				return cancelRequest(args.p_request);
 			case ACCOUNT_FUNCTIONS.acceptProposal:
 				return acceptProposal(args.p_request, args.p_request_id);
+			case INBOX_FUNCTIONS.inbox:
+			case INBOX_FUNCTIONS.unread:
+			case INBOX_FUNCTIONS.read:
+			case INBOX_FUNCTIONS.startMarketing:
+				return inbox.answer(fn, args);
 			default:
 				return invoices.answer(fn, args);
 		}
@@ -2201,6 +2337,7 @@ export function createOrderingWorld(
 			ACCOUNT_FUNCTIONS.deleteAccount,
 			ACCOUNT_FUNCTIONS.cancelRequest,
 			ACCOUNT_FUNCTIONS.acceptProposal,
+			...inbox.changingFunctions,
 			...invoices.changingFunctions,
 		],
 	};

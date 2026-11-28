@@ -329,6 +329,8 @@ export interface DemoWorld {
 	rest(accessToken: string): RestClient;
 	joined(): boolean;
 	marketing(): boolean;
+	/** C12 "Nhận tin ưu đãi qua Zalo": the marketing consent given (true) or withdrawn, for the ordering world's inbox */
+	setMarketing(on: boolean): void;
 	deletionRequested(): boolean;
 	setOffline(offline: boolean): void;
 	/** adds the functions of an extension (once; a second call replaces the first) */
@@ -1538,6 +1540,9 @@ export function createDemoWorld(
 			offline = value;
 		},
 		marketing: () => marketing,
+		setMarketing(on) {
+			marketing = on;
+		},
 		deletionRequested: () =>
 			deletion !== null && deletion.request_id === DEMO_DELETION_REQUEST_ID,
 	};

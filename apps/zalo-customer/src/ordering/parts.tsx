@@ -74,6 +74,15 @@ export const PlusIcon = () => <Icon path="M12 5v14M5 12h14" />;
 export const ChevronRight = () => (
 	<Icon path="M9.5 5.5L16 12l-6.5 6.5" size={20} />
 );
+export const CupIcon = () => (
+	<Icon path="M5.5 8h11l-1.2 11a1.5 1.5 0 0 1-1.5 1.3H8.2A1.5 1.5 0 0 1 6.7 19zM16.5 10h1.5a2.5 2.5 0 0 1 0 5h-2M8.5 4.5c0 1 .8 1.5.8 2.3M12 3.5c0 1 .8 1.5.8 2.5" />
+);
+export const ReceiptIcon = () => (
+	<Icon path="M6 3.5h12v17l-2.5-1.5-2 1.5-1.5-1.5-1.5 1.5-2-1.5L6 20.5zM9 8h6M9 11.5h6M9 15h3" />
+);
+export const GiftIcon = () => (
+	<Icon path="M4 9h16v4H4zM5.5 13h13v7.5h-13zM12 9v11.5M12 9c-1.5-3.5-5-4-5-1.7C7 9 12 9 12 9zM12 9c1.5-3.5 5-4 5-1.7C17 9 12 9 12 9z" />
+);
 export const BuildingIcon = () => (
 	<Icon path="M4.5 20V5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v15M13.5 9h5a1 1 0 0 1 1 1v10M3 20h18M8 8h2M8 12h2M8 16h2M16.5 13h.01M16.5 16.5h.01" />
 );
