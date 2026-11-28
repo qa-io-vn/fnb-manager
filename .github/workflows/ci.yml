@@ -232,8 +232,6 @@ jobs:
       - run: pnpm --filter @fnb/zalo-staff exec playwright install --with-deps chromium webkit
       - name: Staff Mini App in the browser with the mocked SDK (360 px, light and dark, paint budget)
         run: pnpm --filter @fnb/zalo-staff test:e2e
-      - name: Customer Mini App in the browser with the mocked SDK (360 px, light and dark, paint budget)
-        run: pnpm --filter @fnb/zalo-customer test:e2e
       - name: Keep the Playwright traces of a failed run
         if: failure()
         uses: actions/upload-artifact@v4
@@ -241,6 +239,36 @@ jobs:
           name: mini-app-playwright-results
           path: |
             apps/zalo-staff/node_modules/.cache/playwright-results-0/
-            apps/zalo-customer/node_modules/.cache/playwright-results-0/
+          include-hidden-files: true
+          retention-days: 7
+
+  # The customer app's browser checks in their own job, split in three: in the mini-apps job they took the job from 14-18
+  # minutes to 27, and run 46083629608 was cancelled at its 30-minute limit. Playwright starts its own builds and servers
+  # (playwright.config.ts webServer), so each shard needs nothing from the job above.
+  customer-mini-app-e2e:
+    name: Customer Mini App in the browser (shard ${{ matrix.shard }} of 3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @fnb/zalo-customer exec playwright install --with-deps chromium webkit
+      - name: Customer Mini App in the browser with the mocked SDK (360 px, light and dark, paint budget, ordering and payment)
+        run: pnpm --filter @fnb/zalo-customer test:e2e --shard=${{ matrix.shard }}/3
+      - name: Keep the Playwright traces of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-mini-app-playwright-results-${{ matrix.shard }}
+          path: apps/zalo-customer/node_modules/.cache/playwright-results-0/
           include-hidden-files: true
           retention-days: 7
