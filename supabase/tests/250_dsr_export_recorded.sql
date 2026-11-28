@@ -117,8 +117,8 @@ select is(
 );
 select is(
   (select array_agg(k order by k) from first_export, jsonb_object_keys(counts) k),
-  array['consent_records', 'invoices', 'loyalty_ledger', 'memberships', 'messages', 'receipt_claims', 'redemptions', 'stamps'],
-  'the counts name the eight tables of the file'
+  array['consent_records', 'inbox', 'invoices', 'loyalty_ledger', 'memberships', 'messages', 'receipt_claims', 'redemptions', 'stamps'],
+  'the counts name the eight tables of the file and the inbox of the customer''s Zalo logins (C12)'
 );
 select ok(
   (select app.facts_are_count_only(a.counts) from public.data_subject_request_actions a where a.request_id = pg_temp.rid('access_x') and a.action = 'export'),

@@ -378,9 +378,10 @@ select is(
     'receipt_claims', (select count(*) from public.receipt_claims where membership_id = (select id from ids where name = 'member_x')),
     'redemptions', (select count(*) from public.redemptions where membership_id = (select id from ids where name = 'member_x')),
     'consent_records', 3,
-    'messages', 2
+    'messages', 2,
+    'inbox', 0
   ),
-  'the export counts every row of the subject per table'
+  'the export counts every row of the subject per table (the inbox of the customer''s Zalo logins since C12: none here)'
 );
 select ok(
   (select (j -> 'counts' ->> 'loyalty_ledger')::int > 0 and (j -> 'counts' ->> 'stamps')::int > 0 and (j -> 'counts' ->> 'receipt_claims')::int > 0
