@@ -321,6 +321,26 @@ export function defaultChoice(
 	return { sizeId: size?.id ?? "", options };
 }
 
+/**
+ * The first option group of a line's item that the line's options do not satisfy (a group required since, or a line
+ * "Đặt lại" put back without a default to take), or null; an item gone from the menu is the sold-out check's.
+ */
+export function choiceNeeded(
+	line: Pick<CartLine, "itemId" | "options">,
+	menu: Pick<Menu, "categories" | "optionGroups">,
+): OptionGroup | null {
+	const item = menu.categories
+		.flatMap((category) => category.items)
+		.find((entry) => entry.id === line.itemId);
+	if (item === undefined) return null;
+	const ids = line.options.map((option) => option.id);
+	return (
+		groupsOf(item, menu.optionGroups).find(
+			(group) => selectionProblem(group, ids) !== null,
+		) ?? null
+	);
+}
+
 /** The option groups of an item, in the order the item lists them. */
 export function groupsOf(
 	item: MenuItem,

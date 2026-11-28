@@ -37,6 +37,12 @@ import {
 } from "./cart";
 import type { CheckoutPort } from "./payment-port";
 import {
+	applyReorder,
+	type ReorderMode,
+	type ReorderPlan,
+	type ReorderReport,
+} from "./reorder";
+import {
 	checkoutPortFor,
 	type OrderingSourceFactory,
 	orderingClientFor,
@@ -109,6 +115,8 @@ export interface OrderingValue {
 	setQuantity(key: string, quantity: number): void;
 	remove(key: string): void;
 	clearCart(): void;
+	/** "Đặt lại" (C14): an earlier order's plan in place of the basket or with it; null without a store */
+	reorder(plan: ReorderPlan, mode: ReorderMode): ReorderReport | null;
 	acknowledgePriceChanges(): void;
 	/** the request for this basket: the one made before when the basket is the same, so a retry replays it */
 	placement(
@@ -409,6 +417,18 @@ export function OrderingProvider({
 		cartRef.current = updated;
 		setCart(updated);
 	}, []);
+	const reorder = useCallback(
+		(plan: ReorderPlan, mode: ReorderMode): ReorderReport | null => {
+			if (store === null) return null;
+			const applied = applyReorder(cartRef.current, store, plan, mode);
+			cartRef.current = applied.cart;
+			setCart(applied.cart);
+			// the replaced basket's price notices belong to lines that are gone
+			if (mode === "replace") setPriceChanges([]);
+			return applied.report;
+		},
+		[store],
+	);
 
 	const unavailable = useMemo(() => union(polled, gone), [polled, gone]);
 	const value = useMemo<OrderingValue>(
@@ -432,6 +452,7 @@ export function OrderingProvider({
 				change((previous) => setQuantity(previous, key, quantity)),
 			remove: (key) => change((previous) => removeLine(previous, key)),
 			clearCart: () => change(() => EMPTY_CART),
+			reorder,
 			acknowledgePriceChanges: () => setPriceChanges([]),
 			placement,
 			settlePlacement,
@@ -454,6 +475,7 @@ export function OrderingProvider({
 			reloadMenu,
 			add,
 			change,
+			reorder,
 			placement,
 			settlePlacement,
 			reloadOrders,
