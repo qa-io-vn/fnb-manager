@@ -36,7 +36,7 @@ select enum_has_labels('public', 'period_kind', array['month', 'week'], 'period_
 select has_enum('public', 'strategy_source', 'strategy_source enum exists');
 select enum_has_labels('public', 'strategy_source', array['skill', 'routine', 'pasted'], 'strategy_source labels');
 select has_enum('public', 'invoice_status', 'invoice_status enum exists');
-select enum_has_labels('public', 'invoice_status', array['completed', 'edited', 'voided'], 'invoice_status labels');
+select enum_has_labels('public', 'invoice_status', array['completed', 'edited', 'voided', 'refund'], 'invoice_status labels (refund: a native refund of a later business day, ADR-071)');
 select has_enum('public', 'invoice_event_kind', 'invoice_event_kind enum exists');
 select enum_has_labels('public', 'invoice_event_kind', array['voided', 'edited', 'line_removed', 'reissued'], 'invoice_event_kind labels');
 select has_enum('public', 'item_type_role', 'item_type_role enum exists');

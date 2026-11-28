@@ -83,17 +83,17 @@ export async function readLoyaltyFields(
 				where r.store_id = scope.id and r.active_until is null and r.active_from <= now()
 				limit 1
 			) as rail,
-			count(i.id) filter (where i.status <> 'voided')::int as invoices,
+			count(i.id) filter (where i.status in ('completed', 'edited'))::int as invoices,
 			count(i.id) filter (where i.status = 'voided')::int as voided,
 			count(i.id) filter (
-				where i.status <> 'voided' and nullif(btrim(i.customer_phone), '') is not null
+				where i.status in ('completed', 'edited') and nullif(btrim(i.customer_phone), '') is not null
 			)::int as with_phone,
-			count(i.id) filter (where i.status <> 'voided' and i.customer_id is not null)::int as with_customer_id,
+			count(i.id) filter (where i.status in ('completed', 'edited') and i.customer_id is not null)::int as with_customer_id,
 			count(i.id) filter (
-				where i.status <> 'voided' and nullif(btrim(i.voucher_code), '') is not null
+				where i.status in ('completed', 'edited') and nullif(btrim(i.voucher_code), '') is not null
 			)::int as with_voucher_code,
 			count(i.id) filter (
-				where i.status <> 'voided'
+				where i.status in ('completed', 'edited')
 					and nullif(btrim(i.bill_discount_name), '') is not null
 					and exists (
 						select 1
@@ -104,7 +104,7 @@ export async function readLoyaltyFields(
 					)
 			)::int as with_mapped_discount,
 			count(i.id) filter (
-				where i.status <> 'voided'
+				where i.status in ('completed', 'edited')
 					and exists (
 						select 1
 						from public.invoice_lines l
@@ -118,7 +118,7 @@ export async function readLoyaltyFields(
 					)
 			)::int as with_zero_price_promo,
 			count(i.id) filter (
-				where i.status <> 'voided' and nullif(btrim(i.receipt_no), '') is null
+				where i.status in ('completed', 'edited') and nullif(btrim(i.receipt_no), '') is null
 			)::int as receipt_missing
 		from scope
 		left join public.invoices i
@@ -157,7 +157,7 @@ export async function readLoyaltyFields(
 				select max(i.business_date)::text
 				from public.invoices i
 				where i.store_id = w.store_id
-					and i.status <> 'voided'
+					and i.status in ('completed', 'edited')
 					and i.business_date between ${asOf}::date - ${window}::int and ${asOf}::date
 					and lower(btrim(i.bill_discount_name)) = lower(btrim(w.pos_discount_name))
 			) as last_seen

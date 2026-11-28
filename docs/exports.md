@@ -74,7 +74,7 @@ doc-truoc.txt
 | `file_format`, `dialect`, `personal_columns` | the choices of the form (`dialect` is null for JSON) |
 | `first_month`, `last_month` | the range |
 | `stores[]` | `label`, `id`, `name`, `time_zone` |
-| `files[]` | `path`, `table`, `store` (label, null for the daily summary), `month`, `from`, `to`, `running`, `rows`, `bytes`, `sha256` of the file, `received_bytes`, `database_totals` and `exporter_totals` (`rows`, `voided` for invoices, `amount`, `fingerprint`), `verified`, `reason` when not verified |
+| `files[]` | `path`, `table`, `store` (label, null for the daily summary), `month`, `from`, `to`, `running`, `rows`, `bytes`, `sha256` of the file, `received_bytes`, `database_totals` and `exporter_totals` (`rows`, `voided` for invoices, `refunds` for invoices when there are refund documents, `amount`, `fingerprint`), `verified`, `reason` when not verified |
 | `daily_summary_checks[]` | `month`, `store`, `matched` |
 | `egress` | `received_bytes`, `estimated_bytes`, `uncompressed_upper_bound: true` |
 
@@ -123,7 +123,7 @@ For every store-month the exporter:
 4. calls `export_control_totals` again (call B). A file is `verified` when its own figures equal call B's.
 5. When they differ and call B differs from call A, a sync committed during the read: the store-month is read again, at most twice. If the data keeps moving, its files stay in the archive with `verified: false` and reason `changed`, and the screen says "Dữ liệu thay đổi trong lúc xuất; thử lại sau ít phút". When they differ while call A equals call B, the reason is `mismatch` and the screen asks to report it: that never happens on a healthy stack.
 
-The daily summary is checked on its own: per store, its `net_amount` total over the store-month equals `sales_net_amount`, and its `invoices` total equals `invoices − voided_invoices`. The screen then reads "Tổng hợp ngày khớp hóa đơn", or "Tổng hợp ngày chưa khớp, cần làm mới số liệu phân tích" when the aggregates lag the facts; the invoice files stay verified either way, and the daily file is marked `aggregates_lag`.
+The daily summary is checked on its own: per store, its `net_amount` total over the store-month equals `sales_net_amount`, and its `invoices` total equals `invoices − voided_invoices − refund_invoices` (a refund handed back on a later business day than its order's is a negative document of status `refund`: in the net and the rows, never counted as an invoice; ADR-071). The screen then reads "Tổng hợp ngày khớp hóa đơn", or "Tổng hợp ngày chưa khớp, cần làm mới số liệu phân tích" when the aggregates lag the facts; the invoice files stay verified either way, and the daily file is marked `aggregates_lag`.
 
 One fixture with fixed UUIDs and amounts, store T of `supabase/tests/41_export_totals.sql` (four invoices, six lines, four payments and three shifts over 1 to 3 July 2025), pins the fingerprints as the same literal hex in the database test and in Vitest (`apps/web/src/exports/totals.test.ts`, `src/exports/testing/synthetic-data.ts`): the four of 1 and 2 July and the payments of 1 July alone, so SQL and TypeScript cannot drift. The line `L10` sorts before `L2`, as `collate "C"` sorts it, and a payment dated after its invoice counts on its own day.
 

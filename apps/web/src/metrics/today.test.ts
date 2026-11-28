@@ -183,6 +183,47 @@ describe("voided invoices", () => {
 	});
 });
 
+describe("refund documents of a later day (ADR-071)", () => {
+	it("lower the day's net and payments and are never counted as an invoice", () => {
+		const kept = sale(storeA, TODAY, "08:00", 100);
+		const refund = sale(storeA, TODAY, "09:00", -30, "refund");
+		const report = computeToday(
+			[storeA],
+			rowsOf({
+				invoices: [kept, refund],
+				lines: [line(kept, "Trà sữa", 100)],
+				payments: [payment(kept, "CASH", 100), payment(refund, "CASH", -30)],
+			}),
+			evening,
+		);
+		expect(report.today.totals).toEqual({
+			net: 70,
+			invoices: 1,
+			avgTicket: 70,
+		});
+		expect(report.topItems.map((item) => item.name)).toEqual(["Trà sữa"]);
+		expect(report.payments.total).toBe(70);
+		expect(report.payments.cashToCount).toBe(70);
+	});
+
+	it("make a day of refunds alone a negative net without an invoice", () => {
+		const refund = sale(storeA, TODAY, "09:00", -30, "refund");
+		const report = computeToday(
+			[storeA],
+			rowsOf({
+				invoices: [refund],
+				payments: [payment(refund, "CASH", -30)],
+			}),
+			evening,
+		);
+		expect(report.today.totals).toEqual({
+			net: -30,
+			invoices: 0,
+			avgTicket: null,
+		});
+	});
+});
+
 describe("top items", () => {
 	it("ranks item lines only, never modifier lines", () => {
 		const invoice = sale(storeA, TODAY, "10:00", 200);

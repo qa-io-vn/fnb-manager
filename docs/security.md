@@ -339,7 +339,7 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Read the stamp cards, rewards and ledger | tenant | tenant | no | tenant | own card only (`customer_stamp_card`) |
 | Set the brand's stamp card (on or off, stamps per reward, the reward's name) | brand | brand | no | no | no |
 | Earn, use, return or take back stamps and rewards | no client: only completion, placement with `use_reward`, cancellation and succeeded refunds, through the ledger functions | | | | |
-| Write a native order's invoice, its lines, payments and events, or refresh the aggregates of its date | no client: only the order hooks on completion and succeeded refunds, and the minute job | | | | |
+| Write a native order's invoice, its lines, payments and events, the refund document of a refund handed back on a later business day (ADR-071), or refresh the aggregates of its date | no client: only the order hooks on completion and succeeded refunds, and the minute job (`app.native_order_invoice`, `app.native_refund_documents`, `app.native_order_refunded` and `app.refund_business_date` are revoked from every API role; pgTAP `301_refund_business_day.sql`). A refund document is an `invoices` row of its store under the same policies (another tenant or store reads none of it) and carries no receipt number, phone or customer | | | | |
 | Read the requests inbox and answer a request | scope | scope | no | no | own requests only (`customer_requests`, `customer_cancel_request`) |
 | Submit a request | no: customers from the app with their session; the website only through its Edge Function with the service role (anon nothing) | | | | |
 | Clock in and out at the counter | scope (counter code) | scope (counter code) | scope (counter code) | no | no |
@@ -353,7 +353,7 @@ Read "scope" as "for the stores in the member's scope", "unlimited" as "only wit
 | Read or delete saved companies | no | no | no | no | own only (row-level security, `customer_saved_companies`, `customer_delete_saved_company`) |
 | Issue, replace, adjust or cancel an e-invoice; queue one | no client: the triggers on an order's money queue them, `einvoice-job` with its ticket sends them, every result under the document's claim | | | | |
 | Open, link or settle an online payment attempt | no client: `checkout-order` for the session's own order (or, VietQR only, a counter order of the staff member's store), the webhooks after verifying Zalo's MAC or the bank service's key, the payment job with its ticket | | | | |
-| Read shifts and worked days; print the counter code; confirm a cash difference or close a forgotten shift (never one's own); the day's reconciliation | scope | scope | own shifts and days only | no | no |
+| Read shifts and worked days; print the counter code; confirm a cash difference or close a forgotten shift (never one's own); the day's reconciliation (with its refunds of later days and the cash of cancelled orders: `301_refund_business_day.sql`) | scope | scope | own shifts and days only | no | no |
 | Read a shift's "Đối chiếu" (`staff_shift_reconciliation`: expected cash, sales, refunds, what is not in the drawer) | scope: another person's shift at any time; one's own only after counting | scope: the same | one's own shift only after counting (`count_required` before: the count stays blind) | no | no |
 | Write an order, a line or an event directly | no | no | no | no | no |
 | Lift a customer's ordering block | scope (delete) | scope (delete) | no | no | no |

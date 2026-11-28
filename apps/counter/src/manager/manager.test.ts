@@ -94,6 +94,53 @@ describe("the day's overview", () => {
 		]);
 	});
 
+	it("counts a later day's refund document in the revenue of its hour and never as an order (ADR-071)", () => {
+		const day = summarizeDay(
+			[
+				{
+					id: "sale",
+					sold_at: "2026-11-28T02:00:00Z",
+					net_amount: "64000.00",
+					status: "completed",
+				},
+				{
+					id: "refund",
+					sold_at: "2026-11-28T03:10:00Z",
+					net_amount: "-29000.00",
+					status: "refund",
+				},
+				{
+					id: "refund-only-hour",
+					sold_at: "2026-11-28T05:00:00Z",
+					net_amount: -35_000,
+					status: "refund",
+				},
+			],
+			[],
+		);
+		expect(day.revenue).toBe(0);
+		expect(day.orders).toBe(1);
+		expect(day.average).toBe(0);
+		expect(day.byHour).toEqual([
+			{ hour: 9, revenue: 64_000, orders: 1 },
+			{ hour: 10, revenue: -29_000, orders: 0 },
+			{ hour: 12, revenue: -35_000, orders: 0 },
+		]);
+		expect(
+			summarizeDay(
+				[
+					{
+						id: "refund",
+						sold_at: "2026-11-28T03:10:00Z",
+						net_amount: "-29000.00",
+						status: "refund",
+					},
+				],
+				[],
+			),
+		).toMatchObject({ revenue: -29_000, orders: 0, average: 0 });
+	});
+
 	it("is zero for an empty day and reads the hour across midnight", () => {
 		expect(summarizeDay([], [])).toEqual({
 			revenue: 0,

@@ -1329,16 +1329,16 @@ returns text
 ```sql
 public.export_control_totals(store_ids uuid[], from_date date, to_date date)
 returns TABLE(
-  store_id uuid, invoices bigint, voided_invoices bigint, sales_net_amount numeric,
-  invoice_fingerprint text, lines bigint, line_net_amount numeric, line_fingerprint text,
-  payments bigint, payment_amount numeric, payment_fingerprint text, shifts bigint,
-  shift_sales_amount numeric, shift_fingerprint text
+  store_id uuid, invoices bigint, voided_invoices bigint, refund_invoices bigint,
+  sales_net_amount numeric, invoice_fingerprint text, lines bigint, line_net_amount numeric,
+  line_fingerprint text, payments bigint, payment_amount numeric, payment_fingerprint text,
+  shifts bigint, shift_sales_amount numeric, shift_fingerprint text
 )
 ```
 
 - **Called by:** the browser export of Xuất dữ liệu (#139 to #141), which proves each file against it.
 - **Status:** built (phase 11a; pgTAP `41_export_totals.sql`).
-- **Notes:** per visible store over at most 92 days: counts, sums and SHA-256 fingerprints of invoices, lines (by their invoice's business date), payments (by their own business date) and shifts (by the business date of `opened_at` in the store's zone after the day start). [`schema.md`](schema.md#data-pack-and-export-functions-phase-11) gives the canonical lines. A publisher gets zero counts, zero sums and the fingerprint of the empty text.
+- **Notes:** per visible store over at most 92 days: counts, sums and SHA-256 fingerprints of invoices, lines (by their invoice's business date), payments (by their own business date) and shifts (by the business date of `opened_at` in the store's zone after the day start). `refund_invoices` (since migration `refund_business_day`, ADR-071) counts the refund documents of native refunds handed back on a later business day: in `invoices` and `sales_net_amount`, not counted by the daily summary, so its invoices equal `invoices - voided_invoices - refund_invoices`. [`schema.md`](schema.md#data-pack-and-export-functions-phase-11) gives the canonical lines. A publisher gets zero counts, zero sums and the fingerprint of the empty text.
 
 ### 3.10 Zalo (phase 13)
 
@@ -3135,7 +3135,7 @@ returns jsonb
 
 - **Status:** built (step 8).
 - **Who may call:** an owner or manager whose scope holds the store (`42501` otherwise).
-- **Notes:** the shifts between two business dates (at most 63 days, `22023` otherwise) with the counts still open and awaiting confirmation. The worked days of the month of a date (S11): `{month, standard_days, standard_day_hours, people: [{user_id, name, hours, worked_days, days: [{date, hours, days}], open_shifts}]}`, a day being its recorded hours over the hours per day, at most 1. The day's reconciliation (acceptance criterion 6): `{revenue, by_method, online_confirmed, card, cash: {invoiced, expected, counted, difference}, shifts_open, shifts_awaiting_confirmation, paid_not_completed, difference, matched}`.
+- **Notes:** the shifts between two business dates (at most 63 days, `22023` otherwise) with the counts still open and awaiting confirmation. The worked days of the month of a date (S11): `{month, standard_days, standard_day_hours, people: [{user_id, name, hours, worked_days, days: [{date, hours, days}], open_shifts}]}`, a day being its recorded hours over the hours per day, at most 1. The day's reconciliation (acceptance criterion 6): `{revenue, by_method, online_confirmed, card, cash: {invoiced, expected, counted, difference}, shifts_open, shifts_awaiting_confirmation, paid_not_completed, cash_refund_owed, cancelled_cash, difference, matched}`. Each refund counts on the business day it is handed back (ADR-071: cash on the day of the drawer's shift, card and online on the store's day at the instant it succeeded): `revenue` and `by_method` are the day's native documents, the refund documents of earlier orders included, and `online_confirmed` takes off the confirmed online refunds that count on the day, so a refund of an earlier order changes neither that day nor the match of the day it is handed back. `cash_refund_owed` (since migration `refund_business_day`) is the cash still owed back for the day's cancelled paid orders, and `cancelled_cash` the net cash of cancelled orders in the day's drawers (taken for the day's cancelled orders less handed back on the day; the difference they cause is its opposite); like `paid_not_completed` they explain a difference and never change `matched`.
 
 #### `public.staff_shift_reconciliation`
 

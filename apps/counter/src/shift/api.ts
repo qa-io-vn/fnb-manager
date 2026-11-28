@@ -130,6 +130,10 @@ export interface DayReconciliation {
 	readonly shifts_open: number;
 	readonly shifts_awaiting_confirmation: number;
 	readonly paid_not_completed: number;
+	/** Cash still owed back for the day's cancelled paid orders (a refund due, not handed back yet). */
+	readonly cash_refund_owed: number;
+	/** The net cash of cancelled orders in the day's drawers: taken for them less handed back (ADR-071). */
+	readonly cancelled_cash: number;
 	readonly difference: number;
 	readonly matched: boolean;
 }

@@ -40,13 +40,25 @@ export function hourOf(soldAt: string): number {
 		: 0;
 }
 
-/** The day in numbers: voided invoices are left out (as Hôm nay counts them); amounts in whole đồng. */
+/**
+ * A refund handed back on a later business day than its order's is a negative document of that day (status `refund`,
+ * ADR-071): it lowers the day's revenue and is never an order.
+ */
+export function isOrder(invoice: InvoiceRow): boolean {
+	return invoice.status !== "voided" && invoice.status !== "refund";
+}
+
+/**
+ * The day in numbers: voided invoices are left out (as Hôm nay counts them); refund documents count in the revenue,
+ * in the hour they were handed back, and never as an order; amounts in whole đồng.
+ */
 export function summarizeDay(
 	invoices: readonly InvoiceRow[],
 	lines: readonly LineRow[],
 	top = 5,
 ): DaySummary {
 	const kept = invoices.filter((invoice) => invoice.status !== "voided");
+	const orders = kept.filter(isOrder).length;
 	const keptIds = new Set(kept.map((invoice) => invoice.id));
 	const revenue = kept.reduce(
 		(sum, invoice) => sum + Math.round(Number(invoice.net_amount)),
@@ -58,7 +70,7 @@ export function summarizeDay(
 		const held = hours.get(hour) ?? { revenue: 0, orders: 0 };
 		hours.set(hour, {
 			revenue: held.revenue + Math.round(Number(invoice.net_amount)),
-			orders: held.orders + 1,
+			orders: held.orders + (isOrder(invoice) ? 1 : 0),
 		});
 	}
 	const quantities = new Map<string, number>();
@@ -69,8 +81,8 @@ export function summarizeDay(
 	}
 	return {
 		revenue,
-		orders: kept.length,
-		average: kept.length === 0 ? 0 : Math.round(revenue / kept.length),
+		orders,
+		average: orders === 0 ? 0 : Math.round(revenue / orders),
 		byHour: [...hours.entries()]
 			.sort(([a], [b]) => a - b)
 			.map(([hour, value]) => ({ hour, ...value })),

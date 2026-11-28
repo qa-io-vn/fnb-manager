@@ -47,7 +47,7 @@ export async function storedSales(
 		from public.invoices
 		where store_id = any(${[...storeIds]}::uuid[])
 			and business_date between ${window.fromDate}::date and ${window.toDate}::date
-			and status <> 'voided'
+			and status in ('completed', 'edited')
 	`;
 	return row?.sales ?? 0;
 }

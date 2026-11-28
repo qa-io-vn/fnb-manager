@@ -141,6 +141,8 @@
 	"managerShifts.card": "Thẻ tại quầy",
 	"managerShifts.cashCounted": "Tiền mặt đếm cuối ca",
 	"managerShifts.cashExpected": "Tiền mặt dự kiến",
+	"managerShifts.cancelledCash": "Tiền mặt của đơn đã hủy",
+	"managerShifts.cashRefundOwed": "Tiền mặt còn nợ khách (đơn đã hủy, chưa hoàn)",
 	"managerShifts.shiftsPending": "{open} ca đang mở, {awaiting} ca chờ xác nhận.",
 	"managerShifts.difference": "Chênh lệch",
 	"managerShifts.workedDays": "Công tháng {month}",

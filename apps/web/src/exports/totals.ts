@@ -166,6 +166,8 @@ export function canonicalLines<T extends StoreTableId>(
 export interface TableTotals {
 	readonly rows: number;
 	readonly voided: number | null;
+	/** Invoices only: the refund documents of later-day native refunds (status `refund`, ADR-071), in the amount and never counted as invoices. */
+	readonly refunds?: number;
 	readonly amount: bigint;
 	readonly fingerprint: string;
 }
@@ -179,7 +181,7 @@ function sumMinor(values: Iterable<NumericValue>): bigint {
 function amountsOf<T extends StoreTableId>(
 	table: T,
 	records: readonly RecordOf<T>[],
-): { amount: bigint; voided: number | null } {
+): { amount: bigint; voided: number | null; refunds?: number } {
 	switch (table) {
 		case "invoices": {
 			const invoices = records as readonly InvoiceRecord[];
@@ -187,6 +189,7 @@ function amountsOf<T extends StoreTableId>(
 			return {
 				amount: sumMinor(kept.map((record) => record.net_amount)),
 				voided: invoices.length - kept.length,
+				refunds: kept.filter((record) => record.status === "refund").length,
 			};
 		}
 		case "invoice_lines":
@@ -219,10 +222,11 @@ export async function totalsOfRecords<T extends StoreTableId>(
 	table: T,
 	records: readonly RecordOf<T>[],
 ): Promise<TableTotals> {
-	const { amount, voided } = amountsOf(table, records);
+	const { amount, voided, refunds } = amountsOf(table, records);
 	return {
 		rows: records.length,
 		voided,
+		...(refunds === undefined || refunds === 0 ? {} : { refunds }),
 		amount,
 		fingerprint: await sha256Hex(canonicalLines(table, records)),
 	};
@@ -239,6 +243,7 @@ export const controlTotalsRow = z.object({
 	store_id: z.string(),
 	invoices: countField,
 	voided_invoices: countField,
+	refund_invoices: countField.optional(),
 	sales_net_amount: amountField,
 	invoice_fingerprint: fingerprintField,
 	lines: countField,
@@ -266,6 +271,7 @@ export function controlTotalsOf(row: ControlTotalsRow): ControlTotals {
 			invoices: {
 				rows: row.invoices,
 				voided: row.voided_invoices,
+				...(row.refund_invoices ? { refunds: row.refund_invoices } : {}),
 				amount: minorUnits(row.sales_net_amount, MONEY_SCALE),
 				fingerprint: row.invoice_fingerprint,
 			},
@@ -298,6 +304,7 @@ export function sameTableTotals(
 	return (
 		left.rows === right.rows &&
 		left.voided === right.voided &&
+		(left.refunds ?? 0) === (right.refunds ?? 0) &&
 		left.amount === right.amount &&
 		left.fingerprint === right.fingerprint
 	);
@@ -351,13 +358,15 @@ export function dailySummaryMatches(
 	const invoices = control.tables.invoices;
 	return (
 		figures.netAmount === invoices.amount &&
-		figures.invoices === invoices.rows - (invoices.voided ?? 0)
+		figures.invoices ===
+			invoices.rows - (invoices.voided ?? 0) - (invoices.refunds ?? 0)
 	);
 }
 
 export interface TotalsJson {
 	readonly rows: number;
 	readonly voided?: number;
+	readonly refunds?: number;
 	readonly amount: number;
 	readonly fingerprint: string;
 }
@@ -366,6 +375,7 @@ export function totalsJson(totals: TableTotals): TotalsJson {
 	return {
 		rows: totals.rows,
 		...(totals.voided === null ? {} : { voided: totals.voided }),
+		...((totals.refunds ?? 0) > 0 ? { refunds: totals.refunds } : {}),
 		amount: decimalOf(totals.amount),
 		fingerprint: totals.fingerprint,
 	};
