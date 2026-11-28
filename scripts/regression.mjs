@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // The one-command test packs of docs/test-plan.md section 2.13:
-//   node scripts/regression.mjs --smoke   (pnpm test:smoke, under 5 minutes locally)
-//   node scripts/regression.mjs           (pnpm test:regression, the full pack)
+//   node scripts/regression.mjs --smoke        (pnpm test:smoke, under 5 minutes locally)
+//   node scripts/regression.mjs                (pnpm test:regression, the full pack)
+//   node scripts/regression.mjs --acceptance   (pnpm test:acceptance, the 7 acceptance criteria of the owner's plan,
+//                                               phase 1: docs/test-plan.md section 10.15, rerun before every update)
 // Every step runs in order and the pack keeps going after a failure; the summary
 // names each step's result, duration and why it skipped, and the exit code is 1
 // when any step failed. It never resets the database, never reads .env, never
@@ -62,6 +64,75 @@ const SMOKE_STAFF_SPECS = [
 	"e2e/loyalty-queue.spec.ts",
 ];
 
+// The acceptance pack (docs/test-plan.md section 10.15): the suites behind the 7 criteria of the owner's plan, phase 1.
+// Criterion 1 tables and ways to pay, 2 sold out within 5 seconds, 3 no duplicate and no false "paid", 4 a cancelled
+// paid order refunded with its stamps and the log, 5 nobody off the roster at the counter, 6 the day's revenue equal to
+// the gateway and the counted cash, 7 the month's worked days equal to the recorded clock-ins and clock-outs.
+const ACCEPTANCE_PGTAP = new Set([
+	44, 46, 49, 260, 262, 263, 265, 266, 267, 268, 269, 270, 271, 273, 274, 275,
+	276, 277, 279, 290, 295, 296, 298, 299, 300,
+]);
+
+const ACCEPTANCE_UNIT = [
+	["@fnb/core", ["test/unit/order-lifecycle.test.ts"]],
+	["@fnb/zalo", ["test/unit/web-login.test.ts"]],
+	[
+		"@fnb/zalo-mini",
+		[
+			"test/unit/ordering-contract.test.ts",
+			"test/unit/payment-client.test.ts",
+			"test/unit/payment-contract.test.ts",
+		],
+	],
+	[
+		"@fnb/counter",
+		[
+			"src/lib/zalo-login.test.ts",
+			"src/lib/cash.test.ts",
+			"src/orders/board-model.test.ts",
+			"src/orders/payment-shift.test.tsx",
+			"src/orders/refund-shift.test.tsx",
+			"src/orders/vietqr.test.tsx",
+			"src/tables/tables-menu.test.ts",
+			"src/shift/shift.test.ts",
+			"src/shift/reconciliation.test.ts",
+			"src/shift/reconciliation-view.test.tsx",
+			"src/manager/manager.test.ts",
+		],
+	],
+	[
+		"@fnb/zalo-customer",
+		[
+			"src/ordering/cart.test.ts",
+			"src/ordering/order-view.test.ts",
+			"src/ordering/ordering-flow.test.tsx",
+			"src/ordering/payment-flow.test.tsx",
+			"src/ordering/payment-port.test.ts",
+			"src/ordering/payment-step.test.ts",
+		],
+	],
+];
+
+// The Edge Functions behind criteria 1, 3, 4 (payments) and 5 (the counter's sign-in).
+const ACCEPTANCE_FUNCTIONS = [
+	"counter-session",
+	"checkout-order",
+	"checkout-webhook",
+	"bank-webhook",
+	"payments-job",
+];
+
+// Playwright filters the end-to-end tests behind the criteria by their title ("criterion N") or tag (@criterion-N).
+const ACCEPTANCE_GREP = "criterion";
+const CUSTOMER_ORDERING_PROJECTS = [
+	"ordering-light",
+	"ordering-dark",
+	"ordering-webkit",
+	"payment-light",
+	"payment-dark",
+	"payment-webkit",
+];
+
 const SMOKE_WEB_DEMO_SPECS = [
 	"e2e/demo/loyalty.spec.ts",
 	"e2e/demo/settings-loyalty.spec.ts",
@@ -118,6 +189,7 @@ const GATE_VARIABLES = [
 function parseArguments(argv) {
 	const options = {
 		smoke: false,
+		acceptance: false,
 		list: false,
 		only: null,
 		skip: new Set(),
@@ -135,6 +207,7 @@ function parseArguments(argv) {
 		};
 		if (argument === "--") continue;
 		if (argument === "--smoke") options.smoke = true;
+		else if (argument === "--acceptance") options.acceptance = true;
 		else if (argument === "--list") options.list = true;
 		else if (argument === "--only") options.only = new Set(value().split(","));
 		else if (argument === "--skip")
@@ -143,9 +216,10 @@ function parseArguments(argv) {
 		else if (argument === "--help" || argument === "-h") {
 			process.stdout.write(
 				[
-					"usage: node scripts/regression.mjs [--smoke] [--list] [--only <id,...>] [--skip <id,...>] [--report-dir <dir>]",
+					"usage: node scripts/regression.mjs [--smoke | --acceptance] [--list] [--only <id,...>] [--skip <id,...>] [--report-dir <dir>]",
 					"",
 					"  --smoke       the smoke pack (pnpm test:smoke); without it the full regression pack",
+					"  --acceptance  the acceptance pack of the owner's plan, phase 1 (pnpm test:acceptance; the local stack is needed)",
 					"  --list        print the steps and their gates without running anything",
 					"  --only, --skip  step ids from --list",
 					"  --report-dir  where the JSON report and step logs go (default: <os temp>/fnb-regression)",
@@ -160,6 +234,9 @@ function parseArguments(argv) {
 		} else {
 			throw new Error(`unknown argument ${argument}`);
 		}
+	}
+	if (options.smoke && options.acceptance) {
+		throw new Error("--smoke and --acceptance are two packs: choose one");
 	}
 	return options;
 }
@@ -746,6 +823,120 @@ function regressionSteps() {
 	];
 }
 
+// The acceptance pack: what covers the 7 criteria at every level, from the unit tests to both apps end to end, on the
+// local stack. The counter's integration and end-to-end suites take the stack's addresses from
+// apps/counter/scripts/with-local-stack.mjs (supabase status of the local containers, loopback only); both Playwright
+// suites run one after the other, since the counter's built app takes port 5762. Each suite creates its own synthetic
+// tenants and removes them; nothing here resets the database.
+function acceptanceSteps() {
+	const withLocalStack = (...args) => ({
+		command: "node",
+		args: ["scripts/with-local-stack.mjs", "npx", ...args],
+		cwd: join("apps", "counter"),
+	});
+	return [
+		...ACCEPTANCE_UNIT.map(([name, files]) => ({
+			id: `acc-unit-${name.replace("@fnb/", "")}`,
+			title: `Unit tests behind the criteria: ${name} (${files.length} file${files.length === 1 ? "" : "s"})`,
+			level: "unit",
+			unitEnvironment: true,
+			timeout: 15 * MINUTE,
+			...pnpm("--filter", name, "exec", "vitest", "run", ...files, workers()),
+		})),
+		{
+			id: "acc-deno",
+			title: `Deno tests of ${ACCEPTANCE_FUNCTIONS.join(", ")}`,
+			level: "unit",
+			gate: gates.deno,
+			unitEnvironment: true,
+			commands: () =>
+				ACCEPTANCE_FUNCTIONS.map((name) => ({
+					command: denoCommand(),
+					args: ["test", "--permit-no-files"],
+					cwd: join("supabase", "functions", name),
+				})),
+		},
+		{
+			id: "acc-pgtap",
+			title: `pgTAP behind the criteria (${ACCEPTANCE_PGTAP.size} files, 298 to 300 the acceptance files)`,
+			level: "database",
+			gate: gates.stack,
+			timeout: 10 * MINUTE,
+			...pnpm(
+				"exec",
+				"supabase",
+				"test",
+				"db",
+				...pgtapFiles((number) => ACCEPTANCE_PGTAP.has(number)),
+			),
+		},
+		{
+			id: "acc-it-counter",
+			title:
+				"Integration: the counter's calls on the local stack (counter:integration, acceptance-day among them)",
+			level: "integration",
+			gate: gates.stack,
+			timeout: 15 * MINUTE,
+			commands: () => [
+				withLocalStack("vitest", "run", "-c", "vitest.integration.config.ts"),
+			],
+		},
+		{
+			id: "acc-it-ordering-concurrency",
+			title:
+				"Integration: competing placements and counter actions on separate connections (criterion 3; DATABASE_URL)",
+			level: "integration",
+			gate: gates.database,
+			timeout: 10 * MINUTE,
+			...pnpm(
+				"--filter",
+				"@fnb/jobs",
+				"exec",
+				"vitest",
+				"run",
+				"test/integration/ordering-concurrency.test.ts",
+			),
+		},
+		{
+			id: "acc-it-payments",
+			title:
+				"Integration: one transfer settled once under twenty parallel notifications (criteria 1 and 3; DATABASE_URL)",
+			level: "integration",
+			gate: gates.database,
+			timeout: 10 * MINUTE,
+			environment: { PAYMENTS_INTEGRATION: "1" },
+			...pnpm("--filter", "@fnb/payments", "test:integration"),
+		},
+		{
+			id: "acc-e2e-counter",
+			title: `Counter web app end to end, the tests of the criteria (--grep ${ACCEPTANCE_GREP}; tablets and phones, Chromium and WebKit)`,
+			level: "e2e",
+			gate: gates.stack,
+			timeout: 45 * MINUTE,
+			commands: () => [
+				withLocalStack("playwright", "test", "--grep", ACCEPTANCE_GREP),
+			],
+		},
+		{
+			id: "acc-e2e-customer",
+			title: `Customer Mini App ordering end to end, the tests of the criteria (--grep ${ACCEPTANCE_GREP}; ordering and payment projects)`,
+			level: "e2e",
+			timeout: 30 * MINUTE,
+			unitEnvironment: true,
+			...pnpm(
+				"--filter",
+				"@fnb/zalo-customer",
+				"exec",
+				"playwright",
+				"test",
+				...CUSTOMER_ORDERING_PROJECTS.map((project) => `--project=${project}`),
+				"--grep",
+				ACCEPTANCE_GREP,
+			),
+		},
+	];
+}
+
 function stripAnsi(text) {
 	// biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escapes
 	return text.replace(/\u001b\[[0-9;?]*[A-Za-z]/g, "");
@@ -919,8 +1110,16 @@ function gitHead() {
 
 async function main() {
 	const options = parseArguments(process.argv.slice(2));
-	const pack = options.smoke ? "smoke" : "regression";
-	let steps = options.smoke ? smokeSteps() : regressionSteps();
+	const pack = options.smoke
+		? "smoke"
+		: options.acceptance
+			? "acceptance"
+			: "regression";
+	let steps = options.smoke
+		? smokeSteps()
+		: options.acceptance
+			? acceptanceSteps()
+			: regressionSteps();
 	if (options.only) steps = steps.filter((step) => options.only.has(step.id));
 	steps = steps.filter((step) => !options.skip.has(step.id));
 
