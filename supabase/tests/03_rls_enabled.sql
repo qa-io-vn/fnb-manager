@@ -112,7 +112,7 @@ select is(
       group by c.table_name
     ) t
   ),
-  array['approval_request_kinds:3', 'checklist_answers:3', 'checklist_runs:1', 'incident_categories:3', 'incidents:5', 'legal_documents:3', 'menu_categories:3', 'menu_item_option_groups:1', 'menu_item_sizes:5', 'menu_items:10', 'menu_option_groups:4', 'menu_options:5', 'menu_store_items:2', 'oa_menus:8', 'shift_handovers:3', 'stamp_card_settings:3', 'store_ordering_settings:14', 'store_tables:4', 'stores:7', 'tenants:2'],
+  array['approval_request_kinds:3', 'checklist_answers:3', 'checklist_runs:1', 'incident_categories:3', 'incidents:5', 'legal_documents:3', 'menu_categories:3', 'menu_item_option_groups:1', 'menu_item_sizes:5', 'menu_items:10', 'menu_option_groups:4', 'menu_options:5', 'menu_store_items:2', 'oa_menus:8', 'shift_handovers:3', 'stamp_card_settings:3', 'store_ordering_settings:16', 'store_tables:4', 'stores:7', 'tenants:2'],
   'authenticated may update seven columns of stores, two of tenants, three of legal_documents, the eight configured columns of oa_menus and, in phase 14b, the answer fields of checklist_answers, the status of checklist_runs, the label, order and active flag of incident_categories and the content of incidents and shift_handovers, and no other column by column grant'
 );
 

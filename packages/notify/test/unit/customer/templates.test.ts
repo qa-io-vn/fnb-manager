@@ -156,9 +156,11 @@ describe("the ZBS template drafts", () => {
 			"voucher",
 			"coupon_issued",
 		]);
+		// the latest definition of app.customer_template_purposes: the takeaway ready message's migration (C17)
+		// repeats the routing migration's mapping and adds takeaway_ready
 		const migration = readFileSync(
 			new URL(
-				"../../../../../supabase/migrations/20261119930000_customer_message_routing.sql",
+				"../../../../../supabase/migrations/20261128900100_takeaway_ready_message.sql",
 				import.meta.url,
 			),
 			"utf8",

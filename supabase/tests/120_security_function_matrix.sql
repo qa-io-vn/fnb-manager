@@ -568,6 +568,14 @@ insert into matrix (fn, label, statement, expect) values
 ('customer_order', 'customer_order of an unknown order',
   $$select public.customer_order('aaaaaaaa-aaaa-4aaa-8aaa-000000012096') ->> 'refusal'$$,
   '{"*": "DENY", "customer": "^ok:unknown_order$", "visitor": "^ok:unknown_order$", "customer_b": "^ok:unknown_order$"}'),
+-- C17 takeaway slots (ADR-072): a customer session of the store's brand reads them (A1 takes no order: refused
+-- ordering_off); another brand's customer cannot name the store; moving an order is for its own customer only.
+('customer_takeaway_slots', 'customer_takeaway_slots at A1 of a store that takes no order',
+  $$select public.customer_takeaway_slots('sa-1') ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:ordering_off$", "visitor": "^ok:ordering_off$", "customer_b": "BAD"}'),
+('customer_change_pickup', 'customer_change_pickup of an unknown order',
+  $$select public.customer_change_pickup('aaaaaaaa-aaaa-4aaa-8aaa-000000012096', now() + interval '1 hour') ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:unknown_order$", "visitor": "^ok:unknown_order$", "customer_b": "^ok:unknown_order$"}'),
 ('customer_orders', 'customer_orders of the session only',
   $$select jsonb_array_length(public.customer_orders(null) -> 'orders')$$,
   '{"*": "DENY", "customer": "^ok:0$", "visitor": "^ok:0$", "customer_b": "^ok:0$"}'),

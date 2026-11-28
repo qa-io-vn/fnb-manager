@@ -5,6 +5,7 @@ export const CUSTOMER_MESSAGE_KINDS = [
 	"expiry_reminder",
 	"birthday",
 	"win_back",
+	"takeaway_ready",
 ] as const;
 
 export type CustomerMessageKind = (typeof CUSTOMER_MESSAGE_KINDS)[number];
@@ -16,6 +17,7 @@ export const ZBS_TEMPLATE_PURPOSES = [
 	"expiry_reminder",
 	"birthday",
 	"win_back",
+	"order_ready",
 ] as const;
 
 export type ZbsTemplatePurpose = (typeof ZBS_TEMPLATE_PURPOSES)[number];
@@ -32,6 +34,8 @@ export const TEMPLATE_PARAMETER_NAMES = [
 	"voucher_code",
 	"expires_at",
 	"inactive_days",
+	"order_no",
+	"pickup_time",
 ] as const;
 
 export type TemplateParameterName = (typeof TEMPLATE_PARAMETER_NAMES)[number];
@@ -104,6 +108,18 @@ const EXPIRES: TemplateParameter = {
 	maxLength: 30,
 	sample: "21:00 20/11/2026",
 };
+const ORDER_NO: TemplateParameter = {
+	name: "order_no",
+	type: "code",
+	maxLength: 10,
+	sample: "#007",
+};
+const PICKUP: TemplateParameter = {
+	name: "pickup_time",
+	type: "text",
+	maxLength: 5,
+	sample: "15:30",
+};
 const INACTIVE: TemplateParameter = {
 	name: "inactive_days",
 	type: "number",
@@ -174,6 +190,16 @@ export const ZBS_TEMPLATE_DRAFTS: Readonly<
 		parameters: [NAME, INACTIVE],
 		reviewerDecision: true,
 	},
+	order_ready: {
+		purpose: "order_ready",
+		tag: "transaction",
+		layout: "text",
+		title: "Món mang đi đã xong",
+		body: "Chào <customer_name>, đơn <order_no> tại <store_name> đã xong, hẹn lấy lúc <pickup_time>. Mời bạn ra quầy nhận món.",
+		button: "Xem đơn",
+		parameters: [NAME, ORDER_NO, STORE, PICKUP],
+		reviewerDecision: false,
+	},
 };
 
 export const KIND_TEMPLATE_PURPOSES: Readonly<
@@ -185,6 +211,7 @@ export const KIND_TEMPLATE_PURPOSES: Readonly<
 	expiry_reminder: ["expiry_reminder"],
 	birthday: ["birthday"],
 	win_back: ["win_back"],
+	takeaway_ready: ["order_ready"],
 };
 
 export const CONSULTATION_TEXTS: Readonly<
@@ -192,7 +219,8 @@ export const CONSULTATION_TEXTS: Readonly<
 		| "points_confirmed"
 		| "coupon_issued"
 		| "voucher_expiring"
-		| "expiry_reminder",
+		| "expiry_reminder"
+		| "takeaway_ready",
 		string
 	>
 > = {
@@ -201,6 +229,7 @@ export const CONSULTATION_TEXTS: Readonly<
 	voucher_expiring:
 		"Chào <customer_name>, ưu đãi <reward_name> với mã <voucher_code> sẽ hết hạn lúc <expires_at>. Hãy dùng trước khi hết hạn nhé.",
 	expiry_reminder: ZBS_TEMPLATE_DRAFTS.expiry_reminder.body,
+	takeaway_ready: ZBS_TEMPLATE_DRAFTS.order_ready.body,
 };
 
 export const NAME_FALLBACK = "Quý khách";
