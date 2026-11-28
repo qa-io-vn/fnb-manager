@@ -22,9 +22,10 @@ import {
 // - boundary values of the note: 201 characters refused in words under the field (aria-invalid, the focus on it),
 //   200 taken and recorded whole; Escape closes the dialog and gives the focus back;
 // - state transition by someone else: the owner settles it while the manager confirms; the page says it was settled
-//   first and reloads, and the settled row names "Quản lý hoặc chủ quán";
+//   first and reloads, and the settled row names the owner, who is not on the roster, by the name the server gives;
 // - error guessing: a control character in the note is refused before any call;
-// - light and dark: the row's words keep a contrast of 4.5:1 or more on their background in both schemes.
+// - light and dark: the row's words (the receiving account's line among them) keep a contrast of 4.5:1 or more on
+//   their background in both schemes.
 
 test.beforeEach(async ({ db, seeded }) => {
 	await dropPaymentRows(db, seeded.tenantId);
@@ -83,6 +84,7 @@ async function expectReadable(row: Locator): Promise<void> {
 		"payment-exception-reference",
 		"payment-exception-order",
 		"payment-exception-time",
+		"payment-exception-account",
 	]) {
 		expect(
 			await contrastOf(row.getByTestId(testId)),
@@ -237,7 +239,7 @@ test("the owner settles it first: the page says so and reloads; a control charac
 		.getByRole("button", { name: "Đã xử lý" })
 		.click();
 	await expect(row.getByTestId("payment-exception-resolution")).toContainText(
-		"Đã bỏ qua · Quản lý hoặc chủ quán · ",
+		`Đã bỏ qua · ${seeded.people.owner.name} · `,
 	);
 	await expect(row.getByTestId("payment-exception-note")).toHaveText(
 		"Ghi chú: Khách để lại cho quán",

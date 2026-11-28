@@ -40,7 +40,9 @@ import {
 // provider on, cleaned up after. The e-invoice job is off on the local stack, so documents stay queued unless a test
 // moves them as the job would.
 // - Q01 pill (state transitions): none before payment → pending once paid (the sale invoice queued by the trigger);
-//   IDOR: another store's staff get 42501.
+//   IDOR: another store's staff get 42501. Decision table of the documents on their way: a company invoice asked
+//   while the sale invoice is retried or given up leaves the pill on the sale invoice's state (retrying, failed) and
+//   names it, so a manager (never staff) sends it again; then pending.
 // - Q01 company row (EP, BVA, decision table): the client's checks agree with the server's field by field on a table of
 //   classes and boundaries; not_paid, received with 13 digits hyphenated, the replay, request_conflict, already_requested,
 //   not_counter_order for an app order; another store's staff refused.
@@ -399,6 +401,48 @@ describe.skipIf(stack === null)(
 			expect(await retryEInvoice(manager, randomUUID()).catch(code)).toBe(
 				"42501",
 			);
+			expect((await orderEInvoice(staff, order.id)).state).toBe("pending");
+		});
+
+		it("Q01 pill (DT, ST): a company invoice asked while the sale invoice fails says the sale invoice's state, not Đang xuất…; a manager retries the one it names", async () => {
+			const staff = await as(seeded.people.staff);
+			const manager = await as(seeded.people.manager);
+			const order = await paid(
+				seeded.people.staff,
+				await counterOrder(seeded.people.staff),
+			);
+			// the job's first attempt fails; it will try again
+			const [sale] = await sql<{ id: string }[]>`
+				update public.e_invoices set state = 'failed', attempts = 1, round_attempts = 1, last_error_class = 'timeout',
+					last_attempt_at = now(), next_attempt_at = now() + interval '1 minute'
+				where order_id = ${order.id} and kind = 'sale' returning id`;
+			expect((await orderEInvoice(staff, order.id)).state).toBe("retrying");
+			// a company invoice is asked meanwhile: it waits for the sale invoice
+			const asked = await requestCompanyInvoice(
+				staff,
+				order.id,
+				randomUUID(),
+				checkCompany(COMPANY).company ?? (null as never),
+			);
+			expect(asked.state).toBe("received");
+			const retrying = await orderEInvoice(staff, order.id);
+			expect(retrying).toMatchObject({ state: "retrying", attempts: 1 });
+			expect(retrying.invoice).toMatchObject({ id: sale?.id, kind: "sale" });
+			expect(retrying.request?.status).toBe("received");
+			// the job gives up on the sale invoice: failed, naming it
+			await sql`update public.e_invoices set attempts = 10, round_attempts = 10, last_error_class = 'rejected_data',
+				next_attempt_at = null, gave_up_at = now() where id = ${sale?.id ?? ""}`;
+			const failed = await orderEInvoice(staff, order.id);
+			expect(failed.state).toBe("failed");
+			expect(failed.invoice?.id).toBe(sale?.id);
+			// staff cannot send it again; a manager sends the invoice the pill names
+			expect(
+				await retryEInvoice(staff, failed.invoice?.id ?? "").catch(code),
+			).toBe("42501");
+			expect(await retryEInvoice(manager, failed.invoice?.id ?? "")).toEqual({
+				state: "queued",
+				refusal: null,
+			});
 			expect((await orderEInvoice(staff, order.id)).state).toBe("pending");
 		});
 

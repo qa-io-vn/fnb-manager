@@ -40,16 +40,22 @@ import {
 // (ct-pe-…, ct-pe2-…), removed at the end with their attempts, exceptions and accounts.
 // - Equivalence partitions of the four kinds: amount_differs (1,000 short), duplicate (a second exact transfer of a
 //   paid order), late (a transfer after the order was cancelled), unknown_reference (a reference nobody issued); each
-//   read by the page's reader with its amount, the order's, the reference and the order; nothing applied to an order.
+//   read by the page's reader with its amount, the order's, the reference, the order and the account that received it
+//   (the store's own: its bank and last 4 digits); nothing applied to an order.
 // - Decision table of who reads which: the store's manager reads store A's, not B's, not the brand-wide account's,
-//   not another tenant's; the owner with every store reads A's and the brand-wide one; staff are refused (42501).
-// - Boundary values: the limit (0 and 1 give one row, 201 gives at most 200), a status unknown to the server (22023);
-//   the note's check on the client agrees with the server's on a table of classes and boundaries (empty, blank, 1,
-//   200, 201, 200 astral characters, C0, DEL, C1, U+2028, markup).
-// - State transitions: open → refunded with the trimmed note, who and when, an event on the order; the same again a
-//   replay; dismissed after it already_resolved; the filters move it from open to resolved.
+//   not another tenant's; the owner with every store reads A's and the brand-wide one (said to be the brand's); staff
+//   are refused (42501).
+// - Boundary values: the limit (0 and 1 give one row, 201 gives at most 200; "resolved" with 1 gives the newest of
+//   both resolutions), a status unknown to the server (22023); the note's check on the client agrees with the
+//   server's on a table of classes and boundaries (empty, blank, 1, 200, 201, 200 astral characters, C0, DEL, C1,
+//   U+2028, markup).
+// - State transitions: open → refunded with the trimmed note, who (by name) and when, an event on the order; the same
+//   again a replay; dismissed after it already_resolved; the filters move it from open to resolved in one call each.
+// - Decision table of who resolved it: the manager by the roster's name, the owner (never on the roster) by the name of
+//   their Zalo sign-in.
 // - Security (IDOR, error guessing): staff, the manager of store A on store B's exception, on the other tenant's and on
-//   an unknown id are all refused 42501 and change nothing; the list holds no payer name or account number.
+//   an unknown id are all refused 42501 and change nothing; the list holds no payer name, no account name and no full
+//   account number.
 
 const stack: LocalStack | null = localStackFromEnv();
 
@@ -214,7 +220,13 @@ describe.skipIf(stack === null)(
 				status: "open",
 				resolved_at: null,
 				resolved_by: null,
+				resolved_by_name: null,
 				resolution_note: null,
+				account: {
+					scope: "store",
+					bank_name: BANK_SETTINGS.bank_name,
+					account_tail: BANK_SETTINGS.account_number.slice(-4),
+				},
 			});
 			expect(byReason.get("duplicate")).toMatchObject({
 				amount: COFFEE_M,
@@ -272,6 +284,12 @@ describe.skipIf(stack === null)(
 			const ownerB = await ids(owner, seeded.storeB);
 			expect(ownerB).toContain(atB);
 			expect(ownerB).toContain(brandWide);
+			// each says which account received it: store B's own, the brand's shared one
+			const ownerBList = await exceptionsFor(owner, seeded.storeB, "all");
+			const accountOf = (id: string) =>
+				ownerBList.exceptions.find((row) => row.id === id)?.account?.scope;
+			expect(accountOf(atB)).toBe("store");
+			expect(accountOf(brandWide)).toBe("brand");
 			// the owner's open count holds the brand's account; the manager's does not
 			const managerOpen = (
 				await managerPaymentExceptions(manager, seeded.storeA, "open", 1)
@@ -295,7 +313,7 @@ describe.skipIf(stack === null)(
 			}
 		});
 
-		it("the list's boundaries (BVA): limit 0 and 1 give one row, 201 at most 200; an unknown status 22023", async () => {
+		it("the list's boundaries (BVA): limit 0 and 1 give one row, 201 at most 200; resolved with 1 the newest; an unknown status 22023", async () => {
 			const manager = await as(seeded.people.manager);
 			for (const limit of [0, 1]) {
 				const list = await managerPaymentExceptions(
@@ -314,12 +332,36 @@ describe.skipIf(stack === null)(
 			);
 			expect(all.exceptions.length).toBeGreaterThan(1);
 			expect(all.exceptions.length).toBeLessThanOrEqual(200);
-			expect(
-				await rpc(manager, "manager_payment_exceptions", {
-					p_store: seeded.storeA,
-					p_status: "resolved",
-				}).catch(code),
-			).toBe("22023");
+			// two resolved, one of each: "resolved" with limit 1 gives only the newer of both
+			const refunded = await unknownTransfer(sql, providerA, 11_000);
+			await resolvePaymentException(manager, refunded, "refunded", "Đã trả");
+			const dismissed = await unknownTransfer(sql, providerA, 12_000);
+			await resolvePaymentException(manager, dismissed, "dismissed", "Bỏ qua");
+			const newest = await managerPaymentExceptions(
+				manager,
+				seeded.storeA,
+				"resolved",
+				1,
+			);
+			expect(newest.exceptions.map((row) => row.id)).toEqual([dismissed]);
+			const both = await managerPaymentExceptions(
+				manager,
+				seeded.storeA,
+				"resolved",
+				200,
+			);
+			expect(both.exceptions.map((row) => row.id)).toEqual(
+				expect.arrayContaining([refunded, dismissed]),
+			);
+			expect(both.exceptions.every((row) => row.status !== "open")).toBe(true);
+			for (const status of ["closed", "Resolved", ""]) {
+				expect(
+					await rpc(manager, "manager_payment_exceptions", {
+						p_store: seeded.storeA,
+						p_status: status,
+					}).catch(code),
+				).toBe("22023");
+			}
 		});
 
 		it("resolving (state transitions): open → refunded with the note, who and when; a replay; already_resolved; the filters", async () => {
@@ -405,6 +447,7 @@ describe.skipIf(stack === null)(
 			).toMatchObject({
 				status: "refunded",
 				resolved_by: seeded.people.manager.id,
+				resolved_by_name: seeded.people.manager.name,
 				resolution_note: "Đã chuyển lại 27.000đ cho khách lúc 15:00",
 			});
 			expect(
@@ -496,14 +539,32 @@ describe.skipIf(stack === null)(
 				expect((await statusOf(id))?.status).toBe("open");
 			}
 			// the owner with every store resolves the brand's account's; the other tenant's manager their own
+			const owner = await as(seeded.people.owner);
 			expect(
 				await resolvePaymentException(
-					await as(seeded.people.owner),
+					owner,
 					brandWide,
 					"dismissed",
 					"Chuyển thử của quán",
 				),
 			).toEqual({ state: "dismissed", replayed: false, refusal: null });
+			// the owner is not on the roster: named by their Zalo sign-in, never "someone"
+			const settled = (
+				await exceptionsFor(owner, seeded.storeA, "resolved", 200)
+			).exceptions.find((row) => row.id === brandWide);
+			expect(settled).toMatchObject({
+				resolved_by: seeded.people.owner.id,
+				resolved_by_name: seeded.people.owner.name,
+				account: { scope: "brand" },
+			});
+			// the other tenant's manager does not see the name or the money
+			expect(
+				await exceptionsFor(
+					await as(other.people.manager),
+					seeded.storeA,
+					"resolved",
+				).catch(code),
+			).toBe("42501");
 			expect(
 				await resolvePaymentException(
 					await as(other.people.manager),

@@ -1,8 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
-import { E2E_APP_PORT, E2E_FUNCTION_PORT } from "./e2e/support/ports";
+import {
+	E2E_APP_PORT,
+	E2E_CHECKOUT_PORT,
+	E2E_FUNCTION_PORT,
+} from "./e2e/support/ports";
 
-// The counter's end-to-end suite runs the production build (its CSP included) against the local stack, the mock Zalo
-// and the real counter-session function: `node scripts/with-local-stack.mjs npx playwright test` from apps/counter.
+// The counter's end-to-end suite runs the production build (its CSP included) against the local stack, the mock Zalo,
+// the real counter-session function and the real checkout-order function (the VietQR, with the mock bank):
+// `node scripts/with-local-stack.mjs npx playwright test` from apps/counter.
 // Tablets at 1280×800 and 1024×768 in Chromium and WebKit, and phones for the manager pages. Light scheme.
 const supabaseUrl = process.env.SUPABASE_URL ?? "http://127.0.0.1:54321";
 const publishableKey =
@@ -75,6 +80,7 @@ export default defineConfig({
 			VITE_SUPABASE_URL: supabaseUrl,
 			VITE_SUPABASE_PUBLISHABLE_KEY: publishableKey,
 			VITE_COUNTER_SESSION_URL: `http://127.0.0.1:${E2E_FUNCTION_PORT}`,
+			VITE_CHECKOUT_ORDER_URL: `http://127.0.0.1:${E2E_CHECKOUT_PORT}`,
 			VITE_BRAND_KEY: "brand-1",
 		},
 	},

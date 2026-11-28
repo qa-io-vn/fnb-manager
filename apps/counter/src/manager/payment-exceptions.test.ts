@@ -1,17 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { RpcError } from "../lib/rpc";
 import {
+	accountWords,
 	checkNote,
 	exceptionsFor,
 	failureKey,
 	mayHoldMore,
 	methodKey,
 	NOTE_MAX,
-	newestFirst,
 	noteProblemWords,
 	openCount,
+	queryOf,
 	readPaymentException,
 	readPaymentExceptions,
+	readReceivingAccount,
 	reasonDetailKey,
 	reasonKey,
 	resolvable,
@@ -24,15 +26,16 @@ import {
 // counter:unit/payment-exceptions (Quản lý → Tiền chờ xử lý; ADR-068, docs/api.md 3.29):
 // - equivalence partitions of the answer: a valid open, refunded and dismissed exception, and the malformed classes
 //   (no id, an amount as text, negative or fractional, a status unknown or disagreeing with its resolution time, an
-//   unparsable time, no list or open count); the kinds, the providers and the statuses in words, an unknown one in
-//   general;
+//   unparsable time, no list or open count, a name or an account of the wrong shape, an account of an unknown scope);
+//   an answer from before the server named the resolver and the account reads them as unknown; the kinds, the
+//   providers, the statuses and the receiving account in words (a store's bank account, the brand's, a wallet), an
+//   unknown one in general;
 // - boundary values of the note as the server counts it (code points after trimming): empty, blank, 1, 200, 201, 200
 //   astral characters; one line: C0, DEL and C1 refused, U+2028 and a zero-width space taken (PostgreSQL's
 //   [[:cntrl:]]); the list's limit at 99 and 100;
 // - decision table of a resolution's answer: the state equal to or other than the choice × replayed × refusal; of who
-//   resolved it: nobody recorded, the signed-in person, a roster name, someone not on the roster;
-// - state transitions: only an open exception is resolvable; the filter "resolved" asks for both resolutions and merges
-//   them newest first;
+//   resolved it: open (never named), resolved with the server's name (an owner's too), resolved without one;
+// - state transitions: only an open exception is resolvable; each filter is one call (open, resolved, all as null);
 // - error guessing (security): markup and control characters in a note or a reference pass through the reader as
 //   text; 42501 (another store's, another tenant's or an unknown exception) and 22023 worded apart from the network.
 
@@ -50,7 +53,9 @@ const OPEN = {
 	status: "open",
 	resolved_at: null,
 	resolved_by: null,
+	resolved_by_name: null,
 	resolution_note: null,
+	account: { scope: "store", bank_name: "Ngân hàng mẫu", account_tail: "6789" },
 };
 
 const REFUNDED = {
@@ -61,6 +66,7 @@ const REFUNDED = {
 	status: "refunded",
 	resolved_at: "2026-11-28T08:00:00+00:00",
 	resolved_by: "88888888-0000-4000-8000-000000000001",
+	resolved_by_name: "Chủ quán mẫu",
 	resolution_note: "Đã chuyển lại cho khách",
 };
 
@@ -100,6 +106,24 @@ describe("the reader (EP)", () => {
 			{ ...OPEN, received_at: "yesterday" },
 			{ ...OPEN, reference: 42 },
 			{ ...OPEN, source: null },
+			{ ...REFUNDED, resolved_by_name: 42 },
+			{ ...OPEN, account: "store" },
+			{
+				...OPEN,
+				account: { scope: "tenant", bank_name: null, account_tail: null },
+			},
+			{
+				...OPEN,
+				account: { bank_name: "Ngân hàng mẫu", account_tail: "6789" },
+			},
+			{
+				...OPEN,
+				account: { scope: "store", bank_name: 970400, account_tail: null },
+			},
+			{
+				...OPEN,
+				account: { scope: "store", bank_name: null, account_tail: 6789 },
+			},
 		];
 		for (const value of bad) {
 			expect(
@@ -118,16 +142,42 @@ describe("the reader (EP)", () => {
 		).toThrow();
 	});
 
+	it("reads an answer from before the server named the resolver and the account as unknown (backward compatible)", () => {
+		const { resolved_by_name: _name, account: _account, ...earlier } = REFUNDED;
+		expect(readPaymentException(earlier)).toEqual({
+			...REFUNDED,
+			resolved_by_name: null,
+			account: null,
+		});
+		expect(readReceivingAccount(null)).toBeNull();
+		expect(readReceivingAccount(undefined)).toBeNull();
+		expect(
+			readReceivingAccount({
+				scope: "brand",
+				bank_name: null,
+				account_tail: null,
+			}),
+		).toEqual({ scope: "brand", bank_name: null, account_tail: null });
+	});
+
 	it("keeps markup, control characters and a long reference as plain text (error guessing)", () => {
 		const odd = readPaymentException({
 			...REFUNDED,
 			reference: `FNB${"X".repeat(300)}<b>`,
 			order_no: '<img src=x onerror="alert(1)">',
 			resolution_note: "<script>alert(1)</script>\u0007",
+			resolved_by_name: "<b>Chủ</b>",
+			account: {
+				scope: "store",
+				bank_name: "<i>Ngân hàng</i>",
+				account_tail: "<u>",
+			},
 		});
 		expect(odd.reference).toBe(`FNB${"X".repeat(300)}<b>`);
 		expect(odd.order_no).toBe('<img src=x onerror="alert(1)">');
 		expect(odd.resolution_note).toBe("<script>alert(1)</script>\u0007");
+		expect(odd.resolved_by_name).toBe("<b>Chủ</b>");
+		expect(accountWords(odd.account)?.label).toBe("<i>Ngân hàng</i> ···<u>");
 	});
 });
 
@@ -316,13 +366,57 @@ describe("a resolution's answer (decision table)", () => {
 });
 
 describe("who resolved it (decision table)", () => {
-	const me = { userId: "u-me", name: "Quản lý mẫu" };
-	const names = new Map([["u-other", "Quản lý khác"]]);
-	it("names the person, a roster name, or nobody", () => {
-		expect(resolverName(null, me, names)).toBeNull();
-		expect(resolverName("u-me", me, names)).toBe("Quản lý mẫu");
-		expect(resolverName("u-other", me, names)).toBe("Quản lý khác");
-		expect(resolverName("u-owner", me, names)).toBeNull();
+	it("names whom the server names, an owner too; nobody while open or when the server knows no name", () => {
+		expect(
+			resolverName({ status: "open", resolved_by_name: "Quản lý mẫu" }),
+		).toBeNull();
+		expect(
+			resolverName({ status: "refunded", resolved_by_name: "Quản lý mẫu" }),
+		).toBe("Quản lý mẫu");
+		expect(
+			resolverName({ status: "dismissed", resolved_by_name: "Chủ quán mẫu" }),
+		).toBe("Chủ quán mẫu");
+		expect(
+			resolverName({ status: "dismissed", resolved_by_name: null }),
+		).toBeNull();
+	});
+});
+
+describe("the receiving account in words (EP)", () => {
+	it("words a store's bank account, the brand's, a wallet and a bank without its digits", () => {
+		expect(
+			accountWords({
+				scope: "store",
+				bank_name: "Ngân hàng mẫu",
+				account_tail: "6789",
+			}),
+		).toEqual({
+			label: "Ngân hàng mẫu ···6789",
+			scopeKey: "paymentExceptions.scope.store",
+		});
+		expect(
+			accountWords({
+				scope: "brand",
+				bank_name: "Ngân hàng chung",
+				account_tail: "3210",
+			}),
+		).toEqual({
+			label: "Ngân hàng chung ···3210",
+			scopeKey: "paymentExceptions.scope.brand",
+		});
+		// a wallet: the page words the provider instead of a bank
+		expect(
+			accountWords({ scope: "brand", bank_name: null, account_tail: null }),
+		).toEqual({ label: null, scopeKey: "paymentExceptions.scope.brand" });
+		expect(
+			accountWords({
+				scope: "store",
+				bank_name: "Ngân hàng mẫu",
+				account_tail: null,
+			})?.label,
+		).toBe("Ngân hàng mẫu");
+		// nothing said: no line
+		expect(accountWords(null)).toBeNull();
 	});
 });
 
@@ -348,31 +442,17 @@ describe("the counts and the limit (BVA)", () => {
 describe("the filters (state transitions)", () => {
 	function fakeClient() {
 		const calls: Record<string, unknown>[] = [];
+		const dismissed = {
+			...REFUNDED,
+			id: "77777777-0000-4000-8000-000000000003",
+			status: "dismissed",
+			received_at: "2026-11-28T06:00:00Z",
+		};
 		const answers: Record<string, unknown> = {
 			open: { open: 1, exceptions: [OPEN] },
 			all: { open: 1, exceptions: [REFUNDED, OPEN] },
-			refunded: {
-				open: 1,
-				exceptions: [
-					REFUNDED,
-					{
-						...REFUNDED,
-						id: "77777777-0000-4000-8000-000000000004",
-						received_at: "2026-11-28T05:00:00Z",
-					},
-				],
-			},
-			dismissed: {
-				open: 1,
-				exceptions: [
-					{
-						...REFUNDED,
-						id: "77777777-0000-4000-8000-000000000003",
-						status: "dismissed",
-						received_at: "2026-11-28T06:00:00Z",
-					},
-				],
-			},
+			// the server merges both resolutions newest first under the limit
+			resolved: { open: 1, exceptions: [REFUNDED, dismissed] },
 		};
 		return {
 			calls,
@@ -388,46 +468,42 @@ describe("the filters (state transitions)", () => {
 		};
 	}
 
-	it("asks for open, for all (null), and for both resolutions merged newest first", async () => {
+	it("maps each filter to what the server filters by", () => {
+		expect(queryOf("open")).toBe("open");
+		expect(queryOf("resolved")).toBe("resolved");
+		expect(queryOf("all")).toBeNull();
+	});
+
+	it("asks once per filter: open, resolved (both resolutions, as the server orders them) and all (null)", async () => {
 		const fake = fakeClient();
 		expect((await exceptionsFor(fake.client, "s", "open")).exceptions).toEqual([
 			OPEN,
+		]);
+		const resolved = await exceptionsFor(fake.client, "s", "resolved");
+		expect(resolved.open).toBe(1);
+		expect(resolved.exceptions.map((exception) => exception.id)).toEqual([
+			REFUNDED.id,
+			"77777777-0000-4000-8000-000000000003",
 		]);
 		expect(
 			(await exceptionsFor(fake.client, "s", "all")).exceptions.map(
 				(e) => e.id,
 			),
 		).toEqual([REFUNDED.id, OPEN.id]);
-		const resolved = await exceptionsFor(fake.client, "s", "resolved");
-		expect(resolved.open).toBe(1);
-		expect(resolved.exceptions.map((exception) => exception.id)).toEqual([
-			REFUNDED.id,
-			"77777777-0000-4000-8000-000000000003",
-			"77777777-0000-4000-8000-000000000004",
-		]);
 		expect(fake.calls.map((call) => call.p_status)).toEqual([
 			"open",
+			"resolved",
 			null,
-			"refunded",
-			"dismissed",
 		]);
 		expect(
 			fake.calls.every((call) => call.fn === "manager_payment_exceptions"),
 		).toBe(true);
 		expect(fake.calls.every((call) => call.p_store === "s")).toBe(true);
-		// the merged list keeps the limit
-		const two = await exceptionsFor(fake.client, "s", "resolved", 2);
-		expect(two.exceptions).toHaveLength(2);
-	});
-
-	it("orders by the time received, then the id, as the server does", () => {
-		const a = { id: "a", received_at: "2026-11-28T07:00:00Z" };
-		const b = { id: "b", received_at: "2026-11-28T07:00:00Z" };
-		const later = { id: "c", received_at: "2026-11-28T07:00:01Z" };
-		expect([b, a, later].sort(newestFirst).map((row) => row.id)).toEqual([
-			"c",
-			"a",
-			"b",
-		]);
+		// the limit goes to the server, which keeps it on the merged list
+		await exceptionsFor(fake.client, "s", "resolved", 2);
+		expect(fake.calls.at(-1)).toMatchObject({
+			p_status: "resolved",
+			p_limit: 2,
+		});
 	});
 });

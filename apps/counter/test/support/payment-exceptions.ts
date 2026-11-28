@@ -6,8 +6,12 @@ import type { Sql } from "postgres";
  * (the mock bank adapter in the sandbox, as the payments tests use), a counter order with its VietQR attempt
  * (app.checkout_begin, as checkout-order calls it for the counter) and the bank's news settled by app.checkout_settle,
  * as bank-webhook calls it. Nothing reaches a bank or a provider. The tests remove the rows with dropPaymentRows
- * (an attempt holds its provider, so it goes first).
+ * (an attempt holds its provider, so it goes first). The counter's end-to-end stack serves checkout-order with a
+ * synthetic value of BANK_SECRET_NAME, so a provider seeded here also gives the tablet its QR.
  */
+
+/** The function secret a seeded provider names (never a real key: the e2e stack gives checkout-order a random one). */
+export const BANK_SECRET_NAME = "PAYMENT_BANK_SYNTHETIC";
 
 export const BANK_SETTINGS = {
 	bank_bin: "970400",
@@ -35,7 +39,7 @@ export async function vietqrProvider(
 ): Promise<string> {
 	const id = randomUUID();
 	await sql`insert into public.payment_providers (id, tenant_id, brand_id, store_id, method, adapter, mode, secret_name, settings)
-		values (${id}, ${tenantId}, ${brandId}, ${storeId}, 'vietqr', 'mock', 'sandbox', 'PAYMENT_BANK_SYNTHETIC',
+		values (${id}, ${tenantId}, ${brandId}, ${storeId}, 'vietqr', 'mock', 'sandbox', ${BANK_SECRET_NAME},
 		${sql.json(BANK_SETTINGS as never)})`;
 	return id;
 }
@@ -122,6 +126,30 @@ export async function settleTransfer(
 		amount,
 		success: true,
 		...(reference === null ? {} : { reference }),
+		source: "webhook",
+	} as never)}::jsonb, now()) as r`;
+	if (row === undefined) throw new Error("no settlement");
+	return row.r;
+}
+
+/**
+ * One incoming transfer as bank-webhook settles it after the mock adapter verified the post: the service's transaction
+ * id, the amount and the reference-shaped words of the transfer's text as candidates (never the reference itself).
+ */
+export async function bankTransfer(
+	sql: Sql,
+	provider: string,
+	amount: number,
+	candidates: readonly string[],
+): Promise<Settled & { readonly payment_id?: string | null }> {
+	const [row] = await sql<
+		{ r: Settled & { readonly payment_id?: string | null } }[]
+	>`select app.checkout_settle(${sql.json({
+		provider_id: provider,
+		provider_ref: `mock:e2e-${randomUUID().slice(0, 18)}`,
+		candidates: [...candidates],
+		amount,
+		success: true,
 		source: "webhook",
 	} as never)}::jsonb, now()) as r`;
 	if (row === undefined) throw new Error("no settlement");
