@@ -404,26 +404,25 @@ describe("Toast", () => {
 	});
 });
 
+/** A caller that takes every state the switch asks for. */
+function ToggleHarness() {
+	const [on, setOn] = useState(false);
+	return (
+		<Toggle
+			label="Nhận tin ưu đãi qua Zalo"
+			checked={on}
+			stateLabel={on ? "Đang bật" : "Đang tắt"}
+			onChange={setOn}
+			testId="toggle"
+		/>
+	);
+}
+
 describe("Toggle", () => {
 	// state transitions of the switch (off -> asked on -> on -> asked off) with the caller deciding; partitions of
 	// disabled and busy; the state word beside it so the state never rests on colour alone
-	function Harness({ busy = false, disabled = false }) {
-		const [on, setOn] = useState(false);
-		return (
-			<Toggle
-				label="Nhận tin ưu đãi qua Zalo"
-				checked={on}
-				stateLabel={on ? "Đang bật" : "Đang tắt"}
-				onChange={setOn}
-				busy={busy}
-				disabled={disabled}
-				testId="toggle"
-			/>
-		);
-	}
-
 	it("is a named switch that says its state and asks for the other one", () => {
-		render(<Harness />);
+		render(<ToggleHarness />);
 		const toggle = screen.getByRole("switch", {
 			name: "Nhận tin ưu đãi qua Zalo",
 		});
