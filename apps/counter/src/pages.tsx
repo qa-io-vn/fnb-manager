@@ -8,6 +8,11 @@ import { EInvoicesPage, useEInvoiceAttention } from "./manager/einvoices-page";
 import { ManagerHome } from "./manager/manager-home";
 import { MenuEditorPage } from "./manager/menu-page";
 import { OverviewPage } from "./manager/overview-page";
+import {
+	PAYMENT_EXCEPTIONS_PATH,
+	PaymentExceptionsPage,
+	useOpenPaymentExceptions,
+} from "./manager/payment-exceptions-page";
 import { QrPage } from "./manager/qr-page";
 import { unreadCount } from "./manager/requests";
 import { RequestsPage, useInbox } from "./manager/requests-page";
@@ -163,6 +168,8 @@ function Frame({ manager }: { readonly manager: boolean }) {
 	const unread = unreadCount(useInbox(manager).data);
 	// e-invoices that failed and wait for a manager (manager_einvoices; staff never ask: the database refuses them)
 	const failingInvoices = useEInvoiceAttention(manager);
+	// money a provider reported that waits for a manager (manager_payment_exceptions; staff never ask either)
+	const heldPayments = useOpenPaymentExceptions(manager);
 	const items: NavItem[] = [
 		{
 			to: "/don",
@@ -187,7 +194,7 @@ function Frame({ manager }: { readonly manager: boolean }) {
 						label: t("nav.manager"),
 						icon: <ChartIcon />,
 						testId: "manager",
-						badge: unread + failingInvoices,
+						badge: unread + failingInvoices + heldPayments,
 					},
 				]
 			: []),
@@ -228,6 +235,10 @@ function Frame({ manager }: { readonly manager: boolean }) {
 				<Route
 					path="/quan-ly/hoa-don-dien-tu"
 					element={manage(<EInvoicesPage />)}
+				/>
+				<Route
+					path={PAYMENT_EXCEPTIONS_PATH}
+					element={manage(<PaymentExceptionsPage />)}
 				/>
 				<Route path="/quan-ly/*" element={manage(<ManagerHome />)} />
 				<Route path="*" element={<Navigate to="/don" replace />} />
