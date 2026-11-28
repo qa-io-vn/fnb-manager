@@ -122,7 +122,7 @@ Danh sách kiểm, làm đủ trước khi đưa một bản cập nhật cho qu
 3. **Bấm hai lần**: đặt đơn Trả tại quầy và bấm **Đặt món** hai lần thật nhanh. Quầy có **một** đơn.
 4. **Mất mạng**: bấm Đặt món rồi tắt Wi-Fi và 4G ngay; bật lại; bấm Đặt món lần nữa. Quầy có **một** đơn.
 5. **Thoát giữa chừng**: đặt đơn chọn Chuyển khoản QR, khi mã QR hiện thì đóng hẳn Zalo (vuốt tắt app). Mở lại app: đơn hiện đang chờ thanh toán với **Tiếp tục thanh toán**; quầy không có đơn này.
-6. **Chuyển thiếu tiền**: với đơn ở bước 5, chuyển khoản sandbox thiếu 1.000đ. Đơn vẫn chờ thanh toán; quầy không có đơn; ghi lại giao dịch này để báo lập trình viên (xem ghi chú dưới).
+6. **Chuyển thiếu tiền**: với đơn ở bước 5, chuyển khoản sandbox thiếu 1.000đ. Đơn vẫn chờ thanh toán; quầy không có đơn. Quản lý mở **Quản lý** → **Tiền chờ xử lý**: khoản này hiện với **Sai số tiền**, đúng số tiền đã chuyển, "Đơn cần" số tiền của đơn, mã chuyển khoản và giờ nhận (xem ghi chú dưới).
 7. **Hết giờ**: để đơn chờ quá 15 phút. App báo hết hạn và mời **Trả tại quầy**; bấm Trả tại quầy thì quầy có một đơn mới Chưa thu tiền, đơn cũ đã hủy.
 8. Cuối bài: so danh sách đơn ở quầy với trang quản trị sandbox: mỗi đơn "đã trả" ở quầy có đúng một giao dịch thành công tương ứng ở cổng, cùng số tiền.
 
@@ -130,7 +130,7 @@ Trường hợp app khách tự báo "đã trả" mà cổng không báo tiền 
 
 **Kết quả mong đợi**: không có đơn trùng; không đơn nào ở quầy ghi đã trả khi cổng hoặc ngân hàng chưa xác nhận; mở lại app luôn thấy đúng trạng thái.
 
-Ghi chú: hiện app quầy chưa có màn cho quản lý xem khoản chuyển sai số tiền hoặc chuyển muộn (máy chủ giữ chúng chờ quản lý xử lý). Trong lúc chạy thử, mọi khoản như vậy báo lập trình viên để đối chiếu.
+Ghi chú: máy chủ không bao giờ tự tính các khoản chuyển sai số tiền, chuyển muộn, trả trùng hoặc không rõ đơn là đã trả; nó giữ chúng ở **Quản lý** → **Tiền chờ xử lý** chờ quản lý. Các khoản này không tính vào **Đối soát ngày**; khi còn khoản chưa xử lý, ô Đối soát ngày có dòng "N khoản tiền chờ xử lý, chưa tính vào đối soát →". Sau khi trả lại tiền cho khách (chuyển khoản lại hoặc tiền mặt, ngoài app), quản lý bấm **Xử lý**, chọn **Đã trả lại khách**, ghi chú cách trả rồi xác nhận; khoản sang mục **Đã xử lý** với tên người xử lý và giờ. Khoản không phải trả lại (ví dụ chuyển thử) chọn **Bỏ qua, không trả lại**. Ghi rồi không đổi lại được.
 
 **Kết quả**: ☐ Đạt ☐ Không đạt — Sandbox: ☐ Đạt ☐ Không đạt — Tiền thật nhỏ: ☐ Đạt ☐ Không đạt
 
