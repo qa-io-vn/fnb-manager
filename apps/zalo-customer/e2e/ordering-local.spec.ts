@@ -19,6 +19,8 @@ import {
 	readTableAnswer,
 } from "@fnb/zalo-mini/ordering";
 import { expect, test } from "@playwright/test";
+import { EMPTY_CART, requestLines } from "../src/ordering/cart";
+import { applyReorder, planReorder, sameStore } from "../src/ordering/reorder";
 import { watchCustomerPage } from "./customer-checks";
 import {
 	LocalLoop,
@@ -221,6 +223,29 @@ test.describe("the wire contract and the server's refusals", () => {
 			if (order.state !== "ok") throw new Error("no order");
 			expect(order.order.lines[0]?.note).toBe("ít ngọt");
 			expect(order.order.timeline.map((e) => e.to)).toContain("completed");
+			// "Đặt lại" (C14) rebuilds from the real answers: the lines' item, size and option ids, the history's store
+			// name against the menu's, and the same request again from today's menu, with no price in it
+			expect(order.order.lines[0]).toMatchObject({
+				itemId: menu.coffee,
+				sizeId: menu.coffeeL,
+			});
+			expect(order.order.lines[0]?.options.map((o) => o.optionId)).toEqual([
+				menu.shot,
+			]);
+			const current = readMenu(await call(tx, "menu", f.storeCode));
+			const [summary] = list.orders;
+			if (summary === undefined) throw new Error("no order in the list");
+			expect(sameStore(summary, current)).toBe(true);
+			const plan = planReorder(order.order, current);
+			expect(plan.leftOut).toEqual([]);
+			expect(
+				requestLines(
+					applyReorder(EMPTY_CART, f.storeCode, plan, "replace").cart,
+				),
+			).toEqual([
+				{ size: menu.coffeeL, qty: 2, options: [menu.shot], note: "ít ngọt" },
+				{ size: menu.cakeSize, qty: 1 },
+			]);
 			expect(
 				readCallAnswer(
 					await call(tx, "callStaff", f.storeCode, menu.tableToken),

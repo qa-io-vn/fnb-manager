@@ -1,4 +1,4 @@
-import { MAX_LINE_QUANTITY } from "@fnb/zalo-mini/ordering";
+import { MAX_LINE_QUANTITY, type OptionGroup } from "@fnb/zalo-mini/ordering";
 import {
 	kitButton,
 	PriceText,
@@ -7,11 +7,12 @@ import {
 	useI18n,
 } from "@fnb/zalo-mini/react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useOnline } from "../data/offline";
 import {
 	type CartLine,
 	cartSubtotal,
+	choiceNeeded,
 	lineTotal,
 	unavailableLines,
 } from "./cart";
@@ -26,11 +27,20 @@ import {
 	Problem,
 	TableIcon,
 } from "./parts";
+import type { ReorderReport } from "./reorder";
+import { ReorderReportNotice } from "./reorder-report";
 import { useTableScan } from "./states";
 
 // C04 Giỏ của bạn and C10 Giỏ trống (design spec 6.2). The basket shows the lines with the menu's prices, flags a line
-// whose item just sold out (the version poll, criterion 2) and refuses to go on until it is removed, and goes on to
-// the confirmation only with a table the server named, a shop that takes orders and a network.
+// whose item just sold out (the version poll, criterion 2) and refuses to go on until it is removed, flags a line that
+// lacks a required choice (a basket "Đặt lại" filled, C14) until it is chosen on the item screen, and goes on to the
+// confirmation only with a table the server named, a shop that takes orders and a network. Arriving from "Đặt lại", it
+// says first what could not be added.
+
+/** The navigation state "Đặt lại" leaves for the basket. */
+export interface CartLocationState {
+	readonly reorder?: ReorderReport;
+}
 
 export function EmptyCart() {
 	const { t } = useI18n();
@@ -121,9 +131,12 @@ function ContextCard() {
 function LineCard({
 	line,
 	soldOut,
+	choose,
 }: {
 	readonly line: CartLine;
 	readonly soldOut: boolean;
+	/** a required group the line's options do not satisfy */
+	readonly choose: OptionGroup | null;
 }) {
 	const { t } = useI18n();
 	const navigate = useNavigate();
@@ -131,12 +144,15 @@ function LineCard({
 	const details = [line.sizeLabel, ...line.options.map((option) => option.name)]
 		.filter((part): part is string => part !== null)
 		.join(" · ");
+	const edit = () =>
+		navigate(`/mon/${line.itemId}`, { state: { lineKey: line.key } });
 	return (
 		<li
 			className="flex flex-col gap-2 rounded-card-2xl border-card border-line/60 bg-surface-raised p-3"
 			data-testid="cart-line"
 			data-item-id={line.itemId}
 			data-sold-out={soldOut}
+			data-needs-choice={!soldOut && choose !== null}
 		>
 			<div className="flex items-start gap-3">
 				<span
@@ -148,9 +164,7 @@ function LineCard({
 				<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 					<button
 						type="button"
-						onClick={() =>
-							navigate(`/mon/${line.itemId}`, { state: { lineKey: line.key } })
-						}
+						onClick={edit}
 						aria-label={t("cart.edit", { name: line.itemName })}
 						className="min-h-11 self-start text-left text-[15px] font-bold text-ink underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
 						disabled={soldOut}
@@ -196,22 +210,46 @@ function LineCard({
 					</button>
 				</div>
 			) : (
-				<fieldset className="m-0 flex justify-end border-0 p-0">
-					<legend className="sr-only">
-						{t("cart.lineQuantity", { name: line.itemName })}
-					</legend>
-					<Stepper
-						value={line.quantity}
-						min={1}
-						max={MAX_LINE_QUANTITY}
-						onChange={(next) => setQuantity(line.key, next)}
-						onRemove={() => remove(line.key)}
-						decreaseLabel={t("item.less")}
-						increaseLabel={t("item.more")}
-						removeLabel={t("cart.removeNamed", { name: line.itemName })}
-						testId="cart-line-qty"
-					/>
-				</fieldset>
+				<>
+					{choose === null ? null : (
+						<div className="flex flex-col gap-2">
+							<Problem testId="cart-line-choose">
+								{t("cart.needsChoice", {
+									group: choose.name.toLowerCase(),
+									name: line.itemName,
+								})}
+							</Problem>
+							<button
+								type="button"
+								className={`${kitButton.secondary} w-full`}
+								onClick={edit}
+								aria-label={t("cart.chooseNamed", {
+									group: choose.name.toLowerCase(),
+									name: line.itemName,
+								})}
+								data-testid="cart-line-choose-open"
+							>
+								{t("cart.choose", { group: choose.name.toLowerCase() })}
+							</button>
+						</div>
+					)}
+					<fieldset className="m-0 flex justify-end border-0 p-0">
+						<legend className="sr-only">
+							{t("cart.lineQuantity", { name: line.itemName })}
+						</legend>
+						<Stepper
+							value={line.quantity}
+							min={1}
+							max={MAX_LINE_QUANTITY}
+							onChange={(next) => setQuantity(line.key, next)}
+							onRemove={() => remove(line.key)}
+							decreaseLabel={t("item.less")}
+							increaseLabel={t("item.more")}
+							removeLabel={t("cart.removeNamed", { name: line.itemName })}
+							testId="cart-line-qty"
+						/>
+					</fieldset>
+				</>
 			)}
 		</li>
 	);
@@ -231,31 +269,43 @@ export function CartScreen() {
 		acknowledgePriceChanges,
 	} = useOrdering();
 	const [announce, setAnnounce] = useState("");
+	const report = (useLocation().state as CartLocationState | null)?.reorder;
 	useMenuPoll();
 	if (cart.store !== store || cart.lines.length === 0)
 		return (
-			<section className="flex flex-col px-4 pt-4" data-testid="cart">
+			<section className="flex flex-col gap-4 px-4 pt-4" data-testid="cart">
 				<FlowBack />
+				{report === undefined ? null : <ReorderReportNotice report={report} />}
 				<EmptyCart />
 			</section>
 		);
 	const soldOut = unavailableLines(cart, unavailable);
+	const choices = new Map(
+		cart.lines.map((line) => [
+			line.key,
+			menu.status === "ready" ? choiceNeeded(line, menu.data) : null,
+		]),
+	);
+	const toChoose = [...choices.values()].some((group) => group !== null);
 	const ordering = menu.status === "ready" ? menu.data.ordering : null;
 	const held = ordering !== null && closedKind(ordering) !== null;
 	const reason = !online
 		? t("cart.offline")
 		: soldOut.length > 0
 			? t("cart.blockedSoldOut")
-			: table?.state !== "ok"
-				? t("cart.blockedNoTable")
-				: held && ordering !== null
-					? t(`order.reason.${ordering.reason ?? "ordering_off"}`)
-					: null;
+			: toChoose
+				? t("cart.blockedChoice")
+				: table?.state !== "ok"
+					? t("cart.blockedNoTable")
+					: held && ordering !== null
+						? t(`order.reason.${ordering.reason ?? "ordering_off"}`)
+						: null;
 	return (
 		<>
 			<section className="flex flex-col gap-4 px-4 py-4" data-testid="cart">
 				<FlowBack />
 				<h1 className="text-xl font-bold text-ink">{t("cart.title")}</h1>
+				{report === undefined ? null : <ReorderReportNotice report={report} />}
 				<ContextCard />
 				{priceChanges.length === 0 ? null : (
 					<Notice testId="cart-price-changed">
@@ -274,6 +324,7 @@ export function CartScreen() {
 							key={line.key}
 							line={line}
 							soldOut={soldOut.some((entry) => entry.key === line.key)}
+							choose={choices.get(line.key) ?? null}
 						/>
 					))}
 				</ul>
