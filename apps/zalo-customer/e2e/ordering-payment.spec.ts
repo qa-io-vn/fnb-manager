@@ -78,9 +78,9 @@ test.beforeEach(async ({ page }) => {
 	await watchCustomerPage(page, null);
 });
 
-test("pays with the wallet: the server accepts the order with a number once the gateway reports the money", async ({
-	page,
-}) => {
+test("pays with the wallet: the server accepts the order with a number once the gateway reports the money", {
+	tag: ["@criterion-1"],
+}, async ({ page }) => {
 	await toCheckout(page);
 	await expect(
 		page.locator("[data-testid=payment-method][data-ready=true]"),
@@ -124,9 +124,9 @@ test("C18-E3: the order a payment just paid offers the company invoice, which op
 	await checkOrderingScreen(page);
 });
 
-test("a failed wallet payment shows C11; Thử lại opens a new attempt that pays", async ({
-	page,
-}) => {
+test("a failed wallet payment shows C11; Thử lại opens a new attempt that pays", {
+	tag: ["@criterion-3"],
+}, async ({ page }) => {
 	await toCheckout(page);
 	await placeWith(page, "zalo_checkout");
 	await expect(page.getByTestId("stand-in-sheet")).toBeVisible();
@@ -145,9 +145,9 @@ test("a failed wallet payment shows C11; Thử lại opens a new attempt that pa
 	expect(await till(page, "placements")).toBe(1);
 });
 
-test("pays by QR transfer: the in-app VietQR, and the exact transfer pays the order", async ({
-	page,
-}) => {
+test("pays by QR transfer: the in-app VietQR, and the exact transfer pays the order", {
+	tag: ["@criterion-1"],
+}, async ({ page }) => {
 	await toCheckout(page);
 	await placeWith(page, "vietqr");
 	const transfer = page.getByTestId("transfer");
@@ -179,9 +179,9 @@ test("pays by QR transfer: the in-app VietQR, and the exact transfer pays the or
 	await expectAccepted(page);
 });
 
-test("a transfer of another amount leaves the order waiting; when the time runs out C11 says expired and Trả tại quầy places a counter order", async ({
-	page,
-}) => {
+test("a transfer of another amount leaves the order waiting; when the time runs out C11 says expired and Trả tại quầy places a counter order", {
+	tag: ["@criterion-3"],
+}, async ({ page }) => {
 	await toCheckout(page);
 	await placeWith(page, "vietqr");
 	await expect(page.getByTestId("transfer")).toBeVisible();
@@ -214,9 +214,9 @@ test("a transfer of another amount leaves the order waiting; when the time runs 
 	expect(await till(page, "latestOrder")).not.toBe(first);
 });
 
-test("a client that claims success while the gateway heard nothing never shows the order paid", async ({
-	page,
-}) => {
+test("a client that claims success while the gateway heard nothing never shows the order paid", {
+	tag: ["@criterion-3"],
+}, async ({ page }) => {
 	await toCheckout(page, `${ONLINE}&wallet=claim`);
 	await placeWith(page, "zalo_checkout");
 	await page.getByTestId("stand-in-pay").click();
@@ -243,9 +243,9 @@ test("a client that claims success while the gateway heard nothing never shows t
 	await expect(page.getByTestId("order-number")).toHaveCount(0);
 });
 
-test("a double tap on Đặt món makes one order and one payment attempt", async ({
-	page,
-}) => {
+test("a double tap on Đặt món makes one order and one payment attempt", {
+	tag: ["@criterion-3"],
+}, async ({ page }) => {
 	await toCheckout(page, `${ONLINE}&answerDelay=800`);
 	await method(page, "zalo_checkout").click();
 	await page.getByTestId("checkout-submit").dblclick();
@@ -254,9 +254,9 @@ test("a double tap on Đặt món makes one order and one payment attempt", asyn
 	expect(await till(page, "attempts")).toBe(1);
 });
 
-test("a store that offers only the counter keeps the online ways to pay disabled", async ({
-	page,
-}) => {
+test("a store that offers only the counter keeps the online ways to pay disabled", {
+	tag: ["@criterion-1"],
+}, async ({ page }) => {
 	await toCheckout(page, TABLE);
 	await expect(
 		page.locator("[data-testid=payment-method][data-ready=false]"),

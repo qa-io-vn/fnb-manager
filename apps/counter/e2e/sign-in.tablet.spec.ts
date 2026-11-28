@@ -12,10 +12,9 @@ import {
 // is blocked and recorded; a person with a manager's pairing code and the notice accepted gets in; a forged return
 // (CSRF) is refused before anything is sent; a staff member cannot open a manager page; signing out ends the session.
 
-test("a staff member signs in with Zalo and sees the four counter sections, not Quản lý", async ({
-	page,
-	seeded,
-}) => {
+test("a staff member signs in with Zalo and sees the four counter sections, not Quản lý", {
+	tag: ["@criterion-5"],
+}, async ({ page, seeded }) => {
 	await signIn(page, seeded.people.staff);
 	for (const section of ["orders", "tables", "menu", "shift"]) {
 		await expect(nav(page, section)).toBeVisible();
@@ -63,11 +62,9 @@ test("acceptance criterion 5: a person not on the list is blocked, gets no sessi
 	await expect(page.getByTestId("account")).toHaveCount(0);
 });
 
-test("a person the manager added pairs with the six-digit code, accepts the notice and gets in", async ({
-	page,
-	seeded,
-	db,
-}) => {
+test("a person the manager added pairs with the six-digit code, accepts the notice and gets in", {
+	tag: ["@criterion-5"],
+}, async ({ page, seeded, db }) => {
 	const person = {
 		zaloId: `${seeded.slug}-new-${randomUUID().slice(0, 8)}`,
 		name: "Nhân viên mới",
@@ -93,9 +90,9 @@ test("a person the manager added pairs with the six-digit code, accepts the noti
 	expect(member?.role).toBe("staff");
 });
 
-test("CSRF: a return to the app that this tab did not start is refused and sends nothing", async ({
-	page,
-}) => {
+test("CSRF: a return to the app that this tab did not start is refused and sends nothing", {
+	tag: ["@criterion-5"],
+}, async ({ page }) => {
 	const calls: string[] = [];
 	page.on("request", (request) => {
 		if (request.method() === "POST") calls.push(request.url());

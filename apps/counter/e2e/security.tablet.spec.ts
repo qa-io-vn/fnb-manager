@@ -56,9 +56,9 @@ test("the bundle names no secret key, no service role and no e-mail address", as
 	}
 });
 
-test("the sign-in function refuses a forged state and a forged ticket from the browser", async ({
-	page,
-}) => {
+test("the sign-in function refuses a forged state and a forged ticket from the browser", {
+	tag: ["@criterion-5"],
+}, async ({ page }) => {
 	await page.goto("/");
 	const answers = await page.evaluate(async () => {
 		const call = async (body: Record<string, unknown>) => {

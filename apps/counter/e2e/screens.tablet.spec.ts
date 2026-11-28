@@ -80,12 +80,9 @@ async function issuedNumber(
 	return { number: answer.code.number, qr: answer.code.qr_payload };
 }
 
-test("Q02: a short count asks the reason, the reason is sent with a note and the manager confirms with it", async ({
-	page,
-	browser,
-	seeded,
-	db,
-}) => {
+test("Q02: a short count asks the reason, the reason is sent with a note and the manager confirms with it", {
+	tag: ["@criterion-6"],
+}, async ({ page, browser, seeded, db }) => {
 	const token = await counterToken(db, seeded);
 	await signIn(page, seeded.people.staff2);
 	await nav(page, "shift").click();
@@ -167,11 +164,9 @@ test("Q02: a short count asks the reason, the reason is sent with a note and the
 	await expect(page.getByTestId("clock-in")).toBeVisible({ timeout: 20_000 });
 });
 
-test("Q01: without a shift at this counter cash and card say so and offer Vào ca; a shift closed elsewhere is refused by the server", async ({
-	page,
-	seeded,
-	db,
-}) => {
+test("Q01: without a shift at this counter cash and card say so and offer Vào ca; a shift closed elsewhere is refused by the server", {
+	tag: ["@criterion-6"],
+}, async ({ page, seeded, db }) => {
 	const customer = await seedCustomer(db, seeded);
 	const placed = await placeCustomerOrder(db, seeded, customer, {
 		table: seeded.tables.t1,

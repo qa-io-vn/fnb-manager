@@ -16,10 +16,9 @@ test.skip(
 	"waits for checkout-order and bank-webhook with a seedable mock bank provider on the local stack",
 );
 
-test("VietQR at the counter: the code, the exact transfer, Đã nhận tiền and the order paid", async ({
-	page,
-	seeded,
-}) => {
+test("VietQR at the counter: the code, the exact transfer, Đã nhận tiền and the order paid", {
+	tag: ["@criterion-1"],
+}, async ({ page, seeded }) => {
 	await signIn(page, seeded.people.staff);
 	await page.getByTestId("new-counter-order").click();
 	await page

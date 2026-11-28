@@ -27,6 +27,7 @@
 		"verify": "bash scripts/verify.sh",
 		"test:smoke": "node scripts/regression.mjs --smoke",
 		"test:regression": "node scripts/regression.mjs",
+		"test:acceptance": "node scripts/regression.mjs --acceptance",
 		"docs:openapi": "node scripts/export-openapi.mjs",
 		"docs:check-openapi": "node scripts/export-openapi.mjs --check",
 		"docs:api": "pnpm --filter @fnb/web exec vite ../../docs/api --host 127.0.0.1 --port 5290 --strictPort"

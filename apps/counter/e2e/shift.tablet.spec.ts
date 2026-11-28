@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import {
 	asMember,
+	clearQueue,
 	counterToken,
 	expect,
 	nav,
@@ -9,8 +11,10 @@ import {
 
 // counter:e2e/shift (Q02, acceptance criteria 6 and 7): clocking in with the counter's QR code and the opening cash,
 // a wrong code, a matched clock-out, a short drawer that waits for a manager who confirms it on another device with a
-// reason, the day's reconciliation, and the month's worked days equal to the recorded times. Every run starts from no
-// open shift for the person (the suite's people are reset at the start of each test).
+// reason, the day's reconciliation (a day of cash and card that matches on screen with the figures the server
+// reconciles and the revenue of Tổng quan ngày: use case with the server as the oracle), and the month's worked days
+// equal to the recorded times. Every run starts from no open shift for the person (the suite's people are reset at the
+// start of each test).
 
 test.beforeEach(async ({ db, seeded }) => {
 	await db`delete from public.staff_shifts where tenant_id = ${seeded.tenantId}`;
@@ -26,11 +30,9 @@ async function countNotes(
 	}
 }
 
-test("a wrong counter code is refused and no shift opens", async ({
-	page,
-	seeded,
-	db,
-}) => {
+test("a wrong counter code is refused and no shift opens", {
+	tag: ["@criterion-7"],
+}, async ({ page, seeded, db }) => {
 	await signIn(page, seeded.people.staff);
 	await nav(page, "shift").click();
 	await page.getByTestId("counter-code").fill("A".repeat(22));
@@ -43,11 +45,9 @@ test("a wrong counter code is refused and no shift opens", async ({
 	expect(rows).toHaveLength(0);
 });
 
-test("clock in with the counter code and the opening cash, then clock out with a matching blind count", async ({
-	page,
-	seeded,
-	db,
-}) => {
+test("clock in with the counter code and the opening cash, then clock out with a matching blind count", {
+	tag: ["@criterion-6", "@criterion-7"],
+}, async ({ page, seeded, db }) => {
 	const token = await counterToken(db, seeded);
 	await signIn(page, seeded.people.staff);
 	await expect(page.getByTestId("shift-chip")).toContainText("Chưa vào ca");
@@ -131,11 +131,94 @@ test("criterion 6: a short drawer waits for a manager, who confirms it with a re
 	});
 });
 
-test("security: a manager cannot confirm their own shortage (the database refuses, the screen says so)", async ({
+test("criterion 6: Đối soát ngày shows the revenue, the card and the counted cash the server reconciles, Khớp, and the revenue of Tổng quan ngày", async ({
 	page,
 	seeded,
 	db,
 }) => {
+	const minutes = Math.floor((Date.now() + 7 * 3_600_000) / 60_000) % 1_440;
+	test.skip(
+		minutes > 1_430 || minutes < 2,
+		"the business day turns over at Vietnam midnight during the test",
+	);
+	// the day starts empty for this synthetic tenant: no order, invoice or shift of today
+	await clearQueue(db, seeded);
+	await db`delete from public.invoices where tenant_id = ${seeded.tenantId} and business_date = (now() at time zone 'Asia/Ho_Chi_Minh')::date`;
+	const token = await counterToken(db, seeded);
+	await signIn(page, seeded.people.staff);
+	await nav(page, "shift").click();
+	await page.getByTestId("counter-code").fill(token);
+	await page.getByTestId("clock-in-submit").click();
+	await expect(page.getByTestId("open-shift")).toBeVisible();
+	// the cashier's own calls: a coffee paid in cash (29,000) and a tea paid by card (39,000), both completed
+	for (const [size, method] of [
+		[seeded.sizes.coffeeM, "cash"],
+		[seeded.sizes.tea, "card"],
+	] as const) {
+		await asMember(db, seeded.people.staff.id, async (tx) => {
+			const [created] = await tx<
+				{ r: { order: { id: string; version: number; total: number } } }[]
+			>`select app.counter_create_order(${seeded.storeA}::uuid, ${tx.json({
+				request_id: randomUUID(),
+				type: "takeaway",
+				lines: [{ size, qty: 1 }],
+			} as never)}::jsonb) as r`;
+			const order = created?.r.order;
+			await tx`select app.counter_record_payment(${order?.id ?? ""}::uuid, ${method}, ${order?.total ?? 0}, ${order?.version ?? 1})`;
+			for (const action of ["start", "done", "complete"]) {
+				const [current] = await tx<
+					{ version: number }[]
+				>`select version from public.orders where id = ${order?.id ?? ""}`;
+				await tx`select app.counter_order_act(${order?.id ?? ""}::uuid, ${action}, ${current?.version ?? 1})`;
+			}
+		});
+	}
+	await page.getByTestId("clock-out").click();
+	await countNotes(page, "closing", { 20000: 1, 5000: 1, 2000: 2 });
+	await page.getByTestId("clock-out-submit").click();
+	await expect(page.getByTestId("toast")).toContainText("Két khớp");
+
+	await signIn(page, seeded.people.manager);
+	await page.goto("/#/quan-ly/ca-lam");
+	const day = page.getByTestId("reconciliation");
+	await expect(day).toBeVisible();
+	const server = await asMember(db, seeded.people.manager.id, async (tx) => {
+		const [row] = await tx<
+			{
+				r: {
+					revenue: number;
+					online_confirmed: number;
+					card: number;
+					cash: { counted: number };
+					matched: boolean;
+				};
+			}[]
+		>`select app.manager_day_reconciliation(${seeded.storeA}::uuid, (now() at time zone 'Asia/Ho_Chi_Minh')::date) as r`;
+		return row?.r;
+	});
+	expect(server).toMatchObject({
+		revenue: 68000,
+		online_confirmed: 0,
+		card: 39000,
+		cash: { counted: 29000 },
+		matched: true,
+	});
+	await expect(page.getByTestId("reconciliation-status")).toHaveText("Khớp");
+	await expect(page.getByTestId("reconciliation-revenue")).toContainText(
+		"68.000đ",
+	);
+	await expect(page.getByTestId("reconciliation-cash")).toContainText(
+		"29.000đ",
+	);
+	await expect(day).toContainText("39.000đ");
+	await page.goto("/#/quan-ly/tong-quan");
+	await expect(page.getByTestId("overview-revenue")).toContainText("68.000đ");
+	await expect(page.getByTestId("overview-orders")).toHaveText("2");
+});
+
+test("security: a manager cannot confirm their own shortage (the database refuses, the screen says so)", {
+	tag: ["@criterion-6"],
+}, async ({ page, seeded, db }) => {
 	const token = await counterToken(db, seeded);
 	await signIn(page, seeded.people.manager);
 	await nav(page, "shift").click();
