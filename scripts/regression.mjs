@@ -67,10 +67,11 @@ const SMOKE_STAFF_SPECS = [
 // The acceptance pack (docs/test-plan.md section 10.15): the suites behind the 7 criteria of the owner's plan, phase 1.
 // Criterion 1 tables and ways to pay, 2 sold out within 5 seconds, 3 no duplicate and no false "paid", 4 a cancelled
 // paid order refunded with its stamps and the log, 5 nobody off the roster at the counter, 6 the day's revenue equal to
-// the gateway and the counted cash, 7 the month's worked days equal to the recorded clock-ins and clock-outs.
+// the gateway and the counted cash, 7 the month's worked days equal to the recorded clock-ins and clock-outs. 301 is
+// criterion 6 with refunds handed back on a later business day (defect D-1, ADR-071).
 const ACCEPTANCE_PGTAP = new Set([
 	44, 46, 49, 260, 262, 263, 265, 266, 267, 268, 269, 270, 271, 273, 274, 275,
-	276, 277, 279, 290, 295, 296, 298, 299, 300,
+	276, 277, 279, 290, 295, 296, 298, 299, 300, 301,
 ]);
 
 const ACCEPTANCE_UNIT = [
@@ -858,7 +859,7 @@ function acceptanceSteps() {
 		},
 		{
 			id: "acc-pgtap",
-			title: `pgTAP behind the criteria (${ACCEPTANCE_PGTAP.size} files, 298 to 300 the acceptance files)`,
+			title: `pgTAP behind the criteria (${ACCEPTANCE_PGTAP.size} files, 298 to 301 the acceptance files)`,
 			level: "database",
 			gate: gates.stack,
 			timeout: 10 * MINUTE,

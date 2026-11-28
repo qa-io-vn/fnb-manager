@@ -11,10 +11,11 @@
 -- for an order not completed yet, a refund still owed), state transitions of a day (not matched -> matched when the
 -- paid order completes; awaiting -> confirmed), boundary values (an empty day; the next business day), error guessing
 -- (a client never confirms a payment, a refund handed back on a later day), and authorisation by role, store and
--- tenant. A refund handed back in cash on a later business day is marked TODO: the reconciliation books the refund on
--- the order's day and the cash on the refund's day, so both days stop matching (reported as a defect, not fixed here).
+-- tenant. A refund handed back in cash on a later business day counts on the day its drawer paid it out (defect D-1,
+-- fixed by ADR-071): the order's day keeps its invoice and still matches, and the refund day's own refund document
+-- matches the drawer that handed it back. 301_refund_business_day covers the rule in depth.
 begin;
-select plan(53);
+select plan(54);
 
 create temp table fx as
 select
@@ -472,6 +473,11 @@ select is(
   || pg_temp.clock_out((select cashier1_u from fx), 29000, pg_temp.at('2026-10-09 12:00')) || '/' || pg_temp.summary(date '2026-10-09'),
   'paid/ok/closed/0/0/0/29000/-29000/0/0/false', 'decision table: a refund still owed keeps the 29,000 in the drawer and the day does not match'
 );
+select is(
+  (select (r ->> 'cash_refund_owed') || '/' || (r ->> 'cancelled_cash') || '/' || ((r ->> 'difference')::bigint + (r ->> 'cancelled_cash')::bigint)
+   from pg_temp.recon((select owner_u from fx), (select store_a1 from fx), date '2026-10-09') r),
+  '29000/29000/0', 'criterion 6: the day explains its difference: 29,000 in cash still owed back for the cancelled order, the drawer''s cash of cancelled orders'
+);
 
 -- 2026-10-10 and 2026-10-11: a completed cash order refunded in cash on the next business day.
 select is(pg_temp.clock_in((select cashier1_u from fx), (select store_a1 from fx), 0, pg_temp.at('2026-10-10 07:00')), 'clocked_in', 'cashier 1 opens 2026-10-10 with an empty drawer');
@@ -487,7 +493,6 @@ select is(
   || pg_temp.clock_out((select manager_u from fx), 71000, pg_temp.at('2026-10-11 12:00')),
   'clocked_in/succeeded/closed', 'the next morning a manager on shift hands the 29,000 back from a drawer that then matches'
 );
-select todo('Defect: a cash refund on a later business day is taken off the order''s day (its invoice is voided) but out of the refund day''s drawer, so neither day matches although every drawer and the gateway are right', 2);
 select is(pg_temp.summary(date '2026-10-10'), '29000/0/0/29000/0/0/0/true', 'criterion 6: 2026-10-10 still matches after the refund of the next day');
 select is((pg_temp.recon((select owner_u from fx), (select store_a1 from fx), date '2026-10-11') ->> 'matched'), 'true', 'criterion 6: and 2026-10-11, whose drawer handed the refund back, matches too');
 
