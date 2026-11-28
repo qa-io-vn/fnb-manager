@@ -2,7 +2,9 @@ import { useI18n } from "@fnb/zalo-mini/react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { SettingsScreen } from "../settings/settings-screen";
+import { useInboxUnread } from "./inbox-bell";
 import {
+	BellIcon,
 	BuildingIcon,
 	ChevronRight,
 	ClockIcon,
@@ -12,7 +14,8 @@ import {
 } from "./parts";
 
 // C08 Tôi of the ordering build (design spec 6.2 and the missing-screens addendum): the rows that lead to the order
-// history (C14), the member code (C20) and the customer's data (C19), above the account settings that exist
+// history (C14), the member code (C20), the notifications and offers (C12) and the customer's data (C19), above the
+// account settings that exist
 // (marketing stop, the deletion request, the legal texts).
 
 function Row({
@@ -51,6 +54,7 @@ function Row({
 
 export function OrderingAccountScreen() {
 	const { t } = useI18n();
+	const unread = useInboxUnread() ?? 0;
 	return (
 		<>
 			<div className="px-4 pt-5" data-testid="account">
@@ -82,6 +86,17 @@ export function OrderingAccountScreen() {
 						sub={t("me.requestsSub")}
 						to="/yeu-cau-cua-ban"
 						row="requests"
+					/>
+					<Row
+						icon={<BellIcon />}
+						title={t("me.inbox")}
+						sub={
+							unread > 0
+								? `${t("me.inboxSub")} · ${t("me.inboxUnread", { count: unread })}`
+								: t("me.inboxSub")
+						}
+						to="/thong-bao"
+						row="inbox"
 					/>
 					<Row
 						icon={<ShieldIcon />}

@@ -721,6 +721,24 @@ insert into matrix (fn, label, statement, expect) values
 ('customer_export_data', 'customer_export_data of the session',
   $$select (public.customer_export_data() ? 'orders')::text$$,
   '{"*": "DENY", "customer": "^ok:true$", "visitor": "^ok:true$", "customer_b": "^ok:true$"}'),
+-- C12 the inbox (ADR-073): every customer session reads and marks only its own items (none here); a filter the
+-- server does not know is 22023; the marketing consent is for a joined customer only (a visitor 42501, like the stop),
+-- and a policy version the tenant has not published is refused.
+('customer_inbox', 'customer_inbox of the session',
+  $$select jsonb_array_length(public.customer_inbox('all', null) -> 'items')$$,
+  '{"*": "DENY", "customer": "^ok:0$", "visitor": "^ok:0$", "customer_b": "^ok:0$"}'),
+('customer_inbox', 'customer_inbox with an unknown filter',
+  $$select public.customer_inbox('events', null)::text$$,
+  '{"*": "DENY", "customer": "BAD", "visitor": "BAD", "customer_b": "BAD"}'),
+('customer_inbox_unread', 'customer_inbox_unread of the session',
+  $$select public.customer_inbox_unread() ->> 'unread'$$,
+  '{"*": "DENY", "customer": "^ok:0$", "visitor": "^ok:0$", "customer_b": "^ok:0$"}'),
+('customer_inbox_read', 'customer_inbox_read of an item of no one',
+  $$select public.customer_inbox_read(array['aaaaaaaa-aaaa-4aaa-8aaa-000000012089'::uuid]) ->> 'marked'$$,
+  '{"*": "DENY", "customer": "^ok:0$", "visitor": "^ok:0$", "customer_b": "^ok:0$"}'),
+('customer_start_marketing', 'customer_start_marketing with a version never published',
+  $$select public.customer_start_marketing('privacy-120-9', 'inbox-optin-1', now()) ->> 'refusal'$$,
+  '{"*": "DENY", "customer": "^ok:policy_outdated$", "customer_b": "^ok:policy_outdated$"}'),
 -- Native till hardening (M01): opening a request is for owners and managers of its store (an unknown request is 42501
 -- for everyone).
 ('manager_request_read', 'manager_request_read of an unknown request',

@@ -331,8 +331,8 @@ create temp table ex as select pg_temp.export((select cust1_u from fx)) as j;
 grant select on ex to authenticated;
 select is(
   (select string_agg(k, ',' order by k collate "C") from jsonb_object_keys((select j from ex)) k),
-  'attached_orders,consents,counts,customer,deletion_request,generated_at,invoice_requests,login,memberships,not_kept,order_blocks,orders,requests,saved_companies,staff_calls,stamp_card',
-  'the export names every kind of data held'
+  'attached_orders,consents,counts,customer,deletion_request,generated_at,inbox,invoice_requests,login,memberships,not_kept,order_blocks,orders,requests,saved_companies,staff_calls,stamp_card',
+  'the export names every kind of data held (the inbox of C12 since migration customer_inbox)'
 );
 select is(
   (select (j -> 'login' ->> 'zalo_user_id') || '/' || jsonb_array_length(j -> 'orders') || '/' || jsonb_array_length(j -> 'attached_orders') || '/' || jsonb_array_length(j -> 'requests')

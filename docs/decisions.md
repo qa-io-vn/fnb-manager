@@ -721,3 +721,35 @@ Not chosen: any day in the future (the plan allows the next opening only when cl
 Consequences: the counter shows bookings apart until their start and lets managers set the three numbers; the customer app offers takeaway only in a build that pays online, where the store offers it; ZBS stays off until the owner's templates are approved, and the tests send through the mock.
 
 Built 2026-11-28 on the branch `c17-takeaway`: migrations `takeaway_slots`, `takeaway_ready_message`, `takeaway_asap_while_closed`; pgTAP `304_takeaway_slots` (69), `305_takeaway_placement` (72), `306_takeaway_ready_message` (25).
+
+## ADR-073 — The customer's inbox is written by the events that exist; promotions on Zalo need the marketing consent and stop at two a week
+
+Date 2026-11-29 · Status proposed (the owner's plan, phase 2: "Hộp thông báo (C12)" and its notification table; the design's C12, GA-063 to GA-066)
+
+Decision:
+
+1. **One inbox per Zalo login, written by the events, never by a client.** `app.customer_inbox` holds a customer login's notifications. Its only writers are triggers on what already records every change: the order's append-only log (`order_events`), the stamp ledger (`stamp_entries`) and the customer outbox when a promotion is delivered; plus `app.customer_inbox_offer` for a campaign (GA-066, called by the offers of C13 and S13 once they exist). An item holds count-only facts; what an order is (its number, table, first item, total, state) is read from the order when the item is shown, so nothing is copied that the order would contradict.
+2. **The plan's notification table as one decision table** (`app.customer_order_notices`):
+
+   | Event | In the app (C12) | Paid Zalo message (ZBS through the outbox) |
+   |---|---|---|
+   | ready (takeaway) or brought to the table | `order_ready` | takeaway: `takeaway_ready` (its own trigger, ADR-072); table: never |
+   | a payment above 0 (withdrawn when voided) | `order_receipt` | none |
+   | the customer's own cancellation | none | none |
+   | a cancellation by the shop or the system, unpaid | `order_cancelled` with the reason | none (no money to give back) |
+   | a cancellation by the shop of a paid order | `order_cancelled` with the refund due | `order_cancelled`, five minutes on, replaced (`superseded`) by a refund in that time |
+   | a refund | `order_refunded` with the amount, the method and the day | `order_refunded` with the amount and the day, except cash handed back at the counter |
+   | stamps added, a card complete | `stamp`, `reward` | none ("Không tốn phí") |
+   | a promotion delivered (birthday, win_back) | `offer` | the promotion itself, under the rules below |
+
+   A paid message needs a member (a phone or a followed OA): a visitor has the app only.
+3. **Promotions only with consent, at most two a week.** "Nhận tin ưu đãi qua Zalo" records the `marketing` consent with who (the customer and the Zalo App), when (the sheet shown, the answer), the privacy notice's version and the opt-in text's version (`customer_start_marketing`); stopping stays `customer_stop_marketing`. Only a member can consent (the consent ledger is keyed by the customer). An advertising message is cancelled without the consent at enqueue and again at claim, and an offer item reaches the inbox only with it. `channel_policies.max_per_week` is a rolling 7 days counted in the customer's send decision (`weekly_cap`); a Zalo advertising row that may send is held to 1 or 2 by a CHECK constraint, because the opt-in text promises at most two; a promotion the cap would hold past its life closes in the app instead.
+4. **Kept 90 days, part of the customer's data.** Readers leave out items older than 90 days and the hourly job `customer-inbox-purge` deletes them; items go with the login (C19 deletion, `dsr_delete`) and are in the customer's copy and the owner's DSR export.
+
+Why: the plan wants order changes on C06 for free, stamps in C12 for free, and paid messages only for takeaway, cancellations and refunds; writing the inbox from the same events as the outbox keeps one source of truth and no second pipeline to drift. Reading an order's facts at read time keeps a cancelled or refunded order consistent everywhere. The weekly cap is a promise made in the consent text, so it binds like the legal floors (ADR-030).
+
+Not chosen: an inbox fed by the client (it could invent items); copying the order's items and totals into the item (they would disagree after a refund); a ZBS message for every cancellation (an unpaid cancellation has no money to explain, and cash handed back in person needs none); a "mark all read" button (the design draws none; the server accepts it for a later design); counting the weekly cap across every channel (the cap is per channel like the daily and monthly ones, and only ZBS sends promotions through the API).
+
+Consequences: the customer app (ordering build) shows C12 with the bell's count on C01 and a row on Tôi; the ZBS templates `order_cancelled` and `order_refunded` join the drafts the owner submits; table orders still get no Zalo message for their steps; workshop seat items wait for events (phase 3).
+
+Built 2026-11-29 on the branch `c12-inbox`: migrations `weekly_promotion_cap`, `order_cancel_refund_messages`, `customer_inbox`; pgTAP `307_customer_inbox_writers` (68), `308_customer_inbox_reader` (83), `309_weekly_promotion_cap` (27).

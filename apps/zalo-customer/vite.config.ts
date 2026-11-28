@@ -18,6 +18,7 @@ export default defineConfig({
 				"active-order-strip",
 				"pay-step",
 				"company-invoice-form",
+				"inbox-marketing-card",
 			],
 			appRoot: fileURLToPath(new URL(".", import.meta.url)),
 		}),

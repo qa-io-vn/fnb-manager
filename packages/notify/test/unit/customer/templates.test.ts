@@ -156,11 +156,11 @@ describe("the ZBS template drafts", () => {
 			"voucher",
 			"coupon_issued",
 		]);
-		// the latest definition of app.customer_template_purposes: the takeaway ready message's migration (C17)
-		// repeats the routing migration's mapping and adds takeaway_ready
+		// the latest definition of app.customer_template_purposes: the cancellation and refund messages' migration
+		// (C12) repeats the mapping of the takeaway ready message's (C17) and adds order_cancelled and order_refunded
 		const migration = readFileSync(
 			new URL(
-				"../../../../../supabase/migrations/20261128900100_takeaway_ready_message.sql",
+				"../../../../../supabase/migrations/20261129000100_order_cancel_refund_messages.sql",
 				import.meta.url,
 			),
 			"utf8",
@@ -216,6 +216,40 @@ describe("template parameter mapping", () => {
 				.customer_name ?? "";
 		expect([...clipped]).toHaveLength(30);
 		expect(clipped.endsWith("…")).toBe(true);
+	});
+
+	it("maps a cancellation and a refund with the amount in dong and the day the money went back (C12)", () => {
+		expect(
+			templateData("order_cancelled", {
+				customer_name: "Synthetic A",
+				order_no: "#012",
+				store_name: "Cửa hàng 1",
+				amount: 45000,
+			}),
+		).toEqual({
+			customer_name: "Synthetic A",
+			order_no: "#012",
+			store_name: "Cửa hàng 1",
+			amount: "45.000",
+		});
+		expect(
+			templateData("order_refunded", {
+				customer_name: "Synthetic A",
+				order_no: "#012",
+				store_name: "Cửa hàng 1",
+				amount: 45000,
+				refund_date: "28/11/2026",
+			}),
+		).toMatchObject({ amount: "45.000", refund_date: "28/11/2026" });
+		expect(() =>
+			templateData("order_refunded", {
+				order_no: "#012",
+				store_name: "Cửa hàng 1",
+				amount: 45000,
+			}),
+		).toThrow(TemplateParameterError);
+		expect(KIND_TEMPLATE_PURPOSES.order_cancelled).toEqual(["order_cancelled"]);
+		expect(KIND_TEMPLATE_PURPOSES.order_refunded).toEqual(["order_refunded"]);
 	});
 
 	it("counts a missing number as zero and never a negative", () => {

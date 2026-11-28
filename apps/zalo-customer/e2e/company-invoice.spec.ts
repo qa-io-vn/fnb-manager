@@ -281,7 +281,8 @@ test("saved companies: kept by the request, offered as a chip, and deleted from 
 	expect(await till(page, "invoiceRequests")).toBe(1);
 	await page.getByRole("button", { name: "Về lịch sử đơn" }).click();
 	await page.getByRole("navigation").getByText("Tôi", { exact: true }).click();
-	await expect(page.getByTestId("account-row")).toHaveCount(5);
+	// orders, member code, company invoices, requests, notifications (C12), data
+	await expect(page.getByTestId("account-row")).toHaveCount(6);
 	await page.locator("[data-testid=account-row][data-row=company]").click();
 	await expect(page.getByTestId("company-hub")).toBeVisible();
 	await expect(page.getByTestId("saved-company")).toHaveCount(1);

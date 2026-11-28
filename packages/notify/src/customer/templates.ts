@@ -6,6 +6,8 @@ export const CUSTOMER_MESSAGE_KINDS = [
 	"birthday",
 	"win_back",
 	"takeaway_ready",
+	"order_cancelled",
+	"order_refunded",
 ] as const;
 
 export type CustomerMessageKind = (typeof CUSTOMER_MESSAGE_KINDS)[number];
@@ -18,6 +20,8 @@ export const ZBS_TEMPLATE_PURPOSES = [
 	"birthday",
 	"win_back",
 	"order_ready",
+	"order_cancelled",
+	"order_refunded",
 ] as const;
 
 export type ZbsTemplatePurpose = (typeof ZBS_TEMPLATE_PURPOSES)[number];
@@ -36,6 +40,8 @@ export const TEMPLATE_PARAMETER_NAMES = [
 	"inactive_days",
 	"order_no",
 	"pickup_time",
+	"amount",
+	"refund_date",
 ] as const;
 
 export type TemplateParameterName = (typeof TEMPLATE_PARAMETER_NAMES)[number];
@@ -120,6 +126,18 @@ const PICKUP: TemplateParameter = {
 	maxLength: 5,
 	sample: "15:30",
 };
+const AMOUNT: TemplateParameter = {
+	name: "amount",
+	type: "number",
+	maxLength: 12,
+	sample: "45000",
+};
+const REFUND_DATE: TemplateParameter = {
+	name: "refund_date",
+	type: "text",
+	maxLength: 10,
+	sample: "28/11/2026",
+};
 const INACTIVE: TemplateParameter = {
 	name: "inactive_days",
 	type: "number",
@@ -200,6 +218,26 @@ export const ZBS_TEMPLATE_DRAFTS: Readonly<
 		parameters: [NAME, ORDER_NO, STORE, PICKUP],
 		reviewerDecision: false,
 	},
+	order_cancelled: {
+		purpose: "order_cancelled",
+		tag: "transaction",
+		layout: "text",
+		title: "Đơn đã hủy",
+		body: "Chào <customer_name>, đơn <order_no> tại <store_name> đã bị hủy. Quán sẽ hoàn <amount> đồng cho bạn theo cách bạn đã trả. Mở ứng dụng để xem chi tiết.",
+		button: "Xem đơn",
+		parameters: [NAME, ORDER_NO, STORE, AMOUNT],
+		reviewerDecision: false,
+	},
+	order_refunded: {
+		purpose: "order_refunded",
+		tag: "transaction",
+		layout: "text",
+		title: "Đã hoàn tiền",
+		body: "Chào <customer_name>, quán đã hoàn <amount> đồng cho đơn <order_no> tại <store_name> ngày <refund_date>, theo cách bạn đã trả. Mở ứng dụng để xem chi tiết.",
+		button: "Xem đơn",
+		parameters: [NAME, AMOUNT, ORDER_NO, STORE, REFUND_DATE],
+		reviewerDecision: false,
+	},
 };
 
 export const KIND_TEMPLATE_PURPOSES: Readonly<
@@ -212,6 +250,8 @@ export const KIND_TEMPLATE_PURPOSES: Readonly<
 	birthday: ["birthday"],
 	win_back: ["win_back"],
 	takeaway_ready: ["order_ready"],
+	order_cancelled: ["order_cancelled"],
+	order_refunded: ["order_refunded"],
 };
 
 export const CONSULTATION_TEXTS: Readonly<
@@ -220,7 +260,9 @@ export const CONSULTATION_TEXTS: Readonly<
 		| "coupon_issued"
 		| "voucher_expiring"
 		| "expiry_reminder"
-		| "takeaway_ready",
+		| "takeaway_ready"
+		| "order_cancelled"
+		| "order_refunded",
 		string
 	>
 > = {
@@ -230,6 +272,8 @@ export const CONSULTATION_TEXTS: Readonly<
 		"Chào <customer_name>, ưu đãi <reward_name> với mã <voucher_code> sẽ hết hạn lúc <expires_at>. Hãy dùng trước khi hết hạn nhé.",
 	expiry_reminder: ZBS_TEMPLATE_DRAFTS.expiry_reminder.body,
 	takeaway_ready: ZBS_TEMPLATE_DRAFTS.order_ready.body,
+	order_cancelled: ZBS_TEMPLATE_DRAFTS.order_cancelled.body,
+	order_refunded: ZBS_TEMPLATE_DRAFTS.order_refunded.body,
 };
 
 export const NAME_FALLBACK = "Quý khách";
