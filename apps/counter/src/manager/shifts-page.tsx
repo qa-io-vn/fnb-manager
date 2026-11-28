@@ -393,11 +393,12 @@ function Reconciliation({ date }: { readonly date: string }) {
 	});
 	if (day.data === undefined) return <Loading label={t("app.loading")} />;
 	const value = day.data;
+	// A day of refunds handed back for earlier days reads negative (ADR-071): written with its minus sign.
 	const line = (label: string, amount: number, testId?: string) => (
 		<p className="flex justify-between gap-3">
 			<span>{label}</span>
 			<PriceText
-				amount={Math.abs(amount)}
+				amount={amount}
 				kind={amount < 0 ? "delta" : "price"}
 				tone="ink"
 				{...(testId === undefined ? {} : { testId })}
@@ -435,6 +436,20 @@ function Reconciliation({ date }: { readonly date: string }) {
 				"reconciliation-cash",
 			)}
 			{line(t("managerShifts.cashExpected"), value.cash.expected)}
+			{value.cancelled_cash !== 0
+				? line(
+						t("managerShifts.cancelledCash"),
+						value.cancelled_cash,
+						"reconciliation-cancelled-cash",
+					)
+				: null}
+			{value.cash_refund_owed > 0
+				? line(
+						t("managerShifts.cashRefundOwed"),
+						value.cash_refund_owed,
+						"reconciliation-refund-owed",
+					)
+				: null}
 			{value.shifts_open + value.shifts_awaiting_confirmation > 0 ? (
 				<PlainNote tone="warning">
 					{t("managerShifts.shiftsPending", {

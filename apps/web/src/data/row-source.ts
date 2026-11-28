@@ -17,7 +17,11 @@ export const paymentKinds: readonly PaymentKind[] = [
 	"other",
 ];
 
-export type InvoiceStatus = "completed" | "edited" | "voided";
+/**
+ * `refund` is a native refund handed back on a later business day than its order's: a document of negative amounts
+ * on the refund's day, in the sums and never counted as an invoice (ADR-071).
+ */
+export type InvoiceStatus = "completed" | "edited" | "voided" | "refund";
 
 export type LineKind = "item" | "modifier" | "service" | "package" | "other";
 

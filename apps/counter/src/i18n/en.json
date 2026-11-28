@@ -141,6 +141,8 @@
 	"managerShifts.card": "Card at the counter",
 	"managerShifts.cashCounted": "Cash counted at shift end",
 	"managerShifts.cashExpected": "Cash expected",
+	"managerShifts.cancelledCash": "Cash of cancelled orders",
+	"managerShifts.cashRefundOwed": "Cash still owed back (cancelled orders)",
 	"managerShifts.shiftsPending": "{open} shifts open, {awaiting} awaiting a manager.",
 	"managerShifts.difference": "Difference",
 	"managerShifts.workedDays": "Worked days {month}",

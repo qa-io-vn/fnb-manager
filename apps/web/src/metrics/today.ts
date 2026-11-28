@@ -151,13 +151,19 @@ export interface TodayReport {
 	payments: PaymentSplit;
 }
 
+/** In the day's sums: every invoice but the voided ones, a refund document of a later day included (ADR-071). */
 export function isCountedSale(invoice: InvoiceRow): boolean {
 	return invoice.status !== "voided";
 }
 
+/** Counted as an invoice: a refund document is in the net and never an invoice, a sale or a visit (ADR-071). */
+export function isInvoice(invoice: InvoiceRow): boolean {
+	return invoice.status === "completed" || invoice.status === "edited";
+}
+
 export function summarize(invoices: readonly InvoiceRow[]): DayTotals {
 	const net = sum(invoices.map((invoice) => invoice.netAmount));
-	const count = invoices.length;
+	const count = invoices.filter(isInvoice).length;
 	return { net, invoices: count, avgTicket: count === 0 ? null : net / count };
 }
 

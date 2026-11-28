@@ -5,6 +5,7 @@ import {
 	counterToken,
 	expect,
 	nav,
+	openShiftFor,
 	signIn,
 	test,
 } from "./support/fixtures";
@@ -214,6 +215,79 @@ test("criterion 6: Đối soát ngày shows the revenue, the card and the counte
 	await page.goto("/#/quan-ly/tong-quan");
 	await expect(page.getByTestId("overview-revenue")).toContainText("68.000đ");
 	await expect(page.getByTestId("overview-orders")).toHaveText("2");
+});
+
+test("criterion 6: Đối soát ngày explains a day's difference by the cash of a cancelled paid order still owed back", {
+	tag: ["@criterion-6"],
+}, async ({ page, seeded, db }) => {
+	const minutes = Math.floor((Date.now() + 7 * 3_600_000) / 60_000) % 1_440;
+	test.skip(
+		minutes > 1_430 || minutes < 2,
+		"the business day turns over at Vietnam midnight during the test",
+	);
+	await clearQueue(db, seeded);
+	await db`delete from public.invoices where tenant_id = ${seeded.tenantId} and business_date = (now() at time zone 'Asia/Ho_Chi_Minh')::date`;
+	await openShiftFor(db, seeded, seeded.people.staff.id);
+	// the cashier takes 29,000 in cash for a coffee, the order is cancelled (its refund is due, not handed back yet),
+	// and the drawer, counted blind, still holds the 29,000
+	await asMember(db, seeded.people.staff.id, async (tx) => {
+		const [created] = await tx<
+			{ r: { order: { id: string; version: number; total: number } } }[]
+		>`select app.counter_create_order(${seeded.storeA}::uuid, ${tx.json({
+			request_id: randomUUID(),
+			type: "takeaway",
+			lines: [{ size: seeded.sizes.coffeeM, qty: 1 }],
+		} as never)}::jsonb) as r`;
+		const order = created?.r.order;
+		await tx`select app.counter_record_payment(${order?.id ?? ""}::uuid, 'cash', ${order?.total ?? 0}, ${order?.version ?? 1})`;
+		const [current] = await tx<
+			{ version: number }[]
+		>`select version from public.orders where id = ${order?.id ?? ""}`;
+		await tx`select app.counter_order_act(${order?.id ?? ""}::uuid, 'cancel', ${current?.version ?? 1}, 'customer_request')`;
+		await tx`select app.staff_clock_out(${order?.total ?? 0})`;
+	});
+
+	await signIn(page, seeded.people.manager);
+	await page.goto("/#/quan-ly/ca-lam");
+	const day = page.getByTestId("reconciliation");
+	await expect(day).toBeVisible();
+	const server = await asMember(db, seeded.people.manager.id, async (tx) => {
+		const [row] = await tx<
+			{
+				r: {
+					revenue: number;
+					cash: { counted: number };
+					cash_refund_owed: number;
+					cancelled_cash: number;
+					difference: number;
+					matched: boolean;
+				};
+			}[]
+		>`select app.manager_day_reconciliation(${seeded.storeA}::uuid, (now() at time zone 'Asia/Ho_Chi_Minh')::date) as r`;
+		return row?.r;
+	});
+	expect(server).toMatchObject({
+		revenue: 0,
+		cash: { counted: 29000 },
+		cash_refund_owed: 29000,
+		cancelled_cash: 29000,
+		difference: -29000,
+		matched: false,
+	});
+	await expect(page.getByTestId("reconciliation-status")).toHaveText(
+		"Chưa khớp",
+	);
+	await expect(day).toContainText("Tiền mặt của đơn đã hủy");
+	await expect(page.getByTestId("reconciliation-cancelled-cash")).toContainText(
+		"29.000đ",
+	);
+	await expect(day).toContainText(
+		"Tiền mặt còn nợ khách (đơn đã hủy, chưa hoàn)",
+	);
+	await expect(page.getByTestId("reconciliation-refund-owed")).toContainText(
+		"29.000đ",
+	);
+	await expect(day).toContainText("−29.000đ");
 });
 
 test("security: a manager cannot confirm their own shortage (the database refuses, the screen says so)", {

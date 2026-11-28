@@ -10,6 +10,9 @@ import { vietnamDate } from "../lib/time";
 import { card, field, Loading, PageTitle, PlainNote } from "../ui/kit";
 import { type InvoiceRow, type LineRow, summarizeDay } from "./overview";
 
+/** A refund handed back on a later day can make an amount negative (ADR-071): it is written with its minus sign. */
+const signed = (amount: number) => (amount < 0 ? "delta" : "price");
+
 /** Quản lý → Tổng quan ngày: revenue, orders, the average order, by hour and the best sellers of a business day. */
 export function OverviewPage() {
 	const { t } = useI18n();
@@ -81,6 +84,7 @@ export function OverviewPage() {
 							</p>
 							<PriceText
 								amount={day.data.revenue}
+								kind={signed(day.data.revenue)}
 								size="lead"
 								testId="overview-revenue"
 							/>
@@ -100,7 +104,12 @@ export function OverviewPage() {
 							<p className="text-sm font-bold text-ink-muted">
 								{t("overview.average")}
 							</p>
-							<PriceText amount={day.data.average} size="lead" tone="ink" />
+							<PriceText
+								amount={day.data.average}
+								kind={signed(day.data.average)}
+								size="lead"
+								tone="ink"
+							/>
 						</div>
 					</div>
 					<div className="grid gap-4 lg:grid-cols-2">
@@ -131,8 +140,12 @@ export function OverviewPage() {
 												/>
 											</span>
 											<span className="text-right tabular-nums">
-												<PriceText amount={hour.revenue} tone="ink" /> ·{" "}
-												{t("overview.ordersShort", { count: hour.orders })}
+												<PriceText
+													amount={hour.revenue}
+													kind={signed(hour.revenue)}
+													tone="ink"
+												/>{" "}
+												· {t("overview.ordersShort", { count: hour.orders })}
 											</span>
 										</li>
 									))}

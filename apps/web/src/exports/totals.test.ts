@@ -236,4 +236,25 @@ describe("the daily summary check", () => {
 			dailySummaryMatches({ netAmount: 5_734_500n, invoices: 2 }, control()),
 		).toBe(false);
 	});
+
+	it("does not count a later day's refund documents as invoices (ADR-071)", async () => {
+		const refunded = control({ invoices: 4, refund_invoices: 1 });
+		expect(refunded.tables.invoices.refunds).toBe(1);
+		expect(
+			dailySummaryMatches({ netAmount: 5_734_567n, invoices: 2 }, refunded),
+		).toBe(true);
+		expect(
+			dailySummaryMatches({ netAmount: 5_734_567n, invoices: 3 }, refunded),
+		).toBe(false);
+		// a database that does not report refund documents yet reads as none
+		expect(control().tables.invoices.refunds).toBeUndefined();
+		const records = await tinyRecords("invoices");
+		const withRefund = [
+			...records,
+			{ ...records[0], id: "refund-1", status: "refund", net_amount: -1000 },
+		] as RecordOf<"invoices">[];
+		const totals = await totalsOfRecords("invoices", withRefund);
+		expect(totals).toMatchObject({ rows: 4, voided: 1, refunds: 1 });
+		expect(totals.amount).toBe(5_734_567n - 100_000n);
+	});
 });

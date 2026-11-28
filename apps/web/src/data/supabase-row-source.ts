@@ -50,7 +50,7 @@ const invoiceRow = z.object({
 	business_date: isoDate,
 	sold_at: z.string(),
 	net_amount: money,
-	status: z.enum(["completed", "edited", "voided"]),
+	status: z.enum(["completed", "edited", "voided", "refund"]),
 });
 
 const lineRow = z.object({

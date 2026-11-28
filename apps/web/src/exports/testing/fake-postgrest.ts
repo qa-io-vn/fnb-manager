@@ -22,7 +22,7 @@ export interface FakeInvoice {
 	readonly receipt_no: string | null;
 	readonly business_date: string;
 	readonly sold_at: string;
-	readonly status: "completed" | "edited" | "voided";
+	readonly status: "completed" | "edited" | "voided" | "refund";
 	readonly net_amount: string;
 	readonly gross_amount: string;
 	readonly paid_amount: string;
@@ -363,6 +363,7 @@ export function oracleControlTotals(
 		store_id: storeId,
 		invoices: invoices.length,
 		voided_invoices: invoices.length - kept.length,
+		refund_invoices: kept.filter((row) => row.status === "refund").length,
 		sales_net_amount: decimalFromMinor(
 			sumMinor(kept.map((row) => row.net_amount)),
 		),
@@ -504,7 +505,7 @@ function dailyRow(
 		checked_days: 0,
 		matched_days: 0,
 		...ZERO_TOTALS,
-		invoices: kept.length,
+		invoices: kept.filter((row) => row.status !== "refund").length,
 		net_amount: decimalFromMinor(sumMinor(kept.map((row) => row.net_amount))),
 	};
 }
