@@ -13,6 +13,12 @@ import type {
 	StampCodeAnswer,
 } from "./account-contract";
 import type {
+	InboxFilter,
+	InboxPage,
+	InboxReadAnswer,
+	StartMarketingAnswer,
+} from "./inbox-contract";
+import type {
 	DeleteSavedCompanyAnswer,
 	InvoiceRequestInput,
 	InvoiceStatus,
@@ -546,6 +552,20 @@ export interface OrderingClient {
 	savedCompanies(): Promise<{ readonly companies: readonly SavedCompany[] }>;
 	/** C19: forgets a saved company (a request made with it stays) */
 	deleteSavedCompany(id: string): Promise<DeleteSavedCompanyAnswer>;
+	/** C12: a page of the customer's own inbox (20, newest first; before is the cursor of the next page) */
+	inbox(filter: InboxFilter, before: number | null): Promise<InboxPage>;
+	/** C01's bell: how many of the customer's items are unread */
+	inboxUnread(): Promise<{ readonly unread: number }>;
+	/** C12: marks the customer's own items read (null: every unread one) */
+	markInboxRead(ids: readonly string[] | null): Promise<InboxReadAnswer>;
+	/**
+	 * C12 "Nhận tin ưu đãi qua Zalo" turned on after the opt-in sheet: records the marketing consent with the privacy
+	 * notice's version and when the sheet was shown (the opt-in text's version is the contract's)
+	 */
+	startMarketing(
+		policyVersion: string,
+		shownAt: string,
+	): Promise<StartMarketingAnswer>;
 }
 
 type Row = Readonly<Record<string, unknown>>;

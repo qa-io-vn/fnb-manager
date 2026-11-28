@@ -34,6 +34,16 @@ import {
 	tableArgs,
 } from "./contract";
 import {
+	INBOX_FUNCTIONS,
+	inboxArgs,
+	inboxReadArgs,
+	readInboxPage,
+	readInboxReadAnswer,
+	readInboxUnread,
+	readStartMarketingAnswer,
+	startMarketingArgs,
+} from "./inbox-contract";
+import {
 	INVOICE_FUNCTIONS,
 	invoiceStatusArgs,
 	readDeleteSavedCompanyAnswer,
@@ -155,6 +165,27 @@ export function createRestOrderingClient(rest: RestClient): OrderingClient {
 				await rest.rpc(
 					INVOICE_FUNCTIONS.deleteSavedCompany,
 					savedCompanyArgs(id),
+				),
+			);
+		},
+		async inbox(filter, before) {
+			return readInboxPage(
+				await rest.rpc(INBOX_FUNCTIONS.inbox, inboxArgs(filter, before)),
+			);
+		},
+		async inboxUnread() {
+			return readInboxUnread(await rest.rpc(INBOX_FUNCTIONS.unread));
+		},
+		async markInboxRead(ids) {
+			return readInboxReadAnswer(
+				await rest.rpc(INBOX_FUNCTIONS.read, inboxReadArgs(ids)),
+			);
+		},
+		async startMarketing(policyVersion, shownAt) {
+			return readStartMarketingAnswer(
+				await rest.rpc(
+					INBOX_FUNCTIONS.startMarketing,
+					startMarketingArgs(policyVersion, shownAt),
 				),
 			);
 		},

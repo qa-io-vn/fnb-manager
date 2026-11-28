@@ -120,4 +120,6 @@ export {
 	TOAST_MS,
 	Toast,
 	type ToastProps,
+	Toggle,
+	type ToggleProps,
 } from "./ui-kit/index";

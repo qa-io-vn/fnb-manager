@@ -10,6 +10,7 @@ import {
 	StickyActionBar,
 	TOAST_MS,
 	Toast,
+	Toggle,
 } from "../../src/react/ui-kit/index";
 
 // Test design (ISTQB) for the component kit (design spec 3.3):
@@ -400,5 +401,81 @@ describe("Toast", () => {
 		expect(container.querySelector("b")).toBeNull();
 		expect(screen.getByText("<b>hi</b>")).toBeTruthy();
 		expect(screen.getByTestId("toast").className).toContain("--bottom-clear");
+	});
+});
+
+describe("Toggle", () => {
+	// state transitions of the switch (off -> asked on -> on -> asked off) with the caller deciding; partitions of
+	// disabled and busy; the state word beside it so the state never rests on colour alone
+	function Harness({ busy = false, disabled = false }) {
+		const [on, setOn] = useState(false);
+		return (
+			<Toggle
+				label="Nhận tin ưu đãi qua Zalo"
+				checked={on}
+				stateLabel={on ? "Đang bật" : "Đang tắt"}
+				onChange={setOn}
+				busy={busy}
+				disabled={disabled}
+				testId="toggle"
+			/>
+		);
+	}
+
+	it("is a named switch that says its state and asks for the other one", () => {
+		render(<Harness />);
+		const toggle = screen.getByRole("switch", {
+			name: "Nhận tin ưu đãi qua Zalo",
+		});
+		expect(toggle.getAttribute("aria-checked")).toBe("false");
+		expect(screen.getByText("Đang tắt")).toBeTruthy();
+		fireEvent.click(toggle);
+		expect(toggle.getAttribute("aria-checked")).toBe("true");
+		expect(toggle.getAttribute("data-state")).toBe("on");
+		expect(screen.getByText("Đang bật")).toBeTruthy();
+		fireEvent.click(toggle);
+		expect(toggle.getAttribute("aria-checked")).toBe("false");
+	});
+
+	it("asks nothing while busy or disabled", () => {
+		const onChange = vi.fn();
+		const { rerender } = render(
+			<Toggle
+				label="x"
+				checked={false}
+				stateLabel="Đang tắt"
+				onChange={onChange}
+				busy
+			/>,
+		);
+		fireEvent.click(screen.getByRole("switch"));
+		expect(onChange).not.toHaveBeenCalled();
+		expect(screen.getByRole("switch").getAttribute("aria-busy")).toBe("true");
+		rerender(
+			<Toggle
+				label="x"
+				checked={false}
+				stateLabel="Đang tắt"
+				onChange={onChange}
+				disabled
+			/>,
+		);
+		fireEvent.click(screen.getByRole("switch"));
+		expect(onChange).not.toHaveBeenCalled();
+	});
+
+	it("keeps a 44-pixel target and the off state's edge, with no opacity", () => {
+		render(
+			<Toggle
+				label="x"
+				checked={false}
+				stateLabel="Đang tắt"
+				onChange={() => undefined}
+			/>,
+		);
+		const toggle = screen.getByRole("switch");
+		expect(toggle.className).toContain("min-h-11");
+		expect(toggle.className).not.toMatch(/opacity/);
+		expect(toggle.innerHTML).toContain("border-line-strong");
 	});
 });

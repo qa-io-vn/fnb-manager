@@ -27,3 +27,4 @@ export {
 	type StickyActionBarProps,
 } from "./sticky-action-bar";
 export { TOAST_MS, Toast, type ToastProps } from "./toast";
+export { Toggle, type ToggleProps } from "./toggle";
