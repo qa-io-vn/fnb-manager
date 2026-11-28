@@ -17,7 +17,8 @@ import {
 // - use case: a walk-in order with "Hóa đơn công ty" on the ticket (the form's checks, its errors linked to their
 //   fields, the company held), paid in cash; the payment-confirmed state shows "Đang xuất…" and the company request;
 // - state transitions of the pill on the order detail: Đang xuất… → Chưa xuất được (the job retries) → Đã xuất with
-//   the number; it follows the order without a reload;
+//   the number; it follows the order without a reload; a company invoice keyed while the sale invoice fails leaves the
+//   pill on the sale invoice (Chưa xuất được, then Không xuất được once the job gives up), never Đang xuất…;
 // - the company row of a paid counter order (an invalid tax code blocks it, the server records it once with who keyed
 //   it); none for an order of the app (its customer asks in the app);
 // - security: markup and a CRLF are refused before any call; no tax code in the address or a console line.
@@ -216,6 +217,52 @@ test("Q01: the pill follows the order: Đang xuất…, Chưa xuất được wh
 	await expect(card.getByTestId("einvoice-line")).toContainText("Số 000127");
 	await expect(card.getByTestId("einvoice-lookup")).toHaveText(
 		"Mã tra cứu TC000127",
+	);
+});
+
+test("Q01: a company invoice keyed while the sale invoice fails leaves the pill on the sale invoice, never Đang xuất…", async ({
+	page,
+	seeded,
+	db,
+}) => {
+	const orderId = await paidCounterOrder(db, seeded);
+	// the job's first attempt at the sale invoice fails; it will try again
+	await db`update public.e_invoices set state = 'failed', attempts = 1, round_attempts = 1, last_error_class = 'timeout',
+		last_attempt_at = now(), next_attempt_at = now() + interval '1 minute'
+		where order_id = ${orderId} and kind = 'sale'`;
+	await signIn(page, seeded.people.staff);
+	await page.goto(`/#/don/${orderId}`);
+	const card = page.getByTestId("einvoice-card");
+	await expect(card.getByTestId("einvoice-pill")).toHaveText("Chưa xuất được");
+	// the cashier keys the customer's company meanwhile: the company invoice waits for the sale invoice
+	await page.getByTestId("company-open").click();
+	await page.getByTestId("company-tax_code").fill(TAX);
+	await page.getByTestId("company-company_name").fill(COMPANY);
+	await page.getByTestId("company-address").fill(ADDRESS);
+	await page.getByTestId("company-email").fill(EMAIL);
+	await page.getByTestId("company-submit").click();
+	await expect(page.getByTestId("toast")).toContainText(
+		"Đã ghi yêu cầu hóa đơn công ty",
+	);
+	await expect(card.getByTestId("einvoice-company")).toContainText(
+		`${COMPANY} · MST ${TAX}`,
+	);
+	await expect(card).toHaveAttribute("data-state", "retrying");
+	await expect(card.getByTestId("einvoice-pill")).toHaveText("Chưa xuất được");
+	await expect(card.getByTestId("einvoice-line")).toHaveText(
+		"Hệ thống tự thử lại, đơn vẫn hoàn tất.",
+	);
+	// the job gives up on the sale invoice: the pill says so (a manager sends it again), still not Đang xuất…
+	await db`update public.e_invoices set attempts = 10, round_attempts = 10, last_error_class = 'rejected_data',
+		next_attempt_at = null, gave_up_at = now()
+		where order_id = ${orderId} and kind = 'sale'`;
+	await expect(card).toHaveAttribute("data-state", "failed", {
+		timeout: 25_000,
+	});
+	await expect(card.getByTestId("einvoice-pill")).toHaveText("Không xuất được");
+	await expect(card.getByTestId("einvoice-pill")).toHaveAttribute(
+		"data-tone",
+		"negative",
 	);
 });
 
