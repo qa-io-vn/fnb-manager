@@ -20,8 +20,10 @@ import {
 
 // counter:component/payment-exceptions (Quản lý → Tiền chờ xử lý, ADR-068) with the server faked at client.rpc:
 // - use case: the open list shows each exception's provider, kind in words, amount (and the order's), reference,
-//   linked order and time; a resolved one its resolution, who (the person, a roster name, else "Quản lý hoặc chủ
-//   quán") and when, with the note; the filters ask open, both resolutions, and all; each filter's empty line;
+//   linked order, time and the account that received it (the store's own bank account, the brand's shared one, the
+//   brand's wallet; no line when the server says nothing); a resolved one its resolution, who (the name the server
+//   gives, an owner's too, else "Quản lý hoặc chủ quán") and when, with the note; each filter is one call (open,
+//   resolved, all); each filter's empty line;
 // - state transitions of the resolution dialog: form → (Tiếp tục) confirmation → (Quay lại) form with the focus on the
 //   note → confirmation → (Ghi xử lý) one call, a toast and the list asked again; the confirmation ignores taps for
 //   CONFIRM_ARMING_MS, so a double tap on Tiếp tục never confirms, and a double tap on Ghi xử lý makes one call;
@@ -30,9 +32,9 @@ import {
 // - decision table of the server's answers worded: done, replayed, already_resolved (closed, said on the page, the list
 //   reloaded), 42501 (another store's or tenant's), 22023 (back to the form, the note marked), the network (the same
 //   confirmation tries again);
-// - security (error guessing): a list refused 42501 says "managers only"; markup in a note, an order number and a
-//   reference, control characters and a 300-character reference are written as text; nothing is sent before the
-//   confirmation;
+// - security (error guessing): a list refused 42501 says "managers only"; markup in a note, an order number, a
+//   reference, a resolver's name and a bank's name, control characters and a 300-character reference are written as
+//   text; nothing is sent before the confirmation;
 // - Đối soát ngày's line: none at 0 open, "1 khoản tiền chờ xử lý…" at 1 (BVA), a link to the page.
 
 const STORE = "11111111-0000-4000-8000-00000000000a";
@@ -77,10 +79,6 @@ vi.mock("../lib/session", () => ({
 			},
 		},
 	}),
-	useMember: () => ({
-		member: { tenant_id: "t", display_name: "Quản lý mẫu" },
-		userId: ME,
-	}),
 }));
 vi.mock("../lib/store", () => ({
 	useStore: () => ({ store: { id: STORE, name: "Cửa hàng mẫu A" } }),
@@ -88,9 +86,12 @@ vi.mock("../lib/store", () => ({
 vi.mock("../ui/toast", () => ({
 	useToast: () => ({ show: (text: string) => state.toasts.push(text) }),
 }));
-vi.mock("../orders/api", () => ({
-	rosterNames: async () => new Map([[OTHER, "Quản lý khác"]]),
-}));
+
+const STORE_ACCOUNT = {
+	scope: "store",
+	bank_name: "Ngân hàng mẫu",
+	account_tail: "6789",
+};
 
 function exception(overrides: Record<string, unknown> = {}) {
 	return {
@@ -107,7 +108,9 @@ function exception(overrides: Record<string, unknown> = {}) {
 		status: "open",
 		resolved_at: null,
 		resolved_by: null,
+		resolved_by_name: null,
 		resolution_note: null,
+		account: STORE_ACCOUNT,
 		...overrides,
 	};
 }
@@ -119,8 +122,10 @@ const RESOLVED_BY_ME = exception({
 	status: "refunded",
 	resolved_at: "2026-11-28T08:10:00+00:00",
 	resolved_by: ME,
+	resolved_by_name: "Quản lý mẫu",
 	resolution_note: `Đã chuyển lại ${MARKUP}`,
 });
+// the brand's wallet, resolved by another manager
 const RESOLVED_BY_OTHER = exception({
 	id: "77777777-0000-4000-8000-000000000003",
 	reason: "unknown_reference",
@@ -134,8 +139,11 @@ const RESOLVED_BY_OTHER = exception({
 	received_at: "2026-11-28T06:00:00+00:00",
 	resolved_at: "2026-11-28T06:30:00+00:00",
 	resolved_by: OTHER,
+	resolved_by_name: "Quản lý khác",
 	resolution_note: "Chuyển thử",
+	account: { scope: "brand", bank_name: null, account_tail: null },
 });
+// the owner (never on the roster), named by the server; the money went to the brand's shared account
 const RESOLVED_BY_OWNER = exception({
 	id: "77777777-0000-4000-8000-000000000004",
 	reason: "late",
@@ -144,7 +152,26 @@ const RESOLVED_BY_OWNER = exception({
 	received_at: "2026-11-28T05:00:00+00:00",
 	resolved_at: "2026-11-28T05:30:00+00:00",
 	resolved_by: "88888888-0000-4000-8000-0000000000cc",
+	resolved_by_name: "Chủ quán mẫu",
 	resolution_note: "Khách để lại",
+	account: {
+		scope: "brand",
+		bank_name: "Ngân hàng chung",
+		account_tail: "3210",
+	},
+});
+// someone the server can no longer name, in an answer that says nothing of the account
+const RESOLVED_UNNAMED = exception({
+	id: "77777777-0000-4000-8000-000000000005",
+	reason: "late",
+	expected_amount: 28_000,
+	status: "refunded",
+	received_at: "2026-11-28T04:00:00+00:00",
+	resolved_at: "2026-11-28T04:30:00+00:00",
+	resolved_by: "88888888-0000-4000-8000-0000000000dd",
+	resolved_by_name: null,
+	resolution_note: "Đã trả tiền mặt",
+	account: null,
 });
 
 function wrap(children: ReactNode) {
@@ -206,6 +233,11 @@ describe("the list (use case)", () => {
 		expect(within(row).getByTestId("payment-exception-time")).toHaveTextContent(
 			"Nhận lúc 28/11 14:05",
 		);
+		const account = within(row).getByTestId("payment-exception-account");
+		expect(account).toHaveTextContent(
+			"Tiền vào Ngân hàng mẫu ···6789 (tài khoản của cửa hàng)",
+		);
+		expect(account).toHaveAttribute("data-scope", "store");
 		expect(
 			within(row).getByTestId("payment-exception-status"),
 		).toHaveTextContent("Chờ xử lý");
@@ -224,18 +256,17 @@ describe("the list (use case)", () => {
 		});
 	});
 
-	it("shows who resolved each one, when, and the note; the filters ask both resolutions and all", async () => {
+	it("shows who resolved each one (an owner too), when, the note and the account; one call per filter", async () => {
+		const resolved = [
+			RESOLVED_BY_ME,
+			RESOLVED_BY_OTHER,
+			RESOLVED_BY_OWNER,
+			RESOLVED_UNNAMED,
+		];
 		state.lists = {
 			open: { open: 0, exceptions: [] },
-			refunded: { open: 0, exceptions: [RESOLVED_BY_ME] },
-			dismissed: {
-				open: 0,
-				exceptions: [RESOLVED_BY_OTHER, RESOLVED_BY_OWNER],
-			},
-			all: {
-				open: 0,
-				exceptions: [RESOLVED_BY_ME, RESOLVED_BY_OTHER, RESOLVED_BY_OWNER],
-			},
+			resolved: { open: 0, exceptions: resolved },
+			all: { open: 0, exceptions: resolved },
 		};
 		wrap(<PaymentExceptionsPage />);
 		expect(
@@ -243,28 +274,41 @@ describe("the list (use case)", () => {
 		).toHaveTextContent("Không có khoản tiền nào chờ xử lý.");
 		fireEvent.click(screen.getByRole("button", { name: "Đã xử lý" }));
 		await waitFor(() =>
-			expect(screen.getAllByTestId("payment-exception-row")).toHaveLength(3),
+			expect(screen.getAllByTestId("payment-exception-row")).toHaveLength(4),
 		);
 		const rows = screen.getAllByTestId("payment-exception-row");
-		expect(rows.map((row) => row.getAttribute("data-exception"))).toEqual([
-			RESOLVED_BY_ME.id,
-			RESOLVED_BY_OTHER.id,
-			RESOLVED_BY_OWNER.id,
-		]);
-		const [mine, other, owner] = rows;
-		await waitFor(() =>
-			expect(
-				within(other as HTMLElement).getByTestId(
-					"payment-exception-resolution",
-				),
-			).toHaveTextContent("Đã bỏ qua · Quản lý khác · 28/11 13:30"),
+		expect(rows.map((row) => row.getAttribute("data-exception"))).toEqual(
+			resolved.map((exception) => exception.id),
 		);
+		const [mine, other, owner, unnamed] = rows as HTMLElement[];
+		expect(
+			within(other as HTMLElement).getByTestId("payment-exception-resolution"),
+		).toHaveTextContent("Đã bỏ qua · Quản lý khác · 28/11 13:30");
 		expect(
 			within(mine as HTMLElement).getByTestId("payment-exception-resolution"),
 		).toHaveTextContent("Đã trả lại khách · Quản lý mẫu · 28/11 15:10");
 		expect(
 			within(owner as HTMLElement).getByTestId("payment-exception-resolution"),
-		).toHaveTextContent("Đã bỏ qua · Quản lý hoặc chủ quán · 28/11 12:30");
+		).toHaveTextContent("Đã bỏ qua · Chủ quán mẫu · 28/11 12:30");
+		expect(
+			within(unnamed as HTMLElement).getByTestId(
+				"payment-exception-resolution",
+			),
+		).toHaveTextContent(
+			"Đã trả lại khách · Quản lý hoặc chủ quán · 28/11 11:30",
+		);
+		// which account received each: the brand's wallet, the brand's bank account, none said
+		expect(
+			within(other as HTMLElement).getByTestId("payment-exception-account"),
+		).toHaveTextContent("Tiền vào Ví Zalo (tài khoản chung của thương hiệu)");
+		expect(
+			within(owner as HTMLElement).getByTestId("payment-exception-account"),
+		).toHaveTextContent(
+			"Tiền vào Ngân hàng chung ···3210 (tài khoản chung của thương hiệu)",
+		);
+		expect(
+			within(unnamed as HTMLElement).queryByTestId("payment-exception-account"),
+		).not.toBeInTheDocument();
 		// a resolved one has no button; an unknown reference says so and has no order
 		for (const row of rows) {
 			expect(
@@ -294,11 +338,14 @@ describe("the list (use case)", () => {
 		await waitFor(() =>
 			expect(listCalls().map((call) => call.args.p_status)).toEqual([
 				"open",
-				"refunded",
-				"dismissed",
+				"resolved",
 				null,
 			]),
 		);
+		// no other read: the names come with the list
+		expect(
+			state.calls.every((call) => call.fn === "manager_payment_exceptions"),
+		).toBe(true);
 	});
 
 	it("says each filter's empty list", async () => {
@@ -344,16 +391,21 @@ describe("the list (use case)", () => {
 					}),
 				],
 			},
-			refunded: {
+			resolved: {
 				open: 1,
 				exceptions: [
 					exception({
 						...RESOLVED_BY_ME,
 						resolution_note: `${MARKUP}\u0007\u001b[31m`,
+						resolved_by_name: `<b>${MARKUP}</b>`,
+						account: {
+							scope: "store",
+							bank_name: `<i>${MARKUP}</i>`,
+							account_tail: "<u>",
+						},
 					}),
 				],
 			},
-			dismissed: { open: 1, exceptions: [] },
 		};
 		const { container } = wrap(<PaymentExceptionsPage />);
 		const row = await screen.findByTestId("payment-exception-row");
@@ -369,7 +421,14 @@ describe("the list (use case)", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Đã xử lý" }));
 		const note = await screen.findByTestId("payment-exception-note");
 		expect(note.textContent).toBe(`Ghi chú: ${MARKUP}\u0007\u001b[31m`);
+		expect(
+			screen.getByTestId("payment-exception-resolution"),
+		).toHaveTextContent(`<b>${MARKUP}</b>`);
+		expect(screen.getByTestId("payment-exception-account").textContent).toBe(
+			`Tiền vào <i>${MARKUP}</i> ···<u> (tài khoản của cửa hàng)`,
+		);
 		expect(container.querySelector("img")).toBeNull();
+		expect(container.querySelector("b, i, u")).toBeNull();
 		expect(container.querySelector("script")).toBeNull();
 	});
 

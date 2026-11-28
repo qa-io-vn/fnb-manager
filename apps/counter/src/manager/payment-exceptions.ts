@@ -3,9 +3,10 @@ import { RpcError, rpc } from "../lib/rpc";
 
 // The managers' queue of money a verified provider reported and the server did not apply to an order (ADR-068;
 // docs/api.md 3.29): a transfer of another amount, a late one, a second payment of a paid order, a reference nobody
-// issued. manager_payment_exceptions lists a store's (newest first, at most 200); manager_resolve_payment_exception
-// closes one as refunded (handed back outside the app) or dismissed, with a note of 1 to 200 characters on one line.
-// The answers are read strictly here; the server decides every state and checks the note again.
+// issued. manager_payment_exceptions lists a store's (newest first, at most 200; open, resolved or all in one call),
+// with who resolved each one by name and which account received the money; manager_resolve_payment_exception closes
+// one as refunded (handed back outside the app) or dismissed, with a note of 1 to 200 characters on one line. The
+// answers are read strictly here; the server decides every state and checks the note again.
 
 export const EXCEPTION_REASONS = [
 	"amount_differs",
@@ -23,9 +24,25 @@ export type ExceptionStatus = (typeof EXCEPTION_STATUSES)[number];
 export const RESOLUTIONS = ["refunded", "dismissed"] as const;
 export type Resolution = (typeof RESOLUTIONS)[number];
 
-/** The page's filters: the server filters one status or none, so "resolved" asks for both resolutions. */
+/** The page's filters; the server answers each in one call ("resolved": both resolutions, "all": no status). */
 export const EXCEPTION_FILTERS = ["open", "resolved", "all"] as const;
 export type ExceptionFilter = (typeof EXCEPTION_FILTERS)[number];
+
+/** What manager_payment_exceptions filters by: a status, both resolutions, or null for all. */
+export type ExceptionQuery = ExceptionStatus | "resolved" | null;
+
+/** Which of the tenant's accounts received the money: a store's own or the brand-wide one. */
+export const ACCOUNT_SCOPES = ["store", "brand"] as const;
+export type AccountScope = (typeof ACCOUNT_SCOPES)[number];
+
+/** The receiving account as the server describes it: never the full number, never the payer's. */
+export interface ReceivingAccount {
+	readonly scope: AccountScope;
+	/** a VietQR account's bank; null for a wallet */
+	readonly bank_name: string | null;
+	/** the last 4 characters of a VietQR account's number when the money arrived */
+	readonly account_tail: string | null;
+}
 
 /** The note's limit, in characters as the server counts them (code points). */
 export const NOTE_MAX = 200;
@@ -47,7 +64,11 @@ export interface PaymentException {
 	readonly status: ExceptionStatus;
 	readonly resolved_at: string | null;
 	readonly resolved_by: string | null;
+	/** who resolved it, by name (the roster's, else their Zalo sign-in's); null while open or when no name is known */
+	readonly resolved_by_name: string | null;
 	readonly resolution_note: string | null;
+	/** null when the server does not say (an answer from before it did) */
+	readonly account: ReceivingAccount | null;
 }
 
 export interface PaymentExceptions {
@@ -98,6 +119,24 @@ function instant(row: Row, key: string): string {
 	return value;
 }
 
+/** The receiving account, or null when the answer has none. */
+export function readReceivingAccount(value: unknown): ReceivingAccount | null {
+	if (value === null || value === undefined) return null;
+	if (!isRow(value))
+		throw new Error("a payment exception's account is not an object");
+	const scope = value.scope;
+	if (
+		typeof scope !== "string" ||
+		!(ACCOUNT_SCOPES as readonly string[]).includes(scope)
+	)
+		throw new Error("a payment exception's account has no known scope");
+	return {
+		scope: scope as AccountScope,
+		bank_name: optionalText(value, "bank_name"),
+		account_tail: optionalText(value, "account_tail"),
+	};
+}
+
 /** One exception of the list, or an error for a malformed one (the page then says it could not load). */
 export function readPaymentException(value: unknown): PaymentException {
 	if (!isRow(value)) throw new Error("a payment exception is not an object");
@@ -128,7 +167,9 @@ export function readPaymentException(value: unknown): PaymentException {
 		status: status as ExceptionStatus,
 		resolved_at: resolvedAt,
 		resolved_by: optionalText(value, "resolved_by"),
+		resolved_by_name: optionalText(value, "resolved_by_name"),
 		resolution_note: optionalText(value, "resolution_note"),
+		account: readReceivingAccount(value.account),
 	};
 }
 
@@ -143,11 +184,11 @@ export function readPaymentExceptions(value: unknown): PaymentExceptions {
 	return { open, exceptions: value.exceptions.map(readPaymentException) };
 }
 
-/** One call of the server's list: a status, or null for all. */
+/** One call of the server's list: a status, both resolutions, or null for all. */
 export async function managerPaymentExceptions(
 	client: SupabaseClient,
 	store: string,
-	status: ExceptionStatus | null,
+	status: ExceptionQuery,
 	limit = LIST_LIMIT,
 ): Promise<PaymentExceptions> {
 	return readPaymentExceptions(
@@ -159,41 +200,19 @@ export async function managerPaymentExceptions(
 	);
 }
 
-/** Newest first, as the server orders them (the time received, then the id). */
-export function newestFirst(
-	a: Pick<PaymentException, "received_at" | "id">,
-	b: Pick<PaymentException, "received_at" | "id">,
-): number {
-	return (
-		Date.parse(b.received_at) - Date.parse(a.received_at) ||
-		(a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-	);
+/** What a filter asks the server for. */
+export function queryOf(filter: ExceptionFilter): ExceptionQuery {
+	return filter === "all" ? null : filter;
 }
 
-/** The list of a filter: open, all, or both resolutions merged newest first (two calls, each with the limit). */
+/** The list of a filter, in one call: the server filters and orders it (newest first) under the limit. */
 export async function exceptionsFor(
 	client: SupabaseClient,
 	store: string,
 	filter: ExceptionFilter,
 	limit = LIST_LIMIT,
 ): Promise<PaymentExceptions> {
-	if (filter !== "resolved")
-		return await managerPaymentExceptions(
-			client,
-			store,
-			filter === "open" ? "open" : null,
-			limit,
-		);
-	const [refunded, dismissed] = await Promise.all([
-		managerPaymentExceptions(client, store, "refunded", limit),
-		managerPaymentExceptions(client, store, "dismissed", limit),
-	]);
-	return {
-		open: dismissed.open,
-		exceptions: [...refunded.exceptions, ...dismissed.exceptions]
-			.sort(newestFirst)
-			.slice(0, limit),
-	};
+	return await managerPaymentExceptions(client, store, queryOf(filter), limit);
 }
 
 export async function resolvePaymentException(
@@ -340,13 +359,27 @@ export function failureKey(error: unknown): string {
 	return "common.failed";
 }
 
-/** Who resolved it: the signed-in person, a name of the roster, else "a manager or the owner". */
+/** Who resolved it, by the server's name (an owner included); null when it knows none (the page says "a manager or the owner"). */
 export function resolverName(
-	resolvedBy: string | null,
-	me: { readonly userId: string; readonly name: string },
-	names: ReadonlyMap<string, string>,
+	exception: Pick<PaymentException, "status" | "resolved_by_name">,
 ): string | null {
-	if (resolvedBy === null) return null;
-	if (resolvedBy === me.userId) return me.name;
-	return names.get(resolvedBy) ?? null;
+	return exception.status === "open" ? null : exception.resolved_by_name;
+}
+
+/**
+ * The receiving account in words: a VietQR account's bank with the last characters of its number ("Ngân hàng mẫu
+ * ···6789"), or a null label when the page words the provider instead (a wallet); and the key of its scope. Null when
+ * the server said nothing about the account.
+ */
+export function accountWords(
+	account: ReceivingAccount | null,
+): { readonly label: string | null; readonly scopeKey: string } | null {
+	if (account === null) return null;
+	const label =
+		account.bank_name === null
+			? null
+			: account.account_tail === null
+				? account.bank_name
+				: `${account.bank_name} ···${account.account_tail}`;
+	return { label, scopeKey: `paymentExceptions.scope.${account.scope}` };
 }

@@ -5,15 +5,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { RpcError } from "../lib/rpc";
-import { useMember, useSession } from "../lib/session";
+import { useSession } from "../lib/session";
 import { useStore } from "../lib/store";
 import { dayAndClock } from "../lib/time";
-import { rosterNames } from "../orders/api";
 import { Dialog } from "../ui/dialog";
 import { AlertIcon } from "../ui/icons";
 import { button, card, field, Loading, PageTitle, PlainNote } from "../ui/kit";
 import { useToast } from "../ui/toast";
 import {
+	accountWords,
 	checkNote,
 	EXCEPTION_FILTERS,
 	type ExceptionFilter,
@@ -40,9 +40,10 @@ import {
 
 // Quản lý → Tiền chờ xử lý (ADR-068; docs/api.md 3.29): the money a verified provider reported that the server did not
 // apply to an order (another amount, late, a second payment, a reference nobody issued), newest first, open by
-// default; a manager resolves an open one as handed back or dismissed, with a note, after confirming (both are final).
-// None of it is in the day's revenue: Đối soát ngày links here while any is open. Owners and managers of the store
-// only: the database refuses staff (and another store's or tenant's exception) with 42501.
+// default, each with the account that received it; a manager resolves an open one as handed back or dismissed, with a
+// note, after confirming (both are final), and a resolved one names who resolved it as the server names them (an owner
+// included). None of it is in the day's revenue: Đối soát ngày links here while any is open. Owners and managers of
+// the store only: the database refuses staff (and another store's or tenant's exception) with 42501.
 
 export const PAYMENT_EXCEPTIONS_PATH = "/quan-ly/tien-cho-xu-ly";
 
@@ -92,6 +93,7 @@ function Row({
 }) {
 	const { t } = useI18n();
 	const received = dayAndClock(exception.received_at);
+	const account = accountWords(exception.account);
 	return (
 		<li
 			className={`${card} flex flex-col gap-2 p-4 md:flex-row md:items-center`}
@@ -176,6 +178,18 @@ function Row({
 						{t("paymentExceptions.receivedAt", { time: received })}
 					</span>
 				</p>
+				{account === null ? null : (
+					<p
+						className="min-w-0 break-words text-sm"
+						data-testid="payment-exception-account"
+						data-scope={exception.account?.scope}
+					>
+						{t("paymentExceptions.accountLine", {
+							account: account.label ?? t(methodKey(exception.method)),
+							scope: t(account.scopeKey),
+						})}
+					</p>
+				)}
 				{exception.status === "open" ||
 				exception.resolved_at === null ? null : (
 					<div
@@ -572,7 +586,6 @@ export function PaymentExceptionsPage() {
 	const { t } = useI18n();
 	const { client } = useSession();
 	const { store } = useStore();
-	const { member, userId } = useMember();
 	const { show } = useToast();
 	const queryClient = useQueryClient();
 	const [filter, setFilter] = useState<ExceptionFilter>("open");
@@ -584,24 +597,12 @@ export function PaymentExceptionsPage() {
 		refetchInterval: 30_000,
 	});
 	const data = list.data;
-	const anyResolved =
-		data?.exceptions.some((exception) => exception.status !== "open") ?? false;
-	const names = useQuery({
-		queryKey: ["roster-names", member.tenant_id],
-		queryFn: () => rosterNames(client),
-		enabled: anyResolved,
-		staleTime: 300_000,
-	});
 	const reload = () =>
 		void queryClient.invalidateQueries({
 			queryKey: ["payment-exceptions", store.id],
 		});
 	const nameOf = (exception: PaymentException) =>
-		resolverName(
-			exception.resolved_by,
-			{ userId, name: member.display_name },
-			names.data ?? new Map(),
-		) ?? t("paymentExceptions.someone");
+		resolverName(exception) ?? t("paymentExceptions.someone");
 	return (
 		<div
 			className="mx-auto flex max-w-5xl flex-col gap-4"
