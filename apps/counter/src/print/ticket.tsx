@@ -1,6 +1,7 @@
 import { formatVnd } from "@fnb/zalo-mini/format";
 import { dayAndClock } from "../lib/time";
-import { lineDetails } from "../orders/order-bits";
+import { isScheduled } from "../orders/board-model";
+import { lineDetails, timeOn } from "../orders/order-bits";
 import type { Order } from "../orders/types";
 
 /**
@@ -19,6 +20,19 @@ export interface Ticket {
 }
 
 type T = (key: string, params?: Record<string, string | number>) => string;
+
+/**
+ * The pick-up line of a takeaway (C17): "Hẹn 07:30 · bắt đầu pha 07:15" while its preparation start is ahead at `now`,
+ * "Mang đi · lấy 15:30" otherwise; the date is added when it is not the day of `now`. Null for a table order or a
+ * takeaway "as soon as possible". The ticket and the order's detail say the same.
+ */
+export function pickupLine(order: Order, now: number, t: T): string | null {
+	if (order.type !== "takeaway" || order.pickup_at === null) return null;
+	const time = timeOn(order.pickup_at, now);
+	return isScheduled(order, now) && order.start_at
+		? t("order.scheduledLine", { time, start: timeOn(order.start_at, now) })
+		: t("order.pickupLine", { time });
+}
 
 export function ticketOf(
 	order: Order,
@@ -39,8 +53,11 @@ export function ticketOf(
 			align: "center",
 		},
 		{ text: dayAndClock(order.placed_at), size: "small", align: "center" },
-		{ text: "--------------------------------", size: "small" },
 	];
+	const pickup = pickupLine(order, context.printedAt.getTime(), t);
+	if (pickup !== null)
+		lines.push({ text: pickup, size: "normal", align: "center" });
+	lines.push({ text: "--------------------------------", size: "small" });
 	for (const line of order.lines) {
 		lines.push({ text: `${line.quantity}× ${line.item_name}`, size: "big" });
 		const details = lineDetails(line);

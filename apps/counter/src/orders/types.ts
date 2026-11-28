@@ -85,6 +85,10 @@ export interface Order {
 		readonly label: string;
 	} | null;
 	readonly pickup_at: string | null;
+	/** a takeaway booked for a pick-up time: when its preparation should start (the pick-up less the store's prep_minutes) */
+	readonly start_at?: string | null;
+	/** the server's snapshot of "accepted and start_at still ahead"; the queue decides on its own clock (isScheduled) */
+	readonly scheduled?: boolean;
 	readonly status: OrderStatus;
 	readonly payment_status: PaymentStatus;
 	readonly payment_method: string | null;
@@ -134,6 +138,8 @@ export interface BoardAnswer {
 	readonly cursor: number;
 	readonly counts: {
 		readonly accepted: number;
+		/** accepted takeaway orders whose preparation start is still ahead (counted in accepted too) */
+		readonly scheduled?: number;
 		readonly preparing: number;
 		readonly ready: number;
 		readonly serving: number;

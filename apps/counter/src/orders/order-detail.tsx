@@ -8,6 +8,7 @@ import { isManager, useMember, useSession } from "../lib/session";
 import { useStore } from "../lib/store";
 import { clockOf, dayAndClock } from "../lib/time";
 import { usePrinter } from "../print/printer";
+import { pickupLine } from "../print/ticket";
 import { BackIcon, NoteIcon, PrinterIcon, QrIcon } from "../ui/icons";
 import { button, card, Loading, PlainNote } from "../ui/kit";
 import { useToast } from "../ui/toast";
@@ -200,6 +201,11 @@ export function OrderDetailPage() {
 					{t("order.placedAt", { time: clockOf(order.placed_at) })} ·{" "}
 					{t(`order.source.${order.source}`)}
 				</p>
+				{pickupLine(order, now, t) === null ? null : (
+					<p className="text-lg font-extrabold" data-testid="order-pickup">
+						{pickupLine(order, now, t)}
+					</p>
+				)}
 			</section>
 			<div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
 				<section className={`${card} flex flex-col gap-3 p-5`}>

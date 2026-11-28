@@ -12,15 +12,19 @@ import { act } from "./api";
 import { useBoard } from "./board-context";
 import {
 	closedOrders,
+	isScheduled,
 	type Lane,
 	laneOrders,
 	nextAction,
 	payable,
+	scheduledOrders,
 	waitingMinutes,
 } from "./board-model";
 import {
 	LineList,
 	PaymentLabel,
+	PickupLabel,
+	pickupWords,
 	placeOf,
 	StatusLabel,
 	useNow,
@@ -47,7 +51,10 @@ function OrderCard({
 	const [busy, setBusy] = useState(false);
 	const next = nextAction(order);
 	const minutes = waitingMinutes(order, now);
-	const late = order.late === true;
+	// a booking whose preparation start is ahead is never late and says when to start instead of how long it waited
+	const booked = isScheduled(order, now);
+	const late = order.late === true && !booked;
+	const start = booked ? pickupWords(order, now, t)?.start : null;
 	const quick = async () => {
 		if (next === null) return;
 		if (next === "complete" && order.payment_status === "unpaid") {
@@ -76,10 +83,11 @@ function OrderCard({
 	};
 	return (
 		<li
-			className={`${card} flex flex-col gap-2 border-l-[6px] p-4 ${late ? "border-negative bg-negative-soft" : order.status === "preparing" ? "border-l-warning" : "border-l-accent"}`}
+			className={`${card} flex flex-col gap-2 border-l-[6px] p-4 ${late ? "border-negative bg-negative-soft" : booked ? "border-l-line-strong" : order.status === "preparing" ? "border-l-warning" : "border-l-accent"}`}
 			data-testid="order-card"
 			data-order-id={order.id}
 			data-late={late ? "true" : "false"}
+			data-scheduled={booked ? "true" : "false"}
 		>
 			<div className="flex flex-wrap items-center gap-2">
 				<button
@@ -93,13 +101,17 @@ function OrderCard({
 						{order.display_no}
 					</span>
 				</button>
+				<PickupLabel order={order} now={now} />
 				<span
 					className={`ml-auto flex items-center gap-1 text-sm font-bold ${late ? "text-negative" : "text-ink-muted"}`}
+					data-testid={start ? "start-time" : undefined}
 				>
 					<ClockIcon size={16} />
-					{late
-						? t("queue.late", { minutes })
-						: t("queue.minutes", { minutes })}
+					{start
+						? start
+						: late
+							? t("queue.late", { minutes })
+							: t("queue.minutes", { minutes })}
 				</span>
 			</div>
 			<LineList order={order} compact />
@@ -192,17 +204,22 @@ function Banners() {
 	);
 }
 
-/** Đơn: the queue in three lanes (S02), newest on top, late ones in red with words, "Chưa thu tiền" on unpaid ones. */
+/**
+ * Đơn: the queue in three lanes (S02), newest on top, late ones in red with words, "Chưa thu tiền" on unpaid ones; above
+ * them, the takeaway orders booked for later (C17) as "Hẹn giờ", the next to start first, each joining Mới at its start.
+ */
 export function QueuePage() {
 	const { t } = useI18n();
 	const { state } = useBoard();
-	const now = useNow();
+	// every answer of the board (2 s) moves the clock too, so a booking joins Mới within a poll of its start
+	const now = Math.max(useNow(), state.lastOkAt ?? 0);
 	const [lane, setLane] = useState<Lane>("new");
 	const [paying, setPaying] = useState<Order | null>(null);
 	const { update } = useBoard();
 	const closed = closedOrders(state);
+	const booked = scheduledOrders(state, now);
 	const column = (key: Lane, visible: boolean) => {
-		const orders = laneOrders(state, key);
+		const orders = laneOrders(state, key, now);
 		return (
 			<section
 				key={key}
@@ -250,12 +267,36 @@ export function QueuePage() {
 				<Loading label={t("app.loading")} />
 			) : (
 				<>
+					{booked.length === 0 ? null : (
+						<section
+							className="flex flex-col gap-3"
+							aria-labelledby="lane-scheduled-title"
+							data-testid="lane-scheduled"
+						>
+							<h2 id="lane-scheduled-title" className="text-lg font-extrabold">
+								{t("queue.lane.scheduled")} · {booked.length}
+							</h2>
+							<p className="text-sm text-ink-muted">
+								{t("queue.scheduledLead")}
+							</p>
+							<ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+								{booked.map((order) => (
+									<OrderCard
+										key={order.id}
+										order={order}
+										now={now}
+										onPay={setPaying}
+									/>
+								))}
+							</ul>
+						</section>
+					)}
 					<div className="md:hidden">
 						<ChipGroup
 							label={t("queue.lanes")}
 							chips={LANES.map((key) => ({
 								key,
-								label: `${t(`queue.lane.${key}`)} · ${laneOrders(state, key).length}`,
+								label: `${t(`queue.lane.${key}`)} · ${laneOrders(state, key, now).length}`,
 							}))}
 							selected={lane}
 							onSelect={(key) => setLane(key as Lane)}

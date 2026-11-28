@@ -12,6 +12,7 @@ import { rosterNames } from "../orders/api";
 import { PlusIcon } from "../ui/icons";
 import { button, card, field, Loading, PageTitle, PlainNote } from "../ui/kit";
 import { useToast } from "../ui/toast";
+import { TakeawaySettingsCard } from "./takeaway-settings-card";
 
 interface Category {
 	readonly id: string;
@@ -146,7 +147,10 @@ function PriceField({
 	);
 }
 
-/** Quản lý → Thực đơn và giá: categories, items, sizes and prices, written under RLS; every price change is in the log. */
+/**
+ * Quản lý → Thực đơn và giá: categories, items, sizes and prices, written under RLS; every price change is in the log;
+ * beside them the store's takeaway booking settings (C17).
+ */
 export function MenuEditorPage() {
 	const { t } = useI18n();
 	const { client } = useSession();
@@ -262,6 +266,7 @@ export function MenuEditorPage() {
 					))}
 				</section>
 				<aside className="flex flex-col gap-4">
+					<TakeawaySettingsCard />
 					<section className={`${card} flex flex-col gap-2 p-4`}>
 						<h2 className="font-extrabold">{t("menuEdit.addItem")}</h2>
 						<input

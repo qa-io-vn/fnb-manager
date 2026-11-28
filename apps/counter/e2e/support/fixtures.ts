@@ -1,6 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { test as base, expect, type Page } from "@playwright/test";
+import {
+	test as base,
+	expect,
+	type Locator,
+	type Page,
+} from "@playwright/test";
 import postgres, { type Sql } from "postgres";
 import type { SeededPerson, SeededTenant } from "../../test/support/seed";
 import { SEEDED_FILE } from "./ports";
@@ -167,5 +172,44 @@ export async function refusalOf(
 		} catch (error) {
 			return (error as { code?: string }).code ?? "error";
 		}
+	});
+}
+
+/** The contrast of an element's text on the first opaque background behind it (WCAG's relative luminance). */
+export async function contrastOf(locator: Locator): Promise<number> {
+	return await locator.evaluate((element) => {
+		const parse = (text: string) => {
+			const match = /rgba?\(([^)]+)\)/.exec(text);
+			if (match === null) throw new Error(`a colour not in rgb: ${text}`);
+			const parts = (match[1] ?? "")
+				.split(/[\s,/]+/)
+				.filter((part) => part !== "")
+				.map(Number);
+			return {
+				r: parts[0] ?? 0,
+				g: parts[1] ?? 0,
+				b: parts[2] ?? 0,
+				a: parts[3] ?? 1,
+			};
+		};
+		let node: Element | null = element;
+		let background = { r: 255, g: 255, b: 255, a: 1 };
+		while (node !== null) {
+			const colour = parse(getComputedStyle(node).backgroundColor);
+			if (colour.a > 0) {
+				background = colour;
+				break;
+			}
+			node = node.parentElement;
+		}
+		const channel = (value: number) => {
+			const v = value / 255;
+			return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+		};
+		const luminance = (c: { r: number; g: number; b: number }) =>
+			0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b);
+		const a = luminance(parse(getComputedStyle(element).color));
+		const b = luminance(background);
+		return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 	});
 }

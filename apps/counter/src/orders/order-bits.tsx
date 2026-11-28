@@ -1,6 +1,8 @@
 import { useI18n } from "@fnb/zalo-mini/i18n";
 import { StatusPill, type StatusPillTone } from "@fnb/zalo-mini/ui-kit";
 import { useEffect, useState } from "react";
+import { clockOf, dayAndClock, vietnamDate } from "../lib/time";
+import { isScheduled } from "./board-model";
 import type { Order, OrderLine, OrderStatus, PaymentStatus } from "./types";
 
 /** The current time, moving every `ms` (waiting minutes and red orders follow it). */
@@ -19,6 +21,56 @@ export function placeOf(
 	t: (key: string, params?: Record<string, string | number>) => string,
 ): string {
 	return order.table === null ? t("order.takeaway") : order.table.label;
+}
+
+/** "15:30", or "28/11 07:30" when it is not on the day of `now` (a booking for the next morning). */
+export function timeOn(at: string, now: number): string {
+	return vietnamDate(at) === vietnamDate(now) ? clockOf(at) : dayAndClock(at);
+}
+
+type Translate = (
+	key: string,
+	params?: Record<string, string | number>,
+) => string;
+
+/**
+ * A takeaway's pick-up in words (C17): "hẹn 07:30" with "bắt đầu pha 07:15" while its preparation start is ahead,
+ * "lấy 15:30" once it is in the flow; null for a table order or a takeaway "as soon as possible".
+ */
+export function pickupWords(
+	order: Order,
+	now: number,
+	t: Translate,
+): { readonly label: string; readonly start: string | null } | null {
+	if (order.type !== "takeaway" || order.pickup_at === null) return null;
+	const time = timeOn(order.pickup_at, now);
+	if (isScheduled(order, now) && order.start_at)
+		return {
+			label: t("order.scheduledAt", { time }),
+			start: t("order.startAt", { time: timeOn(order.start_at, now) }),
+		};
+	return { label: t("order.pickupAt", { time }), start: null };
+}
+
+/** The pick-up of a takeaway as a pill ("hẹn 07:30" in the booking's colour, "lấy 15:30" neutral), or nothing. */
+export function PickupLabel({
+	order,
+	now,
+}: {
+	readonly order: Order;
+	readonly now: number;
+}) {
+	const { t } = useI18n();
+	const words = pickupWords(order, now, t);
+	if (words === null) return null;
+	return (
+		<StatusPill
+			tone={words.start === null ? "neutral" : "badge"}
+			testId="pickup-time"
+		>
+			{words.label}
+		</StatusPill>
+	);
 }
 
 /** The size, the options and the note of a line, joined by middle dots ("Lớn · Ít đá · không ngọt"). */
