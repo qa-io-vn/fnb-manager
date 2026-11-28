@@ -10009,6 +10009,18 @@
 					"format": "uuid",
 					"type": "string"
 				},
+				"takeaway_slot_limit": {
+					"default": 6,
+					"description": "how many takeaway orders one pick-up slot takes (1 to 100, 6 by default): an order holds its place from its placement while its payment is open, and for good once paid",
+					"format": "int32",
+					"type": "integer"
+				},
+				"takeaway_slot_minutes": {
+					"default": 15,
+					"description": "the length of a takeaway pick-up slot in minutes (5, 10, 15, 20, 30 or 60, a divisor of an hour so slots start on the clock: 15 by default, 07:00, 07:15 …); the last pick-up of an opening span is its closing less one slot",
+					"format": "int32",
+					"type": "integer"
+				},
 				"tenant_id": {
 					"description": "Note:\nThis is a Foreign Key to `tenants.id`.<fk table='tenants' column='id'/>",
 					"format": "uuid",
@@ -10052,7 +10064,9 @@
 				"counter_qr_version",
 				"standard_day_hours",
 				"standard_month_days",
-				"company_invoice_days"
+				"company_invoice_days",
+				"takeaway_slot_minutes",
+				"takeaway_slot_limit"
 			],
 			"type": "object"
 		},
@@ -23020,6 +23034,20 @@
 		"rowFilter.store_ordering_settings.store_id": {
 			"in": "query",
 			"name": "store_id",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_ordering_settings.takeaway_slot_limit": {
+			"description": "how many takeaway orders one pick-up slot takes (1 to 100, 6 by default): an order holds its place from its placement while its payment is open, and for good once paid",
+			"in": "query",
+			"name": "takeaway_slot_limit",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.store_ordering_settings.takeaway_slot_minutes": {
+			"description": "the length of a takeaway pick-up slot in minutes (5, 10, 15, 20, 30 or 60, a divisor of an hour so slots start on the clock: 15 by default, 07:00, 07:15 …); the last pick-up of an opening span is its closing less one slot",
+			"in": "query",
+			"name": "takeaway_slot_minutes",
 			"required": false,
 			"type": "string"
 		},
@@ -50517,6 +50545,47 @@
 				"tags": ["(rpc) customer_cancel_request"]
 			}
 		},
+		"/rpc/customer_change_pickup": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C17): app.customer_change_pickup at the current time",
+							"properties": {
+								"p_order": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"p_pickup_at": {
+									"format": "timestamp with time zone",
+									"type": "string"
+								}
+							},
+							"required": ["p_order", "p_pickup_at"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C17): app.customer_change_pickup at the current time",
+				"tags": ["(rpc) customer_change_pickup"]
+			}
+		},
 		"/rpc/customer_check_cart": {
 			"get": {
 				"parameters": [
@@ -51841,6 +51910,66 @@
 				},
 				"summary": "RPC for the customer Mini App: app.customer_table at the current time",
 				"tags": ["(rpc) customer_table"]
+			}
+		},
+		"/rpc/customer_takeaway_slots": {
+			"get": {
+				"parameters": [
+					{
+						"format": "text",
+						"in": "query",
+						"name": "p_store_code",
+						"required": true,
+						"type": "string"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C17): the takeaway pick-up slots of a store of the app's brand (app.takeaway_slots) at the server's current time; 42501 without a customer session, 22023 for a store that is not the brand's",
+				"tags": ["(rpc) customer_takeaway_slots"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C17): the takeaway pick-up slots of a store of the app's brand (app.takeaway_slots) at the server's current time; 42501 without a customer session, 22023 for a store that is not the brand's",
+							"properties": {
+								"p_store_code": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"required": ["p_store_code"],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C17): the takeaway pick-up slots of a store of the app's brand (app.takeaway_slots) at the server's current time; 42501 without a customer session, 22023 for a store that is not the brand's",
+				"tags": ["(rpc) customer_takeaway_slots"]
 			}
 		},
 		"/rpc/customer_vouchers": {
@@ -64148,6 +64277,12 @@
 						"$ref": "#/parameters/rowFilter.store_ordering_settings.company_invoice_days"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.takeaway_slot_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.takeaway_slot_limit"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -64238,6 +64373,12 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.store_ordering_settings.company_invoice_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.takeaway_slot_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.takeaway_slot_limit"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -64357,6 +64498,12 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.store_ordering_settings.company_invoice_days"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.takeaway_slot_minutes"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.store_ordering_settings.takeaway_slot_limit"
 					},
 					{
 						"$ref": "#/parameters/body.store_ordering_settings"
