@@ -27,6 +27,7 @@ import { ReconciliationDialog } from "../shift/reconciliation";
 import { Dialog } from "../ui/dialog";
 import { button, card, field, Loading, PageTitle, PlainNote } from "../ui/kit";
 import { useToast } from "../ui/toast";
+import { PaymentExceptionsLine } from "./payment-exceptions-page";
 
 export const DIFFERENCE_REASONS = [
 	"wrongChange",
@@ -449,6 +450,7 @@ function Reconciliation({ date }: { readonly date: string }) {
 					<PriceText amount={value.difference} kind="delta" tone="ink" />
 				</p>
 			) : null}
+			<PaymentExceptionsLine />
 		</section>
 	);
 }

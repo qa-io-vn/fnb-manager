@@ -98,6 +98,8 @@ const ACCEPTANCE_UNIT = [
 			"src/shift/reconciliation.test.ts",
 			"src/shift/reconciliation-view.test.tsx",
 			"src/manager/manager.test.ts",
+			"src/manager/payment-exceptions.test.ts",
+			"src/manager/payment-exceptions-page.test.tsx",
 		],
 	],
 	[
