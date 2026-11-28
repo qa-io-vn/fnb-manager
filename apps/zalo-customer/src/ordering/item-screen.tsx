@@ -25,9 +25,10 @@ import {
 	noteProblem,
 	selectionProblem,
 } from "./cart";
-import { closedKind } from "./order-view";
+import { ONLINE_PAYMENT_ENABLED } from "./flag";
 import { useMenuPoll, useOrdering } from "./ordering-data";
 import { FlowBack, MenuIcon, Problem } from "./parts";
+import { orderingOpen } from "./takeaway";
 
 // C03 Chi tiết món (design spec 6.2): the size with its price, each option group with its limits, a note of at most
 // 100 characters and the quantity, then "Thêm vào giỏ · {price}". The price on the button is the menu's, shown to
@@ -47,7 +48,7 @@ function ItemView({
 	const { t } = useI18n();
 	const navigate = useNavigate();
 	const location = useLocation();
-	const { add, replace, cart } = useOrdering();
+	const { add, replace, cart, fulfilment } = useOrdering();
 	const lineKey = (location.state as ItemLocationState | null)?.lineKey;
 	const editing = cart.lines.find((line) => line.key === lineKey) ?? null;
 	const groups = useMemo(() => groupsOf(item, menu.optionGroups), [item, menu]);
@@ -94,7 +95,7 @@ function ItemView({
 		(group) => selectionProblem(group, chosen[group.id] ?? []) !== null,
 	);
 	const noteIssue = noteProblem(note);
-	const open = closedKind(menu.ordering) === null;
+	const open = orderingOpen(menu.ordering, fulfilment, ONLINE_PAYMENT_ENABLED);
 
 	const submit = () => {
 		setTried(true);

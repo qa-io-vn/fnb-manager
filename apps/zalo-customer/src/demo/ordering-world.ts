@@ -151,6 +151,17 @@ export interface DemoTill extends DemoInvoiceTill {
 	attachToCard(stamps: number): void;
 	/** how many member codes the customer was issued */
 	stampCodes(): number;
+	/**
+	 * C17: other customers take places in a takeaway slot (its start, an ISO instant), as their bookings would; answers
+	 * the places the slot has given
+	 */
+	fillSlot(at: string, count?: number): number;
+	/** C17: how many takeaway orders one slot takes (2 by default) */
+	setSlotLimit(limit: number): void;
+	/** C17: the store's preparation minutes (15 with takeaway on) */
+	setPrepMinutes(minutes: number): void;
+	/** C17: an order's pick-up time (the latest order's when no id is given), or null */
+	pickupOf(orderId?: string): string | null;
 }
 
 interface DemoLine {
@@ -193,6 +204,8 @@ interface DemoOrder {
 	orderNo: number | null;
 	readonly type: "table" | "takeaway";
 	readonly tableLabel: string | null;
+	/** a takeaway's pick-up slot (C17); moved by customer_change_pickup while the payment is open */
+	pickupAt?: string | null;
 	readonly paymentMethod: "counter" | "zalo_checkout" | "vietqr";
 	status: string;
 	paymentStatus: string;
@@ -422,6 +435,7 @@ export function createOrderingWorld(
 	onlinePayments = false,
 	member = false,
 	einvoiceOn = true,
+	takeawayOn = false,
 ): OrderingWorld {
 	const items = demoMenuItems();
 	// this world's own option groups: the till takes options off and makes a group required
@@ -464,6 +478,11 @@ export function createOrderingWorld(
 	const methods = onlinePayments
 		? ["counter", "zalo_checkout", "vietqr"]
 		: ["counter"];
+	// C17 with `?takeaway=on`: the store takes takeaway too, open 07:00-23:00 every day, 15 minutes to prepare, slots of
+	// 15 minutes, the last pick-up at 22:45, two orders a slot; a booking holds its place 10 minutes while unpaid
+	let prepMs = takeawayOn ? 15 * 60_000 : DEMO_PREP_MS;
+	let slotLimit = 2;
+	const slotFill = new Map<number, number>();
 
 	const iso = () => new Date(now()).toISOString();
 	const displayNo = (no: number | null) =>
@@ -501,6 +520,14 @@ export function createOrderingWorld(
 	orderCount = 1;
 	numbers = 1;
 
+	const types = takeawayOn ? ["table", "takeaway"] : ["table"];
+	/** the next 07:00 on the shop's clock: today's before it, else tomorrow's */
+	const nextOpening = () => {
+		const opening = Date.parse(`${isoDateIn(now())}T07:00:00+07:00`);
+		return opening > now()
+			? opening
+			: Date.parse(`${isoDateIn(now() + 24 * 3_600_000)}T07:00:00+07:00`);
+	};
 	const orderingState = (type: string | null) => {
 		const accepting = reason === null;
 		const opensAt =
@@ -508,18 +535,22 @@ export function createOrderingWorld(
 			reason === "closed_today" ||
 			reason === "last_orders_passed"
 				? new Date(
-						`${isoDateIn(now() + 24 * 3_600_000)}T07:00:00+07:00`,
+						takeawayOn
+							? nextOpening()
+							: Date.parse(
+									`${isoDateIn(now() + 24 * 3_600_000)}T07:00:00+07:00`,
+								),
 					).toISOString()
 				: null;
 		return {
-			accepting: accepting && (type === null || type === "table"),
+			accepting: accepting && (type === null || types.includes(type)),
 			reason: !accepting
 				? reason
-				: type !== null && type !== "table"
+				: type !== null && !types.includes(type)
 					? "ordering_off"
 					: null,
 			till_mode: "native",
-			order_types: ["table"],
+			order_types: types,
 			payment_methods: methods,
 			opens_at: opensAt,
 			closes_at: null,
@@ -561,7 +592,7 @@ export function createOrderingWorld(
 						description: item.description,
 						photo_path: null,
 						labels: item.labels,
-						order_types: ["table"],
+						order_types: types,
 						counts_for_stamps: item.counts_for_stamps,
 						sizes: item.sizes.map((size) => ({
 							id: size.id,
@@ -579,15 +610,25 @@ export function createOrderingWorld(
 				code: DEMO_ORDERING_STORE,
 				name: DEMO_STORE_NAME,
 				address: "12 Đường Số 1, Phường Mẫu, Thành phố Mẫu",
-				opening_hours: {
-					mon: [["07:00", "22:00"]],
-					tue: [["07:00", "22:00"]],
-					wed: [["07:00", "22:00"]],
-					thu: [["07:00", "22:00"]],
-					fri: [["07:00", "22:30"]],
-					sat: [["07:30", "22:30"]],
-					sun: [["07:30", "21:30"]],
-				},
+				opening_hours: takeawayOn
+					? {
+							mon: [["07:00", "23:00"]],
+							tue: [["07:00", "23:00"]],
+							wed: [["07:00", "23:00"]],
+							thu: [["07:00", "23:00"]],
+							fri: [["07:00", "23:00"]],
+							sat: [["07:00", "23:00"]],
+							sun: [["07:00", "23:00"]],
+						}
+					: {
+							mon: [["07:00", "22:00"]],
+							tue: [["07:00", "22:00"]],
+							wed: [["07:00", "22:00"]],
+							thu: [["07:00", "22:00"]],
+							fri: [["07:00", "22:30"]],
+							sat: [["07:30", "22:30"]],
+							sun: [["07:30", "21:30"]],
+						},
 			},
 			order_type: type,
 			ordering: orderingState(type),
@@ -711,9 +752,122 @@ export function createOrderingWorld(
 				: order.status === "accepted"
 					? order.acceptedAt
 					: null;
-		return from === null
-			? null
-			: new Date(Date.parse(from) + DEMO_PREP_MS).toISOString();
+		if (from === null) return null;
+		const at = Date.parse(from) + prepMs;
+		// not before the pick-up time (app.order_ready_estimate)
+		const pickup =
+			order.status === "accepted" && order.pickupAt
+				? Date.parse(order.pickupAt)
+				: 0;
+		return new Date(Math.max(at, pickup)).toISOString();
+	};
+
+	// C17's slots, as app.takeaway_slots answers them: the day from the clock, each slot free, passed or full
+	const SLOT_MS = 15 * 60_000;
+	const localDay = (date: string, minutes: number) =>
+		Date.parse(`${date}T00:00:00+07:00`) + minutes * 60_000;
+	const minutesOfDay = (instant: number) =>
+		Math.round(
+			(instant - Date.parse(`${isoDateIn(instant)}T00:00:00+07:00`)) / 60_000,
+		);
+	const takenAt = (start: number) =>
+		(slotFill.get(start) ?? 0) +
+		orders.filter(
+			(order) =>
+				order.type === "takeaway" &&
+				typeof order.pickupAt === "string" &&
+				Date.parse(order.pickupAt) === start &&
+				(["accepted", "preparing", "ready", "completed"].includes(
+					order.status,
+				) ||
+					(order.status === "awaiting_payment" &&
+						order.paymentDueAt !== null &&
+						Date.parse(order.paymentDueAt) > now())),
+		).length;
+	const closedLike = (value: string | null) =>
+		value === "closed_now" ||
+		value === "closed_today" ||
+		value === "last_orders_passed";
+	/** the bookable day and its earliest start, or the refusal (app.takeaway_offer) */
+	const takeawayOffer = () => {
+		const state = orderingState("takeaway");
+		if (!takeawayOn) return { refusal: "ordering_off", state } as const;
+		if (!state.accepting && !closedLike(state.reason))
+			return { refusal: state.reason ?? "ordering_off", state } as const;
+		let earliest = now() + prepMs;
+		if (!state.accepting && state.opens_at !== null)
+			earliest = Math.max(earliest, Date.parse(state.opens_at));
+		let date = isoDateIn(earliest);
+		const first = Math.max(
+			localDay(date, 7 * 60),
+			Math.ceil(earliest / SLOT_MS) * SLOT_MS,
+		);
+		if (first > localDay(date, 22 * 60 + 45))
+			date = isoDateIn(localDay(date, 25 * 60));
+		return { refusal: null, state, earliest, date } as const;
+	};
+	const takeawaySlots = () => {
+		const offer = takeawayOffer();
+		if (offer.refusal !== null)
+			return {
+				state: "refused",
+				refusal: offer.refusal,
+				now: iso(),
+				date: null,
+				pre_order: false,
+				asap_at: null,
+				opens_at: null,
+				closes_at: null,
+				last_pickup_at: null,
+				prep_minutes: prepMs / 60_000,
+				slot_minutes: 15,
+				slots: [],
+				ordering: offer.state,
+			};
+		const slots = [];
+		for (let minutes = 7 * 60; minutes <= 22 * 60 + 45; minutes += 15) {
+			const start = localDay(offer.date, minutes);
+			const passed = start < offer.earliest;
+			const full = !passed && takenAt(start) >= slotLimit;
+			slots.push({
+				start: new Date(start).toISOString(),
+				available: !passed && !full,
+				reason: passed ? "passed" : full ? "full" : null,
+			});
+		}
+		return {
+			state: "ok",
+			refusal: null,
+			now: iso(),
+			date: offer.date,
+			pre_order: !offer.state.accepting,
+			asap_at: offer.state.accepting
+				? new Date(now() + prepMs).toISOString()
+				: null,
+			opens_at: new Date(localDay(offer.date, 7 * 60)).toISOString(),
+			closes_at: new Date(localDay(offer.date, 23 * 60)).toISOString(),
+			last_pickup_at: new Date(
+				localDay(offer.date, 22 * 60 + 45),
+			).toISOString(),
+			prep_minutes: prepMs / 60_000,
+			slot_minutes: 15,
+			slots,
+			ordering: offer.state,
+		};
+	};
+	/** why a pick-up time cannot be booked now, null when it can (app.takeaway_slot_refusal) */
+	const slotRefusal = (pickup: number): string | null => {
+		if (!Number.isFinite(pickup)) return "pickup_time_invalid";
+		if (pickup < now() + prepMs) return "slot_passed";
+		const offer = takeawayOffer();
+		if (offer.refusal !== null) return offer.refusal;
+		if (!offer.state.accepting && pickup < offer.earliest) return "closed";
+		if (pickup % SLOT_MS !== 0) return "pickup_time_invalid";
+		const minutes = minutesOfDay(pickup);
+		if (minutes < 7 * 60 || minutes > 22 * 60 + 45) return "closed";
+		if (isoDateIn(pickup) !== offer.date) return "pickup_time_invalid";
+		if (takenAt(pickup) >= slotLimit) return "slot_full";
+		return null;
 	};
 
 	const orderJson = (order: DemoOrder, withTimeline: boolean) => ({
@@ -725,7 +879,14 @@ export function createOrderingWorld(
 		type: order.type,
 		table:
 			order.tableLabel === null ? null : { id: null, label: order.tableLabel },
-		pickup_at: null,
+		pickup_at: order.pickupAt ?? null,
+		start_at: order.pickupAt
+			? new Date(Date.parse(order.pickupAt) - prepMs).toISOString()
+			: null,
+		scheduled:
+			order.status === "accepted" &&
+			typeof order.pickupAt === "string" &&
+			Date.parse(order.pickupAt) - prepMs > now(),
 		status: order.status,
 		payment_status: order.paymentStatus,
 		payment_method: order.paymentMethod,
@@ -822,7 +983,9 @@ export function createOrderingWorld(
 		}
 		checkStore(request.store);
 		const state = orderingState(String(request.type));
-		if (!state.accepting)
+		const booking =
+			request.type === "takeaway" && typeof request.pickup_at === "string";
+		if (!state.accepting && !(booking && closedLike(state.reason)))
 			return refused(String(state.reason), { ordering: state });
 		if (
 			orders.filter(
@@ -845,8 +1008,21 @@ export function createOrderingWorld(
 			return refused("table_not_for_takeaway");
 		}
 		const payment = String(request.payment);
-		if (!methods.includes(payment) || request.type === "takeaway")
+		if (
+			!methods.includes(payment) ||
+			(request.type === "takeaway" && payment === "counter")
+		)
 			return refused("payment_not_allowed");
+		if (request.type === "table" && typeof request.pickup_at === "string")
+			return refused("pickup_time_invalid");
+		const pickupAt = booking
+			? new Date(Date.parse(String(request.pickup_at))).toISOString()
+			: null;
+		if (booking) {
+			const refusal = slotRefusal(Date.parse(String(request.pickup_at)));
+			if (refusal !== null)
+				return refused(refusal, { pickup_at: request.pickup_at });
+		}
 		const priced = priceLines(request.lines as Record<string, unknown>[]);
 		if (!priced.ok) {
 			const { ok: _ok, refusal, ...rest } = priced;
@@ -870,8 +1046,9 @@ export function createOrderingWorld(
 			requestId: String(request.request_id),
 			hash,
 			orderNo: online ? null : numbers,
-			type: "table",
+			type: request.type === "takeaway" ? "takeaway" : "table",
 			tableLabel: table?.label ?? null,
+			pickupAt,
 			paymentMethod: payment as DemoOrder["paymentMethod"],
 			status: online ? "awaiting_payment" : "accepted",
 			paymentStatus: "unpaid",
@@ -881,7 +1058,9 @@ export function createOrderingWorld(
 			note: noteOf(request.note),
 			placedAt: at,
 			paymentDueAt: online
-				? new Date(now() + DEMO_PAYMENT_WINDOW_MS).toISOString()
+				? new Date(
+						now() + (pickupAt === null ? DEMO_PAYMENT_WINDOW_MS : 10 * 60_000),
+					).toISOString()
 				: null,
 			acceptedAt: online ? null : at,
 			preparingAt: null,
@@ -934,6 +1113,67 @@ export function createOrderingWorld(
 			reward: null,
 			menu_version: version,
 			ordering: orderingState(String(request.type)),
+		};
+	};
+
+	const changePickup = (args: Readonly<Record<string, unknown>>) => {
+		const order = mine(args.p_order);
+		if (order === null)
+			return {
+				state: "refused",
+				refusal: "unknown_order",
+				replayed: false,
+				order: null,
+			};
+		const at = String(args.p_pickup_at);
+		if (
+			order.status === "awaiting_payment" &&
+			typeof order.pickupAt === "string" &&
+			Date.parse(order.pickupAt) === Date.parse(at)
+		)
+			return {
+				state: "changed",
+				refusal: null,
+				replayed: true,
+				order: orderJson(order, false),
+			};
+		if (
+			order.type !== "takeaway" ||
+			order.status !== "awaiting_payment" ||
+			order.paymentDueAt === null ||
+			Date.parse(order.paymentDueAt) <= now()
+		)
+			return {
+				state: "refused",
+				refusal: "not_changeable",
+				replayed: false,
+				order: orderJson(order, false),
+			};
+		const refusal = slotRefusal(Date.parse(at));
+		if (refusal !== null)
+			return {
+				state: "refused",
+				refusal,
+				replayed: false,
+				pickup_at: at,
+				order: orderJson(order, false),
+			};
+		order.pickupAt = new Date(Date.parse(at)).toISOString();
+		order.version += 1;
+		order.events.push({
+			kind: "status",
+			action: "pickup_changed",
+			from: "awaiting_payment",
+			to: "awaiting_payment",
+			at: iso(),
+			reason_code: null,
+			amount: null,
+		});
+		return {
+			state: "changed",
+			refusal: null,
+			replayed: false,
+			order: orderJson(order, false),
 		};
 	};
 
@@ -1163,6 +1403,20 @@ export function createOrderingWorld(
 		},
 		stampCodes() {
 			return stampCodesIssued;
+		},
+		fillSlot(at, count = 1) {
+			const start = Date.parse(at);
+			slotFill.set(start, (slotFill.get(start) ?? 0) + count);
+			return takenAt(start);
+		},
+		setSlotLimit(limit) {
+			slotLimit = limit;
+		},
+		setPrepMinutes(minutes) {
+			prepMs = minutes * 60_000;
+		},
+		pickupOf(orderId) {
+			return target(orderId)?.pickupAt ?? null;
 		},
 
 		soldOut(itemId, on) {
@@ -1669,6 +1923,11 @@ export function createOrderingWorld(
 			}
 			case ORDERING_FUNCTIONS.checkCart:
 				return checkCart(args);
+			case ORDERING_FUNCTIONS.takeawaySlots:
+				checkStore(args.p_store_code);
+				return takeawaySlots();
+			case ORDERING_FUNCTIONS.changePickup:
+				return changePickup(args);
 			case ORDERING_FUNCTIONS.placeOrder:
 				return place(args);
 			case ORDERING_FUNCTIONS.order: {
@@ -1696,6 +1955,7 @@ export function createOrderingWorld(
 							placed_at: order.placedAt,
 							items: order.lines.reduce((sum, line) => sum + line.quantity, 0),
 							ready_estimate_at: readyEstimate(order),
+							pickup_at: order.pickupAt ?? null,
 						})),
 					next_before: null,
 				};
@@ -1934,6 +2194,7 @@ export function createOrderingWorld(
 		till,
 		changingFunctions: [
 			ORDERING_FUNCTIONS.placeOrder,
+			ORDERING_FUNCTIONS.changePickup,
 			ORDERING_FUNCTIONS.cancelOrder,
 			ORDERING_FUNCTIONS.callStaff,
 			ACCOUNT_FUNCTIONS.stampCode,

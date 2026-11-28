@@ -149,6 +149,28 @@ export default defineConfig({
 			testMatch: /ordering-payment\.spec\.ts/,
 			use: { ...devices["iPhone 14"], ...payment, colorScheme: "light" },
 		},
+		// Takeaway with a pick-up time (C17) on the payment build (takeaway is prepaid online): every frame at 360 px in
+		// light, at 390 px in dark, and on WebKit as an iPhone
+		{
+			name: "takeaway-360-light",
+			testMatch: /ordering-takeaway\.spec\.ts/,
+			use: { ...phone, ...payment, colorScheme: "light" },
+		},
+		{
+			name: "takeaway-390-dark",
+			testMatch: /ordering-takeaway\.spec\.ts/,
+			use: {
+				...phone,
+				...payment,
+				viewport: { width: 390, height: 844 },
+				colorScheme: "dark",
+			},
+		},
+		{
+			name: "takeaway-webkit",
+			testMatch: /ordering-takeaway\.spec\.ts/,
+			use: { ...devices["iPhone 14"], ...payment, colorScheme: "light" },
+		},
 		{
 			name: "budget",
 			testMatch: /budget\.spec\.ts/,

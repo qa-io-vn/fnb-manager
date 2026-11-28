@@ -123,7 +123,12 @@ function OrderCard({
 							<span className="text-[13px] text-ink-muted">
 								{order.type === "table" && order.tableLabel !== null
 									? t("orders.metaTable", { date, table: order.tableLabel })
-									: t("orders.metaTakeaway", { date })}
+									: order.pickupAt !== null
+										? t("orders.metaTakeawayAt", {
+												date,
+												time: clock(order.pickupAt),
+											})
+										: t("orders.metaTakeaway", { date })}
 							</span>
 							<StatusPill tone={status.tone}>{t(status.key)}</StatusPill>
 						</span>

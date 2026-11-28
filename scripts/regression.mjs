@@ -135,6 +135,10 @@ const CUSTOMER_ORDERING_PROJECTS = [
 	"payment-light",
 	"payment-dark",
 	"payment-webkit",
+	// C17: a takeaway booked for a pick-up time, paid online (criteria 1 and 3)
+	"takeaway-360-light",
+	"takeaway-390-dark",
+	"takeaway-webkit",
 ];
 
 const SMOKE_WEB_DEMO_SPECS = [

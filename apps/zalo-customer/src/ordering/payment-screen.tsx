@@ -47,10 +47,16 @@ type Retry =
 function bodyKey(state: ResultState, order: Order): string {
 	switch (state) {
 		case "failed":
-		case "left":
+		case "left": {
+			// a takeaway is prepaid: its failed payment offers no "Trả tại quầy" (C17)
+			const kind =
+				state === "failed" && order.type === "takeaway"
+					? "failedTakeaway"
+					: state;
 			return order.paymentDueAt === null
-				? `pay.body.${state}NoTime`
-				: `pay.body.${state}`;
+				? `pay.body.${kind}NoTime`
+				: `pay.body.${kind}`;
+		}
 		case "expired":
 			return order.paymentStatus === "unpaid"
 				? "pay.body.expired"

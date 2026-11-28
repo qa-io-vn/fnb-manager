@@ -82,7 +82,10 @@ describe("demo settings", () => {
 			orderingReason: null,
 			onlinePayments: false,
 			einvoiceOff: false,
+			takeaway: false,
 		});
+		expect(demoSettingsFrom("?takeaway=on").takeaway).toBe(true);
+		expect(demoSettingsFrom("?takeaway=1").takeaway).toBe(false);
 		expect(demoSettingsFrom("?payments=online").onlinePayments).toBe(true);
 		expect(demoSettingsFrom("?payments=all").onlinePayments).toBe(false);
 		expect(demoSettingsFrom("?einvoice=off").einvoiceOff).toBe(true);

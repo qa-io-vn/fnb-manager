@@ -83,6 +83,8 @@ function order(overrides: Partial<Order> = {}): Order {
 		type: "table",
 		tableLabel: "Bàn 12",
 		pickupAt: null,
+		startAt: null,
+		scheduled: false,
 		status: "awaiting_payment",
 		paymentStatus: "unpaid",
 		paymentMethod: "zalo_checkout",

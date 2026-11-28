@@ -7,6 +7,7 @@ import { spansText } from "../home/model";
 import { closedKind } from "./order-view";
 import { useOrdering } from "./ordering-data";
 import {
+	CalendarIcon,
 	ClockIcon,
 	clock,
 	Notice,
@@ -26,17 +27,35 @@ function dayWord(t: (key: string) => string, iso: string, now: number): string {
 	return shownDate(day);
 }
 
-/** C15: the shop is closed now (or today, or has no hours); no character on a state about hours. */
-export function ClosedState({ menu }: { readonly menu: Menu }) {
+/**
+ * C15: the shop is closed now (or today, or has no hours); no character on a state about hours. A store that books a
+ * takeaway for its next opening (D7, C17) says so in the body and offers "Hẹn lấy món sáng mai" first (onPreorder);
+ * without it the screen is as it was.
+ */
+export function ClosedState({
+	menu,
+	preOrder = false,
+	onPreorder = null,
+}: {
+	readonly menu: Menu;
+	/** the store books a takeaway for its next opening: the body says so */
+	readonly preOrder?: boolean;
+	/** "Hẹn lấy món sáng mai": shown when given */
+	readonly onPreorder?: (() => void) | null;
+}) {
 	const { t } = useI18n();
 	const ordering = menu.ordering;
 	const now = Date.now();
 	const spans = menu.store.openingHours[weekdayOf(isoDateIn(now))] ?? [];
+	const opensTomorrow =
+		ordering.opensAt !== null &&
+		isoDateIn(Date.parse(ordering.opensAt)) === addDays(isoDateIn(now), 1);
 	return (
 		<section
 			className="flex flex-col items-center gap-3 rounded-card bg-surface-raised px-5 py-6 text-center shadow-card"
 			data-testid="ordering-closed"
 			data-reason={ordering.reason ?? ""}
+			data-preorder={preOrder}
 		>
 			<h2 className="text-xl font-bold text-ink">
 				{ordering.reason === "hours_unknown"
@@ -48,10 +67,16 @@ export function ClosedState({ menu }: { readonly menu: Menu }) {
 					{t("closed.today", { reason: ordering.closureReason })}
 				</p>
 			) : null}
-			<p className="text-body text-ink">
-				{spans.length > 0
-					? t("closed.body", { hours: spansText(spans) })
-					: t("closed.bodyNoHours")}
+			<p className="text-body text-ink" data-testid="closed-body">
+				{preOrder && !opensTomorrow
+					? t("closed.bodyPreorderLater")
+					: spans.length > 0
+						? t(preOrder ? "closed.bodyPreorder" : "closed.body", {
+								hours: spansText(spans),
+							})
+						: preOrder
+							? t("closed.bodyPreorderLater")
+							: t("closed.bodyNoHours")}
 			</p>
 			{ordering.opensAt === null ? null : (
 				<p
@@ -66,6 +91,17 @@ export function ClosedState({ menu }: { readonly menu: Menu }) {
 						day: dayWord(t, ordering.opensAt, now),
 					})}
 				</p>
+			)}
+			{onPreorder === null ? null : (
+				<button
+					type="button"
+					className={`${kitButton.primary} w-full`}
+					onClick={onPreorder}
+					data-testid="closed-preorder"
+				>
+					<CalendarIcon />
+					{t(opensTomorrow ? "closed.preorder" : "closed.preorderLater")}
+				</button>
 			)}
 		</section>
 	);
@@ -144,11 +180,20 @@ export function useTableScan(): {
 	return { scan, problem };
 }
 
-/** The table the orders go to, as the server named it, or why there is none. */
+/** The table the orders go to, as the server named it, or why there is none; a takeaway says so instead (C17). */
 export function TableContextNote() {
 	const { t } = useI18n();
-	const { table, retryTable } = useOrdering();
+	const { table, retryTable, fulfilment } = useOrdering();
 	const { scan, problem } = useTableScan();
+	if (fulfilment === "takeaway")
+		return (
+			<p
+				className="inline-flex items-center gap-2 self-start rounded-full bg-neutral-soft px-3 py-1.5 text-body font-bold text-ink"
+				data-testid="takeaway-banner"
+			>
+				{t("ordering.takeawayBanner")}
+			</p>
+		);
 	if (table?.state === "ok")
 		return (
 			<p

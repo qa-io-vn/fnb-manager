@@ -35,6 +35,7 @@ import {
 	requestLines,
 	setQuantity,
 } from "./cart";
+import { ONLINE_PAYMENT_ENABLED } from "./flag";
 import type { CheckoutPort } from "./payment-port";
 import {
 	applyReorder,
@@ -54,6 +55,11 @@ import {
 	tableLinkFromEvent,
 	tableLinkFromText,
 } from "./table-link";
+import {
+	type Fulfilment,
+	type PickupChoice,
+	takeawayOffered,
+} from "./takeaway";
 
 // The ordering state of the app (design spec 6.1, C01 to C07): the store it orders from, the table the server named
 // for the scanned QR, the menu and its version poll, the basket in memory, the request being placed (one request_id
@@ -109,6 +115,18 @@ export interface OrderingValue {
 	readonly priceChanges: readonly PriceChange[];
 	readonly orders: Load<OrderList>;
 	readonly polls: PollRegistry;
+	/**
+	 * How the customer receives the order (C05 "Nhận món"): at the table the server named, or takeaway, which the
+	 * app offers where the store takes it and the build pays online (takeaway is prepaid). Without a table the app
+	 * starts on takeaway when it is offered; a scanned table starts on the table again.
+	 */
+	readonly fulfilment: Fulfilment;
+	/** whether the store offers takeaway to this build now */
+	readonly takeaway: boolean;
+	setFulfilment(fulfilment: Fulfilment): void;
+	/** the pick-up chosen on C17, kept while the customer goes back and forth (C17-E4) until the order is placed */
+	readonly pickup: PickupChoice | null;
+	setPickup(pickup: PickupChoice | null): void;
 	reloadMenu(): void;
 	add(line: NewLine): AddOutcome;
 	replace(key: string, line: NewLine): void;
@@ -204,6 +222,14 @@ export function OrderingProvider({
 		const found = opening === null ? null : tableLinkFromEvent(opening.data);
 		if (found !== null) setTableLink(found);
 	}, [opening]);
+	const [chosenFulfilment, setChosenFulfilment] = useState<Fulfilment | null>(
+		null,
+	);
+	const [pickup, setPickup] = useState<PickupChoice | null>(null);
+	// a new table link (opened or scanned) starts on the table again
+	useEffect(() => {
+		if (tableLink !== null) setChosenFulfilment(null);
+	}, [tableLink]);
 	const scanTable = useCallback((content: string): boolean => {
 		const found = tableLinkFromText(content);
 		if (found !== null) setTableLink(found);
@@ -391,6 +417,8 @@ export function OrderingProvider({
 		(answer: PlaceAnswer, options?: { readonly keepCart?: boolean }) => {
 			pending.current = null;
 			if (answer.state !== "refused") {
+				// the pick-up went with the order; the next takeaway chooses its own
+				setPickup(null);
 				if (options?.keepCart !== true) {
 					cartRef.current = EMPTY_CART;
 					setCart(EMPTY_CART);
@@ -431,6 +459,18 @@ export function OrderingProvider({
 	);
 
 	const unavailable = useMemo(() => union(polled, gone), [polled, gone]);
+	const takeaway =
+		menu.status === "ready" &&
+		takeawayOffered(menu.data.ordering, ONLINE_PAYMENT_ENABLED);
+	const atTable = table !== null && table.state !== "refused";
+	const fulfilment: Fulfilment =
+		chosenFulfilment === "takeaway"
+			? takeaway
+				? "takeaway"
+				: "table"
+			: chosenFulfilment === "table" || atTable || !takeaway
+				? "table"
+				: "takeaway";
 	const value = useMemo<OrderingValue>(
 		() => ({
 			client,
@@ -444,6 +484,11 @@ export function OrderingProvider({
 			priceChanges,
 			orders,
 			polls,
+			fulfilment,
+			takeaway,
+			setFulfilment: setChosenFulfilment,
+			pickup,
+			setPickup,
 			reloadMenu,
 			add,
 			replace: (key, line) =>
@@ -472,6 +517,9 @@ export function OrderingProvider({
 			priceChanges,
 			orders,
 			polls,
+			fulfilment,
+			takeaway,
+			pickup,
 			reloadMenu,
 			add,
 			change,

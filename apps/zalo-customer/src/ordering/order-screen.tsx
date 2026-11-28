@@ -20,6 +20,7 @@ import {
 } from "./order-view";
 import { useOrdering } from "./ordering-data";
 import { BellIcon, CheckIcon, clock, Notice, Panel, Problem } from "./parts";
+import { pickupWords } from "./takeaway";
 
 // C06 Đơn của bạn (design spec 6.2): the order's state from the server, asked every 3 seconds while the screen is on
 // show and the order is not finished, the timeline with the time of each step, the lines and the total, "Gọi nhân
@@ -127,6 +128,24 @@ function StatusCard({
 			>
 				{headline}
 			</h1>
+			{order.type === "takeaway" ? (
+				<p
+					className="text-[15px] font-bold text-ink"
+					data-testid="order-pickup"
+					data-at={order.pickupAt ?? ""}
+				>
+					{order.pickupAt === null
+						? t("order.pickupSoon")
+						: t("order.pickupAt", {
+								when: pickupWords(t, order.pickupAt, now),
+							})}
+				</p>
+			) : null}
+			{order.scheduled && order.startAt !== null ? (
+				<p className="text-[13px] text-ink" data-testid="order-pickup-start">
+					{t("order.pickupStart", { time: clock(order.startAt) })}
+				</p>
+			) : null}
 			{stage === "pay_at_counter" ? (
 				<p className="text-[13px] text-ink">{t("order.line.pay_at_counter")}</p>
 			) : stage === "preparing" && order.paymentStatus === "unpaid" ? (

@@ -16,9 +16,10 @@ import {
 	lineTotal,
 	unavailableLines,
 } from "./cart";
-import { closedKind } from "./order-view";
+import { ONLINE_PAYMENT_ENABLED } from "./flag";
 import { useMenuPoll, useOrdering } from "./ordering-data";
 import {
+	BagIcon,
 	FlowBack,
 	MenuIcon,
 	Notice,
@@ -30,12 +31,13 @@ import {
 import type { ReorderReport } from "./reorder";
 import { ReorderReportNotice } from "./reorder-report";
 import { useTableScan } from "./states";
+import { orderingOpen, pickupWords } from "./takeaway";
 
 // C04 Giỏ của bạn and C10 Giỏ trống (design spec 6.2). The basket shows the lines with the menu's prices, flags a line
 // whose item just sold out (the version poll, criterion 2) and refuses to go on until it is removed, flags a line that
 // lacks a required choice (a basket "Đặt lại" filled, C14) until it is chosen on the item screen, and goes on to the
-// confirmation only with a table the server named, a shop that takes orders and a network. Arriving from "Đặt lại", it
-// says first what could not be added.
+// confirmation only with a table the server named (or as a takeaway, C17), a shop that takes orders (or books a
+// takeaway for its next opening) and a network. Arriving from "Đặt lại", it says first what could not be added.
 
 /** The navigation state "Đặt lại" leaves for the basket. */
 export interface CartLocationState {
@@ -76,8 +78,60 @@ export function EmptyCart() {
 
 function ContextCard() {
 	const { t } = useI18n();
-	const { table } = useOrdering();
+	const { table, fulfilment, takeaway, setFulfilment, pickup } = useOrdering();
 	const { scan, problem } = useTableScan();
+	if (fulfilment === "takeaway")
+		return (
+			<Panel testId="cart-context">
+				<div className="flex items-center gap-3">
+					<span className="text-highlight">
+						<BagIcon />
+					</span>
+					<div className="flex min-w-0 flex-1 flex-col">
+						<p
+							className="text-[15px] font-bold text-ink"
+							data-testid="cart-takeaway"
+						>
+							{t("cart.takeawayContext")}
+						</p>
+						<p className="text-[13px] text-ink-muted">
+							{pickup === null
+								? t("cart.takeawayContextSub")
+								: t("cart.takeawayPickup", {
+										when:
+											pickup.kind === "asap"
+												? t("checkout.pickupAsap")
+												: pickupWords(t, pickup.at, Date.now()),
+									})}
+						</p>
+					</div>
+					{table?.state === "ok" ? (
+						<button
+							type="button"
+							className={kitButton.quiet}
+							onClick={() => setFulfilment("table")}
+							data-testid="cart-context-change"
+						>
+							{t("checkout.table", { table: table.label })}
+						</button>
+					) : (
+						<button
+							type="button"
+							className={kitButton.quiet}
+							onClick={scan}
+							data-testid="cart-context-change"
+						>
+							{t("cart.scan")}
+						</button>
+					)}
+				</div>
+				{problem === null ? null : (
+					<p role="alert" className="text-body text-ink">
+						{t(problem)}
+					</p>
+				)}
+			</Panel>
+		);
 	return (
 		<Panel testId="cart-context">
 			<div className="flex items-center gap-3">
@@ -108,7 +162,18 @@ function ContextCard() {
 						</>
 					)}
 				</div>
-				{table?.state === "ok" ? null : (
+				{table?.state === "ok" ? (
+					takeaway ? (
+						<button
+							type="button"
+							className={kitButton.quiet}
+							onClick={() => setFulfilment("takeaway")}
+							data-testid="cart-context-change"
+						>
+							{t("cart.switchTakeaway")}
+						</button>
+					) : null
+				) : (
 					<button
 						type="button"
 						className={kitButton.quiet}
@@ -267,6 +332,7 @@ export function CartScreen() {
 		menu,
 		priceChanges,
 		acknowledgePriceChanges,
+		fulfilment,
 	} = useOrdering();
 	const [announce, setAnnounce] = useState("");
 	const report = (useLocation().state as CartLocationState | null)?.reorder;
@@ -288,14 +354,16 @@ export function CartScreen() {
 	);
 	const toChoose = [...choices.values()].some((group) => group !== null);
 	const ordering = menu.status === "ready" ? menu.data.ordering : null;
-	const held = ordering !== null && closedKind(ordering) !== null;
+	const held =
+		ordering !== null &&
+		!orderingOpen(ordering, fulfilment, ONLINE_PAYMENT_ENABLED);
 	const reason = !online
 		? t("cart.offline")
 		: soldOut.length > 0
 			? t("cart.blockedSoldOut")
 			: toChoose
 				? t("cart.blockedChoice")
-				: table?.state !== "ok"
+				: fulfilment === "table" && table?.state !== "ok"
 					? t("cart.blockedNoTable")
 					: held && ordering !== null
 						? t(`order.reason.${ordering.reason ?? "ordering_off"}`)
