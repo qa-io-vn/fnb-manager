@@ -106,6 +106,7 @@ Each workspace package and app has its README: what it holds, what it exports an
 |---|---|
 | [test-plan.md](test-plan.md) | The master test plan: risks, levels, environments, commands, the CI pipeline, inventories and traceability |
 | [test-gaps.md](test-gaps.md) | The working list of tests that are missing or weak, with their owners and next steps |
+| [acceptance/phase-1-kich-ban.md](acceptance/phase-1-kich-ban.md) | The tester's and the store manager's script, in Vietnamese, for the 7 acceptance criteria of the owner's plan, phase 1 (table ordering): the steps on real devices, the payment sandbox then small real amounts, and the checklist before every update |
 | [requirements.md](requirements.md) | Each requirement's acceptance criterion and the tests that verify it |
 | [api.md](api.md) | The functions and error codes the database tests exercise |
 | [security.md](security.md) | The security controls the security test pack proves |
