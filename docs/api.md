@@ -3191,7 +3191,7 @@ returns jsonb
 
 ### 3.29 Online payment (ADR-067, ADR-068)
 
-Migration `online_payments` adds the providers a brand (or a store, for a VietQR account of its own) switches on, the provider side of each online attempt, the one settlement of verified provider news, the manager queue for money that is never applied, and the payment job. The Edge Functions are in section 5 (`checkout-order`, `checkout-webhook`, `bank-webhook`, `payments-job`); the provider adapters are `packages/payments`. Tests: pgTAP `290_online_payments.sql`, rows in `03`, `47`, `120`, `121`.
+Migration `online_payments` adds the providers a brand (or a store, for a VietQR account of its own) switches on, the provider side of each online attempt, the one settlement of verified provider news, the manager queue for money that is never applied, and the payment job; migration `payment_exception_readers` (2026-11-28) gives the queue's reader the status `resolved`, the resolver's name and the receiving account. The Edge Functions are in section 5 (`checkout-order`, `checkout-webhook`, `bank-webhook`, `payments-job`); the provider adapters are `packages/payments`. Tests: pgTAP `290_online_payments.sql`, `302_payment_exception_readers.sql`, rows in `03`, `47`, `120`, `121`; end to end, `counter:e2e/vietqr` opens the counter's VietQR through the real `checkout-order` on the local stack.
 
 Eight functions are for the payment Edge Functions only: the service role may execute them, `authenticated` and `anon` get `42501`, and they are not part of this page's check. Each takes or answers JSON:
 
@@ -3237,7 +3237,7 @@ returns jsonb
 
 - **Status:** built (migration `online_payments`).
 - **Who may call:** an owner or manager of the store (`42501` otherwise); exceptions of a brand-wide account only for those with every store.
-- **Notes:** `{open, exceptions: [{id, reason, method, amount, expected_amount, reference, order_id, order_no, source, received_at, status, resolved_at, resolved_by, resolution_note}]}`, newest first, at most 200; `p_status` `open`, `refunded`, `dismissed` or null for all (`22023` otherwise). Holds no payer name or account.
+- **Notes:** `{open, exceptions: [{id, reason, method, amount, expected_amount, reference, order_id, order_no, source, received_at, status, resolved_at, resolved_by, resolved_by_name, resolution_note, account: {scope, bank_name, account_tail}}]}`, newest first, at most 200; `p_status` `open`, `refunded`, `dismissed`, `resolved` (both resolutions in one list under one limit) or null for all (`22023` otherwise, also for another case or an empty text); `open` counts the open ones whatever the filter. `resolved_by_name` is the roster's name of whoever resolved it, else the name of their Zalo sign-in in the tenant (so an owner, never on the roster, is named), null while open or when no name is known. `account` is the account that received the money: `scope` `store` (a store's own VietQR account) or `brand` (the brand-wide one, and every wallet), and for a VietQR its bank's name and the last 4 characters of its number as they were when the money arrived (from `payment_provider_changes`), null for a wallet. Holds no payer name or account, no account name and no full account number. Since migration `payment_exception_readers`; every earlier field and refusal is unchanged.
 
 #### `public.manager_resolve_payment_exception`
 
@@ -3252,7 +3252,7 @@ returns jsonb
 
 ### 3.30 E-invoices and company invoices (ADR-069, ADR-070)
 
-Migration `einvoices` adds the e-invoice provider a brand (or a store with a tax code of its own) switches on, one record per document the provider is asked to make (the sale invoice of a paid order "made from a cash register", the company invoice that replaces it, and the adjustment or cancellation a refund or an undone payment needs), the company invoice requests of C18 and Q01 with the customers' saved companies, and the e-invoice job. A paid order is queued by a trigger, never by a client; the job fixes every amount when it takes a document. The Edge Function is `einvoice-job` (section 5); the adapters are `packages/einvoice`. Tests: pgTAP `291_einvoices.sql`, `292_company_invoices.sql`, rows in `03`, `26`, `31`, `47`, `120`, `121`, `170`, `280`.
+Migration `einvoices` adds the e-invoice provider a brand (or a store with a tax code of its own) switches on, one record per document the provider is asked to make (the sale invoice of a paid order "made from a cash register", the company invoice that replaces it, and the adjustment or cancellation a refund or an undone payment needs), the company invoice requests of C18 and Q01 with the customers' saved companies, and the e-invoice job. A paid order is queued by a trigger, never by a client; the job fixes every amount when it takes a document. The Edge Function is `einvoice-job` (section 5); the adapters are `packages/einvoice`. Migration `einvoice_pill_holding_document` (2026-11-28) makes the pill follow the document that holds the order back. Tests: pgTAP `291_einvoices.sql`, `292_company_invoices.sql`, `303_einvoice_pill_holding_document.sql`, rows in `03`, `26`, `31`, `47`, `120`, `121`, `170`, `280`.
 
 Three functions are for `einvoice-job` only: the service role may execute them, `authenticated` and `anon` get `42501`, and they are not part of this page's check:
 
@@ -3337,7 +3337,7 @@ returns jsonb
 
 - **Status:** built (migration `einvoices`).
 - **Who may call:** an owner, manager or staff member of the order's store (`42501` otherwise, the same for an unknown order).
-- **Notes:** the pill of Q01: `{order_id, state, invoice: {id, kind, state, mode, invoice_no, series, lookup_code, lookup_url, tax_authority_code, amount, issued_at}, replacing, corrections_pending, attempts, next_attempt_at, request}`; `state` is `pending` ("Đang xuất…"), `issued` ("Đã xuất"), `retrying` ("Chưa xuất được. Hệ thống tự thử lại, đơn vẫn hoàn tất."), `failed` (given up), `cancelled`, `off` (no provider) or `none` (nothing to invoice).
+- **Notes:** the pill of Q01: `{order_id, state, invoice: {id, kind, state, mode, invoice_no, series, lookup_code, lookup_url, tax_authority_code, amount, issued_at}, replacing, corrections_pending, attempts, next_attempt_at, request}`; `state` is `pending` ("Đang xuất…"), `issued` ("Đã xuất"), `retrying` ("Chưa xuất được. Hệ thống tự thử lại, đơn vẫn hoàn tất."), `failed` (given up), `cancelled`, `off` (no provider) or `none` (nothing to invoice). Until a valid invoice is issued, the state, `invoice`, `attempts` and `next_attempt_at` are those of the sale or company invoice that holds the order back: one the job gave up on first, then one it will try again, then the newest on its way; so a company invoice asked while the sale invoice fails reads `retrying` or `failed` with the sale invoice (which `manager_retry_einvoice` sends again), never `pending` (migration `einvoice_pill_holding_document`, pgTAP `303_einvoice_pill_holding_document.sql`). `customer_invoice_status` answers the same pill.
 
 #### `public.manager_einvoices`
 

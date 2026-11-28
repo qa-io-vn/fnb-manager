@@ -628,7 +628,7 @@ Not chosen: auto-confirming a partial or late transfer (the plan says never); re
 
 Consequences: the owner's Checkout settings need the callback and notify URLs; the bank service needs the `bank-webhook` URL with the provider id and the key; `checkout-tick` must be scheduled (`app.enable_checkout_jobs`); a manager watches the queue (an alert for open exceptions is a follow-up); the daily reconciliation (criterion 6) counts only applied payments, so an open exception is money the day does not include until it is resolved.
 
-Built 2026-11-28 (see ADR-067): pgTAP `290_online_payments` (99), rows in `03`, `47`, `120` and `121`; Deno tests of the four functions and the shared redaction (28); `payments:integration/parallel-settle` (gated, see test-plan.md).
+Built 2026-11-28 (see ADR-067): pgTAP `290_online_payments` (99), rows in `03`, `47`, `120` and `121`; Deno tests of the four functions and the shared redaction (28); `payments:integration/parallel-settle` (gated, see test-plan.md). The same day migration `payment_exception_readers` gave the queue's reader the status `resolved`, the resolver's name and the account that received the money, without changing who reads which (pgTAP `302_payment_exception_readers`, 39), and the counter's VietQR runs end to end against the real `checkout-order` (`counter:e2e/vietqr`).
 
 ## ADR-069 — E-invoices go through a provider adapter; the database owns every document and fixes every amount when the job takes it
 
@@ -661,7 +661,7 @@ Not chosen: issuing from the payment functions themselves (a provider outage wou
 
 Consequences: the owner chooses a provider, registers the cash-register invoice series with the tax authority and gives the provider's credentials as an `EINVOICE_KEY_` secret ([operations.md](operations.md)); `einvoice-tick` must be scheduled (`app.enable_einvoice_jobs`); orders paid while e-invoicing is off are not invoiced by the server (the owner's portal covers them); a provider switched off holds its queued documents until it is on again; the mock answers a query only within one run (its memory), so the lost-answer path is proven by the tests, not by a local run; the open questions of section 17.9 of native-till.md (an invoice for an order a reward made free, the cancellation rule, the replace rule after a refund) wait for the provider and the accountant.
 
-Built 2026-11-28 on the branch `einvoice`: `packages/einvoice` (`einvoice:unit/checks`, `mock`, `work`: 72; `einvoice:integration/parallel-work` and `job-e2e`, gated), migrations `einvoices` and `einvoice_foreign_key_indexes`, the Edge Function `einvoice-job` (Deno 8 tests), pgTAP `291_einvoices` (147) and rows in `03`, `26`, `31`, `47`, `120`, `121`, `170`.
+Built 2026-11-28 on the branch `einvoice`: `packages/einvoice` (`einvoice:unit/checks`, `mock`, `work`: 72; `einvoice:integration/parallel-work` and `job-e2e`, gated), migrations `einvoices` and `einvoice_foreign_key_indexes`, the Edge Function `einvoice-job` (Deno 8 tests), pgTAP `291_einvoices` (147) and rows in `03`, `26`, `31`, `47`, `120`, `121`, `170`. Migration `einvoice_pill_holding_document` (the same day) makes the pill of point 6 read the sale or company invoice that holds the order back, so a company invoice asked while the sale invoice fails no longer reads `pending` (pgTAP `303_einvoice_pill_holding_document`, 29).
 
 ## ADR-070 — A company invoice is asked for once per paid order, inside the store's window, and replaces the sale invoice; saved companies belong to the customer
 

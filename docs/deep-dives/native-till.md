@@ -273,7 +273,7 @@ Triggers on `orders.payment_status` and on a succeeded `order_refunds` row call 
 
 ### 17.6 What the apps read
 
-- **The counter's pill** (`counter_order_einvoice`): `pending` "Đang xuất…", `issued` "Đã xuất" (with the number and the lookup address), `retrying` "Chưa xuất được. Hệ thống tự thử lại, đơn vẫn hoàn tất.", `failed` (given up: a manager retries), `cancelled`, `off`, `none`; with the company request.
+- **The counter's pill** (`counter_order_einvoice`): `pending` "Đang xuất…", `issued` "Đã xuất" (with the number and the lookup address), `retrying` "Chưa xuất được. Hệ thống tự thử lại, đơn vẫn hoàn tất.", `failed` (given up: a manager retries), `cancelled`, `off`, `none`; with the company request. Until an invoice is issued, the pill reads the sale or company invoice that holds the order back: one given up first, then one failing, then the newest on its way (migration `einvoice_pill_holding_document`, 2026-11-28). A company invoice waits for the sale invoice (`app.einvoice_ready`), so one asked while the sale invoice fails reads `retrying` or `failed` and names the sale invoice for the manager's retry; before, it read `pending` for the waiting company invoice.
 - **The customer** (`customer_invoice_status`): whether a company invoice can be asked now and why not, the last day, the request and the order's invoice; `customer_saved_companies`, `customer_delete_saved_company`.
 - **The managers** (`manager_einvoices`, `manager_retry_einvoice`): the failing documents with their error class and attempts, the counts, and a retry.
 

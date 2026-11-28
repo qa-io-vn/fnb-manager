@@ -122,7 +122,7 @@ Danh sách kiểm, làm đủ trước khi đưa một bản cập nhật cho qu
 3. **Bấm hai lần**: đặt đơn Trả tại quầy và bấm **Đặt món** hai lần thật nhanh. Quầy có **một** đơn.
 4. **Mất mạng**: bấm Đặt món rồi tắt Wi-Fi và 4G ngay; bật lại; bấm Đặt món lần nữa. Quầy có **một** đơn.
 5. **Thoát giữa chừng**: đặt đơn chọn Chuyển khoản QR, khi mã QR hiện thì đóng hẳn Zalo (vuốt tắt app). Mở lại app: đơn hiện đang chờ thanh toán với **Tiếp tục thanh toán**; quầy không có đơn này.
-6. **Chuyển thiếu tiền**: với đơn ở bước 5, chuyển khoản sandbox thiếu 1.000đ. Đơn vẫn chờ thanh toán; quầy không có đơn. Quản lý mở **Quản lý** → **Tiền chờ xử lý**: khoản này hiện với **Sai số tiền**, đúng số tiền đã chuyển, "Đơn cần" số tiền của đơn, mã chuyển khoản và giờ nhận (xem ghi chú dưới).
+6. **Chuyển thiếu tiền**: với đơn ở bước 5, chuyển khoản sandbox thiếu 1.000đ. Đơn vẫn chờ thanh toán; quầy không có đơn. Quản lý mở **Quản lý** → **Tiền chờ xử lý**: khoản này hiện với **Sai số tiền**, đúng số tiền đã chuyển, "Đơn cần" số tiền của đơn, mã chuyển khoản, giờ nhận và tài khoản đã nhận tiền ("Tiền vào" ngân hàng và 4 số cuối của tài khoản, của cửa hàng hay chung của thương hiệu; đối chiếu với tài khoản trên sao kê) (xem ghi chú dưới).
 7. **Hết giờ**: để đơn chờ quá 15 phút. App báo hết hạn và mời **Trả tại quầy**; bấm Trả tại quầy thì quầy có một đơn mới Chưa thu tiền, đơn cũ đã hủy.
 8. Cuối bài: so danh sách đơn ở quầy với trang quản trị sandbox: mỗi đơn "đã trả" ở quầy có đúng một giao dịch thành công tương ứng ở cổng, cùng số tiền.
 
