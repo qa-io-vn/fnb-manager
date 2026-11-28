@@ -336,6 +336,69 @@ describe.skipIf(!ENABLED)("customer messages on the local stack", () => {
 		expect(await rowsFor(ids.members.c, "win_back")).toHaveLength(0);
 	}, 60_000);
 
+	it("a member's takeaway order turned ready at the counter arrives as the order_ready template (C17)", async () => {
+		const tenant = fixture.tenantId;
+		const store = fixture.storeIds[0] ?? "";
+		const user = randomUUID();
+		const external = "syn-it-order_ready";
+		await sql`
+			insert into public.zbs_templates (tenant_id, oa_id, external_id, tag, purpose, approval_state)
+			values (${tenant}::uuid, ${ids.oa}::uuid, ${external}, ${ZBS_TEMPLATE_DRAFTS.order_ready.tag}, 'order_ready', 'approved')
+		`;
+		zbs.registerTemplate(
+			external,
+			ZBS_TEMPLATE_DRAFTS.order_ready.parameters.map(
+				(parameter) => parameter.name,
+			),
+		);
+		await sql`
+			insert into auth.users (id, instance_id, aud, role, email, raw_app_meta_data)
+			values (${user}::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+				${`notify-it-${user.slice(0, 8)}@example.com`}, ${JSON.stringify({ kind: "customer", tenant_id: tenant })}::jsonb)
+		`;
+		try {
+			const [order] = await sql<{ id: string }[]>`
+				with app as (
+					insert into public.zalo_apps (tenant_id, brand_id, external_id, secret_name, status)
+					values (${tenant}::uuid, ${ids.brand}::uuid, ${`syn-it-app-${tenant.slice(0, 8)}`}, 'ZALO_APP_SECRET_BRAND_1', 'active')
+					returning id
+				),
+				login as (
+					insert into app.customer_logins (tenant_id, zalo_app_id, zalo_user_id, user_id, customer_id)
+					select ${tenant}::uuid, app.id, ${`syn-it-${user.slice(0, 8)}`}, ${user}::uuid, ${ids.customers.c}::uuid from app
+					returning id
+				)
+				insert into public.orders (tenant_id, brand_id, store_id, source, customer_login_id, order_type, pickup_at, business_date, order_no,
+					status, payment_status, payment_method, subtotal, total, request_id, request_hash, placed_at, accepted_at, preparing_at, paid_at)
+				select ${tenant}::uuid, ${ids.brand}::uuid, ${store}::uuid, 'app', login.id, 'takeaway', date_trunc('hour', now()) + interval '1 hour',
+					current_date, 12, 'preparing', 'paid', 'vietqr', 40000, 40000, gen_random_uuid(), repeat('a', 64), now(), now(), now(), now()
+				from login
+				returning id::text as id
+			`;
+			await sql`update public.orders set status = 'ready', done_at = now() where id = ${order?.id ?? ""}::uuid`;
+			const before = zbs.templates().length;
+			await cycle();
+			const sent = zbs.templates().slice(before);
+			expect(sent.map((message) => message.templateId)).toEqual([external]);
+			expect(sent[0]?.phone).toBe(`84${"900000"}203`);
+			expect(sent[0]?.data).toMatchObject({
+				customer_name: "Synthetic C",
+				order_no: "#012",
+			});
+			expect(sent[0]?.data?.pickup_time).toMatch(/^\d\d:\d\d$/);
+			const [row] = await rowsFor(ids.members.c, "takeaway_ready");
+			expect(row).toMatchObject({
+				status: "sent",
+				channel: "zalo_zbs",
+				template_ref: "zbs.order_ready.v1",
+			});
+			expect(row?.params?.order_id).toBe(order?.id);
+		} finally {
+			await sql`delete from app.customer_logins where user_id = ${user}::uuid`;
+			await sql`delete from auth.users where id = ${user}::uuid`;
+		}
+	}, 60_000);
+
 	it("no customer row of the outbox holds a phone, a name or a text", async () => {
 		const rows = await sql<Row[]>`
 			select status, channel, template_ref, params, title, body, recipient_ref

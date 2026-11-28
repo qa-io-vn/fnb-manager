@@ -5,6 +5,7 @@ import {
 	ORDER_STATUSES,
 	ORDERING_FUNCTIONS,
 	orderArgs,
+	pickupArgs,
 	readCallAnswer,
 	readCancelAnswer,
 	readCartCheck,
@@ -12,9 +13,11 @@ import {
 	readMenuVersion,
 	readOrderAnswer,
 	readOrderList,
+	readPickupChangeAnswer,
 	readPlaceAnswer,
 	readStampCard,
 	readTableAnswer,
+	readTakeawaySlots,
 } from "../../src/ordering/contract";
 import { createRestOrderingClient } from "../../src/ordering/rest-ordering-client";
 
@@ -566,5 +569,178 @@ describe("the REST ordering client", () => {
 		await expect(order.client.order("../wallet")).rejects.toThrow(/UUID/);
 		expect(order.calls).toEqual([]);
 		expect(() => orderArgs("x' or '1'='1")).toThrow();
+	});
+});
+
+// C17 (ADR-072): the takeaway slots, the change of pick-up time and the booking's fields on an order. Equivalence
+// partitions of a slot (free, passed, full; available without a reason and a reason without availability refused), of
+// the answer (ok, refused with its reason) and of the change (changed, refused with and without the order); slots out
+// of order refused; the arguments the SQL declares, an order id that is not a UUID and a time that is not an instant
+// refused before any call.
+describe("the takeaway slots and the change of pick-up time (C17)", () => {
+	const SLOTS = {
+		state: "ok",
+		refusal: null,
+		now: "2026-11-27T07:05:00Z",
+		date: "2026-11-27",
+		pre_order: false,
+		asap_at: "2026-11-27T07:20:00Z",
+		opens_at: "2026-11-27T00:00:00Z",
+		closes_at: "2026-11-27T16:00:00Z",
+		last_pickup_at: "2026-11-27T15:45:00Z",
+		prep_minutes: 15,
+		slot_minutes: 15,
+		slots: [
+			{ start: "2026-11-27T07:15:00Z", available: false, reason: "passed" },
+			{ start: "2026-11-27T07:30:00Z", available: true, reason: null },
+			{ start: "2026-11-27T07:45:00Z", available: false, reason: "full" },
+		],
+		ordering: ORDERING,
+	};
+
+	function recording(answer: unknown) {
+		const calls: { fn: string; args: unknown }[] = [];
+		const rest: RestClient = {
+			select: async () => [],
+			rpc: async (fn, args) => {
+				calls.push({ fn, args });
+				return answer;
+			},
+		};
+		return { calls, client: createRestOrderingClient(rest) };
+	}
+
+	it("read the slots with their reasons and the day's frame", () => {
+		const slots = readTakeawaySlots(SLOTS);
+		expect(slots.state).toBe("ok");
+		expect(slots.date).toBe("2026-11-27");
+		expect(slots.asapAt).toBe("2026-11-27T07:20:00Z");
+		expect(slots.slots.map((slot) => slot.reason)).toEqual([
+			"passed",
+			null,
+			"full",
+		]);
+		expect(slots.prepMinutes).toBe(15);
+		expect(slots.preOrder).toBe(false);
+	});
+
+	it("read a refusal with no slot, and a pre-order without 'Càng sớm'", () => {
+		const refused = readTakeawaySlots({
+			...SLOTS,
+			state: "refused",
+			refusal: "paused",
+			date: null,
+			asap_at: null,
+			slots: [],
+		});
+		expect(refused.refusal).toBe("paused");
+		expect(refused.slots).toEqual([]);
+		const closed = readTakeawaySlots({
+			...SLOTS,
+			pre_order: true,
+			asap_at: null,
+		});
+		expect(closed.preOrder).toBe(true);
+		expect(closed.asapAt).toBeNull();
+	});
+
+	it("refuse a slot that is free with a reason, unavailable without one, an unknown reason or slots out of order", () => {
+		const slot = (value: Record<string, unknown>) =>
+			readTakeawaySlots({ ...SLOTS, slots: [value] });
+		expect(() =>
+			slot({ start: "2026-11-27T07:30:00Z", available: true, reason: "full" }),
+		).toThrow(/slot reason/);
+		expect(() =>
+			slot({ start: "2026-11-27T07:30:00Z", available: false, reason: null }),
+		).toThrow(/slot reason/);
+		expect(() =>
+			slot({ start: "2026-11-27T07:30:00Z", available: false, reason: "gone" }),
+		).toThrow();
+		expect(() =>
+			readTakeawaySlots({
+				...SLOTS,
+				slots: [SLOTS.slots[1], SLOTS.slots[0]],
+			}),
+		).toThrow(/slot order/);
+		expect(() => readTakeawaySlots({ ...SLOTS, date: "27/11/2026" })).toThrow(
+			/slots date/,
+		);
+	});
+
+	it("read the booking's start and scheduled flag on an order, and the pick-up time of a slot refusal", () => {
+		const booked = readOrderAnswer({
+			state: "ok",
+			order: {
+				...ORDER_JSON,
+				type: "takeaway",
+				table: null,
+				pickup_at: "2026-11-28T00:30:00Z",
+				start_at: "2026-11-28T00:15:00Z",
+				scheduled: true,
+			},
+		});
+		expect(booked.state === "ok" && booked.order.startAt).toBe(
+			"2026-11-28T00:15:00Z",
+		);
+		expect(booked.state === "ok" && booked.order.scheduled).toBe(true);
+		const plain = readOrderAnswer({ state: "ok", order: ORDER_JSON });
+		expect(plain.state === "ok" && plain.order.scheduled).toBe(false);
+		const full = readPlaceAnswer({
+			state: "refused",
+			refusal: "slot_full",
+			replayed: false,
+			order: null,
+			pickup_at: "2026-11-27T08:00:00Z",
+		});
+		expect(full.refusal).toBe("slot_full");
+		expect(full.pickupAt).toBe("2026-11-27T08:00:00Z");
+	});
+
+	it("read a change of pick-up time: changed, refused with the order, refused without it", () => {
+		const changed = readPickupChangeAnswer({
+			state: "changed",
+			replayed: false,
+			order: ORDER_JSON,
+		});
+		expect(changed.state).toBe("changed");
+		const refused = readPickupChangeAnswer({
+			state: "refused",
+			refusal: "slot_full",
+			replayed: false,
+			order: ORDER_JSON,
+		});
+		expect(refused.state === "refused" && refused.order?.id).toBe(ORDER);
+		const unknown = readPickupChangeAnswer({
+			state: "refused",
+			refusal: "unknown_order",
+			order: null,
+		});
+		expect(unknown.state === "refused" && unknown.order).toBeNull();
+		expect(() => readPickupChangeAnswer({ state: "moved" })).toThrow();
+	});
+
+	it("call the functions the SQL declares, and refuse a bad order id or time before calling", async () => {
+		const slots = recording(SLOTS);
+		await slots.client.takeawaySlots("mau-1");
+		expect(slots.calls).toEqual([
+			{ fn: "customer_takeaway_slots", args: { p_store_code: "mau-1" } },
+		]);
+		const change = recording({
+			state: "changed",
+			replayed: false,
+			order: ORDER_JSON,
+		});
+		await change.client.changePickup(ORDER, "2026-11-27T08:15:00Z");
+		expect(change.calls).toEqual([
+			{
+				fn: "customer_change_pickup",
+				args: { p_order: ORDER, p_pickup_at: "2026-11-27T08:15:00Z" },
+			},
+		]);
+		await expect(
+			change.client.changePickup("../x", "2026-11-27T08:15:00Z"),
+		).rejects.toThrow(/UUID/);
+		expect(() => pickupArgs(ORDER, "tomorrow")).toThrow(/instant/);
+		expect(change.calls).toHaveLength(1);
 	});
 });

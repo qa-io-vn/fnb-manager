@@ -31,6 +31,8 @@ export const ORDERING_FUNCTIONS = {
 	orders: "customer_orders",
 	cancelOrder: "customer_cancel_order",
 	stampCard: "customer_stamp_card",
+	takeawaySlots: "customer_takeaway_slots",
+	changePickup: "customer_change_pickup",
 } as const;
 
 export type OrderingFunction =
@@ -114,8 +116,63 @@ export const PLACE_REFUSALS = [
 	"reward_not_applicable",
 	"amount_over_limit",
 	"price_changed",
+	// a takeaway's pick-up time (C17): too close or passed, outside the hours or before the next opening, full
+	"slot_passed",
+	"closed",
+	"slot_full",
 ] as const;
 export type PlaceRefusal = (typeof PLACE_REFUSALS)[number];
+
+/** Why a takeaway slot cannot be booked (customer_takeaway_slots): before now plus the preparation time, or full. */
+export const SLOT_REASONS = ["passed", "full"] as const;
+export type SlotReason = (typeof SLOT_REASONS)[number];
+
+/** One pick-up slot of C17, every takeaway_slot_minutes on the store's clock. */
+export interface TakeawaySlot {
+	readonly start: string;
+	readonly available: boolean;
+	readonly reason: SlotReason | null;
+}
+
+/**
+ * C17's slots (customer_takeaway_slots): the one day the server lets a customer book (today until its last pick-up
+ * passes, else the next opening) on the server's clock; "Càng sớm có thể" only while the store takes orders now.
+ */
+export interface TakeawaySlots {
+	readonly state: "ok" | "refused";
+	/** why no slot can be booked: an ordering reason, or no_slots (nothing opens within 8 days) */
+	readonly refusal: string | null;
+	/** the server's clock when it answered */
+	readonly now: string;
+	/** the business date of the slots, YYYY-MM-DD */
+	readonly date: string | null;
+	/** the store is closed now: the slots are a booking for its next opening */
+	readonly preOrder: boolean;
+	/** "Càng sớm có thể": now plus the preparation time, only while the store takes orders */
+	readonly asapAt: string | null;
+	readonly opensAt: string | null;
+	readonly closesAt: string | null;
+	readonly lastPickupAt: string | null;
+	readonly prepMinutes: number;
+	readonly slotMinutes: number;
+	readonly slots: readonly TakeawaySlot[];
+	readonly ordering: OrderingState;
+}
+
+/** customer_change_pickup: the customer's own unpaid takeaway moved to another slot while its payment is open. */
+export type PickupChangeAnswer =
+	| {
+			readonly state: "changed";
+			readonly replayed: boolean;
+			readonly order: Order;
+	  }
+	| {
+			readonly state: "refused";
+			/** unknown_order, not_changeable, rate_limited, or a slot refusal (slot_passed, closed, slot_full…) */
+			readonly refusal: string;
+			readonly retryAt: string | null;
+			readonly order: Order | null;
+	  };
 
 export interface OrderingState {
 	readonly accepting: boolean;
@@ -302,6 +359,10 @@ export interface Order {
 	readonly type: OrderType;
 	readonly tableLabel: string | null;
 	readonly pickupAt: string | null;
+	/** a takeaway with a pick-up time: when its preparation should start (the pick-up less the preparation time) */
+	readonly startAt: string | null;
+	/** accepted and its preparation start still ahead (a takeaway booked for later) */
+	readonly scheduled: boolean;
 	readonly status: OrderStatus;
 	readonly paymentStatus: PaymentStatus;
 	readonly paymentMethod: PaymentMethod;
@@ -338,6 +399,8 @@ export interface PlaceRequest {
 	readonly store: string;
 	readonly type: OrderType;
 	readonly table_token?: string;
+	/** a takeaway's pick-up slot (C17), an ISO instant; absent for "Càng sớm có thể" and for a table */
+	readonly pickup_at?: string;
 	readonly lines: readonly {
 		readonly size: string;
 		readonly qty: number;
@@ -374,6 +437,8 @@ export interface PlaceAnswer {
 	readonly discountAmount: number | null;
 	readonly maxOrderAmount: number | null;
 	readonly menuVersion: number | null;
+	/** a slot refusal (slot_full, slot_passed, closed…): the pick-up time asked */
+	readonly pickupAt: string | null;
 }
 
 export type CancelAnswer =
@@ -401,6 +466,8 @@ export interface OrderSummary {
 	readonly items: number;
 	/** when the order should be ready (accepted or started plus the store's preparation time); null otherwise */
 	readonly readyEstimateAt: string | null;
+	/** a takeaway's pick-up time (C17), null for "Càng sớm" and a table */
+	readonly pickupAt: string | null;
 }
 
 export interface OrderList {
@@ -452,6 +519,10 @@ export interface OrderingClient {
 	order(id: string): Promise<OrderAnswer>;
 	orders(before: string | null): Promise<OrderList>;
 	cancelOrder(id: string): Promise<CancelAnswer>;
+	/** C17: the takeaway pick-up slots of a store, on the server's clock */
+	takeawaySlots(store: string): Promise<TakeawaySlots>;
+	/** C17: moves the customer's own unpaid takeaway to another slot while its payment is open */
+	changePickup(orderId: string, pickupAt: string): Promise<PickupChangeAnswer>;
 	stampCard(): Promise<NativeStampCard>;
 	/** C20: a new member code of the stamp card (revokes the last one) */
 	stampCode(): Promise<StampCodeAnswer>;
@@ -862,6 +933,8 @@ export function readOrder(value: unknown): Order {
 				? null
 				: optionalText(record(table, "order table").label, "table label"),
 		pickupAt: optionalInstant(row.pickup_at, "pickup time"),
+		startAt: optionalInstant(row.start_at, "start_at"),
+		scheduled: row.scheduled === true,
 		status: oneOf(ORDER_STATUSES, row.status, "order status"),
 		paymentStatus: oneOf(
 			PAYMENT_STATUSES,
@@ -928,7 +1001,77 @@ export function readPlaceAnswer(value: unknown): PlaceAnswer {
 		discountAmount: optionalAmount(row.discount_amount, "discount"),
 		maxOrderAmount: optionalAmount(row.max_order_amount, "max order amount"),
 		menuVersion: optionalAmount(row.menu_version, "menu version"),
+		pickupAt: optionalInstant(row.pickup_at, "pickup time"),
 	};
+}
+
+function readTakeawaySlot(value: unknown): TakeawaySlot {
+	const row = record(value, "takeaway slot");
+	const available = flag(row.available, "slot availability");
+	const reason =
+		row.reason === null || row.reason === undefined
+			? null
+			: oneOf(SLOT_REASONS, row.reason, "slot reason");
+	if (available === (reason !== null)) invalid("slot reason");
+	return { start: instant(row.start, "slot start"), available, reason };
+}
+
+/** customer_takeaway_slots: refuses an answer whose slots are not in order, or a slot with an unknown reason. */
+export function readTakeawaySlots(value: unknown): TakeawaySlots {
+	const row = record(value, "takeaway slots");
+	const state = oneOf(["ok", "refused"] as const, row.state, "slots state");
+	const slots = optionalList(row.slots, "slots").map(readTakeawaySlot);
+	for (let index = 1; index < slots.length; index += 1) {
+		const before = slots[index - 1];
+		const slot = slots[index];
+		if (
+			before === undefined ||
+			slot === undefined ||
+			Date.parse(slot.start) <= Date.parse(before.start)
+		)
+			invalid("slot order");
+	}
+	return {
+		state,
+		refusal: state === "refused" ? code(row.refusal, "slots refusal") : null,
+		now: instant(row.now, "server time"),
+		date:
+			row.date === null || row.date === undefined
+				? null
+				: typeof row.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(row.date)
+					? row.date
+					: invalid("slots date"),
+		preOrder: row.pre_order === true,
+		asapAt: optionalInstant(row.asap_at, "asap time"),
+		opensAt: optionalInstant(row.opens_at, "opening"),
+		closesAt: optionalInstant(row.closes_at, "closing"),
+		lastPickupAt: optionalInstant(row.last_pickup_at, "last pick-up"),
+		prepMinutes: amount(row.prep_minutes ?? 0, "preparation minutes"),
+		slotMinutes: amount(row.slot_minutes ?? 15, "slot minutes"),
+		slots: state === "ok" ? slots : [],
+		ordering: readOrderingState(row.ordering),
+	};
+}
+
+export function readPickupChangeAnswer(value: unknown): PickupChangeAnswer {
+	const row = record(value, "pick-up change");
+	if (row.state === "changed")
+		return {
+			state: "changed",
+			replayed: row.replayed === true,
+			order: readOrder(row.order),
+		};
+	if (row.state === "refused")
+		return {
+			state: "refused",
+			refusal: code(row.refusal, "refusal"),
+			retryAt: optionalInstant(row.retry_at, "retry_at"),
+			order:
+				row.order === null || row.order === undefined
+					? null
+					: readOrder(row.order),
+		};
+	return invalid("pick-up change state");
 }
 
 export function readCancelAnswer(value: unknown): CancelAnswer {
@@ -972,6 +1115,7 @@ function readOrderSummary(value: unknown): OrderSummary {
 			row.ready_estimate_at,
 			"ready_estimate_at",
 		),
+		pickupAt: optionalInstant(row.pickup_at, "pickup time"),
 	};
 }
 
@@ -1046,6 +1190,17 @@ export function orderArgs(orderId: string): Readonly<Record<string, unknown>> {
 		throw new Error("an order id is a UUID");
 	}
 	return { p_order: orderId };
+}
+
+/** customer_change_pickup's arguments: the order and the new pick-up slot (an ISO instant). */
+export function pickupArgs(
+	orderId: string,
+	pickupAt: string,
+): Readonly<Record<string, unknown>> {
+	if (!Number.isFinite(Date.parse(pickupAt))) {
+		throw new Error("a pick-up time is an ISO instant");
+	}
+	return { ...orderArgs(orderId), p_pickup_at: pickupAt };
 }
 
 export function ordersArgs(

@@ -21,6 +21,7 @@ import { StaffPage } from "./manager/staff-page";
 import { SoldOutPage } from "./menu/sold-out-page";
 import { BoardProvider, useBoard } from "./orders/board-context";
 import { laneOrders } from "./orders/board-model";
+import { useNow } from "./orders/order-bits";
 import { OrderDetailPage } from "./orders/order-detail";
 import { QueuePage } from "./orders/queue-page";
 import { PrinterProvider } from "./print/printer";
@@ -163,6 +164,8 @@ function Frame({ manager }: { readonly manager: boolean }) {
 	const { member } = useMember();
 	const { signOut } = useSession();
 	const { state } = useBoard();
+	// the Đơn tab counts the new orders, not the takeaway orders booked for later until their preparation starts (C17)
+	const now = Math.max(useNow(), state.lastOkAt ?? 0);
 	// M01: the new requests nobody opened yet and the customers' acceptances nobody saw, on the manager's tab (staff
 	// never ask: the database refuses them)
 	const unread = unreadCount(useInbox(manager).data);
@@ -176,7 +179,7 @@ function Frame({ manager }: { readonly manager: boolean }) {
 			label: t("nav.orders"),
 			icon: <ReceiptIcon />,
 			testId: "orders",
-			badge: laneOrders(state, "new").length,
+			badge: laneOrders(state, "new", now).length,
 		},
 		{
 			to: "/ban",

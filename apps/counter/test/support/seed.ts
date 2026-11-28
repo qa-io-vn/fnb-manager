@@ -404,6 +404,101 @@ export async function placeCustomerOrder(
 	});
 }
 
+/**
+ * Store A takes takeaway bookings (C17): VietQR among its ways to pay (takeaway is prepaid), 15 minutes to prepare,
+ * 15-minute slots of 6 orders. `restoreTakeawayBooking` puts the seed's values back (pay at the counter only, 10
+ * minutes), so other suites find the store as seeded.
+ */
+export async function allowTakeawayBooking(
+	sql: Sql,
+	seeded: SeededTenant,
+): Promise<void> {
+	await sql`update public.store_ordering_settings
+		set payment_methods = array['counter', 'vietqr'], prep_minutes = 15, takeaway_slot_minutes = 15, takeaway_slot_limit = 6
+		where store_id = ${seeded.storeA}`;
+}
+
+export async function restoreTakeawayBooking(
+	sql: Sql,
+	seeded: SeededTenant,
+): Promise<void> {
+	await sql`update public.store_ordering_settings
+		set payment_methods = array['counter'], prep_minutes = 10, takeaway_slot_minutes = 15, takeaway_slot_limit = 6
+		where store_id in (${seeded.storeA}, ${seeded.storeB})`;
+}
+
+/**
+ * A bookable pick-up slot on the database's clock: the first 15-minute boundary at least `minutesAhead` minutes away
+ * (the stores are open all day, their business day starting at midnight), or the first bookable slot when that one
+ * would fall on the next business day, which the server does not offer while today still has slots.
+ */
+export async function nextSlot(
+	sql: Sql,
+	minutesAhead: number,
+): Promise<string> {
+	const [row] = await sql<{ slot: Date; first: Date }[]>`
+		select to_timestamp(ceil(extract(epoch from now() + make_interval(mins => ${minutesAhead})) / 900) * 900) as slot,
+			to_timestamp(ceil(extract(epoch from now() + interval '15 minutes 5 seconds') / 900) * 900) as first`;
+	if (row === undefined) throw new Error("no clock");
+	const day = (at: Date) =>
+		new Date(at.getTime() + 7 * 3_600_000).toISOString().slice(0, 10);
+	return (
+		day(row.slot) === day(row.first) ? row.slot : row.first
+	).toISOString();
+}
+
+/**
+ * A customer's takeaway booked for `pickupAt` and paid by VietQR, as the app and the server's payment confirmation do
+ * it (customer_place_order, then the checkout seams the payment functions call): an accepted, paid order that waits as
+ * scheduled until its preparation start. Needs `allowTakeawayBooking` first.
+ */
+export async function bookTakeaway(
+	sql: Sql,
+	seeded: SeededTenant,
+	customer: string,
+	pickupAt: string,
+): Promise<{ readonly id: string; readonly displayNo: string }> {
+	const placed = await sql.begin(async (tx) => {
+		await tx`select set_config('request.jwt.claims', ${JSON.stringify({
+			sub: customer,
+			role: "authenticated",
+			app_metadata: { kind: "customer", tenant_id: seeded.tenantId },
+		})}, true)`;
+		const [row] = await tx<
+			{
+				r: {
+					state: string;
+					refusal: string | null;
+					order: { id: string } | null;
+				};
+			}[]
+		>`
+			select app.customer_place_order(${tx.json({
+				request_id: randomUUID(),
+				store: seeded.storeCodeA,
+				type: "takeaway",
+				payment: "vietqr",
+				pickup_at: pickupAt,
+				lines: [{ size: seeded.sizes.coffeeM, qty: 1, options: [] }],
+				expected_total: COFFEE_M,
+			} as never)}::jsonb, now()) as r`;
+		return row?.r;
+	});
+	const id = placed?.order?.id;
+	if (placed?.state !== "awaiting_payment" || id === undefined)
+		throw new Error(
+			`the booking was refused: ${placed?.refusal ?? placed?.state}`,
+		);
+	const key = `ct-${randomUUID().replace(/-/g, "")}`;
+	const [start] = await sql<{ r: { payment_id: string } }[]>`
+		select app.checkout_payment_start(${customer}::uuid, ${id}::uuid, 'vietqr', ${key}, now()) as r`;
+	await sql`select app.checkout_payment_confirm('vietqr', ${`ref-${key}`}, ${start?.r.payment_id ?? ""}::uuid, ${COFFEE_M}, true, null, now())`;
+	const [order] = await sql<{ display_no: string }[]>`
+		select app.order_display_no(order_no) as display_no from public.orders where id = ${id} and status = 'accepted'`;
+	if (order === undefined) throw new Error("the booking was not paid");
+	return { id, displayNo: order.display_no };
+}
+
 /** The customer app's poll of the menu: which items are unavailable right now (acceptance criterion 2). */
 export async function customerUnavailableItems(
 	sql: Sql,

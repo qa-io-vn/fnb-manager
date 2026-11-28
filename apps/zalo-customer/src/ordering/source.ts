@@ -50,6 +50,7 @@ export function demoOrderingWorld(
 		world.settings.onlinePayments,
 		world.settings.member,
 		!world.settings.einvoiceOff,
+		world.settings.takeaway,
 	);
 	world.extend(ordering);
 	attached.set(world, ordering);

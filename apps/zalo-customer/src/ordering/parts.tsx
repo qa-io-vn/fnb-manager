@@ -48,6 +48,12 @@ export const SearchIcon = () => (
 export const ScanIcon = () => (
 	<Icon path="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16" />
 );
+export const BagIcon = () => (
+	<Icon path="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2" />
+);
+export const CalendarIcon = () => (
+	<Icon path="M4.5 6.5h15v13h-15zM4.5 10.5h15M8.5 4v4M15.5 4v4" />
+);
 export const ClockIcon = () => (
 	<Icon path="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V12l3 2" />
 );

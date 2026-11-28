@@ -51,6 +51,7 @@ Which message kind uses which template (in order of preference; the first approv
 | `expiry_reminder` | points or stamps expire within `expiry_reminder_days` | `expiry_reminder` |
 | `birthday` | sent only when the reviewers accept it and the owner switches promotions on | `birthday` |
 | `win_back` | no earn for `win_back_days`, same conditions | `win_back` |
+| `takeaway_ready` | a takeaway order of a member's Zalo account turned ready at the counter (C17, ADR-072); not after 22:00 | `order_ready` |
 
 ### `points_confirmation` · Xác nhận tích điểm
 
@@ -137,6 +138,21 @@ Chào <customer_name>, đã <inactive_days> ngày bạn chưa ghé quán. Mở �
 | `customer_name` | name | 30 | Nguyễn Văn An |
 | `inactive_days` | number | 5 | 45 |
 
+### `order_ready` · Món mang đi đã xong
+
+Tag: transaction · Layout: text · Button: «Xem đơn»
+
+```text
+Chào <customer_name>, đơn <order_no> tại <store_name> đã xong, hẹn lấy lúc <pickup_time>. Mời bạn ra quầy nhận món.
+```
+
+| Parameter | Type | Max length | Sample |
+| --- | --- | --- | --- |
+| `customer_name` | name | 30 | Nguyễn Văn An |
+| `order_no` | code | 10 | #007 |
+| `store_name` | text | 60 | Cửa hàng 1 |
+| `pickup_time` | text | 5 | 15:30 |
+
 ## Parameters at send time
 
 The outbox never stores these values (NFR-PRV-02): `app.claim_next_customer_message` resolves them for the dispatcher at the moment of sending (`app.customer_message_parameters`), and the dispatcher passes them to ZBS as `template_data` and forgets them.
@@ -150,6 +166,8 @@ The outbox never stores these values (NFR-PRV-02): `app.claim_next_customer_mess
 | `reward_name`, `voucher_code` | the held reward and its code | `missing_parameter` |
 | `expires_at` | the end of the hold (`HH:MM DD/MM/YYYY`) or the expiry day (`DD/MM/YYYY`), in the tenant's time zone | `missing_parameter` |
 | `inactive_days` | the tenant's `win_back_days` | 0 |
+| `order_no` | the native order's number as the counter calls it (`#007`) | `missing_parameter` |
+| `pickup_time` | the order's pick-up time, else when it turned ready (`HH:MM`, the store's time zone) | `missing_parameter` |
 
 ## Per-brand configuration · Cấu hình theo thương hiệu
 

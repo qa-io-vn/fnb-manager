@@ -16,6 +16,7 @@ import {
 	type OrderingClient,
 	orderArgs,
 	ordersArgs,
+	pickupArgs,
 	readCallAnswer,
 	readCancelAnswer,
 	readCartCheck,
@@ -23,9 +24,11 @@ import {
 	readMenuVersion,
 	readOrderAnswer,
 	readOrderList,
+	readPickupChangeAnswer,
 	readPlaceAnswer,
 	readStampCard,
 	readTableAnswer,
+	readTakeawaySlots,
 	requestArgs,
 	storeArgs,
 	tableArgs,
@@ -87,6 +90,19 @@ export function createRestOrderingClient(rest: RestClient): OrderingClient {
 		async cancelOrder(id) {
 			return readCancelAnswer(
 				await rest.rpc(ORDERING_FUNCTIONS.cancelOrder, orderArgs(id)),
+			);
+		},
+		async takeawaySlots(store) {
+			return readTakeawaySlots(
+				await rest.rpc(ORDERING_FUNCTIONS.takeawaySlots, storeArgs(store)),
+			);
+		},
+		async changePickup(orderId, pickupAt) {
+			return readPickupChangeAnswer(
+				await rest.rpc(
+					ORDERING_FUNCTIONS.changePickup,
+					pickupArgs(orderId, pickupAt),
+				),
 			);
 		},
 		async stampCard() {

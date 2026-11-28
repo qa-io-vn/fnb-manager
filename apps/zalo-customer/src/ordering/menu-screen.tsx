@@ -18,6 +18,7 @@ import {
 	groupsOf,
 	selectionProblem,
 } from "./cart";
+import { ONLINE_PAYMENT_ENABLED } from "./flag";
 import { closedKind } from "./order-view";
 import { useMenuPoll, useOrdering } from "./ordering-data";
 import { MenuIcon, PlusIcon, SearchIcon } from "./parts";
@@ -28,6 +29,7 @@ import {
 	OrderingHeld,
 	TableContextNote,
 } from "./states";
+import { orderingOpen, preOrderOpen } from "./takeaway";
 
 // C02 Thực đơn (design spec 6.2): search with or without marks, a sticky row of sections, the items with their
 // lowest price, an add button when the shop takes orders, and the basket bar. Sold-out items are not listed (the
@@ -118,7 +120,8 @@ function ItemRow({
 function ReadyMenu({ menu }: { readonly menu: Menu }) {
 	const { t } = useI18n();
 	const navigate = useNavigate();
-	const { add, cart, store, unavailable } = useOrdering();
+	const { add, cart, store, unavailable, fulfilment, setFulfilment } =
+		useOrdering();
 	const [query, setQuery] = useState("");
 	const [toast, setToast] = useState<string | null>(null);
 	const searchId = useId();
@@ -136,7 +139,13 @@ function ReadyMenu({ menu }: { readonly menu: Menu }) {
 	const shown = useMemo(() => searchMenu(visible, query), [visible, query]);
 	const [selected, setSelected] = useState(visible[0]?.id ?? "");
 	const kind = closedKind(menu.ordering);
-	const canAdd = kind === null;
+	// a closed store that books the next morning takes a takeaway's items (C15 with D7, C17)
+	const preOrder = preOrderOpen(menu.ordering, ONLINE_PAYMENT_ENABLED);
+	const canAdd = orderingOpen(
+		menu.ordering,
+		fulfilment,
+		ONLINE_PAYMENT_ENABLED,
+	);
 	const inCart = cart.store === store ? cartCount(cart) : 0;
 
 	const onAdd = (item: MenuItem) => {
@@ -208,7 +217,17 @@ function ReadyMenu({ menu }: { readonly menu: Menu }) {
 		<>
 			<div className="flex flex-col gap-3 px-4 pt-4">
 				<TableContextNote />
-				{kind === "closed" ? <ClosedState menu={menu} /> : null}
+				{kind === "closed" ? (
+					<ClosedState
+						menu={menu}
+						preOrder={preOrder}
+						onPreorder={
+							preOrder && fulfilment !== "takeaway"
+								? () => setFulfilment("takeaway")
+								: null
+						}
+					/>
+				) : null}
 				<OrderingHeld ordering={menu.ordering} />
 				<label htmlFor={searchId} className="sr-only">
 					{t("menu.searchLabel")}

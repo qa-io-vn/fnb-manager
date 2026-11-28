@@ -12,6 +12,7 @@ import {
 import { kitButton, PriceText, useI18n } from "@fnb/zalo-mini/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNow } from "../data/use-now";
 import { Loading } from "../ui";
 import { CounterSwitch } from "./counter-switch";
 import { useOrdering } from "./ordering-data";
@@ -25,6 +26,7 @@ import {
 	serverPayment,
 } from "./payment-step";
 import { StandInCheckoutSheet } from "./stand-in-sheet";
+import { pickupPassed, pickupWords } from "./takeaway";
 import { TransferPanel } from "./transfer-panel";
 
 // The payment step of an online order (C05 → pay; native-till.md 6, online-ordering.md 6.2). It opens (or resumes) an
@@ -71,6 +73,7 @@ export function PayScreen() {
 	const { id = "" } = useParams();
 	const { client, payments, checkout } = useOrdering();
 	const leaving = useLeaving();
+	const now = useNow(5000);
 	const given = attemptFrom(location.state, id);
 	const [order, setOrder] = useState<Order | null>(null);
 	const [missing, setMissing] = useState(false);
@@ -261,8 +264,28 @@ export function PayScreen() {
 							{t("paystep.heldUntil", { time: clock(order.paymentDueAt) })}
 						</p>
 					)}
+					{order.type === "takeaway" && order.pickupAt !== null ? (
+						<p className="text-[13px] text-ink" data-testid="pay-pickup">
+							{t("paystep.pickupAt", {
+								when: pickupWords(t, order.pickupAt, now),
+							})}
+						</p>
+					) : null}
 				</Panel>
 			)}
+			{order !== null && pickupPassed(order, now) && !done ? (
+				<Problem testId="pay-pickup-passed">
+					<span className="block">{t("paystep.pickupPassed")}</span>
+					<button
+						type="button"
+						className={`${kitButton.secondary} mt-3 w-full`}
+						onClick={() => navigate(`/gio-lay/${order.id}`)}
+						data-testid="pay-pickup-choose"
+					>
+						{t("paystep.pickupChoose")}
+					</button>
+				</Problem>
+			) : null}
 			{view.kind === "starting" || done ? (
 				<Loading label={t("paystep.starting")} />
 			) : view.kind === "waiting" ? (

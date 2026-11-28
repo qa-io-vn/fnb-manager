@@ -14,9 +14,11 @@ import {
 	readMenuVersion,
 	readOrderAnswer,
 	readOrderList,
+	readPickupChangeAnswer,
 	readPlaceAnswer,
 	readStampCard,
 	readTableAnswer,
+	readTakeawaySlots,
 } from "@fnb/zalo-mini/ordering";
 import { expect, test } from "@playwright/test";
 import { EMPTY_CART, requestLines } from "../src/ordering/cart";
@@ -79,6 +81,14 @@ function call(tx: Sql, fn: string, ...args: unknown[]) {
 			);
 		case "stamps":
 			return ONE(tx`select public.customer_stamp_card() as r`);
+		case "slots":
+			return ONE(
+				tx`select public.customer_takeaway_slots(${args[0] as string}) as r`,
+			);
+		case "pickup":
+			return ONE(
+				tx`select public.customer_change_pickup(${args[0] as string}::uuid, ${args[1] as string}::timestamptz) as r`,
+			);
 		default:
 			throw new Error(fn);
 	}
@@ -450,6 +460,121 @@ test.describe("the wire contract and the server's refusals", () => {
 				{ state: "cancelled" },
 			);
 		});
+	});
+});
+
+test.describe("C17 takeaway on the real functions", () => {
+	let fixture: OrderingFixture | null = null;
+
+	test.beforeEach(async () => {
+		const url = localDatabaseUrl();
+		test.skip(
+			url === "",
+			"set DATABASE_URL to the local stack's loopback database",
+		);
+		fixture = await openOrderingFixture(url, { ownBrand: true });
+		await fixture.makeNative();
+		// takeaway on, prepaid by VietQR, 15 minutes to prepare, one order a slot
+		await fixture.sql`
+			update public.store_ordering_settings
+			set order_types = array['table', 'takeaway'], payment_methods = array['counter', 'vietqr'], prep_minutes = 15,
+				takeaway_slot_limit = 1
+			where store_id = ${fixture.storeId}::uuid
+		`;
+	});
+
+	test.afterEach(async () => {
+		await fixture?.cleanup();
+		fixture = null;
+	});
+
+	test("the slots, a booking, the last place, a move and another customer's order read with the app's readers", async () => {
+		if (fixture === null) throw new Error("no fixture");
+		const f = fixture;
+		const menu = f.menu();
+		const [mine, theirs] = f.customers;
+		if (mine === undefined || theirs === undefined)
+			throw new Error("no customers");
+		const slots = await f.asCustomer(mine, async (tx) =>
+			readTakeawaySlots(await call(tx, "slots", f.storeCode)),
+		);
+		expect(slots.state).toBe("ok");
+		expect(slots.prepMinutes).toBe(15);
+		expect(slots.slotMinutes).toBe(15);
+		// open around the clock: "Càng sớm" is offered, the earliest slot is at least 15 minutes ahead
+		expect(slots.asapAt).not.toBeNull();
+		const free = slots.slots.filter((slot) => slot.available);
+		const [first, second] = free;
+		if (first === undefined || second === undefined)
+			throw new Error("no free slots");
+		expect(
+			Date.parse(first.start) - Date.parse(slots.now),
+		).toBeGreaterThanOrEqual(15 * 60_000);
+		const booking = (at: string) => ({
+			request_id: randomUUID(),
+			store: f.storeCode,
+			type: "takeaway",
+			pickup_at: at,
+			lines: [{ size: menu.cakeSize, qty: 1 }],
+			payment: "vietqr",
+			expected_total: 25000,
+		});
+		const placed = await f.asCustomer(mine, async (tx) =>
+			readPlaceAnswer(await call(tx, "place", booking(first.start))),
+		);
+		expect(placed.state).toBe("awaiting_payment");
+		expect(Date.parse(placed.order?.pickupAt ?? "")).toBe(
+			Date.parse(first.start),
+		);
+		expect(placed.order?.startAt).not.toBeNull();
+		const orderId = placed.order?.id ?? "";
+		const counter = await f.asCustomer(mine, async (tx) =>
+			readPlaceAnswer(
+				await call(tx, "place", {
+					...booking(second.start),
+					payment: "counter",
+				}),
+			),
+		);
+		expect(counter.refusal).toBe("payment_not_allowed");
+		// the last (and only) place of the slot is taken: the other customer is told it is full
+		const full = await f.asCustomer(theirs, async (tx) =>
+			readPlaceAnswer(await call(tx, "place", booking(first.start))),
+		);
+		expect(full.refusal).toBe("slot_full");
+		expect(Date.parse(full.pickupAt ?? "")).toBe(Date.parse(first.start));
+		const shown = await f.asCustomer(theirs, async (tx) =>
+			readTakeawaySlots(await call(tx, "slots", f.storeCode)),
+		);
+		expect(
+			shown.slots.find(
+				(slot) => Date.parse(slot.start) === Date.parse(first.start),
+			)?.reason,
+		).toBe("full");
+		// the other customer cannot move my booking; I can, and the place I left is free again
+		const foreign = await f.asCustomer(theirs, async (tx) =>
+			readPickupChangeAnswer(await call(tx, "pickup", orderId, second.start)),
+		);
+		expect(foreign).toMatchObject({
+			state: "refused",
+			refusal: "unknown_order",
+		});
+		const moved = await f.asCustomer(mine, async (tx) =>
+			readPickupChangeAnswer(await call(tx, "pickup", orderId, second.start)),
+		);
+		expect(moved.state).toBe("changed");
+		const again = await f.asCustomer(theirs, async (tx) =>
+			readPlaceAnswer(await call(tx, "place", booking(first.start))),
+		);
+		expect(again.state).toBe("awaiting_payment");
+		const list = await f.asCustomer(mine, async (tx) =>
+			readOrderList(await call(tx, "orders")),
+		);
+		expect(
+			Date.parse(
+				list.orders.find((order) => order.id === orderId)?.pickupAt ?? "",
+			),
+		).toBe(Date.parse(second.start));
 	});
 });
 

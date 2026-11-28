@@ -13,6 +13,7 @@ import {
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCustomerData } from "../data/customer-data";
+import { isoDateIn, shownDate } from "../data/dates";
 import { useOnline } from "../data/offline";
 import { useLegalPopup } from "../legal/legal-popups";
 import { Loading } from "../ui";
@@ -20,7 +21,17 @@ import { requestLines } from "./cart";
 import { methodSelectable, ONLINE_PAYMENT_ENABLED } from "./flag";
 import { refusalBacksToCart, refusalKey } from "./order-view";
 import { basketSignature, useOrdering } from "./ordering-data";
-import { FlowBack, kicker, Panel, Problem } from "./parts";
+import { ClockIcon, clock, FlowBack, kicker, Panel, Problem } from "./parts";
+import type { PickupLocationState } from "./pickup-screen";
+import {
+	type Fulfilment,
+	orderingOpen,
+	type PickupChoice,
+	relativeDay,
+	slotRefusal,
+	takeawayMethods,
+	vietnameseWeekday,
+} from "./takeaway";
 
 // C05 Xác nhận đơn (design spec 6.2). The server prices the basket first (customer_check_cart) and the button shows
 // its total; "Đặt món" sends customer_place_order with a request_id made once for this basket, this total and this way
@@ -58,6 +69,31 @@ const METHODS: readonly {
 	},
 ];
 
+/** The pick-up row of C05: "Hôm nay · 15:00", "Ngày mai · 07:30", or "Càng sớm có thể". */
+function pickupRow(
+	t: (
+		key: string,
+		params?: Readonly<Record<string, string | number>>,
+	) => string,
+	pickup: PickupChoice,
+	now: number,
+): string {
+	if (pickup.kind === "asap") return t("checkout.pickupAsap");
+	const time = clock(pickup.at);
+	const date = isoDateIn(Date.parse(pickup.at));
+	switch (relativeDay(date, now)) {
+		case "today":
+			return t("checkout.pickupRowToday", { time });
+		case "tomorrow":
+			return t("checkout.pickupRowTomorrow", { time });
+		default:
+			return t("checkout.pickupRowLater", {
+				day: `${vietnameseWeekday(date)}, ${shownDate(date).slice(0, 5)}`,
+				time,
+			});
+	}
+}
+
 function lostAnswer(error: unknown): boolean {
 	return (
 		error instanceof RestError && (error.status === 0 || error.status >= 500)
@@ -78,7 +114,13 @@ export function CheckoutScreen() {
 		placement,
 		settlePlacement,
 		reloadMenu,
+		fulfilment,
+		takeaway,
+		setFulfilment,
+		pickup,
 	} = useOrdering();
+	const forTakeaway = fulfilment === "takeaway";
+	const storeAddress = menu.status === "ready" ? menu.data.store.address : null;
 	const { open, popup } = useLegalPopup();
 	const [check, setCheck] = useState<Check>({ status: "checking" });
 	const [chosen, setChosen] = useState<PaymentMethod>("counter");
@@ -95,10 +137,11 @@ export function CheckoutScreen() {
 		client
 			.checkCart({
 				store,
-				type: "table",
-				...(tableToken === null ? {} : { table_token: tableToken }),
+				type: fulfilment,
+				...(tableToken === null || fulfilment === "takeaway"
+					? {}
+					: { table_token: tableToken }),
 				lines: requestLines(cart),
-				payment: "counter",
 			})
 			.then(
 				(answer) => {
@@ -113,7 +156,7 @@ export function CheckoutScreen() {
 					setCheck({ status: "failed" });
 				},
 			);
-	}, [client, store, cart, tableToken, recover, reloadMenu]);
+	}, [client, store, cart, tableToken, fulfilment, recover, reloadMenu]);
 
 	useEffect(() => {
 		runCheck();
@@ -143,28 +186,55 @@ export function CheckoutScreen() {
 			: menu.status === "ready"
 				? menu.data.ordering.paymentMethods
 				: [];
-	// a way that stops being offered falls back to the counter
-	const method: PaymentMethod = methodSelectable(
-		chosen,
-		offered,
-		ONLINE_PAYMENT_ENABLED,
-	)
-		? chosen
-		: "counter";
+	// a takeaway is prepaid: only the online ways, the first one the store offers chosen unless the customer chose
+	const ways = METHODS.filter(
+		({ method: way }) => !forTakeaway || takeawayMethods([way]).length > 0,
+	);
+	const firstOnline =
+		takeawayMethods(offered).find((way) =>
+			methodSelectable(way, offered, ONLINE_PAYMENT_ENABLED),
+		) ?? null;
+	// a way that stops being offered falls back to the counter (to the first online way for a takeaway)
+	const method: PaymentMethod | null = forTakeaway
+		? chosen !== "counter" &&
+			methodSelectable(chosen, offered, ONLINE_PAYMENT_ENABLED)
+			? chosen
+			: firstOnline
+		: methodSelectable(chosen, offered, ONLINE_PAYMENT_ENABLED)
+			? chosen
+			: "counter";
+	const ordering =
+		check.status === "ready"
+			? check.check.ordering
+			: menu.status === "ready"
+				? menu.data.ordering
+				: null;
+	// a closed store takes a takeaway booked for a slot of its next opening, never "Càng sớm"
+	const orderable =
+		ordering === null ||
+		(forTakeaway
+			? orderingOpen(ordering, "takeaway", ONLINE_PAYMENT_ENABLED) &&
+				(ordering.accepting || pickup?.kind === "slot")
+			: ordering.accepting);
 	const canSend =
 		total !== null &&
-		tableToken !== null &&
+		method !== null &&
 		online &&
 		!sending &&
-		(check.status !== "ready" || check.check.ordering.accepting);
+		orderable &&
+		(forTakeaway ? pickup !== null : tableToken !== null);
 
 	const send = () => {
-		if (client === null || total === null || tableToken === null || sending)
-			return;
+		if (client === null || total === null || method === null || sending) return;
+		if (forTakeaway ? pickup === null : tableToken === null) return;
+		const pickupAt =
+			forTakeaway && pickup?.kind === "slot" ? pickup.at : undefined;
 		const request = placement(
 			basketSignature(cart, {
 				store,
-				table: tableToken,
+				type: fulfilment,
+				table: forTakeaway ? null : tableToken,
+				pickup: pickupAt ?? null,
 				total,
 				menuVersion,
 				payment: method,
@@ -172,8 +242,11 @@ export function CheckoutScreen() {
 			(requestId) => ({
 				request_id: requestId,
 				store,
-				type: "table",
-				table_token: tableToken,
+				type: fulfilment,
+				...(forTakeaway || tableToken === null
+					? {}
+					: { table_token: tableToken }),
+				...(pickupAt === undefined ? {} : { pickup_at: pickupAt }),
 				lines: requestLines(cart),
 				payment: method,
 				expected_total: total,
@@ -194,6 +267,17 @@ export function CheckoutScreen() {
 							: `/don/${answer.order.id}`,
 						{ replace: true },
 					);
+					return;
+				}
+				// the time the customer chose filled, passed or is closed: back to C17 to choose another (frame 3)
+				if (forTakeaway && slotRefusal(answer.refusal)) {
+					const state: PickupLocationState = {
+						problem: answer.refusal as NonNullable<
+							PickupLocationState["problem"]
+						>,
+						at: answer.pickupAt ?? pickupAt ?? null,
+					};
+					navigate("/gio-lay", { state });
 					return;
 				}
 				setProblem({ kind: "refused", answer });
@@ -270,30 +354,130 @@ export function CheckoutScreen() {
 				<fieldset
 					className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"
 					data-testid="fulfilment"
-					data-mode="table"
+					data-mode={fulfilment}
 				>
 					<legend className={`${kicker} pb-2`}>
 						{t("checkout.fulfilment")}
 					</legend>
-					<Panel>
-						<p
-							className="text-[15px] font-bold text-ink"
-							data-testid="fulfilment-table"
-						>
-							{table?.state === "ok"
-								? t("checkout.table", { table: table.label })
-								: t("cart.noTable")}
-						</p>
-						<p className="text-[13px] text-ink-muted">
-							{table?.state === "ok"
-								? t("checkout.tableSub")
-								: t("cart.noTableSub")}
-						</p>
-					</Panel>
+					{takeaway ? (
+						<Panel>
+							<div className="flex flex-wrap gap-2">
+								{(
+									[
+										...(table?.state === "ok" ? (["table"] as const) : []),
+										"takeaway",
+									] as const
+								).map((mode: Fulfilment) => {
+									const selected = mode === fulfilment;
+									return (
+										<label
+											key={mode}
+											className={`relative inline-flex min-h-12 items-center gap-1.5 rounded-full border-field px-4 text-[15px] font-bold has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${selected ? "border-ink bg-ink text-surface-raised" : "border-line-strong bg-surface-raised text-ink"}`}
+											data-testid={`fulfilment-${mode}`}
+											data-selected={selected}
+										>
+											<input
+												type="radio"
+												name={`${paymentId}-fulfilment`}
+												value={mode}
+												checked={selected}
+												disabled={sending}
+												onChange={() => setFulfilment(mode)}
+												className="absolute inset-0 m-0 size-full cursor-pointer appearance-none rounded-full opacity-0"
+											/>
+											{mode === "table" && table?.state === "ok"
+												? t("checkout.table", { table: table.label })
+												: t("checkout.takeaway")}
+										</label>
+									);
+								})}
+							</div>
+							{forTakeaway ? null : (
+								<p className="text-[13px] text-ink-muted">
+									{t("checkout.tableSub")}
+								</p>
+							)}
+						</Panel>
+					) : (
+						<Panel>
+							<p
+								className="text-[15px] font-bold text-ink"
+								data-testid="fulfilment-table"
+							>
+								{table?.state === "ok"
+									? t("checkout.table", { table: table.label })
+									: t("cart.noTable")}
+							</p>
+							<p className="text-[13px] text-ink-muted">
+								{table?.state === "ok"
+									? t("checkout.tableSub")
+									: t("cart.noTableSub")}
+							</p>
+						</Panel>
+					)}
 				</fieldset>
+				{forTakeaway ? (
+					<section
+						className="flex flex-col gap-2"
+						aria-labelledby={`${paymentId}-pickup`}
+					>
+						<h2 id={`${paymentId}-pickup`} className={kicker}>
+							{t("checkout.pickup")}
+						</h2>
+						<Panel testId="checkout-pickup">
+							<div className="flex items-center gap-3">
+								<span
+									aria-hidden="true"
+									className="flex size-10 shrink-0 items-center justify-center rounded-card-xl bg-surface-sunken text-highlight"
+								>
+									<ClockIcon />
+								</span>
+								<div className="flex min-w-0 flex-1 flex-col">
+									<p
+										className="text-[15px] font-bold text-ink"
+										data-testid="checkout-pickup-when"
+										data-kind={pickup?.kind ?? "none"}
+									>
+										{pickup === null
+											? t("checkout.pickupNone")
+											: pickupRow(t, pickup, Date.now())}
+									</p>
+									<p className="text-[13px] text-ink-muted">
+										{storeAddress === null
+											? t("checkout.pickupWhereShort")
+											: t("checkout.pickupWhere", { address: storeAddress })}
+									</p>
+								</div>
+								<button
+									type="button"
+									className={`${kitButton.quiet} shrink-0`}
+									onClick={() => navigate("/gio-lay")}
+									aria-label={
+										pickup === null
+											? undefined
+											: t("checkout.pickupChangeLabel")
+									}
+									data-testid="checkout-pickup-change"
+								>
+									{pickup === null
+										? t("checkout.pickupChoose")
+										: t("checkout.pickupChange")}
+								</button>
+							</div>
+							{pickup === null ? (
+								<p
+									className="text-[13px] text-ink"
+									data-testid="checkout-pickup-needed"
+								>
+									{t("checkout.pickupNeeded")}
+								</p>
+							) : null}
+						</Panel>
+					</section>
+				) : null}
 				<fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
 					<legend className={`${kicker} pb-2`}>{t("checkout.payment")}</legend>
-					{METHODS.map(({ method: way, title, sub }) => {
+					{ways.map(({ method: way, title, sub }) => {
 						const ready = methodSelectable(
 							way,
 							offered,
@@ -348,6 +532,14 @@ export function CheckoutScreen() {
 							</label>
 						);
 					})}
+					{forTakeaway ? (
+						<p
+							className="rounded-card bg-surface-sunken px-4 py-3 text-[13px] text-ink"
+							data-testid="checkout-takeaway-prepaid"
+						>
+							{t("checkout.takeawayPrepaid")}
+						</p>
+					) : null}
 				</fieldset>
 				<Panel testId="checkout-lines">
 					<h2 className={kicker}>{t("checkout.lines")}</h2>
@@ -421,7 +613,7 @@ export function CheckoutScreen() {
 						t("checkout.sending")
 					) : (
 						<>
-							{t("checkout.submit")}
+							{t(forTakeaway ? "checkout.submitTakeaway" : "checkout.submit")}
 							{total === null ? null : (
 								<>
 									<span aria-hidden="true">·</span>

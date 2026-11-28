@@ -138,6 +138,11 @@ export interface DemoSettings {
 	 * cannot be asked (einvoice_off); on by default, as the mock provider is on the local stack's test tenants.
 	 */
 	readonly einvoiceOff: boolean;
+	/**
+	 * The ordering store takes takeaway as well (`?takeaway=on`, C17): open 07:00-23:00 every day, pick-up slots of 15
+	 * minutes from now plus 15 minutes to prepare (or from the next opening while closed), two orders a slot.
+	 */
+	readonly takeaway: boolean;
 }
 
 export const DEMO_DEFAULTS: DemoSettings = {
@@ -159,6 +164,7 @@ export const DEMO_DEFAULTS: DemoSettings = {
 	orderingReason: null,
 	onlinePayments: false,
 	einvoiceOff: false,
+	takeaway: false,
 };
 
 const MAX_DEMO_DELAY_MS = 10_000;
@@ -220,6 +226,7 @@ export function demoSettingsFrom(search: string): DemoSettings {
 			null,
 		onlinePayments: params.get("payments") === "online",
 		einvoiceOff: params.get("einvoice") === "off",
+		takeaway: params.get("takeaway") === "on",
 	};
 }
 

@@ -31,6 +31,10 @@ const CheckoutScreen = lazyScreen(
 	() => import("./checkout-screen"),
 	(m) => m.CheckoutScreen,
 );
+const PickupScreen = lazyScreen(
+	() => import("./pickup-screen"),
+	(m) => m.PickupScreen,
+);
 const OrderScreen = lazyScreen(
 	() => import("./order-screen"),
 	(m) => m.OrderScreen,
@@ -117,6 +121,9 @@ export const orderingRoutes: readonly MiniAppRoute[] = [
 	{ path: "/mon/:id", chrome: "flow", element: <ItemScreen /> },
 	{ path: "/gio-hang", chrome: "flow", element: <CartScreen /> },
 	{ path: "/dat-mon", chrome: "flow", element: <CheckoutScreen /> },
+	// C17: the takeaway's pick-up time, for the order being confirmed or (with its id) an unpaid order to move
+	{ path: "/gio-lay", chrome: "flow", element: <PickupScreen /> },
+	{ path: "/gio-lay/:id", chrome: "flow", element: <PickupScreen /> },
 	{ path: "/don/:id", activeTab: null, element: <OrderScreen /> },
 	{ path: "/don-hang", activeTab: null, element: <OrdersScreen /> },
 	{ path: "/tra-tien/:id", chrome: "flow", element: <PayScreen /> },

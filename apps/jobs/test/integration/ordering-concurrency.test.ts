@@ -243,6 +243,39 @@ describe.skipIf(!DATABASE_URL)(
 			expect(events?.n).toBe(2);
 		});
 
+		it("two customers taking the last place of a takeaway slot at once: one wins, the other is told it is full (C17-I2)", async () => {
+			await control`
+				update public.store_ordering_settings
+				set order_types = array['table', 'takeaway'], payment_methods = array['counter', 'vietqr'], prep_minutes = 15, takeaway_slot_limit = 1
+				where store_id = ${storeId}
+			`;
+			// the first bookable slot on the store's 15-minute grid, with a minute to spare for the race itself
+			const grid = 15 * 60_000;
+			const pickup = new Date(
+				Math.ceil((Date.now() + 16 * 60_000) / grid) * grid,
+			).toISOString();
+			const answers = await race(2, (tx, index) =>
+				place(tx, customers[index + 1] ?? "", {
+					request_id: randomUUID(),
+					store: `${slug}-a1`,
+					type: "takeaway",
+					payment: "vietqr",
+					pickup_at: pickup,
+					lines: [{ size: sizeId, qty: 1 }],
+					expected_total: 29000,
+				}),
+			);
+			const outcomes = answers
+				.map((answer) => answer.refusal ?? answer.state)
+				.sort();
+			expect(outcomes).toEqual(["awaiting_payment", "slot_full"]);
+			const [count] = await control<{ n: number }[]>`
+				select count(*)::int as n from public.orders
+				where store_id = ${storeId} and order_type = 'takeaway' and pickup_at = ${pickup}::timestamptz
+			`;
+			expect(count?.n).toBe(1);
+		});
+
 		it("eight parallel double taps at the counter make one order", async () => {
 			const requestId = randomUUID();
 			const body = {

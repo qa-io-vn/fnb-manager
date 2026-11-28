@@ -11,6 +11,11 @@ import type {
  * cursor, so the queue merges each answer into what it holds; a poll that fails keeps every order shown (the plan's
  * "keep shown orders" when the network drops), and the first answer after a failure says how many orders arrived
  * meanwhile. An order the queue had not seen in an active state is "fresh" (the chime), except at the first load.
+ *
+ * A takeaway booked for a pick-up time (C17, ADR-072) is paid and accepted long before it should be made: until its
+ * start_at (the pick-up less the store's preparation time) it is "scheduled", shown apart as "hẹn HH:MM" and not
+ * fresh. The board does not resend an order that did not change, so the queue decides on its own clock: at each answer
+ * an order it held as scheduled whose start has come is fresh then (the chime), and it joins the Mới lane.
  */
 
 export interface BoardState {
@@ -32,6 +37,8 @@ export interface BoardState {
 	readonly freshCalls: readonly string[];
 	/** after a failure, how many new orders the catch-up answer brought (shown once) */
 	readonly resynced: number | null;
+	/** the orders that were scheduled at the last answer: one whose start has come since is fresh */
+	readonly scheduledIds: readonly string[];
 }
 
 export const EMPTY_BOARD: BoardState = {
@@ -48,6 +55,7 @@ export const EMPTY_BOARD: BoardState = {
 	fresh: [],
 	freshCalls: [],
 	resynced: null,
+	scheduledIds: [],
 };
 
 const ACTIVE: readonly OrderStatus[] = [
@@ -59,6 +67,19 @@ const ACTIVE: readonly OrderStatus[] = [
 
 export function isActive(order: Order): boolean {
 	return ACTIVE.includes(order.status);
+}
+
+/** When a booked takeaway should start being made, as milliseconds, or null for any other order. */
+export function startOf(order: Order): number | null {
+	if (order.start_at === null || order.start_at === undefined) return null;
+	const at = Date.parse(order.start_at);
+	return Number.isFinite(at) ? at : null;
+}
+
+/** Accepted, and its preparation start still ahead at `now` (the counter's clock): shown as "hẹn HH:MM", not as new. */
+export function isScheduled(order: Order, now: number): boolean {
+	const start = startOf(order);
+	return order.status === "accepted" && start !== null && start > now;
 }
 
 /** Merges one answer of the board. An order is replaced by the answer's copy unless the queue holds a newer version. */
@@ -74,7 +95,8 @@ export function applyBoard(
 		if (
 			held === undefined &&
 			state.loaded &&
-			(order.status === "accepted" || order.status === "preparing")
+			(order.status === "accepted" || order.status === "preparing") &&
+			!isScheduled(order, now)
 		) {
 			fresh.push(order.id);
 		}
@@ -95,6 +117,21 @@ export function applyBoard(
 				orders.delete(id);
 		}
 	}
+	// a booking whose preparation start came since the last answer enters the flow now, as a new order would
+	for (const id of state.scheduledIds) {
+		const held = orders.get(id);
+		if (
+			state.loaded &&
+			held !== undefined &&
+			held.status === "accepted" &&
+			!isScheduled(held, now) &&
+			!fresh.includes(id)
+		)
+			fresh.push(id);
+	}
+	const scheduledIds = [...orders.values()]
+		.filter((order) => isScheduled(order, now))
+		.map((order) => order.id);
 	const knownCalls = new Set(state.calls.map((call) => call.id));
 	const freshCalls = state.loaded
 		? answer.calls
@@ -115,6 +152,7 @@ export function applyBoard(
 		fresh,
 		freshCalls,
 		resynced: state.offline ? fresh.length : state.resynced,
+		scheduledIds,
 	};
 }
 
@@ -164,15 +202,33 @@ export function laneOf(order: Order): Lane | null {
 	}
 }
 
-/** The orders of a lane, newest first (the plan: newest on top). */
-export function laneOrders(state: BoardState, lane: Lane): Order[] {
+/**
+ * The orders of a lane, newest first (the plan: newest on top). With `now`, the Mới lane leaves out the bookings whose
+ * preparation start is still ahead (scheduledOrders lists them); without it every accepted order is in Mới.
+ */
+export function laneOrders(
+	state: BoardState,
+	lane: Lane,
+	now?: number,
+): Order[] {
 	return [...state.orders.values()]
-		.filter((order) => laneOf(order) === lane)
+		.filter(
+			(order) =>
+				laneOf(order) === lane &&
+				(now === undefined || !isScheduled(order, now)),
+		)
 		.sort((a, b) =>
 			(b.accepted_at ?? b.placed_at).localeCompare(
 				a.accepted_at ?? a.placed_at,
 			),
 		);
+}
+
+/** The takeaway orders booked for later whose preparation start is still ahead, the next to start first. */
+export function scheduledOrders(state: BoardState, now: number): Order[] {
+	return [...state.orders.values()]
+		.filter((order) => isScheduled(order, now))
+		.sort((a, b) => (startOf(a) ?? 0) - (startOf(b) ?? 0));
 }
 
 /** The business day's completed and cancelled orders, newest first. */
@@ -219,9 +275,12 @@ export function payable(order: Order): boolean {
 	);
 }
 
-/** The minutes an order has waited since it entered the queue. */
+/** The minutes an order has waited since it entered the queue (a booking: since its preparation start). */
 export function waitingMinutes(order: Order, now: number): number {
-	const since = Date.parse(order.accepted_at ?? order.placed_at);
+	const since = Math.max(
+		Date.parse(order.accepted_at ?? order.placed_at),
+		startOf(order) ?? Number.NEGATIVE_INFINITY,
+	);
 	return Number.isFinite(since)
 		? Math.max(0, Math.floor((now - since) / 60_000))
 		: 0;
