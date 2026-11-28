@@ -32,6 +32,14 @@ async function tabThrough(page: Page, presses: number): Promise<Reached[]> {
 	const reached: Reached[] = [];
 	for (let press = 0; press < presses; press += 1) {
 		await page.keyboard.press("Tab");
+		// WebKit scrolls the focused control into view a frame after the key press; measuring at once found a stepper
+		// button still under the tab bar in about one run of three. Two frames let the scroll land, as a person sees it.
+		await page.evaluate(
+			() =>
+				new Promise<void>((resolve) =>
+					requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+				),
+		);
 		const now = await page.evaluate((selector) => {
 			const element = document.activeElement as HTMLElement | null;
 			if (element === null || element === document.body) return null;

@@ -27,9 +27,14 @@ import {
 	DEMO_PAYMENT_WINDOW_MS,
 	DEMO_ROTATED_TABLE_TOKEN,
 	DEMO_TABLES,
+	type DemoGroup,
 	type DemoItem,
 	demoMenuItems,
 } from "./ordering-fixtures";
+
+/** The demo store's name, as customer_menu and customer_orders answer it. */
+const DEMO_STORE_NAME = "Cửa hàng Mẫu 1";
+
 import type { DemoExtension } from "./world";
 
 // The native till's customer functions in the demo world (docs/api.md 3.27), answered at the wire level so the app's
@@ -42,10 +47,42 @@ import type { DemoExtension } from "./world";
 // Function checkout-order (start and link, with the server's answers and refusals) and, through the till, for the
 // gateway and the bank: only they move an order to paid, never the app.
 
-export type DemoTillAction = "pay" | "start" | "done" | "complete" | "cancel";
+/** "refund" cancels a paid order and hands the money back at once (payment_status refunded, C14's pill) */
+export type DemoTillAction =
+	| "pay"
+	| "start"
+	| "done"
+	| "complete"
+	| "cancel"
+	| "refund";
 
 /** What the stand-in bank did with a transfer: matched and paid, held for a manager (another amount), or unknown. */
 export type DemoTransferOutcome = "paid" | "held" | "unknown";
+
+/** A line of an earlier order (DemoTill.pastOrder), by its size as the menu knows it now or knew it then. */
+export interface DemoPastLine {
+	readonly size: string;
+	readonly qty?: number;
+	readonly options?: readonly string[];
+	readonly note?: string;
+	/** the item's name as it was sold: needed for a size the menu does not know, or to try a hostile name */
+	readonly name?: string;
+	/** the size's price as it was sold, when it differs from today's */
+	readonly price?: number;
+}
+
+/** An earlier order of the customer, for the history (C14) and "Đặt lại". */
+export interface DemoPastOrder {
+	/** "table" (Bàn 12) by default */
+	readonly type?: "table" | "takeaway";
+	/** placed this many days ago, 1 by default */
+	readonly daysAgo?: number;
+	/** completed and paid by default; cancelled unpaid, or cancelled and refunded */
+	readonly status?: "completed" | "cancelled" | "refunded";
+	/** the store's name in the history (another store's order), the demo store's by default */
+	readonly storeName?: string;
+	readonly lines: readonly DemoPastLine[];
+}
 
 /** The counter's side of the demo, for tests: what staff do at the till, and the gateway and the bank. */
 export interface DemoTill extends DemoInvoiceTill {
@@ -53,6 +90,23 @@ export interface DemoTill extends DemoInvoiceTill {
 	soldOut(itemId: string, on: boolean): void;
 	/** change a size's price; moves the menu version */
 	setPrice(sizeId: string, price: number): void;
+	/** take a size off the menu (its item keeps its other sizes); moves the menu version */
+	removeSize(sizeId: string): void;
+	/** take an option off the menu; moves the menu version */
+	removeOption(optionId: string): void;
+	/**
+	 * set how many options a group needs at least, and which one is its default (null: none); moves the menu version
+	 */
+	requireGroup(
+		groupId: string,
+		min: number,
+		defaultOption: string | null,
+	): void;
+	/**
+	 * an earlier order of the customer (C14), priced from the menu unless a line says otherwise; answers its id (it is
+	 * then the latest order for the calls here without an id)
+	 */
+	pastOrder(order: DemoPastOrder): string;
 	/** hold orders for a reason (null: take orders) */
 	setOrdering(reason: string | null): void;
 	/** a counter action on an order (the latest when no id is given); answers the order's status after it */
@@ -158,6 +212,8 @@ interface DemoOrder {
 	readonly lines: readonly DemoLine[];
 	readonly events: DemoEvent[];
 	stampsCounted: boolean;
+	/** the store's name in the history; the demo store's unless an earlier order says otherwise */
+	readonly storeName?: string;
 }
 
 /** A payment record: the counter's cash, or an online attempt with its reference, keys and Zalo order id. */
@@ -368,6 +424,11 @@ export function createOrderingWorld(
 	einvoiceOn = true,
 ): OrderingWorld {
 	const items = demoMenuItems();
+	// this world's own option groups: the till takes options off and makes a group required
+	const groups: DemoGroup[] = DEMO_OPTION_GROUPS.map((group) => ({
+		...group,
+		options: [...group.options],
+	}));
 	const soldOut = new Set<string>();
 	let version = 1;
 	let reason: string | null = initialReason;
@@ -516,7 +577,7 @@ export function createOrderingWorld(
 		return {
 			store: {
 				code: DEMO_ORDERING_STORE,
-				name: "Cửa hàng Mẫu 1",
+				name: DEMO_STORE_NAME,
 				address: "12 Đường Số 1, Phường Mẫu, Thành phố Mẫu",
 				opening_hours: {
 					mon: [["07:00", "22:00"]],
@@ -533,9 +594,7 @@ export function createOrderingWorld(
 			menu_version: version,
 			currency: "VND",
 			categories,
-			option_groups: DEMO_OPTION_GROUPS.filter((group) =>
-				usedGroups.has(group.id),
-			),
+			option_groups: groups.filter((group) => usedGroups.has(group.id)),
 			unavailable_items: items
 				.filter((item) => !available(item))
 				.map((item) => item.id),
@@ -573,7 +632,7 @@ export function createOrderingWorld(
 				? (line.options as string[])
 				: [];
 			const options = chosen.map((id) => {
-				for (const group of DEMO_OPTION_GROUPS) {
+				for (const group of groups) {
 					const option = group.options.find((entry) => entry.id === id);
 					if (option !== undefined && found.item.groups.includes(group.id))
 						return { group, option };
@@ -581,7 +640,7 @@ export function createOrderingWorld(
 				return null;
 			});
 			const badCount = found.item.groups.some((groupId) => {
-				const group = DEMO_OPTION_GROUPS.find((entry) => entry.id === groupId);
+				const group = groups.find((entry) => entry.id === groupId);
 				const count = options.filter(
 					(entry) => entry?.group.id === groupId,
 				).length;
@@ -692,7 +751,7 @@ export function createOrderingWorld(
 					timeline: order.events,
 					money: {
 						paid: order.paymentStatus === "unpaid" ? 0 : order.total,
-						refunded: 0,
+						refunded: order.paymentStatus === "refunded" ? order.total : 0,
 						refund_open:
 							order.paymentStatus === "refund_pending" ? order.total : 0,
 						payments: paymentsOf(order).map((payment) => ({
@@ -703,7 +762,18 @@ export function createOrderingWorld(
 							settled_at: payment.settledAt,
 							recorded_by: null,
 						})),
-						refunds: [],
+						refunds:
+							order.paymentStatus === "refunded"
+								? [
+										{
+											method: "cash",
+											amount: order.total,
+											status: "succeeded",
+											requested_at: order.cancelledAt,
+											settled_at: order.cancelledAt,
+										},
+									]
+								: [],
 					},
 				}
 			: {}),
@@ -1085,7 +1155,7 @@ export function createOrderingWorld(
 			numbers += 1;
 			attached.unshift({
 				order_no: displayNo(numbers) ?? "",
-				store_name: "Cửa hàng Mẫu 1",
+				store_name: DEMO_STORE_NAME,
 				status: "accepted",
 				attached_at: iso(),
 				stamps: count,
@@ -1155,8 +1225,153 @@ export function createOrderingWorld(
 					order.cancelReason = "store_busy";
 					failPending(order);
 					break;
+				case "refund":
+					// the counter cancels a paid order and hands the money back at once
+					if (
+						order.paymentStatus !== "paid" ||
+						order.status === "completed" ||
+						order.status === "cancelled"
+					)
+						break;
+					order.cancelledAt = move(order, "cancelled", "cancel");
+					order.cancelReason = "store_busy";
+					order.paymentStatus = "refunded";
+					order.version += 1;
+					order.events.push({
+						kind: "payment",
+						action: "refunded",
+						from: "paid",
+						to: "refunded",
+						at,
+						reason_code: null,
+						amount: order.total,
+					});
+					break;
 			}
 			return order.status;
+		},
+		removeSize(sizeId) {
+			const index = items.findIndex((item) =>
+				item.sizes.some((size) => size.id === sizeId),
+			);
+			const item = items[index];
+			if (item !== undefined)
+				items[index] = {
+					...item,
+					sizes: item.sizes.filter((size) => size.id !== sizeId),
+				};
+			version += 1;
+		},
+		removeOption(optionId) {
+			for (const [index, group] of groups.entries())
+				groups[index] = {
+					...group,
+					options: group.options.filter((option) => option.id !== optionId),
+				};
+			version += 1;
+		},
+		requireGroup(groupId, min, defaultOption) {
+			const index = groups.findIndex((group) => group.id === groupId);
+			const group = groups[index];
+			if (group !== undefined)
+				groups[index] = {
+					...group,
+					min_select: min,
+					max_select: Math.max(group.max_select, min),
+					options: group.options.map((option) => ({
+						...option,
+						is_default: option.id === defaultOption,
+					})),
+				};
+			version += 1;
+		},
+		pastOrder(past) {
+			const lines: DemoLine[] = past.lines.map((line, index) => {
+				const found = itemOf(line.size);
+				const options = (line.options ?? []).flatMap((id) => {
+					for (const group of groups) {
+						const option = group.options.find((entry) => entry.id === id);
+						if (option !== undefined)
+							return [
+								{
+									group_id: group.id,
+									group: group.name,
+									option_id: option.id,
+									name: option.name,
+									price: option.price_delta,
+								},
+							];
+					}
+					return [];
+				});
+				const unit = line.price ?? found?.size.price ?? 0;
+				const optionsAmount = options.reduce(
+					(sum, option) => sum + option.price,
+					0,
+				);
+				const quantity = line.qty ?? 1;
+				return {
+					line_no: index + 1,
+					// an item the menu no longer knows keeps an id of its own
+					item_id:
+						found?.item.id ??
+						`dddddddd-0000-4000-8000-9${String(index + 1).padStart(11, "0")}`,
+					size_id: line.size,
+					item_name: line.name ?? found?.item.name ?? "Món cũ",
+					size_label: found?.size.label ?? null,
+					quantity,
+					unit_price: unit,
+					options,
+					options_amount: optionsAmount,
+					line_total: quantity * (unit + optionsAmount),
+					counts_for_stamps: found?.item.counts_for_stamps ?? false,
+					note: line.note ?? null,
+				};
+			});
+			const total = lines.reduce((sum, line) => sum + line.line_total, 0);
+			const placedAt = new Date(
+				now() - (past.daysAgo ?? 1) * 24 * 3_600_000,
+			).toISOString();
+			const status = past.status ?? "completed";
+			const takeaway = past.type === "takeaway";
+			orderCount += 1;
+			numbers += 1;
+			const order: DemoOrder = {
+				id: `99999999-0000-4000-8000-${String(orderCount).padStart(12, "0")}`,
+				owner: "me",
+				requestId: crypto.randomUUID(),
+				hash: "",
+				orderNo: numbers,
+				type: takeaway ? "takeaway" : "table",
+				tableLabel: takeaway ? null : "Bàn 12",
+				paymentMethod: "counter",
+				status: status === "completed" ? "completed" : "cancelled",
+				paymentStatus:
+					status === "completed"
+						? "paid"
+						: status === "refunded"
+							? "refunded"
+							: "unpaid",
+				version: 1,
+				subtotal: total,
+				total,
+				note: null,
+				placedAt,
+				paymentDueAt: null,
+				acceptedAt: placedAt,
+				preparingAt: status === "completed" ? placedAt : null,
+				doneAt: status === "completed" ? placedAt : null,
+				completedAt: status === "completed" ? placedAt : null,
+				paidAt: status === "cancelled" ? null : placedAt,
+				cancelledAt: status === "completed" ? null : placedAt,
+				cancelReason: status === "completed" ? null : "store_busy",
+				lines,
+				events: [],
+				stampsCounted: true,
+				...(past.storeName === undefined ? {} : { storeName: past.storeName }),
+			};
+			orders.push(order);
+			return order.id;
 		},
 		placements: () => placements,
 		openCalls: () => calls.size,
@@ -1317,7 +1532,7 @@ export function createOrderingWorld(
 			},
 			orders: mineNow.map((order) => ({
 				...orderJson(order, false),
-				store_name: "Cửa hàng Mẫu 1",
+				store_name: DEMO_STORE_NAME,
 			})),
 			attached_orders: attached,
 			requests: requests.map((request) => ({
@@ -1467,10 +1682,12 @@ export function createOrderingWorld(
 					orders: orders
 						.filter((order) => order.owner === "me")
 						.reverse()
+						// newest first as the server sorts them (an earlier order the till adds goes below)
+						.sort((a, b) => Date.parse(b.placedAt) - Date.parse(a.placedAt))
 						.map((order) => ({
 							id: order.id,
 							display_no: displayNo(order.orderNo),
-							store_name: "Cửa hàng Mẫu 1",
+							store_name: order.storeName ?? DEMO_STORE_NAME,
 							type: order.type,
 							table_label: order.tableLabel,
 							status: order.status,
