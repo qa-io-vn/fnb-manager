@@ -193,9 +193,9 @@ Làm mỗi ngày trong 2 tuần chạy thử, vào cuối ngày hoặc sáng hô
 6. Cộng số tiền mặt đếm cuối các ca, trừ tiền đầu ca: bằng "Tiền mặt đếm cuối ca".
 7. Kiểm tra: Doanh thu trên ứng dụng = online đã xác nhận + thẻ + tiền mặt đếm cuối ca, và trạng thái là **Khớp**.
 
-**Kết quả mong đợi**: các con số ở bước 3 đến 6 bằng đúng các số trên app, và ngày ở trạng thái **Khớp**. Một ngày **Chưa khớp** phải giải thích được: một ca lệch tiền đã được quản lý xác nhận với lý do, một đơn đã thu tiền mà chưa hoàn thành, hoặc một khoản hoàn tiền còn nợ khách.
+**Kết quả mong đợi**: các con số ở bước 3 đến 6 bằng đúng các số trên app, và ngày ở trạng thái **Khớp**. Một ngày **Chưa khớp** phải giải thích được: một ca lệch tiền đã được quản lý xác nhận với lý do, một đơn đã thu tiền mà chưa hoàn thành, hoặc tiền mặt của đơn đã hủy (ô **Đối soát ngày** ghi thêm dòng "Tiền mặt của đơn đã hủy" và, khi khách chưa được hoàn, dòng "Tiền mặt còn nợ khách (đơn đã hủy, chưa hoàn)").
 
-Lưu ý, lỗi đã biết (đang chờ sửa): nếu một đơn đã hoàn thành của ngày hôm trước được hoàn tiền mặt hôm nay, cả hai ngày đều hiện **Chưa khớp** dù tiền không sai. Trong lúc chưa sửa, ghi rõ trường hợp này trên phiếu thay vì đánh dấu Không đạt. Những đơn gần nửa đêm: cổng thanh toán tính theo giờ giao dịch, app tính theo ngày bán của đơn, nên so kỹ các giao dịch sát 0 giờ.
+Lưu ý: khoản hoàn tiền được tính vào ngày đưa lại tiền cho khách (tiền mặt: ngày của ca đã chi tiền từ két; thẻ và online: ngày hoàn tiền thành công). Nếu một đơn đã hoàn thành của ngày hôm trước được hoàn tiền hôm nay, ngày hôm trước giữ nguyên số liệu và vẫn **Khớp**; hôm nay có thêm một khoản doanh thu âm đúng bằng số tiền hoàn, và hôm nay cũng **Khớp**. Đây là quy tắc mặc định, chủ quán có thể chọn cách khác. Những đơn gần nửa đêm: cổng thanh toán tính theo giờ giao dịch, app tính theo ngày bán của đơn, nên so kỹ các giao dịch sát 0 giờ.
 
 **Kết quả** (mỗi ngày một dòng ở phiếu): ☐ Khớp ☐ Chưa khớp, có giải thích ☐ Chưa khớp, không giải thích được (Không đạt)
 
