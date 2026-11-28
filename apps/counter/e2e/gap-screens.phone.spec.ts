@@ -130,11 +130,9 @@ test("M01: a customer's acceptance is counted, listed and marked until the manag
 	});
 });
 
-test("Q02: a manager opens another person's open shift's Đối chiếu, never their own open one", async ({
-	page,
-	seeded,
-	db,
-}) => {
+test("Q02: a manager opens another person's open shift's Đối chiếu, never their own open one", {
+	tag: ["@criterion-6"],
+}, async ({ page, seeded, db }) => {
 	await openShiftFor(db, seeded, seeded.people.staff.id);
 	await openShiftFor(db, seeded, seeded.people.manager.id);
 	await asMember(db, seeded.people.staff.id, async (tx) => {

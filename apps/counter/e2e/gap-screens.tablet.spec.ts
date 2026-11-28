@@ -164,11 +164,9 @@ test("Q01: nothing to earn is said while the brand's stamp card is off", async (
 	await expect(page.getByTestId("ticket-member-earn")).toHaveCount(0);
 });
 
-test("Q02: nothing asks for Đối chiếu while the shift is open; after a short count it breaks the drawer down", async ({
-	page,
-	seeded,
-	db,
-}) => {
+test("Q02: nothing asks for Đối chiếu while the shift is open; after a short count it breaks the drawer down", {
+	tag: ["@criterion-6"],
+}, async ({ page, seeded, db }) => {
 	await openShiftFor(db, seeded, seeded.people.staff.id);
 	await paidCounterOrder(db, seeded, seeded.people.staff.id, "cash");
 	await paidCounterOrder(db, seeded, seeded.people.staff.id, "card");
@@ -226,11 +224,9 @@ test("Q02: nothing asks for Đối chiếu while the shift is open; after a shor
 	await expectNoHorizontalScroll(page);
 });
 
-test("Q02: a matching count closes the shift and shows its Đối chiếu until dismissed; Ca gần đây opens it again", async ({
-	page,
-	seeded,
-	db,
-}) => {
+test("Q02: a matching count closes the shift and shows its Đối chiếu until dismissed; Ca gần đây opens it again", {
+	tag: ["@criterion-6"],
+}, async ({ page, seeded, db }) => {
 	await openShiftFor(db, seeded, seeded.people.staff2.id);
 	await signIn(page, seeded.people.staff2);
 	await nav(page, "shift").click();
@@ -256,11 +252,9 @@ test("Q02: a matching count closes the shift and shows its Đối chiếu until 
 	await expect(dialog).toHaveCount(0);
 });
 
-test("Q03: a manager off shift is refused a cash refund in words, and Vào ca leads to Ca làm; nothing is refunded", async ({
-	page,
-	seeded,
-	db,
-}) => {
+test("Q03: a manager off shift is refused a cash refund in words, and Vào ca leads to Ca làm; nothing is refunded", {
+	tag: ["@criterion-4", "@criterion-6"],
+}, async ({ page, seeded, db }) => {
 	await openShiftFor(db, seeded, seeded.people.staff.id);
 	const id = await paidCounterOrder(
 		db,

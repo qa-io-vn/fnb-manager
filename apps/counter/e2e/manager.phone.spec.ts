@@ -170,11 +170,9 @@ test("the owner changes a price; the log names them; a store manager is refused 
 	expect(tea?.price).toBe("39000.00");
 });
 
-test("the day's overview counts a completed order and its items", async ({
-	page,
-	seeded,
-	db,
-}) => {
+test("the day's overview counts a completed order and its items", {
+	tag: ["@criterion-6"],
+}, async ({ page, seeded, db }) => {
 	await clearQueue(db, seeded);
 	await openShiftFor(db, seeded, seeded.people.staff.id);
 	await asMember(db, seeded.people.staff.id, async (tx) => {

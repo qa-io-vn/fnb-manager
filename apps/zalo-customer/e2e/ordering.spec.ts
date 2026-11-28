@@ -80,9 +80,9 @@ test.beforeEach(async ({ page }) => {
 	await watchCustomerPage(page, null);
 });
 
-test("a table's QR opens its menu; the customer orders a coffee with options and follows it to the table", async ({
-	page,
-}) => {
+test("a table's QR opens its menu; the customer orders a coffee with options and follows it to the table", {
+	tag: ["@criterion-1"],
+}, async ({ page }) => {
 	await openMenu(page);
 	await expect(page.getByTestId("table-banner")).toHaveText(
 		"Gọi món cho Bàn 12 · Tầng 1",
@@ -343,9 +343,9 @@ test("offline with nothing to show, the menu is the offline state with a retry (
 	await expect(page.getByTestId("offline-retry")).toBeVisible();
 });
 
-test("a forged table token shows no table, and no label comes from the address", async ({
-	page,
-}) => {
+test("a forged table token shows no table, and no label comes from the address", {
+	tag: ["@criterion-1"],
+}, async ({ page }) => {
 	await openMenu(page, "?store=mau-1&src=table&t=Ban-99-forged");
 	await expect(page.getByTestId("table-refused")).toHaveAttribute(
 		"data-refusal",
@@ -356,7 +356,9 @@ test("a forged table token shows no table, and no label comes from the address",
 	await checkOrderingScreen(page);
 });
 
-test("the old card of a rotated table is refused", async ({ page }) => {
+test("the old card of a rotated table is refused", {
+	tag: ["@criterion-1"],
+}, async ({ page }) => {
 	await openMenu(page, "?store=mau-1&src=table&t=demo-table-12-old");
 	await expect(page.getByTestId("table-refused")).toBeVisible();
 	await addBlackCoffee(page);
