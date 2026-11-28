@@ -6,7 +6,10 @@ import {
 	CLI_CYCLE_LIMITS,
 	createAdapterRegistry,
 	createCycleBudget,
+	PROMOTION_WEEKLY_CAP,
 	runNotifyCycle,
+	WEEK_MS,
+	weeklyCapRelease,
 	ZBS_TEMPLATE_DRAFTS,
 	type ZbsTemplatePurpose,
 } from "../../src/index.js";
@@ -71,7 +74,7 @@ describe.skipIf(!ENABLED)("customer messages on the local stack", () => {
 	const oaUser = `syn-it-oa-${randomUUID().slice(0, 8)}`;
 	let clockOffsetMs = 0;
 
-	const cycle = (requestTimeoutMs = 10_000) =>
+	const cycle = (requestTimeoutMs = 10_000, laterMs = 0) =>
 		runNotifyCycle({
 			repository: fixture.repository(),
 			customers: createPostgresCustomerRepository(sql),
@@ -80,7 +83,7 @@ describe.skipIf(!ENABLED)("customer messages on the local stack", () => {
 			runtime: "cli",
 			worker: "it-customers",
 			tenantId: fixture.tenantId,
-			clock: () => new Date(Date.now() + clockOffsetMs),
+			clock: () => new Date(Date.now() + clockOffsetMs + laterMs),
 			fetch: (input, init) => fetch(input, init),
 			log: () => undefined,
 			budget: createCycleBudget({ ...CLI_CYCLE_LIMITS, linkPollSeconds: 0 }),
@@ -397,6 +400,184 @@ describe.skipIf(!ENABLED)("customer messages on the local stack", () => {
 			await sql`delete from app.customer_logins where user_id = ${user}::uuid`;
 			await sql`delete from auth.users where id = ${user}::uuid`;
 		}
+	}, 60_000);
+
+	it("a member's paid order cancelled by the shop arrives as order_cancelled five minutes on, its refund as order_refunded, and both are in the inbox (C12)", async () => {
+		const tenant = fixture.tenantId;
+		const store = fixture.storeIds[0] ?? "";
+		const user = randomUUID();
+		for (const purpose of [
+			"order_cancelled",
+			"order_refunded",
+		] as ZbsTemplatePurpose[]) {
+			const external = `syn-it-${purpose}`;
+			await sql`
+				insert into public.zbs_templates (tenant_id, oa_id, external_id, tag, purpose, approval_state)
+				values (${tenant}::uuid, ${ids.oa}::uuid, ${external}, ${ZBS_TEMPLATE_DRAFTS[purpose].tag}, ${purpose}, 'approved')
+			`;
+			zbs.registerTemplate(
+				external,
+				ZBS_TEMPLATE_DRAFTS[purpose].parameters.map(
+					(parameter) => parameter.name,
+				),
+			);
+		}
+		await sql`
+			insert into auth.users (id, instance_id, aud, role, email, raw_app_meta_data)
+			values (${user}::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+				${`notify-it-${user.slice(0, 8)}@example.com`}, ${JSON.stringify({ kind: "customer", tenant_id: tenant })}::jsonb)
+		`;
+		try {
+			const [existing] = await sql<{ id: string }[]>`
+				select id::text as id from public.zalo_apps where tenant_id = ${tenant}::uuid and brand_id = ${ids.brand}::uuid limit 1
+			`;
+			const app =
+				existing?.id ??
+				(
+					await sql<{ id: string }[]>`
+						insert into public.zalo_apps (tenant_id, brand_id, external_id, secret_name, status)
+						values (${tenant}::uuid, ${ids.brand}::uuid, ${`syn-it-app-${tenant.slice(0, 8)}`}, 'ZALO_APP_SECRET_BRAND_1', 'active')
+						returning id::text as id
+					`
+				)[0]?.id;
+			const [order] = await sql<{ id: string }[]>`
+				with login as (
+					insert into app.customer_logins (tenant_id, zalo_app_id, zalo_user_id, user_id, customer_id)
+					values (${tenant}::uuid, ${app ?? ""}::uuid, ${`syn-it-${user.slice(0, 8)}`}, ${user}::uuid, ${ids.customers.b}::uuid)
+					returning id
+				)
+				insert into public.orders (tenant_id, brand_id, store_id, source, customer_login_id, order_type, table_label, business_date, order_no,
+					status, payment_status, payment_method, subtotal, total, request_id, request_hash, placed_at, accepted_at, paid_at)
+				select ${tenant}::uuid, ${ids.brand}::uuid, ${store}::uuid, 'app', login.id, 'table', 'Bàn 2', current_date, 21,
+					'accepted', 'paid', 'vietqr', 40000, 40000, gen_random_uuid(), repeat('b', 64), now(), now(), now()
+				from login
+				returning id::text as id
+			`;
+			const orderId = order?.id ?? "";
+			await sql`
+				select app.order_move(o, 'cancelled', 'cancel', 'staff', null, 'store_busy', null, now())
+				from public.orders o where o.id = ${orderId}::uuid
+			`;
+			const before = zbs.templates().length;
+			await cycle();
+			expect(zbs.templates()).toHaveLength(before);
+			const [waiting] = await rowsFor(ids.members.b, "order_cancelled");
+			expect(waiting).toMatchObject({ status: "queued", channel: "mini_app" });
+			expect(waiting?.params).toMatchObject({
+				order_id: orderId,
+				amount: 40000,
+			});
+
+			await cycle(10_000, 6 * 60_000);
+			const cancelled = zbs.templates().slice(before);
+			expect(cancelled.map((message) => message.templateId)).toEqual([
+				"syn-it-order_cancelled",
+			]);
+			expect(cancelled[0]?.phone).toBe(`84${"900000"}202`);
+			expect(cancelled[0]?.data).toMatchObject({
+				customer_name: "Synthetic B",
+				order_no: "#021",
+				amount: "40.000",
+			});
+
+			await sql`
+				select app.order_event(o, 'payment', 'refunded', null, 'refunded', 'provider', null, 'vietqr', null, 40000, now())
+				from public.orders o where o.id = ${orderId}::uuid
+			`;
+			const afterCancel = zbs.templates().length;
+			await cycle(10_000, 6 * 60_000);
+			const refunded = zbs.templates().slice(afterCancel);
+			expect(refunded.map((message) => message.templateId)).toEqual([
+				"syn-it-order_refunded",
+			]);
+			expect(refunded[0]?.data).toMatchObject({
+				amount: "40.000",
+				order_no: "#021",
+			});
+			expect(refunded[0]?.data?.refund_date).toMatch(/^\d\d\/\d\d\/\d{4}$/);
+			const items = await sql<{ kind: string }[]>`
+				select i.kind from app.customer_inbox i join app.customer_logins l on l.id = i.customer_login_id
+				where l.user_id = ${user}::uuid order by i.seq
+			`;
+			expect(items.map((item) => item.kind)).toEqual([
+				"order_cancelled",
+				"order_refunded",
+			]);
+		} finally {
+			await sql`delete from app.customer_logins where user_id = ${user}::uuid`;
+			await sql`delete from auth.users where id = ${user}::uuid`;
+		}
+	}, 60_000);
+
+	it("the weekly cap holds a third promotion until the first is 7 days old, then it goes through the mock ZBS (GA-065)", async () => {
+		const tenant = fixture.tenantId;
+		const [created] = await sql<{ customer: string; member: string }[]>`
+			with customer as (
+				insert into public.customers (tenant_id, phone, name)
+				values (${tenant}::uuid, ${`0900000${"205"}`}, 'Synthetic E')
+				returning id
+			),
+			member as (
+				insert into public.memberships (tenant_id, programme_id, customer_id, channel, brand_id, joined_at)
+				select ${tenant}::uuid, ${ids.programme}::uuid, customer.id, 'mini_app', ${ids.brand}::uuid, now() - interval '90 days' from customer
+				returning id
+			),
+			consents as (
+				insert into public.consent_records (tenant_id, subject_type, subject_id, purpose, policy_version, channel, granted_at)
+				select ${tenant}::uuid, 'customer', customer.id, p.purpose::public.consent_purpose, 'synthetic-v1', 'mini_app', now() - interval '90 days'
+				from customer cross join (values ('loyalty'), ('marketing')) p (purpose)
+				returning 1
+			)
+			select customer.id::text as customer, member.id::text as member from customer, member, (select count(*) from consents) c
+		`;
+		const member = created?.member ?? "";
+		const customer = created?.customer ?? "";
+		const [clock] = await sql<{ now: Date }[]>`select now() as now`;
+		const now = clock?.now ?? new Date();
+		const first = new Date(now.getTime() - WEEK_MS + 10 * 60_000);
+		const second = new Date(now.getTime() - 3 * 24 * 60 * 60_000);
+		for (const [index, sentAt] of [first, second].entries()) {
+			await sql`
+				insert into public.outbound_messages (tenant_id, channel, recipient_ref, subject_type, subject_id, purpose, template_ref, status, created_at,
+					sent_at, claimed_at, kind, message_class, dedupe_key, params, expires_at)
+				values (${tenant}::uuid, 'zalo_zbs', ${`membership:${member}`}, 'customer', ${customer}::uuid, 'marketing', 'zbs.win_back.v1', 'sent',
+					${sentAt}, ${sentAt}, ${sentAt}, 'win_back', 'advertising', ${`customer:win_back:it-past-${index}-${member}`},
+					${sql.json({ membership_id: member })}, ${new Date(sentAt.getTime() + 86_400_000)})
+			`;
+		}
+		const [queued] = await sql<{ id: string }[]>`
+			select app.enqueue_customer_message(${tenant}::uuid, ${member}::uuid, 'win_back', ${`it-week-${member}`}, '{"inactive_days": 45}'::jsonb, null, null, now())::text as id
+		`;
+		const before = zbs.templates().length;
+		await cycle();
+		expect(
+			zbs
+				.templates()
+				.slice(before)
+				.filter((message) => message.phone === `84${"900000"}205`),
+		).toHaveLength(0);
+		const [held] = await sql<
+			{ status: string; hold_reason: string | null; not_before: Date }[]
+		>`select status, hold_reason, not_before from public.outbound_messages where id = ${queued?.id ?? ""}::uuid`;
+		expect(held).toMatchObject({ status: "held", hold_reason: "weekly_cap" });
+		expect(held?.not_before.getTime()).toBe(
+			weeklyCapRelease([first, second], now, PROMOTION_WEEKLY_CAP)?.getTime(),
+		);
+
+		await cycle(10_000, 11 * 60_000);
+		const sent = zbs
+			.templates()
+			.slice(before)
+			.filter((message) => message.phone === `84${"900000"}205`);
+		expect(sent.map((message) => message.templateId)).toEqual([
+			"syn-it-win_back",
+		]);
+		const [row] = await rowsFor(member, "win_back");
+		expect(row).toBeDefined();
+		const [done] = await sql<{ status: string }[]>`
+			select status from public.outbound_messages where id = ${queued?.id ?? ""}::uuid
+		`;
+		expect(done?.status).toBe("sent");
 	}, 60_000);
 
 	it("no customer row of the outbox holds a phone, a name or a text", async () => {

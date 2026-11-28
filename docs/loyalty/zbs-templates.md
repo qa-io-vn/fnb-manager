@@ -52,6 +52,8 @@ Which message kind uses which template (in order of preference; the first approv
 | `birthday` | sent only when the reviewers accept it and the owner switches promotions on | `birthday` |
 | `win_back` | no earn for `win_back_days`, same conditions | `win_back` |
 | `takeaway_ready` | a takeaway order of a member's Zalo account turned ready at the counter (C17, ADR-072); not after 22:00 | `order_ready` |
+| `order_cancelled` | the shop cancelled a member's order that was paid; queued five minutes on, and replaced by `order_refunded` when the money goes back in that time (C12, ADR-073) | `order_cancelled` |
+| `order_refunded` | a member's refund went back, except cash handed back at the counter (C12, ADR-073) | `order_refunded` |
 
 ### `points_confirmation` · Xác nhận tích điểm
 
@@ -153,6 +155,37 @@ Chào <customer_name>, đơn <order_no> tại <store_name> đã xong, hẹn lấ
 | `store_name` | text | 60 | Cửa hàng 1 |
 | `pickup_time` | text | 5 | 15:30 |
 
+### `order_cancelled` · Đơn đã hủy
+
+Tag: transaction · Layout: text · Button: «Xem đơn»
+
+```text
+Chào <customer_name>, đơn <order_no> tại <store_name> đã bị hủy. Quán sẽ hoàn <amount> đồng cho bạn theo cách bạn đã trả. Mở ứng dụng để xem chi tiết.
+```
+
+| Parameter | Type | Max length | Sample |
+| --- | --- | --- | --- |
+| `customer_name` | name | 30 | Nguyễn Văn An |
+| `order_no` | code | 10 | #007 |
+| `store_name` | text | 60 | Cửa hàng 1 |
+| `amount` | number | 12 | 45000 |
+
+### `order_refunded` · Đã hoàn tiền
+
+Tag: transaction · Layout: text · Button: «Xem đơn»
+
+```text
+Chào <customer_name>, quán đã hoàn <amount> đồng cho đơn <order_no> tại <store_name> ngày <refund_date>, theo cách bạn đã trả. Mở ứng dụng để xem chi tiết.
+```
+
+| Parameter | Type | Max length | Sample |
+| --- | --- | --- | --- |
+| `customer_name` | name | 30 | Nguyễn Văn An |
+| `amount` | number | 12 | 45000 |
+| `order_no` | code | 10 | #007 |
+| `store_name` | text | 60 | Cửa hàng 1 |
+| `refund_date` | text | 10 | 28/11/2026 |
+
 ## Parameters at send time
 
 The outbox never stores these values (NFR-PRV-02): `app.claim_next_customer_message` resolves them for the dispatcher at the moment of sending (`app.customer_message_parameters`), and the dispatcher passes them to ZBS as `template_data` and forgets them.
@@ -166,8 +199,10 @@ The outbox never stores these values (NFR-PRV-02): `app.claim_next_customer_mess
 | `reward_name`, `voucher_code` | the held reward and its code | `missing_parameter` |
 | `expires_at` | the end of the hold (`HH:MM DD/MM/YYYY`) or the expiry day (`DD/MM/YYYY`), in the tenant's time zone | `missing_parameter` |
 | `inactive_days` | the tenant's `win_back_days` | 0 |
-| `order_no` | the native order's number as the counter calls it (`#007`) | `missing_parameter` |
+| `order_no` | the native order's number as the counter calls it (`#007`); for an order cancelled before it had one, the time it was placed (`HH:MM`) | `missing_parameter` |
 | `pickup_time` | the order's pick-up time, else when it turned ready (`HH:MM`, the store's time zone) | `missing_parameter` |
+| `amount` | the dong queued with the event: the refund due of a cancelled order, or the refund that went back | 0 |
+| `refund_date` | the day the refund went back (`DD/MM/YYYY`, the store's time zone), queued with the event | `missing_parameter` |
 
 ## Per-brand configuration · Cấu hình theo thương hiệu
 
@@ -192,5 +227,8 @@ After the console shows the decision, the owner records it on the row (`approval
 | brand-1 | expiry_reminder | not yet | | |
 | brand-1 | birthday | not yet (reviewers' decision) | | |
 | brand-1 | win_back | not yet (reviewers' decision) | | |
+| brand-1 | order_ready | not yet | | |
+| brand-1 | order_cancelled | not yet | | |
+| brand-1 | order_refunded | not yet | | |
 
 The decision is read in the ZBS console by the owner (#16); a rejected template is corrected here first, then resubmitted, because an approved template can no longer change.

@@ -136,6 +136,17 @@ export {
 	ZBS_BASE_URL_VARIABLE,
 } from "./customer/dispatch.js";
 export {
+	CUSTOMER_HOLD_REASONS,
+	type CustomerHoldReason,
+	effectiveWeeklyCap,
+	PROMOTION_WEEKLY_CAP,
+	WEEK_MS,
+	WEEKLY_CAPPED_CHANNELS,
+	type WeeklyCapRow,
+	weeklyCapRelease,
+	weeklyFloorHolds,
+} from "./customer/policy.js";
+export {
 	CONSULTATION_TEXTS,
 	CUSTOMER_MESSAGE_KINDS,
 	type CustomerMessageKind,
