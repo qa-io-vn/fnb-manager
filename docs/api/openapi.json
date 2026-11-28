@@ -1895,6 +1895,11 @@
 					"format": "int32",
 					"type": "integer"
 				},
+				"max_per_week": {
+					"description": "the most messages of the class a recipient gets on the channel in a rolling 7 days (a message sent exactly 7 days before no longer counts); null for no weekly cap; a Zalo advertising row that may send is bound to 1 or 2 (channel_policies_advertising_weekly), the promise of the opt-in text",
+					"format": "int32",
+					"type": "integer"
+				},
 				"message_class": {
 					"enum": ["operational", "transactional", "advertising"],
 					"format": "public.message_class",
@@ -14583,6 +14588,13 @@
 		"rowFilter.channel_policies.max_per_month": {
 			"in": "query",
 			"name": "max_per_month",
+			"required": false,
+			"type": "string"
+		},
+		"rowFilter.channel_policies.max_per_week": {
+			"description": "the most messages of the class a recipient gets on the channel in a rolling 7 days (a message sent exactly 7 days before no longer counts); null for no weekly cap; a Zalo advertising row that may send is bound to 1 or 2 (channel_policies_advertising_weekly), the promise of the opt-in text",
+			"in": "query",
+			"name": "max_per_week",
 			"required": false,
 			"type": "string"
 		},
@@ -29412,6 +29424,9 @@
 						"$ref": "#/parameters/rowFilter.channel_policies.updated_at"
 					},
 					{
+						"$ref": "#/parameters/rowFilter.channel_policies.max_per_week"
+					},
+					{
 						"$ref": "#/parameters/preferReturn"
 					}
 				],
@@ -29493,6 +29508,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.channel_policies.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.channel_policies.max_per_week"
 					},
 					{
 						"$ref": "#/parameters/select"
@@ -29603,6 +29621,9 @@
 					},
 					{
 						"$ref": "#/parameters/rowFilter.channel_policies.updated_at"
+					},
+					{
+						"$ref": "#/parameters/rowFilter.channel_policies.max_per_week"
 					},
 					{
 						"$ref": "#/parameters/body.channel_policies"
@@ -50930,6 +50951,159 @@
 				"tags": ["(rpc) customer_home"]
 			}
 		},
+		"/rpc/customer_inbox": {
+			"get": {
+				"parameters": [
+					{
+						"format": "text",
+						"in": "query",
+						"name": "p_filter",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"format": "int64",
+						"in": "query",
+						"name": "p_before",
+						"required": false,
+						"type": "integer"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C12): app.customer_inbox at the current time",
+				"tags": ["(rpc) customer_inbox"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C12): app.customer_inbox at the current time",
+							"properties": {
+								"p_before": {
+									"format": "int64",
+									"type": "integer"
+								},
+								"p_filter": {
+									"format": "text",
+									"type": "string"
+								}
+							},
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C12): app.customer_inbox at the current time",
+				"tags": ["(rpc) customer_inbox"]
+			}
+		},
+		"/rpc/customer_inbox_read": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C12): app.customer_inbox_read at the current time",
+							"properties": {
+								"p_ids": {
+									"format": "uuid[]",
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							},
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C12): app.customer_inbox_read at the current time",
+				"tags": ["(rpc) customer_inbox_read"]
+			}
+		},
+		"/rpc/customer_inbox_unread": {
+			"get": {
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C01's bell): app.customer_inbox_unread at the current time",
+				"tags": ["(rpc) customer_inbox_unread"]
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C01's bell): app.customer_inbox_unread at the current time",
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C01's bell): app.customer_inbox_unread at the current time",
+				"tags": ["(rpc) customer_inbox_unread"]
+			}
+		},
 		"/rpc/customer_invoice_status": {
 			"get": {
 				"parameters": [
@@ -51709,6 +51883,55 @@
 				},
 				"summary": "RPC for the customer Mini App (C20): app.customer_stamp_code at the current time",
 				"tags": ["(rpc) customer_stamp_code"]
+			}
+		},
+		"/rpc/customer_start_marketing": {
+			"post": {
+				"parameters": [
+					{
+						"in": "body",
+						"name": "args",
+						"required": true,
+						"schema": {
+							"description": "RPC for the customer Mini App (C12 \"Nhận tin ưu đãi qua Zalo\"): app.customer_start_marketing at the current time",
+							"properties": {
+								"p_policy_version": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_screen_version": {
+									"format": "text",
+									"type": "string"
+								},
+								"p_shown_at": {
+									"format": "timestamp with time zone",
+									"type": "string"
+								}
+							},
+							"required": [
+								"p_policy_version",
+								"p_screen_version",
+								"p_shown_at"
+							],
+							"type": "object"
+						}
+					},
+					{
+						"$ref": "#/parameters/preferParams"
+					}
+				],
+				"produces": [
+					"application/json",
+					"application/vnd.pgrst.object+json;nulls=stripped",
+					"application/vnd.pgrst.object+json"
+				],
+				"responses": {
+					"200": {
+						"description": "OK"
+					}
+				},
+				"summary": "RPC for the customer Mini App (C12 \"Nhận tin ưu đãi qua Zalo\"): app.customer_start_marketing at the current time",
+				"tags": ["(rpc) customer_start_marketing"]
 			}
 		},
 		"/rpc/customer_stop_marketing": {
@@ -52690,7 +52913,7 @@
 						"name": "args",
 						"required": true,
 						"schema": {
-							"description": "RPC for owners and managers with every store (42501 for every other caller, a customer session included): every row of the customer of a data-subject request of their tenant as one JSON (the customer, the customer fields of invoices, memberships, ledger, stamps, claims, redemptions, consent records and message log rows, with the counts) and nothing of another customer or tenant; the full phone only for an owner, masked for a manager; moves a received request to in_progress and records an export action in data_subject_request_actions (the caller, the moment, the counts; never the content, ADR-054) at every answer; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
+							"description": "RPC for owners and managers with every store (42501 for every other caller, a customer session included): every row of the customer of a data-subject request of their tenant as one JSON (the customer, the customer fields of invoices, memberships, ledger, stamps, claims, redemptions, consent records, message log rows and the inbox items of the customer's Zalo logins, with the counts) and nothing of another customer or tenant; the full phone only for an owner, masked for a manager; moves a received request to in_progress and records an export action in data_subject_request_actions (the caller, the moment, the counts; never the content, ADR-054) at every answer; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
 							"properties": {
 								"p_request_id": {
 									"format": "uuid",
@@ -52715,7 +52938,7 @@
 						"description": "OK"
 					}
 				},
-				"summary": "RPC for owners and managers with every store (42501 for every other caller, a customer session included): every row of the customer of a data-subject request of their tenant as one JSON (the customer, the customer fields of invoices, memberships, ledger, stamps, claims, redemptions, consent records and message log rows, with the counts) and nothing of another customer or tenant; the full phone only for an owner, masked for a manager; moves a received request to in_progress and records an export action in data_subject_request_actions (the caller, the moment, the counts; never the content, ADR-054) at every answer; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
+				"summary": "RPC for owners and managers with every store (42501 for every other caller, a customer session included): every row of the customer of a data-subject request of their tenant as one JSON (the customer, the customer fields of invoices, memberships, ledger, stamps, claims, redemptions, consent records, message log rows and the inbox items of the customer's Zalo logins, with the counts) and nothing of another customer or tenant; the full phone only for an owner, masked for a manager; moves a received request to in_progress and records an export action in data_subject_request_actions (the caller, the moment, the counts; never the content, ADR-054) at every answer; 22023 for a request about staff, naming no customer, rejected or whose customer is gone",
 				"tags": ["(rpc) dsr_export"]
 			}
 		},

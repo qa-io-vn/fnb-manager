@@ -2019,7 +2019,7 @@ returns jsonb
 
 - **Status:** built (phase 18a, #261); called by `apps/zalo-customer`.
 - **Who may call:** a joined customer session.
-- **Notes:** "Dừng nhận tin": sets `revoked_at` on the customer's active `marketing` consent at once (none to revoke is not an error) and answers `{"marketing_consent": false, "stopped_at"}`. The loyalty consent stays. No promotional message passes the consent check afterwards.
+- **Notes:** "Dừng nhận tin": sets `revoked_at` on the customer's active `marketing` consent at once (none to revoke is not an error) and answers `{"marketing_consent": false, "stopped_at"}`. The loyalty consent stays. No promotional message passes the consent check afterwards. C12's switch turns it off with this function and on with [`customer_start_marketing`](#publiccustomer_start_marketing).
 
 #### `public.customer_request_deletion`
 
@@ -2334,7 +2334,7 @@ returns jsonb
 
 - **Status:** built (#252); the export action of Yêu cầu về dữ liệu calls it and hands the JSON over as a private download.
 - **Who may call:** owners and managers with every store of the request's tenant; everyone else, and an unknown or foreign request id, gets `42501` (so ids cannot be probed). `22023` for a request about staff, naming no customer, rejected, or whose customer is gone.
-- **Notes:** every row of the request's customer and of nothing else: `request`, `customer`, `invoices` (the customer fields only), `memberships`, `loyalty_ledger`, `stamps`, `receipt_claims`, `redemptions`, `consent_records`, `messages` (the log row, not the text) and `counts` equal to the array lengths. The full phone is in the file for an owner and masked for a manager, in the customer and the invoices. A received request moves to `in_progress`, which stamps the first response. Every answer records one `export` action in `data_subject_request_actions` with the caller, the moment, the `counts` and both deadlines (ADR-054); a refused caller or request records nothing. The file is made in the browser and stored nowhere else.
+- **Notes:** every row of the request's customer and of nothing else: `request`, `customer`, `invoices` (the customer fields only), `memberships`, `loyalty_ledger`, `stamps`, `receipt_claims`, `redemptions`, `consent_records`, `messages` (the log row, not the text), `inbox` (the items of the customer's Zalo logins, C12) and `counts` equal to the array lengths. The full phone is in the file for an owner and masked for a manager, in the customer and the invoices. A received request moves to `in_progress`, which stamps the first response. Every answer records one `export` action in `data_subject_request_actions` with the caller, the moment, the `counts` and both deadlines (ADR-054); a refused caller or request records nothing. The file is made in the browser and stored nowhere else.
 
 Tests: pgTAP `161_data_subject_tooling.sql`, `250_dsr_export_recorded.sql`; vitest `privacy/export-shape.test.ts`; Playwright `e2e/live/privacy-requests.spec.ts`.
 
@@ -3000,7 +3000,7 @@ returns jsonb
 
 - **Status:** built (2026-11-28).
 - **Who may call:** a customer session (`42501` otherwise, also after the deletion, so a replay with the old token does nothing); `p_confirm` must be `true` (`22023` otherwise).
-- **Notes:** "Xóa tài khoản" for a customer who never joined with a phone, at once. Refused while an order of theirs is open (`open_orders`, with `orders`) or a refund is owed to them (`refund_pending`); a joined customer answers `member_request` and uses `customer_request_deletion`, which an owner completes with `dsr_delete`. Otherwise it answers `{state: "deleted", deleted: true, deleted_at, counts}` after, in one transaction: the stamp card with its rewards and ledger, the member codes, the requests (they carry the contact typed), the ordering blocks, the saved companies, the login and its Auth user with every session are deleted; the company invoice requests stay with their invoices for the legal period without the link; the notes the customer typed on their orders and lines are cleared; their orders, the counter orders attached to their card and their staff calls lose the link; the orders, payments, refunds, order events and the store's invoices stay as the money records the law keeps (the events keep the deleted login's id, which then names nobody). A keyed hash of the Zalo App and user id (HMAC-SHA-256 under the tenant's key) with the time and the counts is kept as the proof (`app.customer_login_erasures`, read by no API role). The same Zalo account signing in again is a new customer with no stamps.
+- **Notes:** "Xóa tài khoản" for a customer who never joined with a phone, at once. Refused while an order of theirs is open (`open_orders`, with `orders`) or a refund is owed to them (`refund_pending`); a joined customer answers `member_request` and uses `customer_request_deletion`, which an owner completes with `dsr_delete`. Otherwise it answers `{state: "deleted", deleted: true, deleted_at, counts}` after, in one transaction: the stamp card with its rewards and ledger, the member codes, the requests (they carry the contact typed), the ordering blocks, the saved companies, the inbox (C12; counted as `inbox_items`), the login and its Auth user with every session are deleted; the company invoice requests stay with their invoices for the legal period without the link; the notes the customer typed on their orders and lines are cleared; their orders, the counter orders attached to their card and their staff calls lose the link; the orders, payments, refunds, order events and the store's invoices stay as the money records the law keeps (the events keep the deleted login's id, which then names nobody). A keyed hash of the Zalo App and user id (HMAC-SHA-256 under the tenant's key) with the time and the counts is kept as the proof (`app.customer_login_erasures`, read by no API role). The same Zalo account signing in again is a new customer with no stamps.
 
 #### `public.customer_export_data`
 
@@ -3011,7 +3011,7 @@ returns jsonb
 
 - **Status:** built (2026-11-28).
 - **Who may call:** a customer session (`42501` otherwise).
-- **Notes:** "Tải bản sao dữ liệu": one JSON of everything held about the caller's login: `{generated_at, login: {zalo_user_id, brand, created_at, joined}, customer (a joined customer's name, phone and dates, else null), memberships, consents, stamp_card: {stamps, total_earned, created_at, rewards, entries}, orders (each as `customer_order` shows it, with the store's name and the money), attached_orders, requests (with the phone typed), invoice_requests (the company invoices asked for, with the company), saved_companies, staff_calls, order_blocks, deletion_request, not_kept, counts}`, nothing of anyone else. Each export is recorded with its counts only, never its content (`app.customer_data_exports`, ADR-054).
+- **Notes:** "Tải bản sao dữ liệu": one JSON of everything held about the caller's login: `{generated_at, login: {zalo_user_id, brand, created_at, joined}, customer (a joined customer's name, phone and dates, else null), memberships, consents, stamp_card: {stamps, total_earned, created_at, rewards, entries}, orders (each as `customer_order` shows it, with the store's name and the money), attached_orders, requests (with the phone typed), invoice_requests (the company invoices asked for, with the company), saved_companies, staff_calls, order_blocks, inbox (C12: each item's kind, times, facts and the order's number), deletion_request, not_kept, counts}`, nothing of anyone else. Each export is recorded with its counts only, never its content (`app.customer_data_exports`, ADR-054).
 
 Tests: pgTAP `280_customer_account_deletion.sql`, rows in `120` and `47`.
 
@@ -3382,6 +3382,61 @@ returns jsonb
 - **Status:** built (migration `einvoices`).
 - **Who may call:** an owner or manager of the document's store (`42501` otherwise, the same for an unknown id).
 - **Notes:** a failed document is queued again with a fresh round of 10 attempts (`{state: "queued"}`); the next attempt still asks the provider first. `{state, refusal: "not_failed"}` for any other state.
+
+### 3.31 The customer's notifications inbox (C12, ADR-073)
+
+Migration `customer_inbox` (2026-11-29) adds C12 "Thông báo": the notifications of a customer's Zalo login in `app.customer_inbox`, written only by triggers on the events that exist (the order's `order_events`: ready or brought to the table, a payment, a cancellation by the shop or the system, a refund; the stamp ledger: stamps added, a card complete; a promotion of the customer outbox once delivered) and by `app.customer_inbox_offer` for a campaign; the marketing switch "Nhận tin ưu đãi qua Zalo"; 90 days of retention (the hourly pg_cron job `customer-inbox-purge`). The same order trigger queues the paid messages of the plan through the customer outbox (migration `order_cancel_refund_messages`): `order_cancelled` for a member's paid order cancelled by the shop, five minutes on and replaced by a refund in that time, and `order_refunded` with the amount and the day, except cash handed back at the counter. Migration `weekly_promotion_cap` adds `channel_policies.max_per_week` (a rolling 7 days; 2 for Zalo promotions, held by a floor constraint). Tests: pgTAP `307_customer_inbox_writers.sql`, `308_customer_inbox_reader.sql`, `309_weekly_promotion_cap.sql`, rows in `47`, `120`, `170`.
+
+An item as the reader answers it: `{id, cursor, kind, topic, created_at, read_at, target, order_id, order, reward_name, params, title, line}`. `kind` is `order_ready`, `order_receipt`, `order_cancelled`, `order_refunded` (topic `orders`, target `order`: C06), `stamp`, `reward` (topic `offers`, target `stamps`: C07) or `offer` (topic `offers`, target `offers`). `order` is the customer's own order as it is now (`{display_no, type, table_label, status, payment_status, total, pickup_at, cancel_reason, first_item, items}`), null for the other kinds; `reward_name` is the brand's stamp reward for `stamp` and `reward`; `params` are count-only facts: `order_type`; `amount` and `method` (a receipt or a refund); `reason`, `refund_due` and `by` (a cancellation: `staff` or `system`); `refunded_on` (`YYYY-MM-DD`, the store's day); `added`, `stamps`, `left`, `per` and `rewards` (stamps); `offer` (`birthday`, `win_back` or `campaign`) and `inactive_days`. `title` and `line` are a campaign's text (offers only). Never a phone, a name or an address.
+
+#### `public.customer_inbox`
+
+```sql
+public.customer_inbox(p_filter text DEFAULT 'all'::text, p_before bigint DEFAULT NULL::bigint)
+returns jsonb
+```
+
+- **Status:** built (C12, migration `customer_inbox`); called by `apps/zalo-customer` (ordering build).
+- **Who may call:** a customer session, a visitor's included (`42501` otherwise).
+- **Bad input:** a filter other than `all`, `orders` or `offers`, or a cursor below 1, is `22023`.
+- **Notes:** the caller's own items of the last 90 days, newest first, 20 a page: `{filter, items, next_before, unread, unread_by_topic: {orders, offers}, marketing: {member, consent, weekly_cap}}`. `next_before` is the cursor of the next page (the 20th item's), null on the last; `unread` counts every unread item, whatever the filter. `marketing` is the switch's state: whether the login joined with a phone (only a member can consent), whether the marketing consent is active, and the weekly cap the policy in force applies (2). A read: it writes nothing.
+
+#### `public.customer_inbox_unread`
+
+```sql
+public.customer_inbox_unread()
+returns jsonb
+```
+
+- **Status:** built (C12); called by C01's bell and Tôi.
+- **Who may call:** a customer session (`42501` otherwise).
+- **Notes:** `{unread}`: how many of the caller's items of the last 90 days are unread.
+
+#### `public.customer_inbox_read`
+
+```sql
+public.customer_inbox_read(p_ids uuid[] DEFAULT NULL::uuid[])
+returns jsonb
+```
+
+- **Status:** built (C12); called when a row is opened.
+- **Who may call:** a customer session (`42501` otherwise).
+- **Bad input:** an empty list, a list holding null or more than 100 ids is `22023`.
+- **Notes:** marks the caller's own unread items read now: those named, or every unread item with null. `{state: "read", refusal: null, marked, unread}`; an id of another customer, another brand's or tenant's, an unknown id or an item already read changes nothing and is not counted, so ids cannot be probed (a read item keeps its first `read_at`). `rate_limited` with `retry_at` after 120 calls of a customer (10,000 of a tenant) in 15 minutes. There is no mark-unread.
+
+#### `public.customer_start_marketing`
+
+```sql
+public.customer_start_marketing(p_policy_version text, p_screen_version text, p_shown_at timestamp with time zone)
+returns jsonb
+```
+
+- **Status:** built (C12 "Nhận tin ưu đãi qua Zalo", GA-064); called by the switch after the opt-in sheet.
+- **Who may call:** a joined customer session (`42501` for a visitor and every other caller, as `customer_stop_marketing`).
+- **Bad input:** versions that are not 1 to 40 of `a-z`, `0-9`, `.` and `-`, or a `p_shown_at` more than 5 minutes after the call or more than a day before it, are `22023`.
+- **Notes:** records the `marketing` consent (`consent_records`, channel `mini_app`) with its evidence: `screen_version` (the opt-in text's version, `inbox-optin-1`), `shown_at`, `accepted_at`, the Zalo App, `source` `inbox_switch` and the `weekly_cap` promised. Answers `{state: "started", refusal: null, marketing_consent: true, started_at, replayed}`; an active consent of the same version is a replay (no new record), another version replaces it. Refusals: `policy_outdated` (a privacy notice version the tenant has not published) and `rate_limited` (10 calls of a customer, 1,000 of a tenant in 15 minutes, with `retry_at`), each with `marketing_consent`. Stopping is [`customer_stop_marketing`](#publiccustomer_stop_marketing). Every promotion needs this consent at enqueue and again when it is sent, and goes on Zalo at most twice in a rolling 7 days (`weekly_cap`).
+
+The internal writers are for the server only (no API role): `app.customer_inbox_add` (one item per login and event), `app.customer_inbox_offer(tenant, login, key, title, line, at)` (a campaign's item for a login whose customer gave the marketing consent; null otherwise; `22023` for a malformed key or text) and `app.purge_customer_inbox(at, limit)`.
 
 ## 4. Tables and views
 
